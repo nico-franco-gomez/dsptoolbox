@@ -4,7 +4,7 @@ General tests for filter class
 
 
 def filter_functionalities():
-    from tools import dsp
+    from ..src import dsptools as dsp
     from matplotlib.pyplot import show
     config = dict(order=5, freqs=[1500, 2000], type_of_pass='bandpass',
                   filter_design_method='bessel')
@@ -22,7 +22,7 @@ def filter_functionalities():
 
 
 def filtering():
-    import tools.dsp as dsp
+    from ..src import dsptools as dsp
     from matplotlib.pyplot import show
 
     # config = dict(order=150, freqs=[1500, 2000], type_of_pass='bandpass')
@@ -45,7 +45,7 @@ def filtering():
 
 
 def filter_bank():
-    import tools.dsp as dsp
+    from ..src import dsptools as dsp
 
     fb = dsp.FilterBank()
 
