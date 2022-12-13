@@ -4,7 +4,7 @@ Testing script
 
 
 def plotting_test():
-    from ..src import dsptools as dsp
+    import dsptools as dsp
     from matplotlib.pyplot import show
     recorded_multi = \
         dsp.Signal('/Users/neumanndev/Library/CloudStorage/' +
@@ -16,7 +16,7 @@ def plotting_test():
 
 
 def package_structure_test():
-    from ..src import dsptools as dsp
+    import dsptools as dsp
     recorded = dsp.Signal('/Users/neumanndev/Library/CloudStorage/' +
                           'OneDrive-SennheiserelectronicGmbH&Co.KG/PPONS ' +
                           'OneDrive/MORE/Holzmarkt/chirp_10cm/raw_0.wav')
@@ -27,8 +27,8 @@ def package_structure_test():
 
 
 def transfer_function_test():
+    import dsptools as dsp
     import matplotlib.pyplot as plt
-    from ..src import dsptools as dsp
 
     # recorded = dsp.Signal('/Users/neumanndev/Library/CloudStorage/' +
     #                       'OneDrive-SennheiserelectronicGmbH&Co.KG/PPONS ' +
@@ -51,7 +51,7 @@ def transfer_function_test():
 
 
 def distances_function_test():
-    from ..src import dsptools as dsp
+    import dsptools as dsp
     recorded = dsp.Signal('/Users/neumanndev/Library/CloudStorage/' +
                           'OneDrive-SennheiserelectronicGmbH&Co.KG/PPONS ' +
                           'OneDrive/MORE/Holzmarkt/chirp_10cm/raw_0.wav')
@@ -63,7 +63,7 @@ def distances_function_test():
 
 
 def welch_method():
-    from ..src import dsptools as dsp
+    import dsptools as dsp
     import matplotlib.pyplot as plt
 
     # raw = dsp.Signal('/Users/neumanndev/Library/CloudStorage/' +
@@ -91,25 +91,26 @@ def welch_method():
 
 
 def csm():
-    from ..src import dsptools as dsp
-    import numpy as np
+    import dsptools as dsp
+    # import numpy as np
+    import matplotlib.pyplot as plt
     raw = dsp.Signal('/Users/neumanndev/Library/CloudStorage/' +
                      'OneDrive-SennheiserelectronicGmbH&Co.KG/PPONS ' +
                      'OneDrive/MORE/Holzmarkt/chirp_10cm/raw_twin.wav')
-    f, csm = raw.get_csm()
-    import matplotlib.pyplot as plt
-    fig, ax = plt.subplots(csm.shape[1], csm.shape[2], figsize=(6, 6),
-                           sharey=True)
-    for n1 in range(csm.shape[1]):
-        for n2 in range(csm.shape[1]):
-            ax[n1, n2].semilogx(f, 10*np.log10(np.abs(csm[:, n1, n2])))
-            # ax[n1, n2].plot(f, np.angle(csm[:, n1, n2]))
-    fig.tight_layout()
+    raw.plot_csm()
+    # f, csm = raw.get_csm()
+    # fig, ax = plt.subplots(csm.shape[1], csm.shape[2], figsize=(6, 6),
+    #                        sharey=True)
+    # for n1 in range(csm.shape[1]):
+    #     for n2 in range(csm.shape[1]):
+    #         ax[n1, n2].semilogx(f, 10*np.log10(np.abs(csm[:, n1, n2])))
+    #         # ax[n1, n2].plot(f, np.angle(csm[:, n1, n2]))
+    # fig.tight_layout()
     plt.show()
 
 
 def smoothing():
-    from ..src import dsptools as dsp
+    import dsptools as dsp
     import numpy as np
     raw = dsp.Signal('/Users/neumanndev/Library/CloudStorage/' +
                      'OneDrive-SennheiserelectronicGmbH&Co.KG/PPONS ' +
@@ -129,7 +130,7 @@ def smoothing():
 
 def group_delay():
     import matplotlib.pyplot as plt
-    from ..src import dsptools as dsp
+    import dsptools as dsp
 
     # recorded = dsp.Signal('/Users/neumanndev/Library/CloudStorage/' +
     #                       'OneDrive-SennheiserelectronicGmbH&Co.KG/PPONS ' +
@@ -154,7 +155,7 @@ def group_delay():
 
 
 def add_channels():
-    from ..src import dsptools as dsp
+    import dsptools as dsp
     import soundfile as sf
 
     audio, fs = sf.read('/Users/neumanndev/Library/CloudStorage/' +
@@ -169,7 +170,7 @@ def add_channels():
 
 
 def remove_channels():
-    from ..src import dsptools as dsp
+    import dsptools as dsp
 
     audio = dsp.Signal('/Users/neumanndev/Library/CloudStorage/' +
                        'OneDrive-SennheiserelectronicGmbH&Co.KG/PPONS ' +
@@ -182,7 +183,7 @@ def remove_channels():
 
 
 def stft():
-    from ..src import dsptools as dsp
+    import dsptools as dsp
     import matplotlib.pyplot as plt
     import numpy as np
     import librosa
@@ -210,7 +211,7 @@ def stft():
 
 
 def minimum_phase_systems():
-    from ..src import dsptools as dsp
+    import dsptools as dsp
     import matplotlib.pyplot as plt
     # recorded = dsp.Signal('/Users/neumanndev/Library/CloudStorage/' +
     #                       'OneDrive-SennheiserelectronicGmbH&Co.KG/PPONS ' +
@@ -236,7 +237,7 @@ def minimum_phase_systems():
 
 
 def room_acoustics():
-    from ..src import dsptools as dsp
+    import dsptools as dsp
     # import matplotlib.pyplot as plt
     # recorded = dsp.Signal('/Users/neumanndev/Library/CloudStorage/' +
     #                       'OneDrive-SennheiserelectronicGmbH&Co.KG/PPONS ' +
@@ -287,7 +288,7 @@ def window_length():
 
 def new_transfer_functions():
     import matplotlib.pyplot as plt
-    from ..src import dsptools as dsp
+    import dsptools as dsp
 
     # recorded = dsp.Signal('/Users/neumanndev/Library/CloudStorage/' +
     #                       'OneDrive-SennheiserelectronicGmbH&Co.KG/PPONS ' +
@@ -307,8 +308,8 @@ def new_transfer_functions():
     plt.show()
 
 
-def stft_plot():
-    from ..src import dsptools as dsp
+def spectrogram_plot():
+    import dsptools as dsp
     from matplotlib.pyplot import show
     # recorded = dsp.Signal('/Users/neumanndev/Library/CloudStorage/' +
     #                       'OneDrive-SennheiserelectronicGmbH&Co.KG/PPONS ' +
@@ -317,12 +318,12 @@ def stft_plot():
         dsp.Signal('/Users/neumanndev/Library/CloudStorage/' +
                    'OneDrive-SennheiserelectronicGmbH&Co.KG/PPONS ' +
                    'OneDrive/MORE/Holzmarkt/chirp_10cm/raw_twin.wav')
-    recorded_multi.plot_stft()
+    recorded_multi.plot_spectrogram()
     show()
 
 
 def multiband():
-    from ..src import dsptools as dsp
+    import dsptools as dsp
     recorded_multi = \
         dsp.Signal('/Users/neumanndev/Library/CloudStorage/' +
                    'OneDrive-SennheiserelectronicGmbH&Co.KG/PPONS ' +
@@ -342,6 +343,33 @@ def multiband():
     multi.show_info(False)
 
 
+def save_objects():
+    import dsptools as dsp
+    recorded_multi = \
+        dsp.Signal('/Users/neumanndev/Library/CloudStorage/' +
+                   'OneDrive-SennheiserelectronicGmbH&Co.KG/PPONS ' +
+                   'OneDrive/MORE/Holzmarkt/chirp_10cm/raw_twin.wav')
+    recorded_multi.save_signal(mode='wav')
+    recorded_multi.save_signal(mode='flac')
+    recorded_multi.save_signal(mode='pickle')
+    print()
+
+
+def generators():
+    import dsptools as dsp
+    from matplotlib.pyplot import show
+
+    wno = dsp.generators.noise('white', length_seconds=3, peak_level_dbfs=-1)
+    # wno = dsp.generators.noise('pink')
+    # wno = dsp.generators.noise('red', peak_level_dbfs=-5)
+    # wno = dsp.generators.noise('blue')
+    # wno = dsp.generators.noise('violet')
+    # wno.plot_magnitude(normalize=None)
+    wno.plot_time()
+    wno.plot_phase()
+    show()
+
+
 if __name__ == '__main__':
     # package_structure_test()
     # plotting_test()
@@ -356,11 +384,13 @@ if __name__ == '__main__':
     # minimum_phase_systems()
     # room_acoustics()
     # window_length()
-    # stft_plot()
+    # spectrogram_plot()
     # new_transfer_functions()
+    # multiband()
+    # save_objects()
 
     # Next
     # smoothing()  # Not working!!!
     # convolve_rir_signal()
-    multiband()
+    generators()
     print()

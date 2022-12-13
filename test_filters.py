@@ -4,7 +4,7 @@ General tests for filter class
 
 
 def filter_functionalities():
-    from ..src import dsptools as dsp
+    import dsptools as dsp
     from matplotlib.pyplot import show
     config = dict(order=5, freqs=[1500, 2000], type_of_pass='bandpass',
                   filter_design_method='bessel')
@@ -18,18 +18,21 @@ def filter_functionalities():
     # rF.plot_group_delay(2048)
     # rF.plot_phase(2048, unwrap=False)
     rF.plot_zp(show_info_box=True)
+    rF.save_filter()
     show()
 
 
 def filtering():
-    from ..src import dsptools as dsp
+    import dsptools as dsp
     from matplotlib.pyplot import show
 
+    config = dict(eq_type='lowshelf', freqs=1500, gain=10, q=0.7)
+    filt = dsp.Filter('biquad', config)
     # config = dict(order=150, freqs=[1500, 2000], type_of_pass='bandpass')
     # filt = dsp.Filter('fir', config)
-    config = dict(order=10, freqs=[1500, 2000], type_of_pass='bandpass',
-                  filter_design_method='bessel')
-    filt = dsp.Filter('iir', config)
+    # config = dict(order=10, freqs=[1500, 2000], type_of_pass='bandpass',
+    #               filter_design_method='bessel')
+    # filt = dsp.Filter('iir', config)
     recorded_multi = \
         dsp.Signal('/Users/neumanndev/Library/CloudStorage/OneDrive-' +
                    'SennheiserelectronicGmbH&Co.KG/PPONS OneDrive/Polar ' +
@@ -45,7 +48,7 @@ def filtering():
 
 
 def filter_bank():
-    from ..src import dsptools as dsp
+    import dsptools as dsp
 
     fb = dsp.FilterBank()
 
@@ -64,11 +67,12 @@ def filter_bank():
     # fb = dsp.FilterBank(filters, None)
     fb.remove_filter(0)
     fb.show_info(False)
+    fb.save_filterbank()
 
 
 if __name__ == '__main__':
     # filter_functionalities()
-    # filtering()
-    filter_bank()
+    filtering()
+    # filter_bank()
 
     print()

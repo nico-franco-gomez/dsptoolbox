@@ -1,11 +1,16 @@
 '''
 Signal classes
 '''
+import warnings
+import pickle
+import os
+
 import numpy as np
 import soundfile as sf
-from .backend._general_helpers import (_get_normalized_spectrum, _pad_trim)
-from .backend._standard import (_welch, _group_delay_direct, _stft)
 from .plots import (general_plot, general_subplots_line, general_matrix_plot)
+from .backend._plots import _csm_plot
+from .backend._general_helpers import (_get_normalized_spectrum, _pad_trim)
+from .backend._standard import (_welch, _group_delay_direct, _stft, _csm)
 from .backend._general_helpers import _find_nearest
 
 __all__ = ['Signal', 'MultiBandSignal', ]
@@ -14,7 +19,8 @@ __all__ = ['Signal', 'MultiBandSignal', ]
 class Signal():
     # ======== Constructor and State handler ==================================
     def __init__(self, path=None, time_data=None,
-                 sampling_rate_hz: int = 48000, signal_type: str = 'general'):
+                 sampling_rate_hz: int = 48000, signal_type: str = 'general',
+                 signal_id: str = ''):
         '''
         Signal class that saves mainly time data for being used with all the
         methods.
@@ -30,9 +36,12 @@ class Signal():
         sampling_rate_hz : int, optional
             Sampling rate of the signal in Hz. Default: 48000.
         signal_type : str, optional
-            A generic signal id. Some functionalities are only unlocked for
+            A generic signal type. Some functionalities are only unlocked for
             impulse responses with `'ir'` or `'h1'`, `'h2'` or `'h3'`.
             Default: `'general'`.
+        signal_id : str, optional
+            An even more generic signal id that can be used by the user.
+            Default: `''`.
 
         Methods
         -------
@@ -40,18 +49,19 @@ class Signal():
         Time data: set_time_data, add_channel, remove_channel.
         Spectrum: set_spectrum_parameters, get_spectrum.
         Cross spectral matrix: set_csm_parameters, get_csm.
-        STFT: set_stft_parameters, get_stft.
+        Spectrogram: set_spectrogram_parameters, get_spectrogram.
 
-        Plots: plot_magnitude, plot_time, plot_stft, plot_phase
+        Plots: plot_magnitude, plot_time, plot_spectrogram, plot_phase
 
         Only for `signal_type in ('rir', 'ir', 'h1', 'h2', 'h3')`:
             set_window, set_coherence, plot_group_delay, plot_coherence.
         '''
+        self.signal_id = signal_id.lower()
         self.signal_type = signal_type.lower()
         # State tracker
         self.__spectrum_state_update = True
         self.__csm_state_update = True
-        self.__stft_state_update = True
+        self.__spectrogram_state_update = True
         # Import data
         if path is not None:
             assert time_data is None, 'Constructor cannot take a path and ' +\
@@ -66,7 +76,7 @@ class Signal():
         else:
             self.set_spectrum_parameters()
         self.set_csm_parameters()
-        self.set_stft_parameters()
+        self.set_spectrogram_parameters()
         self._generate_metadata()
 
     def __update_state(self):
@@ -76,7 +86,7 @@ class Signal():
         '''
         self.__spectrum_state_update = True
         self.__csm_state_update = True
-        self.__stft_state_update = True
+        self.__spectrogram_state_update = True
         self._generate_metadata()
 
     def _generate_metadata(self):
@@ -151,8 +161,10 @@ class Signal():
         if self.signal_type in ('h1', 'h2', 'h3'):
             if method != 'standard':
                 method = 'standard'
-                print(f'Warning: for a signal of type {self.signal_type} ' +
-                      'the spectrum has to be the standard one and not welch')
+                warnings.warn(
+                    f'For a signal of type {self.signal_type} ' +
+                    'the spectrum has to be the standard one and not welch.' +
+                    ' This has been automatically changed.')
         _new_spectrum_parameters = \
             dict(
                 method=method,
@@ -247,13 +259,14 @@ class Signal():
                 self._csm_parameters = _new_csm_parameters
                 self.__csm_state_update = True
 
-    def set_stft_parameters(self, channel_number: int = 0,
-                            window_length_samples: int = 1024,
-                            window_type: str = 'hann', overlap_percent=75,
-                            detrend: bool = True, padding: bool = True,
-                            scaling: bool = False):
+    def set_spectrogram_parameters(self, channel_number: int = 0,
+                                   window_length_samples: int = 1024,
+                                   window_type: str = 'hann',
+                                   overlap_percent=75,
+                                   detrend: bool = True, padding: bool = True,
+                                   scaling: bool = False):
         '''
-        Sets all necessary parameters for the computation of the CSM.
+        Sets all necessary parameters for the computation of the spectrogram.
 
         Parameters
         ----------
@@ -269,7 +282,7 @@ class Signal():
         scaling : bool, optional
             Scaling or not after FFT. Default: False.
         '''
-        _new_stft_parameters = \
+        _new_spectrogram_parameters = \
             dict(
                 channel_number=channel_number,
                 window_length_samples=window_length_samples,
@@ -278,16 +291,17 @@ class Signal():
                 detrend=detrend,
                 padding=padding,
                 scaling=scaling)
-        if not hasattr(self, '_stft_parameters'):
-            self._stft_parameters = _new_stft_parameters
-            self.__stft_state_update = True
+        if not hasattr(self, '_spectrogram_parameters'):
+            self._spectrogram_parameters = _new_spectrogram_parameters
+            self.__spectrogram_state_update = True
         else:
             handler = \
-                [self._stft_parameters[k] == _new_stft_parameters[k]
-                 for k in self._stft_parameters.keys()]
+                [self._spectrogram_parameters[k] ==
+                 _new_spectrogram_parameters[k]
+                 for k in self._spectrogram_parameters.keys()]
             if not all(handler):
-                self._stft_parameters = _new_stft_parameters
-                self.__stft_state_update = True
+                self._spectrogram_parameters = _new_spectrogram_parameters
+                self.__spectrogram_state_update = True
 
     # ======== Add and Remove Data ============================================
     def add_channel(self, path: str = None, new_time_data: np.ndarray = None,
@@ -342,10 +356,11 @@ class Signal():
                         new_time_data,
                         self.time_data.shape[0],
                         axis=0, in_the_end=True)
-                print(f'Warning: {txt} has been performed ' +
-                      'on the end of the new signal to match original one')
+                warnings.warn(
+                    f'{txt} has been performed ' +
+                    'on the end of the new signal to match original one.')
             else:
-                raise ValueError(
+                raise AttributeError(
                     f'{new_time_data.shape[0]} does not match ' +
                     f'{self.time_data.shape[0]}. Activate padding_trimming ' +
                     'for allowing this channel to be added')
@@ -429,48 +444,34 @@ class Signal():
 
         Returns
         -------
-
+        f_csm : np.ndarray
+            Frequency vector
+        csm : np.ndarray
+            Cross spectral matrix with shape (frequency, channels, channels).
         '''
+        assert self.number_of_channels > 1, \
+            'Cross spectral matrix can only be computed when at least two ' +\
+            'channels are available'
         condition = not hasattr(self, 'csm') or force_computation or \
             self.__csm_state_update
 
         if condition:
-            csm = np.zeros((self._csm_parameters['window_length_samples']//2+1,
-                            self.number_of_channels,
-                            self.number_of_channels), dtype=np.complex64)
-
-            for ind1 in range(self.number_of_channels):
-                for ind2 in range(ind1, self.number_of_channels):
-                    csm[:, ind1, ind2] = \
-                        _welch(self.time_data[:, ind1],
-                               self.time_data[:, ind2],
-                               self.sampling_rate_hz,
-                               window_length_samples=self.
-                               _csm_parameters['window_length_samples'],
-                               window_type=self._csm_parameters['window_type'],
-                               overlap_percent=self.
-                               _csm_parameters['overlap_percent'],
-                               detrend=self._csm_parameters['detrend'],
-                               average=self._csm_parameters['average'],
-                               scaling=self._csm_parameters['scaling'])
-                    if ind1 == ind2:
-                        csm[:, ind1, ind2] /= 2
-            for nfreq in range(csm.shape[0]):
-                csm[nfreq, :, :] = \
-                    csm[nfreq, :, :] + csm[nfreq, :, :].T.conjugate()
-            self.csm = []
-            self.csm.append(
-                np.fft.rfftfreq(self._csm_parameters['window_length_samples'],
-                                1/self.sampling_rate_hz))
-            self.csm.append(csm)
-            f_csm = self.csm[0]
+            self.csm = _csm(self.time_data,
+                            self.sampling_rate_hz,
+                            window_length_samples=self.
+                            _csm_parameters['window_length_samples'],
+                            window_type=self._csm_parameters['window_type'],
+                            overlap_percent=self.
+                            _csm_parameters['overlap_percent'],
+                            detrend=self._csm_parameters['detrend'],
+                            average=self._csm_parameters['average'],
+                            scaling=self._csm_parameters['scaling'])
             self.__csm_state_update = False
-        else:
-            f_csm, csm = self.csm[0], self.csm[1]
+        f_csm, csm = self.csm[0], self.csm[1]
         return f_csm, csm
 
-    def get_stft(self, channel_number: int = 0,
-                 force_computation: bool = False):
+    def get_spectrogram(self, channel_number: int = 0,
+                        force_computation: bool = False):
         '''
         Returns a matrix containing the STFT of a specific channel.
 
@@ -487,42 +488,40 @@ class Signal():
             Time vector
         f_hz : np.ndarray
             Frequency vector
-        stft : np.ndarray
-            STFT Matrix
+        spectrogram : np.ndarray
+            Spectrogram
         '''
-        condition = not hasattr(self, 'stft') or force_computation or \
-            self.__stft_state_update or \
-            not channel_number == self._stft_parameters['channel_number']
+        condition = not hasattr(self, 'spectrogram') or force_computation or \
+            self.__spectrogram_state_update or \
+            not channel_number == \
+            self._spectrogram_parameters['channel_number']
 
         if condition:
-            self._stft_parameters['channel_number'] = channel_number
-            self.stft = \
+            self._spectrogram_parameters['channel_number'] = channel_number
+            self.spectrogram = \
                 _stft(
                     self.time_data[:, channel_number],
                     self.sampling_rate_hz,
-                    self._stft_parameters['window_length_samples'],
-                    self._stft_parameters['window_type'],
-                    self._stft_parameters['overlap_percent'],
-                    self._stft_parameters['detrend'],
-                    self._stft_parameters['padding'],
-                    self._stft_parameters['scaling']
+                    self._spectrogram_parameters['window_length_samples'],
+                    self._spectrogram_parameters['window_type'],
+                    self._spectrogram_parameters['overlap_percent'],
+                    self._spectrogram_parameters['detrend'],
+                    self._spectrogram_parameters['padding'],
+                    self._spectrogram_parameters['scaling']
                     )
-            t_s, f_hz, stft = self.stft[0], self.stft[1], self.stft[2]
-            self.__stft_state_update = False
-        else:
-            t_s, f_hz, stft = self.stft[0], self.stft[1], self.stft[2]
-        return t_s, f_hz, stft
+            self.__spectrogram_state_update = False
+        t_s, f_hz, spectrogram = \
+            self.spectrogram[0], self.spectrogram[1], self.spectrogram[2]
+        return t_s, f_hz, spectrogram
 
     def get_coherence(self):
         '''
         Returns the coherence matrix
         '''
-        if not hasattr(self, 'coherence'):
-            print('Warning: There is no coherence data saved in the Signal' +
-                  'object')
-        else:
-            f, _ = self.get_spectrum()
-            return f, self.coherence
+        assert hasattr(self, 'coherence'), \
+            'There is no coherence data saved in the Signal object'
+        f, _ = self.get_spectrum()
+        return f, self.coherence
 
     # ======== Plots ==========================================================
     def plot_magnitude(self, range_hz=[20, 20e3], normalize: str = '1k',
@@ -616,11 +615,11 @@ class Signal():
         if returns:
             return fig, ax
 
-    def plot_stft(self, channel_number: int = 0, returns: bool = False):
+    def plot_spectrogram(self, channel_number: int = 0, returns: bool = False):
         '''
         Plots STFT matrix of the given channel.
         '''
-        t, f, stft = self.get_stft(channel_number)
+        t, f, stft = self.get_spectrogram(channel_number)
         epsilon = 10**(-100/10)
         ids = _find_nearest([20, 20000], f)
         if ids[0] == 0:
@@ -641,33 +640,33 @@ class Signal():
         '''
         Plots coherence measurements if there are any
         '''
-        if not hasattr(self, 'coherence'):
-            print('Warning: There is no coherence data saved in the Signal' +
-                  'object')
-        else:
-            f, coh = self.get_coherence()
-            fig, ax = \
-                general_subplots_line(
-                    x=f,
-                    matrix=coh,
-                    column=True,
-                    sharey=True,
-                    log=True,
-                    ylabels=[rf'$\gamma^2$ Coherence {n}'
-                             for n in range(self.number_of_channels)],
-                    xlabels='Frequency / Hz',
-                    ylims=[-0.1, 1.1],
-                    returns=True
-                    )
-            if returns:
-                return fig, ax
+        assert hasattr(self, 'coherence'), \
+            'There is no coherence data saved in the Signal object'
+
+        f, coh = self.get_coherence()
+        fig, ax = \
+            general_subplots_line(
+                x=f,
+                matrix=coh,
+                column=True,
+                sharey=True,
+                log=True,
+                ylabels=[rf'$\gamma^2$ Coherence {n}'
+                         for n in range(self.number_of_channels)],
+                xlabels='Frequency / Hz',
+                ylims=[-0.1, 1.1],
+                returns=True
+                )
+        if returns:
+            return fig, ax
 
     def plot_phase(self, range_hz=[20, 20e3], unwrap: bool = False,
                    returns: bool = False):
         if self._spectrum_parameters['method'] == 'welch':
-            print('Warning: phase cannot be plotted since the spectrum is ' +
-                  'welch. Please change spectrum parameters method to ' +
-                  'standard')
+            raise AttributeError(
+                'Phase cannot be plotted since the spectrum is ' +
+                'welch. Please change spectrum parameters method to ' +
+                'standard')
         else:
             f, sp = self.get_spectrum()
             ph = np.angle(sp)
@@ -684,6 +683,63 @@ class Signal():
             )
             if returns:
                 return fig, ax
+
+    def plot_csm(self, range_hz=[20, 20e3], logx: bool = True,
+                 with_phase: bool = True, returns: bool = False):
+        '''
+        Plots the cross spectral matrix of the multichannel signal.
+
+        Parameters
+        ----------
+        range_hz : array-like with length 2, optional
+            Range of Hz to be showed. Default: [20, 20e3].
+        logx : bool, optional
+            Logarithmic x axis. Default: `True`.
+        with_phase : bool, optional
+            When `True`, the unwrapped phase is also plotted. Default: `True`.
+        returns : bool, optional
+            Gives back figure and axis objects. Default: `False`.
+
+        Returns
+        -------
+        fig, ax if `returns = True`.
+        '''
+        f, csm = self.get_csm()
+        fig, ax = _csm_plot(f, csm, range_hz, logx, with_phase, returns=True)
+        if returns:
+            return fig, ax
+
+    # ======== Saving and export ==============================================
+    def save_signal(self, path: str = 'signal', mode: str = 'wav'):
+        '''
+        Saves the Signal object
+
+        Parameters
+        ----------
+        path : str, optional
+            Path for the signal to be saved. Use only folder/folder/name
+            (without format). Default: `'signal'`
+            (local folder, object named signal).
+        mode : str, optional
+            Mode of saving. Available modes are `'wav'`, `'flac'`, `'pickle'`.
+            Default: `'wav'`.
+        '''
+        if '.' in path.split(os.sep)[-1]:
+            raise ValueError('Please introduce the saving path without format')
+        if mode == 'wav':
+            path += '.wav'
+            sf.write(path, self.time_data, self.sampling_rate_hz)
+        elif mode == 'flac':
+            path += '.flac'
+            sf.write(path, self.time_data, self.sampling_rate_hz)
+        elif mode == 'pickle':
+            path += '.pkl'
+            with open(path, 'wb') as data_file:
+                pickle.dump(self, data_file, pickle.HIGHEST_PROTOCOL)
+        else:
+            raise ValueError(
+                f'{mode} is not a supported saving mode. Use ' +
+                'wav, flac or pkl')
 
 
 class MultiBandSignal():
@@ -850,3 +906,21 @@ class MultiBandSignal():
                                 capitalize()}: {f1.info[kf]}'''
                 print(txt)
         print()
+
+    # ======== Saving and export ==============================================
+    def save_signal(self, path: str = 'multibandsignal'):
+        '''
+        Saves the MultiBandSignal object as a pickle.
+
+        Parameters
+        ----------
+        path : str, optional
+            Path for the signal to be saved. Use only folder/folder/name
+            (without format). Default: `'multibandsignal'`
+            (local folder, object named multibandsignal).
+        '''
+        if '.' in path.split(os.sep)[-1]:
+            raise ValueError('Please introduce the saving path without format')
+        path += '.pkl'
+        with open(path, 'wb') as data_file:
+            pickle.dump(self, data_file, pickle.HIGHEST_PROTOCOL)

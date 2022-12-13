@@ -1,6 +1,9 @@
 '''
 Contains Filter classes
 '''
+import os
+import pickle
+
 from scipy import signal as sig
 from .signal_class import Signal
 from .backend._filter import (_biquad_coefficients, _impulse,
@@ -70,7 +73,7 @@ class Filter():
                 7 = Lowshelf, 8 = Highshelf.
 
         For `other` or `general`:
-            ba, filter_id (optional).
+            ba or sos or zpk, filter_id (optional).
 
         Methods
         -------
@@ -84,16 +87,13 @@ class Filter():
                 {'eq_type': 0, 'freqs': 1000, 'gain': 0, 'q': 1,
                  'filter_id': 'dummy'}
         self.set_filter_parameters(filter_type, filter_configuration)
-        self._initialize_zi()
+        self.initialize_zi()
 
-    def _initialize_zi(self):
+    def initialize_zi(self):
         '''
         Initializes zi for steady-state filtering
         '''
-        if hasattr(self, 'sos'):
-            self.zi = sig.sosfilt_zi(self.sos)
-        if hasattr(self, 'tf_ba'):
-            self.zi = sig.lfilter_zi(self.ba[0], self.ba[1])
+        self.zi = sig.sosfilt_zi(self.sos)
 
     # ======== Setters ========================================================
     def set_filter_parameters(self, filter_type: str,
@@ -115,7 +115,7 @@ class Filter():
             if 'width' not in filter_configuration.keys():
                 filter_configuration['width'] = None
             # Filter creation
-            self.ba = \
+            ba = \
                 [sig.firwin(numtaps=filter_configuration['order'],
                             cutoff=filter_configuration['freqs'],
                             window=filter_configuration
@@ -123,13 +123,14 @@ class Filter():
                             width=filter_configuration['width'],
                             pass_zero=filter_configuration['type_of_pass'],
                             fs=self.sampling_rate_hz), [1]]
+            self.sos = sig.tf2sos(ba[0], ba[1])
         elif filter_type == 'biquad':
             # Preparing parameters
             if type(filter_configuration['eq_type']) == str:
                 filter_configuration['eq_type'] = \
                     _get_biquad_type(None, filter_configuration['eq_type'])
             # Filter creation
-            self.ba = \
+            ba = \
                 _biquad_coefficients(
                     eq_type=filter_configuration['eq_type'],
                     fs_hz=self.sampling_rate_hz,
@@ -139,14 +140,23 @@ class Filter():
             # Setting back
             filter_configuration['eq_type'] = \
                 _get_biquad_type(filter_configuration['eq_type']).capitalize()
+            self.sos = sig.tf2sos(ba[0], ba[1])
         else:
-            self.ba = filter_configuration['ba']
+            assert ('ba' in filter_configuration) ^ \
+                ('sos' in filter_configuration) ^ \
+                ('zpk' in filter_configuration), \
+                'Only (and at least) one type of filter coefficients ' +\
+                'should be passed to create a filter'
+            if ('ba' in filter_configuration):
+                ba = filter_configuration['ba']
+                self.sos = sig.tf2sos(ba[0], ba[1])
+            if ('zpk' in filter_configuration):
+                z, p, k = filter_configuration['zpk']
+                self.sos = sig.zpk2sos(z, p, k)
+            if ('sos' in filter_configuration):
+                self.sos = filter_configuration['sos']
         self.info = filter_configuration
         self.info['sampling_rate_hz'] = self.sampling_rate_hz
-        if hasattr(self, 'sos'):
-            self.info['preferred_method_of_filtering'] = 'sos'
-        if hasattr(self, 'ba'):
-            self.info['preferred_method_of_filtering'] = 'ba'
         self.info['filter_type'] = filter_type
         if 'filter_id' not in self.info.keys():
             self.info['filter_id'] = None
@@ -191,15 +201,37 @@ class Filter():
             Impulse response of the filter.
         '''
         ir_filt = _impulse(length_samples)
-        if hasattr(self, 'sos'):
-            ir_filt = sig.sosfilt(sos=self.sos, x=ir_filt)
-        elif hasattr(self, 'ba'):
-            ir_filt = sig.lfilter(b=self.ba[0], a=self.ba[1], x=ir_filt)
+        ir_filt = sig.sosfilt(sos=self.sos, x=ir_filt)
         ir_filt = Signal(
             None, ir_filt,
             sampling_rate_hz=self.sampling_rate_hz,
             signal_type='ir')
         return ir_filt
+
+    def get_coefficients(self, mode='sos'):
+        '''
+        Returns the filter coefficients.
+
+        Parameters
+        ----------
+        mode : str, optional
+            Type of filter coefficients to be returned. Choose from `'sos'`,
+            `'ba'` or `'zpk'`. Default: `'sos'`.
+
+        Returns
+        -------
+        coefficients : array-like
+            Array with filter parameters.
+        '''
+        if mode == 'sos':
+            coefficients = self.sos
+        elif mode == 'ba':
+            coefficients = sig.sos2tf(self.sos)
+        elif mode == 'zpk':
+            coefficients = sig.sos2zpk(self.sos)
+        else:
+            raise ValueError(f'{mode} is not valid. Use sos, ba or zpk')
+        return coefficients
 
     # ======== Plots and prints ===============================================
     def show_filter_parameters(self):
@@ -269,10 +301,7 @@ class Filter():
         -------
         figure and axis when `returns = True`.
         '''
-        if hasattr(self, 'ba'):
-            ba = self.ba
-        if hasattr(self, 'sos'):
-            ba = sig.sos2tf(self.sos)
+        ba = sig.sos2tf(self.sos)
         # import numpy as np
         f, gd = \
             _group_delay_filter(ba, length_samples, self.sampling_rate_hz)
@@ -347,10 +376,7 @@ class Filter():
         -------
         figure and axis when `returns = True`.
         '''
-        if hasattr(self, 'sos'):
-            z, p, k = sig.sos2zpk(self.sos)
-        elif hasattr(self, 'ba'):
-            z, p, k = sig.tf2zpk(self.ba[0], self.ba[1])
+        z, p, k = sig.sos2zpk(self.sos)
         fig, ax = _zp_plot(z, p, returns=True)
         ax.text(0.75, 0.91, rf'$k={k:.1e}$', transform=ax.transAxes,
                 verticalalignment='top')
@@ -362,7 +388,26 @@ class Filter():
         if returns:
             return fig, ax
 
+    # ======== Saving and export ==============================================
+    def save_filter(self, path: str = 'filter'):
+        '''
+        Saves the Filter object as a pickle.
 
+        Parameters
+        ----------
+        path : str, optional
+            Path for the filter to be saved. Use only folder/folder/name
+            (without format). Default: `'filter'`
+            (local folder, object named filter).
+        '''
+        if '.' in path.split(os.sep)[-1]:
+            raise ValueError('Please introduce the saving path without format')
+        path += '.pkl'
+        with open(path, 'wb') as data_file:
+            pickle.dump(self, data_file, pickle.HIGHEST_PROTOCOL)
+
+
+# == Filter Bank ==============================================================
 class FilterBank():
     # ======== Constructor and initializers ===================================
     def __init__(self, filters=None, same_sampling_rate: bool = True,
@@ -508,3 +553,21 @@ class FilterBank():
                                 capitalize()}: {f1.info[kf]}'''
                 print(txt)
         print()
+
+    # ======== Saving and export ==============================================
+    def save_filterbank(self, path: str = 'filterbank'):
+        '''
+        Saves the FilterBank object as a pickle.
+
+        Parameters
+        ----------
+        path : str, optional
+            Path for the filterbank to be saved. Use only folder/folder/name
+            (without format). Default: `'filterbank'`
+            (local folder, object named filterbank).
+        '''
+        if '.' in path.split(os.sep)[-1]:
+            raise ValueError('Please introduce the saving path without format')
+        path += '.pkl'
+        with open(path, 'wb') as data_file:
+            pickle.dump(self, data_file, pickle.HIGHEST_PROTOCOL)

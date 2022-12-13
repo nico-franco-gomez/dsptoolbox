@@ -220,3 +220,81 @@ def _compute_number_frames(window_length: int, step: int, signal_length: int):
     n_frames = int(np.floor(signal_length / step)) + 1
     padding_samples = window_length - int(signal_length % step)
     return n_frames, padding_samples
+
+
+def _normalize(s: np.ndarray, dbfs: float, mode='peak'):
+    '''
+    Normalizes a signal.
+
+    Parameters
+    ----------
+    s: np.ndarray
+        Signal to normalize.
+    dbfs: float
+        dbfs value to normalize to.
+    mode: str, optional
+        Mode of normalization, `peak` uses the signal maximum absolute value,
+        `rms` uses Root mean square value
+
+    Returns
+    -------
+    s_out: np.ndarray
+        Normalized signal
+    '''
+    assert mode in ('peak', 'rms'), 'Mode of normalization is not ' +\
+        'available. Select either peak or rms'
+    if mode == 'peak':
+        s /= np.max(np.abs(s))
+        s *= 10**(dbfs/20)
+    if mode == 'rms':
+        s *= (10**(dbfs/20) / _rms(s))
+    return s
+
+
+def _rms(x: np.ndarray):
+    '''
+    Root mean square computation
+    '''
+    return np.sqrt(np.sum(x**2)/len(x))
+
+
+def _amplify_db(s: np.ndarray, db: float):
+    '''
+    Amplify by dB
+    '''
+    return s * 10**(db/20)
+
+
+def _fade(s: np.ndarray, length_seconds: float = 0.1,
+          sampling_rate_hz: int = 48000, at_start: bool = True):
+    '''
+    Create a fade (in dB) in signal.
+
+    Parameters
+    ----------
+    length_seconds : float, optional
+        Length in seconds. Default: 0.1.
+    sampling_rate_hz : int, optional
+        Sampling rate. Default: 48000.
+    at_start : bool, optional
+        When `True`, the start is faded. When `False`, the end.
+        Default: `True`.
+
+    Returns
+    -------
+    s : np.ndarray
+        Faded vector.
+    '''
+    assert length_seconds > 0, 'Only positive lengths'
+    l_samples = int(length_seconds * sampling_rate_hz)
+    assert len(s) > l_samples, \
+        'Signal is shorter than the desired fade'
+    assert len(s.shape) == 1, 'The fade only takes 1d-arrays'
+    db = np.linspace(-100, 0, l_samples, endpoint=True)
+    fade = 10**(db/20)
+    if not at_start:
+        s = np.flip(s)
+    s[:l_samples] *= fade
+    if not at_start:
+        s = np.flip(s)
+    return s

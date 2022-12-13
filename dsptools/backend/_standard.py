@@ -284,3 +284,68 @@ def _stft(x: np.ndarray, fs_hz: int, window_length_samples: int = 2048,
     time_s = np.linspace(0, len(x)/fs_hz, stft.shape[1])
     freqs_hz = np.fft.rfftfreq(len(window), 1/fs_hz)
     return time_s, freqs_hz, stft
+
+
+def _csm(time_data: np.ndarray, sampling_rate_hz: int,
+         window_length_samples: int = 1024, window_type: str = 'hann',
+         overlap_percent: int = 50, detrend: bool = True,
+         average: str = 'mean', scaling: str = 'power'):
+    '''
+    Computes the cross spectral matrix of a multichannel signal.
+    Output matrix has (frequency, channels, channels).
+
+    Parameters
+    ----------
+    time_data : np.ndarray
+        Signal
+    fs_hz : int
+        Sampling rate in Hz.
+    window_length_samples : int, optional
+        Window length to be used. Determines frequency resolution in the end.
+        Only powers of 2 are accepted. Default: 1024.
+    window_type : str, optional
+        Window type to be used. Refer to scipy.signal.windows for available
+        ones. Default: `'hann'`
+    overlap_percent : int, optional
+        Overlap in percentage. Default: 50.
+    detrend : bool, optional
+        Detrending from each time segment (removing mean). Default: True.
+    average : str, optional
+        Type of mean to be computed. Take `'mean'` or `'median'`.
+        Default: `'mean'`
+    scaling : str, optional
+        Scaling for spectral power density or spectrum. Takes `'power'` or
+        `'spectrum'`. Default: `'power'`.
+
+    Returns
+    -------
+    f : np.ndarray
+        Frequency vector
+    csm : np.ndarray
+        Cross spectral matrix with shape (frequency, channels, channels).
+    '''
+    number_of_channels = time_data.shape[1]
+    csm = np.zeros((window_length_samples//2+1,
+                    number_of_channels,
+                    number_of_channels), dtype=np.complex64)
+
+    for ind1 in range(number_of_channels):
+        for ind2 in range(ind1, number_of_channels):
+            csm[:, ind1, ind2] = \
+                _welch(time_data[:, ind1],
+                       time_data[:, ind2],
+                       sampling_rate_hz,
+                       window_length_samples=window_length_samples,
+                       window_type=window_type,
+                       overlap_percent=overlap_percent,
+                       detrend=detrend,
+                       average=average,
+                       scaling=scaling)
+            if ind1 == ind2:
+                csm[:, ind1, ind2] /= 2
+    for nfreq in range(csm.shape[0]):
+        csm[nfreq, :, :] = \
+            csm[nfreq, :, :] + csm[nfreq, :, :].T.conjugate()
+    f = np.fft.rfftfreq(window_length_samples,
+                        1/sampling_rate_hz)
+    return f, csm
