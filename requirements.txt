@@ -1,0 +1,12 @@
+# use:
+scipy
+numpy
+matplotlib
+seaborn
+soundfile
+sounddevice
+
+# dev:
+librosa
+dash
+flake8
