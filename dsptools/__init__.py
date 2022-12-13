@@ -10,7 +10,9 @@ from . import distances
 from . import experimental
 from . import room_acoustics
 from . import filter
+from . import plots
 from . import generators
+from . import measure
 
 __all__ = ['Signal',
            'MultiBandSignal',
@@ -25,5 +27,7 @@ __all__ = ['Signal',
            'distances',
            'room_acoustics',
            'filter',
+           'plots',
            'generators',
+           'measure',
            'experimental']

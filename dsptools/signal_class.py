@@ -71,7 +71,7 @@ class Signal():
         else:
             time_data = np.array(time_data)
             self.set_time_data(time_data, sampling_rate_hz)
-        if signal_type in ('rir', 'ir', 'h1', 'h2', 'h3'):
+        if signal_type in ('rir', 'ir', 'h1', 'h2', 'h3', 'chirp', 'noise'):
             self.set_spectrum_parameters(method='standard')
         else:
             self.set_spectrum_parameters()
@@ -598,7 +598,7 @@ class Signal():
         Plots group delay of each channel.
         Only works if `signal_type in ('ir', 'h1', 'h2', 'h3', 'rir')`
         '''
-        valid_signal_types = ('rir', 'ir', 'h1', 'h2', 'h3')
+        valid_signal_types = ('rir', 'ir', 'h1', 'h2', 'h3', 'chirp', 'noise')
         assert self.signal_type in valid_signal_types, \
             f'{self.signal_type} is not valid. Please set it to ir or ' +\
             'h1, h2, h3, rir'
@@ -615,7 +615,8 @@ class Signal():
         if returns:
             return fig, ax
 
-    def plot_spectrogram(self, channel_number: int = 0, returns: bool = False):
+    def plot_spectrogram(self, channel_number: int = 0, logfreqs: bool = True,
+                         returns: bool = False):
         '''
         Plots STFT matrix of the given channel.
         '''
@@ -629,10 +630,11 @@ class Signal():
         stft_db = 20*np.log10(np.abs(stft)+epsilon)
         stft_db = np.nan_to_num(stft_db, nan=np.min(stft_db))
         fig, ax = general_matrix_plot(
-            stft_db, (t[0], t[-1]),
-            (f[0], f[-1]), 50,
-            'Time / s', 'Frequency / Hz', 'dB', False, True,
-            True, returns=True)
+            matrix=stft_db, xrange=(t[0], t[-1]),
+            yrange=(f[0], f[-1]), zrange=50,
+            xlabel='Time / s', ylabel='Frequency / Hz', zlabel='dB',
+            xlog=False, ylog=logfreqs,
+            colorbar=True, returns=True)
         if returns:
             return fig, ax
 

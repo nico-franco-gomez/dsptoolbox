@@ -357,17 +357,38 @@ def save_objects():
 
 def generators():
     import dsptools as dsp
-    from matplotlib.pyplot import show
+    import matplotlib.pyplot as plt
 
-    wno = dsp.generators.noise('white', length_seconds=3, peak_level_dbfs=-1)
+    # Noise
+    # wno = dsp.generators.noise('white', length_seconds=3, peak_level_dbfs=-1)
     # wno = dsp.generators.noise('pink')
     # wno = dsp.generators.noise('red', peak_level_dbfs=-5)
     # wno = dsp.generators.noise('blue')
     # wno = dsp.generators.noise('violet')
     # wno.plot_magnitude(normalize=None)
+
+    # Chirps
+    wno = dsp.generators.chirp(type_of_chirp='linear', length_seconds=5,
+                               faded=True,
+                               padding_end_seconds=2, number_of_channels=1,
+                               peak_level_dbfs=-20, range_hz=[0, 20e3])
+
+    # Plots
+    wno.plot_magnitude()
+    wno.plot_spectrogram()
     wno.plot_time()
     wno.plot_phase()
-    show()
+    wno.plot_group_delay()
+    plt.show()
+
+
+def recording():
+    import dsptools as dsp
+
+    # dsp.measure.print_device_info()
+    si = dsp.measure.record()
+    si.plot_time()
+    dsp.plots.show()
 
 
 if __name__ == '__main__':
@@ -388,9 +409,10 @@ if __name__ == '__main__':
     # new_transfer_functions()
     # multiband()
     # save_objects()
+    # generators()
 
     # Next
     # smoothing()  # Not working!!!
     # convolve_rir_signal()
-    generators()
+    recording()
     print()

@@ -9,6 +9,13 @@ import seaborn
 seaborn.set_style('whitegrid')
 
 
+def show():
+    '''
+    Wrapper around matplotlib's show
+    '''
+    plt.show()
+
+
 def general_plot(f, matrix, range_x=None, range_y=None, log: bool = True,
                  labels=None, xlabel: str = 'Frequency / Hz',
                  ylabel: str = None, info_box: str = None,

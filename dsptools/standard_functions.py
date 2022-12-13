@@ -158,7 +158,7 @@ def excess_group_delay(signal: Signal):
     return f, ex_gd
 
 
-def pad_trim(signal: Signal, desired_length: int,
+def pad_trim(signal: Signal, desired_length_samples: int,
              in_the_end: bool = True):
     '''
     Returns a copy of the signal with padded or trimmed time data.
@@ -167,7 +167,7 @@ def pad_trim(signal: Signal, desired_length: int,
     ----------
     signal : Signal
         Signal to be padded or trimmed.
-    desired_length : int
+    desired_length_samples : int
         Length of resulting signal.
     in_the_end : bool, optional
         Defines if padding or trimming should be done in the beginning or
@@ -178,12 +178,15 @@ def pad_trim(signal: Signal, desired_length: int,
     new_signal : Signal
         New padded signal.
     '''
-    new_time_data = np.zeros((desired_length, signal.number_of_channels))
+    new_time_data = \
+        np.zeros((desired_length_samples, signal.number_of_channels))
 
     for n in range(signal.number_of_channels):
         new_time_data[:, n] = \
             _pad_trim(
-                signal.time_data[:, n], desired_length, in_the_end=in_the_end)
+                signal.time_data[:, n],
+                desired_length_samples,
+                in_the_end=in_the_end)
     new_sig = Signal(
         None,
         new_time_data,

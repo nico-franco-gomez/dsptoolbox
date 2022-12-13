@@ -290,8 +290,9 @@ def _fade(s: np.ndarray, length_seconds: float = 0.1,
     assert len(s) > l_samples, \
         'Signal is shorter than the desired fade'
     assert len(s.shape) == 1, 'The fade only takes 1d-arrays'
-    db = np.linspace(-100, 0, l_samples, endpoint=True)
+    db = np.linspace(-100, 0, l_samples)
     fade = 10**(db/20)
+    # fade = np.linspace(0, 1, l_samples)
     if not at_start:
         s = np.flip(s)
     s[:l_samples] *= fade
