@@ -9,10 +9,10 @@ from . import transfer_functions
 from . import distances
 from . import experimental
 from . import room_acoustics
-from . import filter
 from . import plots
 from . import generators
 from . import measure
+from . import special
 
 __all__ = ['Signal',
            'MultiBandSignal',
@@ -26,8 +26,8 @@ __all__ = ['Signal',
            'transfer_functions',
            'distances',
            'room_acoustics',
-           'filter',
            'plots',
            'generators',
            'measure',
+           'special',
            'experimental']

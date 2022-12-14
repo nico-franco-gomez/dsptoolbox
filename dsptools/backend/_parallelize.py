@@ -1,5 +1,6 @@
 '''
-Deeper level functions to be parallelized with numba
+Deeper level functions to be parallelized with numba. So far, there are
+none in use...
 '''
 import numpy as np
 import numba as nb

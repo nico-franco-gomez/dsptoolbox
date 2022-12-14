@@ -241,6 +241,7 @@ def _normalize(s: np.ndarray, dbfs: float, mode='peak'):
     s_out: np.ndarray
         Normalized signal
     '''
+    s = s.copy()
     assert mode in ('peak', 'rms'), 'Mode of normalization is not ' +\
         'available. Select either peak or rms'
     if mode == 'peak':

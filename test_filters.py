@@ -24,15 +24,14 @@ def filter_functionalities():
 
 def filtering():
     import dsptools as dsp
-    from matplotlib.pyplot import show
 
-    config = dict(eq_type='lowshelf', freqs=1500, gain=10, q=0.7)
-    filt = dsp.Filter('biquad', config)
+    # config = dict(eq_type='lowshelf', freqs=1500, gain=10, q=0.7)
+    # filt = dsp.Filter('biquad', config)
     # config = dict(order=150, freqs=[1500, 2000], type_of_pass='bandpass')
     # filt = dsp.Filter('fir', config)
-    # config = dict(order=10, freqs=[1500, 2000], type_of_pass='bandpass',
-    #               filter_design_method='bessel')
-    # filt = dsp.Filter('iir', config)
+    config = dict(order=10, freqs=[1500, 2000], type_of_pass='bandpass',
+                  filter_design_method='bessel')
+    filt = dsp.Filter('iir', config)
     recorded_multi = \
         dsp.Signal('/Users/neumanndev/Library/CloudStorage/OneDrive-' +
                    'SennheiserelectronicGmbH&Co.KG/PPONS OneDrive/Polar ' +
@@ -41,10 +40,10 @@ def filtering():
     #     dsp.Signal('/Users/neumanndev/Library/CloudStorage/' +
     #                'OneDrive-SennheiserelectronicGmbH&Co.KG/PPONS ' +
     #                'OneDrive/MORE/Holzmarkt/chirp_10cm/raw_twin.wav')
-    new_rec = dsp.filter.filter_on_signal(recorded_multi, filt)
+    new_rec = filt.filter_signal(recorded_multi)
     recorded_multi.plot_magnitude(normalize=None)
     new_rec.plot_magnitude(normalize=None)
-    show()
+    dsp.plots.show()
 
 
 def filter_bank():

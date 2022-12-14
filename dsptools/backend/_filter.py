@@ -3,6 +3,8 @@ Backend for filter class and general filtering functions.
 '''
 import numpy as np
 from enum import Enum
+import scipy.signal as sig
+from ..signal_class import Signal
 
 
 def _get_biquad_type(number: int = None, name: str = None):
@@ -141,7 +143,8 @@ def _impulse(length_samples: int = 512):
 def _group_delay_filter(ba, length_samples: int = 512, fs_hz: int = 48000):
     '''
     Computes group delay using the method in
-    https://www.dsprelated.com/freebooks/filters/Phase_Group_Delay.html
+    https://www.dsprelated.com/freebooks/filters/Phase_Group_Delay.html.
+    The implementation is mostly taken from scipy.signal.group_delay !
 
     Parameters
     ----------
@@ -176,3 +179,57 @@ def _group_delay_filter(ba, length_samples: int = 512, fs_hz: int = 48000):
     f = omega/np.pi*(fs_hz/2)
     gd /= fs_hz
     return f, gd
+
+
+def _filter_on_signal(signal: Signal, sos, channel=None,
+                      zi=None, zero_phase: bool = False):
+    '''
+    Takes in a Signal object and filters selected channels. Exports a new
+    Signal object
+
+    Parameters
+    ----------
+    signal : Signal
+        Signal to be filtered.
+    sos : array-like
+        SOS coefficients of filter.
+    channel : int or array-like, optional
+        Channel or array of channels to be filtered. When `None`, all
+        channels are filtered. Default: `None`.
+    zi : array-like, optional
+        When not `None`, the filter state values are updated after filtering.
+        Default: `None`.
+    zero_phase : bool, optional
+        Uses zero-phase filtering on signal. Be aware that the filter
+        is doubled in this case. Default: `False`.
+
+    Returns
+    -------
+    new_signal : Signal
+        New Signal object.
+    '''
+    new_time_data = signal.time_data.copy()
+    if channel is None:
+        channels = range(signal.number_of_channels)
+    else:
+        if type(channel) == int:
+            channel = [channel]
+        assert all(channel < signal.number_of_channels),\
+            f'Selected channels ({channel}) are not valid for the signal'
+        channels = [int(i) for i in channel]
+    for ch in channels:
+        if zi is not None:
+            y, zi = \
+                sig.sosfilt(
+                    sos, signal.time_data[:, ch], zi=zi)
+        else:
+            if zero_phase:
+                y = sig.sosfiltfilt(sos, signal.time_data[:, ch])
+            else:
+                y = sig.sosfilt(sos, signal.time_data[:, ch])
+        new_time_data[:, ch] = y
+    new_signal = Signal(None, new_time_data, signal.sampling_rate_hz)
+    if zi is not None:
+        return new_signal, zi
+    else:
+        return new_signal, None

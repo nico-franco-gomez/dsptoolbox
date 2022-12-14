@@ -5,14 +5,14 @@ Testing script
 
 def plotting_test():
     import dsptools as dsp
-    from matplotlib.pyplot import show
+
     recorded_multi = \
         dsp.Signal('/Users/neumanndev/Library/CloudStorage/' +
                    'OneDrive-SennheiserelectronicGmbH&Co.KG/PPONS ' +
                    'OneDrive/MORE/Holzmarkt/chirp_10cm/raw_twin.wav')
     recorded_multi.plot_magnitude(show_info_box=True)
     recorded_multi.plot_time()
-    show()
+    dsp.plots.show()
 
 
 def package_structure_test():
@@ -28,7 +28,6 @@ def package_structure_test():
 
 def transfer_function_test():
     import dsptools as dsp
-    import matplotlib.pyplot as plt
 
     # recorded = dsp.Signal('/Users/neumanndev/Library/CloudStorage/' +
     #                       'OneDrive-SennheiserelectronicGmbH&Co.KG/PPONS ' +
@@ -47,7 +46,7 @@ def transfer_function_test():
     tf_wind.plot_time()
     tf.plot_time()
     tf.plot_magnitude()
-    plt.show()
+    dsp.plots.show()
 
 
 def distances_function_test():
@@ -87,13 +86,13 @@ def welch_method():
     plt.semilogx(f2, 10*np.log10(pp), label='Scipy')
     plt.semilogx(f1, 10*np.log10(mine), label='mine')
     plt.legend()
-    plt.show()
+    dsp.plots.show()
 
 
 def csm():
     import dsptools as dsp
     # import numpy as np
-    import matplotlib.pyplot as plt
+
     raw = dsp.Signal('/Users/neumanndev/Library/CloudStorage/' +
                      'OneDrive-SennheiserelectronicGmbH&Co.KG/PPONS ' +
                      'OneDrive/MORE/Holzmarkt/chirp_10cm/raw_twin.wav')
@@ -106,12 +105,13 @@ def csm():
     #         ax[n1, n2].semilogx(f, 10*np.log10(np.abs(csm[:, n1, n2])))
     #         # ax[n1, n2].plot(f, np.angle(csm[:, n1, n2]))
     # fig.tight_layout()
-    plt.show()
+    dsp.plots.show()
 
 
 def smoothing():
     import dsptools as dsp
     import numpy as np
+    import matplotlib.pyplot as plt
     raw = dsp.Signal('/Users/neumanndev/Library/CloudStorage/' +
                      'OneDrive-SennheiserelectronicGmbH&Co.KG/PPONS ' +
                      'OneDrive/MORE/Holzmarkt/chirp_10cm/raw_twin.wav')
@@ -122,15 +122,14 @@ def smoothing():
     # import pyfar as pf
     # pf.dsp.smooth_fractional_octave()
 
-    import matplotlib.pyplot as plt
     plt.plot(bla['freqs_hz'][100:], spec_db)
     plt.plot(bla['freqs_hz'][100:], spec_s)
-    plt.show()
+    dsp.plots.show()
 
 
 def group_delay():
-    import matplotlib.pyplot as plt
     import dsptools as dsp
+    import matplotlib.pyplot as plt
 
     # recorded = dsp.Signal('/Users/neumanndev/Library/CloudStorage/' +
     #                       'OneDrive-SennheiserelectronicGmbH&Co.KG/PPONS ' +
@@ -151,7 +150,7 @@ def group_delay():
     plt.plot(f, g1, label='matlab')
     plt.plot(f, g2, label='direct')
     plt.legend()
-    plt.show()
+    dsp.plots.show()
 
 
 def add_channels():
@@ -207,12 +206,13 @@ def stft():
     plt.colorbar()
 
     raw.plot_stft()
-    plt.show()
+    dsp.plots.show()
 
 
 def minimum_phase_systems():
     import dsptools as dsp
     import matplotlib.pyplot as plt
+
     # recorded = dsp.Signal('/Users/neumanndev/Library/CloudStorage/' +
     #                       'OneDrive-SennheiserelectronicGmbH&Co.KG/PPONS ' +
     #                       'OneDrive/MORE/Holzmarkt/chirp_10cm/raw_0.wav')
@@ -233,12 +233,12 @@ def minimum_phase_systems():
     f, bla = dsp.minimal_group_delay(tf)
     f, bla2 = dsp.group_delay(tf)
     plt.semilogx(f, (bla2-bla)*1e3)
-    plt.show()
+    dsp.plots.show()
 
 
 def room_acoustics():
     import dsptools as dsp
-    # import matplotlib.pyplot as plt
+
     # recorded = dsp.Signal('/Users/neumanndev/Library/CloudStorage/' +
     #                       'OneDrive-SennheiserelectronicGmbH&Co.KG/PPONS ' +
     #                       'OneDrive/MORE/Holzmarkt/chirp_10cm/raw_0.wav')
@@ -261,6 +261,7 @@ def room_acoustics():
 
 def window_length():
     from scipy.signal import windows
+    import matplotlib.pyplot as plt
     import numpy as np
     window_length = 1024
     s = np.zeros(20000)
@@ -281,13 +282,12 @@ def window_length():
     print(np.all(np.flip(s) == s))
     print(np.sum(s[-100:] == 0))
     print(np.sum(s[:100] == 0))
-    import matplotlib.pyplot as plt
+
     plt.plot(s)
     plt.show()
 
 
 def new_transfer_functions():
-    import matplotlib.pyplot as plt
     import dsptools as dsp
 
     # recorded = dsp.Signal('/Users/neumanndev/Library/CloudStorage/' +
@@ -303,14 +303,14 @@ def new_transfer_functions():
     tf = dsp.transfer_functions.compute_transfer_function(
         recorded_multi, raw, multichannel=True, mode='h3')
     # tf.plot_magnitude()
-    # tf.plot_coherence()
-    tf.plot_phase()
-    plt.show()
+    tf.plot_coherence()
+    # tf.plot_phase()
+    dsp.plots.show()
 
 
 def spectrogram_plot():
     import dsptools as dsp
-    from matplotlib.pyplot import show
+
     # recorded = dsp.Signal('/Users/neumanndev/Library/CloudStorage/' +
     #                       'OneDrive-SennheiserelectronicGmbH&Co.KG/PPONS ' +
     #                       'OneDrive/MORE/Holzmarkt/chirp_10cm/raw_0.wav')
@@ -319,7 +319,7 @@ def spectrogram_plot():
                    'OneDrive-SennheiserelectronicGmbH&Co.KG/PPONS ' +
                    'OneDrive/MORE/Holzmarkt/chirp_10cm/raw_twin.wav')
     recorded_multi.plot_spectrogram()
-    show()
+    dsp.plots.show()
 
 
 def multiband():
@@ -357,7 +357,6 @@ def save_objects():
 
 def generators():
     import dsptools as dsp
-    import matplotlib.pyplot as plt
 
     # Noise
     # wno = dsp.generators.noise('white', length_seconds=3, peak_level_dbfs=-1)
@@ -379,16 +378,64 @@ def generators():
     wno.plot_time()
     wno.plot_phase()
     wno.plot_group_delay()
-    plt.show()
+    dsp.plots.show()
 
 
 def recording():
     import dsptools as dsp
+    from time import sleep
 
-    # dsp.measure.print_device_info()
-    si = dsp.measure.record()
-    si.plot_time()
+    sleep(3)
+
+    dsp.measure.set_device(2)
+    chirp = dsp.generators.chirp(padding_end_seconds=2)
+    s2 = dsp.measure.play_and_record(chirp)
+    tf = dsp.transfer_functions.spectral_deconvolve(s2, chirp)
+    tf = dsp.transfer_functions.window_ir(tf)
+    tf.plot_magnitude()
     dsp.plots.show()
+
+
+def swapping_channels():
+    import dsptools as dsp
+    recorded_multi = \
+        dsp.Signal('/Users/neumanndev/Library/CloudStorage/' +
+                   'OneDrive-SennheiserelectronicGmbH&Co.KG/PPONS ' +
+                   'OneDrive/MORE/Holzmarkt/chirp_10cm/raw_twin.wav')
+    recorded_multi.plot_time()
+    recorded_multi.swap_channels([1, 0])
+    recorded_multi.plot_time()
+    dsp.plots.show()
+
+
+def convolve_rir_signal():
+    import dsptools as dsp
+    rir = dsp.Signal('/Users/neumanndev/Documents/Others/ML/Datasets/DNS ' +
+                     '2022/impulse_responses/simulated/largeroom/Room003/' +
+                     'Room003-00005.wav',
+                     signal_type='rir')
+    speech = dsp.Signal('/Users/neumanndev/Documents/Others/ML/Datasets/' +
+                        'VCTK/wav48_silence_trimmed/p225/p225_002_mic1.flac')
+    dsp.measure.set_device(2)
+    # dsp.measure.play(speech)
+    new_speech = \
+        dsp.room_acoustics.convolve_rir_on_signal(
+            speech, rir, keep_length=False)
+    dsp.measure.play(new_speech)
+    dsp.plots.show()
+
+
+def cepstrum():
+    import dsptools as dsp
+    import matplotlib.pyplot as plt
+    speech = dsp.Signal('/Users/neumanndev/Documents/Others/ML/Datasets/' +
+                        'VCTK/wav48_silence_trimmed/p225/p225_002_mic1.flac')
+    c = dsp.special.cepstrum(speech, mode='power')
+
+    plt.semilogy(c)
+    plt.show()
+    # dsp.plots.general_plot(speech.get_time_vector(), c, log=False)
+    # dsp.plots.show()
 
 
 if __name__ == '__main__':
@@ -406,13 +453,19 @@ if __name__ == '__main__':
     # room_acoustics()
     # window_length()
     # spectrogram_plot()
-    # new_transfer_functions()
     # multiband()
     # save_objects()
     # generators()
+    # recording()
+    # swapping_channels()
+    # convolve_rir_signal()
+
+    # Weird results - needs validation
+    # new_transfer_functions()
+    # cepstrum()
+
+    # Not working so far
+    # smoothing()
 
     # Next
-    # smoothing()  # Not working!!!
-    # convolve_rir_signal()
-    recording()
     print()

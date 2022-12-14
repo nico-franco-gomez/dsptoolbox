@@ -7,10 +7,10 @@ import pickle
 from scipy import signal as sig
 from .signal_class import Signal
 from .backend._filter import (_biquad_coefficients, _impulse,
-                              _group_delay_filter, _get_biquad_type)
+                              _group_delay_filter, _get_biquad_type,
+                              _filter_on_signal)
 from .backend._plots import _zp_plot
 from .plots import general_plot
-# import matplotlib.pyplot as plt
 
 __all__ = ['Filter']
 
@@ -94,6 +94,52 @@ class Filter():
         Initializes zi for steady-state filtering
         '''
         self.zi = sig.sosfilt_zi(self.sos)
+
+    # ======== Filtering ======================================================
+    def filter_signal(self, sig: Signal, channel=None,
+                      zi: bool = False, zero_phase: bool = None):
+        '''
+        Takes in a Signal object and filters selected channels. Exports a new
+        Signal object
+
+        Parameters
+        ----------
+        signal : Signal
+            Signal to be filtered.
+        filt : Filter
+            Filter to be used on the signal.
+        channel : int or array-like, optional
+            Channel or array of channels to be filtered. When `None`, all
+            channels are filtered. Default: `None`.
+        zi : bool, optional
+            When `True`, the filter state values are updated after filtering.
+            Default: `False`.
+        zero_phase : bool, optional
+            Uses zero-phase filtering on signal. Be aware that the filter
+            is doubled in this case. Default: `False`.
+
+        Returns
+        -------
+        new_signal : Signal
+            New Signal object.
+        '''
+        assert not (zi and zero_phase), \
+            'Filter initial and final values cannot be updated when ' +\
+            'filtering with zero-phase'
+        if zi:
+            zi_old = self.zi
+        else:
+            zi_old = None
+        new_signal, zi_new = \
+            _filter_on_signal(
+                signal=sig,
+                sos=self.sos,
+                channel=channel,
+                zi=zi_old,
+                zero_phase=zero_phase)
+        if zi:
+            self.zi = zi_new
+        return new_signal
 
     # ======== Setters ========================================================
     def set_filter_parameters(self, filter_type: str,
@@ -542,8 +588,7 @@ class FilterBank():
         txt = 'Filter Bank:' + txt
         print(txt)
         if show_filter_info:
-            for n in range(len(txt)):
-                print('-', end='')
+            print('-'*len(txt), end='')
             for ind, f1 in enumerate(self.filters):
                 print()
                 txt = f'Filter {ind}:'

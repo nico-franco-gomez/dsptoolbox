@@ -2,15 +2,14 @@
 High-level methods for room acoustics functions
 '''
 import numpy as np
-from scipy.signal import find_peaks
+from scipy.signal import find_peaks, convolve
 from .signal_class import Signal
+from .standard_functions import group_delay
 from .backend._room_acoustics import (_reverb,
                                       _complex_mode_identification,
                                       _sum_magnitude_spectra)
-from .backend._general_helpers import _find_nearest
-from .standard_functions import group_delay
-from .filter_class import Filter
-from .filter import filter_on_signal
+from .backend._general_helpers import _find_nearest, _normalize
+
 
 __all__ = ['reverb_time', 'find_modes', 'convolve_rir_on_signal']
 
@@ -151,18 +150,27 @@ def find_modes(signal: Signal, f_range_hz=[50, 200],
     return f_modes.astype(int)
 
 
-def convolve_rir_on_signal(signal: Signal, rir: Signal):
+def convolve_rir_on_signal(signal: Signal, rir: Signal,
+                           keep_peak_level: bool = True,
+                           keep_length: bool = True):
     '''
     Applies an RIR to a given signal. The RIR should also be a signal object
     with a single channel containing the RIR time data. Signal type should
-    also be set to IR or RIR.
+    also be set to IR or RIR. By default, all channels are convolved with
+    the RIR.
 
     Parameters
     ----------
     signal : Signal
-        Signal to which the RIR is applied.
+        Signal to which the RIR is applied. All channels are affected.
     rir : Signal
         Single-channel Signal object containing the RIR.
+    keep_peak_level : bool, optional
+        When `True`, output signal is normalized to the peak level of
+        the original signal. Default: `True`.
+    keep_length : bool, optional
+        When `True`, the original length is kept after convolution, otherwise
+        the output signal is longer than the input one. Default: `True`.
 
     Returns
     -------
@@ -178,9 +186,29 @@ def convolve_rir_on_signal(signal: Signal, rir: Signal):
     assert rir.sampling_rate_hz == signal.sampling_rate_hz, \
         'The sampling rates do not match'
 
-    b = rir.time_data[:, 0]
-    a = [1]
-    RIR = Filter('other', {'ba': [b, a]},
-                 sampling_rate_hz=rir.sampling_rate_hz)
-    new_sig = filter_on_signal(signal, RIR)
+    if keep_length:
+        total_length_samples = signal.time_data.shape[0]
+    else:
+        total_length_samples = \
+            signal.time_data.shape[0] + rir.time_data.shape[0] - 1
+    new_time_data = np.zeros((total_length_samples, signal.number_of_channels))
+
+    for n in range(signal.number_of_channels):
+        if keep_peak_level:
+            old_peak = 20*np.log10(np.max(np.abs(signal.time_data[:, n])))
+        new_time_data[:, n] = \
+            convolve(
+                signal.time_data[:, n],
+                rir.time_data[:, 0],
+                mode='full')[:total_length_samples]
+        if keep_peak_level:
+            new_time_data[:, n] = \
+                _normalize(new_time_data[:, n], old_peak, mode='peak')
+
+    new_sig = Signal(
+        None,
+        new_time_data,
+        signal.sampling_rate_hz,
+        signal_type=signal.signal_type,
+        signal_id=signal.signal_id+' (convolved with RIR)')
     return new_sig

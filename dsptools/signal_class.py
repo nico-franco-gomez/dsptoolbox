@@ -28,7 +28,8 @@ class Signal():
         Parameters
         ----------
         path : str, optional
-            A path to audio files. Reading is done with soundfile.
+            A path to audio files. Reading is done with soundfile. Wave and
+            Flac audio files are accepted.
             Default: `None`.
         time_data : array-like, np.ndarray, optional
             Time data of the signal. It is saved as a matrix with the form
@@ -97,8 +98,16 @@ class Signal():
         self.info['sampling_rate_hz'] = self.sampling_rate_hz
         self.info['number_of_channels'] = self.number_of_channels
         self.info['signal_length_samples'] = self.time_data.shape[0]
-        self.info['signal_length_seconds'] = self.time_vector_s[-1]
+        self.info['signal_length_seconds'] = \
+            self.time_data.shape[0] / self.sampling_rate_hz
         self.info['signal_type'] = self.signal_type
+
+    def _generate_time_vector(self):
+        '''
+        Internal method to generate a time vector on demand
+        '''
+        self.time_vector_s = np.linspace(
+            0, len(self.time_data)/self.sampling_rate_hz, len(self.time_data))
 
     # ======== Setters ========================================================
     def set_time_data(self, time_data, sampling_rate_hz: int):
@@ -122,9 +131,12 @@ class Signal():
             time_data = time_data[..., None]
         if time_data.shape[1] > time_data.shape[0]:
             time_data = time_data.T
+        time_data_max = np.max(np.abs(time_data))
+        if time_data_max > 1:
+            time_data /= time_data_max
+            warnings.warn('Signal was over 0 dBFS, normalizing to 0 dBFS ' +
+                          'peak level was triggered')
         self.time_data = time_data
-        self.time_vector_s = np.linspace(
-            0, len(time_data)/sampling_rate_hz, len(time_data))
         self.sampling_rate_hz = sampling_rate_hz
         self.number_of_channels = time_data.shape[1]
         self.__update_state()
@@ -303,7 +315,7 @@ class Signal():
                 self._spectrogram_parameters = _new_spectrogram_parameters
                 self.__spectrogram_state_update = True
 
-    # ======== Add and Remove Data ============================================
+    # ======== Add, remove and reorder channels ===============================
     def add_channel(self, path: str = None, new_time_data: np.ndarray = None,
                     sampling_rate_hz: int = None,
                     padding_trimming: bool = True):
@@ -319,8 +331,8 @@ class Signal():
         sampling_rate_hz : int, optional
             Sampling rate for the new data
         padding_trimming : bool, optional
-            Activates padding or trimming in case the new data does not match
-            previous data. Default: `True`.
+            Activates padding or trimming at the end of signal in case the
+            new data does not match previous data. Default: `True`.
         '''
         if path is not None:
             assert new_time_data is None, 'Only path or new time data is ' +\
@@ -386,6 +398,27 @@ class Signal():
             f'has {self.number_of_channels-1} channels (zero included).'
         self.time_data = np.delete(self.time_data, channel_number, axis=-1)
         self.number_of_channels -= 1
+        self.__update_state()
+
+    def swap_channels(self, new_order):
+        '''
+        Rearranges the channels in the new given order.
+
+        Parameters
+        ----------
+        new_order : array-like
+            New rearrangement of channels.
+        '''
+        new_order = np.array(new_order).squeeze()
+        assert new_order.ndim == 1, \
+            'Too many dimensions are given in the new arrangement vector'
+        assert self.number_of_channels == len(new_order), \
+            'The number of channels does not match'
+        assert all(new_order < self.number_of_channels) \
+            and all(new_order >= 0), \
+            'Indexes of new channels have to be in ' +\
+            f'[0 and {self.number_of_channels-1}]'
+        self.time_data = self.time_data[:, new_order]
         self.__update_state()
 
     # ======== Getters ========================================================
@@ -523,6 +556,14 @@ class Signal():
         f, _ = self.get_spectrum()
         return f, self.coherence
 
+    def get_time_vector(self):
+        '''
+        Returns the time vector associated with the signal
+        '''
+        if not hasattr(self, 'time_vector_s'):
+            self._generate_time_vector()
+        return self.time_vector_s
+
     # ======== Plots ==========================================================
     def plot_magnitude(self, range_hz=[20, 20e3], normalize: str = '1k',
                        smoothe=0, show_info_box: bool = False,
@@ -577,6 +618,8 @@ class Signal():
         '''
         Plots time signals
         '''
+        if not hasattr(self, 'time_vector_s'):
+            self._generate_time_vector()
         fig, ax = general_subplots_line(
             self.time_vector_s,
             self.time_data,
@@ -897,8 +940,7 @@ class MultiBandSignal():
         txt = 'Multiband band:' + txt
         print(txt)
         if show_band_info:
-            for n in range(len(txt)):
-                print('-', end='')
+            print('-'*len(txt), end='')
             for ind, f1 in enumerate(self.bands):
                 print()
                 txt = f'Signal {ind}:'
