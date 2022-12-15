@@ -4,7 +4,6 @@ See measure.py for routines where the signals that are created here can be
 used
 '''
 import numpy as np
-import warnings
 from .signal_class import Signal
 from .backend._general_helpers import _normalize, _fade
 from .standard_functions import pad_trim
@@ -12,7 +11,7 @@ from .standard_functions import pad_trim
 
 def noise(type_of_noise: str = 'white', length_seconds: float = 1,
           sampling_rate_hz: int = 48000, peak_level_dbfs: float = -10,
-          number_of_channels: int = 1, faded: bool = True,
+          number_of_channels: int = 1, fade: str = 'log',
           padding_end_seconds: float = None):
     '''
     Creates a noise signal.
@@ -31,9 +30,9 @@ def noise(type_of_noise: str = 'white', length_seconds: float = 1,
     number_of_channels : int, optional
         Number of channels (with different noise signals) to be created.
         Default: 1.
-    faded : bool, optional
-        When `True`, start and end of the signal are faded (5% of length each).
-        Default: `True`.
+    fade : str, optional
+        Type of fade done on the generated signal. Options are `'exp'`,
+        `'lin'`, `'log'`. Pass `None` for no fading. Default: `'log'`.
     padding_end_seconds : float, optional
         Padding at the end of signal. Use `None` to avoid any padding.
         Default: `None`.
@@ -58,7 +57,6 @@ def noise(type_of_noise: str = 'white', length_seconds: float = 1,
     f = np.fft.rfftfreq(l_samples, 1/sampling_rate_hz)
 
     time_data = np.zeros((l_samples, number_of_channels))
-    fade_length = 0.05 * length_seconds
 
     for n in range(number_of_channels):
         mag = np.ones(len(f)) + np.random.normal(0, 0.2, len(f))
@@ -74,9 +72,12 @@ def noise(type_of_noise: str = 'white', length_seconds: float = 1,
             mag[1:] *= (f[1:]**2)
         vec = _normalize(np.fft.irfft(mag*np.exp(1j*ph)),
                          dbfs=peak_level_dbfs, mode='peak')
-        if faded:
-            vec = _fade(vec, fade_length, sampling_rate_hz, True)
-            vec = _fade(vec, fade_length, sampling_rate_hz, False)
+        if fade is not None:
+            fade_length = 0.05 * length_seconds
+            vec = _fade(s=vec, length_seconds=fade_length, mode=fade,
+                        sampling_rate_hz=sampling_rate_hz, at_start=True)
+            vec = _fade(s=vec, length_seconds=fade_length, mode=fade,
+                        sampling_rate_hz=sampling_rate_hz, at_start=False)
         time_data[:, n] = vec
 
     id = type_of_noise.lower()+' noise'
@@ -90,7 +91,7 @@ def noise(type_of_noise: str = 'white', length_seconds: float = 1,
 
 def chirp(type_of_chirp: str = 'log', range_hz=None, length_seconds: float = 1,
           sampling_rate_hz: int = 48000, peak_level_dbfs: float = -10,
-          number_of_channels: int = 1, faded: bool = True,
+          number_of_channels: int = 1, fade: str = 'log',
           padding_end_seconds: float = None):
     '''
     Creates a sweep signal.
@@ -112,9 +113,9 @@ def chirp(type_of_chirp: str = 'log', range_hz=None, length_seconds: float = 1,
     number_of_channels : int, optional
         Number of channels (with different noise signals) to be created.
         Default: 1.
-    faded : bool, optional
-        When `True`, the first and last 5% of total signal length are faded
-        in and out. Default: `True`.
+    fade : str, optional
+        Type of fade done on the generated signal. Options are `'exp'`,
+        `'lin'`, `'log'`. Pass `None` for no fading. Default: `'log'`.
     padding_end_seconds : float, optional
         Padding at the end of signal. Use `None` to avoid any padding.
         Default: `None`.
@@ -131,16 +132,18 @@ def chirp(type_of_chirp: str = 'log', range_hz=None, length_seconds: float = 1,
     if range_hz is not None:
         assert len(range_hz) == 2, \
             'range_hz has to contain exactly two frequencies'
+        range_hz = sorted(range_hz)
+        assert range_hz[0] > 0, \
+            'Range has to start with positive frequencies excluding 0'
+        assert range_hz[1] <= sampling_rate_hz//2, \
+            'Upper limit for frequency range cannot be bigger than the ' +\
+            'nyquist frequency'
     else:
         range_hz = [1, sampling_rate_hz//2]
     l_samples = int(sampling_rate_hz * length_seconds)
     t = np.linspace(0, length_seconds, l_samples)
 
     if type_of_chirp == 'linear':
-        if faded:
-            warnings.warn(
-                'A fade with a linear chirp is not recommended ' +
-                'since some low frequencies will not be excited')
         k = (range_hz[1]-range_hz[0])/length_seconds
         freqs = (range_hz[0] + k/2*t)*2*np.pi
         chirp = np.sin(freqs*t)
@@ -150,12 +153,12 @@ def chirp(type_of_chirp: str = 'log', range_hz=None, length_seconds: float = 1,
             np.sin(2*np.pi*range_hz[0]/np.log(k)*(k**t-1))
     chirp = _normalize(chirp, peak_level_dbfs, mode='peak')
 
-    if faded:
-        fade_length = 0.05*length_seconds
-        chirp = _fade(chirp, fade_length, sampling_rate_hz=sampling_rate_hz,
-                      at_start=True)
-        chirp = _fade(chirp, fade_length, sampling_rate_hz=sampling_rate_hz,
-                      at_start=False)
+    if fade is not None:
+        fade_length = 0.05 * length_seconds
+        chirp = _fade(s=chirp, length_seconds=fade_length, mode=fade,
+                      sampling_rate_hz=sampling_rate_hz, at_start=True)
+        chirp = _fade(s=chirp, length_seconds=fade_length, mode=fade,
+                      sampling_rate_hz=sampling_rate_hz, at_start=False)
 
     chirp_n = chirp[..., None]
     if number_of_channels != 1:

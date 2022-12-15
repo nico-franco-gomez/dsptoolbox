@@ -367,17 +367,17 @@ def generators():
     # wno.plot_magnitude(normalize=None)
 
     # Chirps
-    wno = dsp.generators.chirp(type_of_chirp='linear', length_seconds=5,
-                               faded=True,
+    wno = dsp.generators.chirp(type_of_chirp='log', length_seconds=5,
+                               fade='log',
                                padding_end_seconds=2, number_of_channels=1,
-                               peak_level_dbfs=-20, range_hz=[0, 20e3])
+                               peak_level_dbfs=-20, range_hz=[1, 24e3])
 
     # Plots
-    wno.plot_magnitude()
-    wno.plot_spectrogram()
+    wno.plot_magnitude(range_hz=[1, 24e3])
+    # wno.plot_spectrogram()
     wno.plot_time()
-    wno.plot_phase()
-    wno.plot_group_delay()
+    # wno.plot_phase()
+    # wno.plot_group_delay()
     dsp.plots.show()
 
 
@@ -428,6 +428,7 @@ def convolve_rir_signal():
 def cepstrum():
     import dsptools as dsp
     import matplotlib.pyplot as plt
+    # import scipy.signal as sig
     speech = dsp.Signal('/Users/neumanndev/Documents/Others/ML/Datasets/' +
                         'VCTK/wav48_silence_trimmed/p225/p225_002_mic1.flac')
     c = dsp.special.cepstrum(speech, mode='power')
@@ -455,7 +456,7 @@ if __name__ == '__main__':
     # spectrogram_plot()
     # multiband()
     # save_objects()
-    # generators()
+    generators()
     # recording()
     # swapping_channels()
     # convolve_rir_signal()

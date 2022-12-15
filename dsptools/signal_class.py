@@ -110,17 +110,18 @@ class Signal():
             0, len(self.time_data)/self.sampling_rate_hz, len(self.time_data))
 
     # ======== Setters ========================================================
-    def set_time_data(self, time_data, sampling_rate_hz: int):
+    def set_time_data(self, time_data, sampling_rate_hz: int = None):
         '''
-        Sets new time data for object. Called from constructor or outside
+        Sets new time data for object. Called from constructor or outside.
 
         Parameters
         ----------
         new_time_data : array-like
             New array containing time data. It can be a matrix for multiple
-            channel data
-        sampling_rate_hz : int
-            Sampling rate for the new data in Hz
+            channel data.
+        sampling_rate_hz : int, optional
+            Sampling rate for the new data in Hz. If `None`, the previous
+            sampling rate is used. Default `None`.
         '''
         if not type(time_data) == np.ndarray:
             time_data = np.array(time_data)
@@ -137,7 +138,8 @@ class Signal():
             warnings.warn('Signal was over 0 dBFS, normalizing to 0 dBFS ' +
                           'peak level was triggered')
         self.time_data = time_data
-        self.sampling_rate_hz = sampling_rate_hz
+        if sampling_rate_hz is not None:
+            self.sampling_rate_hz = sampling_rate_hz
         self.number_of_channels = time_data.shape[1]
         self.__update_state()
 
@@ -197,9 +199,7 @@ class Signal():
                 self._spectrum_parameters = _new_spectrum_parameters
                 self.__spectrum_state_update = True
 
-    def set_signal_type(self, s_type):
-        assert type(s_type) == str, \
-            'Only strings are accepted as signal types'
+    def set_signal_type(self, s_type: str):
         self.signal_type = s_type
 
     def set_window(self, window):
@@ -468,7 +468,7 @@ class Signal():
             self.__spectrum_state_update = False
         else:
             spectrum_freqs, spectrum = self.spectrum[0], self.spectrum[1]
-        return spectrum_freqs, spectrum
+        return spectrum_freqs.copy(), spectrum.copy()
 
     def get_csm(self, force_computation=False):
         '''
@@ -818,12 +818,6 @@ class MultiBandSignal():
             'bands has to be a list, tuple or None'
         self.same_sampling_rate = same_sampling_rate
         if bands:
-            if self.same_sampling_rate:
-                self.sampling_rate_hz = bands[0].sampling_rate_hz
-                self.band_length_samples = bands[0].time_data.shape[0]
-            # Check length and number of channels
-            self.number_of_channels = bands[0].number_of_channels
-            self.signal_type = bands[0].signal_type
             for s in bands:
                 assert type(s) == Signal, f'{type(s)} is not a valid ' +\
                     'band type. Use Signal objects'
@@ -832,6 +826,12 @@ class MultiBandSignal():
                     'behaviour is not supported'
                 assert s.signal_type == self.signal_type, \
                     'Signal types do not match'
+            if self.same_sampling_rate:
+                self.sampling_rate_hz = bands[0].sampling_rate_hz
+                self.band_length_samples = bands[0].time_data.shape[0]
+            # Check length and number of channels
+            self.number_of_channels = bands[0].number_of_channels
+            self.signal_type = bands[0].signal_type
             # Check sampling rate and duration
             if self.same_sampling_rate:
                 for s in bands:
@@ -950,6 +950,44 @@ class MultiBandSignal():
                                 capitalize()}: {f1.info[kf]}'''
                 print(txt)
         print()
+
+    # ======== Getters ========================================================
+    def get_all_bands(self, channel: int = 0):
+        '''
+        Returns a signal with all bands as channels. Done for an specific
+        channel.
+
+        Parameters
+        ----------
+        channel : int, optional
+            Channel to choose from the band signals.
+
+        Returns
+        -------
+        sig : Signal or list of np.ndarray + dict
+            Multichannel signal with all the bands. If the MultiBandSignal
+            does not have the same sampling rate for all signals, a list with
+            the time vectors and a dictionary containing their sampling rates
+            with the key 'sampling_rates' are returned.
+        '''
+        if self.same_sampling_rate:
+            new_time_data = \
+                np.zeros((self.bands[0].time_data.shape[0], len(self.bands)))
+            for n in range(len(self.bands)):
+                new_time_data[:, n] = \
+                    self.bands[n].time_data[:, channel].copy()
+            sig = Signal(None, new_time_data, self.same_sampling_rate)
+            return sig
+        else:
+            new_time_data = []
+            d = {}
+            sr = []
+            for n in range(len(self.bands)):
+                new_time_data.append(
+                    self.bands[n].time_data[:, channel].copy())
+                sr.append(self.bands[n].sampling_rate_hz)
+            d['sampling_rates'] = sr
+            return new_time_data, d
 
     # ======== Saving and export ==============================================
     def save_signal(self, path: str = 'multibandsignal'):

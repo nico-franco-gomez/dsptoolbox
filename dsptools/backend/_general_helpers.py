@@ -266,15 +266,20 @@ def _amplify_db(s: np.ndarray, db: float):
     return s * 10**(db/20)
 
 
-def _fade(s: np.ndarray, length_seconds: float = 0.1,
+def _fade(s: np.ndarray, length_seconds: float = 0.1, mode: str = 'exp',
           sampling_rate_hz: int = 48000, at_start: bool = True):
     '''
     Create a fade (in dB) in signal.
 
     Parameters
     ----------
+    s : np.ndarray
+        Array to be faded.
     length_seconds : float, optional
-        Length in seconds. Default: 0.1.
+        Length of fade in seconds. Default: 0.1.
+    mode : str, optional
+        Type of fading. Options are `'exp'`, `'lin'`, `'log'`.
+        Default: `'lin'`.
     sampling_rate_hz : int, optional
         Sampling rate. Default: 48000.
     at_start : bool, optional
@@ -286,14 +291,24 @@ def _fade(s: np.ndarray, length_seconds: float = 0.1,
     s : np.ndarray
         Faded vector.
     '''
+    mode = mode.lower()
+    assert mode in ('exp', 'lin', 'log'), \
+        f'{mode} is not supported. Choose from exp, lin, log.'
     assert length_seconds > 0, 'Only positive lengths'
     l_samples = int(length_seconds * sampling_rate_hz)
     assert len(s) > l_samples, \
         'Signal is shorter than the desired fade'
     assert len(s.shape) == 1, 'The fade only takes 1d-arrays'
-    db = np.linspace(-100, 0, l_samples)
-    fade = 10**(db/20)
-    # fade = np.linspace(0, 1, l_samples)
+
+    if mode == 'exp':
+        db = np.linspace(-100, 0, l_samples)
+        fade = 10**(db/20)
+    elif mode == 'lin':
+        fade = np.linspace(0, 1, l_samples)
+    else:
+        db = np.linspace(-100, 0, l_samples)
+        fade = 10**(db/20)
+        fade = 1 - np.flip(fade)
     if not at_start:
         s = np.flip(s)
     s[:l_samples] *= fade

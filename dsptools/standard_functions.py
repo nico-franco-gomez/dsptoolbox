@@ -8,6 +8,7 @@ from .backend._standard import (_latency,
                                 _minimal_phase)
 from .backend._filter import _group_delay_filter
 from .backend._general_helpers import _pad_trim
+from copy import deepcopy
 
 
 def latency(in1: Signal, in2: Signal = None):
@@ -187,9 +188,7 @@ def pad_trim(signal: Signal, desired_length_samples: int,
                 signal.time_data[:, n],
                 desired_length_samples,
                 in_the_end=in_the_end)
-    new_sig = Signal(
-        None,
-        new_time_data,
-        signal.sampling_rate_hz,
-        signal_type=signal.signal_type)
+
+    new_sig = deepcopy(signal)
+    new_sig.set_time_data(new_time_data)
     return new_sig
