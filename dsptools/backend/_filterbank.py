@@ -1,11 +1,12 @@
 """
 Backend for the creation of specific filter banks
 """
-import numpy as np
-import os
-import pickle
-import scipy.signal as sig
-from ..signal_class import Signal, MultiBandSignal
+from numpy import (array, zeros, squeeze, sum, fft, )
+from os import sep
+from pickle import dump, HIGHEST_PROTOCOL
+from scipy.signal import (sosfilt, sosfilt_zi, butter)
+from ..classes.signal_class import Signal
+from ..classes.multibandsignal import MultiBandSignal
 from ..generators import dirac
 from ..plots import general_plot
 from ._general_helpers import _get_normalized_spectrum
@@ -30,8 +31,8 @@ class LRFilterBank():
         for o in order:
             assert o % 2 == 0, 'Order of the crossovers has to be an ' +\
                 'even number'
-        self.freqs = np.array(freqs).squeeze()
-        self.order = np.array(order).squeeze()
+        self.freqs = array(freqs).squeeze()
+        self.order = array(order).squeeze()
         self.number_of_cross = len(freqs)
         self.number_of_bands = self.number_of_cross + 1
         self.sampling_rate_hz = sampling_rate_hz
@@ -44,10 +45,10 @@ class LRFilterBank():
         """
         self.sos = []
         for i in range(self.number_of_cross):
-            lp = sig.butter(self.order[i], self.freqs[i], btype='lowpass',
-                            fs=self.sampling_rate_hz, output='sos')
-            hp = sig.butter(self.order[i], self.freqs[i], btype='highpass',
-                            fs=self.sampling_rate_hz, output='sos')
+            lp = butter(self.order[i], self.freqs[i], btype='lowpass',
+                        fs=self.sampling_rate_hz, output='sos')
+            hp = butter(self.order[i], self.freqs[i], btype='highpass',
+                        fs=self.sampling_rate_hz, output='sos')
             self.sos.append([lp, hp])
 
     def initialize_zi(self, number_of_channels: int = 1):
@@ -72,13 +73,13 @@ class LRFilterBank():
             cross_zi = []
             allpass_zi = []
             for i in range(self.number_of_cross):
-                band_zi_l = sig.sosfilt_zi(self.sos[i][0])  # Low band
-                band_zi_h = sig.sosfilt_zi(self.sos[i][1])  # High band
+                band_zi_l = sosfilt_zi(self.sos[i][0])  # Low band
+                band_zi_h = sosfilt_zi(self.sos[i][1])  # High band
                 cross_zi.append([band_zi_l, band_zi_h])
                 al = []
                 for i2 in range(self.number_of_cross):
-                    allp_zi_l = sig.sosfilt_zi(self.sos[i2][0])  # Low band
-                    allp_zi_h = sig.sosfilt_zi(self.sos[i2][1])  # High band
+                    allp_zi_l = sosfilt_zi(self.sos[i2][0])  # Low band
+                    allp_zi_h = sosfilt_zi(self.sos[i2][1])  # High band
                     al.append([allp_zi_l, allp_zi_h])
                     allpass_zi.append(al)
             self.channels_zi.append([cross_zi, allpass_zi])
@@ -105,9 +106,9 @@ class LRFilterBank():
         assert s.sampling_rate_hz == self.sampling_rate_hz, \
             'Sampling rates do not match'
         new_time_data = \
-            np.zeros((s.time_data.shape[0],
-                      s.number_of_channels,
-                      self.number_of_bands))
+            zeros((s.time_data.shape[0],
+                   s.number_of_channels,
+                   self.number_of_bands))
         in_sig = s.time_data
 
         for ch in range(s.number_of_channels):
@@ -162,11 +163,11 @@ class LRFilterBank():
         zi_l = ap_zi[0]
         zi_h = ap_zi[1]
         # Low band
-        s_l, zi_l = sig.sosfilt(self.sos[ap_number][0], x=s, zi=zi_l)
-        s_l, zi_l = sig.sosfilt(self.sos[ap_number][0], x=s_l, zi=zi_l)
+        s_l, zi_l = sosfilt(self.sos[ap_number][0], x=s, zi=zi_l)
+        s_l, zi_l = sosfilt(self.sos[ap_number][0], x=s_l, zi=zi_l)
         # High band
-        s_h, zi_h = sig.sosfilt(self.sos[ap_number][1], x=s, zi=zi_h)
-        s_h, zi_h = sig.sosfilt(self.sos[ap_number][1], x=s_h, zi=zi_h)
+        s_h, zi_h = sosfilt(self.sos[ap_number][1], x=s, zi=zi_h)
+        s_h, zi_h = sosfilt(self.sos[ap_number][1], x=s_h, zi=zi_h)
         # Pack zi's
         ap_zi[0] = zi_l
         ap_zi[1] = zi_h
@@ -185,11 +186,11 @@ class LRFilterBank():
         zi_l = cross_zi[0]
         zi_h = cross_zi[1]
         # Low band
-        s_l, zi_l = sig.sosfilt(self.sos[cross_number][0], x=s, zi=zi_l)
-        s_l, zi_l = sig.sosfilt(self.sos[cross_number][0], x=s_l, zi=zi_l)
+        s_l, zi_l = sosfilt(self.sos[cross_number][0], x=s, zi=zi_l)
+        s_l, zi_l = sosfilt(self.sos[cross_number][0], x=s_l, zi=zi_l)
         # High band
-        s_h, zi_h = sig.sosfilt(self.sos[cross_number][1], x=s, zi=zi_h)
-        s_h, zi_h = sig.sosfilt(self.sos[cross_number][1], x=s_h, zi=zi_h)
+        s_h, zi_h = sosfilt(self.sos[cross_number][1], x=s, zi=zi_h)
+        s_h, zi_h = sosfilt(self.sos[cross_number][1], x=s_h, zi=zi_h)
         # Pack zi's
         cross_zi[0] = zi_l
         cross_zi[1] = zi_h
@@ -203,11 +204,11 @@ class LRFilterBank():
         returned (allpass).
         """
         # Low band
-        s_l = sig.sosfilt(self.sos[f_number][0], x=s)
-        s_l = sig.sosfilt(self.sos[f_number][0], x=s_l)
+        s_l = sosfilt(self.sos[f_number][0], x=s)
+        s_l = sosfilt(self.sos[f_number][0], x=s_l)
         # High band
-        s_h = sig.sosfilt(self.sos[f_number][1], x=s)
-        s_h = sig.sosfilt(self.sos[f_number][1], x=s_h)
+        s_h = sosfilt(self.sos[f_number][1], x=s)
+        s_h = sosfilt(self.sos[f_number][1], x=s_h)
         if split:
             return s_l, s_h
         else:
@@ -245,19 +246,19 @@ class LRFilterBank():
             summed.append(b.time_data[:, 0])
             f, sp = \
                 _get_normalized_spectrum(
-                    f, np.squeeze(b.get_spectrum()[1]),
+                    f, squeeze(b.get_spectrum()[1]),
                     f_range_hz=range_hz,
                     normalize=None)
-            specs.append(np.squeeze(sp))
-        specs = np.array(specs).T
+            specs.append(squeeze(sp))
+        specs = array(specs).T
         fig, ax = general_plot(f, specs, range_hz, ylabel='Magnitude / dB',
                                returns=True,
                                labels=[f'Filter {h}'
                                        for h in range(bs.number_of_bands)],
                                range_y=[-30, 10])
         # Summed signal
-        summed = np.sum(np.array(summed).T, axis=1)
-        sp_summed = np.fft.rfft(summed)
+        summed = sum(array(summed).T, axis=1)
+        sp_summed = fft.rfft(summed)
         f_s, sp_summed = \
             _get_normalized_spectrum(
                 f, sp_summed,
@@ -279,8 +280,8 @@ class LRFilterBank():
             (without format). Default: `'filterbank'`
             (local folder, object named filterbank).
         """
-        if '.' in path.split(os.sep)[-1]:
+        if '.' in path.split(sep)[-1]:
             raise ValueError('Please introduce the saving path without format')
         path += '.pkl'
         with open(path, 'wb') as data_file:
-            pickle.dump(self, data_file, pickle.HIGHEST_PROTOCOL)
+            dump(self, data_file, HIGHEST_PROTOCOL)

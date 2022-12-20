@@ -10,7 +10,7 @@ To use dsptools, first install it using pip:
 
 .. code-block:: console
 
-   (.venv) $ pip install dsptools
+   $ pip install dsptools
 
 Creating signals
 ----------------
@@ -25,6 +25,7 @@ and a sampling rate in Hz.
 For example:
 
 >>> import dsptools as dsp
->>> lumache.get_random_ingredients()
+>>> from os.path import join
+>>> dsp.Signal(path=join('examples', 'data', 'chirp.wav'))
 ['shells', 'gorgonzola', 'parsley']
 

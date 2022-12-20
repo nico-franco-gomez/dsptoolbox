@@ -3,7 +3,7 @@ Here are functions in experimental phase. This might not work as expected
 or not at all.
 """
 from scipy.signal import windows
-import numpy as np
+from numpy import log2, floor, arange, convolve
 from scipy.interpolate import interp1d
 
 
@@ -20,23 +20,23 @@ def _smoothing_log(vector, num_fractions, window_type='hann'):
     """
     # Parameters
     N = len(vector)
-    l1 = np.arange(N)
+    l1 = arange(N)
     k_log = (N)**(l1/(N-1))
-    beta = np.log2(k_log[1])
-    n_window = int(2 * np.floor(1 / (num_fractions * beta * 2)) + 1)
+    beta = log2(k_log[1])
+    n_window = int(2 * floor(1 / (num_fractions * beta * 2)) + 1)
     # print(n_window)
     # Interpolate
-    vec_int = interp1d(np.arange(N)+1, vector, kind='cubic')
+    vec_int = interp1d(arange(N)+1, vector, kind='cubic')
     vec_log = vec_int(k_log)
     w_func = eval(f'windows.{window_type}')
     if window_type == 'gaussian':
         window = w_func(n_window, 1, sym=True)
     else:
         window = w_func(n_window, sym=True)
-    smoothed = np.convolve(vec_log, window, mode='same')
+    smoothed = convolve(vec_log, window, mode='same')
     smoothed = \
         interp1d(k_log, smoothed, kind='cubic')
-    vec_final = smoothed(np.arange(N)+1)
+    vec_final = smoothed(arange(N)+1)
     return vec_final
 
 

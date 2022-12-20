@@ -2,8 +2,9 @@
 Here are wrappers for streams with sounddevice. This is useful for
 measurements.
 """
-import sounddevice as sd
-from .signal_class import Signal
+from sounddevice import (query_devices, default, wait, playrec, rec)
+from sounddevice import play as play_sd
+from .classes.signal_class import Signal
 from .backend._general_helpers import _normalize
 
 
@@ -23,9 +24,9 @@ def print_device_info(device_number: int = None):
         Only when `device_number is not None`.
     """
     if device_number is None:
-        print(sd.query_devices())
+        print(query_devices())
     else:
-        d = sd.query_devices(device_number)
+        d = query_devices(device_number)
         print(d)
         return d
 
@@ -43,14 +44,14 @@ def set_device(device_number: int = None):
     if device_number is None:
         txt = 'List of available devices'
         print(txt+'\n'+'-'*len(txt))
-        print(sd.query_devices())
+        print(query_devices())
         print('-'*len(txt))
         device_number = int(input(
             'Which device should be set as default? Between ' +
-            f'0 and {len(sd.query_devices())-1}: '))
-    d = sd.query_devices(device_number)['name']
+            f'0 and {len(query_devices())-1}: '))
+    d = query_devices(device_number)['name']
     print(f"""{d} will be used!""")
-    sd.default.device = d
+    default.device = d
 
 
 def play_and_record(signal: Signal, duration_seconds: float = None,
@@ -117,17 +118,17 @@ def play_and_record(signal: Signal, duration_seconds: float = None,
         play_data = _normalize(play_data, dbfs=normalized_dbfs, mode='peak')
 
     if device is not None:
-        sd.default.device = device
+        default.device = device
 
     print('\nReproduction and recording have started ' +
           f'({duration_seconds:.1f} s)...')
     rec_time_data = \
-        sd.playrec(
+        playrec(
             data=play_data,
             samplerate=signal.sampling_rate_hz,
             input_mapping=rec_channels,
             output_mapping=play_channels)
-    sd.wait()
+    wait()
     print('Reproduction and recording have ended\n')
 
     rec_sig = Signal(None, rec_time_data, signal.sampling_rate_hz)
@@ -164,15 +165,15 @@ def record(duration_seconds: float = 5, sampling_rate_hz: int = 48000,
         'Recording channel has to be 1 or more'
     #
     if device is not None:
-        sd.default.device = device
+        default.device = device
 
     print(f'\nRecording started ({duration_seconds:.1f} s)...')
     rec_time_data = \
-        sd.rec(
+        rec(
             frames=int(duration_seconds * sampling_rate_hz),
             samplerate=sampling_rate_hz,
             mapping=rec_channels)
-    sd.wait()
+    wait()
     print('Recording has ended\n')
 
     rec_sig = Signal(None, rec_time_data, sampling_rate_hz)
@@ -223,12 +224,12 @@ def play(signal: Signal, duration_seconds: float = None,
         play_data = _normalize(play_data, dbfs=normalized_dbfs, mode='peak')
     #
     if device is not None:
-        sd.default.device = device
+        default.device = device
 
     print(f'\nReproduction started ({duration_seconds:.1f} s)...')
-    sd.play(
+    play_sd(
         data=play_data,
         samplerate=signal.sampling_rate_hz,
         mapping=play_channels)
-    sd.wait()
+    wait()
     print('Reproduction has ended\n')

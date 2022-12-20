@@ -1,5 +1,5 @@
 Welcome to dsptool's documentation!
-===================================
+============================
 
 **dsptools** is a Python library for hosting general use Digital
 Signal Processing (DSP) algorithms and some basic classes to keep
@@ -28,10 +28,17 @@ how to :ref:`installation` the project.
         2. Personal learning of the implementations and mathematical methods
             used.
 
-Contents
---------
+Documentation
+============
 
 .. toctree::
 
-   usage
-   api
+   classes
+   
+.. toctree::
+    
+   modules
+   
+   
+Other
+=====

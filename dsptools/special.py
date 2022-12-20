@@ -1,8 +1,8 @@
 """
 Here are methods considered as somewhat special or less common.
 """
-import numpy as np
-from .signal_class import Signal
+from numpy import fft, zeros_like, unwrap, angle, abs, log
+from .classes.signal_class import Signal
 
 
 def cepstrum(signal: Signal, mode='power'):
@@ -18,9 +18,9 @@ def cepstrum(signal: Signal, mode='power'):
 
     Returns
     -------
-    que : np.ndarray
+    que : ndarray
         Quefrency
-    ceps : np.ndarray
+    ceps : ndarray
         Cepstrum
 
     References
@@ -31,16 +31,16 @@ def cepstrum(signal: Signal, mode='power'):
     assert mode in ('power', 'complex', 'real'), \
         f'{mode} is not a supported mode'
 
-    ceps = np.zeros_like(signal.time_data)
+    ceps = zeros_like(signal.time_data)
     signal.set_spectrum_parameters(method='standard')
     f, sp = signal.get_spectrum()
 
     for n in range(signal.number_of_channels):
         if mode in ('power', 'real'):
-            cp = np.abs(np.fft.irfft((2*np.log(np.abs(sp[:, n])))))**2
+            cp = abs(fft.irfft((2*log(abs(sp[:, n])))))**2
         else:
-            phase = np.unwrap(np.angle(sp[:, n]))
-            cp = np.fft.irfft(np.log(np.abs(sp[:, n])) + 1j*phase).real
+            phase = unwrap(angle(sp[:, n]))
+            cp = fft.irfft(log(abs(sp[:, n])) + 1j*phase).real
         if mode == 'real':
             cp = (cp**0.5)/2
         ceps[:, n] = cp

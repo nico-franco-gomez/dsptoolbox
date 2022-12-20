@@ -91,8 +91,8 @@ def filter_bank_filter():
 
     # Parallel
     # fb.plot_magnitude(test_zi=True)
-    # fb.plot_magnitude(test_zi=False)
-    fb.plot_magnitude(mode='sequential', test_zi=True)
+    fb.plot_magnitude(test_zi=False)
+    # fb.plot_magnitude(mode='sequential', test_zi=True)
 
     # Single filter
     # i = dsp.generators.dirac(1024, 2)

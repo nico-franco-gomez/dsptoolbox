@@ -466,7 +466,7 @@ if __name__ == '__main__':
 
     # Weird results - needs validation
     # new_transfer_functions()  # -- coherence function from scipy (not quite)
-    cepstrum()  # -- scipy.signal.complex_cepstrum, real_cepstrum
+    # cepstrum()  # -- scipy.signal.complex_cepstrum, real_cepstrum
 
     # Not working so far
     # smoothing()

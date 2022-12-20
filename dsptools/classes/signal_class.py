@@ -1,19 +1,20 @@
 """
-Signal classes
+Signal class
 """
-import warnings
-import pickle
-import os
+from warnings import warn
+from pickle import dump, HIGHEST_PROTOCOL
+from os import sep
 
-import numpy as np
-import soundfile as sf
-from .plots import (general_plot, general_subplots_line, general_matrix_plot)
-from .backend._plots import _csm_plot
-from .backend._general_helpers import (_get_normalized_spectrum, _pad_trim)
-from .backend._standard import (_welch, _group_delay_direct, _stft, _csm)
-from .backend._general_helpers import _find_nearest
+from numpy import (linspace, ndarray, array, max, abs, concatenate,
+                   fft, min, nan_to_num, delete, angle, zeros, log10)
+from soundfile import read, write
+from ..plots import (general_plot, general_subplots_line, general_matrix_plot)
+from ..backend._plots import _csm_plot
+from ..backend._general_helpers import (_get_normalized_spectrum, _pad_trim)
+from ..backend._standard import (_welch, _group_delay_direct, _stft, _csm)
+from ..backend._general_helpers import _find_nearest
 
-__all__ = ['Signal', 'MultiBandSignal', ]
+__all__ = ['Signal', ]
 
 
 class Signal():
@@ -35,7 +36,7 @@ class Signal():
             A path to audio files. Reading is done with soundfile. Wave and
             Flac audio files are accepted.
             Default: `None`.
-        time_data : array-like, np.ndarray, optional
+        time_data : array-like, ndarray, optional
             Time data of the signal. It is saved as a matrix with the form
             (time samples, channel number). Default: `None`.
         sampling_rate_hz : int, optional
@@ -74,7 +75,7 @@ class Signal():
         if path is not None:
             assert time_data is None, 'Constructor cannot take a path and ' +\
                 'a vector at the same time'
-            time_data, sampling_rate_hz = sf.read(path)
+            time_data, sampling_rate_hz = read(path)
         self.time_data = time_data
         self.number_of_channels = self.time_data.shape[1]
         if signal_type in ('rir', 'ir', 'h1', 'h2', 'h3', 'chirp',
@@ -109,7 +110,7 @@ class Signal():
     def _generate_time_vector(self):
         """Internal method to generate a time vector on demand
         """
-        self.time_vector_s = np.linspace(
+        self.time_vector_s = linspace(
             0, len(self.time_data)/self.sampling_rate_hz,
             len(self.time_data))
 
@@ -120,8 +121,8 @@ class Signal():
 
     @time_data.setter
     def time_data(self, new_time_data):
-        if not type(new_time_data) == np.ndarray:
-            new_time_data = np.array(new_time_data)
+        if not type(new_time_data) == ndarray:
+            new_time_data = array(new_time_data)
         assert len(new_time_data.shape) <= 2, \
             f'{len(new_time_data.shape)} has ' +\
             'too many dimensions for time data. Dimensions should' +\
@@ -130,11 +131,11 @@ class Signal():
             new_time_data = new_time_data[..., None]
         if new_time_data.shape[1] > new_time_data.shape[0]:
             new_time_data = new_time_data.T
-        time_data_max = np.max(np.abs(new_time_data))
+        time_data_max = max(abs(new_time_data))
         if time_data_max > 1:
             new_time_data /= time_data_max
-            warnings.warn('Signal was over 0 dBFS, normalizing to 0 dBFS ' +
-                          'peak level was triggered')
+            warn('Signal was over 0 dBFS, normalizing to 0 dBFS ' +
+                 'peak level was triggered')
         self._time_data = new_time_data
         self.number_of_channels = new_time_data.shape[1]
         self.__update_state()
@@ -200,7 +201,7 @@ class Signal():
         if self.signal_type in ('h1', 'h2', 'h3'):
             if method != 'standard':
                 method = 'standard'
-                warnings.warn(
+                warn(
                     f'For a signal of type {self.signal_type} ' +
                     'the spectrum has to be the standard one and not welch.' +
                     ' This has been automatically changed.')
@@ -236,7 +237,7 @@ class Signal():
             f'{len(window)} does not match shape {self.time_data.shape}'
         self.window = window
 
-    def set_coherence(self, coherence: np.ndarray):
+    def set_coherence(self, coherence: ndarray):
         """Sets the window used for the IR. It only works for
         `signal_type = ('ir', 'h1', 'h2', 'h3', 'rir')`
         """
@@ -335,7 +336,7 @@ class Signal():
                 self.__spectrogram_state_update = True
 
     # ======== Add, remove and reorder channels ===============================
-    def add_channel(self, path: str = None, new_time_data: np.ndarray = None,
+    def add_channel(self, path: str = None, new_time_data: ndarray = None,
                     sampling_rate_hz: int = None,
                     padding_trimming: bool = True):
         """Adds new channels to this signal object.
@@ -344,7 +345,7 @@ class Signal():
         ----------
         path : str, optional
             Path to the file containing new channel information.
-        new_time_data : np.ndarray, optional
+        new_time_data : ndarray, optional
             Array with new channel data.
         sampling_rate_hz : int, optional
             Sampling rate for the new data
@@ -355,7 +356,7 @@ class Signal():
         if path is not None:
             assert new_time_data is None, 'Only path or new time data is ' +\
                 'accepted, not both.'
-            new_time_data, sampling_rate_hz = sf.read(path)
+            new_time_data, sampling_rate_hz = read(path)
         else:
             if new_time_data is not None:
                 assert path is None, 'Only path or new time data is ' +\
@@ -363,8 +364,8 @@ class Signal():
         assert sampling_rate_hz == self.sampling_rate_hz, \
             f'{sampling_rate_hz} does not match {self.sampling_rate_hz} ' +\
             'as the sampling rate'
-        if not type(new_time_data) == np.ndarray:
-            new_time_data = np.array(new_time_data)
+        if not type(new_time_data) == ndarray:
+            new_time_data = array(new_time_data)
         assert len(new_time_data.shape) <= 2, \
             f'{len(new_time_data.shape)} has ' +\
             'too many dimensions for time data. Dimensions should' +\
@@ -386,7 +387,7 @@ class Signal():
                         new_time_data,
                         self.time_data.shape[0],
                         axis=0, in_the_end=True)
-                warnings.warn(
+                warn(
                     f'{txt} has been performed ' +
                     'on the end of the new signal to match original one.')
             else:
@@ -394,8 +395,8 @@ class Signal():
                     f'{new_time_data.shape[0]} does not match ' +
                     f'{self.time_data.shape[0]}. Activate padding_trimming ' +
                     'for allowing this channel to be added')
-        self.time_data = np.concatenate([self.time_data, new_time_data],
-                                        axis=1)
+        self.time_data = concatenate([self.time_data, new_time_data],
+                                     axis=1)
         self.__update_state()
 
     def remove_channel(self, channel_number: int = -1):
@@ -413,7 +414,7 @@ class Signal():
         assert self.time_data.shape[1]-1 >= channel_number, \
             f'Channel number {channel_number} does not exist. Signal only ' +\
             f'has {self.number_of_channels-1} channels (zero included).'
-        self.time_data = np.delete(self.time_data, channel_number, axis=-1)
+        self.time_data = delete(self.time_data, channel_number, axis=-1)
         self.number_of_channels -= 1
         self.__update_state()
 
@@ -425,7 +426,7 @@ class Signal():
         new_order : array-like
             New rearrangement of channels.
         """
-        new_order = np.array(new_order).squeeze()
+        new_order = array(new_order).squeeze()
         assert new_order.ndim == 1, \
             'Too many dimensions are given in the new arrangement vector'
         assert self.number_of_channels == len(new_order), \
@@ -448,9 +449,9 @@ class Signal():
 
         Returns
         -------
-        spectrum_freqs : np.ndarray
+        spectrum_freqs : ndarray
             Frequency vector
-        spectrum : np.ndarray
+        spectrum : ndarray
             Spectrum matrix for each channel
         """
         condition = not hasattr(self, 'spectrum') or \
@@ -459,7 +460,7 @@ class Signal():
         if condition:
             if self._spectrum_parameters['method'] == 'welch':
                 spectrum = \
-                    np.zeros(
+                    zeros(
                         (self.
                          _spectrum_parameters
                          ['window_length_samples'] // 2 + 1,
@@ -477,10 +478,10 @@ class Signal():
                                self._spectrum_parameters['average'],
                                self._spectrum_parameters['scaling'])
             elif self._spectrum_parameters['method'] == 'standard':
-                spectrum = np.fft.rfft(self.time_data, axis=0)
+                spectrum = fft.rfft(self.time_data, axis=0)
             self.spectrum = []
             self.spectrum.append(
-                np.fft.rfftfreq(
+                fft.rfftfreq(
                     spectrum.shape[0]*2 - 1, 1/self.sampling_rate_hz))
             self.spectrum.append(spectrum)
             spectrum_freqs = self.spectrum[0]
@@ -495,9 +496,9 @@ class Signal():
 
         Returns
         -------
-        f_csm : np.ndarray
+        f_csm : ndarray
             Frequency vector
-        csm : np.ndarray
+        csm : ndarray
             Cross spectral matrix with shape (frequency, channels, channels).
         """
         assert self.number_of_channels > 1, \
@@ -534,11 +535,11 @@ class Signal():
 
         Returns
         -------
-        t_s : np.ndarray
+        t_s : ndarray
             Time vector
-        f_hz : np.ndarray
+        f_hz : ndarray
             Frequency vector
-        spectrogram : np.ndarray
+        spectrogram : ndarray
             Spectrogram
         """
         condition = not hasattr(self, 'spectrogram') or force_computation or \
@@ -643,7 +644,7 @@ class Signal():
             xlabels='Time / s',
             returns=True)
         for n in range(self.number_of_channels):
-            mx = np.max(np.abs(self.time_data[:, n])) * 1.1
+            mx = max(abs(self.time_data[:, n])) * 1.1
             if hasattr(self, 'window'):
                 ax[n].plot(self.time_vector_s,
                            self.window * mx / 1.1, alpha=0.75)
@@ -661,7 +662,7 @@ class Signal():
             'h1, h2, h3, rir'
         self.set_spectrum_parameters('standard')
         f, sp = self.get_spectrum()
-        gd = np.zeros((len(f), self.number_of_channels))
+        gd = zeros((len(f), self.number_of_channels))
         for n in range(self.number_of_channels):
             gd[:, n] = _group_delay_direct(sp[:, n], f[1]-f[0])
         fig, ax = general_plot(
@@ -683,8 +684,8 @@ class Signal():
             ids[0] += 1
         f = f[ids[0]:ids[1]]
         stft = stft[ids[0]:ids[1], :]
-        stft_db = 20*np.log10(np.abs(stft)+epsilon)
-        stft_db = np.nan_to_num(stft_db, nan=np.min(stft_db))
+        stft_db = 20*log10(abs(stft)+epsilon)
+        stft_db = nan_to_num(stft_db, nan=min(stft_db))
         fig, ax = general_matrix_plot(
             matrix=stft_db, xrange=(t[0], t[-1]),
             yrange=(f[0], f[-1]), zrange=50,
@@ -729,9 +730,9 @@ class Signal():
                 'standard')
         else:
             f, sp = self.get_spectrum()
-            ph = np.angle(sp)
+            ph = angle(sp)
             if unwrap:
-                ph = np.unwrap(ph, axis=0)
+                ph = unwrap(ph, axis=0)
             fig, ax = general_plot(
                 f=f,
                 matrix=ph,
@@ -782,273 +783,19 @@ class Signal():
             Mode of saving. Available modes are `'wav'`, `'flac'`, `'pickle'`.
             Default: `'wav'`.
         """
-        if '.' in path.split(os.sep)[-1]:
+        if '.' in path.split(sep)[-1]:
             raise ValueError('Please introduce the saving path without format')
         if mode == 'wav':
             path += '.wav'
-            sf.write(path, self.time_data, self.sampling_rate_hz)
+            write(path, self.time_data, self.sampling_rate_hz)
         elif mode == 'flac':
             path += '.flac'
-            sf.write(path, self.time_data, self.sampling_rate_hz)
+            write(path, self.time_data, self.sampling_rate_hz)
         elif mode == 'pickle':
             path += '.pkl'
             with open(path, 'wb') as data_file:
-                pickle.dump(self, data_file, pickle.HIGHEST_PROTOCOL)
+                dump(self, data_file, HIGHEST_PROTOCOL)
         else:
             raise ValueError(
                 f'{mode} is not a supported saving mode. Use ' +
                 'wav, flac or pkl')
-
-
-class MultiBandSignal():
-    """The MultiBandSignal class contains multiple Signal objects which are
-    to be interpreted as frequency bands or the same signal. Since every
-    signal has also multiple channels, the object resembles somewhat a
-    3D-Matrix representation of a signal.
-
-    The MultiBandSignal can contain multirate system if the attribute
-    `same_sampling_rate` is set to `False`. A dictionary also can carry
-    all kinds of metadata that might characterize the signals.
-    """
-
-    # ======== Constructor and initializers ===================================
-    def __init__(self, bands=None, same_sampling_rate: bool = True,
-                 info: dict = None):
-        """MultiBandSignal contains a composite band list where each index
-        is a Signal object with the same number of channels. For multirate
-        systems, the parameter `same_sampling_rate` has to be set to `False`.
-
-        Parameters
-        ----------
-        bands : list or tuple, optional
-            List or tuple containing different Signal objects. All of them
-            should be associated to the same Signal. This means that the
-            channel numbers have to match. Set to `None` for initializing the
-            object. Default: `None`.
-        same_sampling_rate : bool, optional
-            When `True`, every Signal should have the same sampling rate.
-            Set to `False` for a multirate system. Default: `True`.
-        info : dict, optional
-            A dictionary with generic information about the MultiBandSignal
-            can be passed. Default: `None`.
-        """
-        if bands is None:
-            bands = []
-        if info is None:
-            info = {}
-        self.same_sampling_rate = same_sampling_rate
-        self.bands = bands
-        self.number_of_bands = len(self.bands)
-        self._generate_metadata()
-        self.info = self.info | info
-
-    # ======== Properties and setters =========================================
-    @property
-    def sampling_rate_hz(self):
-        return self._sampling_rate_hz
-
-    @sampling_rate_hz.setter
-    def sampling_rate_hz(self, new_sampling_rate_hz):
-        assert type(new_sampling_rate_hz) == int, \
-            'Sampling rate can only be an integer'
-        self._sampling_rate_hz = new_sampling_rate_hz
-
-    @property
-    def bands(self):
-        return self._bands
-
-    @bands.setter
-    def bands(self, new_bands):
-        assert type(new_bands) in (list, tuple), \
-            'bands has to be a list, tuple or None'
-        if new_bands:
-            # Check length and number of channels
-            self.number_of_channels = new_bands[0].number_of_channels
-            self.signal_type = new_bands[0].signal_type
-            for s in new_bands:
-                assert type(s) == Signal, f'{type(s)} is not a valid ' +\
-                    'band type. Use Signal objects'
-                assert s.number_of_channels == self.number_of_channels, \
-                    'Signals have different number of channels. This ' +\
-                    'behaviour is not supported'
-                assert s.signal_type == self.signal_type, \
-                    'Signal types do not match'
-            if self.same_sampling_rate:
-                self.sampling_rate_hz = new_bands[0].sampling_rate_hz
-                self.band_length_samples = new_bands[0].time_data.shape[0]
-            # Check sampling rate and duration
-            if self.same_sampling_rate:
-                for s in new_bands:
-                    assert s.sampling_rate_hz == self.sampling_rate_hz, \
-                        'Not all Signals have the same sampling rate. ' +\
-                        'If you wish to create a multirate system, set ' +\
-                        'same_sampling_rate to False'
-                    assert s.time_data.shape[0] == self.band_length_samples,\
-                        'The length of the bands is not always the same. ' +\
-                        'This behaviour is not supported'
-        self._bands = new_bands
-
-    @property
-    def same_sampling_rate(self):
-        return self._same_sampling_rate
-
-    @same_sampling_rate.setter
-    def same_sampling_rate(self, new_same):
-        assert type(new_same) == bool, \
-            'Same sampling rate attribute must be a boolean'
-        self._same_sampling_rate = new_same
-
-    def _generate_metadata(self):
-        """Generates an information dictionary with metadata about the
-        MultiBandSignal.
-        """
-        self.info = {}
-        self.info['number_of_bands'] = len(self.bands)
-        if self.bands:
-            self.info['same_sampling_rate'] = self.same_sampling_rate
-            self.info['signal_type'] = self.signal_type
-            if self.same_sampling_rate:
-                if hasattr(self, 'sampling_rate_hz'):
-                    self.info['sampling_rate_hz'] = self.sampling_rate_hz
-                self.info['band_length_samples'] = self.band_length_samples
-            self.info['number_of_channels'] = self.number_of_channels
-
-    # ======== Add and remove =================================================
-    def add_band(self, sig: Signal, index: int = -1):
-        """Adds a new band to the MultiBandSignal.
-
-        Parameters
-        ----------
-        sig : Signal
-            Signal to be added.
-        index : int, optional
-            Index at which to insert the new Signal. Default: -1.
-        """
-        if not self.bands:
-            self.number_of_channels = sig.number_of_channels
-            self.sampling_rate_hz = sig.sampling_rate_hz
-            self.band_length_samples = sig.time_data.shape[0]
-            self.signal_type = sig.signal_type
-            self.bands.append(sig)
-        else:
-            assert sig.number_of_channels == self.number_of_channels, \
-                'The number of channels does not match'
-            assert sig.signal_type == self.signal_type, \
-                'Signal types do not match'
-            if self.same_sampling_rate:
-                assert sig.sampling_rate_hz == self.sampling_rate_hz, \
-                    'Sampling rate of band does not match with the one ' +\
-                    'of MultiBandSignal'
-                assert sig.time_data.shape[0] == self.band_length_samples, \
-                    'The band length does not match'
-            if index == -1:
-                self.bands.append(sig)
-            else:
-                self.bands.insert(index, sig)
-        self._generate_metadata()
-
-    def remove_band(self, index: int = -1, return_band: bool = False):
-        """Removes a band from the MultiBandSignal.
-
-        Parameters
-        ----------
-        index : int, optional
-            This is the index from the bands list at which the band
-            will be erased. When -1, last band is erased.
-            Default: -1.
-        return_band : bool, optional
-            When `True`, the erased band is returned. Default: `False`.
-        """
-        assert self.bands, 'There are no filters to remove'
-        if index == -1:
-            index = len(self.bands) - 1
-        assert index in range(len(self.bands)), \
-            f'There is no band at index {index}.'
-        f = self.bands.pop(index)
-        self._generate_metadata()
-        if return_band:
-            return f
-
-    def show_info(self, show_band_info: bool = False):
-        """Show information about the MultiBandSignal.
-
-        Parameters
-        ----------
-        show_band_info : bool, optional
-            When `True`, a longer message is printed with all available
-            information regarding each Signal in the MultiBandSignal.
-            Default: `True`.
-        """
-        print()
-        txt = ''
-        for k in self.info:
-            txt += \
-                f""" | {str(k).replace('_', ' ').
-                        capitalize()}: {self.info[k]}"""
-        txt = 'Multiband band:' + txt
-        print(txt)
-        if show_band_info:
-            print('-'*len(txt), end='')
-            for ind, f1 in enumerate(self.bands):
-                print()
-                txt = f'Signal {ind}:'
-                for kf in f1.info:
-                    txt += \
-                        f""" | {str(kf).replace('_', ' ').
-                                capitalize()}: {f1.info[kf]}"""
-                print(txt)
-        print()
-
-    # ======== Getters ========================================================
-    def get_all_bands(self, channel: int = 0):
-        """Returns a signal with all bands as channels. Done for an specified
-        channel.
-
-        Parameters
-        ----------
-        channel : int, optional
-            Channel to choose from the band signals.
-
-        Returns
-        -------
-        sig : Signal or list of np.ndarray + dict
-            Multichannel signal with all the bands. If the MultiBandSignal
-            does not have the same sampling rate for all signals, a list with
-            the time vectors and a dictionary containing their sampling rates
-            with the key 'sampling_rates' are returned.
-        """
-        if self.same_sampling_rate:
-            new_time_data = \
-                np.zeros((self.bands[0].time_data.shape[0], len(self.bands)))
-            for n in range(len(self.bands)):
-                new_time_data[:, n] = \
-                    self.bands[n].time_data[:, channel].copy()
-            sig = Signal(None, new_time_data, self.same_sampling_rate)
-            return sig
-        else:
-            new_time_data = []
-            d = {}
-            sr = []
-            for n in range(len(self.bands)):
-                new_time_data.append(
-                    self.bands[n].time_data[:, channel].copy())
-                sr.append(self.bands[n].sampling_rate_hz)
-            d['sampling_rates'] = sr
-            return new_time_data, d
-
-    # ======== Saving and export ==============================================
-    def save_signal(self, path: str = 'multibandsignal'):
-        """Saves the MultiBandSignal object as a pickle.
-
-        Parameters
-        ----------
-        path : str, optional
-            Path for the signal to be saved. Use only folder/folder/name
-            (without format). Default: `'multibandsignal'`
-            (local folder, object named multibandsignal).
-        """
-        if '.' in path.split(os.sep)[-1]:
-            raise ValueError('Please introduce the saving path without format')
-        path += '.pkl'
-        with open(path, 'wb') as data_file:
-            pickle.dump(self, data_file, pickle.HIGHEST_PROTOCOL)

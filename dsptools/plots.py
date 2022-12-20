@@ -4,9 +4,9 @@ Includes some basic plotting templates
 import matplotlib.pyplot as plt
 from matplotlib.ticker import ScalarFormatter
 from matplotlib import cm
-import numpy as np
-import seaborn
-seaborn.set_style('whitegrid')
+from numpy import array, max, min
+from seaborn import set_style
+set_style('whitegrid')
 
 
 def show():
@@ -25,7 +25,7 @@ def general_plot(f, matrix, range_x=None, range_y=None, log: bool = True,
     ----------
     f : array-like
         Vector for x axis.
-    matrix : np.ndarray
+    matrix : ndarray
         Matrix with data to plot.
     range_x : array-like, optional
         Range to show for x axis. Default: None.
@@ -56,7 +56,7 @@ def general_plot(f, matrix, range_x=None, range_y=None, log: bool = True,
     if log:
         ax.set_xscale('log')
         ticks = \
-            np.array([20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000])
+            array([20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000])
         if range_x is not None:
             ticks = ticks[(ticks > range_x[0]) & (ticks < range_x[-1])]
         ax.set_xticks(ticks)
@@ -105,8 +105,8 @@ def general_subplots_line(x, matrix, column: bool = True,
         if log:
             ax[n].set_xscale('log')
             ticks = \
-                np.array([20, 50, 100, 200, 500, 1000,
-                          2000, 5000, 10000, 20000])
+                array([20, 50, 100, 200, 500, 1000,
+                       2000, 5000, 10000, 20000])
             if xlims is not None:
                 ticks = ticks[(ticks > xlims[0]) & (ticks < xlims[-1])]
             ax[n].set_xticks(ticks)
@@ -147,11 +147,11 @@ def general_matrix_plot(matrix, xrange=None, yrange=None, zrange=None,
     # cmap._init()
     # cmap._lut[-3, -1]
     if zrange is not None:
-        max_val = np.max(matrix)
+        max_val = max(matrix)
         min_val = max_val - zrange
     else:
-        max_val = np.max(matrix)
-        min_val = np.min(matrix)
+        max_val = max(matrix)
+        min_val = min(matrix)
 
     if extent is None:
         col = ax.imshow(
@@ -177,7 +177,7 @@ def general_matrix_plot(matrix, xrange=None, yrange=None, zrange=None,
     if ylog:
         ax.set_yscale('log')
         ticks = \
-            np.array([20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000])
+            array([20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000])
         if yrange is not None:
             ticks = ticks[(ticks > yrange[0]) & (ticks < yrange[-1])]
         ax.set_yticks(ticks)

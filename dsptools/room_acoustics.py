@@ -1,9 +1,10 @@
 """
 High-level methods for room acoustics functions
 """
-import numpy as np
+from numpy import (zeros, array, ceil, append, squeeze,
+                   where, sort, log10, abs, max)
 from scipy.signal import find_peaks, convolve
-from .signal_class import Signal
+from .classes.signal_class import Signal
 from .standard_functions import group_delay
 from .backend._room_acoustics import (_reverb,
                                       _complex_mode_identification,
@@ -28,7 +29,7 @@ def reverb_time(signal: Signal, mode: str = 'T20'):
 
     Returns
     -------
-    reverberation_times : np.ndarray
+    reverberation_times : ndarray
         Reverberation times for each channel.
 
     References
@@ -45,7 +46,7 @@ def reverb_time(signal: Signal, mode: str = 'T20'):
         f'{mode} is not valid. Use either one of ' +\
         'these: T20, T30, T60 or EDT'
 
-    reverberation_times = np.zeros((signal.number_of_channels))
+    reverberation_times = zeros((signal.number_of_channels))
     for n in range(signal.number_of_channels):
         reverberation_times[n] = \
             _reverb(
@@ -83,7 +84,7 @@ def find_modes(signal: Signal, f_range_hz=[50, 200],
 
     Returns
     -------
-    f_modes: np.ndarray
+    f_modes: ndarray
         Vector containing frequencies where modes have been localized.
 
     References
@@ -112,7 +113,7 @@ def find_modes(signal: Signal, f_range_hz=[50, 200],
     group_ms = group_ms[ids[0]:ids[1]]*1e3
 
     # Find peaks
-    width = int(np.ceil(dist_hz / df))
+    width = int(ceil(dist_hz / df))
     id_sum, _ = find_peaks(sum_sp, width=width)
     id_cmif, _ = find_peaks(cmif, width=width)
     id_group = []
@@ -121,12 +122,12 @@ def find_modes(signal: Signal, f_range_hz=[50, 200],
         id_group.append(id_)
 
     if proximity_effect:
-        f_modes = np.array([])
+        f_modes = array([])
         for n in range(signal.number_of_channels):
             f_modes = \
-                np.append(f_modes, f[id_group[n]][f[id_group[n]] < 199.9])
-        ind_200 = np.where(f >= 199.9)
-        if len(np.squeeze(ind_200)) < 1:
+                append(f_modes, f[id_group[n]][f[id_group[n]] < 199.9])
+        ind_200 = where(f >= 199.9)
+        if len(squeeze(ind_200)) < 1:
             ind_200 = len(f)
         else:
             ind_200 = ind_200[0][0]
@@ -153,7 +154,7 @@ def find_modes(signal: Signal, f_range_hz=[50, 200],
         cond_3 = cond2 and cond3
         if cond_1 or cond_2 or cond_3:
             f_modes.add(f[n])
-    f_modes = np.sort(list(f_modes))
+    f_modes = sort(list(f_modes))
 
     return f_modes.astype(int)
 
@@ -198,11 +199,11 @@ def convolve_rir_on_signal(signal: Signal, rir: Signal,
     else:
         total_length_samples = \
             signal.time_data.shape[0] + rir.time_data.shape[0] - 1
-    new_time_data = np.zeros((total_length_samples, signal.number_of_channels))
+    new_time_data = zeros((total_length_samples, signal.number_of_channels))
 
     for n in range(signal.number_of_channels):
         if keep_peak_level:
-            old_peak = 20*np.log10(np.max(np.abs(signal.time_data[:, n])))
+            old_peak = 20*log10(max(abs(signal.time_data[:, n])))
         new_time_data[:, n] = \
             convolve(
                 signal.time_data[:, n],
