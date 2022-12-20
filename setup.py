@@ -31,7 +31,8 @@ test_requirements = [
     # 'tox',
     # 'coverage',
     'Sphinx',
-    'twine'
+    'piccolo_theme',
+    # 'twine'
 ]
 
 setup(
