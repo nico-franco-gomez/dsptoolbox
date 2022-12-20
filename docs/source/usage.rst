@@ -27,5 +27,4 @@ For example:
 >>> import dsptools as dsp
 >>> from os.path import join
 >>> dsp.Signal(path=join('examples', 'data', 'chirp.wav'))
-['shells', 'gorgonzola', 'parsley']
 

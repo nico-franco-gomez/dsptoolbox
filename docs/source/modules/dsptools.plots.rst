@@ -1,4 +1,4 @@
-dsptools.plots
+plots
 ==========
 
 .. automodule:: dsptools.plots

@@ -7,8 +7,10 @@ from numpy import (fft, zeros, ones, random, pi, linspace,
                    sin, log, append, exp)
 from .classes.signal_class import Signal
 from .backend._general_helpers import _normalize, _fade
-from .standard_functions import pad_trim
+from .other import pad_trim
 from .backend._filter import _impulse
+
+# __all__ = ['noise', 'chirp', 'dirac', ]
 
 
 def noise(type_of_noise: str = 'white', length_seconds: float = 1,

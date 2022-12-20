@@ -12,8 +12,21 @@ easily expandable and written with well-documented, easy-to-read code.
 Its main use is for rapid-prototyping of offline dsp algorithms, though
 some real-time functionalities might get added with time.
 
-Check out the :doc:`usage` section for further information, including
-how to :ref:`installation` the project.
+Installation
+------------
+
+To use dsptools, first install it using pip:
+
+.. code-block:: console
+
+   $ pip install dsptools
+   
+   
+Usage
+------------
+
+To learn how to use this package, please refer to the documentation as well
+as to the jupyter notebooks contained in the folder 'examples'.
 
 .. note::
 
@@ -38,7 +51,3 @@ Documentation
 .. toctree::
     
    modules
-   
-   
-Other
-=====

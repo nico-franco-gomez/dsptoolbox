@@ -7,6 +7,8 @@ object
 # from .filter_class import Filter, FilterBank
 from .backend._filterbank import LRFilterBank
 
+__all__ = ['linkwitz_riley_crossovers']
+
 
 def linkwitz_riley_crossovers(freqs, order, sampling_rate_hz: int = 48000):
     """Returns a linkwitz-riley crossovers filter bank.

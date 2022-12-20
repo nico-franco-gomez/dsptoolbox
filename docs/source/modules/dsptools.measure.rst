@@ -1,4 +1,4 @@
-dsptools.measure
+measure
 ==========
 
 .. automodule:: dsptools.measure

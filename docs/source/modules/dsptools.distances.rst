@@ -1,4 +1,4 @@
-dsptools.distances
+distances
 ==========
 
 .. automodule:: dsptools.distances

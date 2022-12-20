@@ -7,7 +7,9 @@ from .backend._general_helpers import (_find_frequencies_above_threshold)
 from .backend._transfer_functions import (_spectral_deconvolve,
                                           _window_this_ir)
 from .backend._standard import _welch
-from .standard_functions import pad_trim
+from .other import pad_trim
+
+__all__ = ['spectral_deconvolve', 'window_ir', 'compute_transfer_function', ]
 
 
 def spectral_deconvolve(num: Signal, denum: Signal, multichannel=False,

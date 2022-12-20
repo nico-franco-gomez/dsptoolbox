@@ -1,4 +1,4 @@
-dsptools.generators
+generators
 ==========
 
 .. automodule:: dsptools.generators

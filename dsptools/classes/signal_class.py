@@ -8,7 +8,8 @@ from os import sep
 from numpy import (linspace, ndarray, array, max, abs, concatenate,
                    fft, min, nan_to_num, delete, angle, zeros, log10)
 from soundfile import read, write
-from ..plots import (general_plot, general_subplots_line, general_matrix_plot)
+from ..plots import (general_plot, general_subplots_line,
+                     general_matrix_plot)
 from ..backend._plots import _csm_plot
 from ..backend._general_helpers import (_get_normalized_spectrum, _pad_trim)
 from ..backend._standard import (_welch, _group_delay_direct, _stft, _csm)

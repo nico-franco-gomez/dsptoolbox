@@ -7,6 +7,9 @@ from sounddevice import play as play_sd
 from .classes.signal_class import Signal
 from .backend._general_helpers import _normalize
 
+__all__ = ['print_device_info', 'set_device', 'play_and_record', 'record',
+           'play', ]
+
 
 def print_device_info(device_number: int = None):
     """Prints available audio devices or information about a certain device

@@ -1,4 +1,4 @@
-dsptools.transfer_functions
+transfer_functions
 ==========
 
 .. automodule:: dsptools.transfer_functions

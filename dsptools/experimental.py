@@ -6,6 +6,8 @@ from scipy.signal import windows
 from numpy import log2, floor, arange, convolve
 from scipy.interpolate import interp1d
 
+__all__ = ['_smoothing_log']
+
 
 def _smoothing_log(vector, num_fractions, window_type='hann'):
     """Fractional octave smoothing with efficient logarithmic interpolation
