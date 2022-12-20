@@ -1,5 +1,5 @@
 # Configuration file for the Sphinx documentation builder.
-
+import piccolo_theme
 # -- Project information
 
 project = 'dsptools'
@@ -17,6 +17,7 @@ extensions = [
     'sphinx.ext.autodoc',
     'sphinx.ext.autosummary',
     'sphinx.ext.intersphinx',
+    'piccolo_theme',
 ]
 
 intersphinx_mapping = {
