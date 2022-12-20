@@ -1,6 +1,6 @@
-'''
+"""
 General tests for filter class
-'''
+"""
 
 
 def filter_functionalities():
@@ -46,7 +46,7 @@ def filtering():
     dsp.plots.show()
 
 
-def filter_bank():
+def filter_bank_add_remove():
     import dsptools as dsp
 
     fb = dsp.FilterBank()
@@ -69,9 +69,45 @@ def filter_bank():
     fb.save_filterbank()
 
 
+def filter_bank_filter():
+    import dsptools as dsp
+
+    # Standard filter bank
+    # fb = dsp.FilterBank()
+    # config = dict(order=5, freqs=[1500, 2000], type_of_pass='bandpass',
+    #               filter_design_method='bessel')
+    # fb.add_filter(dsp.Filter('iir', config))
+    # config = dict(order=150, freqs=[1500, 2000], type_of_pass='bandpass')
+    # fb.add_filter(dsp.Filter('fir', config))
+
+    # Linkwitz-Riley
+    fb = dsp.filterbanks.linkwitz_riley_crossovers(
+        [1000, 1500], [4, 6])
+    # i = dsp.generators.dirac(1024, 2)
+    # i_out = fb.filter_signal(i, activate_zi=True)
+    # i_out.bands[0].plot_magnitude()
+    # i_out.bands[1].plot_magnitude()
+    # i_out.bands[2].plot_magnitude()
+
+    # Parallel
+    # fb.plot_magnitude(test_zi=True)
+    # fb.plot_magnitude(test_zi=False)
+    fb.plot_magnitude(mode='sequential', test_zi=True)
+
+    # Single filter
+    # i = dsp.generators.dirac(1024, 2)
+    # config = dict(order=5, freqs=[1500, 2000], type_of_pass='bandpass',
+    #               filter_design_method='bessel')
+    # filt1 = dsp.Filter('iir', config)
+    # filt1.filter_signal(i, activate_zi=True).plot_magnitude(normalize=None)
+    # filt1.filter_signal(i, activate_zi=False).plot_magnitude(normalize=None)
+    dsp.plots.show()
+
+
 if __name__ == '__main__':
     # filter_functionalities()
-    filtering()
-    # filter_bank()
+    # filtering()
+    # filter_bank_add_remove()
+    filter_bank_filter()
 
     print()

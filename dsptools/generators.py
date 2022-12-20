@@ -1,20 +1,20 @@
-'''
+"""
 This contains signal generators that might be useful for measurements.
 See measure.py for routines where the signals that are created here can be
 used
-'''
+"""
 import numpy as np
 from .signal_class import Signal
 from .backend._general_helpers import _normalize, _fade
 from .standard_functions import pad_trim
+from .backend._filter import _impulse
 
 
 def noise(type_of_noise: str = 'white', length_seconds: float = 1,
           sampling_rate_hz: int = 48000, peak_level_dbfs: float = -10,
           number_of_channels: int = 1, fade: str = 'log',
           padding_end_seconds: float = None):
-    '''
-    Creates a noise signal.
+    """Creates a noise signal.
 
     Parameters
     ----------
@@ -41,7 +41,11 @@ def noise(type_of_noise: str = 'white', length_seconds: float = 1,
     -------
     noise_sig : Signal
         Noise Signal object.
-    '''
+
+    References
+    ----------
+    https://en.wikipedia.org/wiki/Colors_of_noise
+    """
     valid_noises = ('white', 'pink', 'red', 'blue', 'violet', 'grey')
     valid_noises = (n.casefold() for n in valid_noises)
     assert type_of_noise.casefold() in valid_noises, \
@@ -59,7 +63,7 @@ def noise(type_of_noise: str = 'white', length_seconds: float = 1,
     time_data = np.zeros((l_samples, number_of_channels))
 
     for n in range(number_of_channels):
-        mag = np.ones(len(f)) + np.random.normal(0, 0.2, len(f))
+        mag = np.ones(len(f)) + np.random.normal(0, 0.025, len(f))
         mag[0] = 0
         ph = np.random.uniform(-np.pi, np.pi, len(f))
         if type_of_noise == 'pink'.casefold():
@@ -93,13 +97,12 @@ def chirp(type_of_chirp: str = 'log', range_hz=None, length_seconds: float = 1,
           sampling_rate_hz: int = 48000, peak_level_dbfs: float = -10,
           number_of_channels: int = 1, fade: str = 'log',
           padding_end_seconds: float = None):
-    '''
-    Creates a sweep signal.
+    """Creates a sweep signal.
 
     Parameters
     ----------
     type_of_chirp : str, optional
-        Choose from `'linear'`, `'log'`.
+        Choose from `'lin'`, `'log'`.
         Default: `'log'`.
     range_hz : array-like with length 2
         Define range of chirp in Hz. When `None`, all frequencies between
@@ -128,7 +131,10 @@ def chirp(type_of_chirp: str = 'log', range_hz=None, length_seconds: float = 1,
     Reference
     ---------
     https://de.wikipedia.org/wiki/Chirp
-    '''
+    """
+    type_of_chirp = type_of_chirp.lower()
+    assert type_of_chirp in ('lin', 'log'), \
+        f'{type_of_chirp} is not a valid type. Select lin or log'
     if range_hz is not None:
         assert len(range_hz) == 2, \
             'range_hz has to contain exactly two frequencies'
@@ -143,7 +149,7 @@ def chirp(type_of_chirp: str = 'log', range_hz=None, length_seconds: float = 1,
     l_samples = int(sampling_rate_hz * length_seconds)
     t = np.linspace(0, length_seconds, l_samples)
 
-    if type_of_chirp == 'linear':
+    if type_of_chirp == 'lin':
         k = (range_hz[1]-range_hz[0])/length_seconds
         freqs = (range_hz[0] + k/2*t)*2*np.pi
         chirp = np.sin(freqs*t)
@@ -171,3 +177,32 @@ def chirp(type_of_chirp: str = 'log', range_hz=None, length_seconds: float = 1,
         p_samples = int(padding_end_seconds * sampling_rate_hz)
         chirp_sig = pad_trim(chirp_sig, l_samples+p_samples)
     return chirp_sig
+
+
+def dirac(length_samples: int = 512, number_of_channels: int = 1,
+          sampling_rate_hz: int = 48000):
+    """Generates a dirac impulse Signal with the specified length and
+    sampling rate.
+
+    Parameters
+    ----------
+    length_samples : int, optional
+        Length in samples. Default: 512.
+    number_of_channels : int, optional
+        Number of channels to be generated with the same impulse. Default: 1.
+    sampling_rate_hz : int, optional
+        Sampling rate to be used. Default: 480000.
+
+    Returns
+    -------
+    imp : Signal
+        Signal with dirac impulse.
+    """
+    assert length_samples > 0, 'Only positive lengths are valid'
+    assert number_of_channels > 0, 'At least one channel has to be created'
+    assert sampling_rate_hz > 0, 'Sampling rate can only be positive'
+    td = np.zeros((length_samples, number_of_channels))
+    for n in range(number_of_channels):
+        td[:, n] = _impulse(length_samples=length_samples)
+    imp = Signal(None, td, sampling_rate_hz, signal_type='dirac')
+    return imp

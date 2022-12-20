@@ -1,19 +1,21 @@
-'''
+"""
 Backend for filter class and general filtering functions.
-'''
+"""
 import numpy as np
 from enum import Enum
 import scipy.signal as sig
-from ..signal_class import Signal
+from ..signal_class import Signal, MultiBandSignal
+from copy import deepcopy
 
 
 def _get_biquad_type(number: int = None, name: str = None):
+    """Helper method that handles string inputs for the biquad filters.
+    """
     if name is not None:
         valid_names = ('peaking', 'lowpass', 'highpass', 'bandpass_skirt',
                        'bandpass_peak', 'notch', 'allpass', 'lowshelf',
                        'highshelf')
-        valid_names = (k.casefold() for k in valid_names)
-        name = name.casefold()
+        name = name.lower()
         assert name in valid_names, f'{name} is not a valid name. Please ' +\
             'select from the _biquad_coefficients'
 
@@ -29,7 +31,8 @@ def _get_biquad_type(number: int = None, name: str = None):
         highshelf = 8
 
     if number is None:
-        assert name is not None, 'Either number or name must be given'
+        assert name is not None, \
+            'Either number or name must be given, not both'
         r = eval(f'biquad.{name}')
         r = r.value
     else:
@@ -41,11 +44,11 @@ def _get_biquad_type(number: int = None, name: str = None):
 def _biquad_coefficients(eq_type=0, fs_hz: int = 48000,
                          frequency_hz: float = 1000, gain_db: float = 1,
                          q: float = 1):
-    '''
+    """Creates the filter coefficients for biquad filters.
     https://www.musicdsp.org/en/latest/_downloads/3e1dc886e7849251d6747b194d482272/Audio-EQ-Cookbook.txt
     eq_type: 0 PEAKING, 1 LOWPASS, 2 HIGHPASS, 3 BANDPASS_SKIRT,
         4 BANDPASS_PEAK, 5 NOTCH, 6 ALLPASS, 7 LOWSHELF, 8 HIGHSHELF
-    '''
+    """
     A = np.sqrt(10**(gain_db / 20.0))
     Omega = 2.0 * np.pi * (frequency_hz / fs_hz)
     sn = np.sin(Omega)
@@ -122,8 +125,7 @@ def _biquad_coefficients(eq_type=0, fs_hz: int = 48000,
 
 
 def _impulse(length_samples: int = 512):
-    '''
-    Creates an impulse with the given length
+    """Creates an impulse with the given length
 
     Parameters
     ----------
@@ -134,15 +136,14 @@ def _impulse(length_samples: int = 512):
     -------
     imp : np.ndarray
         Impulse
-    '''
+    """
     imp = np.zeros(length_samples)
     imp[0] = 1
     return imp
 
 
 def _group_delay_filter(ba, length_samples: int = 512, fs_hz: int = 48000):
-    '''
-    Computes group delay using the method in
+    """Computes group delay using the method in
     https://www.dsprelated.com/freebooks/filters/Phase_Group_Delay.html.
     The implementation is mostly taken from scipy.signal.group_delay !
 
@@ -161,7 +162,7 @@ def _group_delay_filter(ba, length_samples: int = 512, fs_hz: int = 48000):
         Frequency vector.
     gd : np.ndarray
         Group delay in seconds.
-    '''
+    """
     # Frequency vector at which to evaluate
     omega = np.linspace(0, np.pi, length_samples)
     # Turn always to FIR
@@ -183,8 +184,7 @@ def _group_delay_filter(ba, length_samples: int = 512, fs_hz: int = 48000):
 
 def _filter_on_signal(signal: Signal, sos, channel=None,
                       zi=None, zero_phase: bool = False):
-    '''
-    Takes in a Signal object and filters selected channels. Exports a new
+    """Takes in a Signal object and filters selected channels. Exports a new
     Signal object
 
     Parameters
@@ -207,8 +207,8 @@ def _filter_on_signal(signal: Signal, sos, channel=None,
     -------
     new_signal : Signal
         New Signal object.
-    '''
-    new_time_data = signal.time_data.copy()
+    """
+    new_time_data = signal.time_data
     if channel is None:
         channels = range(signal.number_of_channels)
     else:
@@ -219,17 +219,52 @@ def _filter_on_signal(signal: Signal, sos, channel=None,
         channels = [int(i) for i in channel]
     for ch in channels:
         if zi is not None:
-            y, zi = \
+            y, zi[ch] = \
                 sig.sosfilt(
-                    sos, signal.time_data[:, ch], zi=zi)
+                    sos, signal.time_data[:, ch], zi=zi[ch])
         else:
             if zero_phase:
                 y = sig.sosfiltfilt(sos, signal.time_data[:, ch])
             else:
                 y = sig.sosfilt(sos, signal.time_data[:, ch])
         new_time_data[:, ch] = y
-    new_signal = Signal(None, new_time_data, signal.sampling_rate_hz)
+    new_signal = deepcopy(signal)
+    new_signal.time_data = new_time_data
     if zi is not None:
         return new_signal, zi
     else:
         return new_signal, None
+
+
+def _filterbank_on_signal(signal: Signal, filters, activate_zi: bool = False,
+                          mode: str = 'parallel', zero_phase: bool = False,
+                          same_sampling_rate: bool = True):
+    """Applies filter bank on a given signal
+    """
+    n_filt = len(filters)
+    if mode == 'parallel':
+        ss = []
+        for n in range(n_filt):
+            ss.append(
+                filters[n].filter_signal(
+                    signal, activate_zi=activate_zi, zero_phase=zero_phase))
+        out_sig = MultiBandSignal(
+            ss, same_sampling_rate=same_sampling_rate)
+    elif mode == 'sequential':
+        out_sig = deepcopy(signal)
+        for n in range(n_filt):
+            out_sig = \
+                filters[n].filter_signal(
+                    out_sig, activate_zi=activate_zi, zero_phase=zero_phase)
+    else:
+        new_time_data = \
+            np.zeros((signal.time_data.shape[0],
+                      signal.number_of_channels, n_filt))
+        for n in range(n_filt):
+            s = filters[n].filter_signal(
+                    signal, activate_zi=activate_zi, zero_phase=zero_phase)
+            new_time_data[:, :, n] = s.time_data
+        new_time_data = np.sum(new_time_data, axis=-1)
+        out_sig = deepcopy(signal)
+        out_sig.time_data = new_time_data
+    return out_sig

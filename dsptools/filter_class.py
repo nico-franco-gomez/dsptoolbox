@@ -1,6 +1,6 @@
-'''
+"""
 Contains Filter classes
-'''
+"""
 import os
 import pickle
 
@@ -8,21 +8,27 @@ from scipy import signal as sig
 from .signal_class import Signal
 from .backend._filter import (_biquad_coefficients, _impulse,
                               _group_delay_filter, _get_biquad_type,
-                              _filter_on_signal)
+                              _filter_on_signal,
+                              _filterbank_on_signal)
 from .backend._plots import _zp_plot
+from .backend._general_helpers import _get_normalized_spectrum
+from .generators import dirac
 from .plots import general_plot
 
 __all__ = ['Filter']
 
 
 class Filter():
+    """Class for creating and storing linear digital filters with all their
+    metadata.
+    """
+
     # ======== Constructor and initializers ===================================
     def __init__(self, filter_type: str = 'biquad',
                  filter_configuration: dict = None,
                  sampling_rate_hz: int = 48000):
-        '''
-        The Filter class contains all parameters and metadata needed for
-        filtering.
+        """The Filter class contains all parameters and metadata needed for
+        using a digital filter.
 
         Constructor
         -----------
@@ -79,8 +85,9 @@ class Filter():
         -------
         General: set_filter_parameters, get_filter_parameters, get_ir.
         Plots or prints: show_filter_parameters, plot_magnitude,
-            plot_group_delay, plot_phase, plot_zp
-        '''
+            plot_group_delay, plot_phase, plot_zp.
+        Filtering: filter_signal.
+        """
         self.sampling_rate_hz = sampling_rate_hz
         if filter_configuration is None:
             filter_configuration = \
@@ -89,18 +96,29 @@ class Filter():
         self.set_filter_parameters(filter_type, filter_configuration)
         self.initialize_zi()
 
-    def initialize_zi(self):
-        '''
-        Initializes zi for steady-state filtering
-        '''
-        self.zi = sig.sosfilt_zi(self.sos)
+    def initialize_zi(self, number_of_channels: int = 1):
+        """Initializes zi for steady-state filtering. The number of parallel
+        zi's can be defined externally.
+        """
+        self.zi = []
+        for n in range(number_of_channels):
+            self.zi.append(sig.sosfilt_zi(self.sos))
+
+    @property
+    def sampling_rate_hz(self):
+        return self._sampling_rate_hz
+
+    @sampling_rate_hz.setter
+    def sampling_rate_hz(self, new_sampling_rate_hz):
+        assert type(new_sampling_rate_hz) == int, \
+            'Sampling rate can only be an integer'
+        self._sampling_rate_hz = new_sampling_rate_hz
 
     # ======== Filtering ======================================================
-    def filter_signal(self, sig: Signal, channel=None,
-                      zi: bool = False, zero_phase: bool = None):
-        '''
-        Takes in a Signal object and filters selected channels. Exports a new
-        Signal object
+    def filter_signal(self, signal: Signal, channel=None,
+                      activate_zi: bool = False, zero_phase: bool = None):
+        """Takes in a Signal object and filters selected channels. Exports a
+        new Signal object.
 
         Parameters
         ----------
@@ -111,9 +129,8 @@ class Filter():
         channel : int or array-like, optional
             Channel or array of channels to be filtered. When `None`, all
             channels are filtered. Default: `None`.
-        zi : bool, optional
-            When `True`, the filter state values are updated after filtering.
-            Default: `False`.
+        activate_zi : int, optional
+            Gives the zi to update the filter values. Default: `False`.
         zero_phase : bool, optional
             Uses zero-phase filtering on signal. Be aware that the filter
             is doubled in this case. Default: `False`.
@@ -122,22 +139,26 @@ class Filter():
         -------
         new_signal : Signal
             New Signal object.
-        '''
-        assert not (zi and zero_phase), \
+        """
+        assert not (activate_zi and zero_phase), \
             'Filter initial and final values cannot be updated when ' +\
             'filtering with zero-phase'
-        if zi:
+        if activate_zi:
+            if len(self.zi) != signal.number_of_channels:
+                # warn('zi values of the filter have not been correctly ' +
+                #      'intialized. They have now been started')
+                self.initialize_zi(signal.number_of_channels)
             zi_old = self.zi
         else:
             zi_old = None
         new_signal, zi_new = \
             _filter_on_signal(
-                signal=sig,
+                signal=signal,
                 sos=self.sos,
                 channel=channel,
                 zi=zi_old,
                 zero_phase=zero_phase)
-        if zi:
+        if activate_zi:
             self.zi = zi_new
         return new_signal
 
@@ -209,32 +230,31 @@ class Filter():
 
     # ======== Getters ========================================================
     def get_filter_parameters(self):
-        '''
+        """Returns filter parameters.
+
         Returns
         -------
         info : dict
             Dictionary containing all filter parameters
-        '''
+        """
         return self.info
 
     def _get_metadata_string(self):
-        '''
-        Helper for creating a string containing all filter info.
-        '''
-        txt = f'''Filter – ID: {self.info['filter_id']}\n'''
+        """Helper for creating a string containing all filter info.
+        """
+        txt = f"""Filter – ID: {self.info['filter_id']}\n"""
         temp = ''
         for n in range(len(txt)):
             temp += '-'
         txt += (temp+'\n')
         for k in self.info.keys():
             txt += \
-                f'''{str(k).replace('_', ' ').
-                     capitalize()}: {self.info[k]}\n'''
+                f"""{str(k).replace('_', ' ').
+                     capitalize()}: {self.info[k]}\n"""
         return txt
 
     def get_ir(self, length_samples: int = 512):
-        '''
-        Gets an impulse response of the filter with given length.
+        """Gets an impulse response of the filter with given length.
 
         Parameters
         ----------
@@ -245,7 +265,7 @@ class Filter():
         -------
         ir_filt : np.ndarray
             Impulse response of the filter.
-        '''
+        """
         ir_filt = _impulse(length_samples)
         ir_filt = sig.sosfilt(sos=self.sos, x=ir_filt)
         ir_filt = Signal(
@@ -255,8 +275,7 @@ class Filter():
         return ir_filt
 
     def get_coefficients(self, mode='sos'):
-        '''
-        Returns the filter coefficients.
+        """Returns the filter coefficients.
 
         Parameters
         ----------
@@ -268,7 +287,7 @@ class Filter():
         -------
         coefficients : array-like
             Array with filter parameters.
-        '''
+        """
         if mode == 'sos':
             coefficients = self.sos
         elif mode == 'ba':
@@ -281,16 +300,14 @@ class Filter():
 
     # ======== Plots and prints ===============================================
     def show_filter_parameters(self):
-        '''
-        Prints all the filter parameters
-        '''
+        """Prints all the filter parameters
+        """
         print(self._get_metadata_string())
 
     def plot_magnitude(self, length_samples: int = 512, range_hz=[20, 20e3],
                        normalize: str = None, show_info_box: bool = True,
                        returns: bool = False):
-        '''
-        Plots magnitude spectrum.
+        """Plots magnitude spectrum.
         Change parameters of spectrum with set_spectrum_parameters.
 
         Parameters
@@ -312,7 +329,7 @@ class Filter():
         Returns
         -------
         figure and axis when `returns = True`.
-        '''
+        """
         ir = self.get_ir(length_samples=length_samples)
         fig, ax = ir.plot_magnitude(range_hz, normalize, 0,
                                     show_info_box=False, returns=True)
@@ -327,7 +344,7 @@ class Filter():
     def plot_group_delay(self, length_samples: int = 512,
                          range_hz=[20, 20e3], show_info_box: bool = False,
                          returns: bool = True):
-        '''
+        """
         Plots group delay of the filter. Different methods are used for
         FIR or IIR filters.
 
@@ -346,7 +363,7 @@ class Filter():
         Returns
         -------
         figure and axis when `returns = True`.
-        '''
+        """
         ba = sig.sos2tf(self.sos)
         # import numpy as np
         f, gd = \
@@ -375,8 +392,7 @@ class Filter():
     def plot_phase(self, length_samples: int = 512, range_hz=[20, 20e3],
                    unwrap: bool = False, show_info_box: bool = False,
                    returns: bool = False):
-        '''
-        Plots magnitude spectrum.
+        """Plots magnitude spectrum.
         Change parameters of spectrum with set_spectrum_parameters.
 
         Parameters
@@ -396,7 +412,7 @@ class Filter():
         Returns
         -------
         figure and axis when `returns = True`.
-        '''
+        """
         ir = self.get_ir(length_samples=length_samples)
         fig, ax = ir.plot_phase(range_hz, unwrap, returns=True)
         if show_info_box:
@@ -408,8 +424,7 @@ class Filter():
             return fig, ax
 
     def plot_zp(self, show_info_box: bool = False, returns: bool = False):
-        '''
-        Plots zeros and poles with the unit circle.
+        """Plots zeros and poles with the unit circle.
 
         Parameters
         ----------
@@ -421,7 +436,7 @@ class Filter():
         Returns
         -------
         figure and axis when `returns = True`.
-        '''
+        """
         z, p, k = sig.sos2zpk(self.sos)
         fig, ax = _zp_plot(z, p, returns=True)
         ax.text(0.75, 0.91, rf'$k={k:.1e}$', transform=ax.transAxes,
@@ -436,8 +451,7 @@ class Filter():
 
     # ======== Saving and export ==============================================
     def save_filter(self, path: str = 'filter'):
-        '''
-        Saves the Filter object as a pickle.
+        """Saves the Filter object as a pickle.
 
         Parameters
         ----------
@@ -445,7 +459,7 @@ class Filter():
             Path for the filter to be saved. Use only folder/folder/name
             (without format). Default: `'filter'`
             (local folder, object named filter).
-        '''
+        """
         if '.' in path.split(os.sep)[-1]:
             raise ValueError('Please introduce the saving path without format')
         path += '.pkl'
@@ -458,8 +472,7 @@ class FilterBank():
     # ======== Constructor and initializers ===================================
     def __init__(self, filters=None, same_sampling_rate: bool = True,
                  info: dict = None):
-        '''
-        FilterBank object saves multiple filters and some metadata.
+        """FilterBank object saves multiple filters and some metadata.
         It also allows for easy filtering with multiple filters.
         Since the digital filters that are supported are linear systems,
         the order in which they are saved and applied to a signal is not
@@ -482,7 +495,7 @@ class FilterBank():
         -------
         General: add_filter, remove_filter
         Prints: show_info
-        '''
+        """
         #
         if info is None:
             info = {}
@@ -506,9 +519,8 @@ class FilterBank():
         self.info = self.info | info
 
     def _generate_metadata(self):
-        '''
-        Generates the info dictionary with metadata about the FilterBank.
-        '''
+        """Generates the info dictionary with metadata about the FilterBank.
+        """
         self.info = {}
         self.info['number_of_filters'] = len(self.filters)
         self.info['same_sampling_rate'] = self.same_sampling_rate
@@ -519,10 +531,15 @@ class FilterBank():
             tuple(set([f.info['filter_type']
                        for f in self.filters]))
 
+    def initialize_zi(self, number_of_channels):
+        """Initiates the zi of the filters for the given number of channels.
+        """
+        for f in self.filters:
+            f.initialize_zi(number_of_channels)
+
     # ======== Add and remove =================================================
     def add_filter(self, filt: Filter, index: int = -1):
-        '''
-        Adds a new filter at the end of the filters dictionary.
+        """Adds a new filter at the end of the filters dictionary.
 
         Parameters
         ----------
@@ -530,7 +547,7 @@ class FilterBank():
             Filter to be added to the FilterBank.
         index : int, optional
             Index at which to insert the new Filter. Default: -1.
-        '''
+        """
         if not self.filters:
             self.sampling_rate_hz = filt.sampling_rate_hz
             self.filters.append(filt)
@@ -545,8 +562,7 @@ class FilterBank():
         self._generate_metadata()
 
     def remove_filter(self, index: int = -1, return_filter: bool = False):
-        '''
-        Removes a filter from the filter bank.
+        """Removes a filter from the filter bank.
 
         Parameters
         ----------
@@ -556,7 +572,7 @@ class FilterBank():
             Default: -1.
         return_filter : bool, optional
             When `True`, the erased filter is returned. Default: `False`.
-        '''
+        """
         assert self.filters, 'There are no filters to remove'
         if index == -1:
             index = len(self.filters) - 1
@@ -567,10 +583,69 @@ class FilterBank():
         if return_filter:
             return f
 
-    # ======== Prints =========================================================
+    # ======== Filtering ======================================================
+    def filter_signal(self, signal: Signal, mode: str = 'parallel',
+                      activate_zi: bool = False, zero_phase: bool = False):
+        """Applies the filter bank to a signal and returns a multiband signal.
+        `'parallel'`: returns a MultiBandSignal object where each band is
+            the output of each filter.
+        `'sequential'`: applies each filter to the given Signal in a sequential
+            manner and returns output with same dimension.
+        `'summed'`: applies every filter as parallel and then summs the outputs
+            returning same dimensional output as input.
+
+        Parameters
+        ----------
+        signal : Signal
+            Signal to be filtered.
+        mode : str, optional
+            Way to apply filter bank to the signal. Supported modes are:
+            `'parallel'`, `'sequential'`, `'summed'`. Default: `'parallel'`.
+        activate_zi : bool, optional
+            Takes in the filter initial values and updates them for
+            streaming purposes. Default: `False`.
+        zero_phase : bool, optional
+            Activates zero_phase filtering for the filter bank. It cannot be
+            used at the same time with `zi=True`. Default: `False`.
+
+        Returns
+        -------
+        new_sig : `'sequential'` or `'summed'` -> Signal.
+                  `'parallel'` -> MultiBandSignal
+            New signal after filtering.
+        """
+        mode = mode.lower()
+        assert mode in ('parallel', 'sequential', 'summed'), \
+            f'{mode} is not a valid mode. Use parallel, sequential or summed'
+        if mode in ('sequential', 'summed'):
+            assert self.same_sampling_rate, \
+                'Multirate filtering is not valid for sequential or summed ' +\
+                'filtering'
+        if self.same_sampling_rate:
+            assert signal.sampling_rate_hz == self.sampling_rate_hz, \
+                'Sampling rates do not match'
+        if zero_phase:
+            assert not activate_zi, \
+                'Zero-phase filtering and zi cannot be used at ' +\
+                'the same time'
+        if activate_zi:
+            if len(self.filters[0].zi) != signal.number_of_channels:
+                # warn('zi values of the filter have not been correctly ' +
+                #      'intialized. They have now been started')
+                self.initialize_zi(signal.number_of_channels)
+
+        new_sig = _filterbank_on_signal(
+            signal, self.filters,
+            mode=mode,
+            activate_zi=activate_zi,
+            zero_phase=zero_phase,
+            same_sampling_rate=self.same_sampling_rate)
+
+        return new_sig
+
+    # ======== Prints and plots ===============================================
     def show_info(self, show_filter_info: bool = True):
-        '''
-        Show information about the filter bank.
+        """Show information about the filter bank.
 
         Parameters
         ----------
@@ -578,13 +653,13 @@ class FilterBank():
             When `True`, a longer message is printed with all available
             information regarding each filter in the filter bank.
             Default: `True`.
-        '''
+        """
         print()
         txt = ''
         for k in self.info:
             txt += \
-                f''' | {str(k).replace('_', ' ').
-                        capitalize()}: {self.info[k]}'''
+                f""" | {str(k).replace('_', ' ').
+                        capitalize()}: {self.info[k]}"""
         txt = 'Filter Bank:' + txt
         print(txt)
         if show_filter_info:
@@ -594,15 +669,75 @@ class FilterBank():
                 txt = f'Filter {ind}:'
                 for kf in f1.info:
                     txt += \
-                        f''' | {str(kf).replace('_', ' ').
-                                capitalize()}: {f1.info[kf]}'''
+                        f""" | {str(kf).replace('_', ' ').
+                                capitalize()}: {f1.info[kf]}"""
                 print(txt)
         print()
 
+    def plot_magnitude(self, mode: str = 'parallel', range_hz=[20, 20e3],
+                       test_zi: bool = False, returns: bool = False):
+        """Plots the magnitude response of each filter.
+
+        Parameters
+        ----------
+        mode : str, optional
+            Type of plot. `'parallel'` plots every filter's frequency response,
+            `'sequential'` plots the frequency response after having filtered
+            one impulse with every filter in the FilterBank. `'summed'`
+            sums up every frequency response. Default: `'parallel'`.
+        range_hz : array-like, optional
+            Range of Hz to plot. Default: [20, 20e3].
+        test_zi : bool, optional
+            Uses the zi's of each filter to test the FilterBank's output.
+            Default: `False`.
+        returns : bool, optional
+            When `True`, the figure and axis are returned. Default: `False`.
+
+        Returns
+        -------
+        fig, ax
+            Returned only when `returns=True`.
+        """
+        import numpy as np
+        d = dirac(
+            length_samples=1024, number_of_channels=1, sampling_rate_hz=48000)
+        if mode == 'parallel':
+            bs = self.filter_signal(d, mode='parallel', activate_zi=test_zi)
+            specs = []
+            f = bs.bands[0].get_spectrum()[0]
+            for b in bs.bands:
+                b.set_spectrum_parameters(method='standard')
+                f, sp = \
+                    _get_normalized_spectrum(
+                        f, np.squeeze(b.get_spectrum()[1]),
+                        f_range_hz=range_hz,
+                        normalize=None)
+                specs.append(np.squeeze(sp))
+            specs = np.array(specs).T
+            fig, ax = general_plot(f, specs, range_hz, ylabel='Magnitude / dB',
+                                   returns=True,
+                                   labels=[f'Filter {h}'
+                                           for h in range(bs.number_of_bands)])
+        elif mode == 'sequential':
+            bs = self.filter_signal(d, mode='sequential', activate_zi=test_zi)
+            bs.set_spectrum_parameters(method='standard')
+            f, sp = bs.get_spectrum()
+            f, sp = _get_normalized_spectrum(
+                f, np.squeeze(sp),
+                f_range_hz=range_hz,
+                normalize=None
+            )
+            fig, ax = general_plot(
+                f, sp, range_hz, ylabel='Magnitude / dB',
+                returns=True,
+                labels=[f'Sequential - Channel {n}'
+                        for n in range(bs.number_of_channels)])
+        if returns:
+            return fig, ax
+
     # ======== Saving and export ==============================================
     def save_filterbank(self, path: str = 'filterbank'):
-        '''
-        Saves the FilterBank object as a pickle.
+        """Saves the FilterBank object as a pickle.
 
         Parameters
         ----------
@@ -610,7 +745,7 @@ class FilterBank():
             Path for the filterbank to be saved. Use only folder/folder/name
             (without format). Default: `'filterbank'`
             (local folder, object named filterbank).
-        '''
+        """
         if '.' in path.split(os.sep)[-1]:
             raise ValueError('Please introduce the saving path without format')
         path += '.pkl'

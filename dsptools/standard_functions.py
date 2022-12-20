@@ -1,6 +1,6 @@
-'''
+"""
 Standard functions in DSP processes
-'''
+"""
 import numpy as np
 from .signal_class import Signal
 from .backend._standard import (_latency,
@@ -12,23 +12,22 @@ from copy import deepcopy
 
 
 def latency(in1: Signal, in2: Signal = None):
-    '''
-    Computes latency between two signals using the correlation method.
+    """Computes latency between two signals using the correlation method.
     If there is no second signal, the latency between the first and the other
-    channels of the first signal is computed.
+    channels of the is computed.
 
     Parameters
     ----------
     in1 : Signal
-        First signal
+        First signal.
     in2 : Signal, optional
-        Second signal. Default: None
+        Second signal. Default: None.
 
     Returns
     -------
     latency_per_channel_samples : np.ndarray
         Array with latency between two signals in samples per channel
-    '''
+    """
     if in2 is not None:
         assert in1.number_of_channels == in2.number_of_channels, \
             'Channel number does not match'
@@ -43,13 +42,12 @@ def latency(in1: Signal, in2: Signal = None):
 
 
 def group_delay(signal: Signal, method='direct'):
-    '''
-    Computation of group delay
+    """Computation of group delay.
 
     Parameters
     ----------
     signal : Signal
-        Signal for which to compute group delay
+        Signal for which to compute group delay.
     method : str, optional
         `'direct'` uses np.gradient with unwrapped phase. `'matlab'` uses
         this implementation:
@@ -58,10 +56,10 @@ def group_delay(signal: Signal, method='direct'):
     Returns
     -------
     freqs : np.ndarray
-        Frequency vector in Hz
+        Frequency vector in Hz.
     group_delays : np.ndarray
-        Matrix containing group delays in seconds
-    '''
+        Matrix containing group delays in seconds.
+    """
     assert method in ('direct', 'matlab'), \
         f'{method} is not valid. Use direct or matlab'
 
@@ -88,8 +86,7 @@ def group_delay(signal: Signal, method='direct'):
 
 
 def minimal_phase(signal: Signal):
-    '''
-    Gives back a matrix containing the minimal phase for every channel.
+    """Gives back a matrix containing the minimal phase for every channel.
 
     Parameters
     ----------
@@ -102,7 +99,7 @@ def minimal_phase(signal: Signal):
         Frequency vector.
     min_phases : np.ndarray
         Minimal phases.
-    '''
+    """
     assert signal.signal_type in ('rir', 'ir', 'h1', 'h2', 'h3'), \
         'Signal type must be rir or ir'
     signal.set_spectrum_parameters('standard')
@@ -115,7 +112,7 @@ def minimal_phase(signal: Signal):
 
 
 def minimal_group_delay(signal: Signal):
-    '''
+    """
     Computes minimal group delay
 
     Parameters
@@ -129,7 +126,7 @@ def minimal_group_delay(signal: Signal):
         Frequency vector.
     min_gd : np.ndarray
         Minimal group delays in seconds.
-    '''
+    """
     f, min_phases = minimal_phase(signal)
     min_gd = np.zeros_like(min_phases)
     for n in range(signal.number_of_channels):
@@ -138,8 +135,7 @@ def minimal_group_delay(signal: Signal):
 
 
 def excess_group_delay(signal: Signal):
-    '''
-    Computes excess group delay.
+    """Computes excess group delay.
 
     Parameters
     ----------
@@ -152,7 +148,7 @@ def excess_group_delay(signal: Signal):
         Frequency vector.
     ex_gd : np.ndarray
         Excess group delays in seconds.
-    '''
+    """
     f, min_gd = minimal_group_delay(signal)
     f, gd = group_delay(signal)
     ex_gd = gd - min_gd
@@ -161,8 +157,7 @@ def excess_group_delay(signal: Signal):
 
 def pad_trim(signal: Signal, desired_length_samples: int,
              in_the_end: bool = True):
-    '''
-    Returns a copy of the signal with padded or trimmed time data.
+    """Returns a copy of the signal with padded or trimmed time data.
 
     Parameters
     ----------
@@ -178,7 +173,7 @@ def pad_trim(signal: Signal, desired_length_samples: int,
     -------
     new_signal : Signal
         New padded signal.
-    '''
+    """
     new_time_data = \
         np.zeros((desired_length_samples, signal.number_of_channels))
 
@@ -190,5 +185,5 @@ def pad_trim(signal: Signal, desired_length_samples: int,
                 in_the_end=in_the_end)
 
     new_sig = deepcopy(signal)
-    new_sig.set_time_data(new_time_data)
+    new_sig.time_data = new_time_data
     return new_sig

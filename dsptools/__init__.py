@@ -12,6 +12,7 @@ from . import room_acoustics
 from . import plots
 from . import generators
 from . import measure
+from . import filterbanks
 from . import special
 
 __all__ = ['Signal',
@@ -29,5 +30,8 @@ __all__ = ['Signal',
            'plots',
            'generators',
            'measure',
+           'filterbanks',
            'special',
            'experimental']
+
+__version__ = "0.1.0"

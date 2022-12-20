@@ -1,15 +1,14 @@
-'''
+"""
 Here are wrappers for streams with sounddevice. This is useful for
 measurements.
-'''
+"""
 import sounddevice as sd
 from .signal_class import Signal
 from .backend._general_helpers import _normalize
 
 
 def print_device_info(device_number: int = None):
-    '''
-    Prints available audio devices or information about a certain device
+    """Prints available audio devices or information about a certain device
     when the device number is given.
 
     Parameters
@@ -22,7 +21,7 @@ def print_device_info(device_number: int = None):
     -------
     d : dict
         Only when `device_number is not None`.
-    '''
+    """
     if device_number is None:
         print(sd.query_devices())
     else:
@@ -32,8 +31,7 @@ def print_device_info(device_number: int = None):
 
 
 def set_device(device_number: int = None):
-    '''
-    Takes in a device number to set it as the default. If `None` is passed,
+    """Takes in a device number to set it as the default. If `None` is passed,
     the available devices are first shown and then the user is asked for
     input to set the device.
 
@@ -41,7 +39,7 @@ def set_device(device_number: int = None):
     ----------
     device_number : int, optional
         Sets the device as default. Use `None` to ignore. Default: `None`.
-    '''
+    """
     if device_number is None:
         txt = 'List of available devices'
         print(txt+'\n'+'-'*len(txt))
@@ -51,16 +49,15 @@ def set_device(device_number: int = None):
             'Which device should be set as default? Between ' +
             f'0 and {len(sd.query_devices())-1}: '))
     d = sd.query_devices(device_number)['name']
-    print(f'''{d} will be used!''')
+    print(f"""{d} will be used!""")
     sd.default.device = d
 
 
 def play_and_record(signal: Signal, duration_seconds: float = None,
                     normalized_dbfs: float = -6, device: str = None,
                     play_channels=None, rec_channels=[1]):
-    '''
-    Play and record using some available device. Note that the channel numbers
-    start here with 1.
+    """Play and record using some available device. Note that the channel
+    numbers start here with 1.
 
     Parameters
     ----------
@@ -88,7 +85,7 @@ def play_and_record(signal: Signal, duration_seconds: float = None,
     -------
     rec_sig : Signal
         Recorded signal.
-    '''
+    """
     # Asserts
     if play_channels is None:
         play_channels = list(range(1, signal.number_of_channels+1))
@@ -139,8 +136,7 @@ def play_and_record(signal: Signal, duration_seconds: float = None,
 
 def record(duration_seconds: float = 5, sampling_rate_hz: int = 48000,
            device: str = None, rec_channels=[1]):
-    '''
-    Record using some available device. Note that the channel numbers
+    """Record using some available device. Note that the channel numbers
     start here with 1.
 
     Parameters
@@ -159,7 +155,7 @@ def record(duration_seconds: float = 5, sampling_rate_hz: int = 48000,
     -------
     rec_sig : Signal
         Recorded signal.
-    '''
+    """
     # Asserts
     if type(rec_channels) == int:
         rec_channels = [rec_channels]
@@ -185,8 +181,7 @@ def record(duration_seconds: float = 5, sampling_rate_hz: int = 48000,
 
 def play(signal: Signal, duration_seconds: float = None,
          normalized_dbfs: float = -6, device: str = None, play_channels=None):
-    '''
-    Play some available device. Note that the channel numbers
+    """Play some available device. Note that the channel numbers
     start here with 1.
 
     Parameters
@@ -207,7 +202,7 @@ def play(signal: Signal, duration_seconds: float = None,
         Output channels that will play the signal. The number of channels
         should match the number of channels in signal. When `None`, the
         channels are automatically set. Default: `None`.
-    '''
+    """
     # Asserts and preprocessing
     if play_channels is None:
         play_channels = list(range(1, signal.number_of_channels+1))

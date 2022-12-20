@@ -1,6 +1,6 @@
-'''
+"""
 High-level methods for room acoustics functions
-'''
+"""
 import numpy as np
 from scipy.signal import find_peaks, convolve
 from .signal_class import Signal
@@ -15,8 +15,7 @@ __all__ = ['reverb_time', 'find_modes', 'convolve_rir_on_signal']
 
 
 def reverb_time(signal: Signal, mode: str = 'T20'):
-    '''
-    Computes reverberation time. T20, T30, T60 and EDT.
+    """Computes reverberation time. T20, T30, T60 and EDT.
 
     Parameters
     ----------
@@ -31,7 +30,13 @@ def reverb_time(signal: Signal, mode: str = 'T20'):
     -------
     reverberation_times : np.ndarray
         Reverberation times for each channel.
-    '''
+
+    References
+    ----------
+    - DIN 3382
+    - ISO 3382-1:2009-10, Acoustics - Measurement of the reverberation time of
+    rooms with reference to other acoustical parameters. pp. 22
+    """
     assert signal.signal_type in ('ir', 'rir'), f'{signal.signal_type} is ' +\
         'not a valid signal type for reverb_time. It should be ir or rir'
     valid_modes = ('T20', 'T30', 'T60', 'EDT')
@@ -52,8 +57,7 @@ def reverb_time(signal: Signal, mode: str = 'T20'):
 
 def find_modes(signal: Signal, f_range_hz=[50, 200],
                proximity_effect=False, dist_hz=5):
-    '''
-    This metod is NOT validated. It might not be sufficient to find all
+    """This metod is NOT validated. It might not be sufficient to find all
     modes in the given range.
 
     Computes the room modes of a set of RIR using different criteria:
@@ -81,7 +85,11 @@ def find_modes(signal: Signal, f_range_hz=[50, 200],
     -------
     f_modes: np.ndarray
         Vector containing frequencies where modes have been localized.
-    '''
+
+    References
+    ----------
+    http://papers.vibetech.com/Paper17-CMIF.pdf
+    """
     assert len(f_range_hz) == 2, 'Range of frequencies must have a ' +\
         'minimum and a maximum value'
 
@@ -153,8 +161,7 @@ def find_modes(signal: Signal, f_range_hz=[50, 200],
 def convolve_rir_on_signal(signal: Signal, rir: Signal,
                            keep_peak_level: bool = True,
                            keep_length: bool = True):
-    '''
-    Applies an RIR to a given signal. The RIR should also be a signal object
+    """Applies an RIR to a given signal. The RIR should also be a signal object
     with a single channel containing the RIR time data. Signal type should
     also be set to IR or RIR. By default, all channels are convolved with
     the RIR.
@@ -176,7 +183,7 @@ def convolve_rir_on_signal(signal: Signal, rir: Signal,
     -------
     new_sig : Signal
         Convolved signal with RIR.
-    '''
+    """
     assert rir.signal_type in ('rir', 'ir'), \
         f'{rir.signal_type} is not a valid signal type. Set it to rir or ir.'
     assert signal.time_data.shape[0] > rir.time_data.shape[0], \

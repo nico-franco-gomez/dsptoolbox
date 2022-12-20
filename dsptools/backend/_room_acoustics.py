@@ -1,10 +1,17 @@
-'''
+"""
 Low-level methods for room acoustics
-'''
+"""
 import numpy as np
 
 
 def _reverb(h, fs_hz, mode):
+    """Computes reverberation time of signal.
+
+    References
+    ----------
+    ISO 3382-1:2009-10, Acoustics - Measurement of the reverberation time of
+    rooms with reference to other acoustical parameters. pp. 22
+    """
     # Energy decay curve
     energy_curve = h**2
     epsilon = 1e-20
@@ -41,7 +48,7 @@ def _find_ir_start(ir, threshold_db=-20):
 
 
 def _complex_mode_identification(spectra: np.ndarray, n_functions: int = 1):
-    '''Complex transfer matrix and CMIF from:
+    """Complex transfer matrix and CMIF from:
     http://papers.vibetech.com/Paper17-CMIF.pdf
 
     Parameters
@@ -55,7 +62,11 @@ def _complex_mode_identification(spectra: np.ndarray, n_functions: int = 1):
     -------
     cmif : np.ndarray
         Complex mode identificator function (matrix).
-    '''
+
+    References
+    ----------
+    http://papers.vibetech.com/Paper17-CMIF.pdf
+    """
     assert n_functions <= spectra.shape[1], f'{n_functions} is too many ' +\
         f'functions for spectra of shape {spectra.shape}'
 
@@ -73,8 +84,7 @@ def _complex_mode_identification(spectra: np.ndarray, n_functions: int = 1):
 
 
 def _sum_magnitude_spectra(magnitudes: np.ndarray):
-    '''
-    Sum of all magnitude spectra
+    """Sum of all magnitude spectra
 
     Parameters
     ----------
@@ -85,7 +95,7 @@ def _sum_magnitude_spectra(magnitudes: np.ndarray):
     -------
     summed : np.ndarray
         Sum of magnitude spectra.
-    '''
+    """
     if np.iscomplexobj(magnitudes):
         magnitudes = np.abs(magnitudes)
     summed = np.sum(magnitudes, axis=1)

@@ -1,6 +1,6 @@
-'''
-Usual methods used for transfer functions
-'''
+"""
+Methods used for acquiring and windowing transfer functions
+"""
 import numpy as np
 from .signal_class import Signal
 from .backend._general_helpers import (_find_frequencies_above_threshold)
@@ -14,8 +14,7 @@ def spectral_deconvolve(num: Signal, denum: Signal, multichannel=False,
                         mode='regularized', start_stop_hz=None,
                         threshold_db=-30, padding: bool = False,
                         keep_original_length: bool = False):
-    '''
-    Deconvolution by spectral division of two signals.
+    """Deconvolution by spectral division of two signals.
 
     Parameters
     ----------
@@ -50,7 +49,7 @@ def spectral_deconvolve(num: Signal, denum: Signal, multichannel=False,
     -------
     new_sig : Signal
         Deconvolved signal.
-    '''
+    """
     if multichannel:
         assert num.time_data.shape[0] == denum.time_data.shape[0], \
             'Lengths do not match for spectral deconvolution'
@@ -114,8 +113,7 @@ def spectral_deconvolve(num: Signal, denum: Signal, multichannel=False,
 
 def window_ir(signal: Signal, constant_percentage=0.75, exp2_trim: int = 13,
               window_type='hann', at_start: bool = True):
-    '''
-    Windows an IR with trimming and selection of constant valued length
+    """Windows an IR with trimming and selection of constant valued length.
 
     Parameters
     ----------
@@ -142,7 +140,7 @@ def window_ir(signal: Signal, constant_percentage=0.75, exp2_trim: int = 13,
         IR with applied window.
     window: np.ndarray
         Window used for IR.
-    '''
+    """
     if exp2_trim is not None:
         total_length = int(2**exp2_trim)
     else:
@@ -168,11 +166,10 @@ def window_ir(signal: Signal, constant_percentage=0.75, exp2_trim: int = 13,
 def compute_transfer_function(output: Signal, input: Signal, mode='h2',
                               multichannel: bool = False,
                               window_length_samples: int = 1024, **kwargs):
-    '''
-    Gets transfer function H1, H2 or H3.
-    H1: for noise in the output signal
-    H2: for noise in the input signal
-    H3: for noise in both signals
+    """Gets transfer function H1, H2 or H3.
+    H1: for noise in the output signal. `Gxy/Gxx`.
+    H2: for noise in the input signal. `Gyy/Gyx`.
+    H3: for noise in both signals. `G_xy / abs(G_xy) * (G_yy/G_xx)**0.5`.
 
     Parameters
     ----------
@@ -198,7 +195,7 @@ def compute_transfer_function(output: Signal, input: Signal, mode='h2',
     tf : Signal
         Transfer functions. Coherences are also computed and saved in the
         Signal object.
-    '''
+    """
     mode = mode.casefold()
     assert mode in \
         ('h1'.casefold(), 'h2'.casefold(), 'h3'.casefold()), \
@@ -259,7 +256,7 @@ def compute_transfer_function(output: Signal, input: Signal, mode='h2',
             H_time[:, n] = np.fft.irfft(G_yy / G_yx)
         elif mode == 'h3'.casefold():
             H_time[:, n] = np.fft.irfft(G_xy / np.abs(G_xy) * (G_yy/G_xx)**0.5)
-        coherence[:, n] = np.abs(G_xy)**2 / (G_xx * G_yy)
+        coherence[:, n] = np.abs(G_xy)**2 / G_xx / G_yy
     tf = Signal(None, H_time, output.sampling_rate_hz,
                 signal_type=mode.lower())
     tf.set_coherence(coherence)

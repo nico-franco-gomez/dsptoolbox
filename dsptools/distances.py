@@ -1,6 +1,6 @@
-'''
+"""
 Distance measures between signals
-'''
+"""
 import numpy as np
 from .signal_class import Signal
 from .backend._general_helpers import _find_nearest
@@ -13,8 +13,7 @@ __all__ = ['log_spectral', 'itakura_saito']
 
 def log_spectral(insig1: Signal, insig2: Signal, method: str = 'welch',
                  f_range_hz=[20, 20000], **kwargs):
-    '''
-    Computes log spectral distance between two signals.
+    """Computes log spectral distance between two signals.
 
     Parameters
     ----------
@@ -25,7 +24,7 @@ def log_spectral(insig1: Signal, insig2: Signal, method: str = 'welch',
     f_range_hz : array, optional
         Range of frequencies in which to compute the distance. When `None`,
         it is computed in all frequencies. Default: [20, 20000]
-    '''
+    """
     assert insig1.sampling_rate_hz == insig2.sampling_rate_hz,\
         'Sampling rates do not match'
     assert insig1.number_of_channels == insig2.number_of_channels,\
@@ -42,8 +41,6 @@ def log_spectral(insig1: Signal, insig2: Signal, method: str = 'welch',
             'frequency must be smaller than the nyquist frequency'
         assert not any(f_range_hz < 0), 'Frequencies in range must be ' +\
             'positive'
-    # spec1 = np.abs(insig1.get_spectrum()['spectrum'])**2
-    # spec2 = np.abs(insig2.get_spectrum()['spectrum'])**2
     insig1.set_spectrum_parameters(method=method, **kwargs)
     insig2.set_spectrum_parameters(method=method, **kwargs)
     f, spec1 = insig1.get_spectrum()
@@ -68,19 +65,19 @@ def log_spectral(insig1: Signal, insig2: Signal, method: str = 'welch',
 
 def itakura_saito(insig1: Signal, insig2: Signal, method: str = 'welch',
                   f_range_hz=[20, 20000], **kwargs):
-    '''
-    Computes log spectral distance between two signals.
+    """Computes itakura-saito measure between two signals. Beware that this
+    measure is not symmetric (x, y) != (y, x).
 
     Parameters
     ----------
     insig1 : Signal
-        Signal 1
+        Signal 1.
     insig2 : Signal
-        Signal 2
+        Signal 2.
     f_range_hz : array, optional
         Range of frequencies in which to compute the distance. When `None`,
-        it is computed in all frequencies. Default: [20, 20000]
-    '''
+        it is computed in all frequencies. Default: [20, 20000].
+    """
     assert insig1.sampling_rate_hz == insig2.sampling_rate_hz,\
         'Sampling rates do not match'
     assert insig1.number_of_channels == insig2.number_of_channels,\

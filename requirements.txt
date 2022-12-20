@@ -1,11 +1,14 @@
 # use:
 scipy
 numpy
-matplotlib
-seaborn
 soundfile
 sounddevice
 
+# plotting:
+matplotlib
+seaborn
+
 # dev:
-librosa
-flake8
+# librosa  # validation
+# pyfar  # validation
+# flake8  # linter

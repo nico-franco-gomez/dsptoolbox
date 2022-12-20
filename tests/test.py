@@ -190,8 +190,8 @@ def stft():
     raw = dsp.Signal('/Users/neumanndev/Library/CloudStorage/' +
                      'OneDrive-SennheiserelectronicGmbH&Co.KG/PPONS ' +
                      'OneDrive/MORE/Holzmarkt/chirp_10cm/raw_chirp.wav')
-    raw.set_stft_parameters(window_length_samples=2048)
-    t, f, stft = raw.get_stft()
+    raw.set_spectrogram_parameters(window_length_samples=2048)
+    t, f, stft = raw.get_spectrogram()
     D = librosa.stft(raw.time_data.squeeze(), center=False)
     # exit()
     plt.subplot(121)
@@ -205,7 +205,7 @@ def stft():
                vmin=np.max(D_abs)-100, vmax=np.max(D_abs)+10)
     plt.colorbar()
 
-    raw.plot_stft()
+    raw.plot_spectrogram()
     dsp.plots.show()
 
 
@@ -301,10 +301,16 @@ def new_transfer_functions():
                      'OneDrive-SennheiserelectronicGmbH&Co.KG/PPONS ' +
                      'OneDrive/MORE/Holzmarkt/chirp_10cm/raw_chirp.wav')
     tf = dsp.transfer_functions.compute_transfer_function(
-        recorded_multi, raw, multichannel=True, mode='h3')
-    # tf.plot_magnitude()
+        recorded_multi, raw, multichannel=True, mode='h2')
+    # tf.plot_magnitude(normalize=None)
     tf.plot_coherence()
-    # tf.plot_phase()
+    from scipy.signal import coherence
+    import matplotlib.pyplot as plt
+    # Trying
+    x = raw.time_data[:, 0]
+    y = recorded_multi.time_data[:, 1]
+    freq, coh = coherence(x, y, raw.sampling_rate_hz, nperseg=1024)
+    plt.plot(freq, coh)
     dsp.plots.show()
 
 
@@ -367,7 +373,7 @@ def generators():
     # wno.plot_magnitude(normalize=None)
 
     # Chirps
-    wno = dsp.generators.chirp(type_of_chirp='log', length_seconds=5,
+    wno = dsp.generators.chirp(type_of_chirp='lin', length_seconds=5,
                                fade='log',
                                padding_end_seconds=2, number_of_channels=1,
                                peak_level_dbfs=-20, range_hz=[1, 24e3])
@@ -387,7 +393,7 @@ def recording():
 
     sleep(3)
 
-    dsp.measure.set_device(2)
+    dsp.measure.set_device()
     chirp = dsp.generators.chirp(padding_end_seconds=2)
     s2 = dsp.measure.play_and_record(chirp)
     tf = dsp.transfer_functions.spectral_deconvolve(s2, chirp)
@@ -428,15 +434,12 @@ def convolve_rir_signal():
 def cepstrum():
     import dsptools as dsp
     import matplotlib.pyplot as plt
-    # import scipy.signal as sig
     speech = dsp.Signal('/Users/neumanndev/Documents/Others/ML/Datasets/' +
                         'VCTK/wav48_silence_trimmed/p225/p225_002_mic1.flac')
     c = dsp.special.cepstrum(speech, mode='power')
-
-    plt.semilogy(c)
-    plt.show()
+    plt.plot(c)
     # dsp.plots.general_plot(speech.get_time_vector(), c, log=False)
-    # dsp.plots.show()
+    dsp.plots.show()
 
 
 if __name__ == '__main__':
@@ -456,14 +459,14 @@ if __name__ == '__main__':
     # spectrogram_plot()
     # multiband()
     # save_objects()
-    generators()
+    # generators()
     # recording()
     # swapping_channels()
     # convolve_rir_signal()
 
     # Weird results - needs validation
-    # new_transfer_functions()
-    # cepstrum()
+    # new_transfer_functions()  # -- coherence function from scipy (not quite)
+    cepstrum()  # -- scipy.signal.complex_cepstrum, real_cepstrum
 
     # Not working so far
     # smoothing()

@@ -1,12 +1,14 @@
-'''
+"""
 Backend for standard functions
-'''
+"""
 import numpy as np
 from scipy.signal import correlate, check_COLA, windows, hilbert
 from ._general_helpers import _pad_trim, _compute_number_frames
 
 
 def _latency(in1: np.ndarray, in2: np.ndarray):
+    """Computes the latency between two functions using the correlation method.
+    """
     if len(in1.shape) < 2:
         in1 = in1[..., None]
     if len(in2.shape) < 2:
@@ -23,8 +25,7 @@ def _welch(x, y, fs_hz, window_type: str = 'hann',
            window_length_samples: int = 1024, overlap_percent=50,
            detrend: bool = True, average: str = 'mean',
            scaling: str = 'power'):
-    '''
-    Cross spectral density computation with Welch's method
+    """Cross spectral density computation with Welch's method.
 
     Parameters
     ----------
@@ -55,7 +56,7 @@ def _welch(x, y, fs_hz, window_type: str = 'hann',
     -------
     csd : np.ndarray
         Cross spectral density vector. Complex-valued if x and y are different.
-    '''
+    """
     if type(x) != np.ndarray:
         x = np.array(x).squeeze()
     if type(y) != np.ndarray:
@@ -110,7 +111,7 @@ def _welch(x, y, fs_hz, window_type: str = 'hann',
         # Spectra
         sp_x = np.fft.rfft(time_x)
         sp_y = np.fft.rfft(time_y)
-        m = (sp_x.conjugate() * sp_y)
+        m = np.conjugate(sp_x) * sp_y
         magnitude[:, n] = np.abs(m)
         phase[:, n] = np.unwrap(np.angle(m))
         start += step
@@ -143,9 +144,7 @@ def _welch(x, y, fs_hz, window_type: str = 'hann',
 
 
 def _group_delay_direct(phase: np.ndarray, delta_f: float = 1):
-    '''
-    Computes group delay.
-    https://www.dsprelated.com/freebooks/filters/Phase_Group_Delay.html
+    """Computes group delay by differentiation of the unwrapped phase.
 
     Parameters
     ----------
@@ -160,7 +159,7 @@ def _group_delay_direct(phase: np.ndarray, delta_f: float = 1):
     gd : np.ndarray
         Group delay vector either in s or in samples if no
         sampling rate is given
-    '''
+    """
     if np.iscomplexobj(phase):
         phase = np.angle(phase)
     if delta_f != 1:
@@ -171,8 +170,7 @@ def _group_delay_direct(phase: np.ndarray, delta_f: float = 1):
 
 
 def _minimal_phase(magnitude: np.ndarray, unwrapped: bool = True):
-    '''
-    Computes minimal phase from magnitude spectrum.
+    """Computes minimal phase from magnitude spectrum.
 
     Parameters
     ----------
@@ -186,7 +184,7 @@ def _minimal_phase(magnitude: np.ndarray, unwrapped: bool = True):
     -------
     minimal_phase : np.ndarray
         Minimal phase of the system.
-    '''
+    """
     if np.iscomplexobj(magnitude):
         magnitude = np.abs(magnitude)
     minimal_phase = -np.imag(hilbert(np.log(magnitude)))
@@ -198,8 +196,7 @@ def _minimal_phase(magnitude: np.ndarray, unwrapped: bool = True):
 def _stft(x: np.ndarray, fs_hz: int, window_length_samples: int = 2048,
           window_type: str = 'hann', overlap_percent=50,
           detrend: bool = True, padding: bool = True, scaling: bool = False):
-    '''
-    Computes the STFT of a signal. Output matrix has (freqs_hz, seconds_s).
+    """Computes the STFT of a signal. Output matrix has (freqs_hz, seconds_s).
 
     Parameters
     ----------
@@ -231,7 +228,7 @@ def _stft(x: np.ndarray, fs_hz: int, window_length_samples: int = 2048,
         Frequency vector.
     stft : np.ndarray
         STFT matrix.
-    '''
+    """
     valid_window_sizes = np.array([int(2**x) for x in range(7, 17)])
     assert window_length_samples in valid_window_sizes, \
         'Window length should be a power of 2 between [128, 65536] or ' +\
@@ -290,8 +287,7 @@ def _csm(time_data: np.ndarray, sampling_rate_hz: int,
          window_length_samples: int = 1024, window_type: str = 'hann',
          overlap_percent: int = 50, detrend: bool = True,
          average: str = 'mean', scaling: str = 'power'):
-    '''
-    Computes the cross spectral matrix of a multichannel signal.
+    """Computes the cross spectral matrix of a multichannel signal.
     Output matrix has (frequency, channels, channels).
 
     Parameters
@@ -323,7 +319,7 @@ def _csm(time_data: np.ndarray, sampling_rate_hz: int,
         Frequency vector
     csm : np.ndarray
         Cross spectral matrix with shape (frequency, channels, channels).
-    '''
+    """
     number_of_channels = time_data.shape[1]
     csm = np.zeros((window_length_samples//2+1,
                     number_of_channels,

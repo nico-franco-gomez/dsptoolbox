@@ -1,9 +1,23 @@
+"""
+Here are functions in experimental phase. This might not work as expected
+or not at all.
+"""
 from scipy.signal import windows
 import numpy as np
 from scipy.interpolate import interp1d
 
 
 def _smoothing_log(vector, num_fractions, window_type='hann'):
+    """Fractional octave smoothing with efficient logarithmic interpolation
+    in the frequency domain.
+
+    References
+    ----------
+    Tylka, Joseph & Boren, Braxton & Choueiri, Edgar. (2017). A Generalized
+    Method for Fractional-Octave Smoothing of Transfer Functions that
+    Preserves Log-Frequency Symmetry. Journal of the Audio Engineering
+    Society. 65. 239-245. 10.17743/jaes.2016.0053.
+    """
     # Parameters
     N = len(vector)
     l1 = np.arange(N)

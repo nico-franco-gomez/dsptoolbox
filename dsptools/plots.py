@@ -1,6 +1,6 @@
-'''
+"""
 Includes some basic plotting templates
-'''
+"""
 import matplotlib.pyplot as plt
 from matplotlib.ticker import ScalarFormatter
 from matplotlib import cm
@@ -10,9 +10,8 @@ seaborn.set_style('whitegrid')
 
 
 def show():
-    '''
-    Wrapper around matplotlib's show
-    '''
+    """Wrapper around matplotlib's show
+    """
     plt.show()
 
 
@@ -20,8 +19,7 @@ def general_plot(f, matrix, range_x=None, range_y=None, log: bool = True,
                  labels=None, xlabel: str = 'Frequency / Hz',
                  ylabel: str = None, info_box: str = None,
                  returns: bool = False):
-    '''
-    Generic plot for data.
+    """Generic plot template.
 
     Parameters
     ----------
@@ -48,7 +46,7 @@ def general_plot(f, matrix, range_x=None, range_y=None, log: bool = True,
     Returns
     -------
     When returns is activated, figure and axis are returned.
-    '''
+    """
     fig, ax = plt.subplots(1, 1, figsize=(8, 5))
     for n in range(matrix.shape[1]):
         if labels is not None:
@@ -88,10 +86,9 @@ def general_subplots_line(x, matrix, column: bool = True,
                           log: bool = False, ylabels=None, xlabels=None,
                           xlims=None, ylims=None,
                           returns: bool = False):
-    '''
-    Creates a generic plot with different subplots for each vector from the
+    """Creates a generic plot with different subplots for each vector from the
     matrix.
-    '''
+    """
     number_of_channels = matrix.shape[1]
     if column:
         fig, ax = plt.subplots(number_of_channels, 1, sharex=sharex,

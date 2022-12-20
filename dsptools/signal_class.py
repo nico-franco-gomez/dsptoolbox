@@ -1,6 +1,6 @@
-'''
+"""
 Signal classes
-'''
+"""
 import warnings
 import pickle
 import os
@@ -17,12 +17,16 @@ __all__ = ['Signal', 'MultiBandSignal', ]
 
 
 class Signal():
+    """Class for general signals (time series). Most of the methods and
+    supported computations are focused on audio signals, but some features
+    might be generalizable to all kind of time series.
+    """
+
     # ======== Constructor and State handler ==================================
     def __init__(self, path=None, time_data=None,
                  sampling_rate_hz: int = 48000, signal_type: str = 'general',
                  signal_id: str = ''):
-        '''
-        Signal class that saves mainly time data for being used with all the
+        """Signal class that saves mainly time data for being used with all the
         methods.
 
         Parameters
@@ -46,19 +50,22 @@ class Signal():
 
         Methods
         -------
-        General: set_signal_type.
-        Time data: set_time_data, add_channel, remove_channel.
+        Time data: add_channel, remove_channel, swap_channels.
         Spectrum: set_spectrum_parameters, get_spectrum.
         Cross spectral matrix: set_csm_parameters, get_csm.
         Spectrogram: set_spectrogram_parameters, get_spectrogram.
 
-        Plots: plot_magnitude, plot_time, plot_spectrogram, plot_phase
+        Plots: plot_magnitude, plot_time, plot_spectrogram, plot_phase,
+            plot_csm.
+
+        General: save_signal.
 
         Only for `signal_type in ('rir', 'ir', 'h1', 'h2', 'h3')`:
             set_window, set_coherence, plot_group_delay, plot_coherence.
-        '''
-        self.signal_id = signal_id.lower()
-        self.signal_type = signal_type.lower()
+        """
+        self.signal_id = signal_id
+        self.signal_type = signal_type
+        self.sampling_rate_hz = sampling_rate_hz
         # State tracker
         self.__spectrum_state_update = True
         self.__csm_state_update = True
@@ -68,11 +75,10 @@ class Signal():
             assert time_data is None, 'Constructor cannot take a path and ' +\
                 'a vector at the same time'
             time_data, sampling_rate_hz = sf.read(path)
-            self.set_time_data(time_data, sampling_rate_hz)
-        else:
-            time_data = np.array(time_data)
-            self.set_time_data(time_data, sampling_rate_hz)
-        if signal_type in ('rir', 'ir', 'h1', 'h2', 'h3', 'chirp', 'noise'):
+        self.time_data = time_data
+        self.number_of_channels = self.time_data.shape[1]
+        if signal_type in ('rir', 'ir', 'h1', 'h2', 'h3', 'chirp',
+                           'noise', 'dirac'):
             self.set_spectrum_parameters(method='standard')
         else:
             self.set_spectrum_parameters()
@@ -81,19 +87,17 @@ class Signal():
         self._generate_metadata()
 
     def __update_state(self):
-        '''
-        Internal update of object state. If for instance time data gets added,
-        new spectrum, csm or stft has to be computed
-        '''
+        """Internal update of object state. If for instance time data gets
+        added, new spectrum, csm or stft has to be computed
+        """
         self.__spectrum_state_update = True
         self.__csm_state_update = True
         self.__spectrogram_state_update = True
         self._generate_metadata()
 
     def _generate_metadata(self):
-        '''
-        Generates an information dictionary with metadata about the signal
-        '''
+        """Generates an information dictionary with metadata about the signal
+        """
         self.info = {}
         self.info['sampling_rate_hz'] = self.sampling_rate_hz
         self.info['number_of_channels'] = self.number_of_channels
@@ -103,53 +107,74 @@ class Signal():
         self.info['signal_type'] = self.signal_type
 
     def _generate_time_vector(self):
-        '''
-        Internal method to generate a time vector on demand
-        '''
+        """Internal method to generate a time vector on demand
+        """
         self.time_vector_s = np.linspace(
-            0, len(self.time_data)/self.sampling_rate_hz, len(self.time_data))
+            0, len(self.time_data)/self.sampling_rate_hz,
+            len(self.time_data))
 
-    # ======== Setters ========================================================
-    def set_time_data(self, time_data, sampling_rate_hz: int = None):
-        '''
-        Sets new time data for object. Called from constructor or outside.
+    # ======== Properties and setters =========================================
+    @property
+    def time_data(self):
+        return self._time_data.copy()
 
-        Parameters
-        ----------
-        new_time_data : array-like
-            New array containing time data. It can be a matrix for multiple
-            channel data.
-        sampling_rate_hz : int, optional
-            Sampling rate for the new data in Hz. If `None`, the previous
-            sampling rate is used. Default `None`.
-        '''
-        if not type(time_data) == np.ndarray:
-            time_data = np.array(time_data)
-        assert len(time_data.shape) <= 2, f'{len(time_data.shape)} has ' +\
+    @time_data.setter
+    def time_data(self, new_time_data):
+        if not type(new_time_data) == np.ndarray:
+            new_time_data = np.array(new_time_data)
+        assert len(new_time_data.shape) <= 2, \
+            f'{len(new_time_data.shape)} has ' +\
             'too many dimensions for time data. Dimensions should' +\
             ' be [time samples, channels]'
-        if len(time_data.shape) < 2:
-            time_data = time_data[..., None]
-        if time_data.shape[1] > time_data.shape[0]:
-            time_data = time_data.T
-        time_data_max = np.max(np.abs(time_data))
+        if len(new_time_data.shape) < 2:
+            new_time_data = new_time_data[..., None]
+        if new_time_data.shape[1] > new_time_data.shape[0]:
+            new_time_data = new_time_data.T
+        time_data_max = np.max(np.abs(new_time_data))
         if time_data_max > 1:
-            time_data /= time_data_max
+            new_time_data /= time_data_max
             warnings.warn('Signal was over 0 dBFS, normalizing to 0 dBFS ' +
                           'peak level was triggered')
-        self.time_data = time_data
-        if sampling_rate_hz is not None:
-            self.sampling_rate_hz = sampling_rate_hz
-        self.number_of_channels = time_data.shape[1]
+        self._time_data = new_time_data
+        self.number_of_channels = new_time_data.shape[1]
         self.__update_state()
+
+    @property
+    def sampling_rate_hz(self):
+        return self._sampling_rate_hz
+
+    @sampling_rate_hz.setter
+    def sampling_rate_hz(self, new_sampling_rate_hz):
+        assert type(new_sampling_rate_hz) == int, \
+            'Sampling rate can only be an integer'
+        self._sampling_rate_hz = new_sampling_rate_hz
+
+    @property
+    def signal_type(self):
+        return self._signal_type
+
+    @signal_type.setter
+    def signal_type(self, new_signal_type):
+        assert type(new_signal_type) == str, \
+            'Signal type must be a string'
+        self._signal_type = new_signal_type.lower()
+
+    @property
+    def signal_id(self):
+        return self._signal_id
+
+    @signal_id.setter
+    def signal_id(self, new_signal_id):
+        assert type(new_signal_id) == str, \
+            'Signal ID must be a string'
+        self._signal_id = new_signal_id.lower()
 
     def set_spectrum_parameters(self, method='welch',
                                 window_length_samples: int = 1024,
                                 window_type='hann', overlap_percent=50,
                                 detrend=True, average='mean',
                                 scaling='power'):
-        '''
-        Sets all necessary parameters for the computation of the spectrum.
+        """Sets all necessary parameters for the computation of the spectrum.
 
         Parameters
         ----------
@@ -169,7 +194,7 @@ class Signal():
             Default: `'mean'`.
         scaling : str, optional
             Type of scaling. '`power'` or `'spectrum'`. Default: `'power'`.
-        '''
+        """
         assert method in ('welch', 'standard'), \
             f'{method} is not a valid method. Use welch or standard'
         if self.signal_type in ('h1', 'h2', 'h3'):
@@ -199,14 +224,10 @@ class Signal():
                 self._spectrum_parameters = _new_spectrum_parameters
                 self.__spectrum_state_update = True
 
-    def set_signal_type(self, s_type: str):
-        self.signal_type = s_type
-
     def set_window(self, window):
-        '''
-        Sets the window used for the IR. It only works for
+        """Sets the window used for the IR. It only works for
         `signal_type in ('ir', 'h1', 'h2', 'h3', 'rir')`
-        '''
+        """
         valid_signal_types = ('ir', 'h1', 'h2', 'h3', 'rir')
         assert self.signal_type in valid_signal_types, \
             f'{self.signal_type} is not valid. Please set it to ir or ' +\
@@ -216,10 +237,9 @@ class Signal():
         self.window = window
 
     def set_coherence(self, coherence: np.ndarray):
-        '''
-        Sets the window used for the IR. It only works for
+        """Sets the window used for the IR. It only works for
         `signal_type = ('ir', 'h1', 'h2', 'h3', 'rir')`
-        '''
+        """
         valid_signal_types = ('ir', 'h1', 'h2', 'h3', 'rir')
         assert self.signal_type in valid_signal_types, \
             f'{self.signal_type} is not valid. Please set it to ir or ' +\
@@ -235,8 +255,7 @@ class Signal():
                            window_type='hann', overlap_percent=75,
                            detrend=True, average='mean',
                            scaling='power'):
-        '''
-        Sets all necessary parameters for the computation of the CSM.
+        """Sets all necessary parameters for the computation of the CSM.
 
         Parameters
         ----------
@@ -251,7 +270,7 @@ class Signal():
             Default: `'mean'`.
         scaling : str, optional
             Type of scaling. '`power'` or `'spectrum'`. Default: `'power'`.
-        '''
+        """
         _new_csm_parameters = \
             dict(
                 window_length_samples=window_length_samples,
@@ -277,8 +296,8 @@ class Signal():
                                    overlap_percent=75,
                                    detrend: bool = True, padding: bool = True,
                                    scaling: bool = False):
-        '''
-        Sets all necessary parameters for the computation of the spectrogram.
+        """Sets all necessary parameters for the computation of the
+        spectrogram.
 
         Parameters
         ----------
@@ -293,7 +312,7 @@ class Signal():
             Default: True.
         scaling : bool, optional
             Scaling or not after FFT. Default: False.
-        '''
+        """
         _new_spectrogram_parameters = \
             dict(
                 channel_number=channel_number,
@@ -319,8 +338,7 @@ class Signal():
     def add_channel(self, path: str = None, new_time_data: np.ndarray = None,
                     sampling_rate_hz: int = None,
                     padding_trimming: bool = True):
-        '''
-        Adds new channels to this signal object.
+        """Adds new channels to this signal object.
 
         Parameters
         ----------
@@ -333,7 +351,7 @@ class Signal():
         padding_trimming : bool, optional
             Activates padding or trimming at the end of signal in case the
             new data does not match previous data. Default: `True`.
-        '''
+        """
         if path is not None:
             assert new_time_data is None, 'Only path or new time data is ' +\
                 'accepted, not both.'
@@ -343,8 +361,8 @@ class Signal():
                 assert path is None, 'Only path or new time data is ' +\
                     'accepted, not both.'
         assert sampling_rate_hz == self.sampling_rate_hz, \
-            f'{sampling_rate_hz} does not match {self.sampling_rate_hz} as ' +\
-            'the sampling rate'
+            f'{sampling_rate_hz} does not match {self.sampling_rate_hz} ' +\
+            'as the sampling rate'
         if not type(new_time_data) == np.ndarray:
             new_time_data = np.array(new_time_data)
         assert len(new_time_data.shape) <= 2, \
@@ -381,14 +399,13 @@ class Signal():
         self.__update_state()
 
     def remove_channel(self, channel_number: int = -1):
-        '''
-        Removes a channel
+        """Removes a channel
 
         Parameters
         ----------
         channel_number : int, optional
             Channel number to be removed. Default: -1 (last).
-        '''
+        """
         if channel_number == -1:
             channel_number = self.time_data.shape[1] - 1
         assert self.time_data.shape[1] > 1, \
@@ -401,14 +418,13 @@ class Signal():
         self.__update_state()
 
     def swap_channels(self, new_order):
-        '''
-        Rearranges the channels in the new given order.
+        """Rearranges the channels in the new given order.
 
         Parameters
         ----------
         new_order : array-like
             New rearrangement of channels.
-        '''
+        """
         new_order = np.array(new_order).squeeze()
         assert new_order.ndim == 1, \
             'Too many dimensions are given in the new arrangement vector'
@@ -423,8 +439,7 @@ class Signal():
 
     # ======== Getters ========================================================
     def get_spectrum(self, force_computation=False):
-        '''
-        Returns spectrum.
+        """Returns spectrum.
 
         Parameters
         ----------
@@ -437,15 +452,20 @@ class Signal():
             Frequency vector
         spectrum : np.ndarray
             Spectrum matrix for each channel
-        '''
+        """
         condition = not hasattr(self, 'spectrum') or \
             self.__spectrum_state_update or force_computation
 
         if condition:
             if self._spectrum_parameters['method'] == 'welch':
-                spectrum = []
+                spectrum = \
+                    np.zeros(
+                        (self.
+                         _spectrum_parameters
+                         ['window_length_samples'] // 2 + 1,
+                         self.number_of_channels))
                 for n in range(self.number_of_channels):
-                    spectrum.append(
+                    spectrum[:, n] = \
                         _welch(self.time_data[:, n],
                                self.time_data[:, n],
                                self.sampling_rate_hz,
@@ -455,8 +475,7 @@ class Signal():
                                self._spectrum_parameters['overlap_percent'],
                                self._spectrum_parameters['detrend'],
                                self._spectrum_parameters['average'],
-                               self._spectrum_parameters['scaling']))
-                spectrum = np.array(spectrum).T
+                               self._spectrum_parameters['scaling'])
             elif self._spectrum_parameters['method'] == 'standard':
                 spectrum = np.fft.rfft(self.time_data, axis=0)
             self.spectrum = []
@@ -471,8 +490,7 @@ class Signal():
         return spectrum_freqs.copy(), spectrum.copy()
 
     def get_csm(self, force_computation=False):
-        '''
-        Get Cross spectral matrix for all channels with the shape
+        """Get Cross spectral matrix for all channels with the shape
         (frequencies, channels, channels)
 
         Returns
@@ -481,7 +499,7 @@ class Signal():
             Frequency vector
         csm : np.ndarray
             Cross spectral matrix with shape (frequency, channels, channels).
-        '''
+        """
         assert self.number_of_channels > 1, \
             'Cross spectral matrix can only be computed when at least two ' +\
             'channels are available'
@@ -505,8 +523,7 @@ class Signal():
 
     def get_spectrogram(self, channel_number: int = 0,
                         force_computation: bool = False):
-        '''
-        Returns a matrix containing the STFT of a specific channel.
+        """Returns a matrix containing the STFT of a specific channel.
 
         Parameters
         ----------
@@ -523,7 +540,7 @@ class Signal():
             Frequency vector
         spectrogram : np.ndarray
             Spectrogram
-        '''
+        """
         condition = not hasattr(self, 'spectrogram') or force_computation or \
             self.__spectrogram_state_update or \
             not channel_number == \
@@ -548,18 +565,16 @@ class Signal():
         return t_s, f_hz, spectrogram
 
     def get_coherence(self):
-        '''
-        Returns the coherence matrix
-        '''
+        """Returns the coherence matrix
+        """
         assert hasattr(self, 'coherence'), \
             'There is no coherence data saved in the Signal object'
         f, _ = self.get_spectrum()
         return f, self.coherence
 
     def get_time_vector(self):
-        '''
-        Returns the time vector associated with the signal
-        '''
+        """Returns the time vector associated with the signal
+        """
         if not hasattr(self, 'time_vector_s'):
             self._generate_time_vector()
         return self.time_vector_s
@@ -568,8 +583,7 @@ class Signal():
     def plot_magnitude(self, range_hz=[20, 20e3], normalize: str = '1k',
                        smoothe=0, show_info_box: bool = False,
                        returns: bool = False):
-        '''
-        Plots magnitude spectrum.
+        """Plots magnitude spectrum.
         Change parameters of spectrum with set_spectrum_parameters.
 
         Parameters
@@ -592,7 +606,7 @@ class Signal():
         Returns
         -------
         figure and axis when `returns = True`.
-        '''
+        """
         f, sp = self.get_spectrum()
         f, mag_db = _get_normalized_spectrum(
             f=f,
@@ -603,21 +617,22 @@ class Signal():
             smoothe=smoothe)
         if show_info_box:
             txt = 'Info'
-            txt += f'''\nMode: {self._spectrum_parameters['method']}'''
+            txt += f"""\nMode: {self._spectrum_parameters['method']}"""
             txt += f'\nRange: [{range_hz[0]}, {range_hz[1]}]'
             txt += f'\nNormalized: {normalize}'
-            txt += f'''\nSmoothing: {smoothe}'''
+            txt += f"""\nSmoothing: {smoothe}"""
         else:
             txt = None
         fig, ax = general_plot(f, mag_db, range_hz, ylabel='Magnitude / dB',
-                               info_box=txt, returns=True)
+                               info_box=txt, returns=True,
+                               labels=[f'Channel {n}' for n in
+                                       range(self.number_of_channels)])
         if returns:
             return fig, ax
 
     def plot_time(self, returns: bool = False):
-        '''
-        Plots time signals
-        '''
+        """Plots time signals
+        """
         if not hasattr(self, 'time_vector_s'):
             self._generate_time_vector()
         fig, ax = general_subplots_line(
@@ -637,10 +652,9 @@ class Signal():
             return fig, ax
 
     def plot_group_delay(self, range_hz=[20, 20000], returns: bool = False):
-        '''
-        Plots group delay of each channel.
+        """Plots group delay of each channel.
         Only works if `signal_type in ('ir', 'h1', 'h2', 'h3', 'rir')`
-        '''
+        """
         valid_signal_types = ('rir', 'ir', 'h1', 'h2', 'h3', 'chirp', 'noise')
         assert self.signal_type in valid_signal_types, \
             f'{self.signal_type} is not valid. Please set it to ir or ' +\
@@ -660,9 +674,8 @@ class Signal():
 
     def plot_spectrogram(self, channel_number: int = 0, logfreqs: bool = True,
                          returns: bool = False):
-        '''
-        Plots STFT matrix of the given channel.
-        '''
+        """Plots STFT matrix of the given channel.
+        """
         t, f, stft = self.get_spectrogram(channel_number)
         epsilon = 10**(-100/10)
         ids = _find_nearest([20, 20000], f)
@@ -682,9 +695,8 @@ class Signal():
             return fig, ax
 
     def plot_coherence(self, returns: bool = False):
-        '''
-        Plots coherence measurements if there are any
-        '''
+        """Plots coherence measurements if there are any
+        """
         assert hasattr(self, 'coherence'), \
             'There is no coherence data saved in the Signal object'
 
@@ -707,6 +719,9 @@ class Signal():
 
     def plot_phase(self, range_hz=[20, 20e3], unwrap: bool = False,
                    returns: bool = False):
+        """Plots phase of the frequency response, only available if the method
+        for the spectrum parameters is not welch.
+        """
         if self._spectrum_parameters['method'] == 'welch':
             raise AttributeError(
                 'Phase cannot be plotted since the spectrum is ' +
@@ -731,8 +746,7 @@ class Signal():
 
     def plot_csm(self, range_hz=[20, 20e3], logx: bool = True,
                  with_phase: bool = True, returns: bool = False):
-        '''
-        Plots the cross spectral matrix of the multichannel signal.
+        """Plots the cross spectral matrix of the multichannel signal.
 
         Parameters
         ----------
@@ -748,7 +762,7 @@ class Signal():
         Returns
         -------
         fig, ax if `returns = True`.
-        '''
+        """
         f, csm = self.get_csm()
         fig, ax = _csm_plot(f, csm, range_hz, logx, with_phase, returns=True)
         if returns:
@@ -756,8 +770,7 @@ class Signal():
 
     # ======== Saving and export ==============================================
     def save_signal(self, path: str = 'signal', mode: str = 'wav'):
-        '''
-        Saves the Signal object
+        """Saves the Signal object
 
         Parameters
         ----------
@@ -768,7 +781,7 @@ class Signal():
         mode : str, optional
             Mode of saving. Available modes are `'wav'`, `'flac'`, `'pickle'`.
             Default: `'wav'`.
-        '''
+        """
         if '.' in path.split(os.sep)[-1]:
             raise ValueError('Please introduce the saving path without format')
         if mode == 'wav':
@@ -788,11 +801,20 @@ class Signal():
 
 
 class MultiBandSignal():
+    """The MultiBandSignal class contains multiple Signal objects which are
+    to be interpreted as frequency bands or the same signal. Since every
+    signal has also multiple channels, the object resembles somewhat a
+    3D-Matrix representation of a signal.
+
+    The MultiBandSignal can contain multirate system if the attribute
+    `same_sampling_rate` is set to `False`. A dictionary also can carry
+    all kinds of metadata that might characterize the signals.
+    """
+
     # ======== Constructor and initializers ===================================
     def __init__(self, bands=None, same_sampling_rate: bool = True,
                  info: dict = None):
-        '''
-        MultiBandSignal contains a composite band list where each index
+        """MultiBandSignal contains a composite band list where each index
         is a Signal object with the same number of channels. For multirate
         systems, the parameter `same_sampling_rate` has to be set to `False`.
 
@@ -809,16 +831,41 @@ class MultiBandSignal():
         info : dict, optional
             A dictionary with generic information about the MultiBandSignal
             can be passed. Default: `None`.
-        '''
+        """
         if bands is None:
             bands = []
         if info is None:
             info = {}
-        assert type(bands) in (list, tuple), \
-            'bands has to be a list, tuple or None'
         self.same_sampling_rate = same_sampling_rate
-        if bands:
-            for s in bands:
+        self.bands = bands
+        self.number_of_bands = len(self.bands)
+        self._generate_metadata()
+        self.info = self.info | info
+
+    # ======== Properties and setters =========================================
+    @property
+    def sampling_rate_hz(self):
+        return self._sampling_rate_hz
+
+    @sampling_rate_hz.setter
+    def sampling_rate_hz(self, new_sampling_rate_hz):
+        assert type(new_sampling_rate_hz) == int, \
+            'Sampling rate can only be an integer'
+        self._sampling_rate_hz = new_sampling_rate_hz
+
+    @property
+    def bands(self):
+        return self._bands
+
+    @bands.setter
+    def bands(self, new_bands):
+        assert type(new_bands) in (list, tuple), \
+            'bands has to be a list, tuple or None'
+        if new_bands:
+            # Check length and number of channels
+            self.number_of_channels = new_bands[0].number_of_channels
+            self.signal_type = new_bands[0].signal_type
+            for s in new_bands:
                 assert type(s) == Signal, f'{type(s)} is not a valid ' +\
                     'band type. Use Signal objects'
                 assert s.number_of_channels == self.number_of_channels, \
@@ -827,14 +874,11 @@ class MultiBandSignal():
                 assert s.signal_type == self.signal_type, \
                     'Signal types do not match'
             if self.same_sampling_rate:
-                self.sampling_rate_hz = bands[0].sampling_rate_hz
-                self.band_length_samples = bands[0].time_data.shape[0]
-            # Check length and number of channels
-            self.number_of_channels = bands[0].number_of_channels
-            self.signal_type = bands[0].signal_type
+                self.sampling_rate_hz = new_bands[0].sampling_rate_hz
+                self.band_length_samples = new_bands[0].time_data.shape[0]
             # Check sampling rate and duration
             if self.same_sampling_rate:
-                for s in bands:
+                for s in new_bands:
                     assert s.sampling_rate_hz == self.sampling_rate_hz, \
                         'Not all Signals have the same sampling rate. ' +\
                         'If you wish to create a multirate system, set ' +\
@@ -842,15 +886,22 @@ class MultiBandSignal():
                     assert s.time_data.shape[0] == self.band_length_samples,\
                         'The length of the bands is not always the same. ' +\
                         'This behaviour is not supported'
-        self.bands = bands
-        self._generate_metadata()
-        self.info = self.info | info
+        self._bands = new_bands
+
+    @property
+    def same_sampling_rate(self):
+        return self._same_sampling_rate
+
+    @same_sampling_rate.setter
+    def same_sampling_rate(self, new_same):
+        assert type(new_same) == bool, \
+            'Same sampling rate attribute must be a boolean'
+        self._same_sampling_rate = new_same
 
     def _generate_metadata(self):
-        '''
-        Generates an information dictionary with metadata about the
+        """Generates an information dictionary with metadata about the
         MultiBandSignal.
-        '''
+        """
         self.info = {}
         self.info['number_of_bands'] = len(self.bands)
         if self.bands:
@@ -864,8 +915,7 @@ class MultiBandSignal():
 
     # ======== Add and remove =================================================
     def add_band(self, sig: Signal, index: int = -1):
-        '''
-        Adds a new band to the MultiBandSignal.
+        """Adds a new band to the MultiBandSignal.
 
         Parameters
         ----------
@@ -873,7 +923,7 @@ class MultiBandSignal():
             Signal to be added.
         index : int, optional
             Index at which to insert the new Signal. Default: -1.
-        '''
+        """
         if not self.bands:
             self.number_of_channels = sig.number_of_channels
             self.sampling_rate_hz = sig.sampling_rate_hz
@@ -898,8 +948,7 @@ class MultiBandSignal():
         self._generate_metadata()
 
     def remove_band(self, index: int = -1, return_band: bool = False):
-        '''
-        Removes a band from the MultiBandSignal.
+        """Removes a band from the MultiBandSignal.
 
         Parameters
         ----------
@@ -909,7 +958,7 @@ class MultiBandSignal():
             Default: -1.
         return_band : bool, optional
             When `True`, the erased band is returned. Default: `False`.
-        '''
+        """
         assert self.bands, 'There are no filters to remove'
         if index == -1:
             index = len(self.bands) - 1
@@ -921,8 +970,7 @@ class MultiBandSignal():
             return f
 
     def show_info(self, show_band_info: bool = False):
-        '''
-        Show information about the MultiBandSignal.
+        """Show information about the MultiBandSignal.
 
         Parameters
         ----------
@@ -930,13 +978,13 @@ class MultiBandSignal():
             When `True`, a longer message is printed with all available
             information regarding each Signal in the MultiBandSignal.
             Default: `True`.
-        '''
+        """
         print()
         txt = ''
         for k in self.info:
             txt += \
-                f''' | {str(k).replace('_', ' ').
-                        capitalize()}: {self.info[k]}'''
+                f""" | {str(k).replace('_', ' ').
+                        capitalize()}: {self.info[k]}"""
         txt = 'Multiband band:' + txt
         print(txt)
         if show_band_info:
@@ -946,15 +994,14 @@ class MultiBandSignal():
                 txt = f'Signal {ind}:'
                 for kf in f1.info:
                     txt += \
-                        f''' | {str(kf).replace('_', ' ').
-                                capitalize()}: {f1.info[kf]}'''
+                        f""" | {str(kf).replace('_', ' ').
+                                capitalize()}: {f1.info[kf]}"""
                 print(txt)
         print()
 
     # ======== Getters ========================================================
     def get_all_bands(self, channel: int = 0):
-        '''
-        Returns a signal with all bands as channels. Done for an specific
+        """Returns a signal with all bands as channels. Done for an specified
         channel.
 
         Parameters
@@ -969,7 +1016,7 @@ class MultiBandSignal():
             does not have the same sampling rate for all signals, a list with
             the time vectors and a dictionary containing their sampling rates
             with the key 'sampling_rates' are returned.
-        '''
+        """
         if self.same_sampling_rate:
             new_time_data = \
                 np.zeros((self.bands[0].time_data.shape[0], len(self.bands)))
@@ -991,8 +1038,7 @@ class MultiBandSignal():
 
     # ======== Saving and export ==============================================
     def save_signal(self, path: str = 'multibandsignal'):
-        '''
-        Saves the MultiBandSignal object as a pickle.
+        """Saves the MultiBandSignal object as a pickle.
 
         Parameters
         ----------
@@ -1000,7 +1046,7 @@ class MultiBandSignal():
             Path for the signal to be saved. Use only folder/folder/name
             (without format). Default: `'multibandsignal'`
             (local folder, object named multibandsignal).
-        '''
+        """
         if '.' in path.split(os.sep)[-1]:
             raise ValueError('Please introduce the saving path without format')
         path += '.pkl'

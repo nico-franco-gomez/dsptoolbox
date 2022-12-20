@@ -1,14 +1,12 @@
-'''
-Here are methods considered as somewhat special computations
-'''
+"""
+Here are methods considered as somewhat special or less common.
+"""
 import numpy as np
 from .signal_class import Signal
 
 
 def cepstrum(signal: Signal, mode='power'):
-    '''
-    Returns the cepstrum of a given signal in the Quefrency domain.
-    See: https://de.wikipedia.org/wiki/Cepstrum.
+    """Returns the cepstrum of a given signal in the Quefrency domain.
 
     Parameters
     ----------
@@ -24,7 +22,11 @@ def cepstrum(signal: Signal, mode='power'):
         Quefrency
     ceps : np.ndarray
         Cepstrum
-    '''
+
+    References
+    ----------
+    https://de.wikipedia.org/wiki/Cepstrum
+    """
     mode = mode.lower()
     assert mode in ('power', 'complex', 'real'), \
         f'{mode} is not a supported mode'
@@ -34,14 +36,11 @@ def cepstrum(signal: Signal, mode='power'):
     f, sp = signal.get_spectrum()
 
     for n in range(signal.number_of_channels):
-        # sp = np.fft.rfft(signal.time_data[:, n] -
-        #                  np.mean(signal.time_data[:, n]))
         if mode in ('power', 'real'):
-            # cp = np.abs(np.fft.irfft((2*np.log(np.abs(sp)))))**2
             cp = np.abs(np.fft.irfft((2*np.log(np.abs(sp[:, n])))))**2
         else:
-            # cp = np.fft.irfft(np.log(sp))
-            cp = np.fft.irfft(np.log(sp[:, n]))
+            phase = np.unwrap(np.angle(sp[:, n]))
+            cp = np.fft.irfft(np.log(np.abs(sp[:, n])) + 1j*phase).real
         if mode == 'real':
             cp = (cp**0.5)/2
         ceps[:, n] = cp
