@@ -5,4 +5,3 @@ dsptools
    :maxdepth: 4
 
    dsptools
-   setup
