@@ -1,11 +1,11 @@
 """
 Distance measures between signals
 """
-from numpy import abs, sort, zeros
-from .classes.signal_class import Signal
-from .backend._general_helpers import _find_nearest
-from .backend._distances import (_log_spectral_distance,
-                                 _itakura_saito_measure)
+import numpy as np
+from dsptools import Signal
+from dsptools._general_helpers import _find_nearest
+from ._distances import (_log_spectral_distance,
+                         _itakura_saito_measure)
 
 
 __all__ = ['log_spectral', 'itakura_saito']
@@ -36,7 +36,7 @@ def log_spectral(insig1: Signal, insig2: Signal, method: str = 'welch',
     else:
         assert len(f_range_hz) == 2, 'f_range_hz must only have a lower' +\
             ' and an upper limit'
-        f_range_hz = sort(f_range_hz)
+        f_range_hz = np.sort(f_range_hz)
         assert f_range_hz[1] <= fs_hz//2, 'Upper bound for ' +\
             'frequency must be smaller than the nyquist frequency'
         assert not any(f_range_hz < 0), 'Frequencies in range must be ' +\
@@ -46,8 +46,8 @@ def log_spectral(insig1: Signal, insig2: Signal, method: str = 'welch',
     f, spec1 = insig1.get_spectrum()
     f, spec2 = insig2.get_spectrum()
 
-    psd1 = abs(spec1)
-    psd2 = abs(spec2)
+    psd1 = np.abs(spec1)
+    psd2 = np.abs(spec2)
     if method == 'standard':
         psd1 = psd1**2
         psd2 = psd2**2
@@ -55,7 +55,7 @@ def log_spectral(insig1: Signal, insig2: Signal, method: str = 'welch',
     ids = _find_nearest(f_range_hz, f)
     f = f[ids[0]:ids[1]]
 
-    distances = zeros(insig1.number_of_channels)
+    distances = np.zeros(insig1.number_of_channels)
     for n in range(insig1.number_of_channels):
         distances[n] = \
             _log_spectral_distance(
@@ -89,7 +89,7 @@ def itakura_saito(insig1: Signal, insig2: Signal, method: str = 'welch',
     else:
         assert len(f_range_hz) == 2, 'f_range_hz must only have a lower' +\
             ' and an upper limit'
-        f_range_hz = sort(f_range_hz)
+        f_range_hz = np.sort(f_range_hz)
         assert f_range_hz[1] <= fs_hz//2, 'Upper bound for ' +\
             'frequency must be smaller than the nyquist frequency'
         assert not any(f_range_hz < 0), 'Frequencies in range must be ' +\
@@ -99,8 +99,8 @@ def itakura_saito(insig1: Signal, insig2: Signal, method: str = 'welch',
     f, spec1 = insig1.get_spectrum()
     f, spec2 = insig2.get_spectrum()
 
-    psd1 = abs(spec1)
-    psd2 = abs(spec2)
+    psd1 = np.abs(spec1)
+    psd2 = np.abs(spec2)
     if method == 'standard':
         psd1 = psd1**2
         psd2 = psd2**2
@@ -108,7 +108,7 @@ def itakura_saito(insig1: Signal, insig2: Signal, method: str = 'welch',
     ids = _find_nearest(f_range_hz, f)
     f = f[ids[0]:ids[1]]
 
-    distances = zeros(insig1.number_of_channels)
+    distances = np.zeros(insig1.number_of_channels)
     for n in range(insig1.number_of_channels):
         distances[n] = \
             _itakura_saito_measure(

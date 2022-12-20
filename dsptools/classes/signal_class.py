@@ -5,14 +5,14 @@ from warnings import warn
 from pickle import dump, HIGHEST_PROTOCOL
 from os import sep
 
-from numpy import (linspace, ndarray, array, max, abs, concatenate,
-                   fft, min, nan_to_num, delete, angle, zeros, log10)
+import numpy as np
 from soundfile import read, write
-from ..plots import (general_plot, general_subplots_line, general_matrix_plot)
-from ..backend._plots import _csm_plot
-from ..backend._general_helpers import (_get_normalized_spectrum, _pad_trim)
-from ..backend._standard import (_welch, _group_delay_direct, _stft, _csm)
-from ..backend._general_helpers import _find_nearest
+from dsptools.plots import (general_plot,
+                            general_subplots_line, general_matrix_plot)
+from ._plots import _csm_plot
+from dsptools._general_helpers import \
+    (_get_normalized_spectrum, _pad_trim, _find_nearest)
+from dsptools._standard import (_welch, _group_delay_direct, _stft, _csm)
 
 __all__ = ['Signal', ]
 
@@ -36,7 +36,7 @@ class Signal():
             A path to audio files. Reading is done with soundfile. Wave and
             Flac audio files are accepted.
             Default: `None`.
-        time_data : array-like, ndarray, optional
+        time_data : np.array-like, np.ndarray, optional
             Time data of the signal. It is saved as a matrix with the form
             (time samples, channel number). Default: `None`.
         sampling_rate_hz : int, optional
@@ -110,7 +110,7 @@ class Signal():
     def _generate_time_vector(self):
         """Internal method to generate a time vector on demand
         """
-        self.time_vector_s = linspace(
+        self.time_vector_s = np.linspace(
             0, len(self.time_data)/self.sampling_rate_hz,
             len(self.time_data))
 
@@ -121,8 +121,8 @@ class Signal():
 
     @time_data.setter
     def time_data(self, new_time_data):
-        if not type(new_time_data) == ndarray:
-            new_time_data = array(new_time_data)
+        if not type(new_time_data) == np.ndarray:
+            new_time_data = np.array(new_time_data)
         assert len(new_time_data.shape) <= 2, \
             f'{len(new_time_data.shape)} has ' +\
             'too many dimensions for time data. Dimensions should' +\
@@ -131,7 +131,7 @@ class Signal():
             new_time_data = new_time_data[..., None]
         if new_time_data.shape[1] > new_time_data.shape[0]:
             new_time_data = new_time_data.T
-        time_data_max = max(abs(new_time_data))
+        time_data_max = np.max(np.abs(new_time_data))
         if time_data_max > 1:
             new_time_data /= time_data_max
             warn('Signal was over 0 dBFS, normalizing to 0 dBFS ' +
@@ -237,7 +237,7 @@ class Signal():
             f'{len(window)} does not match shape {self.time_data.shape}'
         self.window = window
 
-    def set_coherence(self, coherence: ndarray):
+    def set_coherence(self, coherence: np.ndarray):
         """Sets the window used for the IR. It only works for
         `signal_type = ('ir', 'h1', 'h2', 'h3', 'rir')`
         """
@@ -312,7 +312,7 @@ class Signal():
             Padding signal in the beginning and end to center it.
             Default: True.
         scaling : bool, optional
-            Scaling or not after FFT. Default: False.
+            Scaling or not after np.fft. Default: False.
         """
         _new_spectrogram_parameters = \
             dict(
@@ -336,7 +336,7 @@ class Signal():
                 self.__spectrogram_state_update = True
 
     # ======== Add, remove and reorder channels ===============================
-    def add_channel(self, path: str = None, new_time_data: ndarray = None,
+    def add_channel(self, path: str = None, new_time_data: np.ndarray = None,
                     sampling_rate_hz: int = None,
                     padding_trimming: bool = True):
         """Adds new channels to this signal object.
@@ -345,8 +345,8 @@ class Signal():
         ----------
         path : str, optional
             Path to the file containing new channel information.
-        new_time_data : ndarray, optional
-            Array with new channel data.
+        new_time_data : np.ndarray, optional
+            np.array with new channel data.
         sampling_rate_hz : int, optional
             Sampling rate for the new data
         padding_trimming : bool, optional
@@ -364,8 +364,8 @@ class Signal():
         assert sampling_rate_hz == self.sampling_rate_hz, \
             f'{sampling_rate_hz} does not match {self.sampling_rate_hz} ' +\
             'as the sampling rate'
-        if not type(new_time_data) == ndarray:
-            new_time_data = array(new_time_data)
+        if not type(new_time_data) == np.ndarray:
+            new_time_data = np.array(new_time_data)
         assert len(new_time_data.shape) <= 2, \
             f'{len(new_time_data.shape)} has ' +\
             'too many dimensions for time data. Dimensions should' +\
@@ -395,8 +395,8 @@ class Signal():
                     f'{new_time_data.shape[0]} does not match ' +
                     f'{self.time_data.shape[0]}. Activate padding_trimming ' +
                     'for allowing this channel to be added')
-        self.time_data = concatenate([self.time_data, new_time_data],
-                                     axis=1)
+        self.time_data = np.concatenate([self.time_data, new_time_data],
+                                        axis=1)
         self.__update_state()
 
     def remove_channel(self, channel_number: int = -1):
@@ -414,7 +414,7 @@ class Signal():
         assert self.time_data.shape[1]-1 >= channel_number, \
             f'Channel number {channel_number} does not exist. Signal only ' +\
             f'has {self.number_of_channels-1} channels (zero included).'
-        self.time_data = delete(self.time_data, channel_number, axis=-1)
+        self.time_data = np.delete(self.time_data, channel_number, axis=-1)
         self.number_of_channels -= 1
         self.__update_state()
 
@@ -423,10 +423,10 @@ class Signal():
 
         Parameters
         ----------
-        new_order : array-like
+        new_order : np.array-like
             New rearrangement of channels.
         """
-        new_order = array(new_order).squeeze()
+        new_order = np.array(new_order).squeeze()
         assert new_order.ndim == 1, \
             'Too many dimensions are given in the new arrangement vector'
         assert self.number_of_channels == len(new_order), \
@@ -449,9 +449,9 @@ class Signal():
 
         Returns
         -------
-        spectrum_freqs : ndarray
+        spectrum_freqs : np.ndarray
             Frequency vector
-        spectrum : ndarray
+        spectrum : np.ndarray
             Spectrum matrix for each channel
         """
         condition = not hasattr(self, 'spectrum') or \
@@ -460,7 +460,7 @@ class Signal():
         if condition:
             if self._spectrum_parameters['method'] == 'welch':
                 spectrum = \
-                    zeros(
+                    np.zeros(
                         (self.
                          _spectrum_parameters
                          ['window_length_samples'] // 2 + 1,
@@ -478,10 +478,10 @@ class Signal():
                                self._spectrum_parameters['average'],
                                self._spectrum_parameters['scaling'])
             elif self._spectrum_parameters['method'] == 'standard':
-                spectrum = fft.rfft(self.time_data, axis=0)
+                spectrum = np.fft.rfft(self.time_data, axis=0)
             self.spectrum = []
             self.spectrum.append(
-                fft.rfftfreq(
+                np.fft.rfftfreq(
                     spectrum.shape[0]*2 - 1, 1/self.sampling_rate_hz))
             self.spectrum.append(spectrum)
             spectrum_freqs = self.spectrum[0]
@@ -496,9 +496,9 @@ class Signal():
 
         Returns
         -------
-        f_csm : ndarray
+        f_csm : np.ndarray
             Frequency vector
-        csm : ndarray
+        csm : np.ndarray
             Cross spectral matrix with shape (frequency, channels, channels).
         """
         assert self.number_of_channels > 1, \
@@ -535,11 +535,11 @@ class Signal():
 
         Returns
         -------
-        t_s : ndarray
+        t_s : np.ndarray
             Time vector
-        f_hz : ndarray
+        f_hz : np.ndarray
             Frequency vector
-        spectrogram : ndarray
+        spectrogram : np.ndarray
             Spectrogram
         """
         condition = not hasattr(self, 'spectrogram') or force_computation or \
@@ -589,12 +589,12 @@ class Signal():
 
         Parameters
         ----------
-        range_hz : array-like with length 2, optional
+        range_hz : np.array-like with length 2, optional
             Range for which to plot the magnitude response.
             Default: [20, 20000].
         normalize : str, optional
             Mode for normalization, supported are `'1k'` for normalization
-            with value at frequency 1 kHz or `'max'` for normalization with
+            with value at frequency 1 kHz or `'np.max'` for normalization with
             maximal value. Use `None` for no normalization. Default: `'1k'`.
         smoothe : int, optional --------> not yet implemented.
         show_info_box : bool, optional
@@ -644,7 +644,7 @@ class Signal():
             xlabels='Time / s',
             returns=True)
         for n in range(self.number_of_channels):
-            mx = max(abs(self.time_data[:, n])) * 1.1
+            mx = np.max(np.abs(self.time_data[:, n])) * 1.1
             if hasattr(self, 'window'):
                 ax[n].plot(self.time_vector_s,
                            self.window * mx / 1.1, alpha=0.75)
@@ -662,7 +662,7 @@ class Signal():
             'h1, h2, h3, rir'
         self.set_spectrum_parameters('standard')
         f, sp = self.get_spectrum()
-        gd = zeros((len(f), self.number_of_channels))
+        gd = np.zeros((len(f), self.number_of_channels))
         for n in range(self.number_of_channels):
             gd[:, n] = _group_delay_direct(sp[:, n], f[1]-f[0])
         fig, ax = general_plot(
@@ -684,8 +684,8 @@ class Signal():
             ids[0] += 1
         f = f[ids[0]:ids[1]]
         stft = stft[ids[0]:ids[1], :]
-        stft_db = 20*log10(abs(stft)+epsilon)
-        stft_db = nan_to_num(stft_db, nan=min(stft_db))
+        stft_db = 20*np.log10(np.abs(stft)+epsilon)
+        stft_db = np.nan_to_num(stft_db, nan=np.min(stft_db))
         fig, ax = general_matrix_plot(
             matrix=stft_db, xrange=(t[0], t[-1]),
             yrange=(f[0], f[-1]), zrange=50,
@@ -730,7 +730,7 @@ class Signal():
                 'standard')
         else:
             f, sp = self.get_spectrum()
-            ph = angle(sp)
+            ph = np.angle(sp)
             if unwrap:
                 ph = unwrap(ph, axis=0)
             fig, ax = general_plot(
@@ -751,7 +751,7 @@ class Signal():
 
         Parameters
         ----------
-        range_hz : array-like with length 2, optional
+        range_hz : np.array-like with length 2, optional
             Range of Hz to be showed. Default: [20, 20e3].
         logx : bool, optional
             Logarithmic x axis. Default: `True`.

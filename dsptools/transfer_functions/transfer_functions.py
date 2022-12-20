@@ -2,12 +2,12 @@
 Methods used for acquiring and windowing transfer functions
 """
 from numpy import (sqrt, min, zeros_like, zeros, fft, abs)
-from .classes.signal_class import Signal
-from .backend._general_helpers import (_find_frequencies_above_threshold)
-from .backend._transfer_functions import (_spectral_deconvolve,
-                                          _window_this_ir)
-from .backend._standard import _welch
-from .standard_functions import pad_trim
+from dsptools import Signal
+from dsptools._general_helpers import (_find_frequencies_above_threshold)
+from ._transfer_functions import (_spectral_deconvolve,
+                                  _window_this_ir)
+from dsptools._standard import _welch
+from dsptools.standard_functions import pad_trim
 
 
 def spectral_deconvolve(num: Signal, denum: Signal, multichannel=False,

@@ -12,4 +12,6 @@ seaborn
 # librosa  # validation
 # pyfar  # validation
 # flake8  # linter
-# piccolo-theme # docs theme
+
+# docs:
+# piccolo-theme # theme

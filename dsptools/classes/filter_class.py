@@ -4,14 +4,13 @@ Contains Filter classes
 from os import sep
 from pickle import dump, HIGHEST_PROTOCOL
 
-from scipy.signal import (sos2tf, sos2zpk, sosfilt, sosfilt_zi, iirfilter,
-                          firwin, tf2sos, zpk2sos)
+import scipy.signal as sig
 from .signal_class import Signal
-from ..backend._filter import (_biquad_coefficients, _impulse,
-                               _group_delay_filter, _get_biquad_type,
-                               _filter_on_signal)
-from ..backend._plots import _zp_plot
-from ..plots import general_plot
+from ._filter import (_biquad_coefficients, _impulse,
+                      _group_delay_filter, _get_biquad_type,
+                      _filter_on_signal)
+from ._plots import _zp_plot
+from dsptools.plots import general_plot
 
 __all__ = ['Filter']
 
@@ -31,8 +30,8 @@ class Filter():
         Constructor
         -----------
         A dictionary containing the filter configuration parameters should
-        be passed. It is a wrapper around `scipy.signal.iirfilter`,
-        `scipy.signal.firwin` and `_biquad_coefficients`.
+        be passed. It is a wrapper around `scipy.signal.sig.iirfilter`,
+        `scipy.signal.sig.firwin` and `_biquad_coefficients`.
 
         Parameters
         ----------
@@ -100,7 +99,7 @@ class Filter():
         """
         self.zi = []
         for n in range(number_of_channels):
-            self.zi.append(sosfilt_zi(self.sos))
+            self.zi.append(sig.sosfilt_zi(self.sos))
 
     @property
     def sampling_rate_hz(self):
@@ -165,14 +164,14 @@ class Filter():
                               filter_configuration: dict):
         if filter_type == 'iir':
             self.sos = \
-                iirfilter(N=filter_configuration['order'],
-                          Wn=filter_configuration['freqs'],
-                          btype=filter_configuration['type_of_pass'],
-                          analog=False,
-                          fs=self.sampling_rate_hz,
-                          ftype=filter_configuration
-                          ['filter_design_method'],
-                          output='sos')
+                sig.iirfilter(N=filter_configuration['order'],
+                              Wn=filter_configuration['freqs'],
+                              btype=filter_configuration['type_of_pass'],
+                              analog=False,
+                              fs=self.sampling_rate_hz,
+                              ftype=filter_configuration
+                              ['filter_design_method'],
+                              output='sos')
         elif filter_type == 'fir':
             # Preparing parameters
             if 'filter_design_method' not in filter_configuration.keys():
@@ -181,14 +180,14 @@ class Filter():
                 filter_configuration['width'] = None
             # Filter creation
             ba = \
-                [firwin(numtaps=filter_configuration['order'],
-                        cutoff=filter_configuration['freqs'],
-                        window=filter_configuration
-                        ['filter_design_method'],
-                        width=filter_configuration['width'],
-                        pass_zero=filter_configuration['type_of_pass'],
-                        fs=self.sampling_rate_hz), [1]]
-            self.sos = tf2sos(ba[0], ba[1])
+                [sig.firwin(numtaps=filter_configuration['order'],
+                            cutoff=filter_configuration['freqs'],
+                            window=filter_configuration
+                            ['filter_design_method'],
+                            width=filter_configuration['width'],
+                            pass_zero=filter_configuration['type_of_pass'],
+                            fs=self.sampling_rate_hz), [1]]
+            self.sos = sig.tf2sos(ba[0], ba[1])
         elif filter_type == 'biquad':
             # Preparing parameters
             if type(filter_configuration['eq_type']) == str:
@@ -205,7 +204,7 @@ class Filter():
             # Setting back
             filter_configuration['eq_type'] = \
                 _get_biquad_type(filter_configuration['eq_type']).capitalize()
-            self.sos = tf2sos(ba[0], ba[1])
+            self.sos = sig.tf2sos(ba[0], ba[1])
         else:
             assert ('ba' in filter_configuration) ^ \
                 ('sos' in filter_configuration) ^ \
@@ -214,10 +213,10 @@ class Filter():
                 'should be passed to create a filter'
             if ('ba' in filter_configuration):
                 ba = filter_configuration['ba']
-                self.sos = tf2sos(ba[0], ba[1])
+                self.sos = sig.tf2sos(ba[0], ba[1])
             if ('zpk' in filter_configuration):
                 z, p, k = filter_configuration['zpk']
-                self.sos = zpk2sos(z, p, k)
+                self.sos = sig.zpk2sos(z, p, k)
             if ('sos' in filter_configuration):
                 self.sos = filter_configuration['sos']
         self.info = filter_configuration
@@ -265,7 +264,7 @@ class Filter():
             Impulse response of the filter.
         """
         ir_filt = _impulse(length_samples)
-        ir_filt = sosfilt(sos=self.sos, x=ir_filt)
+        ir_filt = sig.sosfilt(sos=self.sos, x=ir_filt)
         ir_filt = Signal(
             None, ir_filt,
             sampling_rate_hz=self.sampling_rate_hz,
@@ -289,9 +288,9 @@ class Filter():
         if mode == 'sos':
             coefficients = self.sos
         elif mode == 'ba':
-            coefficients = sos2tf(self.sos)
+            coefficients = sig.sos2tf(self.sos)
         elif mode == 'zpk':
-            coefficients = sos2zpk(self.sos)
+            coefficients = sig.sos2pk(self.sos)
         else:
             raise ValueError(f'{mode} is not valid. Use sos, ba or zpk')
         return coefficients
@@ -362,7 +361,7 @@ class Filter():
         -------
         figure and axis when `returns = True`.
         """
-        ba = sos2tf(self.sos)
+        ba = sig.sos2tf(self.sos)
         # import numpy as np
         f, gd = \
             _group_delay_filter(ba, length_samples, self.sampling_rate_hz)
@@ -435,7 +434,7 @@ class Filter():
         -------
         figure and axis when `returns = True`.
         """
-        z, p, k = sos2zpk(self.sos)
+        z, p, k = sig.sos2pk(self.sos)
         fig, ax = _zp_plot(z, p, returns=True)
         ax.text(0.75, 0.91, rf'$k={k:.1e}$', transform=ax.transAxes,
                 verticalalignment='top')

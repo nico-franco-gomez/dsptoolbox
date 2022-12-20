@@ -4,8 +4,8 @@ measurements.
 """
 from sounddevice import (query_devices, default, wait, playrec, rec)
 from sounddevice import play as play_sd
-from .classes.signal_class import Signal
-from .backend._general_helpers import _normalize
+from dsptools import Signal
+from dsptools._general_helpers import _normalize
 
 
 def print_device_info(device_number: int = None):

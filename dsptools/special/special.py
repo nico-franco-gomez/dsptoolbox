@@ -2,7 +2,7 @@
 Here are methods considered as somewhat special or less common.
 """
 from numpy import fft, zeros_like, unwrap, angle, abs, log
-from .classes.signal_class import Signal
+from dsptools import Signal
 
 
 def cepstrum(signal: Signal, mode='power'):

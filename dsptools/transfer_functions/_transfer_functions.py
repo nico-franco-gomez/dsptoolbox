@@ -2,7 +2,7 @@
 Backend for transfer functions methods
 '''
 from numpy import (ndarray, fft, divide, argmax, hstack, zeros, )
-from ._general_helpers import _find_nearest, _calculate_window
+from dsptools._general_helpers import _find_nearest, _calculate_window
 
 __all__ = ['_spectral_deconvolve', '_window_this_ir']
 

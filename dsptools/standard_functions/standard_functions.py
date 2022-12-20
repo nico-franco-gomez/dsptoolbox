@@ -2,12 +2,12 @@
 Standard functions in DSP processes
 """
 from numpy import (zeros_like, zeros, abs, )
-from .classes.signal_class import Signal
-from .backend._standard import (_latency,
+from dsptools.classes.signal_class import Signal
+from dsptools._standard import (_latency,
                                 _group_delay_direct,
                                 _minimal_phase)
-from .backend._filter import _group_delay_filter
-from .backend._general_helpers import _pad_trim
+from dsptools.classes._filter import _group_delay_filter
+from dsptools._general_helpers import _pad_trim
 from copy import deepcopy
 
 

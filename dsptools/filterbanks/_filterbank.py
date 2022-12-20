@@ -1,15 +1,14 @@
 """
 Backend for the creation of specific filter banks
 """
-from numpy import (array, zeros, squeeze, sum, fft, )
+import numpy as np
 from os import sep
 from pickle import dump, HIGHEST_PROTOCOL
 from scipy.signal import (sosfilt, sosfilt_zi, butter)
-from ..classes.signal_class import Signal
-from ..classes.multibandsignal import MultiBandSignal
-from ..generators import dirac
-from ..plots import general_plot
-from ._general_helpers import _get_normalized_spectrum
+from dsptools import Signal, MultiBandSignal
+from dsptools.generators import dirac
+from dsptools.plots import general_plot
+from dsptools._general_helpers import _get_normalized_spectrum
 
 
 class LRFilterBank():
@@ -31,8 +30,8 @@ class LRFilterBank():
         for o in order:
             assert o % 2 == 0, 'Order of the crossovers has to be an ' +\
                 'even number'
-        self.freqs = array(freqs).squeeze()
-        self.order = array(order).squeeze()
+        self.freqs = np.array(freqs).np.squeeze()
+        self.order = np.array(order).np.squeeze()
         self.number_of_cross = len(freqs)
         self.number_of_bands = self.number_of_cross + 1
         self.sampling_rate_hz = sampling_rate_hz
@@ -106,9 +105,9 @@ class LRFilterBank():
         assert s.sampling_rate_hz == self.sampling_rate_hz, \
             'Sampling rates do not match'
         new_time_data = \
-            zeros((s.time_data.shape[0],
-                   s.number_of_channels,
-                   self.number_of_bands))
+            np.zeros((s.time_data.shape[0],
+                      s.number_of_channels,
+                      self.number_of_bands))
         in_sig = s.time_data
 
         for ch in range(s.number_of_channels):
@@ -222,7 +221,7 @@ class LRFilterBank():
 
         Parameters
         ----------
-        range_hz : array-like, optional
+        range_hz : np.array-like, optional
             Range of Hz to plot. Default: [20, 20e3].
         test_zi : bool, optional
             Uses the zi's of each filter to test the FilterBank's output.
@@ -246,19 +245,19 @@ class LRFilterBank():
             summed.append(b.time_data[:, 0])
             f, sp = \
                 _get_normalized_spectrum(
-                    f, squeeze(b.get_spectrum()[1]),
+                    f, np.squeeze(b.get_spectrum()[1]),
                     f_range_hz=range_hz,
                     normalize=None)
-            specs.append(squeeze(sp))
-        specs = array(specs).T
+            specs.append(np.squeeze(sp))
+        specs = np.array(specs).T
         fig, ax = general_plot(f, specs, range_hz, ylabel='Magnitude / dB',
                                returns=True,
                                labels=[f'Filter {h}'
                                        for h in range(bs.number_of_bands)],
                                range_y=[-30, 10])
         # Summed signal
-        summed = sum(array(summed).T, axis=1)
-        sp_summed = fft.rfft(summed)
+        summed = np.sum(np.array(summed).T, axis=1)
+        sp_summed = np.fft.rfft(summed)
         f_s, sp_summed = \
             _get_normalized_spectrum(
                 f, sp_summed,

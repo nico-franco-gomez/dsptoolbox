@@ -3,21 +3,20 @@ Very specific plots which are harder to create from the general templates
 '''
 import matplotlib.pyplot as plt
 from matplotlib.ticker import ScalarFormatter
-from numpy import (linspace, sqrt, real, imag, log10, array, abs,
-                   angle, unwrap)
-from ._general_helpers import _find_nearest
+import numpy as np
+from dsptools._general_helpers import _find_nearest
 
 
 def _zp_plot(z, p, returns: bool = False):
     fig, ax = plt.subplots(1, 1, figsize=(5, 5))
-    x = linspace(-1, 1, 100, endpoint=True)
-    yP = sqrt(1 - x**2)
-    yM = -sqrt(1 - x**2)
+    x = np.linspace(-1, 1, 100, endpoint=True)
+    yP = np.sqrt(1 - x**2)
+    yM = -np.sqrt(1 - x**2)
     ax.plot(x, yP, linestyle='dashed', alpha=0.6, color='xkcd:grey',
             label='Unit circle')
     ax.plot(x, yM, linestyle='dashed', alpha=0.6, color='xkcd:grey')
-    ax.plot(real(z), imag(z), 'o', label='Zeros')
-    ax.plot(real(p), imag(p), 'x', label='Poles')
+    ax.plot(np.real(z), np.imag(z), 'o', label='Zeros')
+    ax.plot(np.real(p), np.imag(p), 'x', label='Poles')
     ax.legend()
     fig.tight_layout()
     if returns:
@@ -40,18 +39,18 @@ def _csm_plot(f, csm, range_x=None, log=True, with_phase=True, returns=True):
             if log:
                 ax[c1, c2].set_xscale('log')
                 ticks = \
-                    array([20, 50, 100, 200, 500, 1000,
-                           2000, 5000, 10000, 20000])
+                    np.array([20, 50, 100, 200, 500, 1000,
+                              2000, 5000, 10000, 20000])
                 if range_x is not None:
                     ticks = \
                         ticks[(ticks > range_x[0]) & (ticks < range_x[-1])]
                 ax[c1, c2].set_xticks(ticks)
                 ax[c1, c2].get_xaxis().set_major_formatter(ScalarFormatter())
-            ax[c1, c2].plot(f, 10*log10(abs(csm[:, c1, c2])))
+            ax[c1, c2].plot(f, 10*np.log10(np.abs(csm[:, c1, c2])))
             if c1 != c2:
                 axRight = ax[c1, c2].twinx()
                 axRight.plot(
-                    f, unwrap(angle(csm[:, c1, c2])), alpha=0.6,
+                    f, np.unwrap(np.angle(csm[:, c1, c2])), alpha=0.6,
                     color='xkcd:orange', linestyle='dotted')
                 axRight.grid(False)
             if c1 == ch-1:

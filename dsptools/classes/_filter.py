@@ -1,13 +1,11 @@
 """
 Backend for filter class and general filtering functions.
 """
-from numpy import (zeros, sum, sin, cos, ones, float32, pi, sqrt,
-                   polyval, convolve, linspace, arange, real, conjugate,
-                   exp, isfinite)
+import numpy as np
 from enum import Enum
 from scipy.signal import sosfiltfilt, sosfilt
-from ..classes.signal_class import Signal
-from ..classes.multibandsignal import MultiBandSignal
+from .signal_class import Signal
+from .multibandsignal import MultiBandSignal
 from copy import deepcopy
 
 
@@ -52,13 +50,13 @@ def _biquad_coefficients(eq_type=0, fs_hz: int = 48000,
     eq_type: 0 PEAKING, 1 LOWPASS, 2 HIGHPASS, 3 BANDPASS_SKIRT,
         4 BANDPASS_PEAK, 5 NOTCH, 6 ALLPASS, 7 LOWSHELF, 8 HIGHSHELF
     """
-    A = sqrt(10**(gain_db / 20.0))
-    Omega = 2.0 * pi * (frequency_hz / fs_hz)
-    sn = sin(Omega)
-    cs = cos(Omega)
+    A = np.sqrt(10**(gain_db / 20.0))
+    Omega = 2.0 * np.pi * (frequency_hz / fs_hz)
+    sn = np.sin(Omega)
+    cs = np.cos(Omega)
     alpha = sn / (2.0 * q)
-    a = ones(3, dtype=float32)
-    b = ones(3, dtype=float32)
+    a = np.ones(3, dtype=np.float32)
+    b = np.ones(3, dtype=np.float32)
     if eq_type == 0:  # Peaking
         b[0] = 1 + alpha * A
         b[1] = -2*cs
@@ -109,19 +107,19 @@ def _biquad_coefficients(eq_type=0, fs_hz: int = 48000,
         a[1] = -2 * cs
         a[2] = 1 - alpha
     elif eq_type == 7:  # Lowshelf
-        b[0] = A*((A+1) - (A-1)*cs + 2*sqrt(A)*alpha)
+        b[0] = A*((A+1) - (A-1)*cs + 2*np.sqrt(A)*alpha)
         b[1] = 2*A*((A-1) - (A+1)*cs)
-        b[2] = A*((A+1) - (A-1)*cs - 2*sqrt(A)*alpha)
-        a[0] = (A+1) + (A-1)*cs + 2*sqrt(A)*alpha
+        b[2] = A*((A+1) - (A-1)*cs - 2*np.sqrt(A)*alpha)
+        a[0] = (A+1) + (A-1)*cs + 2*np.sqrt(A)*alpha
         a[1] = -2*((A-1) + (A+1)*cs)
-        a[2] = (A+1) + (A-1)*cs - 2*sqrt(A)*alpha
+        a[2] = (A+1) + (A-1)*cs - 2*np.sqrt(A)*alpha
     elif eq_type == 8:  # Highshelf
-        b[0] = A*((A+1) + (A-1)*cs + 2*sqrt(A)*alpha)
+        b[0] = A*((A+1) + (A-1)*cs + 2*np.sqrt(A)*alpha)
         b[1] = -2*A*((A-1) + (A+1)*cs)
-        b[2] = A*((A+1) + (A-1)*cs - 2*sqrt(A)*alpha)
-        a[0] = (A+1) - (A-1)*cs + 2*sqrt(A)*alpha
+        b[2] = A*((A+1) + (A-1)*cs - 2*np.sqrt(A)*alpha)
+        a[0] = (A+1) - (A-1)*cs + 2*np.sqrt(A)*alpha
         a[1] = 2*((A-1) - (A+1)*cs)
-        a[2] = (A+1) - (A-1)*cs - 2*sqrt(A)*alpha
+        a[2] = (A+1) - (A-1)*cs - 2*np.sqrt(A)*alpha
     else:
         raise Exception('eq_type not supported')
     return b, a
@@ -140,7 +138,7 @@ def _impulse(length_samples: int = 512):
     imp : ndarray
         Impulse
     """
-    imp = zeros(length_samples)
+    imp = np.zeros(length_samples)
     imp[0] = 1
     return imp
 
@@ -167,20 +165,20 @@ def _group_delay_filter(ba, length_samples: int = 512, fs_hz: int = 48000):
         Group delay in seconds.
     """
     # Frequency vector at which to evaluate
-    omega = linspace(0, pi, length_samples)
+    omega = np.linspace(0, np.pi, length_samples)
     # Turn always to FIR
-    c = convolve(ba[0], conjugate(ba[1][::-1]))
-    cr = c * arange(len(c))  # Ramped coefficients
+    c = np.convolve(ba[0], np.conjugate(ba[1][::-1]))
+    cr = c * np.arange(len(c))  # Ramped coefficients
     # Evaluation
-    num = polyval(cr, exp(1j*omega))
-    denum = polyval(c, exp(1j*omega))
+    num = np.polyval(cr, np.exp(1j*omega))
+    denum = np.polyval(c, np.exp(1j*omega))
 
     # Group delay
-    gd = real(num/denum) - len(ba[1]) + 1
+    gd = np.real(num/denum) - len(ba[1]) + 1
 
     # Look for infinite values
-    gd[~isfinite(gd)] = 0
-    f = omega/pi*(fs_hz/2)
+    gd[~np.isfinite(gd)] = 0
+    f = omega/np.pi*(fs_hz/2)
     gd /= fs_hz
     return f, gd
 
@@ -261,13 +259,13 @@ def _filterbank_on_signal(signal: Signal, filters, activate_zi: bool = False,
                     out_sig, activate_zi=activate_zi, zero_phase=zero_phase)
     else:
         new_time_data = \
-            zeros((signal.time_data.shape[0],
-                   signal.number_of_channels, n_filt))
+            np.zeros((signal.time_data.shape[0],
+                      signal.number_of_channels, n_filt))
         for n in range(n_filt):
             s = filters[n].filter_signal(
                     signal, activate_zi=activate_zi, zero_phase=zero_phase)
             new_time_data[:, :, n] = s.time_data
-        new_time_data = sum(new_time_data, axis=-1)
+        new_time_data = np.sum(new_time_data, axis=-1)
         out_sig = deepcopy(signal)
         out_sig.time_data = new_time_data
     return out_sig

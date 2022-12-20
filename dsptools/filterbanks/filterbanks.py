@@ -5,7 +5,7 @@ object
 # import numpy as np
 # from .signal_class import Signal, MultiBandSignal
 # from .filter_class import Filter, FilterBank
-from .backend._filterbank import LRFilterBank
+from ._filterbank import LRFilterBank
 
 
 def linkwitz_riley_crossovers(freqs, order, sampling_rate_hz: int = 48000):

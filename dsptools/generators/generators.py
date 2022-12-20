@@ -3,12 +3,10 @@ This contains signal generators that might be useful for measurements.
 See measure.py for routines where the signals that are created here can be
 used
 """
-from numpy import (fft, zeros, ones, random, pi, linspace,
-                   sin, log, append, exp)
-from .classes.signal_class import Signal
-from .backend._general_helpers import _normalize, _fade
-from .standard_functions import pad_trim
-from .backend._filter import _impulse
+import numpy as np
+from dsptools.classes.signal_class import Signal
+from dsptools._general_helpers import _normalize, _fade, _pad_trim
+from dsptools.classes._filter import _impulse
 
 
 def noise(type_of_noise: str = 'white', length_seconds: float = 1,
@@ -59,14 +57,18 @@ def noise(type_of_noise: str = 'white', length_seconds: float = 1,
         assert padding_end_seconds > 0, 'Padding has to be a positive time'
 
     l_samples = int(length_seconds * sampling_rate_hz)
-    f = fft.rfftfreq(l_samples, 1/sampling_rate_hz)
+    f = np.fft.rfftfreq(l_samples, 1/sampling_rate_hz)
 
-    time_data = zeros((l_samples, number_of_channels))
+    if padding_end_seconds is not None:
+        p_samples = int(padding_end_seconds * sampling_rate_hz)
+    else:
+        p_samples = 0
+    time_data = np.zeros((l_samples+p_samples, number_of_channels))
 
     for n in range(number_of_channels):
-        mag = ones(len(f)) + random.normal(0, 0.025, len(f))
+        mag = np.ones(len(f)) + np.random.normal(0, 0.025, len(f))
         mag[0] = 0
-        ph = random.uniform(-pi, pi, len(f))
+        ph = np.random.uniform(-np.pi, np.pi, len(f))
         if type_of_noise == 'pink'.casefold():
             mag[1:] /= f[1:]
         elif type_of_noise == 'red'.casefold():
@@ -75,7 +77,7 @@ def noise(type_of_noise: str = 'white', length_seconds: float = 1,
             mag[1:] *= f[1:]
         elif type_of_noise == 'violet'.casefold():
             mag[1:] *= (f[1:]**2)
-        vec = _normalize(fft.irfft(mag*exp(1j*ph)),
+        vec = _normalize(np.fft.irfft(mag*np.exp(1j*ph)),
                          dbfs=peak_level_dbfs, mode='peak')
         if fade is not None:
             fade_length = 0.05 * length_seconds
@@ -83,14 +85,11 @@ def noise(type_of_noise: str = 'white', length_seconds: float = 1,
                         sampling_rate_hz=sampling_rate_hz, at_start=True)
             vec = _fade(s=vec, length_seconds=fade_length, mode=fade,
                         sampling_rate_hz=sampling_rate_hz, at_start=False)
-        time_data[:, n] = vec
+        time_data[:l_samples, n] = vec
 
     id = type_of_noise.lower()+' noise'
     noise_sig = Signal(None, time_data, sampling_rate_hz, signal_type='noise',
                        signal_id=id)
-    if padding_end_seconds is not None:
-        p_samples = int(padding_end_seconds * sampling_rate_hz)
-        noise_sig = pad_trim(noise_sig, l_samples+p_samples)
     return noise_sig
 
 
@@ -118,7 +117,7 @@ def chirp(type_of_chirp: str = 'log', range_hz=None, length_seconds: float = 1,
         Number of channels (with different noise signals) to be created.
         Default: 1.
     fade : str, optional
-        Type of fade done on the generated signal. Options are `'exp'`,
+        Type of fade done on the generated signal. Options are `'np.exp'`,
         `'lin'`, `'log'`. Pass `None` for no fading. Default: `'log'`.
     padding_end_seconds : float, optional
         Padding at the end of signal. Use `None` to avoid any padding.
@@ -135,7 +134,7 @@ def chirp(type_of_chirp: str = 'log', range_hz=None, length_seconds: float = 1,
     """
     type_of_chirp = type_of_chirp.lower()
     assert type_of_chirp in ('lin', 'log'), \
-        f'{type_of_chirp} is not a valid type. Select lin or log'
+        f'{type_of_chirp} is not a valid type. Select lin or np.log'
     if range_hz is not None:
         assert len(range_hz) == 2, \
             'range_hz has to contain exactly two frequencies'
@@ -147,17 +146,21 @@ def chirp(type_of_chirp: str = 'log', range_hz=None, length_seconds: float = 1,
             'nyquist frequency'
     else:
         range_hz = [1, sampling_rate_hz//2]
+    if padding_end_seconds is not None:
+        p_samples = int(padding_end_seconds * sampling_rate_hz)
+    else:
+        p_samples = 0
     l_samples = int(sampling_rate_hz * length_seconds)
-    t = linspace(0, length_seconds, l_samples)
+    t = np.linspace(0, length_seconds, l_samples)
 
     if type_of_chirp == 'lin':
         k = (range_hz[1]-range_hz[0])/length_seconds
-        freqs = (range_hz[0] + k/2*t)*2*pi
-        chirp = sin(freqs*t)
+        freqs = (range_hz[0] + k/2*t)*2*np.pi
+        chirp = np.sin(freqs*t)
     elif type_of_chirp == 'log':
-        k = exp((log(range_hz[1])-log(range_hz[0]))/length_seconds)
+        k = np.exp((np.log(range_hz[1])-np.log(range_hz[0]))/length_seconds)
         chirp = \
-            sin(2*pi*range_hz[0]/log(k)*(k**t-1))
+            np.sin(2*np.pi*range_hz[0]/np.log(k)*(k**t-1))
     chirp = _normalize(chirp, peak_level_dbfs, mode='peak')
 
     if fade is not None:
@@ -167,16 +170,15 @@ def chirp(type_of_chirp: str = 'log', range_hz=None, length_seconds: float = 1,
         chirp = _fade(s=chirp, length_seconds=fade_length, mode=fade,
                       sampling_rate_hz=sampling_rate_hz, at_start=False)
 
+    chirp = _pad_trim(chirp, l_samples+p_samples)
+
     chirp_n = chirp[..., None]
     if number_of_channels != 1:
         for n in range(number_of_channels):
-            chirp_n = append(chirp_n, chirp[..., None], axis=1)
+            chirp_n = np.append(chirp_n, chirp[..., None], axis=1)
     # Signal
     chirp_sig = Signal(None, chirp_n, sampling_rate_hz,
                        signal_type='chirp', signal_id=type_of_chirp)
-    if padding_end_seconds is not None:
-        p_samples = int(padding_end_seconds * sampling_rate_hz)
-        chirp_sig = pad_trim(chirp_sig, l_samples+p_samples)
     return chirp_sig
 
 
@@ -202,7 +204,7 @@ def dirac(length_samples: int = 512, number_of_channels: int = 1,
     assert length_samples > 0, 'Only positive lengths are valid'
     assert number_of_channels > 0, 'At least one channel has to be created'
     assert sampling_rate_hz > 0, 'Sampling rate can only be positive'
-    td = zeros((length_samples, number_of_channels))
+    td = np.zeros((length_samples, number_of_channels))
     for n in range(number_of_channels):
         td[:, n] = _impulse(length_samples=length_samples)
     imp = Signal(None, td, sampling_rate_hz, signal_type='dirac')

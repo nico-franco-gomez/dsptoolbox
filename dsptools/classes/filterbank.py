@@ -3,10 +3,10 @@ from pickle import dump, HIGHEST_PROTOCOL
 
 from .signal_class import Signal
 from .filter_class import Filter
-from ..backend._filter import _filterbank_on_signal
-from ..backend._general_helpers import _get_normalized_spectrum
-from ..generators import dirac
-from ..plots import general_plot
+from ._filter import _filterbank_on_signal
+from dsptools.generators import dirac
+from dsptools.plots import general_plot
+from dsptools._general_helpers import _get_normalized_spectrum
 
 
 class FilterBank():

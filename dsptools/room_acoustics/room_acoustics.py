@@ -4,12 +4,12 @@ High-level methods for room acoustics functions
 from numpy import (zeros, array, ceil, append, squeeze,
                    where, sort, log10, abs, max)
 from scipy.signal import find_peaks, convolve
-from .classes.signal_class import Signal
-from .standard_functions import group_delay
-from .backend._room_acoustics import (_reverb,
-                                      _complex_mode_identification,
-                                      _sum_magnitude_spectra)
-from .backend._general_helpers import _find_nearest, _normalize
+from dsptools import Signal
+from dsptools.standard_functions import group_delay
+from ._room_acoustics import (_reverb,
+                              _complex_mode_identification,
+                              _sum_magnitude_spectra)
+from dsptools._general_helpers import _find_nearest, _normalize
 
 
 __all__ = ['reverb_time', 'find_modes', 'convolve_rir_on_signal']
