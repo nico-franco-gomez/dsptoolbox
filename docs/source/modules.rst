@@ -13,4 +13,5 @@ Here are described the modules in dsptools.
 	modules/dsptools.plots
 	modules/dsptools.room_acoustics
 	modules/dsptools.special
+	modules/dsptools.standard_functions
 	modules/dsptools.transfer_functions

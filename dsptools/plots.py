@@ -8,9 +8,6 @@ from numpy import array, max, min
 from seaborn import set_style
 set_style('whitegrid')
 
-__all__ = ['show', 'general_plot', 'general_subplots_line',
-           'general_matrix_plot']
-
 
 def show():
     """Wrapper around matplotlib's show

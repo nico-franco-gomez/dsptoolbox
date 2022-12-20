@@ -1,4 +1,4 @@
-special
+dsptools.special
 ==========
 
 .. automodule:: dsptools.special

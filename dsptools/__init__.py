@@ -1,21 +1,8 @@
-# from .other import (latency, group_delay, minimal_phase, minimal_group_delay,
-#                     excess_group_delay)
-# from .classes.signal_class import Signal
-# from .classes.multibandsignal import MultiBandSignal
-# from .classes.filter_class import Filter
-# from .classes.filterbank import FilterBank
-# from .transfer_functions import transfer_functions
-# from .distances import distances
-# from .experimental import experimental
-# from .room_acoustics import room_acoustics
-# from .plots import plots
-# from .generators import generators
-# from .measure import measure
-# from .filterbanks import filterbanks
-# from .special import special
-
-from .other import (latency, group_delay, minimal_phase, minimal_group_delay,
-                    excess_group_delay)
+from .standard_functions import (latency,
+                                 group_delay,
+                                 minimal_phase,
+                                 minimal_group_delay,
+                                 excess_group_delay)
 from .classes.signal_class import Signal
 from .classes.multibandsignal import MultiBandSignal
 from .classes.filter_class import Filter

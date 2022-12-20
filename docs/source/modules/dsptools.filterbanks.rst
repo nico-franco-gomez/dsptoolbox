@@ -1,4 +1,4 @@
-filterbanks
+dsptools.filterbanks
 ==========
 
 .. automodule:: dsptools.filterbanks

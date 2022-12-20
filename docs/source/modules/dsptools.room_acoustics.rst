@@ -1,4 +1,4 @@
-room_acoustics
+dsptools.room_acoustics
 ==========
 
 .. automodule:: dsptools.room_acoustics

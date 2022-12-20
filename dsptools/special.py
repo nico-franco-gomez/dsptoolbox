@@ -4,8 +4,6 @@ Here are methods considered as somewhat special or less common.
 from numpy import fft, zeros_like, unwrap, angle, abs, log
 from .classes.signal_class import Signal
 
-__all__ = ['cepstrum', ]
-
 
 def cepstrum(signal: Signal, mode='power'):
     """Returns the cepstrum of a given signal in the Quefrency domain.

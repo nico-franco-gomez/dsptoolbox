@@ -5,7 +5,7 @@ from numpy import (zeros, array, ceil, append, squeeze,
                    where, sort, log10, abs, max)
 from scipy.signal import find_peaks, convolve
 from .classes.signal_class import Signal
-from .other import group_delay
+from .standard_functions import group_delay
 from .backend._room_acoustics import (_reverb,
                                       _complex_mode_identification,
                                       _sum_magnitude_spectra)

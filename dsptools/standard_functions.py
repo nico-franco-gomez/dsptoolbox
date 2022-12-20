@@ -10,9 +10,6 @@ from .backend._filter import _group_delay_filter
 from .backend._general_helpers import _pad_trim
 from copy import deepcopy
 
-__all__ = ['latency', 'group_delay', 'minimal_phase', 'minimal_group_delay',
-           'excess_group_delay', 'pad_trim', ]
-
 
 def latency(in1: Signal, in2: Signal = None):
     """Computes latency between two signals using the correlation method.
