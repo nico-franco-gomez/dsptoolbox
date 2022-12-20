@@ -33,7 +33,7 @@ Documentation
 
 .. toctree::
 
-   classes
+   dsptools.classes
    
 .. toctree::
     
