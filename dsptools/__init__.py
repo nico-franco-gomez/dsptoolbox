@@ -3,10 +3,11 @@ from .standard_functions import (latency,
                                  minimal_phase,
                                  minimal_group_delay,
                                  excess_group_delay)
-from .classes.signal_class import Signal
-from .classes.multibandsignal import MultiBandSignal
-from .classes.filter_class import Filter
-from .classes.filterbank import FilterBank
+from .classes import Signal, Filter, FilterBank, MultiBandSignal
+# from .classes.signal_class import Signal
+# from .classes.multibandsignal import MultiBandSignal
+# from .classes.filter_class import Filter
+# from .classes.filterbank import FilterBank
 from . import transfer_functions
 from . import distances
 from . import experimental
