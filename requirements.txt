@@ -18,4 +18,4 @@ piccolo-theme # theme
 numpydoc
 sphinx
 readthedocs-sphinx-search
-autdocsumm # only for python=3.9
+autodocsumm
