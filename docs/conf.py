@@ -27,12 +27,17 @@ extensions = [
     'sphinx.ext.autosummary',
     'sphinx.ext.intersphinx',
     'numpydoc',
+    'autodocsumm',
     # 'readthedocs-sphinx-search',
 ]
 
 # numpydoc_show_class_members = False
 autosummary_generate = True
 autosummary_imported_members = True
+
+source_suffix = '.rst'
+master_doc = 'index'
+project = u'dsptools'
 
 
 intersphinx_mapping = {

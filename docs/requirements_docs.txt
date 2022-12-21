@@ -2,3 +2,4 @@ piccolo_theme
 numpydoc
 sphinx
 readthedocs-sphinx-search
+autodocsumm

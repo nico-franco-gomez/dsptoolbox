@@ -5,10 +5,11 @@ pushd %~dp0
 REM Command file for Sphinx documentation
 
 if "%SPHINXBUILD%" == "" (
-	set SPHINXBUILD=sphinx-build
+	set SPHINXBUILD=python -msphinx
 )
 set SOURCEDIR=.
 set BUILDDIR=_build
+set SPHINXPROJ=dsptools
 
 %SPHINXBUILD% >NUL 2>NUL
 if errorlevel 9009 (
