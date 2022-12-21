@@ -7,7 +7,7 @@ from pickle import dump, HIGHEST_PROTOCOL
 from os import sep
 
 import numpy as np
-from soundfile import read, write
+from scipy.io import wavfile
 from dsptools.plots import (general_plot,
                             general_subplots_line, general_matrix_plot)
 from ._plots import _csm_plot
@@ -77,7 +77,7 @@ class Signal():
         if path is not None:
             assert time_data is None, 'Constructor cannot take a path and ' +\
                 'a vector at the same time'
-            time_data, sampling_rate_hz = read(path)
+            sampling_rate_hz, time_data = wavfile.read(path)
         self.time_data = time_data
         self.number_of_channels = self.time_data.shape[1]
         if signal_type in ('rir', 'ir', 'h1', 'h2', 'h3', 'chirp',
@@ -367,7 +367,7 @@ class Signal():
         if path is not None:
             assert new_time_data is None, 'Only path or new time data is ' +\
                 'accepted, not both.'
-            new_time_data, sampling_rate_hz = read(path)
+            sampling_rate_hz, new_time_data = wavfile.read(path)
         else:
             if new_time_data is not None:
                 assert path is None, 'Only path or new time data is ' +\
@@ -806,7 +806,7 @@ class Signal():
             (without format). Default: `'signal'`
             (local folder, object named signal).
         mode : str, optional
-            Mode of saving. Available modes are `'wav'`, `'flac'`, `'pickle'`.
+            Mode of saving. Available modes are `'wav'`, or `'pickle'`.
             Default: `'wav'`.
 
         """
@@ -814,10 +814,7 @@ class Signal():
             raise ValueError('Please introduce the saving path without format')
         if mode == 'wav':
             path += '.wav'
-            write(path, self.time_data, self.sampling_rate_hz)
-        elif mode == 'flac':
-            path += '.flac'
-            write(path, self.time_data, self.sampling_rate_hz)
+            wavfile.write(path, self.sampling_rate_hz, self.time_data)
         elif mode == 'pickle':
             path += '.pkl'
             with open(path, 'wb') as data_file:
@@ -825,4 +822,4 @@ class Signal():
         else:
             raise ValueError(
                 f'{mode} is not a supported saving mode. Use ' +
-                'wav, flac or pkl')
+                'wav or pickle')
