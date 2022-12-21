@@ -4,3 +4,8 @@ sphinx
 readthedocs-sphinx-search
 autodocsumm
 numpy
+scipy
+soundfile
+sounddevice
+matplotlib
+seaborn
