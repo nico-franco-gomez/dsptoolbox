@@ -26,5 +26,6 @@ def linkwitz_riley_crossovers(freqs, order, sampling_rate_hz: int = 48000):
         Filter bank in form of LRFilterBank class which contains the same
         methods as the FilterBank class but is generated with different
         internal methods.
+
     """
     return LRFilterBank(freqs, order, sampling_rate_hz)

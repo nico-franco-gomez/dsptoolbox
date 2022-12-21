@@ -44,6 +44,7 @@ def noise(type_of_noise: str = 'white', length_seconds: float = 1,
     References
     ----------
     https://en.wikipedia.org/wiki/Colors_of_noise
+
     """
     valid_noises = ('white', 'pink', 'red', 'blue', 'violet', 'grey')
     valid_noises = (n.casefold() for n in valid_noises)
@@ -131,6 +132,7 @@ def chirp(type_of_chirp: str = 'log', range_hz=None, length_seconds: float = 1,
     Reference
     ---------
     https://de.wikipedia.org/wiki/Chirp
+
     """
     type_of_chirp = type_of_chirp.lower()
     assert type_of_chirp in ('lin', 'log'), \
@@ -200,6 +202,7 @@ def dirac(length_samples: int = 512, number_of_channels: int = 1,
     -------
     imp : Signal
         Signal with dirac impulse.
+
     """
     assert length_samples > 0, 'Only positive lengths are valid'
     assert number_of_channels > 0, 'At least one channel has to be created'

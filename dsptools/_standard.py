@@ -8,6 +8,7 @@ from ._general_helpers import _pad_trim, _compute_number_frames
 
 def _latency(in1: np.ndarray, in2: np.ndarray):
     """Computes the latency between two functions using the correlation method.
+
     """
     if len(in1.shape) < 2:
         in1 = in1[..., None]
@@ -56,6 +57,7 @@ def _welch(x, y, fs_hz, window_type: str = 'hann',
     -------
     csd : np.ndarray
         Cross spectral density vector. Complex-valued if x and y are different.
+
     """
     if type(x) != np.ndarray:
         x = np.array(x).squeeze()
@@ -158,7 +160,8 @@ def _group_delay_direct(phase: np.ndarray, delta_f: float = 1):
     -------
     gd : np.ndarray
         Group delay vector either in s or in samples if no
-        sampling rate is given
+        sampling rate is given.
+
     """
     if np.iscomplexobj(phase):
         phase = np.angle(phase)
@@ -184,6 +187,7 @@ def _minimal_phase(magnitude: np.ndarray, unwrapped: bool = True):
     -------
     minimal_phase : np.ndarray
         Minimal phase of the system.
+
     """
     if np.iscomplexobj(magnitude):
         magnitude = abs(magnitude)
@@ -228,6 +232,7 @@ def _stft(x: np.ndarray, fs_hz: int, window_length_samples: int = 2048,
         Frequency vector.
     stft : np.ndarray
         STFT matrix.
+
     """
     valid_window_sizes = np.array([int(2**x) for x in range(7, 17)])
     assert window_length_samples in valid_window_sizes, \
@@ -319,6 +324,7 @@ def _csm(time_data: np.ndarray, sampling_rate_hz: int,
         Frequency vector
     csm : np.ndarray
         Cross spectral matrix with shape (frequency, channels, channels).
+
     """
     number_of_channels = time_data.shape[1]
     csm = np.zeros((window_length_samples//2+1,

@@ -12,6 +12,7 @@ def _reverb(h, fs_hz, mode):
     Regarding start of RIR: ISO 3382-1:2009-10, Acoustics - Measurement of
     the reverberation time of rooms with reference to other
     acoustical parameters. pp. 22.
+
     """
     # Energy decay curve
     energy_curve = h**2
@@ -67,6 +68,7 @@ def _complex_mode_identification(spectra: np.ndarray, n_functions: int = 1):
     References
     ----------
     http://papers.vibetech.com/Paper17-CMIF.pdf
+
     """
     assert n_functions <= spectra.shape[1], f'{n_functions} is too many ' +\
         f'functions for spectra of shape {spectra.shape}'
@@ -96,6 +98,7 @@ def _sum_magnitude_spectra(magnitudes: np.ndarray):
     -------
     summed : np.ndarray
         np.sum of magnitude spectra.
+
     """
     if np.iscomplexobj(magnitudes):
         magnitudes = abs(magnitudes)

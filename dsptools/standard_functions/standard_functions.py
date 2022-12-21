@@ -26,7 +26,8 @@ def latency(in1: Signal, in2: Signal = None):
     Returns
     -------
     latency_per_channel_samples : ndarray
-        Array with latency between two signals in samples per channel
+        Array with latency between two signals in samples per channel.
+
     """
     if in2 is not None:
         assert in1.number_of_channels == in2.number_of_channels, \
@@ -59,6 +60,7 @@ def group_delay(signal: Signal, method='direct'):
         Frequency vector in Hz.
     group_delays : ndarray
         Matrix containing group delays in seconds.
+
     """
     assert method in ('direct', 'matlab'), \
         f'{method} is not valid. Use direct or matlab'
@@ -99,6 +101,7 @@ def minimal_phase(signal: Signal):
         Frequency vector.
     min_phases : ndarray
         Minimal phases.
+
     """
     assert signal.signal_type in ('rir', 'ir', 'h1', 'h2', 'h3'), \
         'Signal type must be rir or ir'
@@ -112,8 +115,7 @@ def minimal_phase(signal: Signal):
 
 
 def minimal_group_delay(signal: Signal):
-    """
-    Computes minimal group delay
+    """Computes minimal group delay
 
     Parameters
     ----------
@@ -126,6 +128,7 @@ def minimal_group_delay(signal: Signal):
         Frequency vector.
     min_gd : ndarray
         Minimal group delays in seconds.
+
     """
     f, min_phases = minimal_phase(signal)
     min_gd = np.zeros_like(min_phases)
@@ -173,6 +176,7 @@ def pad_trim(signal: Signal, desired_length_samples: int,
     -------
     new_signal : Signal
         New padded signal.
+
     """
     new_time_data = \
         np.zeros((desired_length_samples, signal.number_of_channels))

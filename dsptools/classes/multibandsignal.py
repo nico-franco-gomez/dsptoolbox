@@ -13,6 +13,7 @@ class MultiBandSignal():
     The MultiBandSignal can contain multirate system if the attribute
     `same_sampling_rate` is set to `False`. A dictionary also can carry
     all kinds of metadata that might characterize the signals.
+
     """
 
     # ======== Constructor and initializers ===================================
@@ -35,6 +36,7 @@ class MultiBandSignal():
         info : dict, optional
             A dictionary with generic information about the MultiBandSignal
             can be passed. Default: `None`.
+
         """
         if bands is None:
             bands = []
@@ -127,6 +129,7 @@ class MultiBandSignal():
             Signal to be added.
         index : int, optional
             Index at which to insert the new Signal. Default: -1.
+
         """
         if not self.bands:
             self.number_of_channels = sig.number_of_channels
@@ -162,6 +165,7 @@ class MultiBandSignal():
             Default: -1.
         return_band : bool, optional
             When `True`, the erased band is returned. Default: `False`.
+
         """
         assert self.bands, 'There are no filters to remove'
         if index == -1:
@@ -182,6 +186,7 @@ class MultiBandSignal():
             When `True`, a longer message is printed with all available
             information regarding each Signal in the MultiBandSignal.
             Default: `True`.
+
         """
         print()
         txt = ''
@@ -220,6 +225,7 @@ class MultiBandSignal():
             does not have the same sampling rate for all signals, a list with
             the time vectors and a dictionary containing their sampling rates
             with the key 'sampling_rates' are returned.
+
         """
         if self.same_sampling_rate:
             new_time_data = \
@@ -250,6 +256,7 @@ class MultiBandSignal():
             Path for the signal to be saved. Use only folder/folder/name
             (without format). Default: `'multibandsignal'`
             (local folder, object named multibandsignal).
+
         """
         if '.' in path.split(sep)[-1]:
             raise ValueError('Please introduce the saving path without format')

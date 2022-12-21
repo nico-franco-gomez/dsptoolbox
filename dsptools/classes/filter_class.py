@@ -18,8 +18,8 @@ __all__ = ['Filter']
 class Filter():
     """Class for creating and storing linear digital filters with all their
     metadata.
-    """
 
+    """
     # ======== Constructor and initializers ===================================
     def __init__(self, filter_type: str = 'biquad',
                  filter_configuration: dict = None,
@@ -84,6 +84,7 @@ class Filter():
         Plots or prints: show_filter_parameters, plot_magnitude,
             plot_group_delay, plot_phase, plot_zp.
         Filtering: filter_signal.
+
         """
         self.sampling_rate_hz = sampling_rate_hz
         if filter_configuration is None:
@@ -96,6 +97,7 @@ class Filter():
     def initialize_zi(self, number_of_channels: int = 1):
         """Initializes zi for steady-state filtering. The number of parallel
         zi's can be defined externally.
+
         """
         self.zi = []
         for n in range(number_of_channels):
@@ -136,6 +138,7 @@ class Filter():
         -------
         new_signal : Signal
             New Signal object.
+
         """
         assert not (activate_zi and zero_phase), \
             'Filter initial and final values cannot be updated when ' +\
@@ -232,12 +235,14 @@ class Filter():
         Returns
         -------
         info : dict
-            Dictionary containing all filter parameters
+            Dictionary containing all filter parameters.
+
         """
         return self.info
 
     def _get_metadata_string(self):
         """Helper for creating a string containing all filter info.
+
         """
         txt = f"""Filter – ID: {self.info['filter_id']}\n"""
         temp = ''
@@ -262,6 +267,7 @@ class Filter():
         -------
         ir_filt : np.ndarray
             Impulse response of the filter.
+
         """
         ir_filt = _impulse(length_samples)
         ir_filt = sig.sosfilt(sos=self.sos, x=ir_filt)
@@ -284,6 +290,7 @@ class Filter():
         -------
         coefficients : array-like
             Array with filter parameters.
+
         """
         if mode == 'sos':
             coefficients = self.sos
@@ -297,7 +304,8 @@ class Filter():
 
     # ======== Plots and prints ===============================================
     def show_filter_parameters(self):
-        """Prints all the filter parameters
+        """Prints all the filter parameters.
+
         """
         print(self._get_metadata_string())
 
@@ -326,6 +334,7 @@ class Filter():
         Returns
         -------
         figure and axis when `returns = True`.
+
         """
         ir = self.get_ir(length_samples=length_samples)
         fig, ax = ir.plot_magnitude(range_hz, normalize, 0,
@@ -341,8 +350,7 @@ class Filter():
     def plot_group_delay(self, length_samples: int = 512,
                          range_hz=[20, 20e3], show_info_box: bool = False,
                          returns: bool = True):
-        """
-        Plots group delay of the filter. Different methods are used for
+        """Plots group delay of the filter. Different methods are used for
         FIR or IIR filters.
 
         Parameters
@@ -360,6 +368,7 @@ class Filter():
         Returns
         -------
         figure and axis when `returns = True`.
+
         """
         ba = sig.sos2tf(self.sos)
         # import numpy as np
@@ -409,6 +418,7 @@ class Filter():
         Returns
         -------
         figure and axis when `returns = True`.
+
         """
         ir = self.get_ir(length_samples=length_samples)
         fig, ax = ir.plot_phase(range_hz, unwrap, returns=True)
@@ -433,6 +443,7 @@ class Filter():
         Returns
         -------
         figure and axis when `returns = True`.
+
         """
         z, p, k = sig.sos2pk(self.sos)
         fig, ax = _zp_plot(z, p, returns=True)
@@ -456,6 +467,7 @@ class Filter():
             Path for the filter to be saved. Use only folder/folder/name
             (without format). Default: `'filter'`
             (local folder, object named filter).
+
         """
         if '.' in path.split(sep)[-1]:
             raise ValueError('Please introduce the saving path without format')

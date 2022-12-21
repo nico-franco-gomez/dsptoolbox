@@ -19,6 +19,7 @@ class LRFilterBank():
     initial values for the filters to work in streaming applications. Since
     the crossovers need allpasses at every other crossover frequency, the
     structure used for the zi's is very convoluted.
+
     """
     # ======== Constructor and initiliazers ===================================
     def __init__(self, freqs, order, sampling_rate_hz: int = 48000):
@@ -40,7 +41,8 @@ class LRFilterBank():
 
     def _create_filters_sos(self):
         """Creates and saves filter's sos representations in a list with
-        ascending order
+        ascending order.
+
         """
         self.sos = []
         for i in range(self.number_of_cross):
@@ -57,6 +59,7 @@ class LRFilterBank():
         ----------
         number_of_channels : int, optional
             Number of channels of the signal to be filtered.
+
         """
         # total signal separates low band from the rest (2 zi)
         # all_cross_zi = [[cross0_zi], [cross1_zi], [cross2_zi], ...]
@@ -100,7 +103,8 @@ class LRFilterBank():
         Returns
         -------
         outsig : MultiBandSignal
-            A MultiBandSignal object containing all bands and all channels
+            A MultiBandSignal object containing all bands and all channels.
+
         """
         assert s.sampling_rate_hz == self.sampling_rate_hz, \
             'Sampling rates do not match'
@@ -201,6 +205,7 @@ class LRFilterBank():
         """Filters signal with the sos corresponding to f_number.
         `split=True` returns two bands; when `False`, the summed bands are
         returned (allpass).
+
         """
         # Low band
         s_l = sosfilt(self.sos[f_number][0], x=s)
@@ -233,6 +238,7 @@ class LRFilterBank():
         -------
         fig, ax
             Returned only when `returns=True`.
+
         """
         d = dirac(
             length_samples=1024, number_of_channels=1, sampling_rate_hz=48000)
@@ -278,6 +284,7 @@ class LRFilterBank():
             Path for the filterbank to be saved. Use only folder/folder/name
             (without format). Default: `'filterbank'`
             (local folder, object named filterbank).
+
         """
         if '.' in path.split(sep)[-1]:
             raise ValueError('Please introduce the saving path without format')

@@ -10,6 +10,10 @@ from dsptools._general_helpers import _get_normalized_spectrum
 
 
 class FilterBank():
+    """Standard template for filter banks containing filters, filters' initial
+    values, metadata and the some useful plotting and filtering methods.
+
+    """
     # ======== Constructor and initializers ===================================
     def __init__(self, filters=None, same_sampling_rate: bool = True,
                  info: dict = None):
@@ -34,8 +38,9 @@ class FilterBank():
 
         Methods
         -------
-        General: add_filter, remove_filter
-        Prints: show_info
+        General: add_filter, remove_filter.
+        Prints: show_info.
+
         """
         #
         if info is None:
@@ -61,6 +66,7 @@ class FilterBank():
 
     def _generate_metadata(self):
         """Generates the info dictionary with metadata about the FilterBank.
+
         """
         self.info = {}
         self.info['number_of_filters'] = len(self.filters)
@@ -74,6 +80,7 @@ class FilterBank():
 
     def initialize_zi(self, number_of_channels):
         """Initiates the zi of the filters for the given number of channels.
+
         """
         for f in self.filters:
             f.initialize_zi(number_of_channels)
@@ -88,6 +95,7 @@ class FilterBank():
             Filter to be added to the FilterBank.
         index : int, optional
             Index at which to insert the new Filter. Default: -1.
+
         """
         if not self.filters:
             self.sampling_rate_hz = filt.sampling_rate_hz
@@ -113,6 +121,7 @@ class FilterBank():
             Default: -1.
         return_filter : bool, optional
             When `True`, the erased filter is returned. Default: `False`.
+
         """
         assert self.filters, 'There are no filters to remove'
         if index == -1:
@@ -129,11 +138,11 @@ class FilterBank():
                       activate_zi: bool = False, zero_phase: bool = False):
         """Applies the filter bank to a signal and returns a multiband signal.
         `'parallel'`: returns a MultiBandSignal object where each band is
-            the output of each filter.
+        the output of each filter.
         `'sequential'`: applies each filter to the given Signal in a sequential
-            manner and returns output with same dimension.
+        manner and returns output with same dimension.
         `'summed'`: applies every filter as parallel and then summs the outputs
-            returning same dimensional output as input.
+        returning same dimensional output as input.
 
         Parameters
         ----------
@@ -154,6 +163,7 @@ class FilterBank():
         new_sig : `'sequential'` or `'summed'` -> Signal.
                   `'parallel'` -> MultiBandSignal
             New signal after filtering.
+
         """
         mode = mode.lower()
         assert mode in ('parallel', 'sequential', 'summed'), \
@@ -194,6 +204,7 @@ class FilterBank():
             When `True`, a longer message is printed with all available
             information regarding each filter in the filter bank.
             Default: `True`.
+
         """
         print()
         txt = ''
@@ -238,6 +249,7 @@ class FilterBank():
         -------
         fig, ax
             Returned only when `returns=True`.
+
         """
         import numpy as np
         d = dirac(
@@ -286,6 +298,7 @@ class FilterBank():
             Path for the filterbank to be saved. Use only folder/folder/name
             (without format). Default: `'filterbank'`
             (local folder, object named filterbank).
+
         """
         if '.' in path.split(sep)[-1]:
             raise ValueError('Please introduce the saving path without format')

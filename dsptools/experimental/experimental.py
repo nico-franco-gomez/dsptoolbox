@@ -17,6 +17,7 @@ def _smoothing_log(vector, num_fractions, window_type='hann'):
     Method for Fractional-Octave Smoothing of Transfer Functions that
     Preserves Log-Frequency Symmetry. Journal of the Audio Engineering
     Society. 65. 239-245. 10.17743/jaes.2016.0053.
+
     """
     # Parameters
     N = len(vector)

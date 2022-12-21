@@ -19,13 +19,14 @@ def cepstrum(signal: Signal, mode='power'):
     Returns
     -------
     que : ndarray
-        Quefrency
+        Quefrency.
     ceps : ndarray
-        Cepstrum
+        Cepstrum.
 
     References
     ----------
     https://de.wikipedia.org/wiki/Cepstrum
+
     """
     mode = mode.lower()
     assert mode in ('power', 'complex', 'real'), \

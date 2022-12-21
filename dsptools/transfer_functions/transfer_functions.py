@@ -49,6 +49,7 @@ def spectral_deconvolve(num: Signal, denum: Signal, multichannel=False,
     -------
     new_sig : Signal
         Deconvolved signal.
+
     """
     if multichannel:
         assert num.time_data.shape[0] == denum.time_data.shape[0], \
@@ -140,6 +141,7 @@ def window_ir(signal: Signal, constant_percentage=0.75, exp2_trim: int = 13,
         IR with applied window.
     window: ndarray
         Window used for IR.
+
     """
     if exp2_trim is not None:
         total_length = int(2**exp2_trim)
@@ -195,6 +197,7 @@ def compute_transfer_function(output: Signal, input: Signal, mode='h2',
     tf : Signal
         Transfer functions. Coherences are also computed and saved in the
         Signal object.
+
     """
     mode = mode.casefold()
     assert mode in \

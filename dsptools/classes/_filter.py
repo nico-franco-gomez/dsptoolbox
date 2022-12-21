@@ -11,6 +11,7 @@ from copy import deepcopy
 
 def _get_biquad_type(number: int = None, name: str = None):
     """Helper method that handles string inputs for the biquad filters.
+
     """
     if name is not None:
         valid_names = ('peaking', 'lowpass', 'highpass', 'bandpass_skirt',
@@ -48,7 +49,8 @@ def _biquad_coefficients(eq_type=0, fs_hz: int = 48000,
     """Creates the filter coefficients for biquad filters.
     https://www.musicdsp.org/en/latest/_downloads/3e1dc886e7849251d6747b194d482272/Audio-EQ-Cookbook.txt
     eq_type: 0 PEAKING, 1 LOWPASS, 2 HIGHPASS, 3 BANDPASS_SKIRT,
-        4 BANDPASS_PEAK, 5 NOTCH, 6 ALLPASS, 7 LOWSHELF, 8 HIGHSHELF
+        4 BANDPASS_PEAK, 5 NOTCH, 6 ALLPASS, 7 LOWSHELF, 8 HIGHSHELF.
+
     """
     A = np.sqrt(10**(gain_db / 20.0))
     Omega = 2.0 * np.pi * (frequency_hz / fs_hz)
@@ -136,7 +138,8 @@ def _impulse(length_samples: int = 512):
     Returns
     -------
     imp : ndarray
-        Impulse
+        Impulse.
+
     """
     imp = np.zeros(length_samples)
     imp[0] = 1

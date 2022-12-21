@@ -22,6 +22,7 @@ def print_device_info(device_number: int = None):
     -------
     d : dict
         Only when `device_number is not None`.
+
     """
     if device_number is None:
         print(query_devices())

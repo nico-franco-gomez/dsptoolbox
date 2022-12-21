@@ -1,6 +1,7 @@
 """
 Signal class
 """
+
 from warnings import warn
 from pickle import dump, HIGHEST_PROTOCOL
 from os import sep
@@ -21,8 +22,8 @@ class Signal():
     """Class for general signals (time series). Most of the methods and
     supported computations are focused on audio signals, but some features
     might be generalizable to all kind of time series.
-    """
 
+    """
     # ======== Constructor and State handler ==================================
     def __init__(self, path=None, time_data=None,
                  sampling_rate_hz: int = 48000, signal_type: str = 'general',
@@ -63,6 +64,7 @@ class Signal():
 
         Only for `signal_type in ('rir', 'ir', 'h1', 'h2', 'h3')`:
             set_window, set_coherence, plot_group_delay, plot_coherence.
+
         """
         self.signal_id = signal_id
         self.signal_type = signal_type
@@ -89,7 +91,8 @@ class Signal():
 
     def __update_state(self):
         """Internal update of object state. If for instance time data gets
-        added, new spectrum, csm or stft has to be computed
+        added, new spectrum, csm or stft has to be computed.
+
         """
         self.__spectrum_state_update = True
         self.__csm_state_update = True
@@ -97,7 +100,8 @@ class Signal():
         self._generate_metadata()
 
     def _generate_metadata(self):
-        """Generates an information dictionary with metadata about the signal
+        """Generates an information dictionary with metadata about the signal.
+
         """
         self.info = {}
         self.info['sampling_rate_hz'] = self.sampling_rate_hz
@@ -108,7 +112,8 @@ class Signal():
         self.info['signal_type'] = self.signal_type
 
     def _generate_time_vector(self):
-        """Internal method to generate a time vector on demand
+        """Internal method to generate a time vector on demand.
+
         """
         self.time_vector_s = np.linspace(
             0, len(self.time_data)/self.sampling_rate_hz,
@@ -195,6 +200,7 @@ class Signal():
             Default: `'mean'`.
         scaling : str, optional
             Type of scaling. '`power'` or `'spectrum'`. Default: `'power'`.
+
         """
         assert method in ('welch', 'standard'), \
             f'{method} is not a valid method. Use welch or standard'
@@ -227,7 +233,8 @@ class Signal():
 
     def set_window(self, window):
         """Sets the window used for the IR. It only works for
-        `signal_type in ('ir', 'h1', 'h2', 'h3', 'rir')`
+        `signal_type in ('ir', 'h1', 'h2', 'h3', 'rir')`.
+
         """
         valid_signal_types = ('ir', 'h1', 'h2', 'h3', 'rir')
         assert self.signal_type in valid_signal_types, \
@@ -239,7 +246,8 @@ class Signal():
 
     def set_coherence(self, coherence: np.ndarray):
         """Sets the window used for the IR. It only works for
-        `signal_type = ('ir', 'h1', 'h2', 'h3', 'rir')`
+        `signal_type = ('ir', 'h1', 'h2', 'h3', 'rir')`.
+
         """
         valid_signal_types = ('ir', 'h1', 'h2', 'h3', 'rir')
         assert self.signal_type in valid_signal_types, \
@@ -271,6 +279,7 @@ class Signal():
             Default: `'mean'`.
         scaling : str, optional
             Type of scaling. '`power'` or `'spectrum'`. Default: `'power'`.
+
         """
         _new_csm_parameters = \
             dict(
@@ -313,6 +322,7 @@ class Signal():
             Default: True.
         scaling : bool, optional
             Scaling or not after np.fft. Default: False.
+
         """
         _new_spectrogram_parameters = \
             dict(
@@ -352,6 +362,7 @@ class Signal():
         padding_trimming : bool, optional
             Activates padding or trimming at the end of signal in case the
             new data does not match previous data. Default: `True`.
+
         """
         if path is not None:
             assert new_time_data is None, 'Only path or new time data is ' +\
@@ -400,12 +411,13 @@ class Signal():
         self.__update_state()
 
     def remove_channel(self, channel_number: int = -1):
-        """Removes a channel
+        """Removes a channel.
 
         Parameters
         ----------
         channel_number : int, optional
             Channel number to be removed. Default: -1 (last).
+
         """
         if channel_number == -1:
             channel_number = self.time_data.shape[1] - 1
@@ -425,6 +437,7 @@ class Signal():
         ----------
         new_order : np.array-like
             New rearrangement of channels.
+
         """
         new_order = np.array(new_order).squeeze()
         assert new_order.ndim == 1, \
@@ -450,9 +463,10 @@ class Signal():
         Returns
         -------
         spectrum_freqs : np.ndarray
-            Frequency vector
+            Frequency vector.
         spectrum : np.ndarray
-            Spectrum matrix for each channel
+            Spectrum matrix for each channel.
+
         """
         condition = not hasattr(self, 'spectrum') or \
             self.__spectrum_state_update or force_computation
@@ -497,9 +511,10 @@ class Signal():
         Returns
         -------
         f_csm : np.ndarray
-            Frequency vector
+            Frequency vector.
         csm : np.ndarray
             Cross spectral matrix with shape (frequency, channels, channels).
+
         """
         assert self.number_of_channels > 1, \
             'Cross spectral matrix can only be computed when at least two ' +\
@@ -536,11 +551,12 @@ class Signal():
         Returns
         -------
         t_s : np.ndarray
-            Time vector
+            Time vector.
         f_hz : np.ndarray
-            Frequency vector
+            Frequency vector.
         spectrogram : np.ndarray
-            Spectrogram
+            Spectrogram.
+
         """
         condition = not hasattr(self, 'spectrogram') or force_computation or \
             self.__spectrogram_state_update or \
@@ -566,7 +582,8 @@ class Signal():
         return t_s, f_hz, spectrogram
 
     def get_coherence(self):
-        """Returns the coherence matrix
+        """Returns the coherence matrix.
+
         """
         assert hasattr(self, 'coherence'), \
             'There is no coherence data saved in the Signal object'
@@ -574,7 +591,8 @@ class Signal():
         return f, self.coherence
 
     def get_time_vector(self):
-        """Returns the time vector associated with the signal
+        """Returns the time vector associated with the signal.
+
         """
         if not hasattr(self, 'time_vector_s'):
             self._generate_time_vector()
@@ -596,7 +614,8 @@ class Signal():
             Mode for normalization, supported are `'1k'` for normalization
             with value at frequency 1 kHz or `'np.max'` for normalization with
             maximal value. Use `None` for no normalization. Default: `'1k'`.
-        smoothe : int, optional --------> not yet implemented.
+        smoothe : int, optional
+            -----> not yet implemented
         show_info_box : bool, optional
             Plots a info box regarding spectrum parameters and plot parameters.
             If it is str, it overwrites the standard message.
@@ -607,6 +626,7 @@ class Signal():
         Returns
         -------
         figure and axis when `returns = True`.
+
         """
         f, sp = self.get_spectrum()
         f, mag_db = _get_normalized_spectrum(
@@ -632,7 +652,8 @@ class Signal():
             return fig, ax
 
     def plot_time(self, returns: bool = False):
-        """Plots time signals
+        """Plots time signals.
+
         """
         if not hasattr(self, 'time_vector_s'):
             self._generate_time_vector()
@@ -654,7 +675,8 @@ class Signal():
 
     def plot_group_delay(self, range_hz=[20, 20000], returns: bool = False):
         """Plots group delay of each channel.
-        Only works if `signal_type in ('ir', 'h1', 'h2', 'h3', 'rir')`
+        Only works if `signal_type in ('ir', 'h1', 'h2', 'h3', 'rir')`.
+
         """
         valid_signal_types = ('rir', 'ir', 'h1', 'h2', 'h3', 'chirp', 'noise')
         assert self.signal_type in valid_signal_types, \
@@ -676,6 +698,7 @@ class Signal():
     def plot_spectrogram(self, channel_number: int = 0, logfreqs: bool = True,
                          returns: bool = False):
         """Plots STFT matrix of the given channel.
+
         """
         t, f, stft = self.get_spectrogram(channel_number)
         epsilon = 10**(-100/10)
@@ -696,7 +719,8 @@ class Signal():
             return fig, ax
 
     def plot_coherence(self, returns: bool = False):
-        """Plots coherence measurements if there are any
+        """Plots coherence measurements if there are any.
+
         """
         assert hasattr(self, 'coherence'), \
             'There is no coherence data saved in the Signal object'
@@ -722,6 +746,7 @@ class Signal():
                    returns: bool = False):
         """Plots phase of the frequency response, only available if the method
         for the spectrum parameters is not welch.
+
         """
         if self._spectrum_parameters['method'] == 'welch':
             raise AttributeError(
@@ -763,6 +788,7 @@ class Signal():
         Returns
         -------
         fig, ax if `returns = True`.
+
         """
         f, csm = self.get_csm()
         fig, ax = _csm_plot(f, csm, range_hz, logx, with_phase, returns=True)
@@ -782,6 +808,7 @@ class Signal():
         mode : str, optional
             Mode of saving. Available modes are `'wav'`, `'flac'`, `'pickle'`.
             Default: `'wav'`.
+
         """
         if '.' in path.split(sep)[-1]:
             raise ValueError('Please introduce the saving path without format')

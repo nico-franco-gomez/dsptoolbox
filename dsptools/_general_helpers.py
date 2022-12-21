@@ -18,7 +18,8 @@ def _find_nearest(points, vector):
     Returns
     -------
     indexes : int or np.array
-        Indexes of the points
+        Indexes of the points.
+
     """
     points = np.array(points)
     if np.ndim(points) == 0:
@@ -53,7 +54,8 @@ def _calculate_window(points, window_length: int,
     Returns
     -------
     window_full: np.array
-        Custom window
+        Custom window.
+
     """
     assert len(points) == 4, 'For the custom window 4 points ' +\
         'are needed'
@@ -89,7 +91,8 @@ def _get_normalized_spectrum(f, spectra: np.ndarray, mode='standard',
                              phase=False, smoothe=0):
     """This function gives a normalized magnitude spectrum with frequency
     vector for a given range. It is also smoothed. Use `None` for the
-    spectrum without f_range_hz
+    spectrum without f_range_hz.
+
     """
     if normalize is not None:
         assert normalize in ('1k', 'np.max'), \
@@ -145,6 +148,7 @@ def _get_normalized_spectrum(f, spectra: np.ndarray, mode='standard',
 
 def _find_frequencies_above_threshold(spec, f, threshold_db, normalize=True):
     """Finds frequencies above a certain threshold in a given spectrum.
+
     """
     denum_db = 20*np.log10(np.abs(spec))
     if normalize:
@@ -156,6 +160,7 @@ def _find_frequencies_above_threshold(spec, f, threshold_db, normalize=True):
 def _pad_trim(vector: np.ndarray, desired_length: int, axis: int = 0,
               in_the_end: bool = True):
     """Pads (with np.zeros) or trim (depending on size and desired length).
+
     """
     throw_axis = False
     if len(vector.shape) < 2:
@@ -209,6 +214,7 @@ def _compute_number_frames(window_length: int, step: int, signal_length: int):
         Number of frames to be observed in the signal.
     padding_samples : int
         Number of samples with which the signal should be padded.
+
     """
     n_frames = int(np.floor(signal_length / step)) + 1
     padding_samples = window_length - int(signal_length % step)
@@ -231,7 +237,8 @@ def _normalize(s: np.ndarray, dbfs: float, mode='peak'):
     Returns
     -------
     s_out: np.ndarray
-        Normalized signal
+        Normalized signal.
+
     """
     s = s.copy()
     assert mode in ('peak', 'rms'), 'Mode of normalization is not ' +\
@@ -246,12 +253,14 @@ def _normalize(s: np.ndarray, dbfs: float, mode='peak'):
 
 def _rms(x: np.ndarray):
     """Root mean square computation.
+
     """
     return np.sqrt(np.sum(x**2)/len(x))
 
 
 def _amplify_db(s: np.ndarray, db: float):
     """Amplify by dB.
+
     """
     return s * 10**(db/20)
 
@@ -279,6 +288,7 @@ def _fade(s: np.ndarray, length_seconds: float = 0.1, mode: str = 'exp',
     -------
     s : np.ndarray
         Faded vector.
+
     """
     mode = mode.lower()
     assert mode in ('exp', 'lin', 'log'), \

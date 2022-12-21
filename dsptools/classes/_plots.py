@@ -1,6 +1,6 @@
-'''
+"""
 Very specific plots which are harder to create from the general templates
-'''
+"""
 import matplotlib.pyplot as plt
 from matplotlib.ticker import ScalarFormatter
 import numpy as np

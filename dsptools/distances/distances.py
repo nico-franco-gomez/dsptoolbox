@@ -18,12 +18,13 @@ def log_spectral(insig1: Signal, insig2: Signal, method: str = 'welch',
     Parameters
     ----------
     insig1 : Signal
-        Signal 1
+        Signal 1.
     insig2 : Signal
-        Signal 2
+        Signal 2.
     f_range_hz : array, optional
         Range of frequencies in which to compute the distance. When `None`,
-        it is computed in all frequencies. Default: [20, 20000]
+        it is computed in all frequencies. Default: [20, 20000].
+
     """
     assert insig1.sampling_rate_hz == insig2.sampling_rate_hz,\
         'Sampling rates do not match'
@@ -77,6 +78,7 @@ def itakura_saito(insig1: Signal, insig2: Signal, method: str = 'welch',
     f_range_hz : array, optional
         Range of frequencies in which to compute the distance. When `None`,
         it is computed in all frequencies. Default: [20, 20000].
+
     """
     assert insig1.sampling_rate_hz == insig2.sampling_rate_hz,\
         'Sampling rates do not match'

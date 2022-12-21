@@ -35,7 +35,8 @@ def reverb_time(signal: Signal, mode: str = 'T20'):
     ----------
     - DIN 3382
     - ISO 3382-1:2009-10, Acoustics - Measurement of the reverberation time of
-    rooms with reference to other acoustical parameters. pp. 22
+    rooms with reference to other acoustical parameters. pp. 22.
+
     """
     assert signal.signal_type in ('ir', 'rir'), f'{signal.signal_type} is ' +\
         'not a valid signal type for reverb_time. It should be ir or rir'
@@ -89,6 +90,7 @@ def find_modes(signal: Signal, f_range_hz=[50, 200],
     References
     ----------
     http://papers.vibetech.com/Paper17-CMIF.pdf
+
     """
     assert len(f_range_hz) == 2, 'Range of frequencies must have a ' +\
         'minimum and a maximum value'
@@ -183,6 +185,7 @@ def convolve_rir_on_signal(signal: Signal, rir: Signal,
     -------
     new_sig : Signal
         Convolved signal with RIR.
+
     """
     assert rir.signal_type in ('rir', 'ir'), \
         f'{rir.signal_type} is not a valid signal type. Set it to rir or ir.'
