@@ -15,7 +15,6 @@ class MultiBandSignal():
     all kinds of metadata that might characterize the signals.
 
     """
-
     # ======== Constructor and initializers ===================================
     def __init__(self, bands=None, same_sampling_rate: bool = True,
                  info: dict = None):
@@ -126,7 +125,7 @@ class MultiBandSignal():
 
         Parameters
         ----------
-        sig : class:`Signal`
+        sig : Signal
             Signal to be added.
         index : int, optional
             Index at which to insert the new Signal. Default: -1.
@@ -221,7 +220,7 @@ class MultiBandSignal():
 
         Returns
         -------
-        sig : class:`Signal` or list of np.ndarray + dict
+        sig : Signal or list of np.ndarray + dict
             Multichannel signal with all the bands. If the MultiBandSignal
             does not have the same sampling rate for all signals, a list with
             the time vectors and a dictionary containing their sampling rates

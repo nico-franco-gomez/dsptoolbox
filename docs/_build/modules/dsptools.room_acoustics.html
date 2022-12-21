@@ -195,10 +195,12 @@ delay peaks of the first RIR.</p>
 <section id="id1">
 <h2>Parameters<a class="headerlink" href="#id1" title="Permalink to this heading">¶</a></h2>
 <dl class="simple">
-<dt>rir: np.array-like, matrix</dt><dd><p>List or matrix containing RIR’s. It is assumed that every RIR has
+<dt>signal<span class="classifier">Signal</span></dt><dd><p>Signal containing the RIR’S from which to find the modes.</p>
+</dd>
+<dt>rir: array_like, matrix</dt><dd><p>List or matrix containing RIR’s. It is assumed that every RIR has
 the same length.</p>
 </dd>
-<dt>f_range_hz: np.array-like, optional</dt><dd><p>Vector setting range for mode search. Default: [50, 200].</p>
+<dt>f_range_hz: array_like, optional</dt><dd><p>Vector setting range for mode search. Default: [50, 200].</p>
 </dd>
 <dt>proximity_effect: bool, optional</dt><dd><p>When <cite>True</cite>, only group delay criteria is used for finding modes
 up until 200 Hz. This is done since a gradient transducer will not

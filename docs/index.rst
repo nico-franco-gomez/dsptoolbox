@@ -7,12 +7,11 @@ Welcome to dsptools's documentation!
 ====================================
 
 .. toctree::
-   :maxdepth: 4
+   :maxdepth: 5
    :caption: Contents:
 
    classes
    modules
-   dsptools
 
 Indices and tables
 ==================

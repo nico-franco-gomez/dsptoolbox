@@ -272,7 +272,7 @@ new data does not match previous data. Default: <cite>True</cite>.</p>
 <section id="id5">
 <h3>Parameters<a class="headerlink" href="#id5" title="Permalink to this heading">¶</a></h3>
 <dl class="simple">
-<dt>range_hz<span class="classifier">np.array-like with length 2, optional</span></dt><dd><p>Range of Hz to be showed. Default: [20, 20e3].</p>
+<dt>range_hz<span class="classifier">array_like with length 2, optional</span></dt><dd><p>Range of Hz to be showed. Default: [20, 20e3].</p>
 </dd>
 <dt>logx<span class="classifier">bool, optional</span></dt><dd><p>Logarithmic x axis. Default: <cite>True</cite>.</p>
 </dd>
@@ -303,7 +303,7 @@ Change parameters of spectrum with set_spectrum_parameters.</p>
 <section id="id7">
 <h3>Parameters<a class="headerlink" href="#id7" title="Permalink to this heading">¶</a></h3>
 <dl class="simple">
-<dt>range_hz<span class="classifier">np.array-like with length 2, optional</span></dt><dd><p>Range for which to plot the magnitude response.
+<dt>range_hz<span class="classifier">array_like with length 2, optional</span></dt><dd><p>Range for which to plot the magnitude response.
 Default: [20, 20000].</p>
 </dd>
 <dt>normalize<span class="classifier">str, optional</span></dt><dd><p>Mode for normalization, supported are <cite>‘1k’</cite> for normalization
@@ -484,7 +484,7 @@ Default: <cite>‘mean’</cite>.</p>
 <section id="id14">
 <h3>Parameters<a class="headerlink" href="#id14" title="Permalink to this heading">¶</a></h3>
 <dl class="simple">
-<dt>new_order<span class="classifier">np.array-like</span></dt><dd><p>New rearrangement of channels.</p>
+<dt>new_order<span class="classifier">array_like</span></dt><dd><p>New rearrangement of channels.</p>
 </dd>
 </dl>
 </section>
@@ -517,8 +517,8 @@ all kinds of metadata that might characterize the signals.</p>
 <dd><p>Adds a new band to the MultiBandSignal.</p>
 <section id="id15">
 <h3>Parameters<a class="headerlink" href="#id15" title="Permalink to this heading">¶</a></h3>
-<dl class="simple">
-<dt>sig<span class="classifier">Signal</span></dt><dd><p>Signal to be added.</p>
+<dl>
+<dt>sig<span class="classifier">class:<cite>Signal</cite></span></dt><dd><p>Signal to be added.</p>
 </dd>
 <dt>index<span class="classifier">int, optional</span></dt><dd><p>Index at which to insert the new Signal. Default: -1.</p>
 </dd>
@@ -545,8 +545,8 @@ channel.</p>
 </section>
 <section id="id17">
 <h3>Returns<a class="headerlink" href="#id17" title="Permalink to this heading">¶</a></h3>
-<dl class="simple">
-<dt>sig<span class="classifier">Signal or list of ndarray + dict</span></dt><dd><p>Multichannel signal with all the bands. If the MultiBandSignal
+<dl>
+<dt>sig<span class="classifier">class:<cite>Signal</cite> or list of np.ndarray + dict</span></dt><dd><p>Multichannel signal with all the bands. If the MultiBandSignal
 does not have the same sampling rate for all signals, a list with
 the time vectors and a dictionary containing their sampling rates
 with the key ‘sampling_rates’ are returned.</p>
@@ -632,7 +632,7 @@ new Signal object.</p>
 <section id="id21">
 <h3>Parameters<a class="headerlink" href="#id21" title="Permalink to this heading">¶</a></h3>
 <dl class="simple">
-<dt>signal<span class="classifier">Signal</span></dt><dd><p>Signal to be filtered.</p>
+<dt>signal<span class="classifier">class:Signal</span></dt><dd><p>Signal to be filtered.</p>
 </dd>
 <dt>filt<span class="classifier">Filter</span></dt><dd><p>Filter to be used on the signal.</p>
 </dd>
@@ -649,7 +649,7 @@ is doubled in this case. Default: <cite>False</cite>.</p>
 <section id="id22">
 <h3>Returns<a class="headerlink" href="#id22" title="Permalink to this heading">¶</a></h3>
 <dl class="simple">
-<dt>new_signal<span class="classifier">Signal</span></dt><dd><p>New Signal object.</p>
+<dt>new_signal<span class="classifier">class:Signal</span></dt><dd><p>New Signal object.</p>
 </dd>
 </dl>
 </section>
@@ -886,7 +886,7 @@ returning same dimensional output as input.</p>
 <section id="id38">
 <h3>Parameters<a class="headerlink" href="#id38" title="Permalink to this heading">¶</a></h3>
 <dl class="simple">
-<dt>signal<span class="classifier">Signal</span></dt><dd><p>Signal to be filtered.</p>
+<dt>signal<span class="classifier">class:Signal</span></dt><dd><p>Signal to be filtered.</p>
 </dd>
 <dt>mode<span class="classifier">str, optional</span></dt><dd><p>Way to apply filter bank to the signal. Supported modes are:
 <cite>‘parallel’</cite>, <cite>‘sequential’</cite>, <cite>‘summed’</cite>. Default: <cite>‘parallel’</cite>.</p>
