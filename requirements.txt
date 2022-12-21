@@ -1,7 +1,7 @@
 # use:
 scipy
 numpy
-# soundfile # There's a bug when installing it for documentation, use scipy.io.wavfile instead and drop support for flac files
+soundfile
 sounddevice
 
 # plotting:
