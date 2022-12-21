@@ -220,7 +220,7 @@ class MultiBandSignal():
 
         Returns
         -------
-        sig : Signal or list of np.ndarray + dict
+        sig : Signal or list of `np.ndarray` and dict
             Multichannel signal with all the bands. If the MultiBandSignal
             does not have the same sampling rate for all signals, a list with
             the time vectors and a dictionary containing their sampling rates

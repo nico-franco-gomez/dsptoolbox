@@ -25,7 +25,7 @@ def general_plot(f, matrix, range_x=None, range_y=None, log: bool = True,
     ----------
     f : array-like
         Vector for x axis.
-    matrix : ndarray
+    matrix : `np.ndarray`
         Matrix with data to plot.
     range_x : array-like, optional
         Range to show for x axis. Default: None.

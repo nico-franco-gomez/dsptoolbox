@@ -12,8 +12,7 @@ Getting Started
 ===============
 
 Check out the `examples notebook`_ for a tour of the most important pyfar
-functionality and `read the docs`_ for the complete documentation. Packages
-related to pyfar are listed at `pyfar.org`_.
+functionality and `read the docs`_ for the complete documentation.
 
 Installation
 ============
@@ -26,4 +25,4 @@ Use pip to install dsptools
 
 (Requires Python 3.10 or higher)
 
-.. _read the docs: https://pyfar.readthedocs.io/en/latest
+.. _read the docs: http://dsptools.readthedocs.io/

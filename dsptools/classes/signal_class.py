@@ -37,7 +37,7 @@ class Signal():
             A path to audio files. Reading is done with soundfile. Wave and
             Flac audio files are accepted.
             Default: `None`.
-        time_data : array_like, np.ndarray, optional
+        time_data : array_like, `np.ndarray`, optional
             Time data of the signal. It is saved as a matrix with the form
             (time samples, channel number). Default: `None`.
         sampling_rate_hz : int, optional
@@ -52,18 +52,44 @@ class Signal():
 
         Methods
         -------
-        Time data: add_channel, remove_channel, swap_channels.
-        Spectrum: set_spectrum_parameters, get_spectrum.
-        Cross spectral matrix: set_csm_parameters, get_csm.
-        Spectrogram: set_spectrogram_parameters, get_spectrogram.
-
-        Plots: plot_magnitude, plot_time, plot_spectrogram, plot_phase,
-            plot_csm.
-
-        General: save_signal.
-
-        Only for `signal_type in ('rir', 'ir', 'h1', 'h2', 'h3')`:
-            set_window, set_coherence, plot_group_delay, plot_coherence.
+        add_channel:
+            Add new channels to signal object. Length is kept.
+        remove_channel:
+            Removes a given channel.
+        swap_channels:
+            Reorders the channels.
+        set_spectrum_parameters:
+            Sets the spectrum parameters.
+        get_spectrum:
+            Returns frequency vector and complex spectra of the channels.
+        set_csm_parameters:
+            Sets the csm parameters.
+        get_csm:
+            Returns frequency vector and csm.
+        set_spectrogram_parameters:
+            Sets the spectrogram parameters.
+        get_spectrogram:
+            Returns frequency vector and spectrogram of given channel.
+        plot_magnitude:
+            Plots magnitude spectra.
+        plot_time:
+            Plots time signals.
+        plot_spectrogram:
+            Plots spectrogram of a given channel.
+        plot_phase:
+            Plots phase spectra.
+        plot_csm:
+            Plots csm with magnitude and phase spectra.
+        save_signal:
+            Saves the Signal object
+        set_window:
+            Saves the used window.
+        set_coherence:
+            Saves coherence measurements.
+        plot_coherence:
+            Plots coherence measurements.
+        plot_group_delay:
+            Plots group delay of channels.
 
         """
         self.signal_id = signal_id
@@ -185,7 +211,7 @@ class Signal():
         Parameters
         ----------
         method : str, optional
-            `'welch'` or `'standard'`. Default: `'welch'`
+            `'welch'` or `'standard'`. Default: `'welch'`.
         window_length_samples : int, optional
             Window size. Default: 1024.
         window_type : str,optional
@@ -355,7 +381,7 @@ class Signal():
         ----------
         path : str, optional
             Path to the file containing new channel information.
-        new_time_data : np.ndarray, optional
+        new_time_data : `np.ndarray`, optional
             np.array with new channel data.
         sampling_rate_hz : int, optional
             Sampling rate for the new data
@@ -462,9 +488,9 @@ class Signal():
 
         Returns
         -------
-        spectrum_freqs : np.ndarray
+        spectrum_freqs : `np.ndarray`
             Frequency vector.
-        spectrum : np.ndarray
+        spectrum : `np.ndarray`
             Spectrum matrix for each channel.
 
         """
@@ -510,9 +536,9 @@ class Signal():
 
         Returns
         -------
-        f_csm : np.ndarray
+        f_csm : `np.ndarray`
             Frequency vector.
-        csm : np.ndarray
+        csm : `np.ndarray`
             Cross spectral matrix with shape (frequency, channels, channels).
 
         """
@@ -550,11 +576,11 @@ class Signal():
 
         Returns
         -------
-        t_s : np.ndarray
+        t_s : `np.ndarray`
             Time vector.
-        f_hz : np.ndarray
+        f_hz : `np.ndarray`
             Frequency vector.
-        spectrogram : np.ndarray
+        spectrogram : `np.ndarray`
             Spectrogram.
 
         """

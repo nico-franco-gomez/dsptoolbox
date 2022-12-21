@@ -265,7 +265,7 @@ class Filter():
 
         Returns
         -------
-        ir_filt : np.ndarray
+        ir_filt : `np.ndarray`
             Impulse response of the filter.
 
         """

@@ -28,7 +28,7 @@ def reverb_time(signal: Signal, mode: str = 'T20'):
 
     Returns
     -------
-    reverberation_times : ndarray
+    reverberation_times : `np.ndarray`
         Reverberation times for each channel.
 
     References
@@ -57,7 +57,7 @@ def reverb_time(signal: Signal, mode: str = 'T20'):
 
 
 def find_modes(signal: Signal, f_range_hz=[50, 200],
-               proximity_effect=False, dist_hz=5):
+               proximity_effect: bool = False, dist_hz: float = 5):
     """This metod is NOT validated. It might not be sufficient to find all
     modes in the given range.
 
@@ -69,9 +69,6 @@ def find_modes(signal: Signal, f_range_hz=[50, 200],
     ----------
     signal : Signal
         Signal containing the RIR'S from which to find the modes.
-    rir: array_like, matrix
-        List or matrix containing RIR's. It is assumed that every RIR has
-        the same length.
     f_range_hz: array_like, optional
         Vector setting range for mode search. Default: [50, 200].
     proximity_effect: bool, optional
@@ -86,7 +83,7 @@ def find_modes(signal: Signal, f_range_hz=[50, 200],
 
     Returns
     -------
-    f_modes: ndarray
+    f_modes: `np.ndarray`
         Vector containing frequencies np.where modes have been localized.
 
     References

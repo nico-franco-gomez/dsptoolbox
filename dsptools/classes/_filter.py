@@ -137,7 +137,7 @@ def _impulse(length_samples: int = 512):
 
     Returns
     -------
-    imp : ndarray
+    imp : `np.ndarray`
         Impulse.
 
     """
@@ -162,9 +162,9 @@ def _group_delay_filter(ba, length_samples: int = 512, fs_hz: int = 48000):
 
     Returns
     -------
-    f : ndarray
+    f : `np.ndarray`
         Frequency vector.
-    gd : ndarray
+    gd : `np.ndarray`
         Group delay in seconds.
 
     """

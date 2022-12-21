@@ -125,9 +125,7 @@
         <div class="sphinxsidebarwrapper"><p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="../classes.html">Classes (dsptools.classes)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../modules.html">Modules in dsptools</a></li>
-<li class="toctree-l1 current"><a class="reference internal" href="../dsptools.html">dsptools package</a><ul class="current">
-<li class="toctree-l2"><a class="reference internal" href="../classes.html">Classes (dsptools.classes)</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../modules.html">Modules in dsptools</a><ul class="current">
 <li class="toctree-l2"><a class="reference internal" href="dsptools.distances.html">Distances (dsptools.distances)</a></li>
 <li class="toctree-l2"><a class="reference internal" href="dsptools.experimental.html">Experimental (dsptools.experimental)</a></li>
 <li class="toctree-l2"><a class="reference internal" href="dsptools.filterbanks.html">Filterbanks (dsptools.filterbanks)</a></li>
@@ -163,48 +161,48 @@
 <dt class="sig sig-object py" id="dsptools.standard_functions.standard_functions.excess_group_delay">
 <span class="sig-prename descclassname"><span class="pre">dsptools.standard_functions.standard_functions.</span></span><span class="sig-name descname"><span class="pre">excess_group_delay</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">signal</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../classes.html#dsptools.classes.signal_class.Signal" title="dsptools.classes.signal_class.Signal"><span class="pre">Signal</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dsptools.standard_functions.standard_functions.excess_group_delay" title="Permalink to this definition">¶</a></dt>
 <dd><p>Computes excess group delay.</p>
-<section id="parameters">
-<h3>Parameters<a class="headerlink" href="#parameters" title="Permalink to this heading">¶</a></h3>
-<dl class="simple">
-<dt>signal<span class="classifier">Signal</span></dt><dd><p>Signal object for which to compute minimal group delay.</p>
+<dl class="field-list">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>signal</strong><span class="classifier">Signal</span></dt><dd><p>Signal object for which to compute minimal group delay.</p>
 </dd>
 </dl>
-</section>
-<section id="returns">
-<h3>Returns<a class="headerlink" href="#returns" title="Permalink to this heading">¶</a></h3>
-<dl class="simple">
-<dt>f<span class="classifier">ndarray</span></dt><dd><p>Frequency vector.</p>
 </dd>
-<dt>ex_gd<span class="classifier">ndarray</span></dt><dd><p>Excess group delays in seconds.</p>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl>
+<dt><strong>f</strong><span class="classifier"><cite>np.ndarray</cite></span></dt><dd><p>Frequency vector.</p>
+</dd>
+<dt><strong>ex_gd</strong><span class="classifier"><cite>np.ndarray</cite></span></dt><dd><p>Excess group delays in seconds.</p>
 </dd>
 </dl>
-</section>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="dsptools.standard_functions.standard_functions.group_delay">
 <span class="sig-prename descclassname"><span class="pre">dsptools.standard_functions.standard_functions.</span></span><span class="sig-name descname"><span class="pre">group_delay</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">signal</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../classes.html#dsptools.classes.signal_class.Signal" title="dsptools.classes.signal_class.Signal"><span class="pre">Signal</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">method</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'direct'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dsptools.standard_functions.standard_functions.group_delay" title="Permalink to this definition">¶</a></dt>
 <dd><p>Computation of group delay.</p>
-<section id="id1">
-<h3>Parameters<a class="headerlink" href="#id1" title="Permalink to this heading">¶</a></h3>
-<dl class="simple">
-<dt>signal<span class="classifier">Signal</span></dt><dd><p>Signal for which to compute group delay.</p>
+<dl class="field-list">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>signal</strong><span class="classifier">Signal</span></dt><dd><p>Signal for which to compute group delay.</p>
 </dd>
-<dt>method<span class="classifier">str, optional</span></dt><dd><p><cite>‘direct’</cite> uses gradient with unwrapped phase. <cite>‘matlab’</cite> uses
+<dt><strong>method</strong><span class="classifier">str, optional</span></dt><dd><p><cite>‘direct’</cite> uses gradient with unwrapped phase. <cite>‘matlab’</cite> uses
 this implementation:
 <a class="reference external" href="https://www.dsprelated.com/freebooks/filters/Phase_Group_Delay.html">https://www.dsprelated.com/freebooks/filters/Phase_Group_Delay.html</a></p>
 </dd>
 </dl>
-</section>
-<section id="id2">
-<h3>Returns<a class="headerlink" href="#id2" title="Permalink to this heading">¶</a></h3>
-<dl class="simple">
-<dt>freqs<span class="classifier">ndarray</span></dt><dd><p>Frequency vector in Hz.</p>
 </dd>
-<dt>group_delays<span class="classifier">ndarray</span></dt><dd><p>Matrix containing group delays in seconds.</p>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl>
+<dt><strong>freqs</strong><span class="classifier"><cite>np.ndarray</cite></span></dt><dd><p>Frequency vector in Hz.</p>
+</dd>
+<dt><strong>group_delays</strong><span class="classifier"><cite>np.ndarray</cite></span></dt><dd><p>Matrix containing group delays in seconds.</p>
 </dd>
 </dl>
-</section>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py function">
@@ -213,91 +211,91 @@ this implementation:
 <dd><p>Computes latency between two signals using the correlation method.
 If there is no second signal, the latency between the first and the other
 channels of the is computed.</p>
-<section id="id3">
-<h3>Parameters<a class="headerlink" href="#id3" title="Permalink to this heading">¶</a></h3>
-<dl class="simple">
-<dt>in1<span class="classifier">Signal</span></dt><dd><p>First signal.</p>
+<dl class="field-list">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>in1</strong><span class="classifier">Signal</span></dt><dd><p>First signal.</p>
 </dd>
-<dt>in2<span class="classifier">Signal, optional</span></dt><dd><p>Second signal. Default: None.</p>
-</dd>
-</dl>
-</section>
-<section id="id4">
-<h3>Returns<a class="headerlink" href="#id4" title="Permalink to this heading">¶</a></h3>
-<dl class="simple">
-<dt>latency_per_channel_samples<span class="classifier">ndarray</span></dt><dd><p>Array with latency between two signals in samples per channel.</p>
+<dt><strong>in2</strong><span class="classifier">Signal, optional</span></dt><dd><p>Second signal. Default: None.</p>
 </dd>
 </dl>
-</section>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl>
+<dt><strong>latency_per_channel_samples</strong><span class="classifier"><cite>np.ndarray</cite></span></dt><dd><p>Array with latency between two signals in samples per channel.</p>
+</dd>
+</dl>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="dsptools.standard_functions.standard_functions.minimal_group_delay">
 <span class="sig-prename descclassname"><span class="pre">dsptools.standard_functions.standard_functions.</span></span><span class="sig-name descname"><span class="pre">minimal_group_delay</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">signal</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../classes.html#dsptools.classes.signal_class.Signal" title="dsptools.classes.signal_class.Signal"><span class="pre">Signal</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dsptools.standard_functions.standard_functions.minimal_group_delay" title="Permalink to this definition">¶</a></dt>
 <dd><p>Computes minimal group delay</p>
-<section id="id5">
-<h3>Parameters<a class="headerlink" href="#id5" title="Permalink to this heading">¶</a></h3>
-<dl class="simple">
-<dt>signal<span class="classifier">Signal</span></dt><dd><p>Signal object for which to compute minimal group delay.</p>
+<dl class="field-list">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>signal</strong><span class="classifier">Signal</span></dt><dd><p>Signal object for which to compute minimal group delay.</p>
 </dd>
 </dl>
-</section>
-<section id="id6">
-<h3>Returns<a class="headerlink" href="#id6" title="Permalink to this heading">¶</a></h3>
-<dl class="simple">
-<dt>f<span class="classifier">ndarray</span></dt><dd><p>Frequency vector.</p>
 </dd>
-<dt>min_gd<span class="classifier">ndarray</span></dt><dd><p>Minimal group delays in seconds.</p>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl>
+<dt><strong>f</strong><span class="classifier"><cite>np.ndarray</cite></span></dt><dd><p>Frequency vector.</p>
+</dd>
+<dt><strong>min_gd</strong><span class="classifier"><cite>np.ndarray</cite></span></dt><dd><p>Minimal group delays in seconds.</p>
 </dd>
 </dl>
-</section>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="dsptools.standard_functions.standard_functions.minimal_phase">
 <span class="sig-prename descclassname"><span class="pre">dsptools.standard_functions.standard_functions.</span></span><span class="sig-name descname"><span class="pre">minimal_phase</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">signal</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../classes.html#dsptools.classes.signal_class.Signal" title="dsptools.classes.signal_class.Signal"><span class="pre">Signal</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dsptools.standard_functions.standard_functions.minimal_phase" title="Permalink to this definition">¶</a></dt>
 <dd><p>Gives back a matrix containing the minimal phase for every channel.</p>
-<section id="id7">
-<h3>Parameters<a class="headerlink" href="#id7" title="Permalink to this heading">¶</a></h3>
-<dl class="simple">
-<dt>signal<span class="classifier">Signal</span></dt><dd><p>Signal for which to compute the minimal phase.</p>
+<dl class="field-list">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>signal</strong><span class="classifier">Signal</span></dt><dd><p>Signal for which to compute the minimal phase.</p>
 </dd>
 </dl>
-</section>
-<section id="id8">
-<h3>Returns<a class="headerlink" href="#id8" title="Permalink to this heading">¶</a></h3>
-<dl class="simple">
-<dt>f<span class="classifier">ndarray</span></dt><dd><p>Frequency vector.</p>
 </dd>
-<dt>min_phases<span class="classifier">ndarray</span></dt><dd><p>Minimal phases.</p>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl>
+<dt><strong>f</strong><span class="classifier"><cite>np.ndarray</cite></span></dt><dd><p>Frequency vector.</p>
+</dd>
+<dt><strong>min_phases</strong><span class="classifier"><cite>np.ndarray</cite></span></dt><dd><p>Minimal phases.</p>
 </dd>
 </dl>
-</section>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="dsptools.standard_functions.standard_functions.pad_trim">
 <span class="sig-prename descclassname"><span class="pre">dsptools.standard_functions.standard_functions.</span></span><span class="sig-name descname"><span class="pre">pad_trim</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">signal</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../classes.html#dsptools.classes.signal_class.Signal" title="dsptools.classes.signal_class.Signal"><span class="pre">Signal</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">desired_length_samples</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><span class="pre">int</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">in_the_end</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dsptools.standard_functions.standard_functions.pad_trim" title="Permalink to this definition">¶</a></dt>
 <dd><p>Returns a copy of the signal with padded or trimmed time data.</p>
-<section id="id9">
-<h3>Parameters<a class="headerlink" href="#id9" title="Permalink to this heading">¶</a></h3>
-<dl class="simple">
-<dt>signal<span class="classifier">Signal</span></dt><dd><p>Signal to be padded or trimmed.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>signal</strong><span class="classifier">Signal</span></dt><dd><p>Signal to be padded or trimmed.</p>
 </dd>
-<dt>desired_length_samples<span class="classifier">int</span></dt><dd><p>Length of resulting signal.</p>
+<dt><strong>desired_length_samples</strong><span class="classifier">int</span></dt><dd><p>Length of resulting signal.</p>
 </dd>
-<dt>in_the_end<span class="classifier">bool, optional</span></dt><dd><p>Defines if padding or trimming should be done in the beginning or
+<dt><strong>in_the_end</strong><span class="classifier">bool, optional</span></dt><dd><p>Defines if padding or trimming should be done in the beginning or
 in the end of the signal. Default: <cite>True</cite>.</p>
 </dd>
 </dl>
-</section>
-<section id="id10">
-<h3>Returns<a class="headerlink" href="#id10" title="Permalink to this heading">¶</a></h3>
-<dl class="simple">
-<dt>new_signal<span class="classifier">Signal</span></dt><dd><p>New padded signal.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt><strong>new_signal</strong><span class="classifier">Signal</span></dt><dd><p>New padded signal.</p>
 </dd>
 </dl>
-</section>
+</dd>
+</dl>
 </dd></dl>
 
 </section>
@@ -307,48 +305,48 @@ in the end of the signal. Default: <cite>True</cite>.</p>
 <dt class="sig sig-object py" id="dsptools.standard_functions.excess_group_delay">
 <span class="sig-prename descclassname"><span class="pre">dsptools.standard_functions.</span></span><span class="sig-name descname"><span class="pre">excess_group_delay</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">signal</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../classes.html#dsptools.classes.signal_class.Signal" title="dsptools.classes.signal_class.Signal"><span class="pre">Signal</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dsptools.standard_functions.excess_group_delay" title="Permalink to this definition">¶</a></dt>
 <dd><p>Computes excess group delay.</p>
-<section id="id11">
-<h3>Parameters<a class="headerlink" href="#id11" title="Permalink to this heading">¶</a></h3>
-<dl class="simple">
-<dt>signal<span class="classifier">Signal</span></dt><dd><p>Signal object for which to compute minimal group delay.</p>
+<dl class="field-list">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>signal</strong><span class="classifier">Signal</span></dt><dd><p>Signal object for which to compute minimal group delay.</p>
 </dd>
 </dl>
-</section>
-<section id="id12">
-<h3>Returns<a class="headerlink" href="#id12" title="Permalink to this heading">¶</a></h3>
-<dl class="simple">
-<dt>f<span class="classifier">ndarray</span></dt><dd><p>Frequency vector.</p>
 </dd>
-<dt>ex_gd<span class="classifier">ndarray</span></dt><dd><p>Excess group delays in seconds.</p>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl>
+<dt><strong>f</strong><span class="classifier"><cite>np.ndarray</cite></span></dt><dd><p>Frequency vector.</p>
+</dd>
+<dt><strong>ex_gd</strong><span class="classifier"><cite>np.ndarray</cite></span></dt><dd><p>Excess group delays in seconds.</p>
 </dd>
 </dl>
-</section>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="dsptools.standard_functions.group_delay">
 <span class="sig-prename descclassname"><span class="pre">dsptools.standard_functions.</span></span><span class="sig-name descname"><span class="pre">group_delay</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">signal</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../classes.html#dsptools.classes.signal_class.Signal" title="dsptools.classes.signal_class.Signal"><span class="pre">Signal</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">method</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'direct'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dsptools.standard_functions.group_delay" title="Permalink to this definition">¶</a></dt>
 <dd><p>Computation of group delay.</p>
-<section id="id13">
-<h3>Parameters<a class="headerlink" href="#id13" title="Permalink to this heading">¶</a></h3>
-<dl class="simple">
-<dt>signal<span class="classifier">Signal</span></dt><dd><p>Signal for which to compute group delay.</p>
+<dl class="field-list">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>signal</strong><span class="classifier">Signal</span></dt><dd><p>Signal for which to compute group delay.</p>
 </dd>
-<dt>method<span class="classifier">str, optional</span></dt><dd><p><cite>‘direct’</cite> uses gradient with unwrapped phase. <cite>‘matlab’</cite> uses
+<dt><strong>method</strong><span class="classifier">str, optional</span></dt><dd><p><cite>‘direct’</cite> uses gradient with unwrapped phase. <cite>‘matlab’</cite> uses
 this implementation:
 <a class="reference external" href="https://www.dsprelated.com/freebooks/filters/Phase_Group_Delay.html">https://www.dsprelated.com/freebooks/filters/Phase_Group_Delay.html</a></p>
 </dd>
 </dl>
-</section>
-<section id="id14">
-<h3>Returns<a class="headerlink" href="#id14" title="Permalink to this heading">¶</a></h3>
-<dl class="simple">
-<dt>freqs<span class="classifier">ndarray</span></dt><dd><p>Frequency vector in Hz.</p>
 </dd>
-<dt>group_delays<span class="classifier">ndarray</span></dt><dd><p>Matrix containing group delays in seconds.</p>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl>
+<dt><strong>freqs</strong><span class="classifier"><cite>np.ndarray</cite></span></dt><dd><p>Frequency vector in Hz.</p>
+</dd>
+<dt><strong>group_delays</strong><span class="classifier"><cite>np.ndarray</cite></span></dt><dd><p>Matrix containing group delays in seconds.</p>
 </dd>
 </dl>
-</section>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py function">
@@ -357,91 +355,91 @@ this implementation:
 <dd><p>Computes latency between two signals using the correlation method.
 If there is no second signal, the latency between the first and the other
 channels of the is computed.</p>
-<section id="id15">
-<h3>Parameters<a class="headerlink" href="#id15" title="Permalink to this heading">¶</a></h3>
-<dl class="simple">
-<dt>in1<span class="classifier">Signal</span></dt><dd><p>First signal.</p>
+<dl class="field-list">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>in1</strong><span class="classifier">Signal</span></dt><dd><p>First signal.</p>
 </dd>
-<dt>in2<span class="classifier">Signal, optional</span></dt><dd><p>Second signal. Default: None.</p>
-</dd>
-</dl>
-</section>
-<section id="id16">
-<h3>Returns<a class="headerlink" href="#id16" title="Permalink to this heading">¶</a></h3>
-<dl class="simple">
-<dt>latency_per_channel_samples<span class="classifier">ndarray</span></dt><dd><p>Array with latency between two signals in samples per channel.</p>
+<dt><strong>in2</strong><span class="classifier">Signal, optional</span></dt><dd><p>Second signal. Default: None.</p>
 </dd>
 </dl>
-</section>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl>
+<dt><strong>latency_per_channel_samples</strong><span class="classifier"><cite>np.ndarray</cite></span></dt><dd><p>Array with latency between two signals in samples per channel.</p>
+</dd>
+</dl>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="dsptools.standard_functions.minimal_group_delay">
 <span class="sig-prename descclassname"><span class="pre">dsptools.standard_functions.</span></span><span class="sig-name descname"><span class="pre">minimal_group_delay</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">signal</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../classes.html#dsptools.classes.signal_class.Signal" title="dsptools.classes.signal_class.Signal"><span class="pre">Signal</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dsptools.standard_functions.minimal_group_delay" title="Permalink to this definition">¶</a></dt>
 <dd><p>Computes minimal group delay</p>
-<section id="id17">
-<h3>Parameters<a class="headerlink" href="#id17" title="Permalink to this heading">¶</a></h3>
-<dl class="simple">
-<dt>signal<span class="classifier">Signal</span></dt><dd><p>Signal object for which to compute minimal group delay.</p>
+<dl class="field-list">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>signal</strong><span class="classifier">Signal</span></dt><dd><p>Signal object for which to compute minimal group delay.</p>
 </dd>
 </dl>
-</section>
-<section id="id18">
-<h3>Returns<a class="headerlink" href="#id18" title="Permalink to this heading">¶</a></h3>
-<dl class="simple">
-<dt>f<span class="classifier">ndarray</span></dt><dd><p>Frequency vector.</p>
 </dd>
-<dt>min_gd<span class="classifier">ndarray</span></dt><dd><p>Minimal group delays in seconds.</p>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl>
+<dt><strong>f</strong><span class="classifier"><cite>np.ndarray</cite></span></dt><dd><p>Frequency vector.</p>
+</dd>
+<dt><strong>min_gd</strong><span class="classifier"><cite>np.ndarray</cite></span></dt><dd><p>Minimal group delays in seconds.</p>
 </dd>
 </dl>
-</section>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="dsptools.standard_functions.minimal_phase">
 <span class="sig-prename descclassname"><span class="pre">dsptools.standard_functions.</span></span><span class="sig-name descname"><span class="pre">minimal_phase</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">signal</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../classes.html#dsptools.classes.signal_class.Signal" title="dsptools.classes.signal_class.Signal"><span class="pre">Signal</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dsptools.standard_functions.minimal_phase" title="Permalink to this definition">¶</a></dt>
 <dd><p>Gives back a matrix containing the minimal phase for every channel.</p>
-<section id="id19">
-<h3>Parameters<a class="headerlink" href="#id19" title="Permalink to this heading">¶</a></h3>
-<dl class="simple">
-<dt>signal<span class="classifier">Signal</span></dt><dd><p>Signal for which to compute the minimal phase.</p>
+<dl class="field-list">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>signal</strong><span class="classifier">Signal</span></dt><dd><p>Signal for which to compute the minimal phase.</p>
 </dd>
 </dl>
-</section>
-<section id="id20">
-<h3>Returns<a class="headerlink" href="#id20" title="Permalink to this heading">¶</a></h3>
-<dl class="simple">
-<dt>f<span class="classifier">ndarray</span></dt><dd><p>Frequency vector.</p>
 </dd>
-<dt>min_phases<span class="classifier">ndarray</span></dt><dd><p>Minimal phases.</p>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl>
+<dt><strong>f</strong><span class="classifier"><cite>np.ndarray</cite></span></dt><dd><p>Frequency vector.</p>
+</dd>
+<dt><strong>min_phases</strong><span class="classifier"><cite>np.ndarray</cite></span></dt><dd><p>Minimal phases.</p>
 </dd>
 </dl>
-</section>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="dsptools.standard_functions.pad_trim">
 <span class="sig-prename descclassname"><span class="pre">dsptools.standard_functions.</span></span><span class="sig-name descname"><span class="pre">pad_trim</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">signal</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../classes.html#dsptools.classes.signal_class.Signal" title="dsptools.classes.signal_class.Signal"><span class="pre">Signal</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">desired_length_samples</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><span class="pre">int</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">in_the_end</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dsptools.standard_functions.pad_trim" title="Permalink to this definition">¶</a></dt>
 <dd><p>Returns a copy of the signal with padded or trimmed time data.</p>
-<section id="id21">
-<h3>Parameters<a class="headerlink" href="#id21" title="Permalink to this heading">¶</a></h3>
-<dl class="simple">
-<dt>signal<span class="classifier">Signal</span></dt><dd><p>Signal to be padded or trimmed.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>signal</strong><span class="classifier">Signal</span></dt><dd><p>Signal to be padded or trimmed.</p>
 </dd>
-<dt>desired_length_samples<span class="classifier">int</span></dt><dd><p>Length of resulting signal.</p>
+<dt><strong>desired_length_samples</strong><span class="classifier">int</span></dt><dd><p>Length of resulting signal.</p>
 </dd>
-<dt>in_the_end<span class="classifier">bool, optional</span></dt><dd><p>Defines if padding or trimming should be done in the beginning or
+<dt><strong>in_the_end</strong><span class="classifier">bool, optional</span></dt><dd><p>Defines if padding or trimming should be done in the beginning or
 in the end of the signal. Default: <cite>True</cite>.</p>
 </dd>
 </dl>
-</section>
-<section id="id22">
-<h3>Returns<a class="headerlink" href="#id22" title="Permalink to this heading">¶</a></h3>
-<dl class="simple">
-<dt>new_signal<span class="classifier">Signal</span></dt><dd><p>New padded signal.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt><strong>new_signal</strong><span class="classifier">Signal</span></dt><dd><p>New padded signal.</p>
 </dd>
 </dl>
-</section>
+</dd>
+</dl>
 </dd></dl>
 
 </section>

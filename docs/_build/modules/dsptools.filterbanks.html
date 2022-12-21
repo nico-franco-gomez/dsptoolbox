@@ -125,9 +125,7 @@
         <div class="sphinxsidebarwrapper"><p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="../classes.html">Classes (dsptools.classes)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../modules.html">Modules in dsptools</a></li>
-<li class="toctree-l1 current"><a class="reference internal" href="../dsptools.html">dsptools package</a><ul class="current">
-<li class="toctree-l2"><a class="reference internal" href="../classes.html">Classes (dsptools.classes)</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../modules.html">Modules in dsptools</a><ul class="current">
 <li class="toctree-l2"><a class="reference internal" href="dsptools.distances.html">Distances (dsptools.distances)</a></li>
 <li class="toctree-l2"><a class="reference internal" href="dsptools.experimental.html">Experimental (dsptools.experimental)</a></li>
 <li class="toctree-l2 current"><a class="current reference internal" href="#">Filterbanks (dsptools.filterbanks)</a></li>
@@ -157,26 +155,26 @@
 <dt class="sig sig-object py" id="dsptools.filterbanks.linkwitz_riley_crossovers">
 <span class="sig-prename descclassname"><span class="pre">dsptools.filterbanks.</span></span><span class="sig-name descname"><span class="pre">linkwitz_riley_crossovers</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">freqs</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">order</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sampling_rate_hz</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">48000</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dsptools.filterbanks.linkwitz_riley_crossovers" title="Permalink to this definition">¶</a></dt>
 <dd><p>Returns a linkwitz-riley crossovers filter bank.</p>
-<section id="parameters">
-<h2>Parameters<a class="headerlink" href="#parameters" title="Permalink to this heading">¶</a></h2>
-<dl class="simple">
-<dt>freqs<span class="classifier">array-like</span></dt><dd><p>Frequencies at which to set the crossovers.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>freqs</strong><span class="classifier">array-like</span></dt><dd><p>Frequencies at which to set the crossovers.</p>
 </dd>
-<dt>order<span class="classifier">array-like</span></dt><dd><p>Order of the crossovers. The higher, the steeper.</p>
+<dt><strong>order</strong><span class="classifier">array-like</span></dt><dd><p>Order of the crossovers. The higher, the steeper.</p>
 </dd>
-<dt>sampling_rate_hz<span class="classifier">int, optional</span></dt><dd><p>Sampling rate for the filterbank. Default: 48000.</p>
+<dt><strong>sampling_rate_hz</strong><span class="classifier">int, optional</span></dt><dd><p>Sampling rate for the filterbank. Default: 48000.</p>
 </dd>
 </dl>
-</section>
-<section id="returns">
-<h2>Returns<a class="headerlink" href="#returns" title="Permalink to this heading">¶</a></h2>
-<dl class="simple">
-<dt>fb<span class="classifier">LRFilterBank</span></dt><dd><p>Filter bank in form of LRFilterBank class which contains the same
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt><strong>fb</strong><span class="classifier">LRFilterBank</span></dt><dd><p>Filter bank in form of LRFilterBank class which contains the same
 methods as the FilterBank class but is generated with different
 internal methods.</p>
 </dd>
 </dl>
-</section>
+</dd>
+</dl>
 </dd></dl>
 
 </section>

@@ -125,9 +125,7 @@
         <div class="sphinxsidebarwrapper"><p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="../classes.html">Classes (dsptools.classes)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../modules.html">Modules in dsptools</a></li>
-<li class="toctree-l1 current"><a class="reference internal" href="../dsptools.html">dsptools package</a><ul class="current">
-<li class="toctree-l2"><a class="reference internal" href="../classes.html">Classes (dsptools.classes)</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../modules.html">Modules in dsptools</a><ul class="current">
 <li class="toctree-l2"><a class="reference internal" href="dsptools.distances.html">Distances (dsptools.distances)</a></li>
 <li class="toctree-l2"><a class="reference internal" href="dsptools.experimental.html">Experimental (dsptools.experimental)</a></li>
 <li class="toctree-l2"><a class="reference internal" href="dsptools.filterbanks.html">Filterbanks (dsptools.filterbanks)</a></li>
@@ -160,102 +158,95 @@
 with a single channel containing the RIR time data. Signal type should
 also be set to IR or RIR. By default, all channels are convolved with
 the RIR.</p>
-<section id="parameters">
-<h2>Parameters<a class="headerlink" href="#parameters" title="Permalink to this heading">¶</a></h2>
-<dl class="simple">
-<dt>signal<span class="classifier">Signal</span></dt><dd><p>Signal to which the RIR is applied. All channels are affected.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>signal</strong><span class="classifier">Signal</span></dt><dd><p>Signal to which the RIR is applied. All channels are affected.</p>
 </dd>
-<dt>rir<span class="classifier">Signal</span></dt><dd><p>Single-channel Signal object containing the RIR.</p>
+<dt><strong>rir</strong><span class="classifier">Signal</span></dt><dd><p>Single-channel Signal object containing the RIR.</p>
 </dd>
-<dt>keep_peak_level<span class="classifier">bool, optional</span></dt><dd><p>When <cite>True</cite>, output signal is normalized to the peak level of
+<dt><strong>keep_peak_level</strong><span class="classifier">bool, optional</span></dt><dd><p>When <cite>True</cite>, output signal is normalized to the peak level of
 the original signal. Default: <cite>True</cite>.</p>
 </dd>
-<dt>keep_length<span class="classifier">bool, optional</span></dt><dd><p>When <cite>True</cite>, the original length is kept after convolution, otherwise
+<dt><strong>keep_length</strong><span class="classifier">bool, optional</span></dt><dd><p>When <cite>True</cite>, the original length is kept after convolution, otherwise
 the output signal is longer than the input one. Default: <cite>True</cite>.</p>
 </dd>
 </dl>
-</section>
-<section id="returns">
-<h2>Returns<a class="headerlink" href="#returns" title="Permalink to this heading">¶</a></h2>
-<dl class="simple">
-<dt>new_sig<span class="classifier">Signal</span></dt><dd><p>Convolved signal with RIR.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt><strong>new_sig</strong><span class="classifier">Signal</span></dt><dd><p>Convolved signal with RIR.</p>
 </dd>
 </dl>
-</section>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="dsptools.room_acoustics.find_modes">
-<span class="sig-prename descclassname"><span class="pre">dsptools.room_acoustics.</span></span><span class="sig-name descname"><span class="pre">find_modes</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">signal</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../classes.html#dsptools.classes.signal_class.Signal" title="dsptools.classes.signal_class.Signal"><span class="pre">Signal</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">f_range_hz</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[50,</span> <span class="pre">200]</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">proximity_effect</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dist_hz</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">5</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dsptools.room_acoustics.find_modes" title="Permalink to this definition">¶</a></dt>
+<span class="sig-prename descclassname"><span class="pre">dsptools.room_acoustics.</span></span><span class="sig-name descname"><span class="pre">find_modes</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">signal</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../classes.html#dsptools.classes.signal_class.Signal" title="dsptools.classes.signal_class.Signal"><span class="pre">Signal</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">f_range_hz</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[50,</span> <span class="pre">200]</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">proximity_effect</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dist_hz</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">5</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dsptools.room_acoustics.find_modes" title="Permalink to this definition">¶</a></dt>
 <dd><p>This metod is NOT validated. It might not be sufficient to find all
 modes in the given range.</p>
 <p>Computes the room modes of a set of RIR using different criteria:
 Complex mode indication function, sum of magnitude responses and group
 delay peaks of the first RIR.</p>
-<section id="id1">
-<h2>Parameters<a class="headerlink" href="#id1" title="Permalink to this heading">¶</a></h2>
-<dl class="simple">
-<dt>signal<span class="classifier">Signal</span></dt><dd><p>Signal containing the RIR’S from which to find the modes.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>signal</strong><span class="classifier">Signal</span></dt><dd><p>Signal containing the RIR’S from which to find the modes.</p>
 </dd>
-<dt>rir: array_like, matrix</dt><dd><p>List or matrix containing RIR’s. It is assumed that every RIR has
-the same length.</p>
+<dt><strong>f_range_hz: array_like, optional</strong></dt><dd><p>Vector setting range for mode search. Default: [50, 200].</p>
 </dd>
-<dt>f_range_hz: array_like, optional</dt><dd><p>Vector setting range for mode search. Default: [50, 200].</p>
-</dd>
-<dt>proximity_effect: bool, optional</dt><dd><p>When <cite>True</cite>, only group delay criteria is used for finding modes
+<dt><strong>proximity_effect: bool, optional</strong></dt><dd><p>When <cite>True</cite>, only group delay criteria is used for finding modes
 up until 200 Hz. This is done since a gradient transducer will not
 easily see peaks in its magnitude response in low frequencies
 due to near-field effects.
 There is also an assessment that the modes are not dips of
 the magnitude response. Default: <cite>False</cite>.</p>
 </dd>
-<dt>dist_hz: float, optional</dt><dd><p>Minimum distance (in Hz) between modes. Default: 5.</p>
+<dt><strong>dist_hz: float, optional</strong></dt><dd><p>Minimum distance (in Hz) between modes. Default: 5.</p>
 </dd>
 </dl>
-</section>
-<section id="id2">
-<h2>Returns<a class="headerlink" href="#id2" title="Permalink to this heading">¶</a></h2>
-<dl class="simple">
-<dt>f_modes: ndarray</dt><dd><p>Vector containing frequencies np.where modes have been localized.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt>f_modes: <cite>np.ndarray</cite></dt><dd><p>Vector containing frequencies np.where modes have been localized.</p>
 </dd>
 </dl>
-</section>
-<section id="references">
-<h2>References<a class="headerlink" href="#references" title="Permalink to this heading">¶</a></h2>
+</dd>
+</dl>
+<p class="rubric">References</p>
 <p><a class="reference external" href="http://papers.vibetech.com/Paper17-CMIF.pdf">http://papers.vibetech.com/Paper17-CMIF.pdf</a></p>
-</section>
 </dd></dl>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="dsptools.room_acoustics.reverb_time">
 <span class="sig-prename descclassname"><span class="pre">dsptools.room_acoustics.</span></span><span class="sig-name descname"><span class="pre">reverb_time</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">signal</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../classes.html#dsptools.classes.signal_class.Signal" title="dsptools.classes.signal_class.Signal"><span class="pre">Signal</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">mode</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'T20'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dsptools.room_acoustics.reverb_time" title="Permalink to this definition">¶</a></dt>
 <dd><p>Computes reverberation time. T20, T30, T60 and EDT.</p>
-<section id="id3">
-<h2>Parameters<a class="headerlink" href="#id3" title="Permalink to this heading">¶</a></h2>
-<dl class="simple">
-<dt>signal<span class="classifier">Signal</span></dt><dd><p>Signal for which to compute reverberation times. It must be type
+<dl class="field-list">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>signal</strong><span class="classifier">Signal</span></dt><dd><p>Signal for which to compute reverberation times. It must be type
 <cite>‘ir’</cite> or <cite>‘rir’</cite>.</p>
 </dd>
-<dt>mode<span class="classifier">str, optional</span></dt><dd><p>Reverberation time mode. Options are <cite>‘T20’</cite>, <cite>‘T30’</cite>, <cite>‘T60’</cite> or
+<dt><strong>mode</strong><span class="classifier">str, optional</span></dt><dd><p>Reverberation time mode. Options are <cite>‘T20’</cite>, <cite>‘T30’</cite>, <cite>‘T60’</cite> or
 <cite>‘EDT’</cite>. Default: <cite>‘T20’</cite>.</p>
 </dd>
 </dl>
-</section>
-<section id="id4">
-<h2>Returns<a class="headerlink" href="#id4" title="Permalink to this heading">¶</a></h2>
-<dl class="simple">
-<dt>reverberation_times<span class="classifier">ndarray</span></dt><dd><p>Reverberation times for each channel.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl>
+<dt><strong>reverberation_times</strong><span class="classifier"><cite>np.ndarray</cite></span></dt><dd><p>Reverberation times for each channel.</p>
 </dd>
 </dl>
-</section>
-<section id="id5">
-<h2>References<a class="headerlink" href="#id5" title="Permalink to this heading">¶</a></h2>
+</dd>
+</dl>
+<p class="rubric">References</p>
 <ul class="simple">
 <li><p>DIN 3382</p></li>
 <li><p>ISO 3382-1:2009-10, Acoustics - Measurement of the reverberation time of</p></li>
 </ul>
 <p>rooms with reference to other acoustical parameters. pp. 22.</p>
-</section>
 </dd></dl>
 
 </section>

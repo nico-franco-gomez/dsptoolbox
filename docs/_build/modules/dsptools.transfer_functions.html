@@ -19,7 +19,6 @@
     <script src="../_static/js/petite-vue.js"></script>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
-    <link rel="next" title="dsptools package" href="../dsptools.html" />
     <link rel="prev" title="Standard functions dsptools.standard_functions package" href="dsptools.standard_functions.html" /> 
   </head><body data-dark_mode_code_blocks="true">
 
@@ -125,9 +124,7 @@
         <div class="sphinxsidebarwrapper"><p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="../classes.html">Classes (dsptools.classes)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../modules.html">Modules in dsptools</a></li>
-<li class="toctree-l1 current"><a class="reference internal" href="../dsptools.html">dsptools package</a><ul class="current">
-<li class="toctree-l2"><a class="reference internal" href="../classes.html">Classes (dsptools.classes)</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../modules.html">Modules in dsptools</a><ul class="current">
 <li class="toctree-l2"><a class="reference internal" href="dsptools.distances.html">Distances (dsptools.distances)</a></li>
 <li class="toctree-l2"><a class="reference internal" href="dsptools.experimental.html">Experimental (dsptools.experimental)</a></li>
 <li class="toctree-l2"><a class="reference internal" href="dsptools.filterbanks.html">Filterbanks (dsptools.filterbanks)</a></li>
@@ -160,115 +157,115 @@
 H1: for noise in the output signal. <cite>Gxy/Gxx</cite>.
 H2: for noise in the input signal. <cite>Gyy/Gyx</cite>.
 H3: for noise in both signals. <cite>G_xy / np.abs(G_xy) * (G_yy/G_xx)**0.5</cite>.</p>
-<section id="parameters">
-<h2>Parameters<a class="headerlink" href="#parameters" title="Permalink to this heading">¶</a></h2>
-<dl class="simple">
-<dt>output<span class="classifier">Signal</span></dt><dd><p>Signal with output channels.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>output</strong><span class="classifier">Signal</span></dt><dd><p>Signal with output channels.</p>
 </dd>
-<dt>input<span class="classifier">Signal</span></dt><dd><p>Signal with input channels.</p>
+<dt><strong>input</strong><span class="classifier">Signal</span></dt><dd><p>Signal with input channels.</p>
 </dd>
-<dt>mode<span class="classifier">str, optional</span></dt><dd><p>Type of transfer function. <cite>‘h1’</cite>, <cite>‘h2’</cite> and <cite>‘h3’</cite> are available.
+<dt><strong>mode</strong><span class="classifier">str, optional</span></dt><dd><p>Type of transfer function. <cite>‘h1’</cite>, <cite>‘h2’</cite> and <cite>‘h3’</cite> are available.
 Default: <cite>‘h2’</cite>.</p>
 </dd>
-<dt>multichannel<span class="classifier">bool, optional</span></dt><dd><p>When <cite>True</cite>,  only the first channel of input is used for all output
+<dt><strong>multichannel</strong><span class="classifier">bool, optional</span></dt><dd><p>When <cite>True</cite>,  only the first channel of input is used for all output
 channels. Default: <cite>False</cite>.</p>
 </dd>
-<dt>window_length_samples<span class="classifier">int, optional</span></dt><dd><p>Window length for the IR. Spectrum has the length
+<dt><strong>window_length_samples</strong><span class="classifier">int, optional</span></dt><dd><p>Window length for the IR. Spectrum has the length
 window_length_samples//2 + 1. Default: 1024.</p>
 </dd>
-<dt><a href="#id1"><span class="problematic" id="id2">**</span></a>kwargs<span class="classifier">dict, optional</span></dt><dd><p>Extra parameters for the computation of the cross spectral densities
+<dt><strong>**kwargs</strong><span class="classifier">dict, optional</span></dt><dd><p>Extra parameters for the computation of the cross spectral densities
 using welch’s method.</p>
 </dd>
 </dl>
-</section>
-<section id="returns">
-<h2>Returns<a class="headerlink" href="#returns" title="Permalink to this heading">¶</a></h2>
-<dl class="simple">
-<dt>tf<span class="classifier">Signal</span></dt><dd><p>Transfer functions. Coherences are also computed and saved in the
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt><strong>tf</strong><span class="classifier">Signal</span></dt><dd><p>Transfer functions. Coherences are also computed and saved in the
 Signal object.</p>
 </dd>
 </dl>
-</section>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="dsptools.transfer_functions.spectral_deconvolve">
 <span class="sig-prename descclassname"><span class="pre">dsptools.transfer_functions.</span></span><span class="sig-name descname"><span class="pre">spectral_deconvolve</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">num</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../classes.html#dsptools.classes.signal_class.Signal" title="dsptools.classes.signal_class.Signal"><span class="pre">Signal</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">denum</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../classes.html#dsptools.classes.signal_class.Signal" title="dsptools.classes.signal_class.Signal"><span class="pre">Signal</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">multichannel</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mode</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'regularized'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">start_stop_hz</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">threshold_db</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">-30</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">padding</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">keep_original_length</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dsptools.transfer_functions.spectral_deconvolve" title="Permalink to this definition">¶</a></dt>
 <dd><p>Deconvolution by spectral division of two signals.</p>
-<section id="id3">
-<h2>Parameters<a class="headerlink" href="#id3" title="Permalink to this heading">¶</a></h2>
-<dl class="simple">
-<dt>num<span class="classifier">Signal</span></dt><dd><p>Signal to deconvolve from.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>num</strong><span class="classifier">Signal</span></dt><dd><p>Signal to deconvolve from.</p>
 </dd>
-<dt>denum<span class="classifier">Signal</span></dt><dd><p>Signal to deconvolve.</p>
+<dt><strong>denum</strong><span class="classifier">Signal</span></dt><dd><p>Signal to deconvolve.</p>
 </dd>
-<dt>multichannel<span class="classifier">bool, optional</span></dt><dd><p>When <cite>True</cite>, the first channel of denum is used for all channels
+<dt><strong>multichannel</strong><span class="classifier">bool, optional</span></dt><dd><p>When <cite>True</cite>, the first channel of denum is used for all channels
 in num. Default: False.</p>
 </dd>
-<dt>mode<span class="classifier">str, optional</span></dt><dd><p><cite>‘window’</cite> uses a spectral window in the numerator. <cite>‘regularized’</cite>
+<dt><strong>mode</strong><span class="classifier">str, optional</span></dt><dd><p><cite>‘window’</cite> uses a spectral window in the numerator. <cite>‘regularized’</cite>
 uses a regularized inversion. <cite>‘standard’</cite> uses direct deconvolution.
 Default: <cite>‘regularized’</cite>.</p>
 </dd>
-<dt>start_stop_hz<span class="classifier">array, None, optional</span></dt><dd><p><cite>‘automatic’</cite> uses a threshold dBFS to create a spectral
+<dt><strong>start_stop_hz</strong><span class="classifier">array, None, optional</span></dt><dd><p><cite>‘automatic’</cite> uses a threshold dBFS to create a spectral
 window for the numerator or regularized inversion. Array of 2 or
 4 frequency points can be also manually given. <cite>None</cite> uses no
 spectral window.</p>
 </dd>
-<dt>threshold<span class="classifier">int, optional</span></dt><dd><p>Threshold in dBFS for the automatic creation of the window.
+<dt><strong>threshold</strong><span class="classifier">int, optional</span></dt><dd><p>Threshold in dBFS for the automatic creation of the window.
 Default: -30.</p>
 </dd>
-<dt>padding<span class="classifier">bool, optional</span></dt><dd><p>Pads the time data with 2 length. Done for separating distortion
+<dt><strong>padding</strong><span class="classifier">bool, optional</span></dt><dd><p>Pads the time data with 2 length. Done for separating distortion
 in negative time bins when deconvolving sweep measurements.
 Default: <cite>False</cite>.</p>
 </dd>
-<dt>keep_original_length<span class="classifier">bool, optional</span></dt><dd><p>Only regarded when padding is <cite>True</cite>. It trims the newly deconvolved
+<dt><strong>keep_original_length</strong><span class="classifier">bool, optional</span></dt><dd><p>Only regarded when padding is <cite>True</cite>. It trims the newly deconvolved
 data to its original length. Default: <cite>False</cite>.</p>
 </dd>
 </dl>
-</section>
-<section id="id4">
-<h2>Returns<a class="headerlink" href="#id4" title="Permalink to this heading">¶</a></h2>
-<dl class="simple">
-<dt>new_sig<span class="classifier">Signal</span></dt><dd><p>Deconvolved signal.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt><strong>new_sig</strong><span class="classifier">Signal</span></dt><dd><p>Deconvolved signal.</p>
 </dd>
 </dl>
-</section>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="dsptools.transfer_functions.window_ir">
 <span class="sig-prename descclassname"><span class="pre">dsptools.transfer_functions.</span></span><span class="sig-name descname"><span class="pre">window_ir</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">signal</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../classes.html#dsptools.classes.signal_class.Signal" title="dsptools.classes.signal_class.Signal"><span class="pre">Signal</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">constant_percentage</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.75</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">exp2_trim</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">13</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">window_type</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'hann'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">at_start</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dsptools.transfer_functions.window_ir" title="Permalink to this definition">¶</a></dt>
 <dd><p>Windows an IR with trimming and selection of constant valued length.</p>
-<section id="id5">
-<h2>Parameters<a class="headerlink" href="#id5" title="Permalink to this heading">¶</a></h2>
-<dl class="simple">
-<dt>signal: Signal</dt><dd><p>Signal to window</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>signal: Signal</strong></dt><dd><p>Signal to window</p>
 </dd>
-<dt>constant_percentage: float, optional</dt><dd><p>Percentage (between 0 and 1) of the window that should be
+<dt><strong>constant_percentage: float, optional</strong></dt><dd><p>Percentage (between 0 and 1) of the window that should be
 constant value. Default: 0.75</p>
 </dd>
-<dt>exp2_trim: int, optional</dt><dd><p>Exponent of two defining the length to which the IR should be
+<dt><strong>exp2_trim: int, optional</strong></dt><dd><p>Exponent of two defining the length to which the IR should be
 trimmed. For avoiding trimming set to <cite>None</cite>. Default: 13.</p>
 </dd>
-<dt>window_type: str, optional</dt><dd><p>Window function to be used. Available selection from
+<dt><strong>window_type: str, optional</strong></dt><dd><p>Window function to be used. Available selection from
 scipy.signal.windows: <cite>barthann</cite>, <cite>bartlett</cite>, <cite>blackman</cite>,
 <cite>boxcar</cite>, <cite>cosine</cite>, <cite>hamming</cite>, <cite>hann</cite>, <cite>flattop</cite>, <cite>nuttall</cite> and
 others without extra parameters. Default: <cite>hann</cite>.</p>
 </dd>
-<dt>at_start: bool, optional</dt><dd><p>Windows the start with a rising window as well as the end.
+<dt><strong>at_start: bool, optional</strong></dt><dd><p>Windows the start with a rising window as well as the end.
 Default: <cite>True</cite>.</p>
 </dd>
 </dl>
-</section>
-<section id="id6">
-<h2>Returns<a class="headerlink" href="#id6" title="Permalink to this heading">¶</a></h2>
-<dl class="simple">
-<dt>windowed_ir: ndarray</dt><dd><p>IR with applied window.</p>
 </dd>
-<dt>window: ndarray</dt><dd><p>Window used for IR.</p>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt>windowed_ir: <cite>np.ndarray</cite></dt><dd><p>IR with applied window.</p>
+</dd>
+<dt>window: <cite>np.ndarray</cite></dt><dd><p>Window used for IR.</p>
 </dd>
 </dl>
-</section>
+</dd>
+</dl>
 </dd></dl>
 
 </section>
@@ -311,8 +308,6 @@ Default: <cite>True</cite>.</p>
             </div>
 
             <div class="right">
-                
-                    <a href="../dsptools.html"><span>dsptools package</span><span class="icon">></span></a>
                 
             </div>
         </div>

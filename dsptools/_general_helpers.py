@@ -226,7 +226,7 @@ def _normalize(s: np.ndarray, dbfs: float, mode='peak'):
 
     Parameters
     ----------
-    s: np.ndarray
+    s: `np.ndarray`
         Signal to normalize.
     dbfs: float
         dbfs value to normalize to.
@@ -236,7 +236,7 @@ def _normalize(s: np.ndarray, dbfs: float, mode='peak'):
 
     Returns
     -------
-    s_out: np.ndarray
+    s_out: `np.ndarray`
         Normalized signal.
 
     """
@@ -271,7 +271,7 @@ def _fade(s: np.ndarray, length_seconds: float = 0.1, mode: str = 'exp',
 
     Parameters
     ----------
-    s : np.ndarray
+    s : `np.ndarray`
         np.array to be faded.
     length_seconds : float, optional
         Length of fade in seconds. Default: 0.1.
@@ -286,7 +286,7 @@ def _fade(s: np.ndarray, length_seconds: float = 0.1, mode: str = 'exp',
 
     Returns
     -------
-    s : np.ndarray
+    s : `np.ndarray`
         Faded vector.
 
     """

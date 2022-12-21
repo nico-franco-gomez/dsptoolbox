@@ -25,7 +25,7 @@ def latency(in1: Signal, in2: Signal = None):
 
     Returns
     -------
-    latency_per_channel_samples : ndarray
+    latency_per_channel_samples : `np.ndarray`
         Array with latency between two signals in samples per channel.
 
     """
@@ -56,9 +56,9 @@ def group_delay(signal: Signal, method='direct'):
 
     Returns
     -------
-    freqs : ndarray
+    freqs : `np.ndarray`
         Frequency vector in Hz.
-    group_delays : ndarray
+    group_delays : `np.ndarray`
         Matrix containing group delays in seconds.
 
     """
@@ -97,9 +97,9 @@ def minimal_phase(signal: Signal):
 
     Returns
     -------
-    f : ndarray
+    f : `np.ndarray`
         Frequency vector.
-    min_phases : ndarray
+    min_phases : `np.ndarray`
         Minimal phases.
 
     """
@@ -124,9 +124,9 @@ def minimal_group_delay(signal: Signal):
 
     Returns
     -------
-    f : ndarray
+    f : `np.ndarray`
         Frequency vector.
-    min_gd : ndarray
+    min_gd : `np.ndarray`
         Minimal group delays in seconds.
 
     """
@@ -147,9 +147,9 @@ def excess_group_delay(signal: Signal):
 
     Returns
     -------
-    f : ndarray
+    f : `np.ndarray`
         Frequency vector.
-    ex_gd : ndarray
+    ex_gd : `np.ndarray`
         Excess group delays in seconds.
     """
     f, min_gd = minimal_group_delay(signal)

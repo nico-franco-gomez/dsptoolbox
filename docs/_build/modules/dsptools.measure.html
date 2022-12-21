@@ -125,9 +125,7 @@
         <div class="sphinxsidebarwrapper"><p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="../classes.html">Classes (dsptools.classes)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../modules.html">Modules in dsptools</a></li>
-<li class="toctree-l1 current"><a class="reference internal" href="../dsptools.html">dsptools package</a><ul class="current">
-<li class="toctree-l2"><a class="reference internal" href="../classes.html">Classes (dsptools.classes)</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../modules.html">Modules in dsptools</a><ul class="current">
 <li class="toctree-l2"><a class="reference internal" href="dsptools.distances.html">Distances (dsptools.distances)</a></li>
 <li class="toctree-l2"><a class="reference internal" href="dsptools.experimental.html">Experimental (dsptools.experimental)</a></li>
 <li class="toctree-l2"><a class="reference internal" href="dsptools.filterbanks.html">Filterbanks (dsptools.filterbanks)</a></li>
@@ -158,27 +156,28 @@
 <span class="sig-prename descclassname"><span class="pre">dsptools.measure.</span></span><span class="sig-name descname"><span class="pre">play</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">signal</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../classes.html#dsptools.classes.signal_class.Signal" title="dsptools.classes.signal_class.Signal"><span class="pre">Signal</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">duration_seconds</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.11)"><span class="pre">Optional</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><span class="pre">float</span></a><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">normalized_dbfs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">-6</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.11)"><span class="pre">Optional</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">play_channels</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dsptools.measure.play" title="Permalink to this definition">¶</a></dt>
 <dd><p>Play some available device. Note that the channel numbers
 start here with 1.</p>
-<section id="parameters">
-<h2>Parameters<a class="headerlink" href="#parameters" title="Permalink to this heading">¶</a></h2>
-<dl class="simple">
-<dt>signal<span class="classifier">Signal</span></dt><dd><p>Signal to be reproduced. Its channel number must match the the length
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>signal</strong><span class="classifier">Signal</span></dt><dd><p>Signal to be reproduced. Its channel number must match the the length
 of the play_channels vector.</p>
 </dd>
-<dt>duration_seconds<span class="classifier">float, optional</span></dt><dd><p>If <cite>None</cite>, the whole signal is played, otherwise it is trimmed to the
+<dt><strong>duration_seconds</strong><span class="classifier">float, optional</span></dt><dd><p>If <cite>None</cite>, the whole signal is played, otherwise it is trimmed to the
 given length. Default: <cite>None</cite>.</p>
 </dd>
-<dt>normalized_dbfs: float, optional</dt><dd><p>Normalizes the signal (dBFS peak level) before playing it.
+<dt><strong>normalized_dbfs: float, optional</strong></dt><dd><p>Normalizes the signal (dBFS peak level) before playing it.
 Set to <cite>None</cite> to ignore normalization. Default: -6.</p>
 </dd>
-<dt>device<span class="classifier">str, optional</span></dt><dd><p>I/O device to be used. If <cite>None</cite>, the default device is used.
+<dt><strong>device</strong><span class="classifier">str, optional</span></dt><dd><p>I/O device to be used. If <cite>None</cite>, the default device is used.
 Default: <cite>None</cite>.</p>
 </dd>
-<dt>play_channels<span class="classifier">int or array-like, optional</span></dt><dd><p>Output channels that will play the signal. The number of channels
+<dt><strong>play_channels</strong><span class="classifier">int or array-like, optional</span></dt><dd><p>Output channels that will play the signal. The number of channels
 should match the number of channels in signal. When <cite>None</cite>, the
 channels are automatically set. Default: <cite>None</cite>.</p>
 </dd>
 </dl>
-</section>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py function">
@@ -186,37 +185,37 @@ channels are automatically set. Default: <cite>None</cite>.</p>
 <span class="sig-prename descclassname"><span class="pre">dsptools.measure.</span></span><span class="sig-name descname"><span class="pre">play_and_record</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">signal</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../classes.html#dsptools.classes.signal_class.Signal" title="dsptools.classes.signal_class.Signal"><span class="pre">Signal</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">duration_seconds</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.11)"><span class="pre">Optional</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><span class="pre">float</span></a><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">normalized_dbfs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">-6</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.11)"><span class="pre">Optional</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">play_channels</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rec_channels</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[1]</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dsptools.measure.play_and_record" title="Permalink to this definition">¶</a></dt>
 <dd><p>Play and record using some available device. Note that the channel
 numbers start here with 1.</p>
-<section id="id1">
-<h2>Parameters<a class="headerlink" href="#id1" title="Permalink to this heading">¶</a></h2>
-<dl class="simple">
-<dt>signal<span class="classifier">Signal</span></dt><dd><p>Signal object to be played. The number of channels has to match the
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>signal</strong><span class="classifier">Signal</span></dt><dd><p>Signal object to be played. The number of channels has to match the
 total length and order of play_channels. The sampling rate of signal
 will define the sampling rate of the recorded signals.</p>
 </dd>
-<dt>duration_seconds<span class="classifier">float, optional</span></dt><dd><p>If <cite>None</cite>, the whole signal is played, otherwise it is trimmed to the
+<dt><strong>duration_seconds</strong><span class="classifier">float, optional</span></dt><dd><p>If <cite>None</cite>, the whole signal is played, otherwise it is trimmed to the
 given length. Default: <cite>None</cite>.</p>
 </dd>
-<dt>normalized_dbfs: float, optional</dt><dd><p>Normalizes the signal (dBFS peak level) before playing it.
+<dt><strong>normalized_dbfs: float, optional</strong></dt><dd><p>Normalizes the signal (dBFS peak level) before playing it.
 Set to <cite>None</cite> to ignore normalization. Default: -6.</p>
 </dd>
-<dt>device<span class="classifier">str, optional</span></dt><dd><p>I/O device to be used. If <cite>None</cite>, the default device is used.
+<dt><strong>device</strong><span class="classifier">str, optional</span></dt><dd><p>I/O device to be used. If <cite>None</cite>, the default device is used.
 Default: <cite>None</cite>.</p>
 </dd>
-<dt>play_channels<span class="classifier">int or array-like, optional</span></dt><dd><p>Output channels that will play the signal. The number of channels
+<dt><strong>play_channels</strong><span class="classifier">int or array-like, optional</span></dt><dd><p>Output channels that will play the signal. The number of channels
 should match the number of channels in signal. When <cite>None</cite>, the
 channels are automatically set. Default: <cite>None</cite>.</p>
 </dd>
-<dt>rec_channels<span class="classifier">int or array-like, optional</span></dt><dd><p>Channel numbers that will be recorded. Default: [1].</p>
+<dt><strong>rec_channels</strong><span class="classifier">int or array-like, optional</span></dt><dd><p>Channel numbers that will be recorded. Default: [1].</p>
 </dd>
 </dl>
-</section>
-<section id="returns">
-<h2>Returns<a class="headerlink" href="#returns" title="Permalink to this heading">¶</a></h2>
-<dl class="simple">
-<dt>rec_sig<span class="classifier">Signal</span></dt><dd><p>Recorded signal.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt><strong>rec_sig</strong><span class="classifier">Signal</span></dt><dd><p>Recorded signal.</p>
 </dd>
 </dl>
-</section>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py function">
@@ -224,21 +223,21 @@ channels are automatically set. Default: <cite>None</cite>.</p>
 <span class="sig-prename descclassname"><span class="pre">dsptools.measure.</span></span><span class="sig-name descname"><span class="pre">print_device_info</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">device_number</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.11)"><span class="pre">Optional</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><span class="pre">int</span></a><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dsptools.measure.print_device_info" title="Permalink to this definition">¶</a></dt>
 <dd><p>Prints available audio devices or information about a certain device
 when the device number is given.</p>
-<section id="id2">
-<h2>Parameters<a class="headerlink" href="#id2" title="Permalink to this heading">¶</a></h2>
-<dl class="simple">
-<dt>device_number<span class="classifier">int, optional</span></dt><dd><p>Prints information about the specific device and returns it as
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>device_number</strong><span class="classifier">int, optional</span></dt><dd><p>Prints information about the specific device and returns it as
 a dictionary. Use <cite>None</cite> to ignore. Default: <cite>None</cite>.</p>
 </dd>
 </dl>
-</section>
-<section id="id3">
-<h2>Returns<a class="headerlink" href="#id3" title="Permalink to this heading">¶</a></h2>
-<dl class="simple">
-<dt>d<span class="classifier">dict</span></dt><dd><p>Only when <cite>device_number is not None</cite>.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt><strong>d</strong><span class="classifier">dict</span></dt><dd><p>Only when <cite>device_number is not None</cite>.</p>
 </dd>
 </dl>
-</section>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py function">
@@ -246,27 +245,27 @@ a dictionary. Use <cite>None</cite> to ignore. Default: <cite>None</cite>.</p>
 <span class="sig-prename descclassname"><span class="pre">dsptools.measure.</span></span><span class="sig-name descname"><span class="pre">record</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">duration_seconds</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sampling_rate_hz</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">48000</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.11)"><span class="pre">Optional</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rec_channels</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[1]</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dsptools.measure.record" title="Permalink to this definition">¶</a></dt>
 <dd><p>Record using some available device. Note that the channel numbers
 start here with 1.</p>
-<section id="id4">
-<h2>Parameters<a class="headerlink" href="#id4" title="Permalink to this heading">¶</a></h2>
-<dl class="simple">
-<dt>duration_seconds<span class="classifier">float, optional</span></dt><dd><p>Duration of recording in seconds. Default: 5.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>duration_seconds</strong><span class="classifier">float, optional</span></dt><dd><p>Duration of recording in seconds. Default: 5.</p>
 </dd>
-<dt>sampling_rate_hz<span class="classifier">int, optional</span></dt><dd><p>Sampling rate used for recording. Default: 48000.</p>
+<dt><strong>sampling_rate_hz</strong><span class="classifier">int, optional</span></dt><dd><p>Sampling rate used for recording. Default: 48000.</p>
 </dd>
-<dt>device<span class="classifier">str, optional</span></dt><dd><p>I/O device to be used. If <cite>None</cite>, the default device is used.
+<dt><strong>device</strong><span class="classifier">str, optional</span></dt><dd><p>I/O device to be used. If <cite>None</cite>, the default device is used.
 Default: <cite>None</cite>.</p>
 </dd>
-<dt>rec_channels<span class="classifier">int or array-like, optional</span></dt><dd><p>Number that will be recorded. Default: [1].</p>
+<dt><strong>rec_channels</strong><span class="classifier">int or array-like, optional</span></dt><dd><p>Number that will be recorded. Default: [1].</p>
 </dd>
 </dl>
-</section>
-<section id="id5">
-<h2>Returns<a class="headerlink" href="#id5" title="Permalink to this heading">¶</a></h2>
-<dl class="simple">
-<dt>rec_sig<span class="classifier">Signal</span></dt><dd><p>Recorded signal.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt><strong>rec_sig</strong><span class="classifier">Signal</span></dt><dd><p>Recorded signal.</p>
 </dd>
 </dl>
-</section>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py function">
@@ -275,13 +274,14 @@ Default: <cite>None</cite>.</p>
 <dd><p>Takes in a device number to set it as the default. If <cite>None</cite> is passed,
 the available devices are first shown and then the user is asked for
 input to set the device.</p>
-<section id="id6">
-<h2>Parameters<a class="headerlink" href="#id6" title="Permalink to this heading">¶</a></h2>
-<dl class="simple">
-<dt>device_number<span class="classifier">int, optional</span></dt><dd><p>Sets the device as default. Use <cite>None</cite> to ignore. Default: <cite>None</cite>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>device_number</strong><span class="classifier">int, optional</span></dt><dd><p>Sets the device as default. Use <cite>None</cite> to ignore. Default: <cite>None</cite>.</p>
 </dd>
 </dl>
-</section>
+</dd>
+</dl>
 </dd></dl>
 
 </section>

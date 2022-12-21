@@ -30,9 +30,9 @@ def _welch(x, y, fs_hz, window_type: str = 'hann',
 
     Parameters
     ----------
-    x : np.ndarray
+    x : `np.ndarray`
         First signal
-    y : np.ndarray
+    y : `np.ndarray`
         Second signal
     fs_hz : int
         Sampling rate in Hz.
@@ -55,7 +55,7 @@ def _welch(x, y, fs_hz, window_type: str = 'hann',
 
     Returns
     -------
-    csd : np.ndarray
+    csd : `np.ndarray`
         Cross spectral density vector. Complex-valued if x and y are different.
 
     """
@@ -150,7 +150,7 @@ def _group_delay_direct(phase: np.ndarray, delta_f: float = 1):
 
     Parameters
     ----------
-    phase : np.ndarray
+    phase : `np.ndarray`
         Complex spectrum or phase for the direct method
     delta_f : float, optional
         Frequency step for the phase. If it equals 1, group delay is computed
@@ -158,7 +158,7 @@ def _group_delay_direct(phase: np.ndarray, delta_f: float = 1):
 
     Returns
     -------
-    gd : np.ndarray
+    gd : `np.ndarray`
         Group delay vector either in s or in samples if no
         sampling rate is given.
 
@@ -177,7 +177,7 @@ def _minimal_phase(magnitude: np.ndarray, unwrapped: bool = True):
 
     Parameters
     ----------
-    magnitude : np.ndarray
+    magnitude : `np.ndarray`
         Spectrum for which to compute the minimal phase. If real, it is assumed
         to be already the magnitude.
     uwrapped : bool, optional
@@ -185,7 +185,7 @@ def _minimal_phase(magnitude: np.ndarray, unwrapped: bool = True):
 
     Returns
     -------
-    minimal_phase : np.ndarray
+    minimal_phase : `np.ndarray`
         Minimal phase of the system.
 
     """
@@ -204,7 +204,7 @@ def _stft(x: np.ndarray, fs_hz: int, window_length_samples: int = 2048,
 
     Parameters
     ----------
-    x : np.ndarray
+    x : `np.ndarray`
         First signal
     fs_hz : int
         Sampling rate in Hz.
@@ -226,11 +226,11 @@ def _stft(x: np.ndarray, fs_hz: int, window_length_samples: int = 2048,
 
     Returns
     -------
-    time_s : np.ndarray
+    time_s : `np.ndarray`
         Time vector in seconds for each frame.
-    freqs_hz : np.ndarray
+    freqs_hz : `np.ndarray`
         Frequency vector.
-    stft : np.ndarray
+    stft : `np.ndarray`
         STFT matrix.
 
     """
@@ -297,7 +297,7 @@ def _csm(time_data: np.ndarray, sampling_rate_hz: int,
 
     Parameters
     ----------
-    time_data : np.ndarray
+    time_data : `np.ndarray`
         Signal
     fs_hz : int
         Sampling rate in Hz.
@@ -320,9 +320,9 @@ def _csm(time_data: np.ndarray, sampling_rate_hz: int,
 
     Returns
     -------
-    f : np.ndarray
+    f : `np.ndarray`
         Frequency vector
-    csm : np.ndarray
+    csm : `np.ndarray`
         Cross spectral matrix with shape (frequency, channels, channels).
 
     """

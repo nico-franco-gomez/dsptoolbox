@@ -10,11 +10,11 @@ def _log_spectral_distance(x: np.ndarray, y: np.ndarray, f):
 
     Parameters
     ----------
-    x : np.ndarray
+    x : `np.ndarray`
         First power spectrum.
-    y : np.ndarray
+    y : `np.ndarray`
         Second power spectrum.
-    f : np.ndarray
+    f : `np.ndarray`
         Frequency vector.
 
     Returns
@@ -35,11 +35,11 @@ def _itakura_saito_measure(x: np.ndarray, y: np.ndarray, f):
 
     Parameters
     ----------
-    x : np.ndarray
+    x : `np.ndarray`
         First power spectrum.
-    y : np.ndarray
+    y : `np.ndarray`
         Second power spectrum.
-    f : np.ndarray
+    f : `np.ndarray`
         Frequency vector.
 
     Returns

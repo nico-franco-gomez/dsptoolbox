@@ -125,9 +125,7 @@
         <div class="sphinxsidebarwrapper"><p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="../classes.html">Classes (dsptools.classes)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../modules.html">Modules in dsptools</a></li>
-<li class="toctree-l1 current"><a class="reference internal" href="../dsptools.html">dsptools package</a><ul class="current">
-<li class="toctree-l2"><a class="reference internal" href="../classes.html">Classes (dsptools.classes)</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../modules.html">Modules in dsptools</a><ul class="current">
 <li class="toctree-l2"><a class="reference internal" href="dsptools.distances.html">Distances (dsptools.distances)</a></li>
 <li class="toctree-l2"><a class="reference internal" href="dsptools.experimental.html">Experimental (dsptools.experimental)</a></li>
 <li class="toctree-l2"><a class="reference internal" href="dsptools.filterbanks.html">Filterbanks (dsptools.filterbanks)</a></li>
@@ -162,34 +160,36 @@
 <dt class="sig sig-object py" id="dsptools.plots.general_plot">
 <span class="sig-prename descclassname"><span class="pre">dsptools.plots.</span></span><span class="sig-name descname"><span class="pre">general_plot</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">f</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">matrix</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">range_x</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">range_y</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">log</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">labels</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">xlabel</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'Frequency</span> <span class="pre">/</span> <span class="pre">Hz'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ylabel</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.11)"><span class="pre">Optional</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">info_box</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.11)"><span class="pre">Optional</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">returns</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dsptools.plots.general_plot" title="Permalink to this definition">¶</a></dt>
 <dd><p>Generic plot template.</p>
-<section id="parameters">
-<h2>Parameters<a class="headerlink" href="#parameters" title="Permalink to this heading">¶</a></h2>
-<dl class="simple">
-<dt>f<span class="classifier">array-like</span></dt><dd><p>Vector for x axis.</p>
+<dl class="field-list">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl>
+<dt><strong>f</strong><span class="classifier">array-like</span></dt><dd><p>Vector for x axis.</p>
 </dd>
-<dt>matrix<span class="classifier">ndarray</span></dt><dd><p>Matrix with data to plot.</p>
+<dt><strong>matrix</strong><span class="classifier"><cite>np.ndarray</cite></span></dt><dd><p>Matrix with data to plot.</p>
 </dd>
-<dt>range_x<span class="classifier">array-like, optional</span></dt><dd><p>Range to show for x axis. Default: None.</p>
+<dt><strong>range_x</strong><span class="classifier">array-like, optional</span></dt><dd><p>Range to show for x axis. Default: None.</p>
 </dd>
-<dt>range_y<span class="classifier">array-like, optional</span></dt><dd><p>Range to show for y axis. Default: None.</p>
+<dt><strong>range_y</strong><span class="classifier">array-like, optional</span></dt><dd><p>Range to show for y axis. Default: None.</p>
 </dd>
-<dt>log<span class="classifier">bool, optional</span></dt><dd><p>Show x axis as logarithmic. Default: True.</p>
+<dt><strong>log</strong><span class="classifier">bool, optional</span></dt><dd><p>Show x axis as logarithmic. Default: True.</p>
 </dd>
-<dt>xlabel<span class="classifier">str, optional</span></dt><dd><p>Label for x axis. Default: None.</p>
+<dt><strong>xlabel</strong><span class="classifier">str, optional</span></dt><dd><p>Label for x axis. Default: None.</p>
 </dd>
-<dt>ylabel<span class="classifier">str, optional</span></dt><dd><p>Label for y axis. Default: None.</p>
+<dt><strong>ylabel</strong><span class="classifier">str, optional</span></dt><dd><p>Label for y axis. Default: None.</p>
 </dd>
-<dt>info_box<span class="classifier">str, optional</span></dt><dd><p>String containing extra information to be shown in a info box on the
+<dt><strong>info_box</strong><span class="classifier">str, optional</span></dt><dd><p>String containing extra information to be shown in a info box on the
 plot. Default: None.</p>
 </dd>
-<dt>returns<span class="classifier">bool, optional</span></dt><dd><p>When <cite>True</cite>, the figure and axis are returned. Default: <cite>False</cite>.</p>
+<dt><strong>returns</strong><span class="classifier">bool, optional</span></dt><dd><p>When <cite>True</cite>, the figure and axis are returned. Default: <cite>False</cite>.</p>
 </dd>
 </dl>
-</section>
-<section id="returns">
-<h2>Returns<a class="headerlink" href="#returns" title="Permalink to this heading">¶</a></h2>
-<p>When returns is activated, figure and axis are returned.</p>
-</section>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt>When returns is activated, figure and axis are returned.</dt><dd></dd>
+</dl>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py function">

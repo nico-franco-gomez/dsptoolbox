@@ -55,14 +55,14 @@ def _complex_mode_identification(spectra: np.ndarray, n_functions: int = 1):
 
     Parameters
     ----------
-    spectra : np.ndarray
+    spectra : `np.ndarray`
         Matrix containing spectra of the necessary IR.
     n_functions : int, optional
         Number of singular value vectors to be returned. Default: 1.
 
     Returns
     -------
-    cmif : np.ndarray
+    cmif : `np.ndarray`
         Complex mode identificator function (matrix).
 
     References
@@ -91,12 +91,12 @@ def _sum_magnitude_spectra(magnitudes: np.ndarray):
 
     Parameters
     ----------
-    magnitudes : np.ndarray
+    magnitudes : `np.ndarray`
         The magnitude spectra. If complex, it is assumed to be the spectra.
 
     Returns
     -------
-    summed : np.ndarray
+    summed : `np.ndarray`
         np.sum of magnitude spectra.
 
     """

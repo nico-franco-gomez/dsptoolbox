@@ -125,9 +125,7 @@
         <div class="sphinxsidebarwrapper"><p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="../classes.html">Classes (dsptools.classes)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../modules.html">Modules in dsptools</a></li>
-<li class="toctree-l1 current"><a class="reference internal" href="../dsptools.html">dsptools package</a><ul class="current">
-<li class="toctree-l2"><a class="reference internal" href="../classes.html">Classes (dsptools.classes)</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="../modules.html">Modules in dsptools</a><ul class="current">
 <li class="toctree-l2"><a class="reference internal" href="dsptools.distances.html">Distances (dsptools.distances)</a></li>
 <li class="toctree-l2"><a class="reference internal" href="dsptools.experimental.html">Experimental (dsptools.experimental)</a></li>
 <li class="toctree-l2"><a class="reference internal" href="dsptools.filterbanks.html">Filterbanks (dsptools.filterbanks)</a></li>
@@ -157,29 +155,27 @@
 <dt class="sig sig-object py" id="dsptools.special.cepstrum">
 <span class="sig-prename descclassname"><span class="pre">dsptools.special.</span></span><span class="sig-name descname"><span class="pre">cepstrum</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">signal</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../classes.html#dsptools.classes.signal_class.Signal" title="dsptools.classes.signal_class.Signal"><span class="pre">Signal</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">mode</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'power'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dsptools.special.cepstrum" title="Permalink to this definition">¶</a></dt>
 <dd><p>Returns the cepstrum of a given signal in the Quefrency domain.</p>
-<section id="parameters">
-<h2>Parameters<a class="headerlink" href="#parameters" title="Permalink to this heading">¶</a></h2>
-<dl class="simple">
-<dt>signal<span class="classifier">Signal</span></dt><dd><p>Signal to compute the cepstrum from.</p>
+<dl class="field-list">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>signal</strong><span class="classifier">Signal</span></dt><dd><p>Signal to compute the cepstrum from.</p>
 </dd>
-<dt>mode<span class="classifier">str, optional</span></dt><dd><p>Type of cepstrum. Supported modes are <cite>‘power’</cite>, <cite>‘real’</cite> and
+<dt><strong>mode</strong><span class="classifier">str, optional</span></dt><dd><p>Type of cepstrum. Supported modes are <cite>‘power’</cite>, <cite>‘real’</cite> and
 <cite>‘complex’</cite>. Default: <cite>‘power’</cite>.</p>
 </dd>
 </dl>
-</section>
-<section id="returns">
-<h2>Returns<a class="headerlink" href="#returns" title="Permalink to this heading">¶</a></h2>
-<dl class="simple">
-<dt>que<span class="classifier">ndarray</span></dt><dd><p>Quefrency.</p>
 </dd>
-<dt>ceps<span class="classifier">ndarray</span></dt><dd><p>Cepstrum.</p>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl>
+<dt><strong>que</strong><span class="classifier"><cite>np.ndarray</cite></span></dt><dd><p>Quefrency.</p>
+</dd>
+<dt><strong>ceps</strong><span class="classifier"><cite>np.ndarray</cite></span></dt><dd><p>Cepstrum.</p>
 </dd>
 </dl>
-</section>
-<section id="references">
-<h2>References<a class="headerlink" href="#references" title="Permalink to this heading">¶</a></h2>
+</dd>
+</dl>
+<p class="rubric">References</p>
 <p><a class="reference external" href="https://de.wikipedia.org/wiki/Cepstrum">https://de.wikipedia.org/wiki/Cepstrum</a></p>
-</section>
 </dd></dl>
 
 </section>

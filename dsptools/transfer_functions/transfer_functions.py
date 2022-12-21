@@ -137,9 +137,9 @@ def window_ir(signal: Signal, constant_percentage=0.75, exp2_trim: int = 13,
 
     Returns
     -------
-    windowed_ir: ndarray
+    windowed_ir: `np.ndarray`
         IR with applied window.
-    window: ndarray
+    window: `np.ndarray`
         Window used for IR.
 
     """

@@ -18,9 +18,9 @@ def cepstrum(signal: Signal, mode='power'):
 
     Returns
     -------
-    que : ndarray
+    que : `np.ndarray`
         Quefrency.
-    ceps : ndarray
+    ceps : `np.ndarray`
         Cepstrum.
 
     References
