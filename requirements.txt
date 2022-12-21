@@ -18,3 +18,4 @@ piccolo-theme # theme
 numpydoc
 sphinx
 readthedocs-sphinx-search
+autdocsumm
