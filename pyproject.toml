@@ -2,7 +2,7 @@
 requires = [
     "scipy",
     "numpy",
-    "PyAudio",
+    "soundfile",
     "sounddevice",
     "matplotlib",
     "seaborn",
