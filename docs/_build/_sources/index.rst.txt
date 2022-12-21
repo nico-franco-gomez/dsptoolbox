@@ -7,12 +7,12 @@ Welcome to dsptools's documentation!
 ====================================
 
 .. toctree::
-   :maxdepth: 4
+   :maxdepth: 2
 
    classes
 
 .. toctree::
-   :maxdepth: 4
+   :maxdepth: 2
 
    modules
 

@@ -258,62 +258,26 @@ Default: <cite>‘’</cite>.</p>
 <p class="rubric">Methods</p>
 <table class="docutils align-default">
 <tbody>
-<tr class="row-odd"><td><p><strong>add_channel:</strong></p></td>
-<td><p>Add new channels to signal object. Length is kept.</p></td>
+<tr class="row-odd"><td><p><strong>Time data: add_channel, remove_channel, swap_channels.</strong></p></td>
+<td></td>
 </tr>
-<tr class="row-even"><td><p><strong>remove_channel:</strong></p></td>
-<td><p>Removes a given channel.</p></td>
+<tr class="row-even"><td><p><strong>Spectrum: set_spectrum_parameters, get_spectrum.</strong></p></td>
+<td></td>
 </tr>
-<tr class="row-odd"><td><p><strong>swap_channels:</strong></p></td>
-<td><p>Reorders the channels.</p></td>
+<tr class="row-odd"><td><p><strong>Cross spectral matrix: set_csm_parameters, get_csm.</strong></p></td>
+<td></td>
 </tr>
-<tr class="row-even"><td><p><strong>set_spectrum_parameters:</strong></p></td>
-<td><p>Sets the spectrum parameters.</p></td>
+<tr class="row-even"><td><p><strong>Spectrogram: set_spectrogram_parameters, get_spectrogram.</strong></p></td>
+<td></td>
 </tr>
-<tr class="row-odd"><td><p><strong>get_spectrum:</strong></p></td>
-<td><p>Returns frequency vector and complex spectra of the channels.</p></td>
+<tr class="row-odd"><td><p><strong>Plots: plot_magnitude, plot_time, plot_spectrogram, plot_phase,</strong></p></td>
+<td><p>plot_csm.</p></td>
 </tr>
-<tr class="row-even"><td><p><strong>set_csm_parameters:</strong></p></td>
-<td><p>Sets the csm parameters.</p></td>
+<tr class="row-even"><td><p><strong>General: save_signal.</strong></p></td>
+<td></td>
 </tr>
-<tr class="row-odd"><td><p><strong>get_csm:</strong></p></td>
-<td><p>Returns frequency vector and csm.</p></td>
-</tr>
-<tr class="row-even"><td><p><strong>set_spectrogram_parameters:</strong></p></td>
-<td><p>Sets the spectrogram parameters.</p></td>
-</tr>
-<tr class="row-odd"><td><p><strong>get_spectrogram:</strong></p></td>
-<td><p>Returns frequency vector and spectrogram of given channel.</p></td>
-</tr>
-<tr class="row-even"><td><p><strong>plot_magnitude:</strong></p></td>
-<td><p>Plots magnitude spectra.</p></td>
-</tr>
-<tr class="row-odd"><td><p><strong>plot_time:</strong></p></td>
-<td><p>Plots time signals.</p></td>
-</tr>
-<tr class="row-even"><td><p><strong>plot_spectrogram:</strong></p></td>
-<td><p>Plots spectrogram of a given channel.</p></td>
-</tr>
-<tr class="row-odd"><td><p><strong>plot_phase:</strong></p></td>
-<td><p>Plots phase spectra.</p></td>
-</tr>
-<tr class="row-even"><td><p><strong>plot_csm:</strong></p></td>
-<td><p>Plots csm with magnitude and phase spectra.</p></td>
-</tr>
-<tr class="row-odd"><td><p><strong>save_signal:</strong></p></td>
-<td><p>Saves the Signal object</p></td>
-</tr>
-<tr class="row-even"><td><p><strong>set_window:</strong></p></td>
-<td><p>Saves the used window.</p></td>
-</tr>
-<tr class="row-odd"><td><p><strong>set_coherence:</strong></p></td>
-<td><p>Saves coherence measurements.</p></td>
-</tr>
-<tr class="row-even"><td><p><strong>plot_coherence:</strong></p></td>
-<td><p>Plots coherence measurements.</p></td>
-</tr>
-<tr class="row-odd"><td><p><strong>plot_group_delay:</strong></p></td>
-<td><p>Plots group delay of channels.</p></td>
+<tr class="row-odd"><td><p><strong>Only for `signal_type in (‘rir’, ‘ir’, ‘h1’, ‘h2’, ‘h3’)`:</strong></p></td>
+<td><p>set_window, set_coherence, plot_group_delay, plot_coherence.</p></td>
 </tr>
 </tbody>
 </table>

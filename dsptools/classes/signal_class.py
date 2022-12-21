@@ -52,44 +52,18 @@ class Signal():
 
         Methods
         -------
-        add_channel:
-            Add new channels to signal object. Length is kept.
-        remove_channel:
-            Removes a given channel.
-        swap_channels:
-            Reorders the channels.
-        set_spectrum_parameters:
-            Sets the spectrum parameters.
-        get_spectrum:
-            Returns frequency vector and complex spectra of the channels.
-        set_csm_parameters:
-            Sets the csm parameters.
-        get_csm:
-            Returns frequency vector and csm.
-        set_spectrogram_parameters:
-            Sets the spectrogram parameters.
-        get_spectrogram:
-            Returns frequency vector and spectrogram of given channel.
-        plot_magnitude:
-            Plots magnitude spectra.
-        plot_time:
-            Plots time signals.
-        plot_spectrogram:
-            Plots spectrogram of a given channel.
-        plot_phase:
-            Plots phase spectra.
-        plot_csm:
-            Plots csm with magnitude and phase spectra.
-        save_signal:
-            Saves the Signal object
-        set_window:
-            Saves the used window.
-        set_coherence:
-            Saves coherence measurements.
-        plot_coherence:
-            Plots coherence measurements.
-        plot_group_delay:
-            Plots group delay of channels.
+        Time data: add_channel, remove_channel, swap_channels.
+        Spectrum: set_spectrum_parameters, get_spectrum.
+        Cross spectral matrix: set_csm_parameters, get_csm.
+        Spectrogram: set_spectrogram_parameters, get_spectrogram.
+
+        Plots: plot_magnitude, plot_time, plot_spectrogram, plot_phase,
+            plot_csm.
+
+        General: save_signal.
+
+        Only for `signal_type in ('rir', 'ir', 'h1', 'h2', 'h3')`:
+            set_window, set_coherence, plot_group_delay, plot_coherence.
 
         """
         self.signal_id = signal_id

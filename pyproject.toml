@@ -1,0 +1,10 @@
+[build-system]
+requires = [
+    "scipy",
+    "numpy",
+    "soundfile",
+    "sounddevice",
+    "matplotlib",
+    "seaborn",
+    "setuptools"]
+build-backend = "setuptools.build_meta"

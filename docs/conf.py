@@ -27,6 +27,7 @@ extensions = [
     'sphinx.ext.autosummary',
     'sphinx.ext.intersphinx',
     'numpydoc'
+    'readthedocs-sphinx-search'
 ]
 
 # numpydoc_show_class_members = False
