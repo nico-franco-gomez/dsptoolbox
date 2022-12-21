@@ -146,7 +146,7 @@ class FilterBank():
 
         Parameters
         ----------
-        signal : Signal
+        signal : class:Signal
             Signal to be filtered.
         mode : str, optional
             Way to apply filter bank to the signal. Supported modes are:

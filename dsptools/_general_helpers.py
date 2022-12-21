@@ -10,9 +10,9 @@ def _find_nearest(points, vector):
 
     Parameters
     ----------
-    points : float or np.array-like
+    points : float or array_like
         Points to look for nearest index in vector.
-    vector : np.array-like
+    vector : array_like
         Vector in which to look for points.
 
     Returns
@@ -37,7 +37,7 @@ def _calculate_window(points, window_length: int,
 
     Parameters
     ----------
-    points: np.array-like
+    points: array_like
         Vector containing 4 points for the construction of the custom
         window.
     window_length: int

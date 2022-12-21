@@ -166,6 +166,7 @@ def _group_delay_filter(ba, length_samples: int = 512, fs_hz: int = 48000):
         Frequency vector.
     gd : ndarray
         Group delay in seconds.
+
     """
     # Frequency vector at which to evaluate
     omega = np.linspace(0, np.pi, length_samples)
@@ -193,7 +194,7 @@ def _filter_on_signal(signal: Signal, sos, channel=None,
 
     Parameters
     ----------
-    signal : Signal
+    signal : class:Signal
         Signal to be filtered.
     sos : array-like
         SOS coefficients of filter.
@@ -209,8 +210,9 @@ def _filter_on_signal(signal: Signal, sos, channel=None,
 
     Returns
     -------
-    new_signal : Signal
+    new_signal : class:Signal
         New Signal object.
+
     """
     new_time_data = signal.time_data
     if channel is None:
@@ -243,7 +245,8 @@ def _filter_on_signal(signal: Signal, sos, channel=None,
 def _filterbank_on_signal(signal: Signal, filters, activate_zi: bool = False,
                           mode: str = 'parallel', zero_phase: bool = False,
                           same_sampling_rate: bool = True):
-    """Applies filter bank on a given signal
+    """Applies filter bank on a given signal.
+
     """
     n_filt = len(filters)
     if mode == 'parallel':

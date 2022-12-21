@@ -67,10 +67,12 @@ def find_modes(signal: Signal, f_range_hz=[50, 200],
 
     Parameters
     ----------
-    rir: np.array-like, matrix
+    signal : Signal
+        Signal containing the RIR'S from which to find the modes.
+    rir: array_like, matrix
         List or matrix containing RIR's. It is assumed that every RIR has
         the same length.
-    f_range_hz: np.array-like, optional
+    f_range_hz: array_like, optional
         Vector setting range for mode search. Default: [50, 200].
     proximity_effect: bool, optional
         When `True`, only group delay criteria is used for finding modes

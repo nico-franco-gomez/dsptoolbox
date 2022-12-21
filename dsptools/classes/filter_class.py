@@ -121,7 +121,7 @@ class Filter():
 
         Parameters
         ----------
-        signal : Signal
+        signal : class:Signal
             Signal to be filtered.
         filt : Filter
             Filter to be used on the signal.
@@ -136,7 +136,7 @@ class Filter():
 
         Returns
         -------
-        new_signal : Signal
+        new_signal : class:Signal
             New Signal object.
 
         """

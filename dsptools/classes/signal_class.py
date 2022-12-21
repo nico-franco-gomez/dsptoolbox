@@ -37,7 +37,7 @@ class Signal():
             A path to audio files. Reading is done with soundfile. Wave and
             Flac audio files are accepted.
             Default: `None`.
-        time_data : np.array-like, np.ndarray, optional
+        time_data : array_like, np.ndarray, optional
             Time data of the signal. It is saved as a matrix with the form
             (time samples, channel number). Default: `None`.
         sampling_rate_hz : int, optional
@@ -435,7 +435,7 @@ class Signal():
 
         Parameters
         ----------
-        new_order : np.array-like
+        new_order : array_like
             New rearrangement of channels.
 
         """
@@ -607,7 +607,7 @@ class Signal():
 
         Parameters
         ----------
-        range_hz : np.array-like with length 2, optional
+        range_hz : array_like with length 2, optional
             Range for which to plot the magnitude response.
             Default: [20, 20000].
         normalize : str, optional
@@ -776,7 +776,7 @@ class Signal():
 
         Parameters
         ----------
-        range_hz : np.array-like with length 2, optional
+        range_hz : array_like with length 2, optional
             Range of Hz to be showed. Default: [20, 20e3].
         logx : bool, optional
             Logarithmic x axis. Default: `True`.

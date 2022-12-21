@@ -226,7 +226,7 @@ class LRFilterBank():
 
         Parameters
         ----------
-        range_hz : np.array-like, optional
+        range_hz : array_like, optional
             Range of Hz to plot. Default: [20, 20e3].
         test_zi : bool, optional
             Uses the zi's of each filter to test the FilterBank's output.
