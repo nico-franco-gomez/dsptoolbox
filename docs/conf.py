@@ -5,9 +5,7 @@
 
 import os
 import sys
-sys.path.insert(0, os.path.abspath('.'))
-# sys.path.insert(0, os.path.abspath('..'))
-# sys.path.insert(0, os.path.abspath('../dsptools'))
+sys.path.insert(0, os.path.abspath('..'))
 
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
@@ -35,6 +33,7 @@ extensions = [
 # numpydoc_show_class_members = False
 autosummary_generate = True
 autosummary_imported_members = True
+
 
 intersphinx_mapping = {
     'python': ('https://docs.python.org/3/', None),
