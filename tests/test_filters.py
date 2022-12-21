@@ -73,16 +73,16 @@ def filter_bank_filter():
     import dsptools as dsp
 
     # Standard filter bank
-    # fb = dsp.FilterBank()
-    # config = dict(order=5, freqs=[1500, 2000], type_of_pass='bandpass',
-    #               filter_design_method='bessel')
-    # fb.add_filter(dsp.Filter('iir', config))
-    # config = dict(order=150, freqs=[1500, 2000], type_of_pass='bandpass')
-    # fb.add_filter(dsp.Filter('fir', config))
+    fb = dsp.FilterBank()
+    config = dict(order=5, freqs=[1500, 2000], type_of_pass='bandpass',
+                  filter_design_method='bessel')
+    fb.add_filter(dsp.Filter('iir', config))
+    config = dict(order=150, freqs=[1500, 2000], type_of_pass='bandpass')
+    fb.add_filter(dsp.Filter('fir', config))
 
     # Linkwitz-Riley
-    fb = dsp.filterbanks.linkwitz_riley_crossovers(
-        [1000, 1500], [4, 6])
+    # fb = dsp.filterbanks.linkwitz_riley_crossovers(
+    #     [1000, 1500], [4, 6])
     # i = dsp.generators.dirac(1024, 2)
     # i_out = fb.filter_signal(i, activate_zi=True)
     # i_out.bands[0].plot_magnitude()
@@ -91,7 +91,7 @@ def filter_bank_filter():
 
     # Parallel
     # fb.plot_magnitude(test_zi=True)
-    fb.plot_magnitude(test_zi=False)
+    # fb.plot_magnitude(test_zi=False)
     # fb.plot_magnitude(mode='sequential', test_zi=True)
 
     # Single filter

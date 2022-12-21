@@ -1,7 +1,7 @@
 """
 Methods used for acquiring and windowing transfer functions
 """
-from numpy import (sqrt, min, zeros_like, zeros, fft, abs)
+import numpy as np
 from dsptools import Signal
 from dsptools._general_helpers import (_find_frequencies_above_threshold)
 from ._transfer_functions import (_spectral_deconvolve,
@@ -73,7 +73,7 @@ def spectral_deconvolve(num: Signal, denum: Signal, multichannel=False,
     freqs_hz, num_fft = num.get_spectrum()
     fs_hz = num.sampling_rate_hz
 
-    new_time_data = zeros_like(num.time_data)
+    new_time_data = np.zeros_like(num.time_data)
 
     for n in range(num.number_of_channels):
         if multichannel:
@@ -89,10 +89,10 @@ def spectral_deconvolve(num: Signal, denum: Signal, multichannel=False,
             #
             if len(start_stop_hz) == 2:
                 temp = []
-                temp.append(start_stop_hz[0]/sqrt(2))
+                temp.append(start_stop_hz[0]/np.sqrt(2))
                 temp.append(start_stop_hz[0])
                 temp.append(start_stop_hz[1])
-                temp.append(min([start_stop_hz[1]*sqrt(2), fs_hz/2]))
+                temp.append(np.min([start_stop_hz[1]*np.sqrt(2), fs_hz/2]))
                 start_stop_hz = temp
             elif len(start_stop_hz) == 4:
                 pass
@@ -145,7 +145,7 @@ def window_ir(signal: Signal, constant_percentage=0.75, exp2_trim: int = 13,
         total_length = int(2**exp2_trim)
     else:
         total_length = len(signal.time_data)
-    new_time_data = zeros((total_length, signal.number_of_channels))
+    new_time_data = np.zeros((total_length, signal.number_of_channels))
 
     for n in range(signal.number_of_channels):
         new_time_data[:, n], window = \
@@ -169,7 +169,7 @@ def compute_transfer_function(output: Signal, input: Signal, mode='h2',
     """Gets transfer function H1, H2 or H3.
     H1: for noise in the output signal. `Gxy/Gxx`.
     H2: for noise in the input signal. `Gyy/Gyx`.
-    H3: for noise in both signals. `G_xy / abs(G_xy) * (G_yy/G_xx)**0.5`.
+    H3: for noise in both signals. `G_xy / np.abs(G_xy) * (G_yy/G_xx)**0.5`.
 
     Parameters
     ----------
@@ -209,9 +209,9 @@ def compute_transfer_function(output: Signal, input: Signal, mode='h2',
             'Channel number does not match between signals. ' +\
             'Set multichannel to True if only first channel of ' +\
             'input should be used.'
-    H_time = zeros((window_length_samples, output.number_of_channels))
-    coherence = zeros((window_length_samples//2 + 1,
-                       output.number_of_channels))
+    H_time = np.zeros((window_length_samples, output.number_of_channels))
+    coherence = np.zeros((window_length_samples//2 + 1,
+                          output.number_of_channels))
     if multichannel:
         G_xx = _welch(
             input.time_data[:, 0],
@@ -251,12 +251,12 @@ def compute_transfer_function(output: Signal, input: Signal, mode='h2',
             **kwargs)
 
         if mode == 'h1'.casefold():
-            H_time[:, n] = fft.irfft(G_xy / G_xx)
+            H_time[:, n] = np.fft.irfft(G_xy / G_xx)
         elif mode == 'h2'.casefold():
-            H_time[:, n] = fft.irfft(G_yy / G_yx)
+            H_time[:, n] = np.fft.irfft(G_yy / G_yx)
         elif mode == 'h3'.casefold():
-            H_time[:, n] = fft.irfft(G_xy / abs(G_xy) * (G_yy/G_xx)**0.5)
-        coherence[:, n] = abs(G_xy)**2 / G_xx / G_yy
+            H_time[:, n] = np.fft.irfft(G_xy / np.abs(G_xy) * (G_yy/G_xx)**0.5)
+        coherence[:, n] = np.abs(G_xy)**2 / G_xx / G_yy
     tf = Signal(None, H_time, output.sampling_rate_hz,
                 signal_type=mode.lower())
     tf.set_coherence(coherence)

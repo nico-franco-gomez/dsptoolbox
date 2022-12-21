@@ -30,8 +30,8 @@ class LRFilterBank():
         for o in order:
             assert o % 2 == 0, 'Order of the crossovers has to be an ' +\
                 'even number'
-        self.freqs = np.array(freqs).np.squeeze()
-        self.order = np.array(order).np.squeeze()
+        self.freqs = np.array(freqs).squeeze()
+        self.order = np.array(order).squeeze()
         self.number_of_cross = len(freqs)
         self.number_of_bands = self.number_of_cross + 1
         self.sampling_rate_hz = sampling_rate_hz

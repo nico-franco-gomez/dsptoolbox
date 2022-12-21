@@ -1,7 +1,7 @@
 """
 Standard functions in DSP processes
 """
-from numpy import (zeros_like, zeros, abs, )
+import numpy as np
 from dsptools.classes.signal_class import Signal
 from dsptools._standard import (_latency,
                                 _group_delay_direct,
@@ -34,7 +34,7 @@ def latency(in1: Signal, in2: Signal = None):
         latency_per_channel_samples = _latency(in1.time_data, in2.time_data)
     else:
         latency_per_channel_samples = \
-            zeros(in1.number_of_channels, dtype=int)
+            np.zeros(in1.number_of_channels, dtype=int)
         for n in range(in1.number_of_channels-1):
             latency_per_channel_samples[n] = \
                 _latency(in1.time_data[:, n], in1.time_data[:, n+1])
@@ -66,12 +66,12 @@ def group_delay(signal: Signal, method='direct'):
     signal.set_spectrum_parameters('standard')
     f, sp = signal.get_spectrum()
     if method == 'direct':
-        group_delays = zeros((sp.shape[0], sp.shape[1]))
+        group_delays = np.zeros((sp.shape[0], sp.shape[1]))
         for n in range(signal.number_of_channels):
             group_delays[:, n] = _group_delay_direct(sp[:, n], f[1]-f[0])
     else:
         group_delays = \
-            zeros(
+            np.zeros(
                 (signal.time_data.shape[0]//2+1,
                  signal.time_data.shape[1]))
         for n in range(signal.number_of_channels):
@@ -105,9 +105,9 @@ def minimal_phase(signal: Signal):
     signal.set_spectrum_parameters('standard')
     f, sp = signal.get_spectrum()
 
-    min_phases = zeros((sp.shape[0], sp.shape[1]), dtype='float')
+    min_phases = np.zeros((sp.shape[0], sp.shape[1]), dtype='float')
     for n in range(signal.number_of_channels):
-        min_phases[:, n] = _minimal_phase(abs(sp[:, n]), unwrapped=False)
+        min_phases[:, n] = _minimal_phase(np.abs(sp[:, n]), unwrapped=False)
     return f, min_phases
 
 
@@ -128,7 +128,7 @@ def minimal_group_delay(signal: Signal):
         Minimal group delays in seconds.
     """
     f, min_phases = minimal_phase(signal)
-    min_gd = zeros_like(min_phases)
+    min_gd = np.zeros_like(min_phases)
     for n in range(signal.number_of_channels):
         min_gd[:, n] = _group_delay_direct(min_phases[:, n], f[1]-f[0])
     return f, min_gd
@@ -175,7 +175,7 @@ def pad_trim(signal: Signal, desired_length_samples: int,
         New padded signal.
     """
     new_time_data = \
-        zeros((desired_length_samples, signal.number_of_channels))
+        np.zeros((desired_length_samples, signal.number_of_channels))
 
     for n in range(signal.number_of_channels):
         new_time_data[:, n] = \

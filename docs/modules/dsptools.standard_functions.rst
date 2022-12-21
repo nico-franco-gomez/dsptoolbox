@@ -1,0 +1,21 @@
+Standard functions dsptools.standard\_functions package
+====================================
+
+Submodules
+----------
+
+dsptools.standard\_functions.standard\_functions module
+-------------------------------------------------------
+
+.. automodule:: dsptools.standard_functions.standard_functions
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Module contents
+---------------
+
+.. automodule:: dsptools.standard_functions
+   :members:
+   :undoc-members:
+   :show-inheritance:

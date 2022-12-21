@@ -1,5 +1,5 @@
-from .filterbanks import LRFilterBank
+from .filterbanks import linkwitz_riley_crossovers
 
 __all__ = [
-    'LRFilterBank'
+    'linkwitz_riley_crossovers'
 ]

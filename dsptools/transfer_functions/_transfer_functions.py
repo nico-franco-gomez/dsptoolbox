@@ -1,13 +1,13 @@
-'''
+"""
 Backend for transfer functions methods
-'''
-from numpy import (ndarray, fft, divide, argmax, hstack, zeros, )
+"""
+import numpy as np
 from dsptools._general_helpers import _find_nearest, _calculate_window
 
 __all__ = ['_spectral_deconvolve', '_window_this_ir']
 
 
-def _spectral_deconvolve(num_fft: ndarray, denum_fft: ndarray, freqs_hz,
+def _spectral_deconvolve(num_fft: np.ndarray, denum_fft: np.ndarray, freqs_hz,
                          mode='regularized', start_stop_hz=None):
     assert num_fft.shape == denum_fft.shape, 'Shapes do not match'
     assert len(freqs_hz) == len(num_fft), 'Frequency vector does not match'
@@ -23,17 +23,17 @@ def _spectral_deconvolve(num_fft: ndarray, denum_fft: ndarray, freqs_hz,
         denum_reg = denum_fft.conj() /\
             (denum_fft.conj()*denum_fft + eps)
         new_time_data = \
-            fft.irfft(num_fft * denum_reg)
+            np.fft.irfft(num_fft * denum_reg)
     elif mode == 'window':
         ids = _find_nearest(start_stop_hz, freqs_hz)
         window = _calculate_window(ids, len(freqs_hz), inverse=False)
         window += 10**(-200/10)
         num_fft_n = num_fft * window
-        new_time_data = fft.irfft(
-            divide(num_fft_n, denum_fft))
+        new_time_data = np.fft.irfft(
+            np.divide(num_fft_n, denum_fft))
     elif mode == 'standard':
-        new_time_data = fft.irfft(
-            divide(num_fft, denum_fft))
+        new_time_data = np.fft.irfft(
+            np.divide(num_fft, denum_fft))
     else:
         raise ValueError(f'{mode} is not supported. Choose window' +
                          ', regularized or standard')
@@ -48,19 +48,19 @@ def _window_this_ir(vec, total_length: int, window_type: str = 'hann',
         # Padding
         if 2**exp2_trim >= len(vec):
             # Padding
-            vec = hstack([vec, zeros(total_length - len(vec))])
-            length = argmax(abs(vec))
+            vec = np.hstack([vec, np.zeros(total_length - len(vec))])
+            length = np.argmax(abs(vec))
         else:
             # Selecting
             assert constant_percentage > 0 and constant_percentage < 1,\
                 'Constant percentage must be between 0 and 1'
             length = int((1-constant_percentage)*2**exp2_trim)//2
-            ind_max = argmax(abs(vec))
+            ind_max = np.argmax(abs(vec))
             if ind_max - length < 0:
                 length = ind_max
             vec = vec[ind_max-length:ind_max-length+2**exp2_trim]
     else:
-        length = argmax(abs(vec))
+        length = np.argmax(abs(vec))
     points = [0, length, total_length-length, total_length]
     window = _calculate_window(points, total_length, window_type,
                                at_start=at_start)
