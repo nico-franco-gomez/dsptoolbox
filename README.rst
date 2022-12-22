@@ -4,9 +4,9 @@ Readme
 
 This is a toolbox in form of a python package that handles algorithms to be used in dsp (digital signal processing) projects.
 
- It is a personal project that is under active development and it will take some time until it reaches a certain level of maturity.
- If you find some implementations interesting or useful, please feel free to use it for your projects and expand or change
- functionalities.
+It is a personal project that is under active development and it will take some time until it reaches a certain level of maturity.
+If you find some implementations interesting or useful, please feel free to use it for your projects and expand or change
+functionalities.
 
 Getting Started
 ===============

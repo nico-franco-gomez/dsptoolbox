@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.24 (TeX Live 2022) (preloaded format=pdflatex 2022.11.10)  22 DEC 2022 10:49
+This is pdfTeX, Version 3.141592653-2.6-1.40.24 (TeX Live 2022) (preloaded format=pdflatex 2022.11.10)  22 DEC 2022 10:52
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -798,12 +798,12 @@ File: umsb.fd 2013/01/14 v3.01 AMS symbols B
 ]
 Chapter 1.
 LaTeX Font Info:    Trying to load font information for T1+txtt on input line 1
-20.
+18.
 (/usr/local/texlive/2022/texmf-dist/tex/latex/txfonts/t1txtt.fd
 File: t1txtt.fd 2000/12/15 v3.1
 )
 LaTeX Font Info:    Font shape `T1/txtt/b/n' in size <10> not available
-(Font)              Font shape `T1/txtt/bx/n' tried instead on input line 121.
+(Font)              Font shape `T1/txtt/bx/n' tried instead on input line 119.
  [1
 
 ] [2
@@ -811,92 +811,92 @@ LaTeX Font Info:    Font shape `T1/txtt/b/n' in size <10> not available
 ]
 Chapter 2.
 LaTeX Font Info:    Trying to load font information for TS1+qtm on input line 1
-46.
+44.
 (/usr/local/texlive/2022/texmf-dist/tex/latex/tex-gyre/ts1qtm.fd
 File: ts1qtm.fd 2009/09/25 v1.2 font definition file for TS1/qtm
 )
 LaTeX Font Info:    Font shape `T1/txtt/m/it' in size <10> not available
-(Font)              Font shape `T1/txtt/m/sl' tried instead on input line 321.
+(Font)              Font shape `T1/txtt/m/sl' tried instead on input line 319.
 
-Underfull \hbox (badness 10000) in paragraph at lines 321--321
+Underfull \hbox (badness 10000) in paragraph at lines 319--319
 []|[][]\T1/txtt/m/sl/10 plot_spectrogram[][]\T1/qtm/m/n/10 ([channel_number, lo
 gfreqs,
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 321--321
+Underfull \hbox (badness 10000) in paragraph at lines 319--319
 []|[][]\T1/txtt/m/sl/10 set_csm_parameters[][]\T1/qtm/m/n/10 ([window_length_sa
 mples,
  []
 
 
-Overfull \hbox (1.62712pt too wide) in paragraph at lines 321--321
+Overfull \hbox (1.62712pt too wide) in paragraph at lines 319--319
 []|[][]\T1/txtt/m/sl/10 set_spectrogram_parameters[][]\T1/qtm/m/n/10 ([channel_
 number,
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 321--321
+Underfull \hbox (badness 10000) in paragraph at lines 319--319
 []|[][]\T1/txtt/m/sl/10 plot_spectrogram[][]\T1/qtm/m/n/10 ([channel_number, lo
 gfreqs,
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 321--321
+Underfull \hbox (badness 10000) in paragraph at lines 319--319
 []|[][]\T1/txtt/m/sl/10 set_csm_parameters[][]\T1/qtm/m/n/10 ([window_length_sa
 mples,
  []
 
 
-Overfull \hbox (1.62712pt too wide) in paragraph at lines 321--321
+Overfull \hbox (1.62712pt too wide) in paragraph at lines 319--319
 []|[][]\T1/txtt/m/sl/10 set_spectrogram_parameters[][]\T1/qtm/m/n/10 ([channel_
 number,
  []
 
 [3] [4]
-Underfull \hbox (badness 10000) in paragraph at lines 408--408
+Underfull \hbox (badness 10000) in paragraph at lines 406--406
 []\T1/qtm/b/n/10 Time data: add_channel, re-move_channel,
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 408--408
+Underfull \hbox (badness 10000) in paragraph at lines 406--406
 []\T1/qtm/b/n/10 Spec-trum: set_spectrum_parameters,
  []
 
 
-Underfull \hbox (badness 5431) in paragraph at lines 408--408
+Underfull \hbox (badness 5431) in paragraph at lines 406--406
 []\T1/qtm/b/n/10 Cross spec-tral ma-trix: set_csm_parameters,
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 408--408
+Underfull \hbox (badness 10000) in paragraph at lines 406--406
 []\T1/qtm/b/n/10 Spec-tro-gram: set_spectrogram_parameters,
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 408--408
+Underfull \hbox (badness 10000) in paragraph at lines 406--406
 []\T1/qtm/b/n/10 Plots: plot_magnitude, plot_time,
  []
 
 [5] [6] [7] [8] [9] [10]
-Underfull \hbox (badness 10000) in paragraph at lines 1369--1369
+Underfull \hbox (badness 10000) in paragraph at lines 1367--1367
 []|[][]\T1/txtt/m/sl/10 plot_group_delay[][]\T1/qtm/m/n/10 ([length_samples, ra
 nge_hz,
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 1369--1369
+Underfull \hbox (badness 10000) in paragraph at lines 1367--1367
 []|[][]\T1/txtt/m/sl/10 plot_group_delay[][]\T1/qtm/m/n/10 ([length_samples, ra
 nge_hz,
  []
 
 [11]
-Underfull \hbox (badness 10000) in paragraph at lines 1426--1426
+Underfull \hbox (badness 10000) in paragraph at lines 1424--1424
 []\T1/qtm/b/n/10 Gen-eral: set_filter_parameters, get_filter_parameters,
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 1426--1426
+Underfull \hbox (badness 10000) in paragraph at lines 1424--1424
 []\T1/qtm/m/n/10 plot_group_delay, plot_phase,
  []
 
@@ -1389,7 +1389,7 @@ ublic/tex-gyre/qtmri.pfb></usr/local/texlive/2022/texmf-dist/fonts/type1/public
 /txfonts/t1xbtt.pfb></usr/local/texlive/2022/texmf-dist/fonts/type1/public/txfo
 nts/t1xtt.pfb></usr/local/texlive/2022/texmf-dist/fonts/type1/public/txfonts/t1
 xtt.pfb>
-Output written on dsptools.pdf (43 pages, 274861 bytes).
+Output written on dsptools.pdf (43 pages, 274859 bytes).
 PDF statistics:
  910 PDF objects out of 1000 (max. 8388607)
  794 compressed objects within 8 object streams
