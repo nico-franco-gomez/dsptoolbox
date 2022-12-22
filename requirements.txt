@@ -9,9 +9,9 @@ matplotlib
 seaborn
 
 # dev:
-librosa  # validation
-pyfar  # validation
-flake8  # linter
+# librosa  # validation
+# pyfar  # validation
+# flake8  # linter
 
 # docs:
 piccolo-theme # theme

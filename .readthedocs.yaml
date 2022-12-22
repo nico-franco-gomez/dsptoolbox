@@ -10,7 +10,8 @@ build:
   os: ubuntu-20.04
   tools:
     python: "3.10"
-    libsndfile1: "1.0"
+  apt_packages:
+    - libsndfile
 
 # Build documentation in the docs/ directory with Sphinx
 sphinx:
