@@ -3,20 +3,16 @@ from .standard_functions import (latency,
                                  minimal_phase,
                                  minimal_group_delay,
                                  excess_group_delay)
-from .classes import Signal, Filter, FilterBank, MultiBandSignal
-# from .classes.signal_class import Signal
-# from .classes.multibandsignal import MultiBandSignal
-# from .classes.filter_class import Filter
-# from .classes.filterbank import FilterBank
+from .classes import Filter, FilterBank, Signal, MultiBandSignal
 from . import transfer_functions
 from . import distances
 from . import experimental
 from . import room_acoustics
 from . import plots
 from . import generators
-from . import measure
 from . import filterbanks
 from . import special
+from . import measure
 
 __all__ = ['Signal',
            'MultiBandSignal',
@@ -32,9 +28,9 @@ __all__ = ['Signal',
            'room_acoustics',
            'plots',
            'generators',
-           'measure',
            'filterbanks',
            'special',
-           'experimental']
+           'experimental',
+           'measure']
 
 __version__ = "0.1.0"
