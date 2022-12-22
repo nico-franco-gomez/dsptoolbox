@@ -1095,8 +1095,9 @@ INPUT /usr/local/texlive/2022/texmf-dist/tex/latex/txfonts/t1txtt.fd
 INPUT /usr/local/texlive/2022/texmf-dist/tex/latex/txfonts/t1txtt.fd
 INPUT /usr/local/texlive/2022/texmf-dist/tex/latex/txfonts/t1txtt.fd
 INPUT /usr/local/texlive/2022/texmf-dist/tex/latex/txfonts/t1txtt.fd
-INPUT /usr/local/texlive/2022/texmf-dist/fonts/tfm/public/txfonts/t1xbtt.tfm
 INPUT /usr/local/texlive/2022/texmf-dist/fonts/tfm/public/txfonts/t1xtt.tfm
+INPUT /usr/local/texlive/2022/texmf-dist/fonts/tfm/public/txfonts/t1xtt.tfm
+INPUT /usr/local/texlive/2022/texmf-dist/fonts/tfm/public/txfonts/t1xbtt.tfm
 INPUT /usr/local/texlive/2022/texmf-dist/fonts/tfm/public/tex-gyre/ec-qtmri.tfm
 INPUT /usr/local/texlive/2022/texmf-dist/tex/latex/tex-gyre/ts1qtm.fd
 INPUT /usr/local/texlive/2022/texmf-dist/tex/latex/tex-gyre/ts1qtm.fd

@@ -1,6 +1,9 @@
 Classes (dsptools.classes)
 ==============================
 
+The main classes are listed here. For some filterbanks, special classes are used but the api works almost equally
+as for the main FilterBank class.
+
 Signal
 -------------------------------------
 

@@ -1,10 +1,10 @@
-.. dsptools documentation master file, created by
-   sphinx-quickstart on Tue Dec 20 18:36:49 2022.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
-
-Welcome to dsptools's documentation!
+dsptools
 ====================================
+
+.. toctree::
+   :maxdepth: 2
+
+   readme
 
 .. toctree::
    :maxdepth: 2

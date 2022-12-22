@@ -1,11 +1,12 @@
 Modules in dsptools
 =====================
 
+The modules and functions of dsptools are listed down below.
+
 .. toctree::
    :maxdepth: 2
 
    modules/dsptools.distances
-   modules/dsptools.experimental
    modules/dsptools.filterbanks
    modules/dsptools.generators
    modules/dsptools.measure

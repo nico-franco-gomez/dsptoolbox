@@ -20,7 +20,7 @@
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="Modules in dsptools" href="modules.html" />
-    <link rel="prev" title="Welcome to dsptools’s documentation!" href="index.html" /> 
+    <link rel="prev" title="Readme" href="readme.html" /> 
   </head><body data-dark_mode_code_blocks="true">
 
 <div id="top_nav">
@@ -122,7 +122,10 @@
 
     
       <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
-        <div class="sphinxsidebarwrapper"><ul class="current">
+        <div class="sphinxsidebarwrapper"><ul>
+<li class="toctree-l1"><a class="reference internal" href="readme.html">Readme</a></li>
+</ul>
+<ul class="current">
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Classes (dsptools.classes)</a></li>
 </ul>
 <ul>
@@ -140,6 +143,8 @@
             
   <section id="classes-dsptools-classes">
 <h1>Classes (dsptools.classes)<a class="headerlink" href="#classes-dsptools-classes" title="Permalink to this heading">¶</a></h1>
+<p>The main classes are listed here. For some filterbanks, special classes are used but the api works almost equally
+as for the main FilterBank class.</p>
 <section id="module-dsptools.classes.signal_class">
 <span id="signal"></span><h2>Signal<a class="headerlink" href="#module-dsptools.classes.signal_class" title="Permalink to this heading">¶</a></h2>
 <p>Signal class</p>
@@ -209,7 +214,7 @@ might be generalizable to all kind of time series.</p>
 <td><p>Saves the Signal object</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="#dsptools.classes.signal_class.Signal.set_coherence" title="dsptools.classes.signal_class.Signal.set_coherence"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_coherence</span></code></a>(coherence)</p></td>
-<td><p>Sets the window used for the IR.</p></td>
+<td><p>Sets the coherence measurements of the transfer function.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="#dsptools.classes.signal_class.Signal.set_csm_parameters" title="dsptools.classes.signal_class.Signal.set_csm_parameters"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_csm_parameters</span></code></a>([window_length_samples, ...])</p></td>
 <td><p>Sets all necessary parameters for the computation of the CSM.</p></td>
@@ -512,8 +517,8 @@ Default: <cite>‘wav’</cite>.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="dsptools.classes.signal_class.Signal.set_coherence">
 <span class="sig-name descname"><span class="pre">set_coherence</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">coherence</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dsptools.classes.signal_class.Signal.set_coherence" title="Permalink to this definition">¶</a></dt>
-<dd><p>Sets the window used for the IR. It only works for
-<cite>signal_type = (‘ir’, ‘h1’, ‘h2’, ‘h3’, ‘rir’)</cite>.</p>
+<dd><p>Sets the coherence measurements of the transfer function.
+It only works for <cite>signal_type = (‘ir’, ‘h1’, ‘h2’, ‘h3’, ‘rir’)</cite>.</p>
 </dd></dl>
 
 <dl class="py method">
@@ -634,7 +639,7 @@ Default: <cite>‘mean’</cite>.</p>
 <span id="multibandsignal"></span><h2>MultiBandSignal<a class="headerlink" href="#module-dsptools.classes.multibandsignal" title="Permalink to this heading">¶</a></h2>
 <dl class="py class">
 <dt class="sig sig-object py" id="dsptools.classes.multibandsignal.MultiBandSignal">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">dsptools.classes.multibandsignal.</span></span><span class="sig-name descname"><span class="pre">MultiBandSignal</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">bands</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">same_sampling_rate</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">info</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.11)"><span class="pre">Optional</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.11)"><span class="pre">dict</span></a><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dsptools.classes.multibandsignal.MultiBandSignal" title="Permalink to this definition">¶</a></dt>
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">dsptools.classes.multibandsignal.</span></span><span class="sig-name descname"><span class="pre">MultiBandSignal</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">bands</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">same_sampling_rate</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">info</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.11)"><span class="pre">dict</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">{}</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dsptools.classes.multibandsignal.MultiBandSignal" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.11)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
 <p>The MultiBandSignal class contains multiple Signal objects which are
 to be interpreted as frequency bands or the same signal. Since every
@@ -674,7 +679,7 @@ all kinds of metadata that might characterize the signals.</p>
 </table>
 <dl class="py method">
 <dt class="sig sig-object py" id="dsptools.classes.multibandsignal.MultiBandSignal.__init__">
-<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">bands</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">same_sampling_rate</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">info</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.11)"><span class="pre">Optional</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.11)"><span class="pre">dict</span></a><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dsptools.classes.multibandsignal.MultiBandSignal.__init__" title="Permalink to this definition">¶</a></dt>
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">bands</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">same_sampling_rate</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">info</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.11)"><span class="pre">dict</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">{}</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dsptools.classes.multibandsignal.MultiBandSignal.__init__" title="Permalink to this definition">¶</a></dt>
 <dd><p>MultiBandSignal contains a composite band list where each index
 is a Signal object with the same number of channels. For multirate
 systems, the parameter <cite>same_sampling_rate</cite> has to be set to <cite>False</cite>.</p>
@@ -858,7 +863,7 @@ metadata.</p>
 <td><p></p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="#dsptools.classes.filter_class.Filter.show_filter_parameters" title="dsptools.classes.filter_class.Filter.show_filter_parameters"><code class="xref py py-obj docutils literal notranslate"><span class="pre">show_filter_parameters</span></code></a>()</p></td>
-<td><p>Prints all the filter parameters.</p></td>
+<td><p>Prints all the filter parameters to the console.</p></td>
 </tr>
 </tbody>
 </table>
@@ -908,15 +913,13 @@ new Signal object.</p>
 <dd class="field-odd"><dl class="simple">
 <dt><strong>signal</strong><span class="classifier">class:Signal</span></dt><dd><p>Signal to be filtered.</p>
 </dd>
-<dt><strong>filt</strong><span class="classifier">Filter</span></dt><dd><p>Filter to be used on the signal.</p>
-</dd>
 <dt><strong>channel</strong><span class="classifier">int or array-like, optional</span></dt><dd><p>Channel or array of channels to be filtered. When <cite>None</cite>, all
 channels are filtered. Default: <cite>None</cite>.</p>
 </dd>
 <dt><strong>activate_zi</strong><span class="classifier">int, optional</span></dt><dd><p>Gives the zi to update the filter values. Default: <cite>False</cite>.</p>
 </dd>
 <dt><strong>zero_phase</strong><span class="classifier">bool, optional</span></dt><dd><p>Uses zero-phase filtering on signal. Be aware that the filter
-is doubled in this case. Default: <cite>False</cite>.</p>
+is applied twice in this case. Default: <cite>False</cite>.</p>
 </dd>
 </dl>
 </dd>
@@ -989,6 +992,15 @@ is doubled in this case. Default: <cite>False</cite>.</p>
 <span class="sig-name descname"><span class="pre">initialize_zi</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">number_of_channels</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dsptools.classes.filter_class.Filter.initialize_zi" title="Permalink to this definition">¶</a></dt>
 <dd><p>Initializes zi for steady-state filtering. The number of parallel
 zi’s can be defined externally.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>number_of_channels</strong><span class="classifier">int, optional</span></dt><dd><p>Number of channels is needed for the number of filter’s zi’s.
+Default: 1.</p>
+</dd>
+</dl>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py method">
@@ -1012,7 +1024,8 @@ Default: [20, 20000].</p>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><dl class="simple">
-<dt>figure and axis when <cite>returns = True</cite>.</dt><dd></dd>
+<dt>fig, ax</dt><dd><p>Returned only when <cite>returns=True</cite>.</p>
+</dd>
 </dl>
 </dd>
 </dl>
@@ -1043,7 +1056,8 @@ maximal value. Use <cite>None</cite> for no normalization. Default: <cite>‘1k�
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><dl class="simple">
-<dt>figure and axis when <cite>returns = True</cite>.</dt><dd></dd>
+<dt>fig, ax</dt><dd><p>Returned only when <cite>returns=True</cite>.</p>
+</dd>
 </dl>
 </dd>
 </dl>
@@ -1072,7 +1086,8 @@ Default: [20, 20000].</p>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><dl class="simple">
-<dt>figure and axis when <cite>returns = True</cite>.</dt><dd></dd>
+<dt>fig, ax</dt><dd><p>Returned only when <cite>returns=True</cite>.</p>
+</dd>
 </dl>
 </dd>
 </dl>
@@ -1093,7 +1108,8 @@ Default: [20, 20000].</p>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><dl class="simple">
-<dt>figure and axis when <cite>returns = True</cite>.</dt><dd></dd>
+<dt>fig, ax</dt><dd><p>Returned only when <cite>returns=True</cite>.</p>
+</dd>
 </dl>
 </dd>
 </dl>
@@ -1111,7 +1127,7 @@ Default: [20, 20000].</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><dl class="simple">
-<dt><strong>path</strong><span class="classifier">str, optional</span></dt><dd><p>Path for the filter to be saved. Use only folder/folder/name
+<dt><strong>path</strong><span class="classifier">str, optional</span></dt><dd><p>Path for the filter to be saved. Use only folder1/folder2/name
 (without format). Default: <cite>‘filter’</cite>
 (local folder, object named filter).</p>
 </dd>
@@ -1128,7 +1144,7 @@ Default: [20, 20000].</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="dsptools.classes.filter_class.Filter.show_filter_parameters">
 <span class="sig-name descname"><span class="pre">show_filter_parameters</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#dsptools.classes.filter_class.Filter.show_filter_parameters" title="Permalink to this definition">¶</a></dt>
-<dd><p>Prints all the filter parameters.</p>
+<dd><p>Prints all the filter parameters to the console.</p>
 </dd></dl>
 
 </dd></dl>
@@ -1138,7 +1154,7 @@ Default: [20, 20000].</p>
 <span id="filterbank"></span><h2>Filterbank<a class="headerlink" href="#module-dsptools.classes.filterbank" title="Permalink to this heading">¶</a></h2>
 <dl class="py class">
 <dt class="sig sig-object py" id="dsptools.classes.filterbank.FilterBank">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">dsptools.classes.filterbank.</span></span><span class="sig-name descname"><span class="pre">FilterBank</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filters</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">same_sampling_rate</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">info</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.11)"><span class="pre">Optional</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.11)"><span class="pre">dict</span></a><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dsptools.classes.filterbank.FilterBank" title="Permalink to this definition">¶</a></dt>
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">dsptools.classes.filterbank.</span></span><span class="sig-name descname"><span class="pre">FilterBank</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filters</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[]</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">same_sampling_rate</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">info</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.11)"><span class="pre">dict</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">{}</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dsptools.classes.filterbank.FilterBank" title="Permalink to this definition">¶</a></dt>
 <dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.11)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
 <p>Standard template for filter banks containing filters, filters’ initial
 values, metadata and the some useful plotting and filtering methods.</p>
@@ -1151,7 +1167,7 @@ values, metadata and the some useful plotting and filtering methods.</p>
 <tr class="row-even"><td><p><a class="reference internal" href="#dsptools.classes.filterbank.FilterBank.filter_signal" title="dsptools.classes.filterbank.FilterBank.filter_signal"><code class="xref py py-obj docutils literal notranslate"><span class="pre">filter_signal</span></code></a>(signal[, mode, activate_zi, ...])</p></td>
 <td><p>Applies the filter bank to a signal and returns a multiband signal.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#dsptools.classes.filterbank.FilterBank.initialize_zi" title="dsptools.classes.filterbank.FilterBank.initialize_zi"><code class="xref py py-obj docutils literal notranslate"><span class="pre">initialize_zi</span></code></a>(number_of_channels)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#dsptools.classes.filterbank.FilterBank.initialize_zi" title="dsptools.classes.filterbank.FilterBank.initialize_zi"><code class="xref py py-obj docutils literal notranslate"><span class="pre">initialize_zi</span></code></a>([number_of_channels])</p></td>
 <td><p>Initiates the zi of the filters for the given number of channels.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="#dsptools.classes.filterbank.FilterBank.plot_magnitude" title="dsptools.classes.filterbank.FilterBank.plot_magnitude"><code class="xref py py-obj docutils literal notranslate"><span class="pre">plot_magnitude</span></code></a>([mode, range_hz, test_zi, ...])</p></td>
@@ -1170,7 +1186,7 @@ values, metadata and the some useful plotting and filtering methods.</p>
 </table>
 <dl class="py method">
 <dt class="sig sig-object py" id="dsptools.classes.filterbank.FilterBank.__init__">
-<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filters</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">same_sampling_rate</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">info</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.11)"><span class="pre">Optional</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.11)"><span class="pre">dict</span></a><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dsptools.classes.filterbank.FilterBank.__init__" title="Permalink to this definition">¶</a></dt>
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filters</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[]</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">same_sampling_rate</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">info</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.11)"><span class="pre">dict</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">{}</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dsptools.classes.filterbank.FilterBank.__init__" title="Permalink to this definition">¶</a></dt>
 <dd><p>FilterBank object saves multiple filters and some metadata.
 It also allows for easy filtering with multiple filters.
 Since the digital filters that are supported are linear systems,
@@ -1179,13 +1195,12 @@ relevant.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><dl class="simple">
-<dt><strong>filters</strong><span class="classifier">dict</span></dt><dd><p>Dictionary containing filters. Keys are automatically set to
-numbers [0, 1, 2, … etc.].</p>
+<dt><strong>filters</strong><span class="classifier">list or tuple, optional</span></dt><dd><p>List or tuple containing filters.</p>
 </dd>
 <dt><strong>same_sampling_rate</strong><span class="classifier">bool, optional</span></dt><dd><p>When <cite>True</cite>, every Filter should have the same sampling rate.
 Set to <cite>False</cite> for a multirate system. Default: <cite>True</cite>.</p>
 </dd>
-<dt><strong>info</strong><span class="classifier">dict</span></dt><dd><p>Dictionary containing general information about the filter bank.
+<dt><strong>info</strong><span class="classifier">dict, optional</span></dt><dd><p>Dictionary containing general information about the filter bank.
 Some parameters of the filter bank are automatically read from
 the filters dictionary.</p>
 </dd>
@@ -1261,8 +1276,17 @@ used at the same time with <cite>zi=True</cite>. Default: <cite>False</cite>.</p
 
 <dl class="py method">
 <dt class="sig sig-object py" id="dsptools.classes.filterbank.FilterBank.initialize_zi">
-<span class="sig-name descname"><span class="pre">initialize_zi</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">number_of_channels</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dsptools.classes.filterbank.FilterBank.initialize_zi" title="Permalink to this definition">¶</a></dt>
+<span class="sig-name descname"><span class="pre">initialize_zi</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">number_of_channels</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dsptools.classes.filterbank.FilterBank.initialize_zi" title="Permalink to this definition">¶</a></dt>
 <dd><p>Initiates the zi of the filters for the given number of channels.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>number_of_channels</strong><span class="classifier">int, optional</span></dt><dd><p>Number of channels is needed for the number of filters’ zi’s.
+Default: 1.</p>
+</dd>
+</dl>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py method">
@@ -1320,7 +1344,7 @@ Default: -1.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><dl class="simple">
-<dt><strong>path</strong><span class="classifier">str, optional</span></dt><dd><p>Path for the filterbank to be saved. Use only folder/folder/name
+<dt><strong>path</strong><span class="classifier">str, optional</span></dt><dd><p>Path for the filterbank to be saved. Use only folder1/folder2/name
 (without format). Default: <cite>‘filterbank’</cite>
 (local folder, object named filterbank).</p>
 </dd>
@@ -1460,8 +1484,8 @@ Default: <cite>True</cite>.</p>
         <div class="button_nav">
             <div class="left">
                 
-                <a href="index.html">
-                    <span class="icon"><</span><span>Welcome to dsptools’s documentation!</span></a>
+                <a href="readme.html">
+                    <span class="icon"><</span><span>Readme</span></a>
                 
             </div>
 

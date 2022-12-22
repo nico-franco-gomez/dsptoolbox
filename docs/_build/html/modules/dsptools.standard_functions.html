@@ -6,7 +6,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
 
-    <title>Standard functions dsptools.standard_functions package &#8212; dsptools 0.1 documentation</title>
+    <title>Standard functions (dsptools.*) &#8212; dsptools 0.1 documentation</title>
     <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
     <link rel="stylesheet" type="text/css" href="../_static/basic_mod.css?v=0.7.0-1" />
     <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
@@ -128,14 +128,13 @@
 <ul class="current">
 <li class="toctree-l1 current"><a class="reference internal" href="../modules.html">Modules in dsptools</a><ul class="current">
 <li class="toctree-l2"><a class="reference internal" href="dsptools.distances.html">Distances (dsptools.distances)</a></li>
-<li class="toctree-l2"><a class="reference internal" href="dsptools.experimental.html">Experimental (dsptools.experimental)</a></li>
 <li class="toctree-l2"><a class="reference internal" href="dsptools.filterbanks.html">Filterbanks (dsptools.filterbanks)</a></li>
 <li class="toctree-l2"><a class="reference internal" href="dsptools.generators.html">Generators (dsptools.generators)</a></li>
 <li class="toctree-l2"><a class="reference internal" href="dsptools.measure.html">Measure (dsptools.measure)</a></li>
 <li class="toctree-l2"><a class="reference internal" href="dsptools.plots.html">Plots (dsptools.plots)</a></li>
 <li class="toctree-l2"><a class="reference internal" href="dsptools.room_acoustics.html">Room acoustics (dsptools.room_acoustics)</a></li>
 <li class="toctree-l2"><a class="reference internal" href="dsptools.special.html">Special (dsptools.special)</a></li>
-<li class="toctree-l2 current"><a class="current reference internal" href="#">Standard functions dsptools.standard_functions package</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Standard functions (dsptools.*)</a></li>
 <li class="toctree-l2"><a class="reference internal" href="dsptools.transfer_functions.html">Transfer functions (dsptools.transfer_functions)</a></li>
 </ul>
 </li>
@@ -150,158 +149,8 @@
         <div class="bodywrapper">
           <div class="body" role="main">
             
-  <section id="standard-functions-dsptools-standard-functions-package">
-<h1>Standard functions dsptools.standard_functions package<a class="headerlink" href="#standard-functions-dsptools-standard-functions-package" title="Permalink to this heading">¶</a></h1>
-<section id="submodules">
-<h2>Submodules<a class="headerlink" href="#submodules" title="Permalink to this heading">¶</a></h2>
-</section>
-<section id="module-dsptools.standard_functions.standard_functions">
-<span id="dsptools-standard-functions-standard-functions-module"></span><h2>dsptools.standard_functions.standard_functions module<a class="headerlink" href="#module-dsptools.standard_functions.standard_functions" title="Permalink to this heading">¶</a></h2>
-<p>Standard functions in DSP processes</p>
-<dl class="py function">
-<dt class="sig sig-object py" id="dsptools.standard_functions.standard_functions.excess_group_delay">
-<span class="sig-prename descclassname"><span class="pre">dsptools.standard_functions.standard_functions.</span></span><span class="sig-name descname"><span class="pre">excess_group_delay</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">signal</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../classes.html#dsptools.classes.signal_class.Signal" title="dsptools.classes.signal_class.Signal"><span class="pre">Signal</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dsptools.standard_functions.standard_functions.excess_group_delay" title="Permalink to this definition">¶</a></dt>
-<dd><p>Computes excess group delay.</p>
-<dl class="field-list">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><dl class="simple">
-<dt><strong>signal</strong><span class="classifier">Signal</span></dt><dd><p>Signal object for which to compute minimal group delay.</p>
-</dd>
-</dl>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><dl>
-<dt><strong>f</strong><span class="classifier"><cite>np.ndarray</cite></span></dt><dd><p>Frequency vector.</p>
-</dd>
-<dt><strong>ex_gd</strong><span class="classifier"><cite>np.ndarray</cite></span></dt><dd><p>Excess group delays in seconds.</p>
-</dd>
-</dl>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="dsptools.standard_functions.standard_functions.group_delay">
-<span class="sig-prename descclassname"><span class="pre">dsptools.standard_functions.standard_functions.</span></span><span class="sig-name descname"><span class="pre">group_delay</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">signal</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../classes.html#dsptools.classes.signal_class.Signal" title="dsptools.classes.signal_class.Signal"><span class="pre">Signal</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">method</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'direct'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dsptools.standard_functions.standard_functions.group_delay" title="Permalink to this definition">¶</a></dt>
-<dd><p>Computation of group delay.</p>
-<dl class="field-list">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><dl class="simple">
-<dt><strong>signal</strong><span class="classifier">Signal</span></dt><dd><p>Signal for which to compute group delay.</p>
-</dd>
-<dt><strong>method</strong><span class="classifier">str, optional</span></dt><dd><p><cite>‘direct’</cite> uses gradient with unwrapped phase. <cite>‘matlab’</cite> uses
-this implementation:
-<a class="reference external" href="https://www.dsprelated.com/freebooks/filters/Phase_Group_Delay.html">https://www.dsprelated.com/freebooks/filters/Phase_Group_Delay.html</a></p>
-</dd>
-</dl>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><dl>
-<dt><strong>freqs</strong><span class="classifier"><cite>np.ndarray</cite></span></dt><dd><p>Frequency vector in Hz.</p>
-</dd>
-<dt><strong>group_delays</strong><span class="classifier"><cite>np.ndarray</cite></span></dt><dd><p>Matrix containing group delays in seconds.</p>
-</dd>
-</dl>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="dsptools.standard_functions.standard_functions.latency">
-<span class="sig-prename descclassname"><span class="pre">dsptools.standard_functions.standard_functions.</span></span><span class="sig-name descname"><span class="pre">latency</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">in1</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../classes.html#dsptools.classes.signal_class.Signal" title="dsptools.classes.signal_class.Signal"><span class="pre">Signal</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">in2</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.11)"><span class="pre">Optional</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="../classes.html#dsptools.classes.signal_class.Signal" title="dsptools.classes.signal_class.Signal"><span class="pre">Signal</span></a><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dsptools.standard_functions.standard_functions.latency" title="Permalink to this definition">¶</a></dt>
-<dd><p>Computes latency between two signals using the correlation method.
-If there is no second signal, the latency between the first and the other
-channels of the is computed.</p>
-<dl class="field-list">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><dl class="simple">
-<dt><strong>in1</strong><span class="classifier">Signal</span></dt><dd><p>First signal.</p>
-</dd>
-<dt><strong>in2</strong><span class="classifier">Signal, optional</span></dt><dd><p>Second signal. Default: None.</p>
-</dd>
-</dl>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><dl>
-<dt><strong>latency_per_channel_samples</strong><span class="classifier"><cite>np.ndarray</cite></span></dt><dd><p>Array with latency between two signals in samples per channel.</p>
-</dd>
-</dl>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="dsptools.standard_functions.standard_functions.minimal_group_delay">
-<span class="sig-prename descclassname"><span class="pre">dsptools.standard_functions.standard_functions.</span></span><span class="sig-name descname"><span class="pre">minimal_group_delay</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">signal</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../classes.html#dsptools.classes.signal_class.Signal" title="dsptools.classes.signal_class.Signal"><span class="pre">Signal</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dsptools.standard_functions.standard_functions.minimal_group_delay" title="Permalink to this definition">¶</a></dt>
-<dd><p>Computes minimal group delay</p>
-<dl class="field-list">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><dl class="simple">
-<dt><strong>signal</strong><span class="classifier">Signal</span></dt><dd><p>Signal object for which to compute minimal group delay.</p>
-</dd>
-</dl>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><dl>
-<dt><strong>f</strong><span class="classifier"><cite>np.ndarray</cite></span></dt><dd><p>Frequency vector.</p>
-</dd>
-<dt><strong>min_gd</strong><span class="classifier"><cite>np.ndarray</cite></span></dt><dd><p>Minimal group delays in seconds.</p>
-</dd>
-</dl>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="dsptools.standard_functions.standard_functions.minimal_phase">
-<span class="sig-prename descclassname"><span class="pre">dsptools.standard_functions.standard_functions.</span></span><span class="sig-name descname"><span class="pre">minimal_phase</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">signal</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../classes.html#dsptools.classes.signal_class.Signal" title="dsptools.classes.signal_class.Signal"><span class="pre">Signal</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dsptools.standard_functions.standard_functions.minimal_phase" title="Permalink to this definition">¶</a></dt>
-<dd><p>Gives back a matrix containing the minimal phase for every channel.</p>
-<dl class="field-list">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><dl class="simple">
-<dt><strong>signal</strong><span class="classifier">Signal</span></dt><dd><p>Signal for which to compute the minimal phase.</p>
-</dd>
-</dl>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><dl>
-<dt><strong>f</strong><span class="classifier"><cite>np.ndarray</cite></span></dt><dd><p>Frequency vector.</p>
-</dd>
-<dt><strong>min_phases</strong><span class="classifier"><cite>np.ndarray</cite></span></dt><dd><p>Minimal phases.</p>
-</dd>
-</dl>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="dsptools.standard_functions.standard_functions.pad_trim">
-<span class="sig-prename descclassname"><span class="pre">dsptools.standard_functions.standard_functions.</span></span><span class="sig-name descname"><span class="pre">pad_trim</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">signal</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../classes.html#dsptools.classes.signal_class.Signal" title="dsptools.classes.signal_class.Signal"><span class="pre">Signal</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">desired_length_samples</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><span class="pre">int</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">in_the_end</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dsptools.standard_functions.standard_functions.pad_trim" title="Permalink to this definition">¶</a></dt>
-<dd><p>Returns a copy of the signal with padded or trimmed time data.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><dl class="simple">
-<dt><strong>signal</strong><span class="classifier">Signal</span></dt><dd><p>Signal to be padded or trimmed.</p>
-</dd>
-<dt><strong>desired_length_samples</strong><span class="classifier">int</span></dt><dd><p>Length of resulting signal.</p>
-</dd>
-<dt><strong>in_the_end</strong><span class="classifier">bool, optional</span></dt><dd><p>Defines if padding or trimming should be done in the beginning or
-in the end of the signal. Default: <cite>True</cite>.</p>
-</dd>
-</dl>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><dl class="simple">
-<dt><strong>new_signal</strong><span class="classifier">Signal</span></dt><dd><p>New padded signal.</p>
-</dd>
-</dl>
-</dd>
-</dl>
-</dd></dl>
-
-</section>
-<section id="module-dsptools.standard_functions">
-<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-dsptools.standard_functions" title="Permalink to this heading">¶</a></h2>
+  <section id="module-dsptools.standard_functions">
+<span id="standard-functions-dsptools"></span><h1>Standard functions (dsptools.*)<a class="headerlink" href="#module-dsptools.standard_functions" title="Permalink to this heading">¶</a></h1>
 <dl class="py function">
 <dt class="sig sig-object py" id="dsptools.standard_functions.excess_group_delay">
 <span class="sig-prename descclassname"><span class="pre">dsptools.standard_functions.</span></span><span class="sig-name descname"><span class="pre">excess_group_delay</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">signal</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../classes.html#dsptools.classes.signal_class.Signal" title="dsptools.classes.signal_class.Signal"><span class="pre">Signal</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dsptools.standard_functions.excess_group_delay" title="Permalink to this definition">¶</a></dt>
@@ -361,7 +210,7 @@ channels of the is computed.</p>
 <dd class="field-odd"><dl class="simple">
 <dt><strong>in1</strong><span class="classifier">Signal</span></dt><dd><p>First signal.</p>
 </dd>
-<dt><strong>in2</strong><span class="classifier">Signal, optional</span></dt><dd><p>Second signal. Default: None.</p>
+<dt><strong>in2</strong><span class="classifier">Signal, optional</span></dt><dd><p>Second signal. Default: <cite>None</cite>.</p>
 </dd>
 </dl>
 </dd>
@@ -389,7 +238,7 @@ channels of the is computed.</p>
 <dd class="field-even"><dl>
 <dt><strong>f</strong><span class="classifier"><cite>np.ndarray</cite></span></dt><dd><p>Frequency vector.</p>
 </dd>
-<dt><strong>min_gd</strong><span class="classifier"><cite>np.ndarray</cite></span></dt><dd><p>Minimal group delays in seconds.</p>
+<dt><strong>min_gd</strong><span class="classifier"><cite>np.ndarray</cite></span></dt><dd><p>Minimal group delays in seconds as matrix.</p>
 </dd>
 </dl>
 </dd>
@@ -411,7 +260,7 @@ channels of the is computed.</p>
 <dd class="field-even"><dl>
 <dt><strong>f</strong><span class="classifier"><cite>np.ndarray</cite></span></dt><dd><p>Frequency vector.</p>
 </dd>
-<dt><strong>min_phases</strong><span class="classifier"><cite>np.ndarray</cite></span></dt><dd><p>Minimal phases.</p>
+<dt><strong>min_phases</strong><span class="classifier"><cite>np.ndarray</cite></span></dt><dd><p>Minimal phases as matrix.</p>
 </dd>
 </dl>
 </dd>
@@ -444,7 +293,6 @@ in the end of the signal. Default: <cite>True</cite>.</p>
 </dd></dl>
 
 </section>
-</section>
 
 
             <div class="clearer"></div>
@@ -460,26 +308,13 @@ in the end of the signal. Default: <cite>True</cite>.</p>
             <p><a class="toggle_right_sidebar" href="#"><span class="icon">></span><span>Page contents:<span></a></p>
             <div class="page_toc">
                 <ul>
-<li><a class="reference internal" href="#">Standard functions dsptools.standard_functions package</a><ul>
-<li><a class="reference internal" href="#submodules">Submodules</a></li>
-<li><a class="reference internal" href="#module-dsptools.standard_functions.standard_functions">dsptools.standard_functions.standard_functions module</a><ul>
-<li><a class="reference internal" href="#dsptools.standard_functions.standard_functions.excess_group_delay"><code class="docutils literal notranslate"><span class="pre">excess_group_delay()</span></code></a></li>
-<li><a class="reference internal" href="#dsptools.standard_functions.standard_functions.group_delay"><code class="docutils literal notranslate"><span class="pre">group_delay()</span></code></a></li>
-<li><a class="reference internal" href="#dsptools.standard_functions.standard_functions.latency"><code class="docutils literal notranslate"><span class="pre">latency()</span></code></a></li>
-<li><a class="reference internal" href="#dsptools.standard_functions.standard_functions.minimal_group_delay"><code class="docutils literal notranslate"><span class="pre">minimal_group_delay()</span></code></a></li>
-<li><a class="reference internal" href="#dsptools.standard_functions.standard_functions.minimal_phase"><code class="docutils literal notranslate"><span class="pre">minimal_phase()</span></code></a></li>
-<li><a class="reference internal" href="#dsptools.standard_functions.standard_functions.pad_trim"><code class="docutils literal notranslate"><span class="pre">pad_trim()</span></code></a></li>
-</ul>
-</li>
-<li><a class="reference internal" href="#module-dsptools.standard_functions">Module contents</a><ul>
+<li><a class="reference internal" href="#">Standard functions (dsptools.*)</a><ul>
 <li><a class="reference internal" href="#dsptools.standard_functions.excess_group_delay"><code class="docutils literal notranslate"><span class="pre">excess_group_delay()</span></code></a></li>
 <li><a class="reference internal" href="#dsptools.standard_functions.group_delay"><code class="docutils literal notranslate"><span class="pre">group_delay()</span></code></a></li>
 <li><a class="reference internal" href="#dsptools.standard_functions.latency"><code class="docutils literal notranslate"><span class="pre">latency()</span></code></a></li>
 <li><a class="reference internal" href="#dsptools.standard_functions.minimal_group_delay"><code class="docutils literal notranslate"><span class="pre">minimal_group_delay()</span></code></a></li>
 <li><a class="reference internal" href="#dsptools.standard_functions.minimal_phase"><code class="docutils literal notranslate"><span class="pre">minimal_phase()</span></code></a></li>
 <li><a class="reference internal" href="#dsptools.standard_functions.pad_trim"><code class="docutils literal notranslate"><span class="pre">pad_trim()</span></code></a></li>
-</ul>
-</li>
 </ul>
 </li>
 </ul>

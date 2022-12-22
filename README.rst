@@ -11,8 +11,13 @@ This is a toolbox in form of a python package that handles algorithms to be used
 Getting Started
 ===============
 
-Check out the `examples notebook`_ for a tour of the most important pyfar
-functionality and `read the docs`_ for the complete documentation.
+Check out the `examples`_ for some basic examples of the dsptools package
+and refer to Documentation for the complete description of classes and methods.
+
+.. note::
+    The documentation at `read the docs`_ is available but not working at the moment because of
+    an internal bug in one of the modules needed to build the package. This will be fixed in the future.
+    Until then, please refer to the other available documentation.
 
 Installation
 ============
@@ -26,3 +31,4 @@ Use pip to install dsptools
 (Requires Python 3.10 or higher)
 
 .. _read the docs: http://dsptools.readthedocs.io/
+.. _examples: https://github.com/nico-franco-gomez/dsptools/tree/main/examples

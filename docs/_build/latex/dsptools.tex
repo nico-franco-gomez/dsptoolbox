@@ -85,8 +85,54 @@
 \sphinxstepscope
 
 
+\chapter{Readme}
+\label{\detokenize{readme:readme}}\label{\detokenize{readme::doc}}
+\sphinxAtStartPar
+This is a toolbox in form of a python package that handles algorithms to be used in dsp (digital signal processing) projects.
+\begin{quote}
+
+\sphinxAtStartPar
+It is a personal project that is under active development and it will take some time until it reaches a certain level of maturity.
+If you find some implementations interesting or useful, please feel free to use it for your projects and expand or change
+functionalities.
+\end{quote}
+
+
+\section{Getting Started}
+\label{\detokenize{readme:getting-started}}
+\sphinxAtStartPar
+Check out the \sphinxhref{https://github.com/nico-franco-gomez/dsptools/tree/main/examples}{examples} for some basic examples of the dsptools package
+and refer to Documentation for the complete description of classes and methods.
+
+\begin{sphinxadmonition}{note}{Note:}
+\sphinxAtStartPar
+The documentation at \sphinxhref{http://dsptools.readthedocs.io/}{read the docs} is available but not working at the moment because of
+an internal bug in one of the modules needed to build the package. This will be fixed in the future.
+Until then, please refer to the other available documentation.
+\end{sphinxadmonition}
+
+
+\section{Installation}
+\label{\detokenize{readme:installation}}
+\sphinxAtStartPar
+Use pip to install dsptools
+
+\begin{sphinxVerbatim}[commandchars=\\\{\}]
+\PYG{g+gp}{\PYGZdl{} }pip install dsptools
+\end{sphinxVerbatim}
+
+\sphinxAtStartPar
+(Requires Python 3.10 or higher)
+
+\sphinxstepscope
+
+
 \chapter{Classes (dsptools.classes)}
 \label{\detokenize{classes:classes-dsptools-classes}}\label{\detokenize{classes::doc}}
+\sphinxAtStartPar
+The main classes are listed here. For some filterbanks, special classes are used but the api works almost equally
+as for the main FilterBank class.
+
 
 \section{Signal}
 \label{\detokenize{classes:module-dsptools.classes.signal_class}}\label{\detokenize{classes:signal}}\index{module@\spxentry{module}!dsptools.classes.signal\_class@\spxentry{dsptools.classes.signal\_class}}\index{dsptools.classes.signal\_class@\spxentry{dsptools.classes.signal\_class}!module@\spxentry{module}}
@@ -234,7 +280,7 @@ Saves the Signal object
 {\hyperref[\detokenize{classes:dsptools.classes.signal_class.Signal.set_coherence}]{\sphinxcrossref{\sphinxcode{\sphinxupquote{set\_coherence}}}}}(coherence)
 &
 \sphinxAtStartPar
-Sets the window used for the IR.
+Sets the coherence measurements of the transfer function.
 \\
 \sphinxhline
 \sphinxAtStartPar
@@ -733,8 +779,8 @@ Default: \sphinxtitleref{‘wav’}.
 \pysiglinewithargsret{\sphinxbfcode{\sphinxupquote{set\_coherence}}}{\emph{\DUrole{n}{coherence}\DUrole{p}{:}\DUrole{w}{  }\DUrole{n}{ndarray}}}{}
 \pysigstopsignatures
 \sphinxAtStartPar
-Sets the window used for the IR. It only works for
-\sphinxtitleref{signal\_type = (‘ir’, ‘h1’, ‘h2’, ‘h3’, ‘rir’)}.
+Sets the coherence measurements of the transfer function.
+It only works for \sphinxtitleref{signal\_type = (‘ir’, ‘h1’, ‘h2’, ‘h3’, ‘rir’)}.
 
 \end{fulllineitems}
 
@@ -934,7 +980,7 @@ New rearrangement of channels.
 \begin{fulllineitems}
 \phantomsection\label{\detokenize{classes:dsptools.classes.multibandsignal.MultiBandSignal}}
 \pysigstartsignatures
-\pysiglinewithargsret{\sphinxbfcode{\sphinxupquote{class\DUrole{w}{  }}}\sphinxcode{\sphinxupquote{dsptools.classes.multibandsignal.}}\sphinxbfcode{\sphinxupquote{MultiBandSignal}}}{\emph{\DUrole{n}{bands}\DUrole{o}{=}\DUrole{default_value}{None}}, \emph{\DUrole{n}{same\_sampling\_rate}\DUrole{p}{:}\DUrole{w}{  }\DUrole{n}{\sphinxhref{https://docs.python.org/3/library/functions.html\#bool}{bool}}\DUrole{w}{  }\DUrole{o}{=}\DUrole{w}{  }\DUrole{default_value}{True}}, \emph{\DUrole{n}{info}\DUrole{p}{:}\DUrole{w}{  }\DUrole{n}{\sphinxhref{https://docs.python.org/3/library/typing.html\#typing.Optional}{Optional}\DUrole{p}{{[}}\sphinxhref{https://docs.python.org/3/library/stdtypes.html\#dict}{dict}\DUrole{p}{{]}}}\DUrole{w}{  }\DUrole{o}{=}\DUrole{w}{  }\DUrole{default_value}{None}}}{}
+\pysiglinewithargsret{\sphinxbfcode{\sphinxupquote{class\DUrole{w}{  }}}\sphinxcode{\sphinxupquote{dsptools.classes.multibandsignal.}}\sphinxbfcode{\sphinxupquote{MultiBandSignal}}}{\emph{\DUrole{n}{bands}\DUrole{o}{=}\DUrole{default_value}{None}}, \emph{\DUrole{n}{same\_sampling\_rate}\DUrole{p}{:}\DUrole{w}{  }\DUrole{n}{\sphinxhref{https://docs.python.org/3/library/functions.html\#bool}{bool}}\DUrole{w}{  }\DUrole{o}{=}\DUrole{w}{  }\DUrole{default_value}{True}}, \emph{\DUrole{n}{info}\DUrole{p}{:}\DUrole{w}{  }\DUrole{n}{\sphinxhref{https://docs.python.org/3/library/stdtypes.html\#dict}{dict}}\DUrole{w}{  }\DUrole{o}{=}\DUrole{w}{  }\DUrole{default_value}{\{\}}}}{}
 \pysigstopsignatures
 \sphinxAtStartPar
 Bases: \sphinxhref{https://docs.python.org/3/library/functions.html\#object}{\sphinxcode{\sphinxupquote{object}}}
@@ -1010,7 +1056,7 @@ Show information about the MultiBandSignal.
 \begin{fulllineitems}
 \phantomsection\label{\detokenize{classes:dsptools.classes.multibandsignal.MultiBandSignal.__init__}}
 \pysigstartsignatures
-\pysiglinewithargsret{\sphinxbfcode{\sphinxupquote{\_\_init\_\_}}}{\emph{\DUrole{n}{bands}\DUrole{o}{=}\DUrole{default_value}{None}}, \emph{\DUrole{n}{same\_sampling\_rate}\DUrole{p}{:}\DUrole{w}{  }\DUrole{n}{\sphinxhref{https://docs.python.org/3/library/functions.html\#bool}{bool}}\DUrole{w}{  }\DUrole{o}{=}\DUrole{w}{  }\DUrole{default_value}{True}}, \emph{\DUrole{n}{info}\DUrole{p}{:}\DUrole{w}{  }\DUrole{n}{\sphinxhref{https://docs.python.org/3/library/typing.html\#typing.Optional}{Optional}\DUrole{p}{{[}}\sphinxhref{https://docs.python.org/3/library/stdtypes.html\#dict}{dict}\DUrole{p}{{]}}}\DUrole{w}{  }\DUrole{o}{=}\DUrole{w}{  }\DUrole{default_value}{None}}}{}
+\pysiglinewithargsret{\sphinxbfcode{\sphinxupquote{\_\_init\_\_}}}{\emph{\DUrole{n}{bands}\DUrole{o}{=}\DUrole{default_value}{None}}, \emph{\DUrole{n}{same\_sampling\_rate}\DUrole{p}{:}\DUrole{w}{  }\DUrole{n}{\sphinxhref{https://docs.python.org/3/library/functions.html\#bool}{bool}}\DUrole{w}{  }\DUrole{o}{=}\DUrole{w}{  }\DUrole{default_value}{True}}, \emph{\DUrole{n}{info}\DUrole{p}{:}\DUrole{w}{  }\DUrole{n}{\sphinxhref{https://docs.python.org/3/library/stdtypes.html\#dict}{dict}}\DUrole{w}{  }\DUrole{o}{=}\DUrole{w}{  }\DUrole{default_value}{\{\}}}}{}
 \pysigstopsignatures
 \sphinxAtStartPar
 MultiBandSignal contains a composite band list where each index
@@ -1759,7 +1805,7 @@ Prints all the filter parameters to the console.
 \begin{fulllineitems}
 \phantomsection\label{\detokenize{classes:dsptools.classes.filterbank.FilterBank}}
 \pysigstartsignatures
-\pysiglinewithargsret{\sphinxbfcode{\sphinxupquote{class\DUrole{w}{  }}}\sphinxcode{\sphinxupquote{dsptools.classes.filterbank.}}\sphinxbfcode{\sphinxupquote{FilterBank}}}{\emph{\DUrole{n}{filters}\DUrole{o}{=}\DUrole{default_value}{None}}, \emph{\DUrole{n}{same\_sampling\_rate}\DUrole{p}{:}\DUrole{w}{  }\DUrole{n}{\sphinxhref{https://docs.python.org/3/library/functions.html\#bool}{bool}}\DUrole{w}{  }\DUrole{o}{=}\DUrole{w}{  }\DUrole{default_value}{True}}, \emph{\DUrole{n}{info}\DUrole{p}{:}\DUrole{w}{  }\DUrole{n}{\sphinxhref{https://docs.python.org/3/library/typing.html\#typing.Optional}{Optional}\DUrole{p}{{[}}\sphinxhref{https://docs.python.org/3/library/stdtypes.html\#dict}{dict}\DUrole{p}{{]}}}\DUrole{w}{  }\DUrole{o}{=}\DUrole{w}{  }\DUrole{default_value}{None}}}{}
+\pysiglinewithargsret{\sphinxbfcode{\sphinxupquote{class\DUrole{w}{  }}}\sphinxcode{\sphinxupquote{dsptools.classes.filterbank.}}\sphinxbfcode{\sphinxupquote{FilterBank}}}{\emph{\DUrole{n}{filters}\DUrole{o}{=}\DUrole{default_value}{{[}{]}}}, \emph{\DUrole{n}{same\_sampling\_rate}\DUrole{p}{:}\DUrole{w}{  }\DUrole{n}{\sphinxhref{https://docs.python.org/3/library/functions.html\#bool}{bool}}\DUrole{w}{  }\DUrole{o}{=}\DUrole{w}{  }\DUrole{default_value}{True}}, \emph{\DUrole{n}{info}\DUrole{p}{:}\DUrole{w}{  }\DUrole{n}{\sphinxhref{https://docs.python.org/3/library/stdtypes.html\#dict}{dict}}\DUrole{w}{  }\DUrole{o}{=}\DUrole{w}{  }\DUrole{default_value}{\{\}}}}{}
 \pysigstopsignatures
 \sphinxAtStartPar
 Bases: \sphinxhref{https://docs.python.org/3/library/functions.html\#object}{\sphinxcode{\sphinxupquote{object}}}
@@ -1834,7 +1880,7 @@ Show information about the filter bank.
 \begin{fulllineitems}
 \phantomsection\label{\detokenize{classes:dsptools.classes.filterbank.FilterBank.__init__}}
 \pysigstartsignatures
-\pysiglinewithargsret{\sphinxbfcode{\sphinxupquote{\_\_init\_\_}}}{\emph{\DUrole{n}{filters}\DUrole{o}{=}\DUrole{default_value}{None}}, \emph{\DUrole{n}{same\_sampling\_rate}\DUrole{p}{:}\DUrole{w}{  }\DUrole{n}{\sphinxhref{https://docs.python.org/3/library/functions.html\#bool}{bool}}\DUrole{w}{  }\DUrole{o}{=}\DUrole{w}{  }\DUrole{default_value}{True}}, \emph{\DUrole{n}{info}\DUrole{p}{:}\DUrole{w}{  }\DUrole{n}{\sphinxhref{https://docs.python.org/3/library/typing.html\#typing.Optional}{Optional}\DUrole{p}{{[}}\sphinxhref{https://docs.python.org/3/library/stdtypes.html\#dict}{dict}\DUrole{p}{{]}}}\DUrole{w}{  }\DUrole{o}{=}\DUrole{w}{  }\DUrole{default_value}{None}}}{}
+\pysiglinewithargsret{\sphinxbfcode{\sphinxupquote{\_\_init\_\_}}}{\emph{\DUrole{n}{filters}\DUrole{o}{=}\DUrole{default_value}{{[}{]}}}, \emph{\DUrole{n}{same\_sampling\_rate}\DUrole{p}{:}\DUrole{w}{  }\DUrole{n}{\sphinxhref{https://docs.python.org/3/library/functions.html\#bool}{bool}}\DUrole{w}{  }\DUrole{o}{=}\DUrole{w}{  }\DUrole{default_value}{True}}, \emph{\DUrole{n}{info}\DUrole{p}{:}\DUrole{w}{  }\DUrole{n}{\sphinxhref{https://docs.python.org/3/library/stdtypes.html\#dict}{dict}}\DUrole{w}{  }\DUrole{o}{=}\DUrole{w}{  }\DUrole{default_value}{\{\}}}}{}
 \pysigstopsignatures
 \sphinxAtStartPar
 FilterBank object saves multiple filters and some metadata.
@@ -1844,17 +1890,16 @@ the order in which they are saved and applied to a signal is not
 relevant.
 \begin{quote}\begin{description}
 \sphinxlineitem{Parameters}\begin{description}
-\sphinxlineitem{\sphinxstylestrong{filters}}{[}dict{]}
+\sphinxlineitem{\sphinxstylestrong{filters}}{[}list or tuple, optional{]}
 \sphinxAtStartPar
-Dictionary containing filters. Keys are automatically set to
-numbers {[}0, 1, 2, … etc.{]}.
+List or tuple containing filters.
 
 \sphinxlineitem{\sphinxstylestrong{same\_sampling\_rate}}{[}bool, optional{]}
 \sphinxAtStartPar
 When \sphinxtitleref{True}, every Filter should have the same sampling rate.
 Set to \sphinxtitleref{False} for a multirate system. Default: \sphinxtitleref{True}.
 
-\sphinxlineitem{\sphinxstylestrong{info}}{[}dict{]}
+\sphinxlineitem{\sphinxstylestrong{info}}{[}dict, optional{]}
 \sphinxAtStartPar
 Dictionary containing general information about the filter bank.
 Some parameters of the filter bank are automatically read from
@@ -2113,6 +2158,9 @@ Default: \sphinxtitleref{True}.
 
 \chapter{Modules in dsptools}
 \label{\detokenize{modules:modules-in-dsptools}}\label{\detokenize{modules::doc}}
+\sphinxAtStartPar
+The modules and functions of dsptools are listed down below.
+
 \sphinxstepscope
 
 
