@@ -53,23 +53,19 @@ class LRFilterBank():
             self.sos.append([lp, hp])
 
     def initialize_zi(self, number_of_channels: int = 1):
-        """Initializes zi.
+        """Initiates the zi of the filters for the given number of channels.
 
         Parameters
         ----------
         number_of_channels : int, optional
-            Number of channels of the signal to be filtered.
+            Number of channels is needed for the number of filters' zi's.
+            Default: 1.
 
         """
         # total signal separates low band from the rest (2 zi)
         # all_cross_zi = [[cross0_zi], [cross1_zi], [cross2_zi], ...]
         # cross0_zi = [[low_zi, high_zi], [allpass1_zi], [allpass2_zi], ...]
         # allpass1_zi = [low_zi, high_zi]
-
-        # There's always one allpass less than the number of cross because
-        # no band needs it in the first crossover.
-
-        # With ascending cross, the number of allpasses decreases until is zero
         self.channels_zi = []
         for i3 in range(number_of_channels):
             cross_zi = []
@@ -156,11 +152,6 @@ class LRFilterBank():
 
     # ======== Update zi's and backend filtering ==============================
     def _allpass_zi(self, s, channel_number, cross_number, ap_number):
-        # all_cross_zi = [[cross0_zi], [cross1_zi], [cross2_zi], ...]
-        # cross0_zi = [[low_zi, high_zi], [allpass1_zi], [allpass2_zi], ...]
-        # allpass1_zi = [low_zi, high_zi]
-        # print('ap_number', ap_number)
-
         # Unpack zi's
         ap_zi = self.channels_zi[channel_number][1][cross_number][ap_number]
         zi_l = ap_zi[0]
@@ -179,10 +170,6 @@ class LRFilterBank():
         return s_l + s_h
 
     def _two_way_split_zi(self, s, channel_number, cross_number):
-        # all_cross_zi = [[cross0_zi], [cross1_zi], [cross2_zi], ...]
-        # cross0_zi = [low_zi, high_zi, [allpass1_zi], [allpass2_zi], ...]
-        # allpass1_zi = [low_zi, high_zi]
-
         # Unpack zi's
         cross_zi = self.channels_zi[channel_number][0][cross_number]
         # cross_zi = self.cross_zi[cross_number]

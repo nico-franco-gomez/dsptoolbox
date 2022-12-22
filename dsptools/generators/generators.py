@@ -129,8 +129,8 @@ def chirp(type_of_chirp: str = 'log', range_hz=None, length_seconds: float = 1,
     chirp_sig : Signal
         Chirp Signal object.
 
-    Reference
-    ---------
+    References
+    ----------
     https://de.wikipedia.org/wiki/Chirp
 
     """

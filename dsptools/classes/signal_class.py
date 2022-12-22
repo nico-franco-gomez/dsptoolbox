@@ -1,7 +1,6 @@
 """
 Signal class
 """
-
 from warnings import warn
 from pickle import dump, HIGHEST_PROTOCOL
 from os import sep
@@ -245,8 +244,8 @@ class Signal():
         self.window = window
 
     def set_coherence(self, coherence: np.ndarray):
-        """Sets the window used for the IR. It only works for
-        `signal_type = ('ir', 'h1', 'h2', 'h3', 'rir')`.
+        """Sets the coherence measurements of the transfer function.
+        It only works for `signal_type = ('ir', 'h1', 'h2', 'h3', 'rir')`.
 
         """
         valid_signal_types = ('ir', 'h1', 'h2', 'h3', 'rir')
@@ -710,8 +709,8 @@ class Signal():
         stft_db = 20*np.log10(np.abs(stft)+epsilon)
         stft_db = np.nan_to_num(stft_db, nan=np.min(stft_db))
         fig, ax = general_matrix_plot(
-            matrix=stft_db, xrange=(t[0], t[-1]),
-            yrange=(f[0], f[-1]), zrange=50,
+            matrix=stft_db, range_x=(t[0], t[-1]),
+            range_y=(f[0], f[-1]), range_z=50,
             xlabel='Time / s', ylabel='Frequency / Hz', zlabel='dB',
             xlog=False, ylog=logfreqs,
             colorbar=True, returns=True)
@@ -736,7 +735,7 @@ class Signal():
                 ylabels=[rf'$\gamma^2$ Coherence {n}'
                          for n in range(self.number_of_channels)],
                 xlabels='Frequency / Hz',
-                ylims=[-0.1, 1.1],
+                range_y=[-0.1, 1.1],
                 returns=True
                 )
         if returns:
@@ -759,7 +758,7 @@ class Signal():
             if unwrap:
                 ph = unwrap(ph, axis=0)
             fig, ax = general_plot(
-                f=f,
+                x=f,
                 matrix=ph,
                 range_x=range_hz,
                 labels=[f'Channel {n}'

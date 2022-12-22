@@ -24,7 +24,7 @@ def _latency(in1: np.ndarray, in2: np.ndarray):
 
 def _welch(x, y, fs_hz, window_type: str = 'hann',
            window_length_samples: int = 1024, overlap_percent=50,
-           detrend: bool = True, average: str = 'np.mean',
+           detrend: bool = True, average: str = 'mean',
            scaling: str = 'power'):
     """Cross spectral density computation with Welch's method.
 
@@ -45,10 +45,10 @@ def _welch(x, y, fs_hz, window_type: str = 'hann',
     overlap_percent : int, optional
         Overlap in percentage. Default: 50.
     detrend : bool, optional
-        Detrending from each time segment (removing np.mean). Default: True.
+        Detrending from each time segment (removing mean). Default: True.
     average : str, optional
-        Type of np.mean to be computed. Take `'np.mean'` or `'np.median'`.
-        Default: `'np.mean'`
+        Type of mean to be computed. Take `'mean'` or `'median'`.
+        Default: `'mean'`
     scaling : str, optional
         Scaling for spectral power density or spectrum. Takes `'power'` or
         `'spectrum'`. Default: `'power'`.
@@ -73,9 +73,9 @@ def _welch(x, y, fs_hz, window_type: str = 'hann',
         '[2**7, 2**16]'
     assert overlap_percent > 0 and overlap_percent < 100, 'overlap_percent ' +\
         'should be between 0 and 100'
-    valid_average = ['np.mean', 'np.median']
+    valid_average = ['mean', 'median']
     assert average in valid_average, f'{average} is not valid. Use ' +\
-        'either np.mean or np.median'
+        'either mean or median'
     valid_scaling = ['power', 'spectrum']
     assert scaling in valid_scaling, f'{scaling} is not valid. Use ' +\
         'either power or spectrum'
@@ -118,8 +118,8 @@ def _welch(x, y, fs_hz, window_type: str = 'hann',
         phase[:, n] = np.unwrap(np.angle(m))
         start += step
 
-    # np.mean without first and last arrays
-    if average == 'np.mean':
+    # mean without first and last arrays
+    if average == 'mean':
         magnitude = np.mean(magnitude[:, 1:-2], axis=-1)
         phase = np.mean(phase[:, 1:-2], axis=-1)
     else:
@@ -217,7 +217,7 @@ def _stft(x: np.ndarray, fs_hz: int, window_length_samples: int = 2048,
     overlap_percent : int, optional
         Overlap in percentage. Default: 50.
     detrend : bool, optional
-        Detrending from each time segment (removing np.mean). Default: True.
+        Detrending from each time segment (removing mean). Default: True.
     padding : bool, optional
         When `True`, the original signal is padded in the beginning and ending
         so that no energy is lost due to windowing. Default: `True`.
@@ -291,7 +291,7 @@ def _stft(x: np.ndarray, fs_hz: int, window_length_samples: int = 2048,
 def _csm(time_data: np.ndarray, sampling_rate_hz: int,
          window_length_samples: int = 1024, window_type: str = 'hann',
          overlap_percent: int = 50, detrend: bool = True,
-         average: str = 'np.mean', scaling: str = 'power'):
+         average: str = 'mean', scaling: str = 'power'):
     """Computes the cross spectral matrix of a multichannel signal.
     Output matrix has (frequency, channels, channels).
 
@@ -310,10 +310,10 @@ def _csm(time_data: np.ndarray, sampling_rate_hz: int,
     overlap_percent : int, optional
         Overlap in percentage. Default: 50.
     detrend : bool, optional
-        Detrending from each time segment (removing np.mean). Default: True.
+        Detrending from each time segment (removing mean). Default: True.
     average : str, optional
-        Type of np.mean to be computed. Take `'np.mean'` or `'np.median'`.
-        Default: `'np.mean'`
+        Type of mean to be computed. Take `'mean'` or `'np.median'`.
+        Default: `'mean'`
     scaling : str, optional
         Scaling for spectral power density or spectrum. Takes `'power'` or
         `'spectrum'`. Default: `'power'`.
@@ -347,7 +347,7 @@ def _csm(time_data: np.ndarray, sampling_rate_hz: int,
                 csm[:, ind1, ind2] /= 2
     for nfreq in range(csm.shape[0]):
         csm[nfreq, :, :] = \
-            csm[nfreq, :, :] + csm[nfreq, :, :].T.np.conjugate()
+            csm[nfreq, :, :] + csm[nfreq, :, :].T.conjugate()
     f = np.fft.rfftfreq(
         window_length_samples,
         1/sampling_rate_hz)

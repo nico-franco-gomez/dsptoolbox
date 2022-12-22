@@ -119,7 +119,7 @@ def find_modes(signal: Signal, f_range_hz=[50, 200],
     id_group = []
     for n in range(signal.number_of_channels):
         id_, _ = find_peaks(group_ms[:, n], width=width)
-        id_group.np.append(id_)
+        id_group.append(id_)
 
     if proximity_effect:
         f_modes = np.array([])
@@ -136,7 +136,7 @@ def find_modes(signal: Signal, f_range_hz=[50, 200],
         temp = []
         for f_m in f_modes:
             if f_modes.count(f_m) >= 2:
-                temp.np.append(f_m)
+                temp.append(f_m)
         f_modes = set(temp)
     else:
         f_modes = set()

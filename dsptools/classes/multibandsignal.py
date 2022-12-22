@@ -17,7 +17,7 @@ class MultiBandSignal():
     """
     # ======== Constructor and initializers ===================================
     def __init__(self, bands=None, same_sampling_rate: bool = True,
-                 info: dict = None):
+                 info: dict = {}):
         """MultiBandSignal contains a composite band list where each index
         is a Signal object with the same number of channels. For multirate
         systems, the parameter `same_sampling_rate` has to be set to `False`.
@@ -39,8 +39,6 @@ class MultiBandSignal():
         """
         if bands is None:
             bands = []
-        if info is None:
-            info = {}
         self.same_sampling_rate = same_sampling_rate
         self.bands = bands
         self.number_of_bands = len(self.bands)

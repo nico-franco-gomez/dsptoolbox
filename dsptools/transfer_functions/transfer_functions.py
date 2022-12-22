@@ -105,7 +105,8 @@ def spectral_deconvolve(num: Signal, denum: Signal, multichannel=False,
                 num_fft[:, n], denum_fft[:, n_denum], freqs_hz,
                 start_stop_hz=start_stop_hz,
                 mode=mode)
-    new_sig = Signal(None, new_time_data, num.sampling_rate_hz)
+    new_sig = Signal(None, new_time_data, num.sampling_rate_hz,
+                     signal_type='ir')
     if padding:
         if keep_original_length:
             new_sig = pad_trim(new_sig, original_length)
@@ -137,12 +138,12 @@ def window_ir(signal: Signal, constant_percentage=0.75, exp2_trim: int = 13,
 
     Returns
     -------
-    windowed_ir: `np.ndarray`
-        IR with applied window.
-    window: `np.ndarray`
-        Window used for IR.
+    new_sig : Signal
+        Windowed signal. The used window is also saved under `new_sig.window`.
 
     """
+    assert signal.signal_type in ('rir', 'ir'), \
+        f'{signal.signal_type} is not a valid signal type. Use rir or ir.'
     if exp2_trim is not None:
         total_length = int(2**exp2_trim)
     else:
@@ -160,13 +161,14 @@ def window_ir(signal: Signal, constant_percentage=0.75, exp2_trim: int = 13,
                 at_start)
 
     new_sig = Signal(
-        None, new_time_data, signal.sampling_rate_hz, signal_type='ir')
+        None, new_time_data, signal.sampling_rate_hz,
+        signal_type=signal.signal_type)
     new_sig.set_window(window)
     return new_sig
 
 
 def compute_transfer_function(output: Signal, input: Signal, mode='h2',
-                              multichannel: bool = False,
+                              multichannel: bool = True,
                               window_length_samples: int = 1024, **kwargs):
     """Gets transfer function H1, H2 or H3.
     H1: for noise in the output signal. `Gxy/Gxx`.
@@ -184,7 +186,7 @@ def compute_transfer_function(output: Signal, input: Signal, mode='h2',
         Default: `'h2'`.
     multichannel : bool, optional
         When `True`,  only the first channel of input is used for all output
-        channels. Default: `False`.
+        channels. Default: `True`.
     window_length_samples : int, optional
         Window length for the IR. Spectrum has the length
         window_length_samples//2 + 1. Default: 1024.

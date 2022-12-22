@@ -115,15 +115,15 @@ def smoothing():
     raw = dsp.Signal('/Users/neumanndev/Library/CloudStorage/' +
                      'OneDrive-SennheiserelectronicGmbH&Co.KG/PPONS ' +
                      'OneDrive/MORE/Holzmarkt/chirp_10cm/raw_twin.wav')
-    bla = raw.get_spectrum(mode='standard')
-    spec_db = np.abs(bla['spectrum'][100:, 0])
+    f, bla = raw.get_spectrum()
+    spec_db = np.abs(bla[100:, 0])
     spec_s = dsp.experimental._smoothing_log(
         spec_db, 15, 'hann')
     # import pyfar as pf
     # pf.dsp.smooth_fractional_octave()
 
-    plt.plot(bla['freqs_hz'][100:], spec_db)
-    plt.plot(bla['freqs_hz'][100:], spec_s)
+    plt.plot(f[100:], spec_db)
+    plt.plot(f[100:], spec_s)
     dsp.plots.show()
 
 

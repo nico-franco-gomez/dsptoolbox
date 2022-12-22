@@ -10,12 +10,13 @@ set_style('whitegrid')
 
 
 def show():
-    """Wrapper around matplotlib's show
+    """Wrapper around matplotlib's show.
+
     """
     plt.show()
 
 
-def general_plot(f, matrix, range_x=None, range_y=None, log: bool = True,
+def general_plot(x, matrix, range_x=None, range_y=None, log: bool = True,
                  labels=None, xlabel: str = 'Frequency / Hz',
                  ylabel: str = None, info_box: str = None,
                  returns: bool = False):
@@ -23,7 +24,7 @@ def general_plot(f, matrix, range_x=None, range_y=None, log: bool = True,
 
     Parameters
     ----------
-    f : array-like
+    x : array-like
         Vector for x axis.
     matrix : `np.ndarray`
         Matrix with data to plot.
@@ -32,7 +33,7 @@ def general_plot(f, matrix, range_x=None, range_y=None, log: bool = True,
     range_y : array-like, optional
         Range to show for y axis. Default: None.
     log : bool, optional
-        Show x axis as logarithmic. Default: True.
+        Show x axis as logarithmic. Default: `True`.
     xlabel : str, optional
         Label for x axis. Default: None.
     ylabel : str, optional
@@ -45,14 +46,16 @@ def general_plot(f, matrix, range_x=None, range_y=None, log: bool = True,
 
     Returns
     -------
-    When returns is activated, figure and axis are returned.
+    fig, ax
+        Returned only when `returns=True`.
+
     """
     fig, ax = plt.subplots(1, 1, figsize=(8, 5))
     for n in range(matrix.shape[1]):
         if labels is not None:
-            ax.plot(f, matrix[:, n], label=labels[n])
+            ax.plot(x, matrix[:, n], label=labels[n])
         else:
-            ax.plot(f, matrix[:, n])
+            ax.plot(x, matrix[:, n])
     if log:
         ax.set_xscale('log')
         ticks = \
@@ -84,10 +87,42 @@ def general_plot(f, matrix, range_x=None, range_y=None, log: bool = True,
 def general_subplots_line(x, matrix, column: bool = True,
                           sharex: bool = True, sharey: bool = False,
                           log: bool = False, ylabels=None, xlabels=None,
-                          xlims=None, ylims=None,
+                          range_x=None, range_y=None,
                           returns: bool = False):
-    """Creates a generic plot with different subplots for each vector from the
-    matrix.
+    """Generic plot template with subplots in one column or row.
+
+    Parameters
+    ----------
+    x : array-like
+        Vector for x axis.
+    matrix : `np.ndarray`
+        Matrix with data to plot.
+    column : bool, optional
+        When `True`, the subplots are organized in one column. Default: `True`.
+    sharex : bool, optional
+        When `True`, all subplots share the same values for the x axis.
+        Default: `True`.
+    sharey : bool, optional
+        When `True`, all subplots share the same values for the y axis.
+        Default: `False`.
+    log : bool, optional
+        Show x axis as logarithmic. Default: `False`.
+    ylabels : array_like, optional
+        Labels for y axis. Default: None.
+    xlabels : array_like, optional
+        Labels for x axis. Default: None.
+    range_x : array-like, optional
+        Range to show for x axis. Default: None.
+    range_y : array-like, optional
+        Range to show for y axis. Default: None.
+    returns : bool, optional
+        When `True`, the figure and axis are returned. Default: `False`.
+
+    Returns
+    -------
+    fig, ax
+        Returned only when `returns=True`.
+
     """
     number_of_channels = matrix.shape[1]
     if column:
@@ -107,8 +142,8 @@ def general_subplots_line(x, matrix, column: bool = True,
             ticks = \
                 array([20, 50, 100, 200, 500, 1000,
                        2000, 5000, 10000, 20000])
-            if xlims is not None:
-                ticks = ticks[(ticks > xlims[0]) & (ticks < xlims[-1])]
+            if range_x is not None:
+                ticks = ticks[(ticks > range_x[0]) & (ticks < range_x[-1])]
             ax[n].set_xticks(ticks)
             ax[n].get_xaxis().set_major_formatter(ScalarFormatter())
         if ylabels is not None:
@@ -116,39 +151,73 @@ def general_subplots_line(x, matrix, column: bool = True,
         if xlabels is not None:
             if not type(xlabels) == str and len(xlabels) > 1:
                 ax[n].set_xlabel(xlabels[n])
-        if xlims is not None:
-            ax[n].set_xlim(xlims)
-        if ylims is not None:
-            ax[n].set_ylim(ylims)
+        if range_x is not None:
+            ax[n].set_xlim(range_x)
+        if range_y is not None:
+            ax[n].set_ylim(range_y)
     if type(xlabels) == str or len(xlabels) == 1:
         ax[-1].set_xlabel(xlabels)
     fig.tight_layout()
-
     if returns:
         return fig, ax
 
 
-def general_matrix_plot(matrix, xrange=None, yrange=None, zrange=None,
-                        xlabel=None, ylabel=None, zlabel=None,
-                        xlog: bool = False, ylog: bool = False,
-                        colorbar: bool = True, cmap: str = 'magma',
-                        returns: bool = False):
+def general_matrix_plot(matrix, range_x=None, range_y=None, range_z=None,
+                        xlabel: str = None, ylabel: str = None,
+                        zlabel: str = None, xlog: bool = False,
+                        ylog: bool = False, colorbar: bool = True,
+                        cmap: str = 'magma', returns: bool = False):
+    """Generic plot template with subplots in one column or row.
+
+    Parameters
+    ----------
+    matrix : `np.ndarray`
+        Matrix with data to plot.
+    range_x : array-like, optional
+        Range to show for x axis. Default: None.
+    range_y : array-like, optional
+        Range to show for y axis. Default: None.
+    xlabel : str, optional
+        Label for x axis. Default: None.
+    ylabel : str, optional
+        Label for y axis. Default: None.
+    zlabel : str, optional
+        Label for z axis. Default: None.
+    xlog : bool, optional
+        Show x axis as logarithmic. Default: `False`.
+    ylog : bool, optional
+        Show y axis as logarithmic. Default: `False`.
+    colorbar : bool, optional
+        When `True`, a colorbar for zaxis is shown. Default: `True`.
+    cmap : str, optional
+        Type of colormap to use from matplotlib.
+        See https://matplotlib.org/stable/tutorials/colors/colormaps.html.
+        Default: `'magma'`.
+    returns : bool, optional
+        When `True`, the figure and axis are returned. Default: `False`.
+
+    Returns
+    -------
+    fig, ax
+        Returned only when `returns=True`.
+
+    """
     extent = None
-    if xrange is not None:
-        assert yrange is not None, 'When x range is given, y range is also ' +\
-            'necessary'
-        assert len(xrange) == 2 and len(yrange) == 2, \
+    if range_x is not None:
+        assert range_y is not None, 'When x range is given, y range is ' +\
+            'also necessary'
+        assert len(range_x) == 2 and len(range_y) == 2, \
             'xrange and or yrange are invalid. Please give a list ' +\
             'containing (min, max) values'
-        extent = (xrange[0], xrange[1], yrange[0], yrange[1])
+        extent = (range_x[0], range_x[1], range_y[0], range_y[1])
 
     fig, ax = plt.subplots(1, 1, figsize=(7, 5))
     cmap = cm.get_cmap(cmap)
     # cmap._init()
     # cmap._lut[-3, -1]
-    if zrange is not None:
+    if range_z is not None:
         max_val = max(matrix)
-        min_val = max_val - zrange
+        min_val = max_val - range_z
     else:
         max_val = max(matrix)
         min_val = min(matrix)
@@ -178,8 +247,8 @@ def general_matrix_plot(matrix, xrange=None, yrange=None, zrange=None,
         ax.set_yscale('log')
         ticks = \
             array([20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000])
-        if yrange is not None:
-            ticks = ticks[(ticks > yrange[0]) & (ticks < yrange[-1])]
+        if range_y is not None:
+            ticks = ticks[(ticks > range_y[0]) & (ticks < range_y[-1])]
         ax.set_yticks(ticks)
         ax.get_yaxis().set_major_formatter(ScalarFormatter())
     fig.tight_layout()

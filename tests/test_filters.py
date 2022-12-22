@@ -95,12 +95,12 @@ def filter_bank_filter():
     # fb.plot_magnitude(mode='sequential', test_zi=True)
 
     # Single filter
-    # i = dsp.generators.dirac(1024, 2)
-    # config = dict(order=5, freqs=[1500, 2000], type_of_pass='bandpass',
-    #               filter_design_method='bessel')
-    # filt1 = dsp.Filter('iir', config)
-    # filt1.filter_signal(i, activate_zi=True).plot_magnitude(normalize=None)
-    # filt1.filter_signal(i, activate_zi=False).plot_magnitude(normalize=None)
+    i = dsp.generators.dirac(1024, 2)
+    config = dict(order=5, freqs=[1500, 2000], type_of_pass='bandpass',
+                  filter_design_method='bessel')
+    filt1 = dsp.Filter('iir', config)
+    filt1.filter_signal(i, activate_zi=True).plot_magnitude(normalize=None)
+    filt1.filter_signal(i, activate_zi=False).plot_magnitude(normalize=None)
     dsp.plots.show()
 
 

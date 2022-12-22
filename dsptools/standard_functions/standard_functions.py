@@ -21,7 +21,7 @@ def latency(in1: Signal, in2: Signal = None):
     in1 : Signal
         First signal.
     in2 : Signal, optional
-        Second signal. Default: None.
+        Second signal. Default: `None`.
 
     Returns
     -------
@@ -100,7 +100,7 @@ def minimal_phase(signal: Signal):
     f : `np.ndarray`
         Frequency vector.
     min_phases : `np.ndarray`
-        Minimal phases.
+        Minimal phases as matrix.
 
     """
     assert signal.signal_type in ('rir', 'ir', 'h1', 'h2', 'h3'), \
@@ -127,7 +127,7 @@ def minimal_group_delay(signal: Signal):
     f : `np.ndarray`
         Frequency vector.
     min_gd : `np.ndarray`
-        Minimal group delays in seconds.
+        Minimal group delays in seconds as matrix.
 
     """
     f, min_phases = minimal_phase(signal)

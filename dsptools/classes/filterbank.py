@@ -15,8 +15,8 @@ class FilterBank():
 
     """
     # ======== Constructor and initializers ===================================
-    def __init__(self, filters=None, same_sampling_rate: bool = True,
-                 info: dict = None):
+    def __init__(self, filters=[], same_sampling_rate: bool = True,
+                 info: dict = {}):
         """FilterBank object saves multiple filters and some metadata.
         It also allows for easy filtering with multiple filters.
         Since the digital filters that are supported are linear systems,
@@ -25,13 +25,12 @@ class FilterBank():
 
         Parameters
         ----------
-        filters : dict
-            Dictionary containing filters. Keys are automatically set to
-            numbers [0, 1, 2, ... etc.].
+        filters : list or tuple, optional
+            List or tuple containing filters.
         same_sampling_rate : bool, optional
             When `True`, every Filter should have the same sampling rate.
             Set to `False` for a multirate system. Default: `True`.
-        info : dict
+        info : dict, optional
             Dictionary containing general information about the filter bank.
             Some parameters of the filter bank are automatically read from
             the filters dictionary.
@@ -43,12 +42,8 @@ class FilterBank():
 
         """
         #
-        if info is None:
-            info = {}
-        if filters is None:
-            filters = []
         assert type(filters) in (list, tuple), \
-            'Filters should be passed a list or as a tuple'
+            'Filters should be passed as list or as tuple'
         #
         self.same_sampling_rate = same_sampling_rate
         if filters:
@@ -78,8 +73,14 @@ class FilterBank():
             tuple(set([f.info['filter_type']
                        for f in self.filters]))
 
-    def initialize_zi(self, number_of_channels):
+    def initialize_zi(self, number_of_channels: int = 1):
         """Initiates the zi of the filters for the given number of channels.
+
+        Parameters
+        ----------
+        number_of_channels : int, optional
+            Number of channels is needed for the number of filters' zi's.
+            Default: 1.
 
         """
         for f in self.filters:
@@ -295,7 +296,7 @@ class FilterBank():
         Parameters
         ----------
         path : str, optional
-            Path for the filterbank to be saved. Use only folder/folder/name
+            Path for the filterbank to be saved. Use only folder1/folder2/name
             (without format). Default: `'filterbank'`
             (local folder, object named filterbank).
 

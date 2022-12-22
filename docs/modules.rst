@@ -5,7 +5,6 @@ Modules in dsptools
    :maxdepth: 2
 
    modules/dsptools.distances
-   modules/dsptools.experimental
    modules/dsptools.filterbanks
    modules/dsptools.generators
    modules/dsptools.measure

@@ -41,6 +41,7 @@ def set_device(device_number: int = None):
     ----------
     device_number : int, optional
         Sets the device as default. Use `None` to ignore. Default: `None`.
+
     """
     if device_number is None:
         txt = 'List of available devices'
@@ -87,6 +88,7 @@ def play_and_record(signal: Signal, duration_seconds: float = None,
     -------
     rec_sig : Signal
         Recorded signal.
+
     """
     # Asserts
     if play_channels is None:
@@ -157,6 +159,7 @@ def record(duration_seconds: float = 5, sampling_rate_hz: int = 48000,
     -------
     rec_sig : Signal
         Recorded signal.
+
     """
     # Asserts
     if type(rec_channels) == int:
@@ -204,6 +207,7 @@ def play(signal: Signal, duration_seconds: float = None,
         Output channels that will play the signal. The number of channels
         should match the number of channels in signal. When `None`, the
         channels are automatically set. Default: `None`.
+
     """
     # Asserts and preprocessing
     if play_channels is None:

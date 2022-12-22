@@ -98,6 +98,12 @@ class Filter():
         """Initializes zi for steady-state filtering. The number of parallel
         zi's can be defined externally.
 
+        Parameters
+        ----------
+        number_of_channels : int, optional
+            Number of channels is needed for the number of filter's zi's.
+            Default: 1.
+
         """
         self.zi = []
         for n in range(number_of_channels):
@@ -123,8 +129,6 @@ class Filter():
         ----------
         signal : class:Signal
             Signal to be filtered.
-        filt : Filter
-            Filter to be used on the signal.
         channel : int or array-like, optional
             Channel or array of channels to be filtered. When `None`, all
             channels are filtered. Default: `None`.
@@ -132,7 +136,7 @@ class Filter():
             Gives the zi to update the filter values. Default: `False`.
         zero_phase : bool, optional
             Uses zero-phase filtering on signal. Be aware that the filter
-            is doubled in this case. Default: `False`.
+            is applied twice in this case. Default: `False`.
 
         Returns
         -------
@@ -297,14 +301,14 @@ class Filter():
         elif mode == 'ba':
             coefficients = sig.sos2tf(self.sos)
         elif mode == 'zpk':
-            coefficients = sig.sos2pk(self.sos)
+            coefficients = sig.sos2zpk(self.sos)
         else:
             raise ValueError(f'{mode} is not valid. Use sos, ba or zpk')
         return coefficients
 
     # ======== Plots and prints ===============================================
     def show_filter_parameters(self):
-        """Prints all the filter parameters.
+        """Prints all the filter parameters to the console.
 
         """
         print(self._get_metadata_string())
@@ -333,7 +337,8 @@ class Filter():
 
         Returns
         -------
-        figure and axis when `returns = True`.
+        fig, ax
+            Returned only when `returns=True`.
 
         """
         ir = self.get_ir(length_samples=length_samples)
@@ -367,7 +372,8 @@ class Filter():
 
         Returns
         -------
-        figure and axis when `returns = True`.
+        fig, ax
+            Returned only when `returns=True`.
 
         """
         ba = sig.sos2tf(self.sos)
@@ -381,7 +387,7 @@ class Filter():
             ymin = -2
             ymax = 20
         fig, ax = general_plot(
-            f=f,
+            x=f,
             matrix=gd[..., None],
             range_x=range_hz,
             range_y=[ymin, ymax],
@@ -417,7 +423,8 @@ class Filter():
 
         Returns
         -------
-        figure and axis when `returns = True`.
+        fig, ax
+            Returned only when `returns=True`.
 
         """
         ir = self.get_ir(length_samples=length_samples)
@@ -442,10 +449,11 @@ class Filter():
 
         Returns
         -------
-        figure and axis when `returns = True`.
+        fig, ax
+            Returned only when `returns=True`.
 
         """
-        z, p, k = sig.sos2pk(self.sos)
+        z, p, k = sig.sos2zpk(self.sos)
         fig, ax = _zp_plot(z, p, returns=True)
         ax.text(0.75, 0.91, rf'$k={k:.1e}$', transform=ax.transAxes,
                 verticalalignment='top')
@@ -464,7 +472,7 @@ class Filter():
         Parameters
         ----------
         path : str, optional
-            Path for the filter to be saved. Use only folder/folder/name
+            Path for the filter to be saved. Use only folder1/folder2/name
             (without format). Default: `'filter'`
             (local folder, object named filter).
 
