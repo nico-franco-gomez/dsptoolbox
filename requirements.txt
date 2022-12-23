@@ -14,7 +14,8 @@ seaborn
 # flake8  # linter
 
 # docs:
-piccolo-theme # theme
+# piccolo-theme # theme
+furo
 numpydoc
 sphinx
 readthedocs-sphinx-search
