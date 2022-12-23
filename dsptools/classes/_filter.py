@@ -3,7 +3,7 @@ Backend for filter class and general filtering functions.
 """
 import numpy as np
 from enum import Enum
-from scipy.signal import sosfiltfilt, sosfilt
+from scipy.signal import sosfiltfilt, sosfilt, lfilter, filtfilt
 from .signal_class import Signal
 from .multibandsignal import MultiBandSignal
 from copy import deepcopy
@@ -233,6 +233,60 @@ def _filter_on_signal(signal: Signal, sos, channel=None,
                 y = sosfiltfilt(sos, signal.time_data[:, ch])
             else:
                 y = sosfilt(sos, signal.time_data[:, ch])
+        new_time_data[:, ch] = y
+    new_signal = deepcopy(signal)
+    new_signal.time_data = new_time_data
+    if zi is not None:
+        return new_signal, zi
+    else:
+        return new_signal, None
+
+
+def _filter_on_signal_ba(signal: Signal, ba, channel=None,
+                         zi=None, zero_phase: bool = False):
+    """Takes in a Signal object and filters selected channels. Exports a new
+    Signal object
+
+    Parameters
+    ----------
+    signal : class:Signal
+        Signal to be filtered.
+    ba : array-like
+        ba coefficients of filter.
+    channel : int or array-like, optional
+        Channel or array of channels to be filtered. When `None`, all
+        channels are filtered. Default: `None`.
+    zi : array-like, optional
+        When not `None`, the filter state values are updated after filtering.
+        Default: `None`.
+    zero_phase : bool, optional
+        Uses zero-phase filtering on signal. Be aware that the filter
+        is doubled in this case. Default: `False`.
+
+    Returns
+    -------
+    new_signal : class:Signal
+        New Signal object.
+
+    """
+    new_time_data = signal.time_data
+    if channel is None:
+        channels = range(signal.number_of_channels)
+    else:
+        if type(channel) == int:
+            channel = [channel]
+        assert all(channel < signal.number_of_channels),\
+            f'Selected channels ({channel}) are not valid for the signal'
+        channels = [int(i) for i in channel]
+    for ch in channels:
+        if zi is not None:
+            y, zi[ch] = \
+                lfilter(ba[0], ba[1], x=signal.time_data[:, ch], zi=zi[ch])
+        else:
+            if zero_phase:
+                y = filtfilt(ba[0], ba[1], x=signal.time_data[:, ch])
+            else:
+                y = lfilter(ba[0], ba[1], x=signal.time_data[:, ch])
         new_time_data[:, ch] = y
     new_signal = deepcopy(signal)
     new_signal.time_data = new_time_data

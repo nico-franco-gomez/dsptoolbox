@@ -73,16 +73,17 @@ def filter_bank_filter():
     import dsptools as dsp
 
     # Standard filter bank
-    fb = dsp.FilterBank()
-    config = dict(order=5, freqs=[1500, 2000], type_of_pass='bandpass',
-                  filter_design_method='bessel')
-    fb.add_filter(dsp.Filter('iir', config))
-    config = dict(order=150, freqs=[1500, 2000], type_of_pass='bandpass')
-    fb.add_filter(dsp.Filter('fir', config))
+    # fb = dsp.FilterBank()
+    # config = dict(order=5, freqs=[1500, 2000], type_of_pass='bandpass',
+    #               filter_design_method='bessel')
+    # fb.add_filter(dsp.Filter('iir', config))
+    # config = dict(order=150, freqs=[1500, 2000], type_of_pass='bandpass')
+    # fb.add_filter(dsp.Filter('fir', config))
 
     # Linkwitz-Riley
-    # fb = dsp.filterbanks.linkwitz_riley_crossovers(
-    #     [1000, 1500], [4, 6])
+    fb = dsp.filterbanks.linkwitz_riley_crossovers(
+        [1000, 1500], [4, 6])
+    fb.show_info()
     # i = dsp.generators.dirac(1024, 2)
     # i_out = fb.filter_signal(i, activate_zi=True)
     # i_out.bands[0].plot_magnitude()
@@ -95,12 +96,23 @@ def filter_bank_filter():
     # fb.plot_magnitude(mode='sequential', test_zi=True)
 
     # Single filter
-    i = dsp.generators.dirac(1024, 2)
-    config = dict(order=5, freqs=[1500, 2000], type_of_pass='bandpass',
-                  filter_design_method='bessel')
-    filt1 = dsp.Filter('iir', config)
-    filt1.filter_signal(i, activate_zi=True).plot_magnitude(normalize=None)
-    filt1.filter_signal(i, activate_zi=False).plot_magnitude(normalize=None)
+    # i = dsp.generators.dirac(1024, 2)
+    # config = dict(order=5, freqs=[1500, 2000], type_of_pass='bandpass',
+    #               filter_design_method='bessel')
+    # filt1 = dsp.Filter('iir', config)
+    # filt1.filter_signal(i, activate_zi=True).plot_magnitude(normalize=None)
+    # filt1.filter_signal(i, activate_zi=False).plot_magnitude(normalize=None)
+    dsp.plots.show()
+
+
+def perfect_reconstruction():
+    import dsptools as dsp
+    # import pyfar.dsp  # .smooth_fractional_octave
+    # https://pyfar.readthedocs.io/en/latest/modules/pyfar.dsp.html#pyfar.dsp.smooth_fractional_octave
+
+    fb = dsp.filterbanks.reconstructing_fractional_octave_bands()
+    fb.show_info()
+    fb.plot_magnitude(length_samples=2**12)
     dsp.plots.show()
 
 
@@ -108,6 +120,7 @@ if __name__ == '__main__':
     # filter_functionalities()
     # filtering()
     # filter_bank_add_remove()
-    filter_bank_filter()
+    # filter_bank_filter()
+    perfect_reconstruction()
 
     print()

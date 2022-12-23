@@ -8,7 +8,7 @@ import scipy.signal as sig
 from .signal_class import Signal
 from ._filter import (_biquad_coefficients, _impulse,
                       _group_delay_filter, _get_biquad_type,
-                      _filter_on_signal)
+                      _filter_on_signal, _filter_on_signal_ba)
 from ._plots import _zp_plot
 from dsptools.plots import general_plot
 
@@ -106,8 +106,12 @@ class Filter():
 
         """
         self.zi = []
-        for n in range(number_of_channels):
-            self.zi.append(sig.sosfilt_zi(self.sos))
+        if hasattr(self, 'sos'):
+            for n in range(number_of_channels):
+                self.zi.append(sig.sosfilt_zi(self.sos))
+        else:
+            for n in range(number_of_channels):
+                self.zi.append(sig.lfilter_zi(self.ba[0], self.ba[1]))
 
     @property
     def sampling_rate_hz(self):
@@ -155,13 +159,22 @@ class Filter():
             zi_old = self.zi
         else:
             zi_old = None
-        new_signal, zi_new = \
-            _filter_on_signal(
-                signal=signal,
-                sos=self.sos,
-                channel=channel,
-                zi=zi_old,
-                zero_phase=zero_phase)
+        if hasattr(self, 'sos'):
+            new_signal, zi_new = \
+                _filter_on_signal(
+                    signal=signal,
+                    sos=self.sos,
+                    channel=channel,
+                    zi=zi_old,
+                    zero_phase=zero_phase)
+        else:
+            new_signal, zi_new = \
+                _filter_on_signal_ba(
+                    signal=signal,
+                    ba=self.ba,
+                    channel=channel,
+                    zi=zi_old,
+                    zero_phase=zero_phase)
         if activate_zi:
             self.zi = zi_new
         return new_signal
@@ -186,7 +199,7 @@ class Filter():
             if 'width' not in filter_configuration.keys():
                 filter_configuration['width'] = None
             # Filter creation
-            ba = \
+            self.ba = \
                 [sig.firwin(numtaps=filter_configuration['order'],
                             cutoff=filter_configuration['freqs'],
                             window=filter_configuration
@@ -194,7 +207,7 @@ class Filter():
                             width=filter_configuration['width'],
                             pass_zero=filter_configuration['type_of_pass'],
                             fs=self.sampling_rate_hz), [1]]
-            self.sos = sig.tf2sos(ba[0], ba[1])
+            # self.sos = sig.tf2sos(ba[0], ba[1])
         elif filter_type == 'biquad':
             # Preparing parameters
             if type(filter_configuration['eq_type']) == str:
@@ -219,8 +232,8 @@ class Filter():
                 'Only (and at least) one type of filter coefficients ' +\
                 'should be passed to create a filter'
             if ('ba' in filter_configuration):
-                ba = filter_configuration['ba']
-                self.sos = sig.tf2sos(ba[0], ba[1])
+                self.ba = filter_configuration['ba']
+                # self.sos = sig.tf2sos(ba[0], ba[1])
             if ('zpk' in filter_configuration):
                 z, p, k = filter_configuration['zpk']
                 self.sos = sig.zpk2sos(z, p, k)
@@ -229,6 +242,10 @@ class Filter():
         self.info = filter_configuration
         self.info['sampling_rate_hz'] = self.sampling_rate_hz
         self.info['filter_type'] = filter_type
+        if hasattr(self, 'ba'):
+            self.info['preferred_method_of_filtering'] = 'ba'
+        elif hasattr(self, 'sos'):
+            self.info['preferred_method_of_filtering'] = 'sos'
         if 'filter_id' not in self.info.keys():
             self.info['filter_id'] = None
 
@@ -254,6 +271,8 @@ class Filter():
             temp += '-'
         txt += (temp+'\n')
         for k in self.info.keys():
+            if k == 'ba':
+                continue
             txt += \
                 f"""{str(k).replace('_', ' ').
                      capitalize()}: {self.info[k]}\n"""
@@ -274,7 +293,10 @@ class Filter():
 
         """
         ir_filt = _impulse(length_samples)
-        ir_filt = sig.sosfilt(sos=self.sos, x=ir_filt)
+        if hasattr(self, 'sos'):
+            ir_filt = sig.sosfilt(sos=self.sos, x=ir_filt)
+        else:
+            ir_filt = sig.lfilter(self.ba[0], self.ba[1], x=ir_filt)
         ir_filt = Signal(
             None, ir_filt,
             sampling_rate_hz=self.sampling_rate_hz,
@@ -376,8 +398,10 @@ class Filter():
             Returned only when `returns=True`.
 
         """
-        ba = sig.sos2tf(self.sos)
-        # import numpy as np
+        if hasattr(self, 'sos'):
+            ba = sig.sos2tf(self.sos)
+        else:
+            ba = self.ba
         f, gd = \
             _group_delay_filter(ba, length_samples, self.sampling_rate_hz)
         gd *= 1e3
@@ -453,7 +477,10 @@ class Filter():
             Returned only when `returns=True`.
 
         """
-        z, p, k = sig.sos2zpk(self.sos)
+        if hasattr(self, 'sos'):
+            z, p, k = sig.sos2zpk(self.sos)
+        else:
+            z, p, k = sig.tf2zpk(self.ba[0], self.ba[1])
         fig, ax = _zp_plot(z, p, returns=True)
         ax.text(0.75, 0.91, rf'$k={k:.1e}$', transform=ax.transAxes,
                 verticalalignment='top')

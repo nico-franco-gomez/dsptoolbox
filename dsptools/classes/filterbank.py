@@ -92,7 +92,7 @@ class FilterBank():
 
         Parameters
         ----------
-        filt : Filter
+        filt : `Filter`
             Filter to be added to the FilterBank.
         index : int, optional
             Index at which to insert the new Filter. Default: -1.
@@ -137,8 +137,9 @@ class FilterBank():
     # ======== Filtering ======================================================
     def filter_signal(self, signal: Signal, mode: str = 'parallel',
                       activate_zi: bool = False, zero_phase: bool = False):
-        """Applies the filter bank to a signal and returns a multiband signal.
-        `'parallel'`: returns a MultiBandSignal object where each band is
+        """Applies the filter bank to a signal and returns a multiband signal
+        or a `Signal` object.
+        `'parallel'`: returns a `MultiBandSignal` object where each band is
         the output of each filter.
         `'sequential'`: applies each filter to the given Signal in a sequential
         manner and returns output with same dimension.
@@ -147,7 +148,7 @@ class FilterBank():
 
         Parameters
         ----------
-        signal : class:Signal
+        signal : `Signal`
             Signal to be filtered.
         mode : str, optional
             Way to apply filter bank to the signal. Supported modes are:
@@ -161,8 +162,8 @@ class FilterBank():
 
         Returns
         -------
-        new_sig : `'sequential'` or `'summed'` -> Signal.
-                  `'parallel'` -> MultiBandSignal
+        new_sig : `'sequential'` or `'summed'` -> `Signal`.
+                  `'parallel'` -> `MultiBandSignal`.
             New signal after filtering.
 
         """
@@ -221,13 +222,16 @@ class FilterBank():
                 print()
                 txt = f'Filter {ind}:'
                 for kf in f1.info:
+                    if kf == 'ba':
+                        continue
                     txt += \
                         f""" | {str(kf).replace('_', ' ').
                                 capitalize()}: {f1.info[kf]}"""
                 print(txt)
         print()
 
-    def plot_magnitude(self, mode: str = 'parallel', range_hz=[20, 20e3],
+    def plot_magnitude(self, mode: str = 'parallel',
+                       length_samples: int = 1024, range_hz=[20, 20e3],
                        test_zi: bool = False, returns: bool = False):
         """Plots the magnitude response of each filter.
 
@@ -254,7 +258,8 @@ class FilterBank():
         """
         import numpy as np
         d = dirac(
-            length_samples=1024, number_of_channels=1, sampling_rate_hz=48000)
+            length_samples=length_samples,
+            number_of_channels=1, sampling_rate_hz=48000)
         if mode == 'parallel':
             bs = self.filter_signal(d, mode='parallel', activate_zi=test_zi)
             specs = []
@@ -268,10 +273,15 @@ class FilterBank():
                         normalize=None)
                 specs.append(np.squeeze(sp))
             specs = np.array(specs).T
+            if np.min(specs) < np.max(specs)-50:
+                range_y = [np.max(specs)-50, np.max(specs)+2]
+            else:
+                range_y = None
             fig, ax = general_plot(f, specs, range_hz, ylabel='Magnitude / dB',
                                    returns=True,
                                    labels=[f'Filter {h}'
-                                           for h in range(bs.number_of_bands)])
+                                           for h in range(bs.number_of_bands)],
+                                   range_y=range_y)
         elif mode == 'sequential':
             bs = self.filter_signal(d, mode='sequential', activate_zi=test_zi)
             bs.set_spectrum_parameters(method='standard')
