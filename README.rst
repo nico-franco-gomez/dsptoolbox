@@ -12,12 +12,11 @@ Getting Started
 ===============
 
 Check out the `examples`_ for some basic examples of the dsptools package
-and refer to the documentation (docs/_build/latex/dsptools.pdf or docs/_build/html/index.html)
-for the complete description of classes and methods.
+and refer to the documentation for the complete description of classes and methods.
 
 .. note::
-    The documentation at `read the docs`_ is available but not working at the moment because of
-    an internal bug in one of the modules needed to build the package. This will be fixed in the future.
+    The documentation at `read the docs`_ is available but not working completely without errors
+    because of a bug in one of the modules needed to build the package. This will be fixed in the future.
     Until then, please refer to the other available documentation.
 
 Installation

@@ -1,5 +1,6 @@
 from os import sep
 from pickle import dump, HIGHEST_PROTOCOL
+from copy import deepcopy
 
 from .signal_class import Signal
 from .filter_class import Filter
@@ -7,11 +8,12 @@ from ._filter import _filterbank_on_signal
 from dsptools.generators import dirac
 from dsptools.plots import general_plot
 from dsptools._general_helpers import _get_normalized_spectrum
+from dsptools._standard import _group_delay_direct
 
 
 class FilterBank():
     """Standard template for filter banks containing filters, filters' initial
-    values, metadata and the some useful plotting and filtering methods.
+    values, metadata and some useful plotting methods.
 
     """
     # ======== Constructor and initializers ===================================
@@ -37,8 +39,10 @@ class FilterBank():
 
         Methods
         -------
-        General: add_filter, remove_filter.
-        Prints: show_info.
+        General
+            add_filter, remove_filter, save_filterbank.
+        Prints and plots
+            plot_magnitude, plot_phase, show_info.
 
         """
         #
@@ -194,6 +198,8 @@ class FilterBank():
             zero_phase=zero_phase,
             same_sampling_rate=self.same_sampling_rate)
 
+        new_sig.signal_type = signal.signal_type
+        new_sig.signal_id = signal.signal_id
         return new_sig
 
     # ======== Prints and plots ===============================================
@@ -230,8 +236,7 @@ class FilterBank():
                 print(txt)
         print()
 
-    def plot_magnitude(self, mode: str = 'parallel',
-                       length_samples: int = 1024, range_hz=[20, 20e3],
+    def plot_magnitude(self, mode: str = 'parallel', range_hz=[20, 20e3],
                        test_zi: bool = False, returns: bool = False):
         """Plots the magnitude response of each filter.
 
@@ -257,6 +262,14 @@ class FilterBank():
 
         """
         import numpy as np
+        if hasattr(self.filters[-1], 'ba'):
+            length_samples = \
+                max(len(self.filters[-1].ba[0]),
+                    len(self.filters[-1].ba[1])) + 2
+        else:
+            length_samples = len(self.filters[-1].sos)*2 + 2
+        if length_samples < 1024:
+            length_samples = 1024
         d = dirac(
             length_samples=length_samples,
             number_of_channels=1, sampling_rate_hz=48000)
@@ -296,6 +309,165 @@ class FilterBank():
                 returns=True,
                 labels=[f'Sequential - Channel {n}'
                         for n in range(bs.number_of_channels)])
+        elif mode == 'summed':
+            bs = self.filter_signal(d, mode='summed', activate_zi=test_zi)
+            bs.set_spectrum_parameters(method='standard')
+            f, sp = bs.get_spectrum()
+            f, sp = _get_normalized_spectrum(
+                f, np.squeeze(sp),
+                f_range_hz=range_hz,
+                normalize=None
+            )
+            fig, ax = general_plot(
+                f, sp, range_hz, ylabel='Magnitude / dB',
+                returns=True,
+                labels='Summed')
+        if returns:
+            return fig, ax
+
+    def plot_phase(self, mode: str = 'parallel', range_hz=[20, 20e3],
+                   test_zi: bool = False, unwrap: bool = False,
+                   returns: bool = False):
+        """Plots the phase response of each filter.
+
+        Parameters
+        ----------
+        mode : str, optional
+            Type of plot. `'parallel'` plots every filter's frequency response,
+            `'sequential'` plots the frequency response after having filtered
+            one impulse with every filter in the FilterBank. `'summed'`
+            sums up every filter output. Default: `'parallel'`.
+        range_hz : array-like, optional
+            Range of Hz to plot. Default: [20, 20e3].
+        test_zi : bool, optional
+            Uses the zi's of each filter to test the FilterBank's output.
+            Default: `False`.
+        unwrap : bool, optional
+            When `True`, unwrapped phase is plotted. Default: `False`.
+        returns : bool, optional
+            When `True`, the figure and axis are returned. Default: `False`.
+
+        Returns
+        -------
+        fig, ax
+            Returned only when `returns=True`.
+
+        """
+        import numpy as np
+        if hasattr(self.filters[-1], 'ba'):
+            length_samples = \
+                max(len(self.filters[-1].ba[0]),
+                    len(self.filters[-1].ba[1])) + 2
+        else:
+            length_samples = len(self.filters[-1].sos)*2 + 2
+        if length_samples < 1024:
+            length_samples = 1024
+        d = dirac(
+            length_samples=length_samples,
+            number_of_channels=1, sampling_rate_hz=48000)
+        if mode == 'parallel':
+            bs = self.filter_signal(d, mode='parallel', activate_zi=test_zi)
+            phase = []
+            f = bs.bands[0].get_spectrum()[0]
+            for b in bs.bands:
+                phase.append(np.angle(b.get_spectrum()[1]))
+            phase = np.squeeze(np.array(phase).T)
+            if unwrap:
+                phase = np.unwrap(phase, axis=0)
+            fig, ax = general_plot(f, phase, range_hz, ylabel='Phase / rad',
+                                   returns=True,
+                                   labels=[f'Filter {h}'
+                                           for h in range(bs.number_of_bands)])
+        elif mode == 'sequential':
+            bs = self.filter_signal(d, mode='sequential', activate_zi=test_zi)
+            f, sp = bs.get_spectrum()
+            ph = np.angle(sp)
+            if unwrap:
+                ph = np.unwrap(ph, axis=0)
+            fig, ax = general_plot(
+                f, ph, range_hz, ylabel='Phase / rad',
+                returns=True,
+                labels=[f'Sequential - Channel {n}'
+                        for n in range(bs.number_of_channels)])
+        elif mode == 'summed':
+            bs = self.filter_signal(d, mode='summed', activate_zi=test_zi)
+            f, sp = bs.get_spectrum()
+            ph = np.angle(sp)
+            if unwrap:
+                ph = np.unwrap(ph, axis=0)
+            fig, ax = general_plot(
+                f, ph, range_hz, ylabel='Phase / rad',
+                returns=True,
+                labels='Summed')
+        if returns:
+            return fig, ax
+
+    def plot_group_delay(self, mode: str = 'parallel', range_hz=[20, 20e3],
+                         test_zi: bool = False, returns: bool = False):
+        """Plots the phase response of each filter.
+
+        Parameters
+        ----------
+        mode : str, optional
+            Type of plot. `'parallel'` plots every filter's frequency response,
+            `'sequential'` plots the frequency response after having filtered
+            one impulse with every filter in the FilterBank. `'summed'`
+            sums up every filter output. Default: `'parallel'`.
+        range_hz : array-like, optional
+            Range of Hz to plot. Default: [20, 20e3].
+        test_zi : bool, optional
+            Uses the zi's of each filter to test the FilterBank's output.
+            Default: `False`.
+        returns : bool, optional
+            When `True`, the figure and axis are returned. Default: `False`.
+
+        Returns
+        -------
+        fig, ax
+            Returned only when `returns=True`.
+
+        """
+        import numpy as np
+        if hasattr(self.filters[-1], 'ba'):
+            length_samples = \
+                max(len(self.filters[-1].ba[0]),
+                    len(self.filters[-1].ba[1])) + 2
+        else:
+            length_samples = len(self.filters[-1].sos)*2 + 2
+        if length_samples < 1024:
+            length_samples = 1024
+        d = dirac(
+            length_samples=length_samples,
+            number_of_channels=1, sampling_rate_hz=48000)
+        if mode == 'parallel':
+            bs = self.filter_signal(d, mode='parallel', activate_zi=test_zi)
+            gd = []
+            f = bs.bands[0].get_spectrum()[0]
+            for b in bs.bands:
+                gd.append(_group_delay_direct(
+                    np.squeeze(b.get_spectrum()[1]), delta_f=f[1]-f[0]))
+            gd = np.squeeze(np.array(gd).T)*1e3
+            fig, ax = general_plot(f, gd, range_hz, ylabel='Group delay / ms',
+                                   returns=True,
+                                   labels=[f'Filter {h}'
+                                           for h in range(bs.number_of_bands)])
+        elif mode == 'sequential':
+            bs = self.filter_signal(d, mode='sequential', activate_zi=test_zi)
+            f, sp = bs.get_spectrum()
+            gd = _group_delay_direct(sp.squeeze(), f[1]-f[0])*1e3
+            fig, ax = general_plot(
+                f, gd[..., None], range_hz, ylabel='Group delay / ms',
+                returns=True,
+                labels=[f'Sequential - Channel {n}'
+                        for n in range(bs.number_of_channels)])
+        elif mode == 'summed':
+            bs = self.filter_signal(d, mode='summed', activate_zi=test_zi)
+            f, sp = bs.get_spectrum()
+            gd = _group_delay_direct(sp.squeeze(), f[1]-f[0])*1e3
+            fig, ax = general_plot(
+                f, gd[..., None], range_hz, ylabel='Group delay / ms',
+                returns=True,
+                labels='Summed')
         if returns:
             return fig, ax
 
@@ -316,3 +488,14 @@ class FilterBank():
         path += '.pkl'
         with open(path, 'wb') as data_file:
             dump(self, data_file, HIGHEST_PROTOCOL)
+
+    def copy(self):
+        """Returns a copy of the object.
+        
+        Returns
+        -------
+        new_sig : `FilterBank`
+            Copy of filter bank.
+
+        """
+        return deepcopy(self)

@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.24 (TeX Live 2022) (preloaded format=pdflatex 2022.11.10)  22 DEC 2022 10:56
+This is pdfTeX, Version 3.141592653-2.6-1.40.24 (TeX Live 2022) (preloaded format=pdflatex 2022.11.10)  26 DEC 2022 17:01
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -798,12 +798,12 @@ File: umsb.fd 2013/01/14 v3.01 AMS symbols B
 ]
 Chapter 1.
 LaTeX Font Info:    Trying to load font information for T1+txtt on input line 1
-19.
+18.
 (/usr/local/texlive/2022/texmf-dist/tex/latex/txfonts/t1txtt.fd
 File: t1txtt.fd 2000/12/15 v3.1
 )
 LaTeX Font Info:    Font shape `T1/txtt/b/n' in size <10> not available
-(Font)              Font shape `T1/txtt/bx/n' tried instead on input line 120.
+(Font)              Font shape `T1/txtt/bx/n' tried instead on input line 119.
  [1
 
 ] [2
@@ -811,109 +811,84 @@ LaTeX Font Info:    Font shape `T1/txtt/b/n' in size <10> not available
 ]
 Chapter 2.
 LaTeX Font Info:    Trying to load font information for TS1+qtm on input line 1
-45.
+44.
 (/usr/local/texlive/2022/texmf-dist/tex/latex/tex-gyre/ts1qtm.fd
 File: ts1qtm.fd 2009/09/25 v1.2 font definition file for TS1/qtm
 )
 LaTeX Font Info:    Font shape `T1/txtt/m/it' in size <10> not available
-(Font)              Font shape `T1/txtt/m/sl' tried instead on input line 320.
+(Font)              Font shape `T1/txtt/m/sl' tried instead on input line 319.
 
-Underfull \hbox (badness 10000) in paragraph at lines 320--320
+Underfull \hbox (badness 10000) in paragraph at lines 319--319
 []|[][]\T1/txtt/m/sl/10 plot_spectrogram[][]\T1/qtm/m/n/10 ([channel_number, lo
 gfreqs,
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 320--320
+Underfull \hbox (badness 10000) in paragraph at lines 319--319
 []|[][]\T1/txtt/m/sl/10 set_csm_parameters[][]\T1/qtm/m/n/10 ([window_length_sa
 mples,
  []
 
 
-Overfull \hbox (1.62712pt too wide) in paragraph at lines 320--320
+Overfull \hbox (1.62712pt too wide) in paragraph at lines 319--319
 []|[][]\T1/txtt/m/sl/10 set_spectrogram_parameters[][]\T1/qtm/m/n/10 ([channel_
 number,
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 320--320
+Underfull \hbox (badness 10000) in paragraph at lines 319--319
 []|[][]\T1/txtt/m/sl/10 plot_spectrogram[][]\T1/qtm/m/n/10 ([channel_number, lo
 gfreqs,
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 320--320
+Underfull \hbox (badness 10000) in paragraph at lines 319--319
 []|[][]\T1/txtt/m/sl/10 set_csm_parameters[][]\T1/qtm/m/n/10 ([window_length_sa
 mples,
  []
 
 
-Overfull \hbox (1.62712pt too wide) in paragraph at lines 320--320
+Overfull \hbox (1.62712pt too wide) in paragraph at lines 319--319
 []|[][]\T1/txtt/m/sl/10 set_spectrogram_parameters[][]\T1/qtm/m/n/10 ([channel_
 number,
  []
 
 [3] [4]
-Underfull \hbox (badness 10000) in paragraph at lines 407--407
-[]\T1/qtm/b/n/10 Time data: add_channel, re-move_channel,
+Underfull \hbox (badness 10000) in paragraph at lines 421--421
+[]\T1/qtm/m/n/10 plot_magnitude, plot_time, plot_spectrogram,
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 407--407
-[]\T1/qtm/b/n/10 Spec-trum: set_spectrum_parameters,
+Underfull \hbox (badness 10000) in paragraph at lines 421--421
+[]\T1/qtm/m/n/10 set_window, set_coherence, plot_group_delay,
  []
 
-
-Underfull \hbox (badness 5431) in paragraph at lines 407--407
-[]\T1/qtm/b/n/10 Cross spec-tral ma-trix: set_csm_parameters,
- []
-
-
-Underfull \hbox (badness 10000) in paragraph at lines 407--407
-[]\T1/qtm/b/n/10 Spec-tro-gram: set_spectrogram_parameters,
- []
-
-
-Underfull \hbox (badness 10000) in paragraph at lines 407--407
-[]\T1/qtm/b/n/10 Plots: plot_magnitude, plot_time,
- []
-
-[5] [6] [7] [8] [9] [10]
-Underfull \hbox (badness 10000) in paragraph at lines 1368--1368
+[5] [6] [7] [8] [9] [10] [11] [12]
+Underfull \hbox (badness 10000) in paragraph at lines 1533--1533
 []|[][]\T1/txtt/m/sl/10 plot_group_delay[][]\T1/qtm/m/n/10 ([length_samples, ra
 nge_hz,
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 1368--1368
+Underfull \hbox (badness 10000) in paragraph at lines 1533--1533
 []|[][]\T1/txtt/m/sl/10 plot_group_delay[][]\T1/qtm/m/n/10 ([length_samples, ra
 nge_hz,
  []
 
-[11]
-Underfull \hbox (badness 10000) in paragraph at lines 1425--1425
-[]\T1/qtm/b/n/10 Gen-eral: set_filter_parameters, get_filter_parameters,
- []
-
-
-Underfull \hbox (badness 10000) in paragraph at lines 1425--1425
-[]\T1/qtm/m/n/10 plot_group_delay, plot_phase,
- []
-
-[12] [13] [14] [15] [16] [17] [18]
+[13] [14] [15] [16] [17] [18] [19] [20]
 Chapter 3.
-[19
+[21
 
-] [20] [21] [22] [23] [24] [25] [26] [27] [28] [29] [30] [31] [32
-
-]
+] [22] [23] [24] [25] [26] [27] [28] [29] [30] [31] [32] [33] [34]
 Chapter 4.
-[33] [34
+[35
 
-] [35
+] [36
+
+] [37
 
 
-] (./dsptools.ind [36
+] (./dsptools.ind [38
 
 
 ]
@@ -1012,7 +987,7 @@ Underfull \hbox (badness 10000) in paragraph at lines 92--94
 \T1/qtm/m/it/10 tools.classes.filter_class.Filter method\T1/qtm/m/n/10 ),
  []
 
-[37
+[39
 
 ]
 Underfull \hbox (badness 10000) in paragraph at lines 96--97
@@ -1022,7 +997,7 @@ ignal_class.Signal
 
 
 Underfull \hbox (badness 10000) in paragraph at lines 97--99
-[]\T1/txtt/m/n/10 get_filter_parameters() \T1/qtm/m/n/10 (\T1/qtm/m/it/10 dsp-
+[]\T1/txtt/m/n/10 get_filter_metadata() \T1/qtm/m/n/10 (\T1/qtm/m/it/10 dsp-
  []
 
 
@@ -1173,210 +1148,222 @@ s.filter_class.Filter
 
 Underfull \hbox (badness 10000) in paragraph at lines 171--173
 []\T1/txtt/m/n/10 plot_phase() \T1/qtm/m/n/10 (\T1/qtm/m/it/10 dsp-tools.classe
+s.filterbank.FilterBank
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 173--175
+[]\T1/txtt/m/n/10 plot_phase() \T1/qtm/m/n/10 (\T1/qtm/m/it/10 dsp-tools.classe
 s.signal_class.Signal
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 173--175
+Underfull \hbox (badness 10000) in paragraph at lines 175--177
 []\T1/txtt/m/n/10 plot_spectrogram() \T1/qtm/m/n/10 (\T1/qtm/m/it/10 dsp-
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 173--175
+Underfull \hbox (badness 10000) in paragraph at lines 175--177
 \T1/qtm/m/it/10 tools.classes.signal_class.Signal method\T1/qtm/m/n/10 ),
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 175--177
+Underfull \hbox (badness 10000) in paragraph at lines 177--179
 []\T1/txtt/m/n/10 plot_time() \T1/qtm/m/n/10 (\T1/qtm/m/it/10 dsp-tools.classes
 .signal_class.Signal
  []
 
 
-Overfull \hbox (45.64229pt too wide) in paragraph at lines 184--186
+Underfull \hbox (badness 10000) in paragraph at lines 185--187
+[]\T1/txtt/m/n/10 reconstructing_fractional_octave_bands() \T1/qtm/m/n/10 (\T1/
+qtm/m/it/10 in
+ []
+
+
+Overfull \hbox (45.64229pt too wide) in paragraph at lines 188--190
 []\T1/txtt/m/n/10 remove_band() \T1/qtm/m/n/10 (\T1/qtm/m/it/10 dsp-tools.class
 es.multibandsignal.MultiBandSignal
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 186--188
+Underfull \hbox (badness 10000) in paragraph at lines 190--192
 []\T1/txtt/m/n/10 remove_channel() \T1/qtm/m/n/10 (\T1/qtm/m/it/10 dsp-
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 186--188
+Underfull \hbox (badness 10000) in paragraph at lines 190--192
 \T1/qtm/m/it/10 tools.classes.signal_class.Signal method\T1/qtm/m/n/10 ),
  []
 
-
-Underfull \hbox (badness 10000) in paragraph at lines 188--190
+[40]
+Underfull \hbox (badness 10000) in paragraph at lines 192--194
 []\T1/txtt/m/n/10 remove_filter() \T1/qtm/m/n/10 (\T1/qtm/m/it/10 dsp-
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 188--190
+Underfull \hbox (badness 10000) in paragraph at lines 192--194
 \T1/qtm/m/it/10 tools.classes.filterbank.FilterBank method\T1/qtm/m/n/10 ),
  []
 
-[38]
-Underfull \hbox (badness 10000) in paragraph at lines 194--196
+
+Underfull \hbox (badness 10000) in paragraph at lines 198--200
 []\T1/txtt/m/n/10 same_sampling_rate \T1/qtm/m/n/10 (\T1/qtm/m/it/10 dsp-
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 194--196
+Underfull \hbox (badness 10000) in paragraph at lines 198--200
 \T1/qtm/m/it/10 tools.classes.multibandsignal.MultiBandSignal
  []
 
 
-Underfull \hbox (badness 6808) in paragraph at lines 196--198
+Underfull \hbox (badness 6808) in paragraph at lines 200--202
 []\T1/txtt/m/n/10 sampling_rate_hz \T1/qtm/m/n/10 (\T1/qtm/m/it/10 dsp-tools.cl
 asses.filter_class.Filter
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 198--200
+Underfull \hbox (badness 10000) in paragraph at lines 202--204
 []\T1/txtt/m/n/10 sampling_rate_hz \T1/qtm/m/n/10 (\T1/qtm/m/it/10 dsp-
- []
-
-
-Underfull \hbox (badness 10000) in paragraph at lines 198--200
-\T1/qtm/m/it/10 tools.classes.multibandsignal.MultiBandSignal
- []
-
-
-Underfull \hbox (badness 10000) in paragraph at lines 200--202
-[]\T1/txtt/m/n/10 sampling_rate_hz \T1/qtm/m/n/10 (\T1/qtm/m/it/10 dsp-
- []
-
-
-Underfull \hbox (badness 10000) in paragraph at lines 200--202
-\T1/qtm/m/it/10 tools.classes.signal_class.Signal prop-erty\T1/qtm/m/n/10 ),
  []
 
 
 Underfull \hbox (badness 10000) in paragraph at lines 202--204
+\T1/qtm/m/it/10 tools.classes.multibandsignal.MultiBandSignal
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 204--206
+[]\T1/txtt/m/n/10 sampling_rate_hz \T1/qtm/m/n/10 (\T1/qtm/m/it/10 dsp-
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 204--206
+\T1/qtm/m/it/10 tools.classes.signal_class.Signal prop-erty\T1/qtm/m/n/10 ),
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 206--208
 []\T1/txtt/m/n/10 save_filter() \T1/qtm/m/n/10 (\T1/qtm/m/it/10 dsp-tools.class
 es.filter_class.Filter
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 204--206
+Underfull \hbox (badness 10000) in paragraph at lines 208--210
 []\T1/txtt/m/n/10 save_filterbank() \T1/qtm/m/n/10 (\T1/qtm/m/it/10 dsp-
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 204--206
+Underfull \hbox (badness 10000) in paragraph at lines 208--210
 \T1/qtm/m/it/10 tools.classes.filterbank.FilterBank method\T1/qtm/m/n/10 ),
  []
 
 
-Overfull \hbox (45.64229pt too wide) in paragraph at lines 206--208
+Overfull \hbox (45.64229pt too wide) in paragraph at lines 210--212
 []\T1/txtt/m/n/10 save_signal() \T1/qtm/m/n/10 (\T1/qtm/m/it/10 dsp-tools.class
 es.multibandsignal.MultiBandSignal
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 208--210
+Underfull \hbox (badness 10000) in paragraph at lines 212--214
 []\T1/txtt/m/n/10 save_signal() \T1/qtm/m/n/10 (\T1/qtm/m/it/10 dsp-tools.class
 es.signal_class.Signal
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 212--214
+Underfull \hbox (badness 10000) in paragraph at lines 216--218
 []\T1/txtt/m/n/10 set_csm_parameters() \T1/qtm/m/n/10 (\T1/qtm/m/it/10 dsp-
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 212--214
+Underfull \hbox (badness 10000) in paragraph at lines 216--218
 \T1/qtm/m/it/10 tools.classes.signal_class.Signal method\T1/qtm/m/n/10 ),
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 215--217
+Underfull \hbox (badness 10000) in paragraph at lines 219--221
 []\T1/txtt/m/n/10 set_filter_parameters() \T1/qtm/m/n/10 (\T1/qtm/m/it/10 dsp-
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 215--217
+Underfull \hbox (badness 10000) in paragraph at lines 219--221
 \T1/qtm/m/it/10 tools.classes.filter_class.Filter method\T1/qtm/m/n/10 ),
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 217--219
+Underfull \hbox (badness 10000) in paragraph at lines 221--223
 []\T1/txtt/m/n/10 set_spectrogram_parameters() \T1/qtm/m/n/10 (\T1/qtm/m/it/10 
 dsp-
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 217--219
+Underfull \hbox (badness 10000) in paragraph at lines 221--223
 \T1/qtm/m/it/10 tools.classes.signal_class.Signal method\T1/qtm/m/n/10 ),
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 219--221
+Underfull \hbox (badness 10000) in paragraph at lines 223--225
 []\T1/txtt/m/n/10 set_spectrum_parameters() \T1/qtm/m/n/10 (\T1/qtm/m/it/10 dsp
 -
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 219--221
+Underfull \hbox (badness 10000) in paragraph at lines 223--225
 \T1/qtm/m/it/10 tools.classes.signal_class.Signal method\T1/qtm/m/n/10 ),
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 221--223
+Underfull \hbox (badness 10000) in paragraph at lines 225--227
 []\T1/txtt/m/n/10 set_window() \T1/qtm/m/n/10 (\T1/qtm/m/it/10 dsp-tools.classe
 s.signal_class.Signal
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 224--226
+Underfull \hbox (badness 10000) in paragraph at lines 228--230
 []\T1/txtt/m/n/10 show_filter_parameters() \T1/qtm/m/n/10 (\T1/qtm/m/it/10 dsp-
 
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 224--226
+Underfull \hbox (badness 10000) in paragraph at lines 228--230
 \T1/qtm/m/it/10 tools.classes.filter_class.Filter method\T1/qtm/m/n/10 ),
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 226--228
+Underfull \hbox (badness 10000) in paragraph at lines 230--232
 []\T1/txtt/m/n/10 show_info() \T1/qtm/m/n/10 (\T1/qtm/m/it/10 dsp-tools.classes
 .filterbank.FilterBank
  []
 
 
-Overfull \hbox (35.14232pt too wide) in paragraph at lines 228--230
+Overfull \hbox (35.14232pt too wide) in paragraph at lines 232--234
 []\T1/txtt/m/n/10 show_info() \T1/qtm/m/n/10 (\T1/qtm/m/it/10 dsp-tools.classes
 .multibandsignal.MultiBandSignal
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 233--235
+Underfull \hbox (badness 10000) in paragraph at lines 237--239
 []\T1/txtt/m/n/10 signal_type \T1/qtm/m/n/10 (\T1/qtm/m/it/10 dsp-tools.classes
 .signal_class.Signal
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 235--237
+Underfull \hbox (badness 10000) in paragraph at lines 239--241
 []\T1/txtt/m/n/10 spectral_deconvolve() \T1/qtm/m/n/10 (\T1/qtm/m/it/10 in mod-
 ule dsp-
  []
 
-[39]) (./dsptools.aux)
+[41]) (./dsptools.aux)
 Package rerunfilecheck Info: File `dsptools.out' has not changed.
-(rerunfilecheck)             Checksum: D9E5ECFC1A13F2F77FA0BD101BA3D9C7;3440.
+(rerunfilecheck)             Checksum: 2A26D5516A855E8884CE9A2A8D4C6BE5;3440.
  ) 
 Here is how much of TeX's memory you used:
- 15474 strings out of 478268
- 259351 string characters out of 5846346
- 572959 words of memory out of 5000000
- 33162 multiletter control sequences out of 15000+600000
+ 15480 strings out of 478268
+ 259534 string characters out of 5846346
+ 573057 words of memory out of 5000000
+ 33164 multiletter control sequences out of 15000+600000
  518318 words of font info for 70 fonts, out of 8000000 for 9000
  1142 hyphenation exceptions out of 8191
- 70i,12n,76p,2495b,716s stack positions out of 10000i,1000n,20000p,200000b,200000s
+ 70i,12n,76p,2495b,718s stack positions out of 10000i,1000n,20000p,200000b,200000s
 {/usr/local/texlive/2022/texmf-dist/fonts/enc/dvips/tex-gyre/q-ec.enc}{/usr/l
 ocal/texlive/2022/texmf-dist/fonts/enc/dvips/tex-gyre/q-ts1.enc}</usr/local/tex
 live/2022/texmf-dist/fonts/type1/public/tex-gyre/qhvb.pfb></usr/local/texlive/2
@@ -1389,10 +1376,10 @@ ublic/tex-gyre/qtmri.pfb></usr/local/texlive/2022/texmf-dist/fonts/type1/public
 /txfonts/t1xbtt.pfb></usr/local/texlive/2022/texmf-dist/fonts/type1/public/txfo
 nts/t1xtt.pfb></usr/local/texlive/2022/texmf-dist/fonts/type1/public/txfonts/t1
 xtt.pfb>
-Output written on dsptools.pdf (43 pages, 274910 bytes).
+Output written on dsptools.pdf (45 pages, 283863 bytes).
 PDF statistics:
- 910 PDF objects out of 1000 (max. 8388607)
- 794 compressed objects within 8 object streams
- 154 named destinations out of 1000 (max. 500000)
+ 938 PDF objects out of 1000 (max. 8388607)
+ 818 compressed objects within 9 object streams
+ 158 named destinations out of 1000 (max. 500000)
  189 words of extra memory for PDF output out of 10000 (max. 10000000)
 

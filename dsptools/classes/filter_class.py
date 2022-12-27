@@ -3,6 +3,8 @@ Contains Filter classes
 """
 from os import sep
 from pickle import dump, HIGHEST_PROTOCOL
+from warnings import warn
+from copy import deepcopy
 
 import scipy.signal as sig
 from .signal_class import Signal
@@ -45,8 +47,8 @@ class Filter():
         sampling_rate_hz : int, optional
             Sampling rate in Hz for the digital filter. Default: 48000.
 
-        Keys
-        ----
+        Notes
+        -----
         For `iir`:
             order, freqs, type_of_pass, filter_design_method,
             filter_id (optional).
@@ -80,10 +82,13 @@ class Filter():
 
         Methods
         -------
-        General: set_filter_parameters, get_filter_parameters, get_ir.
-        Plots or prints: show_filter_parameters, plot_magnitude,
-            plot_group_delay, plot_phase, plot_zp.
-        Filtering: filter_signal.
+        General
+            set_filter_parameters, get_filter_metadata, get_ir.
+        Plots or prints
+            show_filter_parameters, plot_magnitude, plot_group_delay,
+            plot_phase, plot_zp.
+        Filtering
+            filter_signal.
 
         """
         self.sampling_rate_hz = sampling_rate_hz
@@ -125,13 +130,13 @@ class Filter():
 
     # ======== Filtering ======================================================
     def filter_signal(self, signal: Signal, channel=None,
-                      activate_zi: bool = False, zero_phase: bool = None):
-        """Takes in a Signal object and filters selected channels. Exports a
-        new Signal object.
+                      activate_zi: bool = False, zero_phase: bool = False):
+        """Takes in a `Signal` object and filters selected channels. Exports a
+        new `Signal` object.
 
         Parameters
         ----------
-        signal : class:Signal
+        signal : `Signal`
             Signal to be filtered.
         channel : int or array-like, optional
             Channel or array of channels to be filtered. When `None`, all
@@ -144,7 +149,7 @@ class Filter():
 
         Returns
         -------
-        new_signal : class:Signal
+        new_signal : `Signal`
             New Signal object.
 
         """
@@ -159,6 +164,9 @@ class Filter():
             zi_old = self.zi
         else:
             zi_old = None
+        if self.info['order'] > signal.time_data.shape[0]:
+            warn('Filter is longer than signal, results might be ' +
+                 'meaningless!')
         if hasattr(self, 'sos'):
             new_signal, zi_new = \
                 _filter_on_signal(
@@ -207,7 +215,8 @@ class Filter():
                             width=filter_configuration['width'],
                             pass_zero=filter_configuration['type_of_pass'],
                             fs=self.sampling_rate_hz), [1]]
-            # self.sos = sig.tf2sos(ba[0], ba[1])
+            if len(self.ba[0]) < 10 and len(self.ba[1]) < 10:
+                self.sos = sig.tf2sos(self.ba[0], self.ba[1])
         elif filter_type == 'biquad':
             # Preparing parameters
             if type(filter_configuration['eq_type']) == str:
@@ -225,6 +234,7 @@ class Filter():
             filter_configuration['eq_type'] = \
                 _get_biquad_type(filter_configuration['eq_type']).capitalize()
             self.sos = sig.tf2sos(ba[0], ba[1])
+            filter_configuration['order'] = max(len(ba[0]), len(ba[1]))
         else:
             assert ('ba' in filter_configuration) ^ \
                 ('sos' in filter_configuration) ^ \
@@ -233,12 +243,17 @@ class Filter():
                 'should be passed to create a filter'
             if ('ba' in filter_configuration):
                 self.ba = filter_configuration['ba']
-                # self.sos = sig.tf2sos(ba[0], ba[1])
+                if len(self.ba[0]) < 10 and len(self.ba[1]) < 10:
+                    self.sos = sig.tf2sos(self.ba[0], self.ba[1])
+                filter_configuration['order'] = \
+                    max(len(self.ba[0]), len(self.ba[1]))
             if ('zpk' in filter_configuration):
                 z, p, k = filter_configuration['zpk']
                 self.sos = sig.zpk2sos(z, p, k)
+                filter_configuration['order'] = len(self.sos)*2
             if ('sos' in filter_configuration):
                 self.sos = filter_configuration['sos']
+                filter_configuration['order'] = len(self.sos)*2
         self.info = filter_configuration
         self.info['sampling_rate_hz'] = self.sampling_rate_hz
         self.info['filter_type'] = filter_type
@@ -250,13 +265,13 @@ class Filter():
             self.info['filter_id'] = None
 
     # ======== Getters ========================================================
-    def get_filter_parameters(self):
-        """Returns filter parameters.
+    def get_filter_metadata(self):
+        """Returns filter metadata.
 
         Returns
         -------
         info : dict
-            Dictionary containing all filter parameters.
+            Dictionary containing all filter metadata.
 
         """
         return self.info
@@ -288,7 +303,7 @@ class Filter():
 
         Returns
         -------
-        ir_filt : `np.ndarray`
+        ir_filt : `Signal`
             Impulse response of the filter.
 
         """
@@ -351,7 +366,7 @@ class Filter():
         normalize : str, optional
             Mode for normalization, supported are `'1k'` for normalization
             with value at frequency 1 kHz or `'max'` for normalization with
-            maximal value. Use `None` for no normalization. Default: `'1k'`.
+            maximal value. Use `None` for no normalization. Default: `None`.
         show_info_box : bool, optional
             Shows an information box on the plot. Default: `True`.
         returns : bool, optional
@@ -428,8 +443,7 @@ class Filter():
     def plot_phase(self, length_samples: int = 512, range_hz=[20, 20e3],
                    unwrap: bool = False, show_info_box: bool = False,
                    returns: bool = False):
-        """Plots magnitude spectrum.
-        Change parameters of spectrum with set_spectrum_parameters.
+        """Plots phase spectrum.
 
         Parameters
         ----------
@@ -509,3 +523,14 @@ class Filter():
         path += '.pkl'
         with open(path, 'wb') as data_file:
             dump(self, data_file, HIGHEST_PROTOCOL)
+
+    def copy(self):
+        """Returns a copy of the object.
+        
+        Returns
+        -------
+        new_sig : `Filter`
+            Copy of filter.
+
+        """
+        return deepcopy(self)

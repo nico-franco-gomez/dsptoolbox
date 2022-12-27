@@ -67,24 +67,24 @@ def find_modes(signal: Signal, f_range_hz=[50, 200],
 
     Parameters
     ----------
-    signal : Signal
+    signal : `Signal`
         Signal containing the RIR'S from which to find the modes.
-    f_range_hz: array_like, optional
+    f_range_hz : array-like, optional
         Vector setting range for mode search. Default: [50, 200].
-    proximity_effect: bool, optional
+    proximity_effect : bool, optional
         When `True`, only group delay criteria is used for finding modes
         up until 200 Hz. This is done since a gradient transducer will not
         easily see peaks in its magnitude response in low frequencies
         due to near-field effects.
         There is also an assessment that the modes are not dips of
         the magnitude response. Default: `False`.
-    dist_hz: float, optional
+    dist_hz : float, optional
         Minimum distance (in Hz) between modes. Default: 5.
 
     Returns
     -------
-    f_modes: `np.ndarray`
-        Vector containing frequencies np.where modes have been localized.
+    f_modes : `np.ndarray`
+        Vector containing frequencies where modes have been localized.
 
     References
     ----------

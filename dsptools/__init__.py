@@ -2,7 +2,10 @@ from .standard_functions import (latency,
                                  group_delay,
                                  minimal_phase,
                                  minimal_group_delay,
-                                 excess_group_delay)
+                                 excess_group_delay,
+                                 merge_signals,
+                                 merge_filterbanks,
+                                 pad_trim)
 from .classes import Filter, FilterBank, Signal, MultiBandSignal
 from . import transfer_functions
 from . import distances
@@ -19,6 +22,9 @@ __all__ = ['Signal',
            'Filter',
            'FilterBank',
            'latency',
+           'pad_trim',
+           'merge_signals',
+           'merge_filterbanks',
            'group_delay',
            'minimal_phase',
            'minimal_group_delay',
@@ -32,5 +38,3 @@ __all__ = ['Signal',
            'special',
            'experimental',
            'measure']
-
-__version__ = "0.1.0"

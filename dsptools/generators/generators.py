@@ -115,10 +115,9 @@ def chirp(type_of_chirp: str = 'log', range_hz=None, length_seconds: float = 1,
     peak_level_dbfs : float, optional
         Peak level of the signal in dBFS. Default: -10.
     number_of_channels : int, optional
-        Number of channels (with different noise signals) to be created.
-        Default: 1.
+        Number of channels (with the same chirp) to be created. Default: 1.
     fade : str, optional
-        Type of fade done on the generated signal. Options are `'np.exp'`,
+        Type of fade done on the generated signal. Options are `'exp'`,
         `'lin'`, `'log'`. Pass `None` for no fading. Default: `'log'`.
     padding_end_seconds : float, optional
         Padding at the end of signal. Use `None` to avoid any padding.

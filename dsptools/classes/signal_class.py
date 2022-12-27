@@ -4,6 +4,7 @@ Signal class
 from warnings import warn
 from pickle import dump, HIGHEST_PROTOCOL
 from os import sep
+from copy import deepcopy
 
 import numpy as np
 from soundfile import read, write
@@ -11,7 +12,8 @@ from dsptools.plots import (general_plot,
                             general_subplots_line, general_matrix_plot)
 from ._plots import _csm_plot
 from dsptools._general_helpers import \
-    (_get_normalized_spectrum, _pad_trim, _find_nearest)
+    (_get_normalized_spectrum, _pad_trim, _find_nearest,
+     _fractional_octave_smoothing)
 from dsptools._standard import (_welch, _group_delay_direct, _stft, _csm)
 
 __all__ = ['Signal', ]
@@ -36,7 +38,7 @@ class Signal():
             A path to audio files. Reading is done with soundfile. Wave and
             Flac audio files are accepted.
             Default: `None`.
-        time_data : array_like, `np.ndarray`, optional
+        time_data : array-like, `np.ndarray`, optional
             Time data of the signal. It is saved as a matrix with the form
             (time samples, channel number). Default: `None`.
         sampling_rate_hz : int, optional
@@ -51,16 +53,18 @@ class Signal():
 
         Methods
         -------
-        Time data: add_channel, remove_channel, swap_channels.
-        Spectrum: set_spectrum_parameters, get_spectrum.
-        Cross spectral matrix: set_csm_parameters, get_csm.
-        Spectrogram: set_spectrogram_parameters, get_spectrogram.
-
-        Plots: plot_magnitude, plot_time, plot_spectrogram, plot_phase,
-            plot_csm.
-
-        General: save_signal.
-
+        Time data:
+            add_channel, remove_channel, swap_channels.
+        Spectrum:
+            set_spectrum_parameters, get_spectrum.
+        Cross spectral matrix:
+            set_csm_parameters, get_csm.
+        Spectrogram:
+            set_spectrogram_parameters, get_spectrogram.
+        Plots:
+            plot_magnitude, plot_time, plot_spectrogram, plot_phase, plot_csm.
+        General:
+            save_signal.
         Only for `signal_type in ('rir', 'ir', 'h1', 'h2', 'h3')`:
             set_window, set_coherence, plot_group_delay, plot_coherence.
 
@@ -174,7 +178,7 @@ class Signal():
             'Signal ID must be a string'
         self._signal_id = new_signal_id.lower()
 
-    def set_spectrum_parameters(self, method='welch',
+    def set_spectrum_parameters(self, method='welch', smoothe: int = 0,
                                 window_length_samples: int = 1024,
                                 window_type='hann', overlap_percent=50,
                                 detrend=True, average='mean',
@@ -185,6 +189,14 @@ class Signal():
         ----------
         method : str, optional
             `'welch'` or `'standard'`. Default: `'welch'`.
+        smoothe : int, optional
+            Smoothing across (1/smoothe) octave bands using a hamming
+            window. Smoothes magnitude AND phase. For accesing the smoothing
+            algorithm, refer to
+            `dsptools._general_helpers._fractional_octave_smoothing()`.
+            If smoothing is applied here, `Signal.get_spectrum()` returns
+            the smoothed spectrum as well.
+            Default: 0 (no smoothing).
         window_length_samples : int, optional
             Window size. Default: 1024.
         window_type : str,optional
@@ -213,6 +225,7 @@ class Signal():
         _new_spectrum_parameters = \
             dict(
                 method=method,
+                smoothe=smoothe,
                 window_length_samples=window_length_samples,
                 window_type=window_type,
                 overlap_percent=overlap_percent,
@@ -234,6 +247,11 @@ class Signal():
         """Sets the window used for the IR. It only works for
         `signal_type in ('ir', 'h1', 'h2', 'h3', 'rir')`.
 
+        Parameters
+        ----------
+        window : `np.ndarray`
+            Window used for the IR.
+
         """
         valid_signal_types = ('ir', 'h1', 'h2', 'h3', 'rir')
         assert self.signal_type in valid_signal_types, \
@@ -246,6 +264,11 @@ class Signal():
     def set_coherence(self, coherence: np.ndarray):
         """Sets the coherence measurements of the transfer function.
         It only works for `signal_type = ('ir', 'h1', 'h2', 'h3', 'rir')`.
+
+        Parameters
+        ----------
+        coherence : `np.ndarray`
+            Coherence matrix.
 
         """
         valid_signal_types = ('ir', 'h1', 'h2', 'h3', 'rir')
@@ -434,7 +457,7 @@ class Signal():
 
         Parameters
         ----------
-        new_order : array_like
+        new_order : array-like
             New rearrangement of channels.
 
         """
@@ -492,6 +515,13 @@ class Signal():
                                self._spectrum_parameters['scaling'])
             elif self._spectrum_parameters['method'] == 'standard':
                 spectrum = np.fft.rfft(self.time_data, axis=0)
+                if self._spectrum_parameters['smoothe'] != 0:
+                    temp_abs = _fractional_octave_smoothing(
+                        np.abs(spectrum), self._spectrum_parameters['smoothe'])
+                    temp_phase = _fractional_octave_smoothing(
+                        np.angle(spectrum),
+                        self._spectrum_parameters['smoothe'])
+                    spectrum = temp_abs*np.exp(1j*temp_phase)
             self.spectrum = []
             self.spectrum.append(
                 np.fft.rfftfreq(
@@ -583,6 +613,13 @@ class Signal():
     def get_coherence(self):
         """Returns the coherence matrix.
 
+        Returns
+        -------
+        f : `np.ndarray`
+            Frequency vector.
+        coherence : `np.ndarray`
+            Coherence matrix.
+
         """
         assert hasattr(self, 'coherence'), \
             'There is no coherence data saved in the Signal object'
@@ -592,6 +629,11 @@ class Signal():
     def get_time_vector(self):
         """Returns the time vector associated with the signal.
 
+        Returns
+        -------
+        time_vector_s : `np.ndarray`
+            Time vector in seconds.
+
         """
         if not hasattr(self, 'time_vector_s'):
             self._generate_time_vector()
@@ -599,22 +641,27 @@ class Signal():
 
     # ======== Plots ==========================================================
     def plot_magnitude(self, range_hz=[20, 20e3], normalize: str = '1k',
-                       smoothe=0, show_info_box: bool = False,
-                       returns: bool = False):
+                       range_db=None, smoothe: int = 0,
+                       show_info_box: bool = False, returns: bool = False):
         """Plots magnitude spectrum.
         Change parameters of spectrum with set_spectrum_parameters.
+        NOTE: Smoothing is only applied on the plot data.
 
         Parameters
         ----------
-        range_hz : array_like with length 2, optional
+        range_hz : array-like with length 2, optional
             Range for which to plot the magnitude response.
             Default: [20, 20000].
         normalize : str, optional
             Mode for normalization, supported are `'1k'` for normalization
             with value at frequency 1 kHz or `'np.max'` for normalization with
             maximal value. Use `None` for no normalization. Default: `'1k'`.
+        range_db : array-like with length 2, optional
+            Range in dB for which to plot the magnitude response.
+            Default: `None`.
         smoothe : int, optional
-            -----> not yet implemented
+            Smoothing across the (1/smoothe) octave band.
+            Default: 0 (no smoothing).
         show_info_box : bool, optional
             Plots a info box regarding spectrum parameters and plot parameters.
             If it is str, it overwrites the standard message.
@@ -624,7 +671,8 @@ class Signal():
 
         Returns
         -------
-        figure and axis when `returns = True`.
+        fig, ax
+            Only returned if `returns=True`.
 
         """
         f, sp = self.get_spectrum()
@@ -646,12 +694,24 @@ class Signal():
         fig, ax = general_plot(f, mag_db, range_hz, ylabel='Magnitude / dB',
                                info_box=txt, returns=True,
                                labels=[f'Channel {n}' for n in
-                                       range(self.number_of_channels)])
+                                       range(self.number_of_channels)],
+                               range_y=range_db)
         if returns:
             return fig, ax
 
     def plot_time(self, returns: bool = False):
         """Plots time signals.
+
+        Parameters
+        ----------
+        returns : bool, optional
+            When `True`, the plot's figure and axis are returned.
+            Default: `False`.
+
+        Returns
+        -------
+        fig, ax
+            Only returned if `returns=True`.
 
         """
         if not hasattr(self, 'time_vector_s'):
@@ -674,10 +734,26 @@ class Signal():
 
     def plot_group_delay(self, range_hz=[20, 20000], returns: bool = False):
         """Plots group delay of each channel.
-        Only works if `signal_type in ('ir', 'h1', 'h2', 'h3', 'rir')`.
+        Only works if `signal_type in ('ir', 'h1', 'h2', 'h3', 'rir', chirp,
+        noise, dirac)`.
+
+        Parameters
+        ----------
+        range_hz : array-like with length 2, optional
+            Range of frequencies for which to show group delay.
+            Default: [20, 20e3].
+        returns : bool, optional
+            When `True`, the plot's figure and axis are returned.
+            Default: `False`.
+
+        Returns
+        -------
+        fig, ax
+            Only returned if `returns=True`.
 
         """
-        valid_signal_types = ('rir', 'ir', 'h1', 'h2', 'h3', 'chirp', 'noise')
+        valid_signal_types = (
+            'rir', 'ir', 'h1', 'h2', 'h3', 'chirp', 'noise', 'dirac')
         assert self.signal_type in valid_signal_types, \
             f'{self.signal_type} is not valid. Please set it to ir or ' +\
             'h1, h2, h3, rir'
@@ -697,6 +773,22 @@ class Signal():
     def plot_spectrogram(self, channel_number: int = 0, logfreqs: bool = True,
                          returns: bool = False):
         """Plots STFT matrix of the given channel.
+
+        Parameters
+        ----------
+        channel_number : int, optional
+            Selected channel to plot spectrogram. Default: 0 (first).
+        logfreqs : bool, optional
+            When `True`, frequency axis is plotted logarithmically.
+            Default: `True`.
+        returns : bool, optional
+            When `True`, the plot's figure and axis are returned.
+            Default: `False`.
+
+        Returns
+        -------
+        fig, ax
+            Only returned if `returns=True`.
 
         """
         t, f, stft = self.get_spectrogram(channel_number)
@@ -719,6 +811,17 @@ class Signal():
 
     def plot_coherence(self, returns: bool = False):
         """Plots coherence measurements if there are any.
+
+        Parameters
+        ----------
+        returns : bool, optional
+            When `True`, the plot's figure and axis are returned.
+            Default: `False`.
+
+        Returns
+        -------
+        fig, ax
+            Only returned if `returns=True`.
 
         """
         assert hasattr(self, 'coherence'), \
@@ -745,6 +848,22 @@ class Signal():
                    returns: bool = False):
         """Plots phase of the frequency response, only available if the method
         for the spectrum parameters is not welch.
+
+        Parameters
+        ----------
+        range_hz : array-like with length 2, optional
+            Range of frequencies for which to show group delay.
+            Default: [20, 20e3].
+        unwrap : bool, optional
+            When `True`, the unwrapped phase is plotted. Default: `False`.
+        returns : bool, optional
+            When `True`, the plot's figure and axis are returned.
+            Default: `False`.
+
+        Returns
+        -------
+        fig, ax
+            Only returned if `returns=True`.
 
         """
         if self._spectrum_parameters['method'] == 'welch':
@@ -775,7 +894,7 @@ class Signal():
 
         Parameters
         ----------
-        range_hz : array_like with length 2, optional
+        range_hz : array-like with length 2, optional
             Range of Hz to be showed. Default: [20, 20e3].
         logx : bool, optional
             Logarithmic x axis. Default: `True`.
@@ -794,14 +913,14 @@ class Signal():
         if returns:
             return fig, ax
 
-    # ======== Saving and export ==============================================
+    # ======== Saving and copy ++==============================================
     def save_signal(self, path: str = 'signal', mode: str = 'wav'):
-        """Saves the Signal object
+        """Saves the Signal object as wav, flac or pickle.
 
         Parameters
         ----------
         path : str, optional
-            Path for the signal to be saved. Use only folder/folder/name
+            Path for the signal to be saved. Use only folders/name
             (without format). Default: `'signal'`
             (local folder, object named signal).
         mode : str, optional
@@ -825,3 +944,14 @@ class Signal():
             raise ValueError(
                 f'{mode} is not a supported saving mode. Use ' +
                 'wav, flac or pkl')
+
+    def copy(self):
+        """Returns a copy of the object.
+        
+        Returns
+        -------
+        new_sig : `Signal`
+            Copy of Signal.
+
+        """
+        return deepcopy(self)

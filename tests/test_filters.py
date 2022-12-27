@@ -112,7 +112,14 @@ def perfect_reconstruction():
 
     fb = dsp.filterbanks.reconstructing_fractional_octave_bands()
     fb.show_info()
-    fb.plot_magnitude(length_samples=2**12)
+    # fig, ax = \
+    #     fb.plot_phase(
+    #         mode='parallel', length_samples=2**12, unwrap=True, returns=True)
+    # fig, ax = \
+    #     fb.plot_magnitude(mode='parallel', returns=True)
+    # ax.set_ylim([-5, 5])
+    # fb.plot_phase(mode='parallel', unwrap=True)
+    fb.plot_group_delay(mode='summed')
     dsp.plots.show()
 
 

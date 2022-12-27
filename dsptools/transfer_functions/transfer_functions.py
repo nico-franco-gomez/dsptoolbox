@@ -18,13 +18,13 @@ def spectral_deconvolve(num: Signal, denum: Signal, multichannel=False,
 
     Parameters
     ----------
-    num : Signal
+    num : `Signal`
         Signal to deconvolve from.
-    denum : Signal
+    denum : `Signal`
         Signal to deconvolve.
     multichannel : bool, optional
         When `True`, the first channel of denum is used for all channels
-        in num. Default: False.
+        in num. Default: `False`.
     mode : str, optional
         `'window'` uses a spectral window in the numerator. `'regularized'`
         uses a regularized inversion. `'standard'` uses direct deconvolution.
@@ -47,7 +47,7 @@ def spectral_deconvolve(num: Signal, denum: Signal, multichannel=False,
 
     Returns
     -------
-    new_sig : Signal
+    new_sig : `Signal`
         Deconvolved signal.
 
     """

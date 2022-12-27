@@ -3,6 +3,9 @@ Standard functions in DSP processes
 """
 import numpy as np
 from dsptools.classes.signal_class import Signal
+from dsptools.classes.multibandsignal import MultiBandSignal
+from dsptools.classes.filterbank import FilterBank
+# from dsptools.classes.multibandsignal import MultiBandSignal
 from dsptools._standard import (_latency,
                                 _group_delay_direct,
                                 _minimal_phase)
@@ -191,3 +194,89 @@ def pad_trim(signal: Signal, desired_length_samples: int,
     new_sig = deepcopy(signal)
     new_sig.time_data = new_time_data
     return new_sig
+
+
+def merge_signals(in1, in2, trimming_at_end: bool = True):
+    """Merges two signals by appending the channels of the second one to the
+    first. If the length of in2 is not the same, trimming or padding is
+    applied at the end.
+
+    Parameters
+    ----------
+    in1 : `Signal` or `MultiBandSignal`
+        First signal.
+    in2 : `Signal` or `MultiBandSignal`
+        Second signal.
+    trimming_at_end : bool, optional
+        If the signals do not have the same length, the second one is padded
+        or trimmed. When `True`, padding/trimming is done at the end.
+        Default: `True`.
+    
+    Returns
+    -------
+    new_sig : `Signal`
+        New merged signal.
+
+    """
+    
+    if type(in1) == Signal:
+        assert in1.sampling_rate_hz == in2.sampling_rate_hz, \
+            'Sampling rates do not match'
+        assert type(in2) == Signal, \
+            'Both signals have to be type Signal'
+        if in1.time_data.shape[0] != in2.time_data.shape[0]:
+            in2 = pad_trim(in2, in1.time_data.shape[0], trimming_at_end)
+        new_time_data = np.append(in1.time_data, in2.time_data, axis=1)
+        new_sig = deepcopy(in1)
+        new_sig.time_data = new_time_data
+    elif type(in1) == MultiBandSignal:
+        assert in1.same_sampling_rate == in2.same_sampling_rate, \
+            'Both Signals should have same settings regarding sampling rate'
+        if in1.same_sampling_rate:
+            assert in1.sampling_rate_hz == in2.sampling_rate_hz, \
+                'Sampling rates do not match'
+        assert type(in2) == MultiBandSignal, \
+            'Both signals should be multi band signals'
+        assert in1.number_of_bands == in2.number_of_bands, \
+            'Both signals should have the same number of bands'
+        new_bands = []
+        for n in range(in1.number_of_bands):
+            new_bands.append(merge_signals(in1.bands[n], in2.bands[n]))
+        new_sig = MultiBandSignal(
+            new_bands,
+            same_sampling_rate=in1.same_sampling_rate, info=in1.info)
+        new_sig._generate_metadata()  # Bug with number of channels
+    else:
+        raise ValueError(
+            'Signals have to be type of type Signal or MultiBandSignal')
+    return new_sig
+
+
+def merge_filterbanks(fb1: FilterBank, fb2: FilterBank):
+    """Merges two filterbanks.
+
+    Parameters
+    ----------
+    fb1 : `FilterBank`
+        First filterbank.
+    fb1 : `FilterBank`
+        Second filterbank.
+
+    Returns
+    -------
+    new_fb : `FilterBank`
+        New filterbank with merged filters
+    
+    """
+    assert fb1.same_sampling_rate == fb2.same_sampling_rate, \
+        'Both filterbanks should have the same settings regarding ' +\
+        'sampling rates'
+    if fb1.same_sampling_rate:
+        assert fb1.sampling_rate_hz == fb2.sampling_rate_hz, \
+            'Sampling rates do not match'
+    
+    new_filters = fb1.filters
+    for n in fb2.filters:
+        new_filters.append(n)
+    new_fb = FilterBank(new_filters, fb1.same_sampling_rate, fb1.info)
+    return new_fb

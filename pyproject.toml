@@ -1,10 +1,63 @@
 [build-system]
 requires = [
-    "scipy",
-    "numpy",
-    "soundfile",
-    "sounddevice",
-    "matplotlib",
-    "seaborn",
-    "setuptools"]
-build-backend = "setuptools.build_meta"
+    "scipy>=1.9",
+    "numpy>=1.23",
+    "soundfile>=0.11",
+    "sounddevice>=0.4",
+    "matplotlib>=3.6",
+    "seaborn>=0.12",
+    "hatchling",
+]
+build-backend = "hatchling.build"
+
+[project]
+name = "dsptools"
+version = "0.0.5"
+license = "MIT"
+authors = [
+  { name="Nicolas Franco-Gomez" },
+]
+description = "Collection of dsp algorithms to be used for analysis of audio signals"
+readme = "README.rst"
+keywords = [
+  "Digital Signal Processing",
+  "dsp",
+  "Research",
+  "Prototyping",
+]
+requires-python = ">=3.10"
+dependencies = [
+  "numpy",
+  "scipy",
+  "soundfile",
+  "sounddevice",
+  "matplotlib",
+  "seaborn",
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
+[project.urls]
+Homepage = "https://github.com/nico-franco-gomez/dsptools"
+"Bug Tracker" = "https://github.com/nico-franco-gomez/dsptools/issues"
+Documentation = "https://dsptools.readthedocs.io/en/latest/"
+
+[tool.hatch.envs.docs]
+dependencies = [
+  "sphinx",
+  "furo",
+  "numydoc",
+  "readthedocs-sphinx-search",
+  "autodocsumm",
+]
+
+[tool.hatch.envs.dev]
+dependencies = [
+  "flake8",
+  "twine",
+  "hatch",
+]

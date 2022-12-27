@@ -1,22 +1,25 @@
 # use:
-scipy
-numpy
-soundfile
-sounddevice
+scipy>=1.9
+numpy>=1.23
+soundfile>=0.11
+sounddevice>=0.4
+setuptools>=61.0
 
 # plotting:
-matplotlib
-seaborn
+matplotlib>=3.6
+seaborn>=0.12
 
 # dev:
+# hatch # build
+# wheel # build
+# twine # upload build
+# flake8  # linter
 # librosa  # validation
 # pyfar  # validation
-# flake8  # linter
 
 # docs:
-# piccolo-theme # theme
-furo
-numpydoc
-sphinx
-readthedocs-sphinx-search
-autodocsumm
+furo # theme
+numpydoc # numpy-like documentation
+sphinx # generate docs
+readthedocs-sphinx-search # readthedocs
+autodocsumm # autosummary with docs

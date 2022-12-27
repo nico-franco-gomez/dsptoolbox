@@ -1,15 +1,14 @@
 '''
 Testing script
 '''
+from os.path import join
 
 
 def plotting_test():
     import dsptools as dsp
 
     recorded_multi = \
-        dsp.Signal('/Users/neumanndev/Library/CloudStorage/' +
-                   'OneDrive-SennheiserelectronicGmbH&Co.KG/PPONS ' +
-                   'OneDrive/MORE/Holzmarkt/chirp_10cm/raw_twin.wav')
+        dsp.Signal(join('..', 'examples', 'data', 'chirp_stereo.wav'))
     recorded_multi.plot_magnitude(show_info_box=True)
     recorded_multi.plot_time()
     dsp.plots.show()
@@ -17,28 +16,18 @@ def plotting_test():
 
 def package_structure_test():
     import dsptools as dsp
-    recorded = dsp.Signal('/Users/neumanndev/Library/CloudStorage/' +
-                          'OneDrive-SennheiserelectronicGmbH&Co.KG/PPONS ' +
-                          'OneDrive/MORE/Holzmarkt/chirp_10cm/raw_0.wav')
-    raw = dsp.Signal('/Users/neumanndev/Library/CloudStorage/' +
-                     'OneDrive-SennheiserelectronicGmbH&Co.KG/PPONS ' +
-                     'OneDrive/MORE/Holzmarkt/chirp_10cm/raw_chirp.wav')
+    recorded = dsp.Signal(join('..', 'examples', 'data', 'chirp_mono.wav'))
+    raw = dsp.Signal(join('..', 'examples', 'data', 'chirp.wav'))
     print(dsp.latency(recorded, raw))
 
 
 def transfer_function_test():
     import dsptools as dsp
 
-    # recorded = dsp.Signal('/Users/neumanndev/Library/CloudStorage/' +
-    #                       'OneDrive-SennheiserelectronicGmbH&Co.KG/PPONS ' +
-    #                       'OneDrive/MORE/Holzmarkt/chirp_10cm/raw_0.wav')
+    # recorded = dsp.Signal(join('..', 'examples', 'data', 'chirp_mono.wav'))
     recorded_multi = \
-        dsp.Signal('/Users/neumanndev/Library/CloudStorage/' +
-                   'OneDrive-SennheiserelectronicGmbH&Co.KG/PPONS ' +
-                   'OneDrive/MORE/Holzmarkt/chirp_10cm/raw_twin.wav')
-    raw = dsp.Signal('/Users/neumanndev/Library/CloudStorage/' +
-                     'OneDrive-SennheiserelectronicGmbH&Co.KG/PPONS ' +
-                     'OneDrive/MORE/Holzmarkt/chirp_10cm/raw_chirp.wav')
+        dsp.Signal(join('..', 'examples', 'data', 'chirp_stereo.wav'))
+    raw = dsp.Signal(join('..', 'examples', 'data', 'chirp.wav'))
     tf = dsp.transfer_functions.spectral_deconvolve(
         recorded_multi, raw, mode='regularized', multichannel=True,
         padding=False, keep_original_length=True)
@@ -51,12 +40,8 @@ def transfer_function_test():
 
 def distances_function_test():
     import dsptools as dsp
-    recorded = dsp.Signal('/Users/neumanndev/Library/CloudStorage/' +
-                          'OneDrive-SennheiserelectronicGmbH&Co.KG/PPONS ' +
-                          'OneDrive/MORE/Holzmarkt/chirp_10cm/raw_0.wav')
-    raw = dsp.Signal('/Users/neumanndev/Library/CloudStorage/' +
-                     'OneDrive-SennheiserelectronicGmbH&Co.KG/PPONS ' +
-                     'OneDrive/MORE/Holzmarkt/chirp_10cm/raw_chirp.wav')
+    recorded = dsp.Signal(join('..', 'examples', 'data', 'chirp_mono.wav'))
+    raw = dsp.Signal(join('..', 'examples', 'data', 'chirp.wav'))
     print(dsp.distances.itakura_saito(raw, recorded))
     print(dsp.distances.log_spectral(recorded, raw))
 
@@ -65,12 +50,8 @@ def welch_method():
     import dsptools as dsp
     import matplotlib.pyplot as plt
 
-    # raw = dsp.Signal('/Users/neumanndev/Library/CloudStorage/' +
-    #                  'OneDrive-SennheiserelectronicGmbH&Co.KG/PPONS ' +
-    #                  'OneDrive/MORE/Holzmarkt/chirp_10cm/raw_twin.wav')
-    raw = dsp.Signal('/Users/neumanndev/Library/CloudStorage/' +
-                     'OneDrive-SennheiserelectronicGmbH&Co.KG/PPONS ' +
-                     'OneDrive/MORE/Holzmarkt/chirp_10cm/raw_chirp.wav')
+    # raw = dsp.Signal(join('..', 'examples', 'data', 'chirp_stereo.wav'))
+    raw = dsp.Signal(join('..', 'examples', 'data', 'chirp.wav'))
     raw.set_spectrum_parameters(method='welch', overlap_percent=50)
     # raw.plot_magnitude()
     f1, mine = raw.get_spectrum()
@@ -93,9 +74,7 @@ def csm():
     import dsptools as dsp
     # import numpy as np
 
-    raw = dsp.Signal('/Users/neumanndev/Library/CloudStorage/' +
-                     'OneDrive-SennheiserelectronicGmbH&Co.KG/PPONS ' +
-                     'OneDrive/MORE/Holzmarkt/chirp_10cm/raw_twin.wav')
+    raw = dsp.Signal(join('..', 'examples', 'data', 'chirp_stereo.wav'))
     raw.plot_csm()
     # f, csm = raw.get_csm()
     # fig, ax = plt.subplots(csm.shape[1], csm.shape[2], figsize=(6, 6),
@@ -112,9 +91,7 @@ def smoothing():
     import dsptools as dsp
     import numpy as np
     import matplotlib.pyplot as plt
-    raw = dsp.Signal('/Users/neumanndev/Library/CloudStorage/' +
-                     'OneDrive-SennheiserelectronicGmbH&Co.KG/PPONS ' +
-                     'OneDrive/MORE/Holzmarkt/chirp_10cm/raw_twin.wav')
+    raw = dsp.Signal(join('..', 'examples', 'data', 'chirp_stereo.wav'))
     f, bla = raw.get_spectrum()
     spec_db = np.abs(bla[100:, 0])
     spec_s = dsp.experimental._smoothing_log(
@@ -131,16 +108,10 @@ def group_delay():
     import dsptools as dsp
     import matplotlib.pyplot as plt
 
-    # recorded = dsp.Signal('/Users/neumanndev/Library/CloudStorage/' +
-    #                       'OneDrive-SennheiserelectronicGmbH&Co.KG/PPONS ' +
-    #                       'OneDrive/MORE/Holzmarkt/chirp_10cm/raw_0.wav')
+    # recorded = dsp.Signal(join('..', 'examples', 'data', 'chirp_mono.wav'))
     recorded_multi = \
-        dsp.Signal('/Users/neumanndev/Library/CloudStorage/' +
-                   'OneDrive-SennheiserelectronicGmbH&Co.KG/PPONS ' +
-                   'OneDrive/MORE/Holzmarkt/chirp_10cm/raw_twin.wav')
-    raw = dsp.Signal('/Users/neumanndev/Library/CloudStorage/' +
-                     'OneDrive-SennheiserelectronicGmbH&Co.KG/PPONS ' +
-                     'OneDrive/MORE/Holzmarkt/chirp_10cm/raw_chirp.wav')
+        dsp.Signal(join('..', 'examples', 'data', 'chirp_stereo.wav'))
+    raw = dsp.Signal(join('..', 'examples', 'data', 'chirp.wav'))
     tf = dsp.transfer_functions.spectral_deconvolve(
         recorded_multi, raw, mode='regularized', multichannel=True)
     tf = dsp.transfer_functions.window_ir(tf)
@@ -157,9 +128,7 @@ def add_channels():
     import dsptools as dsp
     import soundfile as sf
 
-    audio, fs = sf.read('/Users/neumanndev/Library/CloudStorage/' +
-                        'OneDrive-SennheiserelectronicGmbH&Co.KG/PPONS ' +
-                        'OneDrive/MORE/Holzmarkt/chirp_10cm/raw_twin.wav')
+    audio, fs = sf.read(join('..', 'examples', 'data', 'chirp_stereo.wav'))
     in_sig = dsp.Signal(None, audio[:, 0], fs)
     print(in_sig.time_data.shape)
     # import numpy as np
@@ -171,9 +140,7 @@ def add_channels():
 def remove_channels():
     import dsptools as dsp
 
-    audio = dsp.Signal('/Users/neumanndev/Library/CloudStorage/' +
-                       'OneDrive-SennheiserelectronicGmbH&Co.KG/PPONS ' +
-                       'OneDrive/MORE/Holzmarkt/chirp_10cm/raw_twin.wav')
+    audio = dsp.Signal(join('..', 'examples', 'data', 'chirp_stereo.wav'))
     first = audio.time_data[:, 0]
     # second = audio.time_data[:, 1]
     audio.remove_channel(1)
@@ -187,9 +154,7 @@ def stft():
     import numpy as np
     import librosa
 
-    raw = dsp.Signal('/Users/neumanndev/Library/CloudStorage/' +
-                     'OneDrive-SennheiserelectronicGmbH&Co.KG/PPONS ' +
-                     'OneDrive/MORE/Holzmarkt/chirp_10cm/raw_chirp.wav')
+    raw = dsp.Signal(join('..', 'examples', 'data', 'chirp.wav'))
     raw.set_spectrogram_parameters(window_length_samples=2048)
     t, f, stft = raw.get_spectrogram()
     D = librosa.stft(raw.time_data.squeeze(), center=False)
@@ -213,16 +178,10 @@ def minimum_phase_systems():
     import dsptools as dsp
     import matplotlib.pyplot as plt
 
-    # recorded = dsp.Signal('/Users/neumanndev/Library/CloudStorage/' +
-    #                       'OneDrive-SennheiserelectronicGmbH&Co.KG/PPONS ' +
-    #                       'OneDrive/MORE/Holzmarkt/chirp_10cm/raw_0.wav')
+    # recorded = dsp.Signal(join('..', 'examples', 'data', 'chirp_mono.wav'))
     recorded_multi = \
-        dsp.Signal('/Users/neumanndev/Library/CloudStorage/' +
-                   'OneDrive-SennheiserelectronicGmbH&Co.KG/PPONS ' +
-                   'OneDrive/MORE/Holzmarkt/chirp_10cm/raw_twin.wav')
-    raw = dsp.Signal('/Users/neumanndev/Library/CloudStorage/' +
-                     'OneDrive-SennheiserelectronicGmbH&Co.KG/PPONS ' +
-                     'OneDrive/MORE/Holzmarkt/chirp_10cm/raw_chirp.wav')
+        dsp.Signal(join('..', 'examples', 'data', 'chirp_stereo.wav'))
+    raw = dsp.Signal(join('..', 'examples', 'data', 'chirp.wav'))
     tf = dsp.transfer_functions.spectral_deconvolve(
         recorded_multi, raw, mode='regularized', multichannel=True)
     tf = dsp.transfer_functions.window_ir(tf)
@@ -239,16 +198,10 @@ def minimum_phase_systems():
 def room_acoustics():
     import dsptools as dsp
 
-    # recorded = dsp.Signal('/Users/neumanndev/Library/CloudStorage/' +
-    #                       'OneDrive-SennheiserelectronicGmbH&Co.KG/PPONS ' +
-    #                       'OneDrive/MORE/Holzmarkt/chirp_10cm/raw_0.wav')
+    # recorded = dsp.Signal(join('..', 'examples', 'data', 'chirp_mono.wav'))
     recorded_multi = \
-        dsp.Signal('/Users/neumanndev/Library/CloudStorage/' +
-                   'OneDrive-SennheiserelectronicGmbH&Co.KG/PPONS ' +
-                   'OneDrive/MORE/Holzmarkt/chirp_10cm/raw_twin.wav')
-    raw = dsp.Signal('/Users/neumanndev/Library/CloudStorage/' +
-                     'OneDrive-SennheiserelectronicGmbH&Co.KG/PPONS ' +
-                     'OneDrive/MORE/Holzmarkt/chirp_10cm/raw_chirp.wav')
+        dsp.Signal(join('..', 'examples', 'data', 'chirp_stereo.wav'))
+    raw = dsp.Signal(join('..', 'examples', 'data', 'chirp.wav'))
     tf = dsp.transfer_functions.spectral_deconvolve(
         recorded_multi, raw, mode='regularized', multichannel=True)
     tf = dsp.transfer_functions.window_ir(tf)
@@ -290,16 +243,10 @@ def window_length():
 def new_transfer_functions():
     import dsptools as dsp
 
-    # recorded = dsp.Signal('/Users/neumanndev/Library/CloudStorage/' +
-    #                       'OneDrive-SennheiserelectronicGmbH&Co.KG/PPONS ' +
-    #                       'OneDrive/MORE/Holzmarkt/chirp_10cm/raw_0.wav')
+    # recorded = dsp.Signal(join('..', 'examples', 'data', 'chirp_mono.wav'))
     recorded_multi = \
-        dsp.Signal('/Users/neumanndev/Library/CloudStorage/' +
-                   'OneDrive-SennheiserelectronicGmbH&Co.KG/PPONS ' +
-                   'OneDrive/MORE/Holzmarkt/chirp_10cm/raw_twin.wav')
-    raw = dsp.Signal('/Users/neumanndev/Library/CloudStorage/' +
-                     'OneDrive-SennheiserelectronicGmbH&Co.KG/PPONS ' +
-                     'OneDrive/MORE/Holzmarkt/chirp_10cm/raw_chirp.wav')
+        dsp.Signal(join('..', 'examples', 'data', 'chirp_stereo.wav'))
+    raw = dsp.Signal(join('..', 'examples', 'data', 'chirp.wav'))
     tf = dsp.transfer_functions.compute_transfer_function(
         recorded_multi, raw, multichannel=True, mode='h2')
     # tf.plot_magnitude(normalize=None)
@@ -317,13 +264,9 @@ def new_transfer_functions():
 def spectrogram_plot():
     import dsptools as dsp
 
-    # recorded = dsp.Signal('/Users/neumanndev/Library/CloudStorage/' +
-    #                       'OneDrive-SennheiserelectronicGmbH&Co.KG/PPONS ' +
-    #                       'OneDrive/MORE/Holzmarkt/chirp_10cm/raw_0.wav')
+    # recorded = dsp.Signal(join('..', 'examples', 'data', 'chirp_mono.wav'))
     recorded_multi = \
-        dsp.Signal('/Users/neumanndev/Library/CloudStorage/' +
-                   'OneDrive-SennheiserelectronicGmbH&Co.KG/PPONS ' +
-                   'OneDrive/MORE/Holzmarkt/chirp_10cm/raw_twin.wav')
+        dsp.Signal(join('..', 'examples', 'data', 'chirp_stereo.wav'))
     recorded_multi.plot_spectrogram()
     dsp.plots.show()
 
@@ -331,9 +274,7 @@ def spectrogram_plot():
 def multiband():
     import dsptools as dsp
     recorded_multi = \
-        dsp.Signal('/Users/neumanndev/Library/CloudStorage/' +
-                   'OneDrive-SennheiserelectronicGmbH&Co.KG/PPONS ' +
-                   'OneDrive/MORE/Holzmarkt/chirp_10cm/raw_twin.wav')
+        dsp.Signal(join('..', 'examples', 'data', 'chirp_stereo.wav'))
     r1 = dsp.Signal(None, recorded_multi.time_data[:, 0],
                     recorded_multi.sampling_rate_hz)
     r2 = dsp.Signal(None, recorded_multi.time_data[:, 1],
@@ -352,9 +293,7 @@ def multiband():
 def save_objects():
     import dsptools as dsp
     recorded_multi = \
-        dsp.Signal('/Users/neumanndev/Library/CloudStorage/' +
-                   'OneDrive-SennheiserelectronicGmbH&Co.KG/PPONS ' +
-                   'OneDrive/MORE/Holzmarkt/chirp_10cm/raw_twin.wav')
+        dsp.Signal(join('..', 'examples', 'data', 'chirp_stereo.wav'))
     recorded_multi.save_signal(mode='wav')
     recorded_multi.save_signal(mode='flac')
     recorded_multi.save_signal(mode='pickle')
@@ -373,14 +312,14 @@ def generators():
     # wno.plot_magnitude(normalize=None)
 
     # Chirps
-    wno = dsp.generators.chirp(type_of_chirp='lin', length_seconds=5,
+    wno = dsp.generators.chirp(type_of_chirp='log', length_seconds=5,
                                fade='log',
                                padding_end_seconds=2, number_of_channels=1,
-                               peak_level_dbfs=-20, range_hz=[1, 24e3])
+                               peak_level_dbfs=-20, range_hz=[20, 24e3])
 
     # Plots
-    wno.plot_magnitude(range_hz=[1, 24e3])
-    # wno.plot_spectrogram()
+    wno.plot_magnitude(range_hz=[20, 24e3])
+    wno.plot_spectrogram()
     wno.plot_time()
     # wno.plot_phase()
     # wno.plot_group_delay()
@@ -405,9 +344,7 @@ def recording():
 def swapping_channels():
     import dsptools as dsp
     recorded_multi = \
-        dsp.Signal('/Users/neumanndev/Library/CloudStorage/' +
-                   'OneDrive-SennheiserelectronicGmbH&Co.KG/PPONS ' +
-                   'OneDrive/MORE/Holzmarkt/chirp_10cm/raw_twin.wav')
+        dsp.Signal(join('..', 'examples', 'data', 'chirp_stereo.wav'))
     recorded_multi.plot_time()
     recorded_multi.swap_channels([1, 0])
     recorded_multi.plot_time()
@@ -416,12 +353,9 @@ def swapping_channels():
 
 def convolve_rir_signal():
     import dsptools as dsp
-    rir = dsp.Signal('/Users/neumanndev/Documents/Others/ML/Datasets/DNS ' +
-                     '2022/impulse_responses/simulated/largeroom/Room003/' +
-                     'Room003-00005.wav',
+    rir = dsp.Signal(join('..', 'examples', 'data', 'rir.wav'),
                      signal_type='rir')
-    speech = dsp.Signal('/Users/neumanndev/Documents/Others/ML/Datasets/' +
-                        'VCTK/wav48_silence_trimmed/p225/p225_002_mic1.flac')
+    speech = dsp.Signal(join('..', 'examples', 'data', 'speech.flac'))
     dsp.measure.set_device(2)
     # dsp.measure.play(speech)
     new_speech = \
@@ -434,17 +368,92 @@ def convolve_rir_signal():
 def cepstrum():
     import dsptools as dsp
     import matplotlib.pyplot as plt
-    speech = dsp.Signal('/Users/neumanndev/Documents/Others/ML/Datasets/' +
-                        'VCTK/wav48_silence_trimmed/p225/p225_002_mic1.flac')
-    c = dsp.special.cepstrum(speech, mode='power')
+    speech = dsp.Signal(join('..', 'examples', 'data', 'speech.flac'))
+    c = dsp.special.cepstrum(speech, mode='real')
     plt.plot(c)
     # dsp.plots.general_plot(speech.get_time_vector(), c, log=False)
     dsp.plots.show()
 
 
+def merging_signals():
+    import dsptools as dsp
+    
+    recorded_multi = \
+        dsp.Signal(join('..', 'examples', 'data', 'chirp_stereo.wav'))
+    raw = dsp.Signal(join('..', 'examples', 'data', 'chirp.wav'))
+
+    fb = \
+        dsp.filterbanks.linkwitz_riley_crossovers(
+            [1000, 2000], [4, 6], raw.sampling_rate_hz)
+    
+    raw_b = fb.filter_signal(raw)
+    recorded_multi_b = fb.filter_signal(recorded_multi)
+
+    new_b = dsp.merge_signals(raw_b, recorded_multi_b)
+    new_b.show_info()
+    
+    # Lengths and such
+    # raw = dsp.pad_trim(raw, len(raw.time_data)-100)
+    # print(recorded_multi.time_data.shape, raw.time_data.shape)
+
+    # n = dsp.merge_signals(recorded_multi, raw)
+    # print(n.time_data.shape)
+    # n.plot_time()
+    # dsp.plots.show()
+
+
+def merging_fbs():
+    import dsptools as dsp
+
+    # fb1 = \
+    #     dsp.filterbanks.linkwitz_riley_crossovers([1000, 2000], [4, 6])
+    fb1 = \
+        dsp.filterbanks.reconstructing_fractional_octave_bands(2)
+    fb2 = \
+        dsp.filterbanks.reconstructing_fractional_octave_bands(1)
+
+    fb_n = dsp.merge_filterbanks(fb1, fb2)
+    fb_n.show_info()
+    fb_n.plot_magnitude()
+    dsp.plots.show()
+
+
+def collapse():
+    import dsptools as dsp
+
+    d = dsp.generators.dirac(length_samples=2**13)
+    # d.plot_magnitude(normalize=None)
+    # d.plot_time()
+    fb = dsp.filterbanks.reconstructing_fractional_octave_bands()
+    d_b = fb.filter_signal(d)
+    # d_b.bands[2].set_spectrum_parameters(method='standard')
+    # d_b.bands[2].plot_magnitude(normalize=None)
+    # d_b.bands[0].plot_phase()
+    d_rec = d_b.collapse()
+    d_rec.set_spectrum_parameters(method='standard')
+    d_rec.plot_magnitude(normalize=None, range_db=[-2, 2])
+    # d_rec.plot_phase()
+    # d_rec.plot_group_delay()
+    dsp.plots.show()
+
+
+def smoothing():
+    import dsptools as dsp
+    import pyfar as pf
+    import soundfile as sf
+    import matplotlib.pyplot as plt
+    import numpy as np
+
+    audio, fs = sf.read(join('..', 'examples', 'data', 'chirp_mono.wav'))
+    psig2 = dsp.Signal(time_data=audio, sampling_rate_hz=fs)
+    psig2.set_spectrum_parameters(method='standard')
+    psig2.plot_magnitude(smoothe=4)
+    dsp.plots.show()
+
+
 if __name__ == '__main__':
-    # package_structure_test()
     # plotting_test()
+    # package_structure_test()
     # transfer_function_test()
     # welch_method()
     # csm()
@@ -463,6 +472,9 @@ if __name__ == '__main__':
     # recording()
     # swapping_channels()
     # convolve_rir_signal()
+    # merging_signals()
+    # merging_fbs()
+    # collapse()
 
     # Weird results - needs validation
     # new_transfer_functions()  # -- coherence function from scipy (not quite)
@@ -472,4 +484,5 @@ if __name__ == '__main__':
     # smoothing()
 
     # Next
+    smoothing()
     print()

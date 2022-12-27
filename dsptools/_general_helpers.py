@@ -3,6 +3,7 @@ General functionality from helper methods
 """
 import numpy as np
 from scipy.signal import windows
+from scipy.interpolate import interp1d
 
 
 def _find_nearest(points, vector):
@@ -88,7 +89,7 @@ def _calculate_window(points, window_length: int,
 
 def _get_normalized_spectrum(f, spectra: np.ndarray, mode='standard',
                              f_range_hz=[20, 20000], normalize: str = None,
-                             phase=False, smoothe=0):
+                             phase=False, smoothe: int = 0):
     """This function gives a normalized magnitude spectrum with frequency
     vector for a given range. It is also smoothed. Use `None` for the
     spectrum without f_range_hz.
@@ -127,11 +128,11 @@ def _get_normalized_spectrum(f, spectra: np.ndarray, mode='standard',
     mag_spectra = np.zeros((id2-id1, spectra.shape[1]))
     phase_spectra = np.zeros_like(mag_spectra)
     for n in range(spectra.shape[1]):
-        sp = spectra[:, n]
-        epsilon = 10**(-300/20)
-        sp_db = factor*np.log10(np.abs(sp) + epsilon)
+        sp = np.abs(spectra[:, n])
         if smoothe != 0:
-            pass
+            sp = _fractional_octave_smoothing(sp, smoothe)
+        epsilon = 10**(-300/20)
+        sp_db = factor*np.log10(sp + epsilon)
         if normalize is not None:
             if normalize == '1k':
                 id1k = _find_nearest(1e3, f)
@@ -159,7 +160,7 @@ def _find_frequencies_above_threshold(spec, f, threshold_db, normalize=True):
 
 def _pad_trim(vector: np.ndarray, desired_length: int, axis: int = 0,
               in_the_end: bool = True):
-    """Pads (with np.zeros) or trim (depending on size and desired length).
+    """Pads (with zeros) or trim (depending on size and desired length).
 
     """
     throw_axis = False
@@ -314,3 +315,93 @@ def _fade(s: np.ndarray, length_seconds: float = 0.1, mode: str = 'exp',
     if not at_start:
         s = np.flip(s)
     return s
+
+
+def _fractional_octave_smoothing(vector: np.ndarray, num_fractions: int = 3,
+                                 window_type='hamming',
+                                 extra_parameters: tuple = None,
+                                 window_vec: np.ndarray = None):
+    """Smoothes a vector using interpolation to a logarithmic scale. Usually
+    done for smoothing of frequency data. This implementation is taken from
+    the pyfar package, see references.
+
+    Parameters
+    ----------
+    vector : `np.ndarray`
+        Vector to be smoothed.
+    num_fractions : int, optional
+        Fraction of octave to be smoothed across. Default: 3 (third band).
+    window_type : str, optional
+        Type of window to be used. See `scipy.signal.windows.get_window` for
+        valid types. Default: `'gaussian'`.
+    extra_parameters : tuple, optional
+        Additional parameters to be passed to the function
+        `scipy.signal.windows.get_window`. Default: `None`.
+    window_vec : `np.ndarray`, optional
+        Window vector to be used as a window. `window_type` should be set to
+        `None` if this direct window is going to be used. Default: `None`.
+
+    Returns
+    -------
+    vec_final : `np.ndarray`
+        Vector after smoothing.
+    
+    References
+    ----------
+    - Tylka, Joseph & Boren, Braxton & Choueiri, Edgar. (2017). A Generalized
+      Method for Fractional-Octave Smoothing of Transfer Functions that
+      Preserves Log-Frequency Symmetry. Journal of the Audio Engineering
+      Society. 65. 239-245. 10.17743/jaes.2016.0053.
+    - https://github.com/pyfar/pyfar
+
+    """
+    if window_type is not None:
+        assert window_vec is None, \
+            'Set window_vec to None if you wish to create the window ' +\
+            'within the function'
+    if window_vec is not None:
+        assert window_type is None, \
+            'Set window_type to None if you wish to pass a vector to use ' +\
+            'as window'
+    # Linear and logarithmic frequency vector
+    N = len(vector)
+    l1 = np.arange(N)
+    k_log = (N)**(l1/(N-1))
+    beta = np.log2(k_log[1])
+    n_window = int(2 * np.floor(1 / (num_fractions * beta * 2)) + 1)
+    # Generate window
+    if window_type is not None:
+        if extra_parameters is not None:
+            pass_window = []
+            pass_window.append(window_type)
+            for e in extra_parameters:
+                pass_window.append(e)
+            pass_window = tuple(pass_window)
+        else:
+            pass_window = window_type
+        window = windows.get_window(pass_window, n_window, fftbins=False)
+    else:
+        window = window_vec
+    # Dimension handling
+    one_dim = False
+    if vector.ndim == 1:
+        one_dim = True
+        vector = vector[..., None]
+
+    vec_final = np.zeros_like(vector)
+    for n in range(vector.shape[1]):
+        # Interpolate to logarithmic scale
+        vec_int = interp1d(
+            np.arange(N)+1, vector[:, n], kind='cubic',
+            copy=False, assume_sorted=True)
+        vec_log = vec_int(k_log)
+        # Smoothe by convolving with window
+        smoothed = np.convolve(vec_log, window/np.sum(window), mode='same')
+        # Interpolate back to linear scale
+        smoothed = interp1d(
+            k_log, smoothed, kind='cubic',
+            copy=False, assume_sorted=True)
+        vec_final[:, n] = smoothed(np.arange(N)+1)
+    if one_dim:
+        vec_final = vec_final.squeeze()
+    return vec_final

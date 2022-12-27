@@ -86,7 +86,7 @@ def general_plot(x, matrix, range_x=None, range_y=None, log: bool = True,
 
 def general_subplots_line(x, matrix, column: bool = True,
                           sharex: bool = True, sharey: bool = False,
-                          log: bool = False, ylabels=None, xlabels=None,
+                          log: bool = False, xlabels=None, ylabels=None,
                           range_x=None, range_y=None,
                           returns: bool = False):
     """Generic plot template with subplots in one column or row.
@@ -107,10 +107,10 @@ def general_subplots_line(x, matrix, column: bool = True,
         Default: `False`.
     log : bool, optional
         Show x axis as logarithmic. Default: `False`.
-    ylabels : array_like, optional
-        Labels for y axis. Default: None.
     xlabels : array_like, optional
         Labels for x axis. Default: None.
+    ylabels : array_like, optional
+        Labels for y axis. Default: None.
     range_x : array-like, optional
         Range to show for x axis. Default: None.
     range_y : array-like, optional
@@ -167,7 +167,7 @@ def general_matrix_plot(matrix, range_x=None, range_y=None, range_z=None,
                         zlabel: str = None, xlog: bool = False,
                         ylog: bool = False, colorbar: bool = True,
                         cmap: str = 'magma', returns: bool = False):
-    """Generic plot template with subplots in one column or row.
+    """Generic plot template for a matrix's heatmap.
 
     Parameters
     ----------

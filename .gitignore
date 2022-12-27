@@ -2,3 +2,6 @@
 .DS_Store
 *.pyc
 *.json
+.vscode
+dist
+dsptools.egg-info
