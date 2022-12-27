@@ -4,11 +4,14 @@ Backend for the creation of specific filter banks
 import numpy as np
 from os import sep
 from pickle import dump, HIGHEST_PROTOCOL
+from copy import deepcopy
+
 from scipy.signal import (sosfilt, sosfilt_zi, butter)
 from dsptools import Signal, MultiBandSignal
 from dsptools.generators import dirac
 from dsptools.plots import general_plot
 from dsptools._general_helpers import _get_normalized_spectrum
+from dsptools._standard import _group_delay_direct
 
 
 class LRFilterBank():
@@ -57,10 +60,10 @@ class LRFilterBank():
         self.sampling_rate_hz = sampling_rate_hz
         #
         self._create_filters_sos()
-        self._update_metadata()
+        self._generate_metadata()
         self.info = self.info | info
 
-    def _update_metadata(self):
+    def _generate_metadata(self):
         """Internal method to update metadata about the filter bank.
 
         """
@@ -295,6 +298,96 @@ class LRFilterBank():
         if returns:
             return fig, ax
 
+    def plot_phase(self, range_hz=[20, 20e3],
+                   test_zi: bool = False, unwrap: bool = False,
+                   returns: bool = False):
+        """Plots the phase response of each filter.
+
+        Parameters
+        ----------
+        mode : str, optional
+            Type of plot. `'parallel'` plots every filter's frequency response.
+            `'summed'` sums up every filter output. Default: `'parallel'`.
+        range_hz : array-like, optional
+            Range of Hz to plot. Default: [20, 20e3].
+        test_zi : bool, optional
+            Uses the zi's of each filter to test the FilterBank's output.
+            Default: `False`.
+        unwrap : bool, optional
+            When `True`, unwrapped phase is plotted. Default: `False`.
+        returns : bool, optional
+            When `True`, the figure and axis are returned. Default: `False`.
+
+        Returns
+        -------
+        fig, ax
+            Returned only when `returns=True`.
+
+        """
+        import numpy as np
+        length_samples = 1024
+        d = dirac(
+            length_samples=length_samples,
+            number_of_channels=1, sampling_rate_hz=48000)
+        bs = self.filter_signal(d, activate_zi=test_zi)
+        phase = []
+        f = bs.bands[0].get_spectrum()[0]
+        for b in bs.bands:
+            phase.append(np.angle(b.get_spectrum()[1]))
+        phase = np.squeeze(np.array(phase).T)
+        if unwrap:
+            phase = np.unwrap(phase, axis=0)
+        fig, ax = general_plot(f, phase, range_hz, ylabel='Phase / rad',
+                                returns=True,
+                                labels=[f'Filter {h}'
+                                        for h in range(bs.number_of_bands)])
+        if returns:
+            return fig, ax
+
+    def plot_group_delay(self, range_hz=[20, 20e3],
+                         test_zi: bool = False, returns: bool = False):
+        """Plots the phase response of each filter.
+
+        Parameters
+        ----------
+        mode : str, optional
+            Type of plot. `'parallel'` plots every filter's frequency response,
+            `'sequential'` plots the frequency response after having filtered
+            one impulse with every filter in the FilterBank. `'summed'`
+            sums up every filter output. Default: `'parallel'`.
+        range_hz : array-like, optional
+            Range of Hz to plot. Default: [20, 20e3].
+        test_zi : bool, optional
+            Uses the zi's of each filter to test the FilterBank's output.
+            Default: `False`.
+        returns : bool, optional
+            When `True`, the figure and axis are returned. Default: `False`.
+
+        Returns
+        -------
+        fig, ax
+            Returned only when `returns=True`.
+
+        """
+        import numpy as np
+        length_samples = 1024
+        d = dirac(
+            length_samples=length_samples,
+            number_of_channels=1, sampling_rate_hz=48000)
+        bs = self.filter_signal(d, activate_zi=test_zi)
+        gd = []
+        f = bs.bands[0].get_spectrum()[0]
+        for b in bs.bands:
+            gd.append(_group_delay_direct(
+                np.squeeze(b.get_spectrum()[1]), delta_f=f[1]-f[0]))
+        gd = np.squeeze(np.array(gd).T)*1e3
+        fig, ax = general_plot(f, gd, range_hz, ylabel='Group delay / ms',
+                                returns=True,
+                                labels=[f'Filter {h}'
+                                        for h in range(bs.number_of_bands)])
+        if returns:
+            return fig, ax
+
     def show_info(self):
         """Prints out information about the filter bank.
 
@@ -320,6 +413,17 @@ class LRFilterBank():
         path += '.pkl'
         with open(path, 'wb') as data_file:
             dump(self, data_file, HIGHEST_PROTOCOL)
+
+    def copy(self):
+        """Returns a copy of the object.
+        
+        Returns
+        -------
+        new_sig : `LRFilterBank`
+            Copy of filter bank.
+
+        """
+        return deepcopy(self)
 
 
 def fractional_octave_frequencies(
@@ -352,6 +456,7 @@ def fractional_octave_frequencies(
     cutoff_freq : tuple, array, float
         The lower and upper critical frequencies in Hz of the bandpass filters
         for each band as a tuple corresponding to ``(f_lower, f_upper)``.
+
     """
     nominal = None
 
@@ -411,6 +516,7 @@ def _center_frequencies_fractional_octaves_iec(nominal, num_fractions):
     exact : array, float
         The exact center frequencies, resulting in a uniform distribution of
         frequency bands over the frequency range.
+
     """
     if num_fractions == 1:
         nominal = np.array([

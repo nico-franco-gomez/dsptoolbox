@@ -61,7 +61,7 @@
 
 
 \title{dsptools}
-\date{Dec 26, 2022}
+\date{Dec 27, 2022}
 \release{0.1}
 \author{Nicolas Franco\sphinxhyphen{}Gomez}
 \newcommand{\sphinxlogo}{\vbox{}}
@@ -174,6 +174,13 @@ might be generalizable to all kind of time series.
 &
 \sphinxAtStartPar
 Adds new channels to this signal object.
+\\
+\sphinxhline
+\sphinxAtStartPar
+{\hyperref[\detokenize{classes:dsptools.classes.signal_class.Signal.copy}]{\sphinxcrossref{\sphinxcode{\sphinxupquote{copy}}}}}()
+&
+\sphinxAtStartPar
+Returns a copy of the object.
 \\
 \sphinxhline
 \sphinxAtStartPar
@@ -296,7 +303,7 @@ Sets all necessary parameters for the computation of the spectrogram.
 \\
 \sphinxhline
 \sphinxAtStartPar
-{\hyperref[\detokenize{classes:dsptools.classes.signal_class.Signal.set_spectrum_parameters}]{\sphinxcrossref{\sphinxcode{\sphinxupquote{set\_spectrum\_parameters}}}}}({[}method, ...{]})
+{\hyperref[\detokenize{classes:dsptools.classes.signal_class.Signal.set_spectrum_parameters}]{\sphinxcrossref{\sphinxcode{\sphinxupquote{set\_spectrum\_parameters}}}}}({[}method, smoothe, ...{]})
 &
 \sphinxAtStartPar
 Sets all necessary parameters for the computation of the spectrum.
@@ -451,6 +458,27 @@ Sampling rate for the new data
 \sphinxAtStartPar
 Activates padding or trimming at the end of signal in case the
 new data does not match previous data. Default: \sphinxtitleref{True}.
+
+\end{description}
+
+\end{description}\end{quote}
+
+\end{fulllineitems}
+
+\index{copy() (dsptools.classes.signal\_class.Signal method)@\spxentry{copy()}\spxextra{dsptools.classes.signal\_class.Signal method}}
+
+\begin{fulllineitems}
+\phantomsection\label{\detokenize{classes:dsptools.classes.signal_class.Signal.copy}}
+\pysigstartsignatures
+\pysiglinewithargsret{\sphinxbfcode{\sphinxupquote{copy}}}{}{}
+\pysigstopsignatures
+\sphinxAtStartPar
+Returns a copy of the object.
+\begin{quote}\begin{description}
+\sphinxlineitem{Returns}\begin{description}
+\sphinxlineitem{\sphinxstylestrong{new\_sig}}{[}\sphinxtitleref{Signal}{]}
+\sphinxAtStartPar
+Copy of Signal.
 
 \end{description}
 
@@ -677,7 +705,8 @@ Gives back figure and axis objects. Default: \sphinxtitleref{False}.
 \pysigstopsignatures
 \sphinxAtStartPar
 Plots group delay of each channel.
-Only works if \sphinxtitleref{signal\_type in (‘ir’, ‘h1’, ‘h2’, ‘h3’, ‘rir’)}.
+Only works if \sphinxtitleref{signal\_type in (‘ir’, ‘h1’, ‘h2’, ‘h3’, ‘rir’, chirp,
+noise, dirac)}.
 \begin{quote}\begin{description}
 \sphinxlineitem{Parameters}\begin{description}
 \sphinxlineitem{\sphinxstylestrong{range\_hz}}{[}array\sphinxhyphen{}like with length 2, optional{]}
@@ -708,11 +737,12 @@ Only returned if \sphinxtitleref{returns=True}.
 \begin{fulllineitems}
 \phantomsection\label{\detokenize{classes:dsptools.classes.signal_class.Signal.plot_magnitude}}
 \pysigstartsignatures
-\pysiglinewithargsret{\sphinxbfcode{\sphinxupquote{plot\_magnitude}}}{\emph{\DUrole{n}{range\_hz}\DUrole{o}{=}\DUrole{default_value}{{[}20, 20000.0{]}}}, \emph{\DUrole{n}{normalize}\DUrole{p}{:}\DUrole{w}{  }\DUrole{n}{\sphinxhref{https://docs.python.org/3/library/stdtypes.html\#str}{str}}\DUrole{w}{  }\DUrole{o}{=}\DUrole{w}{  }\DUrole{default_value}{\textquotesingle{}1k\textquotesingle{}}}, \emph{\DUrole{n}{smoothe}\DUrole{o}{=}\DUrole{default_value}{0}}, \emph{\DUrole{n}{show\_info\_box}\DUrole{p}{:}\DUrole{w}{  }\DUrole{n}{\sphinxhref{https://docs.python.org/3/library/functions.html\#bool}{bool}}\DUrole{w}{  }\DUrole{o}{=}\DUrole{w}{  }\DUrole{default_value}{False}}, \emph{\DUrole{n}{returns}\DUrole{p}{:}\DUrole{w}{  }\DUrole{n}{\sphinxhref{https://docs.python.org/3/library/functions.html\#bool}{bool}}\DUrole{w}{  }\DUrole{o}{=}\DUrole{w}{  }\DUrole{default_value}{False}}}{}
+\pysiglinewithargsret{\sphinxbfcode{\sphinxupquote{plot\_magnitude}}}{\emph{\DUrole{n}{range\_hz}\DUrole{o}{=}\DUrole{default_value}{{[}20, 20000.0{]}}}, \emph{\DUrole{n}{normalize}\DUrole{p}{:}\DUrole{w}{  }\DUrole{n}{\sphinxhref{https://docs.python.org/3/library/stdtypes.html\#str}{str}}\DUrole{w}{  }\DUrole{o}{=}\DUrole{w}{  }\DUrole{default_value}{\textquotesingle{}1k\textquotesingle{}}}, \emph{\DUrole{n}{range\_db}\DUrole{o}{=}\DUrole{default_value}{None}}, \emph{\DUrole{n}{smoothe}\DUrole{p}{:}\DUrole{w}{  }\DUrole{n}{\sphinxhref{https://docs.python.org/3/library/functions.html\#int}{int}}\DUrole{w}{  }\DUrole{o}{=}\DUrole{w}{  }\DUrole{default_value}{0}}, \emph{\DUrole{n}{show\_info\_box}\DUrole{p}{:}\DUrole{w}{  }\DUrole{n}{\sphinxhref{https://docs.python.org/3/library/functions.html\#bool}{bool}}\DUrole{w}{  }\DUrole{o}{=}\DUrole{w}{  }\DUrole{default_value}{False}}, \emph{\DUrole{n}{returns}\DUrole{p}{:}\DUrole{w}{  }\DUrole{n}{\sphinxhref{https://docs.python.org/3/library/functions.html\#bool}{bool}}\DUrole{w}{  }\DUrole{o}{=}\DUrole{w}{  }\DUrole{default_value}{False}}}{}
 \pysigstopsignatures
 \sphinxAtStartPar
 Plots magnitude spectrum.
 Change parameters of spectrum with set\_spectrum\_parameters.
+NOTE: Smoothing is only applied on the plot data.
 \begin{quote}\begin{description}
 \sphinxlineitem{Parameters}\begin{description}
 \sphinxlineitem{\sphinxstylestrong{range\_hz}}{[}array\sphinxhyphen{}like with length 2, optional{]}
@@ -726,9 +756,15 @@ Mode for normalization, supported are \sphinxtitleref{‘1k’} for normalizatio
 with value at frequency 1 kHz or \sphinxtitleref{‘np.max’} for normalization with
 maximal value. Use \sphinxtitleref{None} for no normalization. Default: \sphinxtitleref{‘1k’}.
 
+\sphinxlineitem{\sphinxstylestrong{range\_db}}{[}array\sphinxhyphen{}like with length 2, optional{]}
+\sphinxAtStartPar
+Range in dB for which to plot the magnitude response.
+Default: \sphinxtitleref{None}.
+
 \sphinxlineitem{\sphinxstylestrong{smoothe}}{[}int, optional{]}
 \sphinxAtStartPar
-—\textendash{}\textgreater{} not yet implemented
+Smoothing across the (1/smoothe) octave band.
+Default: 0 (no smoothing).
 
 \sphinxlineitem{\sphinxstylestrong{show\_info\_box}}{[}bool, optional{]}
 \sphinxAtStartPar
@@ -1021,7 +1057,7 @@ Scaling or not after np.fft. Default: False.
 \begin{fulllineitems}
 \phantomsection\label{\detokenize{classes:dsptools.classes.signal_class.Signal.set_spectrum_parameters}}
 \pysigstartsignatures
-\pysiglinewithargsret{\sphinxbfcode{\sphinxupquote{set\_spectrum\_parameters}}}{\emph{\DUrole{n}{method}\DUrole{o}{=}\DUrole{default_value}{\textquotesingle{}welch\textquotesingle{}}}, \emph{\DUrole{n}{window\_length\_samples}\DUrole{p}{:}\DUrole{w}{  }\DUrole{n}{\sphinxhref{https://docs.python.org/3/library/functions.html\#int}{int}}\DUrole{w}{  }\DUrole{o}{=}\DUrole{w}{  }\DUrole{default_value}{1024}}, \emph{\DUrole{n}{window\_type}\DUrole{o}{=}\DUrole{default_value}{\textquotesingle{}hann\textquotesingle{}}}, \emph{\DUrole{n}{overlap\_percent}\DUrole{o}{=}\DUrole{default_value}{50}}, \emph{\DUrole{n}{detrend}\DUrole{o}{=}\DUrole{default_value}{True}}, \emph{\DUrole{n}{average}\DUrole{o}{=}\DUrole{default_value}{\textquotesingle{}mean\textquotesingle{}}}, \emph{\DUrole{n}{scaling}\DUrole{o}{=}\DUrole{default_value}{\textquotesingle{}power\textquotesingle{}}}}{}
+\pysiglinewithargsret{\sphinxbfcode{\sphinxupquote{set\_spectrum\_parameters}}}{\emph{\DUrole{n}{method}\DUrole{o}{=}\DUrole{default_value}{\textquotesingle{}welch\textquotesingle{}}}, \emph{\DUrole{n}{smoothe}\DUrole{p}{:}\DUrole{w}{  }\DUrole{n}{\sphinxhref{https://docs.python.org/3/library/functions.html\#int}{int}}\DUrole{w}{  }\DUrole{o}{=}\DUrole{w}{  }\DUrole{default_value}{0}}, \emph{\DUrole{n}{window\_length\_samples}\DUrole{p}{:}\DUrole{w}{  }\DUrole{n}{\sphinxhref{https://docs.python.org/3/library/functions.html\#int}{int}}\DUrole{w}{  }\DUrole{o}{=}\DUrole{w}{  }\DUrole{default_value}{1024}}, \emph{\DUrole{n}{window\_type}\DUrole{o}{=}\DUrole{default_value}{\textquotesingle{}hann\textquotesingle{}}}, \emph{\DUrole{n}{overlap\_percent}\DUrole{o}{=}\DUrole{default_value}{50}}, \emph{\DUrole{n}{detrend}\DUrole{o}{=}\DUrole{default_value}{True}}, \emph{\DUrole{n}{average}\DUrole{o}{=}\DUrole{default_value}{\textquotesingle{}mean\textquotesingle{}}}, \emph{\DUrole{n}{scaling}\DUrole{o}{=}\DUrole{default_value}{\textquotesingle{}power\textquotesingle{}}}}{}
 \pysigstopsignatures
 \sphinxAtStartPar
 Sets all necessary parameters for the computation of the spectrum.
@@ -1030,6 +1066,16 @@ Sets all necessary parameters for the computation of the spectrum.
 \sphinxlineitem{\sphinxstylestrong{method}}{[}str, optional{]}
 \sphinxAtStartPar
 \sphinxtitleref{‘welch’} or \sphinxtitleref{‘standard’}. Default: \sphinxtitleref{‘welch’}.
+
+\sphinxlineitem{\sphinxstylestrong{smoothe}}{[}int, optional{]}
+\sphinxAtStartPar
+Smoothing across (1/smoothe) octave bands using a hamming
+window. Smoothes magnitude AND phase. For accesing the smoothing
+algorithm, refer to
+\sphinxtitleref{dsptools.\_general\_helpers.\_fractional\_octave\_smoothing()}.
+If smoothing is applied here, \sphinxtitleref{Signal.get\_spectrum()} returns
+the smoothed spectrum as well.
+Default: 0 (no smoothing).
 
 \sphinxlineitem{\sphinxstylestrong{window\_length\_samples}}{[}int, optional{]}
 \sphinxAtStartPar
@@ -1185,6 +1231,20 @@ Adds a new band to the \sphinxtitleref{MultiBandSignal}.
 \\
 \sphinxhline
 \sphinxAtStartPar
+{\hyperref[\detokenize{classes:dsptools.classes.multibandsignal.MultiBandSignal.collapse}]{\sphinxcrossref{\sphinxcode{\sphinxupquote{collapse}}}}}()
+&
+\sphinxAtStartPar
+Collapses MultiBandSignal by summing all of its bands and returning one Signal.
+\\
+\sphinxhline
+\sphinxAtStartPar
+{\hyperref[\detokenize{classes:dsptools.classes.multibandsignal.MultiBandSignal.copy}]{\sphinxcrossref{\sphinxcode{\sphinxupquote{copy}}}}}()
+&
+\sphinxAtStartPar
+Returns a copy of the object.
+\\
+\sphinxhline
+\sphinxAtStartPar
 {\hyperref[\detokenize{classes:dsptools.classes.multibandsignal.MultiBandSignal.get_all_bands}]{\sphinxcrossref{\sphinxcode{\sphinxupquote{get\_all\_bands}}}}}({[}channel{]})
 &
 \sphinxAtStartPar
@@ -1283,6 +1343,49 @@ Index at which to insert the new Signal. Default: \sphinxhyphen{}1.
 \pysigstartsignatures
 \pysigline{\sphinxbfcode{\sphinxupquote{property\DUrole{w}{  }}}\sphinxbfcode{\sphinxupquote{bands}}}
 \pysigstopsignatures
+\end{fulllineitems}
+
+\index{collapse() (dsptools.classes.multibandsignal.MultiBandSignal method)@\spxentry{collapse()}\spxextra{dsptools.classes.multibandsignal.MultiBandSignal method}}
+
+\begin{fulllineitems}
+\phantomsection\label{\detokenize{classes:dsptools.classes.multibandsignal.MultiBandSignal.collapse}}
+\pysigstartsignatures
+\pysiglinewithargsret{\sphinxbfcode{\sphinxupquote{collapse}}}{}{}
+\pysigstopsignatures
+\sphinxAtStartPar
+Collapses MultiBandSignal by summing all of its bands and returning
+one Signal.
+\begin{quote}\begin{description}
+\sphinxlineitem{Returns}\begin{description}
+\sphinxlineitem{\sphinxstylestrong{new\_sig}}{[}\sphinxtitleref{Signal}{]}
+\sphinxAtStartPar
+Collapsed Signal.
+
+\end{description}
+
+\end{description}\end{quote}
+
+\end{fulllineitems}
+
+\index{copy() (dsptools.classes.multibandsignal.MultiBandSignal method)@\spxentry{copy()}\spxextra{dsptools.classes.multibandsignal.MultiBandSignal method}}
+
+\begin{fulllineitems}
+\phantomsection\label{\detokenize{classes:dsptools.classes.multibandsignal.MultiBandSignal.copy}}
+\pysigstartsignatures
+\pysiglinewithargsret{\sphinxbfcode{\sphinxupquote{copy}}}{}{}
+\pysigstopsignatures
+\sphinxAtStartPar
+Returns a copy of the object.
+\begin{quote}\begin{description}
+\sphinxlineitem{Returns}\begin{description}
+\sphinxlineitem{\sphinxstylestrong{new\_sig}}{[}\sphinxtitleref{MultiBandSignal}{]}
+\sphinxAtStartPar
+Copy of Signal.
+
+\end{description}
+
+\end{description}\end{quote}
+
 \end{fulllineitems}
 
 \index{get\_all\_bands() (dsptools.classes.multibandsignal.MultiBandSignal method)@\spxentry{get\_all\_bands()}\spxextra{dsptools.classes.multibandsignal.MultiBandSignal method}}
@@ -1446,6 +1549,13 @@ metadata.
 \begin{tabulary}{\linewidth}[t]{\X{1}{2}\X{1}{2}}
 \sphinxtoprule
 \sphinxtableatstartofbodyhook
+\sphinxAtStartPar
+{\hyperref[\detokenize{classes:dsptools.classes.filter_class.Filter.copy}]{\sphinxcrossref{\sphinxcode{\sphinxupquote{copy}}}}}()
+&
+\sphinxAtStartPar
+Returns a copy of the object.
+\\
+\sphinxhline
 \sphinxAtStartPar
 {\hyperref[\detokenize{classes:dsptools.classes.filter_class.Filter.filter_signal}]{\sphinxcrossref{\sphinxcode{\sphinxupquote{filter\_signal}}}}}(signal{[}, channel, ...{]})
 &
@@ -1658,6 +1768,27 @@ filter\_signal.
 \end{tabulary}
 \sphinxtableafterendhook\par
 \sphinxattableend\end{savenotes}
+
+\end{fulllineitems}
+
+\index{copy() (dsptools.classes.filter\_class.Filter method)@\spxentry{copy()}\spxextra{dsptools.classes.filter\_class.Filter method}}
+
+\begin{fulllineitems}
+\phantomsection\label{\detokenize{classes:dsptools.classes.filter_class.Filter.copy}}
+\pysigstartsignatures
+\pysiglinewithargsret{\sphinxbfcode{\sphinxupquote{copy}}}{}{}
+\pysigstopsignatures
+\sphinxAtStartPar
+Returns a copy of the object.
+\begin{quote}\begin{description}
+\sphinxlineitem{Returns}\begin{description}
+\sphinxlineitem{\sphinxstylestrong{new\_sig}}{[}\sphinxtitleref{Filter}{]}
+\sphinxAtStartPar
+Copy of filter.
+
+\end{description}
+
+\end{description}\end{quote}
 
 \end{fulllineitems}
 
@@ -2062,6 +2193,13 @@ Adds a new filter at the end of the filters dictionary.
 \\
 \sphinxhline
 \sphinxAtStartPar
+{\hyperref[\detokenize{classes:dsptools.classes.filterbank.FilterBank.copy}]{\sphinxcrossref{\sphinxcode{\sphinxupquote{copy}}}}}()
+&
+\sphinxAtStartPar
+Returns a copy of the object.
+\\
+\sphinxhline
+\sphinxAtStartPar
 {\hyperref[\detokenize{classes:dsptools.classes.filterbank.FilterBank.filter_signal}]{\sphinxcrossref{\sphinxcode{\sphinxupquote{filter\_signal}}}}}(signal{[}, mode, activate\_zi, ...{]})
 &
 \sphinxAtStartPar
@@ -2076,14 +2214,21 @@ Initiates the zi of the filters for the given number of channels.
 \\
 \sphinxhline
 \sphinxAtStartPar
-{\hyperref[\detokenize{classes:dsptools.classes.filterbank.FilterBank.plot_magnitude}]{\sphinxcrossref{\sphinxcode{\sphinxupquote{plot\_magnitude}}}}}({[}mode, length\_samples, ...{]})
+{\hyperref[\detokenize{classes:dsptools.classes.filterbank.FilterBank.plot_group_delay}]{\sphinxcrossref{\sphinxcode{\sphinxupquote{plot\_group\_delay}}}}}({[}mode, range\_hz, test\_zi, ...{]})
+&
+\sphinxAtStartPar
+Plots the phase response of each filter.
+\\
+\sphinxhline
+\sphinxAtStartPar
+{\hyperref[\detokenize{classes:dsptools.classes.filterbank.FilterBank.plot_magnitude}]{\sphinxcrossref{\sphinxcode{\sphinxupquote{plot\_magnitude}}}}}({[}mode, range\_hz, test\_zi, ...{]})
 &
 \sphinxAtStartPar
 Plots the magnitude response of each filter.
 \\
 \sphinxhline
 \sphinxAtStartPar
-{\hyperref[\detokenize{classes:dsptools.classes.filterbank.FilterBank.plot_phase}]{\sphinxcrossref{\sphinxcode{\sphinxupquote{plot\_phase}}}}}({[}mode, length\_samples, range\_hz, ...{]})
+{\hyperref[\detokenize{classes:dsptools.classes.filterbank.FilterBank.plot_phase}]{\sphinxcrossref{\sphinxcode{\sphinxupquote{plot\_phase}}}}}({[}mode, range\_hz, test\_zi, ...{]})
 &
 \sphinxAtStartPar
 Plots the phase response of each filter.
@@ -2200,6 +2345,27 @@ Index at which to insert the new Filter. Default: \sphinxhyphen{}1.
 
 \end{fulllineitems}
 
+\index{copy() (dsptools.classes.filterbank.FilterBank method)@\spxentry{copy()}\spxextra{dsptools.classes.filterbank.FilterBank method}}
+
+\begin{fulllineitems}
+\phantomsection\label{\detokenize{classes:dsptools.classes.filterbank.FilterBank.copy}}
+\pysigstartsignatures
+\pysiglinewithargsret{\sphinxbfcode{\sphinxupquote{copy}}}{}{}
+\pysigstopsignatures
+\sphinxAtStartPar
+Returns a copy of the object.
+\begin{quote}\begin{description}
+\sphinxlineitem{Returns}\begin{description}
+\sphinxlineitem{\sphinxstylestrong{new\_sig}}{[}\sphinxtitleref{FilterBank}{]}
+\sphinxAtStartPar
+Copy of filter bank.
+
+\end{description}
+
+\end{description}\end{quote}
+
+\end{fulllineitems}
+
 \index{filter\_signal() (dsptools.classes.filterbank.FilterBank method)@\spxentry{filter\_signal()}\spxextra{dsptools.classes.filterbank.FilterBank method}}
 
 \begin{fulllineitems}
@@ -2277,12 +2443,56 @@ Default: 1.
 
 \end{fulllineitems}
 
+\index{plot\_group\_delay() (dsptools.classes.filterbank.FilterBank method)@\spxentry{plot\_group\_delay()}\spxextra{dsptools.classes.filterbank.FilterBank method}}
+
+\begin{fulllineitems}
+\phantomsection\label{\detokenize{classes:dsptools.classes.filterbank.FilterBank.plot_group_delay}}
+\pysigstartsignatures
+\pysiglinewithargsret{\sphinxbfcode{\sphinxupquote{plot\_group\_delay}}}{\emph{\DUrole{n}{mode}\DUrole{p}{:}\DUrole{w}{  }\DUrole{n}{\sphinxhref{https://docs.python.org/3/library/stdtypes.html\#str}{str}}\DUrole{w}{  }\DUrole{o}{=}\DUrole{w}{  }\DUrole{default_value}{\textquotesingle{}parallel\textquotesingle{}}}, \emph{\DUrole{n}{range\_hz}\DUrole{o}{=}\DUrole{default_value}{{[}20, 20000.0{]}}}, \emph{\DUrole{n}{test\_zi}\DUrole{p}{:}\DUrole{w}{  }\DUrole{n}{\sphinxhref{https://docs.python.org/3/library/functions.html\#bool}{bool}}\DUrole{w}{  }\DUrole{o}{=}\DUrole{w}{  }\DUrole{default_value}{False}}, \emph{\DUrole{n}{returns}\DUrole{p}{:}\DUrole{w}{  }\DUrole{n}{\sphinxhref{https://docs.python.org/3/library/functions.html\#bool}{bool}}\DUrole{w}{  }\DUrole{o}{=}\DUrole{w}{  }\DUrole{default_value}{False}}}{}
+\pysigstopsignatures
+\sphinxAtStartPar
+Plots the phase response of each filter.
+\begin{quote}\begin{description}
+\sphinxlineitem{Parameters}\begin{description}
+\sphinxlineitem{\sphinxstylestrong{mode}}{[}str, optional{]}
+\sphinxAtStartPar
+Type of plot. \sphinxtitleref{‘parallel’} plots every filter’s frequency response,
+\sphinxtitleref{‘sequential’} plots the frequency response after having filtered
+one impulse with every filter in the FilterBank. \sphinxtitleref{‘summed’}
+sums up every filter output. Default: \sphinxtitleref{‘parallel’}.
+
+\sphinxlineitem{\sphinxstylestrong{range\_hz}}{[}array\sphinxhyphen{}like, optional{]}
+\sphinxAtStartPar
+Range of Hz to plot. Default: {[}20, 20e3{]}.
+
+\sphinxlineitem{\sphinxstylestrong{test\_zi}}{[}bool, optional{]}
+\sphinxAtStartPar
+Uses the zi’s of each filter to test the FilterBank’s output.
+Default: \sphinxtitleref{False}.
+
+\sphinxlineitem{\sphinxstylestrong{returns}}{[}bool, optional{]}
+\sphinxAtStartPar
+When \sphinxtitleref{True}, the figure and axis are returned. Default: \sphinxtitleref{False}.
+
+\end{description}
+
+\sphinxlineitem{Returns}\begin{description}
+\sphinxlineitem{fig, ax}
+\sphinxAtStartPar
+Returned only when \sphinxtitleref{returns=True}.
+
+\end{description}
+
+\end{description}\end{quote}
+
+\end{fulllineitems}
+
 \index{plot\_magnitude() (dsptools.classes.filterbank.FilterBank method)@\spxentry{plot\_magnitude()}\spxextra{dsptools.classes.filterbank.FilterBank method}}
 
 \begin{fulllineitems}
 \phantomsection\label{\detokenize{classes:dsptools.classes.filterbank.FilterBank.plot_magnitude}}
 \pysigstartsignatures
-\pysiglinewithargsret{\sphinxbfcode{\sphinxupquote{plot\_magnitude}}}{\emph{\DUrole{n}{mode}\DUrole{p}{:}\DUrole{w}{  }\DUrole{n}{\sphinxhref{https://docs.python.org/3/library/stdtypes.html\#str}{str}}\DUrole{w}{  }\DUrole{o}{=}\DUrole{w}{  }\DUrole{default_value}{\textquotesingle{}parallel\textquotesingle{}}}, \emph{\DUrole{n}{length\_samples}\DUrole{p}{:}\DUrole{w}{  }\DUrole{n}{\sphinxhref{https://docs.python.org/3/library/functions.html\#int}{int}}\DUrole{w}{  }\DUrole{o}{=}\DUrole{w}{  }\DUrole{default_value}{1024}}, \emph{\DUrole{n}{range\_hz}\DUrole{o}{=}\DUrole{default_value}{{[}20, 20000.0{]}}}, \emph{\DUrole{n}{test\_zi}\DUrole{p}{:}\DUrole{w}{  }\DUrole{n}{\sphinxhref{https://docs.python.org/3/library/functions.html\#bool}{bool}}\DUrole{w}{  }\DUrole{o}{=}\DUrole{w}{  }\DUrole{default_value}{False}}, \emph{\DUrole{n}{returns}\DUrole{p}{:}\DUrole{w}{  }\DUrole{n}{\sphinxhref{https://docs.python.org/3/library/functions.html\#bool}{bool}}\DUrole{w}{  }\DUrole{o}{=}\DUrole{w}{  }\DUrole{default_value}{False}}}{}
+\pysiglinewithargsret{\sphinxbfcode{\sphinxupquote{plot\_magnitude}}}{\emph{\DUrole{n}{mode}\DUrole{p}{:}\DUrole{w}{  }\DUrole{n}{\sphinxhref{https://docs.python.org/3/library/stdtypes.html\#str}{str}}\DUrole{w}{  }\DUrole{o}{=}\DUrole{w}{  }\DUrole{default_value}{\textquotesingle{}parallel\textquotesingle{}}}, \emph{\DUrole{n}{range\_hz}\DUrole{o}{=}\DUrole{default_value}{{[}20, 20000.0{]}}}, \emph{\DUrole{n}{test\_zi}\DUrole{p}{:}\DUrole{w}{  }\DUrole{n}{\sphinxhref{https://docs.python.org/3/library/functions.html\#bool}{bool}}\DUrole{w}{  }\DUrole{o}{=}\DUrole{w}{  }\DUrole{default_value}{False}}, \emph{\DUrole{n}{returns}\DUrole{p}{:}\DUrole{w}{  }\DUrole{n}{\sphinxhref{https://docs.python.org/3/library/functions.html\#bool}{bool}}\DUrole{w}{  }\DUrole{o}{=}\DUrole{w}{  }\DUrole{default_value}{False}}}{}
 \pysigstopsignatures
 \sphinxAtStartPar
 Plots the magnitude response of each filter.
@@ -2326,7 +2536,7 @@ Returned only when \sphinxtitleref{returns=True}.
 \begin{fulllineitems}
 \phantomsection\label{\detokenize{classes:dsptools.classes.filterbank.FilterBank.plot_phase}}
 \pysigstartsignatures
-\pysiglinewithargsret{\sphinxbfcode{\sphinxupquote{plot\_phase}}}{\emph{\DUrole{n}{mode}\DUrole{p}{:}\DUrole{w}{  }\DUrole{n}{\sphinxhref{https://docs.python.org/3/library/stdtypes.html\#str}{str}}\DUrole{w}{  }\DUrole{o}{=}\DUrole{w}{  }\DUrole{default_value}{\textquotesingle{}parallel\textquotesingle{}}}, \emph{\DUrole{n}{length\_samples}\DUrole{p}{:}\DUrole{w}{  }\DUrole{n}{\sphinxhref{https://docs.python.org/3/library/functions.html\#int}{int}}\DUrole{w}{  }\DUrole{o}{=}\DUrole{w}{  }\DUrole{default_value}{1024}}, \emph{\DUrole{n}{range\_hz}\DUrole{o}{=}\DUrole{default_value}{{[}20, 20000.0{]}}}, \emph{\DUrole{n}{test\_zi}\DUrole{p}{:}\DUrole{w}{  }\DUrole{n}{\sphinxhref{https://docs.python.org/3/library/functions.html\#bool}{bool}}\DUrole{w}{  }\DUrole{o}{=}\DUrole{w}{  }\DUrole{default_value}{False}}, \emph{\DUrole{n}{unwrap}\DUrole{p}{:}\DUrole{w}{  }\DUrole{n}{\sphinxhref{https://docs.python.org/3/library/functions.html\#bool}{bool}}\DUrole{w}{  }\DUrole{o}{=}\DUrole{w}{  }\DUrole{default_value}{False}}, \emph{\DUrole{n}{returns}\DUrole{p}{:}\DUrole{w}{  }\DUrole{n}{\sphinxhref{https://docs.python.org/3/library/functions.html\#bool}{bool}}\DUrole{w}{  }\DUrole{o}{=}\DUrole{w}{  }\DUrole{default_value}{False}}}{}
+\pysiglinewithargsret{\sphinxbfcode{\sphinxupquote{plot\_phase}}}{\emph{\DUrole{n}{mode}\DUrole{p}{:}\DUrole{w}{  }\DUrole{n}{\sphinxhref{https://docs.python.org/3/library/stdtypes.html\#str}{str}}\DUrole{w}{  }\DUrole{o}{=}\DUrole{w}{  }\DUrole{default_value}{\textquotesingle{}parallel\textquotesingle{}}}, \emph{\DUrole{n}{range\_hz}\DUrole{o}{=}\DUrole{default_value}{{[}20, 20000.0{]}}}, \emph{\DUrole{n}{test\_zi}\DUrole{p}{:}\DUrole{w}{  }\DUrole{n}{\sphinxhref{https://docs.python.org/3/library/functions.html\#bool}{bool}}\DUrole{w}{  }\DUrole{o}{=}\DUrole{w}{  }\DUrole{default_value}{False}}, \emph{\DUrole{n}{unwrap}\DUrole{p}{:}\DUrole{w}{  }\DUrole{n}{\sphinxhref{https://docs.python.org/3/library/functions.html\#bool}{bool}}\DUrole{w}{  }\DUrole{o}{=}\DUrole{w}{  }\DUrole{default_value}{False}}, \emph{\DUrole{n}{returns}\DUrole{p}{:}\DUrole{w}{  }\DUrole{n}{\sphinxhref{https://docs.python.org/3/library/functions.html\#bool}{bool}}\DUrole{w}{  }\DUrole{o}{=}\DUrole{w}{  }\DUrole{default_value}{False}}}{}
 \pysigstopsignatures
 \sphinxAtStartPar
 Plots the phase response of each filter.
@@ -3426,7 +3636,10 @@ Cepstrum.
 
 
 \section{Standard functions (dsptools.*)}
-\label{\detokenize{modules/dsptools.standard_functions:module-dsptools.standard_functions}}\label{\detokenize{modules/dsptools.standard_functions:standard-functions-dsptools}}\label{\detokenize{modules/dsptools.standard_functions::doc}}\index{module@\spxentry{module}!dsptools.standard\_functions@\spxentry{dsptools.standard\_functions}}\index{dsptools.standard\_functions@\spxentry{dsptools.standard\_functions}!module@\spxentry{module}}\index{excess\_group\_delay() (in module dsptools.standard\_functions)@\spxentry{excess\_group\_delay()}\spxextra{in module dsptools.standard\_functions}}
+\label{\detokenize{modules/dsptools.standard_functions:module-dsptools.standard_functions}}\label{\detokenize{modules/dsptools.standard_functions:standard-functions-dsptools}}\label{\detokenize{modules/dsptools.standard_functions::doc}}\index{module@\spxentry{module}!dsptools.standard\_functions@\spxentry{dsptools.standard\_functions}}\index{dsptools.standard\_functions@\spxentry{dsptools.standard\_functions}!module@\spxentry{module}}
+\sphinxAtStartPar
+Standard functions in DSP processes
+\index{excess\_group\_delay() (in module dsptools.standard\_functions)@\spxentry{excess\_group\_delay()}\spxextra{in module dsptools.standard\_functions}}
 
 \begin{fulllineitems}
 \phantomsection\label{\detokenize{modules/dsptools.standard_functions:dsptools.standard_functions.excess_group_delay}}
@@ -3523,6 +3736,78 @@ Second signal. Default: \sphinxtitleref{None}.
 \sphinxlineitem{\sphinxstylestrong{latency\_per\_channel\_samples}}{[}\sphinxtitleref{np.ndarray}{]}
 \sphinxAtStartPar
 Array with latency between two signals in samples per channel.
+
+\end{description}
+
+\end{description}\end{quote}
+
+\end{fulllineitems}
+
+\index{merge\_filterbanks() (in module dsptools.standard\_functions)@\spxentry{merge\_filterbanks()}\spxextra{in module dsptools.standard\_functions}}
+
+\begin{fulllineitems}
+\phantomsection\label{\detokenize{modules/dsptools.standard_functions:dsptools.standard_functions.merge_filterbanks}}
+\pysigstartsignatures
+\pysiglinewithargsret{\sphinxcode{\sphinxupquote{dsptools.standard\_functions.}}\sphinxbfcode{\sphinxupquote{merge\_filterbanks}}}{\emph{\DUrole{n}{fb1}\DUrole{p}{:}\DUrole{w}{  }\DUrole{n}{{\hyperref[\detokenize{classes:dsptools.classes.filterbank.FilterBank}]{\sphinxcrossref{FilterBank}}}}}, \emph{\DUrole{n}{fb2}\DUrole{p}{:}\DUrole{w}{  }\DUrole{n}{{\hyperref[\detokenize{classes:dsptools.classes.filterbank.FilterBank}]{\sphinxcrossref{FilterBank}}}}}}{}
+\pysigstopsignatures
+\sphinxAtStartPar
+Merges two filterbanks.
+\begin{quote}\begin{description}
+\sphinxlineitem{Parameters}\begin{description}
+\sphinxlineitem{\sphinxstylestrong{fb1}}{[}\sphinxtitleref{FilterBank}{]}
+\sphinxAtStartPar
+First filterbank.
+
+\sphinxlineitem{\sphinxstylestrong{fb1}}{[}\sphinxtitleref{FilterBank}{]}
+\sphinxAtStartPar
+Second filterbank.
+
+\end{description}
+
+\sphinxlineitem{Returns}\begin{description}
+\sphinxlineitem{\sphinxstylestrong{new\_fb}}{[}\sphinxtitleref{FilterBank}{]}
+\sphinxAtStartPar
+New filterbank with merged filters
+
+\end{description}
+
+\end{description}\end{quote}
+
+\end{fulllineitems}
+
+\index{merge\_signals() (in module dsptools.standard\_functions)@\spxentry{merge\_signals()}\spxextra{in module dsptools.standard\_functions}}
+
+\begin{fulllineitems}
+\phantomsection\label{\detokenize{modules/dsptools.standard_functions:dsptools.standard_functions.merge_signals}}
+\pysigstartsignatures
+\pysiglinewithargsret{\sphinxcode{\sphinxupquote{dsptools.standard\_functions.}}\sphinxbfcode{\sphinxupquote{merge\_signals}}}{\emph{\DUrole{n}{in1}}, \emph{\DUrole{n}{in2}}, \emph{\DUrole{n}{trimming\_at\_end}\DUrole{p}{:}\DUrole{w}{  }\DUrole{n}{\sphinxhref{https://docs.python.org/3/library/functions.html\#bool}{bool}}\DUrole{w}{  }\DUrole{o}{=}\DUrole{w}{  }\DUrole{default_value}{True}}}{}
+\pysigstopsignatures
+\sphinxAtStartPar
+Merges two signals by appending the channels of the second one to the
+first. If the length of in2 is not the same, trimming or padding is
+applied at the end.
+\begin{quote}\begin{description}
+\sphinxlineitem{Parameters}\begin{description}
+\sphinxlineitem{\sphinxstylestrong{in1}}{[}\sphinxtitleref{Signal} or \sphinxtitleref{MultiBandSignal}{]}
+\sphinxAtStartPar
+First signal.
+
+\sphinxlineitem{\sphinxstylestrong{in2}}{[}\sphinxtitleref{Signal} or \sphinxtitleref{MultiBandSignal}{]}
+\sphinxAtStartPar
+Second signal.
+
+\sphinxlineitem{\sphinxstylestrong{trimming\_at\_end}}{[}bool, optional{]}
+\sphinxAtStartPar
+If the signals do not have the same length, the second one is padded
+or trimmed. When \sphinxtitleref{True}, padding/trimming is done at the end.
+Default: \sphinxtitleref{True}.
+
+\end{description}
+
+\sphinxlineitem{Returns}\begin{description}
+\sphinxlineitem{\sphinxstylestrong{new\_sig}}{[}\sphinxtitleref{Signal}{]}
+\sphinxAtStartPar
+New merged signal.
 
 \end{description}
 
@@ -3703,18 +3988,18 @@ Signal object.
 Deconvolution by spectral division of two signals.
 \begin{quote}\begin{description}
 \sphinxlineitem{Parameters}\begin{description}
-\sphinxlineitem{\sphinxstylestrong{num}}{[}Signal{]}
+\sphinxlineitem{\sphinxstylestrong{num}}{[}\sphinxtitleref{Signal}{]}
 \sphinxAtStartPar
 Signal to deconvolve from.
 
-\sphinxlineitem{\sphinxstylestrong{denum}}{[}Signal{]}
+\sphinxlineitem{\sphinxstylestrong{denum}}{[}\sphinxtitleref{Signal}{]}
 \sphinxAtStartPar
 Signal to deconvolve.
 
 \sphinxlineitem{\sphinxstylestrong{multichannel}}{[}bool, optional{]}
 \sphinxAtStartPar
 When \sphinxtitleref{True}, the first channel of denum is used for all channels
-in num. Default: False.
+in num. Default: \sphinxtitleref{False}.
 
 \sphinxlineitem{\sphinxstylestrong{mode}}{[}str, optional{]}
 \sphinxAtStartPar
@@ -3748,7 +4033,7 @@ data to its original length. Default: \sphinxtitleref{False}.
 \end{description}
 
 \sphinxlineitem{Returns}\begin{description}
-\sphinxlineitem{\sphinxstylestrong{new\_sig}}{[}Signal{]}
+\sphinxlineitem{\sphinxstylestrong{new\_sig}}{[}\sphinxtitleref{Signal}{]}
 \sphinxAtStartPar
 Deconvolved signal.
 

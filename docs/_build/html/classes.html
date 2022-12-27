@@ -238,64 +238,67 @@ might be generalizable to all kind of time series.</p>
 <tr class="row-odd"><td><p><a class="reference internal" href="#dsptools.classes.signal_class.Signal.add_channel" title="dsptools.classes.signal_class.Signal.add_channel"><code class="xref py py-obj docutils literal notranslate"><span class="pre">add_channel</span></code></a>([path, new_time_data, ...])</p></td>
 <td><p>Adds new channels to this signal object.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#dsptools.classes.signal_class.Signal.get_coherence" title="dsptools.classes.signal_class.Signal.get_coherence"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_coherence</span></code></a>()</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#dsptools.classes.signal_class.Signal.copy" title="dsptools.classes.signal_class.Signal.copy"><code class="xref py py-obj docutils literal notranslate"><span class="pre">copy</span></code></a>()</p></td>
+<td><p>Returns a copy of the object.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#dsptools.classes.signal_class.Signal.get_coherence" title="dsptools.classes.signal_class.Signal.get_coherence"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_coherence</span></code></a>()</p></td>
 <td><p>Returns the coherence matrix.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#dsptools.classes.signal_class.Signal.get_csm" title="dsptools.classes.signal_class.Signal.get_csm"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_csm</span></code></a>([force_computation])</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#dsptools.classes.signal_class.Signal.get_csm" title="dsptools.classes.signal_class.Signal.get_csm"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_csm</span></code></a>([force_computation])</p></td>
 <td><p>Get Cross spectral matrix for all channels with the shape (frequencies, channels, channels)</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#dsptools.classes.signal_class.Signal.get_spectrogram" title="dsptools.classes.signal_class.Signal.get_spectrogram"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_spectrogram</span></code></a>([channel_number, ...])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#dsptools.classes.signal_class.Signal.get_spectrogram" title="dsptools.classes.signal_class.Signal.get_spectrogram"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_spectrogram</span></code></a>([channel_number, ...])</p></td>
 <td><p>Returns a matrix containing the STFT of a specific channel.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#dsptools.classes.signal_class.Signal.get_spectrum" title="dsptools.classes.signal_class.Signal.get_spectrum"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_spectrum</span></code></a>([force_computation])</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#dsptools.classes.signal_class.Signal.get_spectrum" title="dsptools.classes.signal_class.Signal.get_spectrum"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_spectrum</span></code></a>([force_computation])</p></td>
 <td><p>Returns spectrum.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#dsptools.classes.signal_class.Signal.get_time_vector" title="dsptools.classes.signal_class.Signal.get_time_vector"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_time_vector</span></code></a>()</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#dsptools.classes.signal_class.Signal.get_time_vector" title="dsptools.classes.signal_class.Signal.get_time_vector"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_time_vector</span></code></a>()</p></td>
 <td><p>Returns the time vector associated with the signal.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#dsptools.classes.signal_class.Signal.plot_coherence" title="dsptools.classes.signal_class.Signal.plot_coherence"><code class="xref py py-obj docutils literal notranslate"><span class="pre">plot_coherence</span></code></a>([returns])</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#dsptools.classes.signal_class.Signal.plot_coherence" title="dsptools.classes.signal_class.Signal.plot_coherence"><code class="xref py py-obj docutils literal notranslate"><span class="pre">plot_coherence</span></code></a>([returns])</p></td>
 <td><p>Plots coherence measurements if there are any.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#dsptools.classes.signal_class.Signal.plot_csm" title="dsptools.classes.signal_class.Signal.plot_csm"><code class="xref py py-obj docutils literal notranslate"><span class="pre">plot_csm</span></code></a>([range_hz, logx, with_phase, returns])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#dsptools.classes.signal_class.Signal.plot_csm" title="dsptools.classes.signal_class.Signal.plot_csm"><code class="xref py py-obj docutils literal notranslate"><span class="pre">plot_csm</span></code></a>([range_hz, logx, with_phase, returns])</p></td>
 <td><p>Plots the cross spectral matrix of the multichannel signal.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#dsptools.classes.signal_class.Signal.plot_group_delay" title="dsptools.classes.signal_class.Signal.plot_group_delay"><code class="xref py py-obj docutils literal notranslate"><span class="pre">plot_group_delay</span></code></a>([range_hz, returns])</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#dsptools.classes.signal_class.Signal.plot_group_delay" title="dsptools.classes.signal_class.Signal.plot_group_delay"><code class="xref py py-obj docutils literal notranslate"><span class="pre">plot_group_delay</span></code></a>([range_hz, returns])</p></td>
 <td><p>Plots group delay of each channel.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#dsptools.classes.signal_class.Signal.plot_magnitude" title="dsptools.classes.signal_class.Signal.plot_magnitude"><code class="xref py py-obj docutils literal notranslate"><span class="pre">plot_magnitude</span></code></a>([range_hz, normalize, ...])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#dsptools.classes.signal_class.Signal.plot_magnitude" title="dsptools.classes.signal_class.Signal.plot_magnitude"><code class="xref py py-obj docutils literal notranslate"><span class="pre">plot_magnitude</span></code></a>([range_hz, normalize, ...])</p></td>
 <td><p>Plots magnitude spectrum.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#dsptools.classes.signal_class.Signal.plot_phase" title="dsptools.classes.signal_class.Signal.plot_phase"><code class="xref py py-obj docutils literal notranslate"><span class="pre">plot_phase</span></code></a>([range_hz, unwrap, returns])</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#dsptools.classes.signal_class.Signal.plot_phase" title="dsptools.classes.signal_class.Signal.plot_phase"><code class="xref py py-obj docutils literal notranslate"><span class="pre">plot_phase</span></code></a>([range_hz, unwrap, returns])</p></td>
 <td><p>Plots phase of the frequency response, only available if the method for the spectrum parameters is not welch.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#dsptools.classes.signal_class.Signal.plot_spectrogram" title="dsptools.classes.signal_class.Signal.plot_spectrogram"><code class="xref py py-obj docutils literal notranslate"><span class="pre">plot_spectrogram</span></code></a>([channel_number, logfreqs, ...])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#dsptools.classes.signal_class.Signal.plot_spectrogram" title="dsptools.classes.signal_class.Signal.plot_spectrogram"><code class="xref py py-obj docutils literal notranslate"><span class="pre">plot_spectrogram</span></code></a>([channel_number, logfreqs, ...])</p></td>
 <td><p>Plots STFT matrix of the given channel.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#dsptools.classes.signal_class.Signal.plot_time" title="dsptools.classes.signal_class.Signal.plot_time"><code class="xref py py-obj docutils literal notranslate"><span class="pre">plot_time</span></code></a>([returns])</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#dsptools.classes.signal_class.Signal.plot_time" title="dsptools.classes.signal_class.Signal.plot_time"><code class="xref py py-obj docutils literal notranslate"><span class="pre">plot_time</span></code></a>([returns])</p></td>
 <td><p>Plots time signals.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#dsptools.classes.signal_class.Signal.remove_channel" title="dsptools.classes.signal_class.Signal.remove_channel"><code class="xref py py-obj docutils literal notranslate"><span class="pre">remove_channel</span></code></a>([channel_number])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#dsptools.classes.signal_class.Signal.remove_channel" title="dsptools.classes.signal_class.Signal.remove_channel"><code class="xref py py-obj docutils literal notranslate"><span class="pre">remove_channel</span></code></a>([channel_number])</p></td>
 <td><p>Removes a channel.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#dsptools.classes.signal_class.Signal.save_signal" title="dsptools.classes.signal_class.Signal.save_signal"><code class="xref py py-obj docutils literal notranslate"><span class="pre">save_signal</span></code></a>([path, mode])</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#dsptools.classes.signal_class.Signal.save_signal" title="dsptools.classes.signal_class.Signal.save_signal"><code class="xref py py-obj docutils literal notranslate"><span class="pre">save_signal</span></code></a>([path, mode])</p></td>
 <td><p>Saves the Signal object as wav, flac or pickle.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#dsptools.classes.signal_class.Signal.set_coherence" title="dsptools.classes.signal_class.Signal.set_coherence"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_coherence</span></code></a>(coherence)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#dsptools.classes.signal_class.Signal.set_coherence" title="dsptools.classes.signal_class.Signal.set_coherence"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_coherence</span></code></a>(coherence)</p></td>
 <td><p>Sets the coherence measurements of the transfer function.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#dsptools.classes.signal_class.Signal.set_csm_parameters" title="dsptools.classes.signal_class.Signal.set_csm_parameters"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_csm_parameters</span></code></a>([window_length_samples, ...])</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#dsptools.classes.signal_class.Signal.set_csm_parameters" title="dsptools.classes.signal_class.Signal.set_csm_parameters"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_csm_parameters</span></code></a>([window_length_samples, ...])</p></td>
 <td><p>Sets all necessary parameters for the computation of the CSM.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#dsptools.classes.signal_class.Signal.set_spectrogram_parameters" title="dsptools.classes.signal_class.Signal.set_spectrogram_parameters"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_spectrogram_parameters</span></code></a>([channel_number, ...])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#dsptools.classes.signal_class.Signal.set_spectrogram_parameters" title="dsptools.classes.signal_class.Signal.set_spectrogram_parameters"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_spectrogram_parameters</span></code></a>([channel_number, ...])</p></td>
 <td><p>Sets all necessary parameters for the computation of the spectrogram.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#dsptools.classes.signal_class.Signal.set_spectrum_parameters" title="dsptools.classes.signal_class.Signal.set_spectrum_parameters"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_spectrum_parameters</span></code></a>([method, ...])</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#dsptools.classes.signal_class.Signal.set_spectrum_parameters" title="dsptools.classes.signal_class.Signal.set_spectrum_parameters"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_spectrum_parameters</span></code></a>([method, smoothe, ...])</p></td>
 <td><p>Sets all necessary parameters for the computation of the spectrum.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#dsptools.classes.signal_class.Signal.set_window" title="dsptools.classes.signal_class.Signal.set_window"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_window</span></code></a>(window)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#dsptools.classes.signal_class.Signal.set_window" title="dsptools.classes.signal_class.Signal.set_window"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_window</span></code></a>(window)</p></td>
 <td><p>Sets the window used for the IR.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#dsptools.classes.signal_class.Signal.swap_channels" title="dsptools.classes.signal_class.Signal.swap_channels"><code class="xref py py-obj docutils literal notranslate"><span class="pre">swap_channels</span></code></a>(new_order)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#dsptools.classes.signal_class.Signal.swap_channels" title="dsptools.classes.signal_class.Signal.swap_channels"><code class="xref py py-obj docutils literal notranslate"><span class="pre">swap_channels</span></code></a>(new_order)</p></td>
 <td><p>Rearranges the channels in the new given order.</p></td>
 </tr>
 </tbody>
@@ -373,6 +376,20 @@ Default: <cite>‘’</cite>.</p>
 </dd>
 <dt><strong>padding_trimming</strong><span class="classifier">bool, optional</span></dt><dd><p>Activates padding or trimming at the end of signal in case the
 new data does not match previous data. Default: <cite>True</cite>.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="dsptools.classes.signal_class.Signal.copy">
+<span class="sig-name descname"><span class="pre">copy</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#dsptools.classes.signal_class.Signal.copy" title="Permalink to this definition">#</a></dt>
+<dd><p>Returns a copy of the object.</p>
+<dl class="field-list">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><dl>
+<dt><strong>new_sig</strong><span class="classifier"><cite>Signal</cite></span></dt><dd><p>Copy of Signal.</p>
 </dd>
 </dl>
 </dd>
@@ -524,7 +541,8 @@ Default: <cite>False</cite>.</p>
 <dt class="sig sig-object py" id="dsptools.classes.signal_class.Signal.plot_group_delay">
 <span class="sig-name descname"><span class="pre">plot_group_delay</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">range_hz</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[20,</span> <span class="pre">20000]</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">returns</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dsptools.classes.signal_class.Signal.plot_group_delay" title="Permalink to this definition">#</a></dt>
 <dd><p>Plots group delay of each channel.
-Only works if <cite>signal_type in (‘ir’, ‘h1’, ‘h2’, ‘h3’, ‘rir’)</cite>.</p>
+Only works if <cite>signal_type in (‘ir’, ‘h1’, ‘h2’, ‘h3’, ‘rir’, chirp,
+noise, dirac)</cite>.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><dl class="simple">
@@ -547,9 +565,10 @@ Default: <cite>False</cite>.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="dsptools.classes.signal_class.Signal.plot_magnitude">
-<span class="sig-name descname"><span class="pre">plot_magnitude</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">range_hz</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[20,</span> <span class="pre">20000.0]</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">normalize</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'1k'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">smoothe</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">show_info_box</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">returns</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dsptools.classes.signal_class.Signal.plot_magnitude" title="Permalink to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">plot_magnitude</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">range_hz</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[20,</span> <span class="pre">20000.0]</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">normalize</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'1k'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">range_db</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">smoothe</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">show_info_box</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">returns</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dsptools.classes.signal_class.Signal.plot_magnitude" title="Permalink to this definition">#</a></dt>
 <dd><p>Plots magnitude spectrum.
-Change parameters of spectrum with set_spectrum_parameters.</p>
+Change parameters of spectrum with set_spectrum_parameters.
+NOTE: Smoothing is only applied on the plot data.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><dl class="simple">
@@ -560,7 +579,11 @@ Default: [20, 20000].</p>
 with value at frequency 1 kHz or <cite>‘np.max’</cite> for normalization with
 maximal value. Use <cite>None</cite> for no normalization. Default: <cite>‘1k’</cite>.</p>
 </dd>
-<dt><strong>smoothe</strong><span class="classifier">int, optional</span></dt><dd><p>—–&gt; not yet implemented</p>
+<dt><strong>range_db</strong><span class="classifier">array-like with length 2, optional</span></dt><dd><p>Range in dB for which to plot the magnitude response.
+Default: <cite>None</cite>.</p>
+</dd>
+<dt><strong>smoothe</strong><span class="classifier">int, optional</span></dt><dd><p>Smoothing across the (1/smoothe) octave band.
+Default: 0 (no smoothing).</p>
 </dd>
 <dt><strong>show_info_box</strong><span class="classifier">bool, optional</span></dt><dd><p>Plots a info box regarding spectrum parameters and plot parameters.
 If it is str, it overwrites the standard message.
@@ -755,12 +778,20 @@ Default: True.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="dsptools.classes.signal_class.Signal.set_spectrum_parameters">
-<span class="sig-name descname"><span class="pre">set_spectrum_parameters</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">method</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'welch'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">window_length_samples</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1024</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">window_type</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'hann'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">overlap_percent</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">50</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">detrend</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">average</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'mean'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">scaling</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'power'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dsptools.classes.signal_class.Signal.set_spectrum_parameters" title="Permalink to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">set_spectrum_parameters</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">method</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'welch'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">smoothe</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">window_length_samples</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1024</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">window_type</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'hann'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">overlap_percent</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">50</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">detrend</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">average</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'mean'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">scaling</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'power'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dsptools.classes.signal_class.Signal.set_spectrum_parameters" title="Permalink to this definition">#</a></dt>
 <dd><p>Sets all necessary parameters for the computation of the spectrum.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><dl class="simple">
 <dt><strong>method</strong><span class="classifier">str, optional</span></dt><dd><p><cite>‘welch’</cite> or <cite>‘standard’</cite>. Default: <cite>‘welch’</cite>.</p>
+</dd>
+<dt><strong>smoothe</strong><span class="classifier">int, optional</span></dt><dd><p>Smoothing across (1/smoothe) octave bands using a hamming
+window. Smoothes magnitude AND phase. For accesing the smoothing
+algorithm, refer to
+<cite>dsptools._general_helpers._fractional_octave_smoothing()</cite>.
+If smoothing is applied here, <cite>Signal.get_spectrum()</cite> returns
+the smoothed spectrum as well.
+Default: 0 (no smoothing).</p>
 </dd>
 <dt><strong>window_length_samples</strong><span class="classifier">int, optional</span></dt><dd><p>Window size. Default: 1024.</p>
 </dd>
@@ -857,6 +888,12 @@ all kinds of metadata that might characterize the signals.</p>
 <tr class="row-odd"><td><p><a class="reference internal" href="#dsptools.classes.multibandsignal.MultiBandSignal.add_band" title="dsptools.classes.multibandsignal.MultiBandSignal.add_band"><code class="xref py py-obj docutils literal notranslate"><span class="pre">add_band</span></code></a>(sig[, index])</p></td>
 <td><p>Adds a new band to the <cite>MultiBandSignal</cite>.</p></td>
 </tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#dsptools.classes.multibandsignal.MultiBandSignal.collapse" title="dsptools.classes.multibandsignal.MultiBandSignal.collapse"><code class="xref py py-obj docutils literal notranslate"><span class="pre">collapse</span></code></a>()</p></td>
+<td><p>Collapses MultiBandSignal by summing all of its bands and returning one Signal.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#dsptools.classes.multibandsignal.MultiBandSignal.copy" title="dsptools.classes.multibandsignal.MultiBandSignal.copy"><code class="xref py py-obj docutils literal notranslate"><span class="pre">copy</span></code></a>()</p></td>
+<td><p>Returns a copy of the object.</p></td>
+</tr>
 <tr class="row-even"><td><p><a class="reference internal" href="#dsptools.classes.multibandsignal.MultiBandSignal.get_all_bands" title="dsptools.classes.multibandsignal.MultiBandSignal.get_all_bands"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_all_bands</span></code></a>([channel])</p></td>
 <td><p>Returns a signal with all bands as channels.</p></td>
 </tr>
@@ -917,6 +954,35 @@ can be passed. Default: <cite>None</cite>.</p>
 <dt class="sig sig-object py" id="dsptools.classes.multibandsignal.MultiBandSignal.bands">
 <em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">bands</span></span><a class="headerlink" href="#dsptools.classes.multibandsignal.MultiBandSignal.bands" title="Permalink to this definition">#</a></dt>
 <dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="dsptools.classes.multibandsignal.MultiBandSignal.collapse">
+<span class="sig-name descname"><span class="pre">collapse</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#dsptools.classes.multibandsignal.MultiBandSignal.collapse" title="Permalink to this definition">#</a></dt>
+<dd><p>Collapses MultiBandSignal by summing all of its bands and returning
+one Signal.</p>
+<dl class="field-list">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><dl>
+<dt><strong>new_sig</strong><span class="classifier"><cite>Signal</cite></span></dt><dd><p>Collapsed Signal.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="dsptools.classes.multibandsignal.MultiBandSignal.copy">
+<span class="sig-name descname"><span class="pre">copy</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#dsptools.classes.multibandsignal.MultiBandSignal.copy" title="Permalink to this definition">#</a></dt>
+<dd><p>Returns a copy of the object.</p>
+<dl class="field-list">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><dl>
+<dt><strong>new_sig</strong><span class="classifier"><cite>MultiBandSignal</cite></span></dt><dd><p>Copy of Signal.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="dsptools.classes.multibandsignal.MultiBandSignal.get_all_bands">
@@ -1025,40 +1091,43 @@ metadata.</p>
 <div class="table-wrapper autosummary longtable docutils container">
 <table class="autosummary longtable docutils align-default">
 <tbody>
-<tr class="row-odd"><td><p><a class="reference internal" href="#dsptools.classes.filter_class.Filter.filter_signal" title="dsptools.classes.filter_class.Filter.filter_signal"><code class="xref py py-obj docutils literal notranslate"><span class="pre">filter_signal</span></code></a>(signal[, channel, ...])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#dsptools.classes.filter_class.Filter.copy" title="dsptools.classes.filter_class.Filter.copy"><code class="xref py py-obj docutils literal notranslate"><span class="pre">copy</span></code></a>()</p></td>
+<td><p>Returns a copy of the object.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#dsptools.classes.filter_class.Filter.filter_signal" title="dsptools.classes.filter_class.Filter.filter_signal"><code class="xref py py-obj docutils literal notranslate"><span class="pre">filter_signal</span></code></a>(signal[, channel, ...])</p></td>
 <td><p>Takes in a <cite>Signal</cite> object and filters selected channels.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#dsptools.classes.filter_class.Filter.get_coefficients" title="dsptools.classes.filter_class.Filter.get_coefficients"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_coefficients</span></code></a>([mode])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#dsptools.classes.filter_class.Filter.get_coefficients" title="dsptools.classes.filter_class.Filter.get_coefficients"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_coefficients</span></code></a>([mode])</p></td>
 <td><p>Returns the filter coefficients.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#dsptools.classes.filter_class.Filter.get_filter_metadata" title="dsptools.classes.filter_class.Filter.get_filter_metadata"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_filter_metadata</span></code></a>()</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#dsptools.classes.filter_class.Filter.get_filter_metadata" title="dsptools.classes.filter_class.Filter.get_filter_metadata"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_filter_metadata</span></code></a>()</p></td>
 <td><p>Returns filter metadata.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#dsptools.classes.filter_class.Filter.get_ir" title="dsptools.classes.filter_class.Filter.get_ir"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_ir</span></code></a>([length_samples])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#dsptools.classes.filter_class.Filter.get_ir" title="dsptools.classes.filter_class.Filter.get_ir"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_ir</span></code></a>([length_samples])</p></td>
 <td><p>Gets an impulse response of the filter with given length.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#dsptools.classes.filter_class.Filter.initialize_zi" title="dsptools.classes.filter_class.Filter.initialize_zi"><code class="xref py py-obj docutils literal notranslate"><span class="pre">initialize_zi</span></code></a>([number_of_channels])</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#dsptools.classes.filter_class.Filter.initialize_zi" title="dsptools.classes.filter_class.Filter.initialize_zi"><code class="xref py py-obj docutils literal notranslate"><span class="pre">initialize_zi</span></code></a>([number_of_channels])</p></td>
 <td><p>Initializes zi for steady-state filtering.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#dsptools.classes.filter_class.Filter.plot_group_delay" title="dsptools.classes.filter_class.Filter.plot_group_delay"><code class="xref py py-obj docutils literal notranslate"><span class="pre">plot_group_delay</span></code></a>([length_samples, range_hz, ...])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#dsptools.classes.filter_class.Filter.plot_group_delay" title="dsptools.classes.filter_class.Filter.plot_group_delay"><code class="xref py py-obj docutils literal notranslate"><span class="pre">plot_group_delay</span></code></a>([length_samples, range_hz, ...])</p></td>
 <td><p>Plots group delay of the filter.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#dsptools.classes.filter_class.Filter.plot_magnitude" title="dsptools.classes.filter_class.Filter.plot_magnitude"><code class="xref py py-obj docutils literal notranslate"><span class="pre">plot_magnitude</span></code></a>([length_samples, range_hz, ...])</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#dsptools.classes.filter_class.Filter.plot_magnitude" title="dsptools.classes.filter_class.Filter.plot_magnitude"><code class="xref py py-obj docutils literal notranslate"><span class="pre">plot_magnitude</span></code></a>([length_samples, range_hz, ...])</p></td>
 <td><p>Plots magnitude spectrum.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#dsptools.classes.filter_class.Filter.plot_phase" title="dsptools.classes.filter_class.Filter.plot_phase"><code class="xref py py-obj docutils literal notranslate"><span class="pre">plot_phase</span></code></a>([length_samples, range_hz, ...])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#dsptools.classes.filter_class.Filter.plot_phase" title="dsptools.classes.filter_class.Filter.plot_phase"><code class="xref py py-obj docutils literal notranslate"><span class="pre">plot_phase</span></code></a>([length_samples, range_hz, ...])</p></td>
 <td><p>Plots phase spectrum.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#dsptools.classes.filter_class.Filter.plot_zp" title="dsptools.classes.filter_class.Filter.plot_zp"><code class="xref py py-obj docutils literal notranslate"><span class="pre">plot_zp</span></code></a>([show_info_box, returns])</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#dsptools.classes.filter_class.Filter.plot_zp" title="dsptools.classes.filter_class.Filter.plot_zp"><code class="xref py py-obj docutils literal notranslate"><span class="pre">plot_zp</span></code></a>([show_info_box, returns])</p></td>
 <td><p>Plots zeros and poles with the unit circle.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#dsptools.classes.filter_class.Filter.save_filter" title="dsptools.classes.filter_class.Filter.save_filter"><code class="xref py py-obj docutils literal notranslate"><span class="pre">save_filter</span></code></a>([path])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#dsptools.classes.filter_class.Filter.save_filter" title="dsptools.classes.filter_class.Filter.save_filter"><code class="xref py py-obj docutils literal notranslate"><span class="pre">save_filter</span></code></a>([path])</p></td>
 <td><p>Saves the Filter object as a pickle.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#dsptools.classes.filter_class.Filter.set_filter_parameters" title="dsptools.classes.filter_class.Filter.set_filter_parameters"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_filter_parameters</span></code></a>(filter_type, ...)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#dsptools.classes.filter_class.Filter.set_filter_parameters" title="dsptools.classes.filter_class.Filter.set_filter_parameters"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_filter_parameters</span></code></a>(filter_type, ...)</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#dsptools.classes.filter_class.Filter.show_filter_parameters" title="dsptools.classes.filter_class.Filter.show_filter_parameters"><code class="xref py py-obj docutils literal notranslate"><span class="pre">show_filter_parameters</span></code></a>()</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#dsptools.classes.filter_class.Filter.show_filter_parameters" title="dsptools.classes.filter_class.Filter.show_filter_parameters"><code class="xref py py-obj docutils literal notranslate"><span class="pre">show_filter_parameters</span></code></a>()</p></td>
 <td><p>Prints all the filter parameters to the console.</p></td>
 </tr>
 </tbody>
@@ -1140,6 +1209,20 @@ eq_type (int or str): 0 = Bell/Peaking, 1 = Lowpass, 2 = Highpass,</p>
 </tbody>
 </table>
 </div>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="dsptools.classes.filter_class.Filter.copy">
+<span class="sig-name descname"><span class="pre">copy</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#dsptools.classes.filter_class.Filter.copy" title="Permalink to this definition">#</a></dt>
+<dd><p>Returns a copy of the object.</p>
+<dl class="field-list">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><dl>
+<dt><strong>new_sig</strong><span class="classifier"><cite>Filter</cite></span></dt><dd><p>Copy of filter.</p>
+</dd>
+</dl>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py method">
@@ -1403,16 +1486,22 @@ values, metadata and some useful plotting methods.</p>
 <tr class="row-odd"><td><p><a class="reference internal" href="#dsptools.classes.filterbank.FilterBank.add_filter" title="dsptools.classes.filterbank.FilterBank.add_filter"><code class="xref py py-obj docutils literal notranslate"><span class="pre">add_filter</span></code></a>(filt[, index])</p></td>
 <td><p>Adds a new filter at the end of the filters dictionary.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#dsptools.classes.filterbank.FilterBank.filter_signal" title="dsptools.classes.filterbank.FilterBank.filter_signal"><code class="xref py py-obj docutils literal notranslate"><span class="pre">filter_signal</span></code></a>(signal[, mode, activate_zi, ...])</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#dsptools.classes.filterbank.FilterBank.copy" title="dsptools.classes.filterbank.FilterBank.copy"><code class="xref py py-obj docutils literal notranslate"><span class="pre">copy</span></code></a>()</p></td>
+<td><p>Returns a copy of the object.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#dsptools.classes.filterbank.FilterBank.filter_signal" title="dsptools.classes.filterbank.FilterBank.filter_signal"><code class="xref py py-obj docutils literal notranslate"><span class="pre">filter_signal</span></code></a>(signal[, mode, activate_zi, ...])</p></td>
 <td><p>Applies the filter bank to a signal and returns a multiband signal or a <cite>Signal</cite> object.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#dsptools.classes.filterbank.FilterBank.initialize_zi" title="dsptools.classes.filterbank.FilterBank.initialize_zi"><code class="xref py py-obj docutils literal notranslate"><span class="pre">initialize_zi</span></code></a>([number_of_channels])</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#dsptools.classes.filterbank.FilterBank.initialize_zi" title="dsptools.classes.filterbank.FilterBank.initialize_zi"><code class="xref py py-obj docutils literal notranslate"><span class="pre">initialize_zi</span></code></a>([number_of_channels])</p></td>
 <td><p>Initiates the zi of the filters for the given number of channels.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#dsptools.classes.filterbank.FilterBank.plot_magnitude" title="dsptools.classes.filterbank.FilterBank.plot_magnitude"><code class="xref py py-obj docutils literal notranslate"><span class="pre">plot_magnitude</span></code></a>([mode, length_samples, ...])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#dsptools.classes.filterbank.FilterBank.plot_group_delay" title="dsptools.classes.filterbank.FilterBank.plot_group_delay"><code class="xref py py-obj docutils literal notranslate"><span class="pre">plot_group_delay</span></code></a>([mode, range_hz, test_zi, ...])</p></td>
+<td><p>Plots the phase response of each filter.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#dsptools.classes.filterbank.FilterBank.plot_magnitude" title="dsptools.classes.filterbank.FilterBank.plot_magnitude"><code class="xref py py-obj docutils literal notranslate"><span class="pre">plot_magnitude</span></code></a>([mode, range_hz, test_zi, ...])</p></td>
 <td><p>Plots the magnitude response of each filter.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#dsptools.classes.filterbank.FilterBank.plot_phase" title="dsptools.classes.filterbank.FilterBank.plot_phase"><code class="xref py py-obj docutils literal notranslate"><span class="pre">plot_phase</span></code></a>([mode, length_samples, range_hz, ...])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#dsptools.classes.filterbank.FilterBank.plot_phase" title="dsptools.classes.filterbank.FilterBank.plot_phase"><code class="xref py py-obj docutils literal notranslate"><span class="pre">plot_phase</span></code></a>([mode, range_hz, test_zi, ...])</p></td>
 <td><p>Plots the phase response of each filter.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="#dsptools.classes.filterbank.FilterBank.remove_filter" title="dsptools.classes.filterbank.FilterBank.remove_filter"><code class="xref py py-obj docutils literal notranslate"><span class="pre">remove_filter</span></code></a>([index, return_filter])</p></td>
@@ -1482,6 +1571,20 @@ the filters dictionary.</p>
 </dd></dl>
 
 <dl class="py method">
+<dt class="sig sig-object py" id="dsptools.classes.filterbank.FilterBank.copy">
+<span class="sig-name descname"><span class="pre">copy</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#dsptools.classes.filterbank.FilterBank.copy" title="Permalink to this definition">#</a></dt>
+<dd><p>Returns a copy of the object.</p>
+<dl class="field-list">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><dl>
+<dt><strong>new_sig</strong><span class="classifier"><cite>FilterBank</cite></span></dt><dd><p>Copy of filter bank.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="dsptools.classes.filterbank.FilterBank.filter_signal">
 <span class="sig-name descname"><span class="pre">filter_signal</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">signal</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#dsptools.classes.signal_class.Signal" title="dsptools.classes.signal_class.Signal"><span class="pre">Signal</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">mode</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'parallel'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">activate_zi</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">zero_phase</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dsptools.classes.filterbank.FilterBank.filter_signal" title="Permalink to this definition">#</a></dt>
 <dd><p>Applies the filter bank to a signal and returns a multiband signal
@@ -1536,8 +1639,38 @@ Default: 1.</p>
 </dd></dl>
 
 <dl class="py method">
+<dt class="sig sig-object py" id="dsptools.classes.filterbank.FilterBank.plot_group_delay">
+<span class="sig-name descname"><span class="pre">plot_group_delay</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mode</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'parallel'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">range_hz</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[20,</span> <span class="pre">20000.0]</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">test_zi</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">returns</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dsptools.classes.filterbank.FilterBank.plot_group_delay" title="Permalink to this definition">#</a></dt>
+<dd><p>Plots the phase response of each filter.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>mode</strong><span class="classifier">str, optional</span></dt><dd><p>Type of plot. <cite>‘parallel’</cite> plots every filter’s frequency response,
+<cite>‘sequential’</cite> plots the frequency response after having filtered
+one impulse with every filter in the FilterBank. <cite>‘summed’</cite>
+sums up every filter output. Default: <cite>‘parallel’</cite>.</p>
+</dd>
+<dt><strong>range_hz</strong><span class="classifier">array-like, optional</span></dt><dd><p>Range of Hz to plot. Default: [20, 20e3].</p>
+</dd>
+<dt><strong>test_zi</strong><span class="classifier">bool, optional</span></dt><dd><p>Uses the zi’s of each filter to test the FilterBank’s output.
+Default: <cite>False</cite>.</p>
+</dd>
+<dt><strong>returns</strong><span class="classifier">bool, optional</span></dt><dd><p>When <cite>True</cite>, the figure and axis are returned. Default: <cite>False</cite>.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt>fig, ax</dt><dd><p>Returned only when <cite>returns=True</cite>.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="dsptools.classes.filterbank.FilterBank.plot_magnitude">
-<span class="sig-name descname"><span class="pre">plot_magnitude</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mode</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'parallel'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">length_samples</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1024</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">range_hz</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[20,</span> <span class="pre">20000.0]</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">test_zi</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">returns</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dsptools.classes.filterbank.FilterBank.plot_magnitude" title="Permalink to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">plot_magnitude</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mode</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'parallel'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">range_hz</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[20,</span> <span class="pre">20000.0]</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">test_zi</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">returns</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dsptools.classes.filterbank.FilterBank.plot_magnitude" title="Permalink to this definition">#</a></dt>
 <dd><p>Plots the magnitude response of each filter.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -1567,7 +1700,7 @@ Default: <cite>False</cite>.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="dsptools.classes.filterbank.FilterBank.plot_phase">
-<span class="sig-name descname"><span class="pre">plot_phase</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mode</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'parallel'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">length_samples</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1024</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">range_hz</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[20,</span> <span class="pre">20000.0]</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">test_zi</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">unwrap</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">returns</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dsptools.classes.filterbank.FilterBank.plot_phase" title="Permalink to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">plot_phase</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mode</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'parallel'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">range_hz</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[20,</span> <span class="pre">20000.0]</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">test_zi</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">unwrap</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">returns</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dsptools.classes.filterbank.FilterBank.plot_phase" title="Permalink to this definition">#</a></dt>
 <dd><p>Plots the phase response of each filter.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -1712,6 +1845,7 @@ Default: <cite>True</cite>.</p>
 <li><a class="reference internal" href="#dsptools.classes.signal_class.Signal"><code class="docutils literal notranslate"><span class="pre">Signal</span></code></a><ul>
 <li><a class="reference internal" href="#dsptools.classes.signal_class.Signal.__init__"><code class="docutils literal notranslate"><span class="pre">Signal.__init__()</span></code></a></li>
 <li><a class="reference internal" href="#dsptools.classes.signal_class.Signal.add_channel"><code class="docutils literal notranslate"><span class="pre">Signal.add_channel()</span></code></a></li>
+<li><a class="reference internal" href="#dsptools.classes.signal_class.Signal.copy"><code class="docutils literal notranslate"><span class="pre">Signal.copy()</span></code></a></li>
 <li><a class="reference internal" href="#dsptools.classes.signal_class.Signal.get_coherence"><code class="docutils literal notranslate"><span class="pre">Signal.get_coherence()</span></code></a></li>
 <li><a class="reference internal" href="#dsptools.classes.signal_class.Signal.get_csm"><code class="docutils literal notranslate"><span class="pre">Signal.get_csm()</span></code></a></li>
 <li><a class="reference internal" href="#dsptools.classes.signal_class.Signal.get_spectrogram"><code class="docutils literal notranslate"><span class="pre">Signal.get_spectrogram()</span></code></a></li>
@@ -1745,6 +1879,8 @@ Default: <cite>True</cite>.</p>
 <li><a class="reference internal" href="#dsptools.classes.multibandsignal.MultiBandSignal.__init__"><code class="docutils literal notranslate"><span class="pre">MultiBandSignal.__init__()</span></code></a></li>
 <li><a class="reference internal" href="#dsptools.classes.multibandsignal.MultiBandSignal.add_band"><code class="docutils literal notranslate"><span class="pre">MultiBandSignal.add_band()</span></code></a></li>
 <li><a class="reference internal" href="#dsptools.classes.multibandsignal.MultiBandSignal.bands"><code class="docutils literal notranslate"><span class="pre">MultiBandSignal.bands</span></code></a></li>
+<li><a class="reference internal" href="#dsptools.classes.multibandsignal.MultiBandSignal.collapse"><code class="docutils literal notranslate"><span class="pre">MultiBandSignal.collapse()</span></code></a></li>
+<li><a class="reference internal" href="#dsptools.classes.multibandsignal.MultiBandSignal.copy"><code class="docutils literal notranslate"><span class="pre">MultiBandSignal.copy()</span></code></a></li>
 <li><a class="reference internal" href="#dsptools.classes.multibandsignal.MultiBandSignal.get_all_bands"><code class="docutils literal notranslate"><span class="pre">MultiBandSignal.get_all_bands()</span></code></a></li>
 <li><a class="reference internal" href="#dsptools.classes.multibandsignal.MultiBandSignal.remove_band"><code class="docutils literal notranslate"><span class="pre">MultiBandSignal.remove_band()</span></code></a></li>
 <li><a class="reference internal" href="#dsptools.classes.multibandsignal.MultiBandSignal.same_sampling_rate"><code class="docutils literal notranslate"><span class="pre">MultiBandSignal.same_sampling_rate</span></code></a></li>
@@ -1758,6 +1894,7 @@ Default: <cite>True</cite>.</p>
 <li><a class="reference internal" href="#module-dsptools.classes.filter_class">Filter</a><ul>
 <li><a class="reference internal" href="#dsptools.classes.filter_class.Filter"><code class="docutils literal notranslate"><span class="pre">Filter</span></code></a><ul>
 <li><a class="reference internal" href="#dsptools.classes.filter_class.Filter.__init__"><code class="docutils literal notranslate"><span class="pre">Filter.__init__()</span></code></a></li>
+<li><a class="reference internal" href="#dsptools.classes.filter_class.Filter.copy"><code class="docutils literal notranslate"><span class="pre">Filter.copy()</span></code></a></li>
 <li><a class="reference internal" href="#dsptools.classes.filter_class.Filter.filter_signal"><code class="docutils literal notranslate"><span class="pre">Filter.filter_signal()</span></code></a></li>
 <li><a class="reference internal" href="#dsptools.classes.filter_class.Filter.get_coefficients"><code class="docutils literal notranslate"><span class="pre">Filter.get_coefficients()</span></code></a></li>
 <li><a class="reference internal" href="#dsptools.classes.filter_class.Filter.get_filter_metadata"><code class="docutils literal notranslate"><span class="pre">Filter.get_filter_metadata()</span></code></a></li>
@@ -1779,8 +1916,10 @@ Default: <cite>True</cite>.</p>
 <li><a class="reference internal" href="#dsptools.classes.filterbank.FilterBank"><code class="docutils literal notranslate"><span class="pre">FilterBank</span></code></a><ul>
 <li><a class="reference internal" href="#dsptools.classes.filterbank.FilterBank.__init__"><code class="docutils literal notranslate"><span class="pre">FilterBank.__init__()</span></code></a></li>
 <li><a class="reference internal" href="#dsptools.classes.filterbank.FilterBank.add_filter"><code class="docutils literal notranslate"><span class="pre">FilterBank.add_filter()</span></code></a></li>
+<li><a class="reference internal" href="#dsptools.classes.filterbank.FilterBank.copy"><code class="docutils literal notranslate"><span class="pre">FilterBank.copy()</span></code></a></li>
 <li><a class="reference internal" href="#dsptools.classes.filterbank.FilterBank.filter_signal"><code class="docutils literal notranslate"><span class="pre">FilterBank.filter_signal()</span></code></a></li>
 <li><a class="reference internal" href="#dsptools.classes.filterbank.FilterBank.initialize_zi"><code class="docutils literal notranslate"><span class="pre">FilterBank.initialize_zi()</span></code></a></li>
+<li><a class="reference internal" href="#dsptools.classes.filterbank.FilterBank.plot_group_delay"><code class="docutils literal notranslate"><span class="pre">FilterBank.plot_group_delay()</span></code></a></li>
 <li><a class="reference internal" href="#dsptools.classes.filterbank.FilterBank.plot_magnitude"><code class="docutils literal notranslate"><span class="pre">FilterBank.plot_magnitude()</span></code></a></li>
 <li><a class="reference internal" href="#dsptools.classes.filterbank.FilterBank.plot_phase"><code class="docutils literal notranslate"><span class="pre">FilterBank.plot_phase()</span></code></a></li>
 <li><a class="reference internal" href="#dsptools.classes.filterbank.FilterBank.remove_filter"><code class="docutils literal notranslate"><span class="pre">FilterBank.remove_filter()</span></code></a></li>

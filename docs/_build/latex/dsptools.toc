@@ -4,19 +4,19 @@
 \contentsline {section}{\numberline {1.2}Installation}{1}{section.1.2}%
 \contentsline {chapter}{\numberline {2}Classes (dsptools.classes)}{3}{chapter.2}%
 \contentsline {section}{\numberline {2.1}Signal}{3}{section.2.1}%
-\contentsline {section}{\numberline {2.2}MultiBandSignal}{10}{section.2.2}%
-\contentsline {section}{\numberline {2.3}Filter}{12}{section.2.3}%
-\contentsline {section}{\numberline {2.4}Filterbank}{17}{section.2.4}%
-\contentsline {chapter}{\numberline {3}Modules in dsptools}{21}{chapter.3}%
-\contentsline {section}{\numberline {3.1}Distances (dsptools.distances)}{21}{section.3.1}%
-\contentsline {section}{\numberline {3.2}Filterbanks (dsptools.filterbanks)}{22}{section.3.2}%
-\contentsline {section}{\numberline {3.3}Generators (dsptools.generators)}{23}{section.3.3}%
-\contentsline {section}{\numberline {3.4}Measure (dsptools.measure)}{25}{section.3.4}%
-\contentsline {section}{\numberline {3.5}Plots (dsptools.plots)}{27}{section.3.5}%
-\contentsline {section}{\numberline {3.6}Room acoustics (dsptools.room\_acoustics)}{29}{section.3.6}%
-\contentsline {section}{\numberline {3.7}Special (dsptools.special)}{30}{section.3.7}%
-\contentsline {section}{\numberline {3.8}Standard functions (dsptools.*)}{31}{section.3.8}%
-\contentsline {section}{\numberline {3.9}Transfer functions (dsptools.transfer\_functions)}{33}{section.3.9}%
-\contentsline {chapter}{\numberline {4}Indices and tables}{35}{chapter.4}%
-\contentsline {chapter}{Python Module Index}{37}{section*.94}%
-\contentsline {chapter}{Index}{39}{section*.95}%
+\contentsline {section}{\numberline {2.2}MultiBandSignal}{11}{section.2.2}%
+\contentsline {section}{\numberline {2.3}Filter}{13}{section.2.3}%
+\contentsline {section}{\numberline {2.4}Filterbank}{18}{section.2.4}%
+\contentsline {chapter}{\numberline {3}Modules in dsptools}{23}{chapter.3}%
+\contentsline {section}{\numberline {3.1}Distances (dsptools.distances)}{23}{section.3.1}%
+\contentsline {section}{\numberline {3.2}Filterbanks (dsptools.filterbanks)}{24}{section.3.2}%
+\contentsline {section}{\numberline {3.3}Generators (dsptools.generators)}{25}{section.3.3}%
+\contentsline {section}{\numberline {3.4}Measure (dsptools.measure)}{27}{section.3.4}%
+\contentsline {section}{\numberline {3.5}Plots (dsptools.plots)}{29}{section.3.5}%
+\contentsline {section}{\numberline {3.6}Room acoustics (dsptools.room\_acoustics)}{31}{section.3.6}%
+\contentsline {section}{\numberline {3.7}Special (dsptools.special)}{32}{section.3.7}%
+\contentsline {section}{\numberline {3.8}Standard functions (dsptools.*)}{33}{section.3.8}%
+\contentsline {section}{\numberline {3.9}Transfer functions (dsptools.transfer\_functions)}{35}{section.3.9}%
+\contentsline {chapter}{\numberline {4}Indices and tables}{39}{chapter.4}%
+\contentsline {chapter}{Python Module Index}{41}{section*.102}%
+\contentsline {chapter}{Index}{43}{section*.103}%

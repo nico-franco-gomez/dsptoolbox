@@ -209,6 +209,7 @@
         <article role="main">
           <section id="module-dsptools.standard_functions">
 <span id="standard-functions-dsptools"></span><h1>Standard functions (dsptools.*)<a class="headerlink" href="#module-dsptools.standard_functions" title="Permalink to this heading">#</a></h1>
+<p>Standard functions in DSP processes</p>
 <dl class="py function">
 <dt class="sig sig-object py" id="dsptools.standard_functions.excess_group_delay">
 <span class="sig-prename descclassname"><span class="pre">dsptools.standard_functions.</span></span><span class="sig-name descname"><span class="pre">excess_group_delay</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">signal</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../classes.html#dsptools.classes.signal_class.Signal" title="dsptools.classes.signal_class.Signal"><span class="pre">Signal</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dsptools.standard_functions.excess_group_delay" title="Permalink to this definition">#</a></dt>
@@ -275,6 +276,56 @@ channels of the is computed.</p>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><dl>
 <dt><strong>latency_per_channel_samples</strong><span class="classifier"><cite>np.ndarray</cite></span></dt><dd><p>Array with latency between two signals in samples per channel.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="dsptools.standard_functions.merge_filterbanks">
+<span class="sig-prename descclassname"><span class="pre">dsptools.standard_functions.</span></span><span class="sig-name descname"><span class="pre">merge_filterbanks</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fb1</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../classes.html#dsptools.classes.filterbank.FilterBank" title="dsptools.classes.filterbank.FilterBank"><span class="pre">FilterBank</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">fb2</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../classes.html#dsptools.classes.filterbank.FilterBank" title="dsptools.classes.filterbank.FilterBank"><span class="pre">FilterBank</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dsptools.standard_functions.merge_filterbanks" title="Permalink to this definition">#</a></dt>
+<dd><p>Merges two filterbanks.</p>
+<dl class="field-list">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl>
+<dt><strong>fb1</strong><span class="classifier"><cite>FilterBank</cite></span></dt><dd><p>First filterbank.</p>
+</dd>
+<dt><strong>fb1</strong><span class="classifier"><cite>FilterBank</cite></span></dt><dd><p>Second filterbank.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl>
+<dt><strong>new_fb</strong><span class="classifier"><cite>FilterBank</cite></span></dt><dd><p>New filterbank with merged filters</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="dsptools.standard_functions.merge_signals">
+<span class="sig-prename descclassname"><span class="pre">dsptools.standard_functions.</span></span><span class="sig-name descname"><span class="pre">merge_signals</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">in1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">in2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">trimming_at_end</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dsptools.standard_functions.merge_signals" title="Permalink to this definition">#</a></dt>
+<dd><p>Merges two signals by appending the channels of the second one to the
+first. If the length of in2 is not the same, trimming or padding is
+applied at the end.</p>
+<dl class="field-list">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl>
+<dt><strong>in1</strong><span class="classifier"><cite>Signal</cite> or <cite>MultiBandSignal</cite></span></dt><dd><p>First signal.</p>
+</dd>
+<dt><strong>in2</strong><span class="classifier"><cite>Signal</cite> or <cite>MultiBandSignal</cite></span></dt><dd><p>Second signal.</p>
+</dd>
+<dt><strong>trimming_at_end</strong><span class="classifier">bool, optional</span></dt><dd><p>If the signals do not have the same length, the second one is padded
+or trimmed. When <cite>True</cite>, padding/trimming is done at the end.
+Default: <cite>True</cite>.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl>
+<dt><strong>new_sig</strong><span class="classifier"><cite>Signal</cite></span></dt><dd><p>New merged signal.</p>
 </dd>
 </dl>
 </dd>
@@ -411,6 +462,8 @@ in the end of the signal. Default: <cite>True</cite>.</p>
 <li><a class="reference internal" href="#dsptools.standard_functions.excess_group_delay"><code class="docutils literal notranslate"><span class="pre">excess_group_delay()</span></code></a></li>
 <li><a class="reference internal" href="#dsptools.standard_functions.group_delay"><code class="docutils literal notranslate"><span class="pre">group_delay()</span></code></a></li>
 <li><a class="reference internal" href="#dsptools.standard_functions.latency"><code class="docutils literal notranslate"><span class="pre">latency()</span></code></a></li>
+<li><a class="reference internal" href="#dsptools.standard_functions.merge_filterbanks"><code class="docutils literal notranslate"><span class="pre">merge_filterbanks()</span></code></a></li>
+<li><a class="reference internal" href="#dsptools.standard_functions.merge_signals"><code class="docutils literal notranslate"><span class="pre">merge_signals()</span></code></a></li>
 <li><a class="reference internal" href="#dsptools.standard_functions.minimal_group_delay"><code class="docutils literal notranslate"><span class="pre">minimal_group_delay()</span></code></a></li>
 <li><a class="reference internal" href="#dsptools.standard_functions.minimal_phase"><code class="docutils literal notranslate"><span class="pre">minimal_phase()</span></code></a></li>
 <li><a class="reference internal" href="#dsptools.standard_functions.pad_trim"><code class="docutils literal notranslate"><span class="pre">pad_trim()</span></code></a></li>

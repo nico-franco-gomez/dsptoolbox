@@ -84,6 +84,8 @@ def filter_bank_filter():
     fb = dsp.filterbanks.linkwitz_riley_crossovers(
         [1000, 1500], [4, 6])
     fb.show_info()
+    fb.plot_phase(unwrap=True, test_zi=True)
+    # fb.plot_group_delay()
     # i = dsp.generators.dirac(1024, 2)
     # i_out = fb.filter_signal(i, activate_zi=True)
     # i_out.bands[0].plot_magnitude()
@@ -127,7 +129,7 @@ if __name__ == '__main__':
     # filter_functionalities()
     # filtering()
     # filter_bank_add_remove()
-    # filter_bank_filter()
-    perfect_reconstruction()
+    filter_bank_filter()
+    # perfect_reconstruction()
 
     print()

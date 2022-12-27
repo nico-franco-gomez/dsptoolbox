@@ -251,15 +251,15 @@ Signal object.</p>
 <dt class="sig sig-object py" id="dsptools.transfer_functions.spectral_deconvolve">
 <span class="sig-prename descclassname"><span class="pre">dsptools.transfer_functions.</span></span><span class="sig-name descname"><span class="pre">spectral_deconvolve</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">num</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../classes.html#dsptools.classes.signal_class.Signal" title="dsptools.classes.signal_class.Signal"><span class="pre">Signal</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">denum</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../classes.html#dsptools.classes.signal_class.Signal" title="dsptools.classes.signal_class.Signal"><span class="pre">Signal</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">multichannel</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mode</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'regularized'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">start_stop_hz</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">threshold_db</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">-30</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">padding</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">keep_original_length</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dsptools.transfer_functions.spectral_deconvolve" title="Permalink to this definition">#</a></dt>
 <dd><p>Deconvolution by spectral division of two signals.</p>
-<dl class="field-list simple">
+<dl class="field-list">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><dl class="simple">
-<dt><strong>num</strong><span class="classifier">Signal</span></dt><dd><p>Signal to deconvolve from.</p>
+<dd class="field-odd"><dl>
+<dt><strong>num</strong><span class="classifier"><cite>Signal</cite></span></dt><dd><p>Signal to deconvolve from.</p>
 </dd>
-<dt><strong>denum</strong><span class="classifier">Signal</span></dt><dd><p>Signal to deconvolve.</p>
+<dt><strong>denum</strong><span class="classifier"><cite>Signal</cite></span></dt><dd><p>Signal to deconvolve.</p>
 </dd>
 <dt><strong>multichannel</strong><span class="classifier">bool, optional</span></dt><dd><p>When <cite>True</cite>, the first channel of denum is used for all channels
-in num. Default: False.</p>
+in num. Default: <cite>False</cite>.</p>
 </dd>
 <dt><strong>mode</strong><span class="classifier">str, optional</span></dt><dd><p><cite>‘window’</cite> uses a spectral window in the numerator. <cite>‘regularized’</cite>
 uses a regularized inversion. <cite>‘standard’</cite> uses direct deconvolution.
@@ -283,8 +283,8 @@ data to its original length. Default: <cite>False</cite>.</p>
 </dl>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><dl class="simple">
-<dt><strong>new_sig</strong><span class="classifier">Signal</span></dt><dd><p>Deconvolved signal.</p>
+<dd class="field-even"><dl>
+<dt><strong>new_sig</strong><span class="classifier"><cite>Signal</cite></span></dt><dd><p>Deconvolved signal.</p>
 </dd>
 </dl>
 </dd>
