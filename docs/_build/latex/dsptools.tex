@@ -61,8 +61,8 @@
 
 
 \title{dsptools}
-\date{Dec 27, 2022}
-\release{0.1}
+\date{Dec 28, 2022}
+\release{0.0.1}
 \author{Nicolas Franco\sphinxhyphen{}Gomez}
 \newcommand{\sphinxlogo}{\vbox{}}
 \renewcommand{\releasename}{Release}
@@ -152,6 +152,7 @@ supported computations are focused on audio signals, but some features
 might be generalizable to all kind of time series.
 \begin{quote}\begin{description}
 \sphinxlineitem{Attributes}\begin{description}
+\sphinxlineitem{\sphinxstylestrong{number\_of\_channels}}
 \sphinxlineitem{\sphinxstylestrong{sampling\_rate\_hz}}
 \sphinxlineitem{\sphinxstylestrong{signal\_id}}
 \sphinxlineitem{\sphinxstylestrong{signal\_type}}
@@ -317,6 +318,13 @@ Sets the window used for the IR.
 \\
 \sphinxhline
 \sphinxAtStartPar
+{\hyperref[\detokenize{classes:dsptools.classes.signal_class.Signal.show_info}]{\sphinxcrossref{\sphinxcode{\sphinxupquote{show\_info}}}}}()
+&
+\sphinxAtStartPar
+Prints all the signal information to the console.
+\\
+\sphinxhline
+\sphinxAtStartPar
 {\hyperref[\detokenize{classes:dsptools.classes.signal_class.Signal.swap_channels}]{\sphinxcrossref{\sphinxcode{\sphinxupquote{swap\_channels}}}}}(new\_order)
 &
 \sphinxAtStartPar
@@ -356,7 +364,7 @@ Sampling rate of the signal in Hz. Default: 48000.
 \sphinxlineitem{\sphinxstylestrong{signal\_type}}{[}str, optional{]}
 \sphinxAtStartPar
 A generic signal type. Some functionalities are only unlocked for
-impulse responses with \sphinxtitleref{‘ir’} or \sphinxtitleref{‘h1’}, \sphinxtitleref{‘h2’} or \sphinxtitleref{‘h3’}.
+impulse responses with \sphinxtitleref{‘ir’}, \sphinxtitleref{‘h1’}, \sphinxtitleref{‘h2’}, \sphinxtitleref{‘h3’} or \sphinxtitleref{‘rir’}.
 Default: \sphinxtitleref{‘general’}.
 
 \sphinxlineitem{\sphinxstylestrong{signal\_id}}{[}str, optional{]}
@@ -630,6 +638,15 @@ Time vector in seconds.
 
 \end{fulllineitems}
 
+\index{number\_of\_channels (dsptools.classes.signal\_class.Signal property)@\spxentry{number\_of\_channels}\spxextra{dsptools.classes.signal\_class.Signal property}}
+
+\begin{fulllineitems}
+\phantomsection\label{\detokenize{classes:dsptools.classes.signal_class.Signal.number_of_channels}}
+\pysigstartsignatures
+\pysigline{\sphinxbfcode{\sphinxupquote{property\DUrole{w}{  }}}\sphinxbfcode{\sphinxupquote{number\_of\_channels}}}
+\pysigstopsignatures
+\end{fulllineitems}
+
 \index{plot\_coherence() (dsptools.classes.signal\_class.Signal method)@\spxentry{plot\_coherence()}\spxextra{dsptools.classes.signal\_class.Signal method}}
 
 \begin{fulllineitems}
@@ -753,7 +770,7 @@ Default: {[}20, 20000{]}.
 \sphinxlineitem{\sphinxstylestrong{normalize}}{[}str, optional{]}
 \sphinxAtStartPar
 Mode for normalization, supported are \sphinxtitleref{‘1k’} for normalization
-with value at frequency 1 kHz or \sphinxtitleref{‘np.max’} for normalization with
+with value at frequency 1 kHz or \sphinxtitleref{‘max’} for normalization with
 maximal value. Use \sphinxtitleref{None} for no normalization. Default: \sphinxtitleref{‘1k’}.
 
 \sphinxlineitem{\sphinxstylestrong{range\_db}}{[}array\sphinxhyphen{}like with length 2, optional{]}
@@ -1128,6 +1145,18 @@ Window used for the IR.
 \end{description}
 
 \end{description}\end{quote}
+
+\end{fulllineitems}
+
+\index{show\_info() (dsptools.classes.signal\_class.Signal method)@\spxentry{show\_info()}\spxextra{dsptools.classes.signal\_class.Signal method}}
+
+\begin{fulllineitems}
+\phantomsection\label{\detokenize{classes:dsptools.classes.signal_class.Signal.show_info}}
+\pysigstartsignatures
+\pysiglinewithargsret{\sphinxbfcode{\sphinxupquote{show\_info}}}{}{}
+\pysigstopsignatures
+\sphinxAtStartPar
+Prints all the signal information to the console.
 
 \end{fulllineitems}
 
@@ -1634,7 +1663,7 @@ Saves the Filter object as a pickle.
 \\
 \sphinxhline
 \sphinxAtStartPar
-{\hyperref[\detokenize{classes:dsptools.classes.filter_class.Filter.show_filter_parameters}]{\sphinxcrossref{\sphinxcode{\sphinxupquote{show\_filter\_parameters}}}}}()
+{\hyperref[\detokenize{classes:dsptools.classes.filter_class.Filter.show_info}]{\sphinxcrossref{\sphinxcode{\sphinxupquote{show\_info}}}}}()
 &
 \sphinxAtStartPar
 Prints all the filter parameters to the console.
@@ -2144,12 +2173,12 @@ Path for the filter to be saved. Use only folder1/folder2/name
 \pysigstopsignatures
 \end{fulllineitems}
 
-\index{show\_filter\_parameters() (dsptools.classes.filter\_class.Filter method)@\spxentry{show\_filter\_parameters()}\spxextra{dsptools.classes.filter\_class.Filter method}}
+\index{show\_info() (dsptools.classes.filter\_class.Filter method)@\spxentry{show\_info()}\spxextra{dsptools.classes.filter\_class.Filter method}}
 
 \begin{fulllineitems}
-\phantomsection\label{\detokenize{classes:dsptools.classes.filter_class.Filter.show_filter_parameters}}
+\phantomsection\label{\detokenize{classes:dsptools.classes.filter_class.Filter.show_info}}
 \pysigstartsignatures
-\pysiglinewithargsret{\sphinxbfcode{\sphinxupquote{show\_filter\_parameters}}}{}{}
+\pysiglinewithargsret{\sphinxbfcode{\sphinxupquote{show\_info}}}{}{}
 \pysigstopsignatures
 \sphinxAtStartPar
 Prints all the filter parameters to the console.
@@ -2311,7 +2340,7 @@ add\_filter, remove\_filter, save\_filterbank.
 \sphinxstylestrong{Prints and plots}
 &
 \sphinxAtStartPar
-plot\_magnitude, plot\_phase, show\_info.
+plot\_magnitude, plot\_phase, plot\_group\_delay, show\_info.
 \\
 \sphinxbottomrule
 \end{tabulary}

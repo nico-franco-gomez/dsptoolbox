@@ -6,7 +6,7 @@
 <link rel="index" title="Index" href="genindex.html" /><link rel="search" title="Search" href="search.html" /><link rel="next" title="Modules in dsptools" href="modules.html" /><link rel="prev" title="Readme" href="readme.html" />
 
     <!-- Generated with Sphinx 5.3.0 and Furo 2022.12.07 -->
-        <title>Classes (dsptools.classes) - dsptools 0.1 documentation</title>
+        <title>Classes (dsptools.classes) - dsptools 0.0.1 documentation</title>
       <link rel="stylesheet" type="text/css" href="_static/pygments.css" />
     <link rel="stylesheet" type="text/css" href="_static/styles/furo.css?digest=91d0f0d1c444bdcb17a68e833c7a53903343c195" />
     <link rel="stylesheet" type="text/css" href="_static/styles/furo-extensions.css?digest=30d1aed668e5c3a91c3e3bf6a60b675221979f0e" />
@@ -123,7 +123,7 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="index.html"><div class="brand">dsptools 0.1 documentation</div></a>
+      <a href="index.html"><div class="brand">dsptools 0.0.1 documentation</div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
@@ -146,7 +146,7 @@
       <div class="sidebar-sticky"><a class="sidebar-brand" href="index.html">
   
   
-  <span class="sidebar-brand-text">dsptools 0.1 documentation</span>
+  <span class="sidebar-brand-text">dsptools 0.0.1 documentation</span>
   
 </a><form class="sidebar-search-container" method="get" action="search.html" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
@@ -224,6 +224,7 @@ might be generalizable to all kind of time series.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Attributes<span class="colon">:</span></dt>
 <dd class="field-odd"><dl class="simple">
+<dt><strong>number_of_channels</strong></dt><dd></dd>
 <dt><strong>sampling_rate_hz</strong></dt><dd></dd>
 <dt><strong>signal_id</strong></dt><dd></dd>
 <dt><strong>signal_type</strong></dt><dd></dd>
@@ -298,7 +299,10 @@ might be generalizable to all kind of time series.</p>
 <tr class="row-odd"><td><p><a class="reference internal" href="#dsptools.classes.signal_class.Signal.set_window" title="dsptools.classes.signal_class.Signal.set_window"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_window</span></code></a>(window)</p></td>
 <td><p>Sets the window used for the IR.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#dsptools.classes.signal_class.Signal.swap_channels" title="dsptools.classes.signal_class.Signal.swap_channels"><code class="xref py py-obj docutils literal notranslate"><span class="pre">swap_channels</span></code></a>(new_order)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#dsptools.classes.signal_class.Signal.show_info" title="dsptools.classes.signal_class.Signal.show_info"><code class="xref py py-obj docutils literal notranslate"><span class="pre">show_info</span></code></a>()</p></td>
+<td><p>Prints all the signal information to the console.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#dsptools.classes.signal_class.Signal.swap_channels" title="dsptools.classes.signal_class.Signal.swap_channels"><code class="xref py py-obj docutils literal notranslate"><span class="pre">swap_channels</span></code></a>(new_order)</p></td>
 <td><p>Rearranges the channels in the new given order.</p></td>
 </tr>
 </tbody>
@@ -322,7 +326,7 @@ Default: <cite>None</cite>.</p>
 <dt><strong>sampling_rate_hz</strong><span class="classifier">int, optional</span></dt><dd><p>Sampling rate of the signal in Hz. Default: 48000.</p>
 </dd>
 <dt><strong>signal_type</strong><span class="classifier">str, optional</span></dt><dd><p>A generic signal type. Some functionalities are only unlocked for
-impulse responses with <cite>‘ir’</cite> or <cite>‘h1’</cite>, <cite>‘h2’</cite> or <cite>‘h3’</cite>.
+impulse responses with <cite>‘ir’</cite>, <cite>‘h1’</cite>, <cite>‘h2’</cite>, <cite>‘h3’</cite> or <cite>‘rir’</cite>.
 Default: <cite>‘general’</cite>.</p>
 </dd>
 <dt><strong>signal_id</strong><span class="classifier">str, optional</span></dt><dd><p>An even more generic signal id that can be used by the user.
@@ -491,6 +495,11 @@ new data does not match previous data. Default: <cite>True</cite>.</p>
 </dl>
 </dd></dl>
 
+<dl class="py property">
+<dt class="sig sig-object py" id="dsptools.classes.signal_class.Signal.number_of_channels">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">number_of_channels</span></span><a class="headerlink" href="#dsptools.classes.signal_class.Signal.number_of_channels" title="Permalink to this definition">#</a></dt>
+<dd></dd></dl>
+
 <dl class="py method">
 <dt class="sig sig-object py" id="dsptools.classes.signal_class.Signal.plot_coherence">
 <span class="sig-name descname"><span class="pre">plot_coherence</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">returns</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dsptools.classes.signal_class.Signal.plot_coherence" title="Permalink to this definition">#</a></dt>
@@ -576,7 +585,7 @@ NOTE: Smoothing is only applied on the plot data.</p>
 Default: [20, 20000].</p>
 </dd>
 <dt><strong>normalize</strong><span class="classifier">str, optional</span></dt><dd><p>Mode for normalization, supported are <cite>‘1k’</cite> for normalization
-with value at frequency 1 kHz or <cite>‘np.max’</cite> for normalization with
+with value at frequency 1 kHz or <cite>‘max’</cite> for normalization with
 maximal value. Use <cite>None</cite> for no normalization. Default: <cite>‘1k’</cite>.</p>
 </dd>
 <dt><strong>range_db</strong><span class="classifier">array-like with length 2, optional</span></dt><dd><p>Range in dB for which to plot the magnitude response.
@@ -825,6 +834,12 @@ Default: <cite>‘mean’</cite>.</p>
 </dl>
 </dd>
 </dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="dsptools.classes.signal_class.Signal.show_info">
+<span class="sig-name descname"><span class="pre">show_info</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#dsptools.classes.signal_class.Signal.show_info" title="Permalink to this definition">#</a></dt>
+<dd><p>Prints all the signal information to the console.</p>
 </dd></dl>
 
 <dl class="py property">
@@ -1127,7 +1142,7 @@ metadata.</p>
 <tr class="row-even"><td><p><a class="reference internal" href="#dsptools.classes.filter_class.Filter.set_filter_parameters" title="dsptools.classes.filter_class.Filter.set_filter_parameters"><code class="xref py py-obj docutils literal notranslate"><span class="pre">set_filter_parameters</span></code></a>(filter_type, ...)</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#dsptools.classes.filter_class.Filter.show_filter_parameters" title="dsptools.classes.filter_class.Filter.show_filter_parameters"><code class="xref py py-obj docutils literal notranslate"><span class="pre">show_filter_parameters</span></code></a>()</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#dsptools.classes.filter_class.Filter.show_info" title="dsptools.classes.filter_class.Filter.show_info"><code class="xref py py-obj docutils literal notranslate"><span class="pre">show_info</span></code></a>()</p></td>
 <td><p>Prints all the filter parameters to the console.</p></td>
 </tr>
 </tbody>
@@ -1463,8 +1478,8 @@ Default: [20, 20000].</p>
 <dd></dd></dl>
 
 <dl class="py method">
-<dt class="sig sig-object py" id="dsptools.classes.filter_class.Filter.show_filter_parameters">
-<span class="sig-name descname"><span class="pre">show_filter_parameters</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#dsptools.classes.filter_class.Filter.show_filter_parameters" title="Permalink to this definition">#</a></dt>
+<dt class="sig sig-object py" id="dsptools.classes.filter_class.Filter.show_info">
+<span class="sig-name descname"><span class="pre">show_info</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#dsptools.classes.filter_class.Filter.show_info" title="Permalink to this definition">#</a></dt>
 <dd><p>Prints all the filter parameters to the console.</p>
 </dd></dl>
 
@@ -1547,7 +1562,7 @@ the filters dictionary.</p>
 <td><p>add_filter, remove_filter, save_filterbank.</p></td>
 </tr>
 <tr class="row-even"><td><p><strong>Prints and plots</strong></p></td>
-<td><p>plot_magnitude, plot_phase, show_info.</p></td>
+<td><p>plot_magnitude, plot_phase, plot_group_delay, show_info.</p></td>
 </tr>
 </tbody>
 </table>
@@ -1851,6 +1866,7 @@ Default: <cite>True</cite>.</p>
 <li><a class="reference internal" href="#dsptools.classes.signal_class.Signal.get_spectrogram"><code class="docutils literal notranslate"><span class="pre">Signal.get_spectrogram()</span></code></a></li>
 <li><a class="reference internal" href="#dsptools.classes.signal_class.Signal.get_spectrum"><code class="docutils literal notranslate"><span class="pre">Signal.get_spectrum()</span></code></a></li>
 <li><a class="reference internal" href="#dsptools.classes.signal_class.Signal.get_time_vector"><code class="docutils literal notranslate"><span class="pre">Signal.get_time_vector()</span></code></a></li>
+<li><a class="reference internal" href="#dsptools.classes.signal_class.Signal.number_of_channels"><code class="docutils literal notranslate"><span class="pre">Signal.number_of_channels</span></code></a></li>
 <li><a class="reference internal" href="#dsptools.classes.signal_class.Signal.plot_coherence"><code class="docutils literal notranslate"><span class="pre">Signal.plot_coherence()</span></code></a></li>
 <li><a class="reference internal" href="#dsptools.classes.signal_class.Signal.plot_csm"><code class="docutils literal notranslate"><span class="pre">Signal.plot_csm()</span></code></a></li>
 <li><a class="reference internal" href="#dsptools.classes.signal_class.Signal.plot_group_delay"><code class="docutils literal notranslate"><span class="pre">Signal.plot_group_delay()</span></code></a></li>
@@ -1866,6 +1882,7 @@ Default: <cite>True</cite>.</p>
 <li><a class="reference internal" href="#dsptools.classes.signal_class.Signal.set_spectrogram_parameters"><code class="docutils literal notranslate"><span class="pre">Signal.set_spectrogram_parameters()</span></code></a></li>
 <li><a class="reference internal" href="#dsptools.classes.signal_class.Signal.set_spectrum_parameters"><code class="docutils literal notranslate"><span class="pre">Signal.set_spectrum_parameters()</span></code></a></li>
 <li><a class="reference internal" href="#dsptools.classes.signal_class.Signal.set_window"><code class="docutils literal notranslate"><span class="pre">Signal.set_window()</span></code></a></li>
+<li><a class="reference internal" href="#dsptools.classes.signal_class.Signal.show_info"><code class="docutils literal notranslate"><span class="pre">Signal.show_info()</span></code></a></li>
 <li><a class="reference internal" href="#dsptools.classes.signal_class.Signal.signal_id"><code class="docutils literal notranslate"><span class="pre">Signal.signal_id</span></code></a></li>
 <li><a class="reference internal" href="#dsptools.classes.signal_class.Signal.signal_type"><code class="docutils literal notranslate"><span class="pre">Signal.signal_type</span></code></a></li>
 <li><a class="reference internal" href="#dsptools.classes.signal_class.Signal.swap_channels"><code class="docutils literal notranslate"><span class="pre">Signal.swap_channels()</span></code></a></li>
@@ -1907,7 +1924,7 @@ Default: <cite>True</cite>.</p>
 <li><a class="reference internal" href="#dsptools.classes.filter_class.Filter.sampling_rate_hz"><code class="docutils literal notranslate"><span class="pre">Filter.sampling_rate_hz</span></code></a></li>
 <li><a class="reference internal" href="#dsptools.classes.filter_class.Filter.save_filter"><code class="docutils literal notranslate"><span class="pre">Filter.save_filter()</span></code></a></li>
 <li><a class="reference internal" href="#dsptools.classes.filter_class.Filter.set_filter_parameters"><code class="docutils literal notranslate"><span class="pre">Filter.set_filter_parameters()</span></code></a></li>
-<li><a class="reference internal" href="#dsptools.classes.filter_class.Filter.show_filter_parameters"><code class="docutils literal notranslate"><span class="pre">Filter.show_filter_parameters()</span></code></a></li>
+<li><a class="reference internal" href="#dsptools.classes.filter_class.Filter.show_info"><code class="docutils literal notranslate"><span class="pre">Filter.show_info()</span></code></a></li>
 </ul>
 </li>
 </ul>

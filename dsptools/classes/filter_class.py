@@ -312,6 +312,9 @@ class Filter():
             ir_filt = sig.sosfilt(sos=self.sos, x=ir_filt)
         else:
             ir_filt = sig.lfilter(self.ba[0], self.ba[1], x=ir_filt)
+            if length_samples < max(len(self.ba[0]), len(self.ba[1])):
+                warn('Length is shorter than filter, results might be ' +
+                     'meaningless')
         ir_filt = Signal(
             None, ir_filt,
             sampling_rate_hz=self.sampling_rate_hz,
@@ -344,7 +347,7 @@ class Filter():
         return coefficients
 
     # ======== Plots and prints ===============================================
-    def show_filter_parameters(self):
+    def show_info(self):
         """Prints all the filter parameters to the console.
 
         """

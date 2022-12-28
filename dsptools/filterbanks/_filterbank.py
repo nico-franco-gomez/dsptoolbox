@@ -32,9 +32,9 @@ class LRFilterBank():
 
         Parameters
         ----------
-        freqs : array_like
+        freqs : array-like
             Frequencies at which to set the crossovers.
-        order : array_like or int, optional
+        order : array-like or int, optional
             Order for the crossover filters. If one `int` is passed, it is
             used for all the crossovers. Default: 4.
         sampling_rate_hz : int, optional
@@ -53,8 +53,14 @@ class LRFilterBank():
         for o in order:
             assert o % 2 == 0, 'Order of the crossovers has to be an ' +\
                 'even number'
-        self.freqs = np.sort(np.array(freqs).squeeze())
-        self.order = np.sort(np.array(order).squeeze())
+        self.freqs = np.array(freqs).squeeze()
+        self.order = np.array(order).squeeze()
+        if self.freqs.ndim > 0: 
+            self.freqs = np.sort(self.freqs)
+            self.order = np.sort(self.order)
+        else:
+            self.freqs = self.freqs[..., None]
+            self.order = self.order[..., None]
         self.number_of_cross = len(freqs)
         self.number_of_bands = self.number_of_cross + 1
         self.sampling_rate_hz = sampling_rate_hz

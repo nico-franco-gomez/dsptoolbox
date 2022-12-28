@@ -42,7 +42,7 @@ class FilterBank():
         General
             add_filter, remove_filter, save_filterbank.
         Prints and plots
-            plot_magnitude, plot_phase, show_info.
+            plot_magnitude, plot_phase, plot_group_delay, show_info.
 
         """
         #

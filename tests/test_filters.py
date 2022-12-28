@@ -1,6 +1,7 @@
 """
 General tests for filter class
 """
+from os.path import join
 
 
 def filter_functionalities():
@@ -33,13 +34,7 @@ def filtering():
                   filter_design_method='bessel')
     filt = dsp.Filter('iir', config)
     recorded_multi = \
-        dsp.Signal('/Users/neumanndev/Library/CloudStorage/OneDrive-' +
-                   'SennheiserelectronicGmbH&Co.KG/PPONS OneDrive/Polar ' +
-                   'Picker Data/test_audio_5.wav')
-    # recorded_multi = \
-    #     dsp.Signal('/Users/neumanndev/Library/CloudStorage/' +
-    #                'OneDrive-SennheiserelectronicGmbH&Co.KG/PPONS ' +
-    #                'OneDrive/MORE/Holzmarkt/chirp_10cm/raw_twin.wav')
+        dsp.Signal(join('..', 'examples', 'data', 'chirp_stereo.wav'))
     new_rec = filt.filter_signal(recorded_multi)
     recorded_multi.plot_magnitude(normalize=None)
     new_rec.plot_magnitude(normalize=None)
@@ -80,17 +75,12 @@ def filter_bank_filter():
     # config = dict(order=150, freqs=[1500, 2000], type_of_pass='bandpass')
     # fb.add_filter(dsp.Filter('fir', config))
 
-    # Linkwitz-Riley
+    # Linkwitz-Riley filter bank
     fb = dsp.filterbanks.linkwitz_riley_crossovers(
         [1000, 1500], [4, 6])
     fb.show_info()
     fb.plot_phase(unwrap=True, test_zi=True)
     # fb.plot_group_delay()
-    # i = dsp.generators.dirac(1024, 2)
-    # i_out = fb.filter_signal(i, activate_zi=True)
-    # i_out.bands[0].plot_magnitude()
-    # i_out.bands[1].plot_magnitude()
-    # i_out.bands[2].plot_magnitude()
 
     # Parallel
     # fb.plot_magnitude(test_zi=True)
@@ -109,8 +99,6 @@ def filter_bank_filter():
 
 def perfect_reconstruction():
     import dsptools as dsp
-    # import pyfar.dsp  # .smooth_fractional_octave
-    # https://pyfar.readthedocs.io/en/latest/modules/pyfar.dsp.html#pyfar.dsp.smooth_fractional_octave
 
     fb = dsp.filterbanks.reconstructing_fractional_octave_bands()
     fb.show_info()

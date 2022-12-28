@@ -45,7 +45,7 @@ class Signal():
             Sampling rate of the signal in Hz. Default: 48000.
         signal_type : str, optional
             A generic signal type. Some functionalities are only unlocked for
-            impulse responses with `'ir'` or `'h1'`, `'h2'` or `'h3'`.
+            impulse responses with `'ir'`, `'h1'`, `'h2'`, `'h3'` or `'rir'`.
             Default: `'general'`.
         signal_id : str, optional
             An even more generic signal id that can be used by the user.
@@ -71,7 +71,6 @@ class Signal():
         """
         self.signal_id = signal_id
         self.signal_type = signal_type
-        self.sampling_rate_hz = sampling_rate_hz
         # State tracker
         self.__spectrum_state_update = True
         self.__csm_state_update = True
@@ -81,8 +80,8 @@ class Signal():
             assert time_data is None, 'Constructor cannot take a path and ' +\
                 'a vector at the same time'
             time_data, sampling_rate_hz = read(path)
+        self.sampling_rate_hz = sampling_rate_hz
         self.time_data = time_data
-        self.number_of_channels = self.time_data.shape[1]
         if signal_type in ('rir', 'ir', 'h1', 'h2', 'h3', 'chirp',
                            'noise', 'dirac'):
             self.set_spectrum_parameters(method='standard')
@@ -106,13 +105,15 @@ class Signal():
         """Generates an information dictionary with metadata about the signal.
 
         """
-        self.info = {}
+        if not hasattr(self, 'info'):
+            self.info = {}
         self.info['sampling_rate_hz'] = self.sampling_rate_hz
         self.info['number_of_channels'] = self.number_of_channels
         self.info['signal_length_samples'] = self.time_data.shape[0]
         self.info['signal_length_seconds'] = \
             self.time_data.shape[0] / self.sampling_rate_hz
         self.info['signal_type'] = self.signal_type
+        self.info['signal_id'] = self.signal_id
 
     def _generate_time_vector(self):
         """Internal method to generate a time vector on demand.
@@ -177,6 +178,18 @@ class Signal():
         assert type(new_signal_id) == str, \
             'Signal ID must be a string'
         self._signal_id = new_signal_id.lower()
+
+    @property
+    def number_of_channels(self):
+        return self._number_of_channels
+
+    @number_of_channels.setter
+    def number_of_channels(self, new_number):
+        assert type(new_number) == int, \
+            'Number of channels must be integer'
+        assert new_number > 0, \
+            'There has to be at least one channel'
+        self._number_of_channels = new_number
 
     def set_spectrum_parameters(self, method='welch', smoothe: int = 0,
                                 window_length_samples: int = 1024,
@@ -449,7 +462,6 @@ class Signal():
             f'Channel number {channel_number} does not exist. Signal only ' +\
             f'has {self.number_of_channels-1} channels (zero included).'
         self.time_data = np.delete(self.time_data, channel_number, axis=-1)
-        self.number_of_channels -= 1
         self.__update_state()
 
     def swap_channels(self, new_order):
@@ -654,7 +666,7 @@ class Signal():
             Default: [20, 20000].
         normalize : str, optional
             Mode for normalization, supported are `'1k'` for normalization
-            with value at frequency 1 kHz or `'np.max'` for normalization with
+            with value at frequency 1 kHz or `'max'` for normalization with
             maximal value. Use `None` for no normalization. Default: `'1k'`.
         range_db : array-like with length 2, optional
             Range in dB for which to plot the magnitude response.
@@ -691,6 +703,8 @@ class Signal():
             txt += f"""\nSmoothing: {smoothe}"""
         else:
             txt = None
+        # print(mag_db.shape)
+        # print([f'Channel {n}' for n in range(self.number_of_channels)])
         fig, ax = general_plot(f, mag_db, range_hz, ylabel='Magnitude / dB',
                                info_box=txt, returns=True,
                                labels=[f'Channel {n}' for n in
@@ -913,7 +927,7 @@ class Signal():
         if returns:
             return fig, ax
 
-    # ======== Saving and copy ++==============================================
+    # ======== Saving and copy ================================================
     def save_signal(self, path: str = 'signal', mode: str = 'wav'):
         """Saves the Signal object as wav, flac or pickle.
 
@@ -955,3 +969,26 @@ class Signal():
 
         """
         return deepcopy(self)
+
+    def _get_metadata_string(self):
+        """Helper for creating a string containing all signal info.
+
+        """
+        txt = f"""Signal – ID: {self.info['signal_id']}\n"""
+        temp = ''
+        for n in range(len(txt)):
+            temp += '-'
+        txt += (temp+'\n')
+        for k in self.info.keys():
+            if k == 'signal_id':
+                continue
+            txt += \
+                f"""{str(k).replace('_', ' ').
+                     capitalize()}: {self.info[k]}\n"""
+        return txt
+
+    def show_info(self):
+        """Prints all the signal information to the console.
+
+        """
+        print(self._get_metadata_string())

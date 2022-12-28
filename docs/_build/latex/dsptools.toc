@@ -18,5 +18,5 @@
 \contentsline {section}{\numberline {3.8}Standard functions (dsptools.*)}{33}{section.3.8}%
 \contentsline {section}{\numberline {3.9}Transfer functions (dsptools.transfer\_functions)}{35}{section.3.9}%
 \contentsline {chapter}{\numberline {4}Indices and tables}{39}{chapter.4}%
-\contentsline {chapter}{Python Module Index}{41}{section*.102}%
-\contentsline {chapter}{Index}{43}{section*.103}%
+\contentsline {chapter}{Python Module Index}{41}{section*.104}%
+\contentsline {chapter}{Index}{43}{section*.105}%

@@ -214,7 +214,7 @@ class MultiBandSignal():
             txt += \
                 f""" | {str(k).replace('_', ' ').
                         capitalize()}: {self.info[k]}"""
-        txt = 'Multiband band:' + txt
+        txt = 'Multiband signal:' + txt
         print(txt)
         if show_band_info:
             print('-'*len(txt), end='')

@@ -475,14 +475,13 @@ if __name__ == '__main__':
     # merging_signals()
     # merging_fbs()
     # collapse()
-
-    # Weird results - needs validation
-    # new_transfer_functions()  # -- coherence function from scipy (not quite)
-    # cepstrum()  # -- scipy.signal.complex_cepstrum, real_cepstrum
-
-    # Not working so far
     # smoothing()
 
+    # Weird results - needs validation
+    # new_transfer_functions()  # -- coherence function from scipy differs
+    # -> cross spectral density with welch's method differs in lower
+    #    frequencies from scipy
+    # cepstrum()
+
     # Next
-    smoothing()
     print()
