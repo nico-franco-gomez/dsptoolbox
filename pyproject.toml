@@ -11,7 +11,7 @@ requires = [
 build-backend = "hatchling.build"
 
 [project]
-name = "dsptools"
+name = "dsptoolbox"
 version = "0.0.1"
 license = "MIT"
 authors = [
@@ -42,9 +42,9 @@ classifiers = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/nico-franco-gomez/dsptools"
-"Bug Tracker" = "https://github.com/nico-franco-gomez/dsptools/issues"
-Documentation = "https://dsptools.readthedocs.io/en/latest/"
+Homepage = "https://github.com/nico-franco-gomez/dsptoolbox"
+"Bug Tracker" = "https://github.com/nico-franco-gomez/dsptoolbox/issues"
+Documentation = "https://dsptoolbox.readthedocs.io/en/latest/"
 
 [tool.hatch.envs.docs]
 dependencies = [

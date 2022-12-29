@@ -11,7 +11,7 @@ functionalities.
 Getting Started
 ===============
 
-Check out the `examples`_ for some basic examples of the dsptools package
+Check out the `examples`_ for some basic examples of the dsptoolbox package
 and refer to the documentation for the complete description of classes and methods.
 
 .. note::
@@ -22,13 +22,13 @@ and refer to the documentation for the complete description of classes and metho
 Installation
 ============
 
-Use pip to install dsptools
+Use pip to install dsptoolbox
 
 .. code-block:: console
 
-    $ pip install dsptools
+    $ pip install dsptoolbox
 
 (Requires Python 3.10 or higher)
 
-.. _read the docs: http://dsptools.readthedocs.io/
-.. _examples: https://github.com/nico-franco-gomez/dsptools/tree/main/examples
+.. _read the docs: http://dsptoolbox.readthedocs.io/
+.. _examples: https://github.com/nico-franco-gomez/dsptoolbox/tree/main/examples

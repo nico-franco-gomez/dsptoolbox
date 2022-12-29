@@ -5,7 +5,7 @@ from os.path import join
 
 
 def filter_functionalities():
-    import dsptools as dsp
+    import dsptoolbox as dsp
     from matplotlib.pyplot import show
     config = dict(order=5, freqs=[1500, 2000], type_of_pass='bandpass',
                   filter_design_method='bessel')
@@ -24,7 +24,7 @@ def filter_functionalities():
 
 
 def filtering():
-    import dsptools as dsp
+    import dsptoolbox as dsp
 
     # config = dict(eq_type='lowshelf', freqs=1500, gain=10, q=0.7)
     # filt = dsp.Filter('biquad', config)
@@ -42,7 +42,7 @@ def filtering():
 
 
 def filter_bank_add_remove():
-    import dsptools as dsp
+    import dsptoolbox as dsp
 
     fb = dsp.FilterBank()
 
@@ -65,7 +65,7 @@ def filter_bank_add_remove():
 
 
 def filter_bank_filter():
-    import dsptools as dsp
+    import dsptoolbox as dsp
 
     # Standard filter bank
     # fb = dsp.FilterBank()
@@ -98,7 +98,7 @@ def filter_bank_filter():
 
 
 def perfect_reconstruction():
-    import dsptools as dsp
+    import dsptoolbox as dsp
 
     fb = dsp.filterbanks.reconstructing_fractional_octave_bands()
     fb.show_info()

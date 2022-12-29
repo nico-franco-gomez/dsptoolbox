@@ -10,12 +10,12 @@ sys.path.insert(0, os.path.abspath('..'))
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
-project = 'dsptools'
+project = 'dsptoolbox'
 copyright = '2022, Nicolas Franco-Gomez'
 author = 'Nicolas Franco-Gomez'
 
-release = '0.0.1'
-version = '0.0.1'
+release = '0.0.2'
+version = '0.0.2'
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
@@ -36,7 +36,7 @@ autosummary_imported_members = True
 
 source_suffix = '.rst'
 master_doc = 'index'
-project = u'dsptools'
+project = u'dsptoolbox'
 
 
 intersphinx_mapping = {

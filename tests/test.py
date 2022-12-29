@@ -5,7 +5,7 @@ from os.path import join
 
 
 def plotting_test():
-    import dsptools as dsp
+    import dsptoolbox as dsp
 
     recorded_multi = \
         dsp.Signal(join('..', 'examples', 'data', 'chirp_stereo.wav'))
@@ -15,14 +15,14 @@ def plotting_test():
 
 
 def package_structure_test():
-    import dsptools as dsp
+    import dsptoolbox as dsp
     recorded = dsp.Signal(join('..', 'examples', 'data', 'chirp_mono.wav'))
     raw = dsp.Signal(join('..', 'examples', 'data', 'chirp.wav'))
     print(dsp.latency(recorded, raw))
 
 
 def transfer_function_test():
-    import dsptools as dsp
+    import dsptoolbox as dsp
 
     # recorded = dsp.Signal(join('..', 'examples', 'data', 'chirp_mono.wav'))
     recorded_multi = \
@@ -39,7 +39,7 @@ def transfer_function_test():
 
 
 def distances_function_test():
-    import dsptools as dsp
+    import dsptoolbox as dsp
     recorded = dsp.Signal(join('..', 'examples', 'data', 'chirp_mono.wav'))
     raw = dsp.Signal(join('..', 'examples', 'data', 'chirp.wav'))
     print(dsp.distances.itakura_saito(raw, recorded))
@@ -47,7 +47,7 @@ def distances_function_test():
 
 
 def welch_method():
-    import dsptools as dsp
+    import dsptoolbox as dsp
     import matplotlib.pyplot as plt
 
     # raw = dsp.Signal(join('..', 'examples', 'data', 'chirp_stereo.wav'))
@@ -71,7 +71,7 @@ def welch_method():
 
 
 def csm():
-    import dsptools as dsp
+    import dsptoolbox as dsp
     # import numpy as np
 
     raw = dsp.Signal(join('..', 'examples', 'data', 'chirp_stereo.wav'))
@@ -88,7 +88,7 @@ def csm():
 
 
 def smoothing():
-    import dsptools as dsp
+    import dsptoolbox as dsp
     import numpy as np
     import matplotlib.pyplot as plt
     raw = dsp.Signal(join('..', 'examples', 'data', 'chirp_stereo.wav'))
@@ -105,7 +105,7 @@ def smoothing():
 
 
 def group_delay():
-    import dsptools as dsp
+    import dsptoolbox as dsp
     import matplotlib.pyplot as plt
 
     # recorded = dsp.Signal(join('..', 'examples', 'data', 'chirp_mono.wav'))
@@ -125,7 +125,7 @@ def group_delay():
 
 
 def add_channels():
-    import dsptools as dsp
+    import dsptoolbox as dsp
     import soundfile as sf
 
     audio, fs = sf.read(join('..', 'examples', 'data', 'chirp_stereo.wav'))
@@ -138,7 +138,7 @@ def add_channels():
 
 
 def remove_channels():
-    import dsptools as dsp
+    import dsptoolbox as dsp
 
     audio = dsp.Signal(join('..', 'examples', 'data', 'chirp_stereo.wav'))
     first = audio.time_data[:, 0]
@@ -149,7 +149,7 @@ def remove_channels():
 
 
 def stft():
-    import dsptools as dsp
+    import dsptoolbox as dsp
     import matplotlib.pyplot as plt
     import numpy as np
     import librosa
@@ -175,7 +175,7 @@ def stft():
 
 
 def minimum_phase_systems():
-    import dsptools as dsp
+    import dsptoolbox as dsp
     import matplotlib.pyplot as plt
 
     # recorded = dsp.Signal(join('..', 'examples', 'data', 'chirp_mono.wav'))
@@ -196,7 +196,7 @@ def minimum_phase_systems():
 
 
 def room_acoustics():
-    import dsptools as dsp
+    import dsptoolbox as dsp
 
     # recorded = dsp.Signal(join('..', 'examples', 'data', 'chirp_mono.wav'))
     recorded_multi = \
@@ -241,7 +241,7 @@ def window_length():
 
 
 def new_transfer_functions():
-    import dsptools as dsp
+    import dsptoolbox as dsp
 
     # recorded = dsp.Signal(join('..', 'examples', 'data', 'chirp_mono.wav'))
     recorded_multi = \
@@ -262,7 +262,7 @@ def new_transfer_functions():
 
 
 def spectrogram_plot():
-    import dsptools as dsp
+    import dsptoolbox as dsp
 
     # recorded = dsp.Signal(join('..', 'examples', 'data', 'chirp_mono.wav'))
     recorded_multi = \
@@ -272,7 +272,7 @@ def spectrogram_plot():
 
 
 def multiband():
-    import dsptools as dsp
+    import dsptoolbox as dsp
     recorded_multi = \
         dsp.Signal(join('..', 'examples', 'data', 'chirp_stereo.wav'))
     r1 = dsp.Signal(None, recorded_multi.time_data[:, 0],
@@ -291,7 +291,7 @@ def multiband():
 
 
 def save_objects():
-    import dsptools as dsp
+    import dsptoolbox as dsp
     recorded_multi = \
         dsp.Signal(join('..', 'examples', 'data', 'chirp_stereo.wav'))
     recorded_multi.save_signal(mode='wav')
@@ -301,7 +301,7 @@ def save_objects():
 
 
 def generators():
-    import dsptools as dsp
+    import dsptoolbox as dsp
 
     # Noise
     # wno = dsp.generators.noise('white', length_seconds=3, peak_level_dbfs=-1)
@@ -327,7 +327,7 @@ def generators():
 
 
 def recording():
-    import dsptools as dsp
+    import dsptoolbox as dsp
     from time import sleep
 
     sleep(3)
@@ -342,7 +342,7 @@ def recording():
 
 
 def swapping_channels():
-    import dsptools as dsp
+    import dsptoolbox as dsp
     recorded_multi = \
         dsp.Signal(join('..', 'examples', 'data', 'chirp_stereo.wav'))
     recorded_multi.plot_time()
@@ -352,7 +352,7 @@ def swapping_channels():
 
 
 def convolve_rir_signal():
-    import dsptools as dsp
+    import dsptoolbox as dsp
     rir = dsp.Signal(join('..', 'examples', 'data', 'rir.wav'),
                      signal_type='rir')
     speech = dsp.Signal(join('..', 'examples', 'data', 'speech.flac'))
@@ -366,7 +366,7 @@ def convolve_rir_signal():
 
 
 def cepstrum():
-    import dsptools as dsp
+    import dsptoolbox as dsp
     import matplotlib.pyplot as plt
     speech = dsp.Signal(join('..', 'examples', 'data', 'speech.flac'))
     c = dsp.special.cepstrum(speech, mode='real')
@@ -376,7 +376,7 @@ def cepstrum():
 
 
 def merging_signals():
-    import dsptools as dsp
+    import dsptoolbox as dsp
     
     recorded_multi = \
         dsp.Signal(join('..', 'examples', 'data', 'chirp_stereo.wav'))
@@ -403,7 +403,7 @@ def merging_signals():
 
 
 def merging_fbs():
-    import dsptools as dsp
+    import dsptoolbox as dsp
 
     # fb1 = \
     #     dsp.filterbanks.linkwitz_riley_crossovers([1000, 2000], [4, 6])
@@ -419,7 +419,7 @@ def merging_fbs():
 
 
 def collapse():
-    import dsptools as dsp
+    import dsptoolbox as dsp
 
     d = dsp.generators.dirac(length_samples=2**13)
     # d.plot_magnitude(normalize=None)
@@ -438,7 +438,7 @@ def collapse():
 
 
 def smoothing():
-    import dsptools as dsp
+    import dsptoolbox as dsp
     import pyfar as pf
     import soundfile as sf
     import matplotlib.pyplot as plt

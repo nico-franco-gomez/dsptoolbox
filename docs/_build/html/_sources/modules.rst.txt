@@ -1,17 +1,17 @@
-Modules in dsptools
+Modules in dsptoolbox
 =====================
 
-The modules and functions of dsptools are listed down below.
+The modules and functions of dsptoolbox are listed down below.
 
 .. toctree::
    :maxdepth: 2
 
-   modules/dsptools.distances
-   modules/dsptools.filterbanks
-   modules/dsptools.generators
-   modules/dsptools.measure
-   modules/dsptools.plots
-   modules/dsptools.room_acoustics
-   modules/dsptools.special
-   modules/dsptools.standard_functions
-   modules/dsptools.transfer_functions
+   modules/dsptoolbox.distances
+   modules/dsptoolbox.filterbanks
+   modules/dsptoolbox.generators
+   modules/dsptoolbox.measure
+   modules/dsptoolbox.plots
+   modules/dsptoolbox.room_acoustics
+   modules/dsptoolbox.special
+   modules/dsptoolbox.standard_functions
+   modules/dsptoolbox.transfer_functions

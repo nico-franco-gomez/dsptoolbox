@@ -1,4 +1,4 @@
-Classes (dsptools.classes)
+Classes (dsptoolbox.classes)
 ==============================
 
 The main classes are listed here. For some filterbanks, special classes are used but the api works almost equally
@@ -7,7 +7,7 @@ as for the main FilterBank class.
 Signal
 -------------------------------------
 
-.. automodule:: dsptools.classes.signal_class
+.. automodule:: dsptoolbox.classes.signal_class
    :members:
    :special-members: [, __init__, ]
    :undoc-members:
@@ -16,7 +16,7 @@ Signal
 MultiBandSignal
 ---------------------------------------
 
-.. automodule:: dsptools.classes.multibandsignal
+.. automodule:: dsptoolbox.classes.multibandsignal
    :members:
    :special-members: [, __init__, ]
    :undoc-members:
@@ -25,7 +25,7 @@ MultiBandSignal
 Filter
 ----------
 
-.. automodule:: dsptools.classes.filter_class
+.. automodule:: dsptoolbox.classes.filter_class
    :members:
    :special-members: [, __init__, ]
    :undoc-members:
@@ -34,7 +34,7 @@ Filter
 Filterbank
 ----------------------------------
 
-.. automodule:: dsptools.classes.filterbank
+.. automodule:: dsptoolbox.classes.filterbank
    :members:
    :special-members: [, __init__, ]
    :undoc-members:
