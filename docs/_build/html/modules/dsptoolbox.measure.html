@@ -3,10 +3,10 @@
   <head><meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width,initial-scale=1"/>
     <meta name="color-scheme" content="light dark"><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
-<link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="next" title="Plots (dsptools.plots)" href="dsptoolbox.plots.html" /><link rel="prev" title="Generators (dsptools.generators)" href="dsptoolbox.generators.html" />
+<link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="next" title="Plots (dsptoolbox.plots)" href="dsptoolbox.plots.html" /><link rel="prev" title="Generators (dsptoolbox.generators)" href="dsptoolbox.generators.html" />
 
     <!-- Generated with Sphinx 5.3.0 and Furo 2022.12.07 -->
-        <title>Measure (dsptools.measure) - dsptoolbox 0.0.2 documentation</title>
+        <title>Measure (dsptoolbox.measure) - dsptoolbox 0.0.2 documentation</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?digest=91d0f0d1c444bdcb17a68e833c7a53903343c195" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo-extensions.css?digest=30d1aed668e5c3a91c3e3bf6a60b675221979f0e" />
@@ -134,7 +134,7 @@
           <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
         </button>
       </div>
-      <label class="toc-overlay-icon toc-header-icon no-toc" for="__toc">
+      <label class="toc-overlay-icon toc-header-icon" for="__toc">
         <div class="visually-hidden">Toggle table of contents sidebar</div>
         <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
       </label>
@@ -162,15 +162,15 @@
 </ul>
 <ul class="current">
 <li class="toctree-l1 current has-children"><a class="reference internal" href="../modules.html">Modules in dsptoolbox</a><input checked="" class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><div class="visually-hidden">Toggle child pages in navigation</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul class="current">
-<li class="toctree-l2"><a class="reference internal" href="dsptoolbox.distances.html">Distances (dsptools.distances)</a></li>
-<li class="toctree-l2"><a class="reference internal" href="dsptoolbox.filterbanks.html">Filterbanks (dsptools.filterbanks)</a></li>
-<li class="toctree-l2"><a class="reference internal" href="dsptoolbox.generators.html">Generators (dsptools.generators)</a></li>
-<li class="toctree-l2 current current-page"><a class="current reference internal" href="#">Measure (dsptools.measure)</a></li>
-<li class="toctree-l2"><a class="reference internal" href="dsptoolbox.plots.html">Plots (dsptools.plots)</a></li>
-<li class="toctree-l2"><a class="reference internal" href="dsptoolbox.room_acoustics.html">Room acoustics (dsptools.room_acoustics)</a></li>
-<li class="toctree-l2"><a class="reference internal" href="dsptoolbox.special.html">Special (dsptools.special)</a></li>
-<li class="toctree-l2"><a class="reference internal" href="dsptoolbox.standard_functions.html">Standard functions (dsptools.*)</a></li>
-<li class="toctree-l2"><a class="reference internal" href="dsptoolbox.transfer_functions.html">Transfer functions (dsptools.transfer_functions)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="dsptoolbox.distances.html">Distances (dsptoolbox.distances)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="dsptoolbox.filterbanks.html">Filterbanks (dsptoolbox.filterbanks)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="dsptoolbox.generators.html">Generators (dsptoolbox.generators)</a></li>
+<li class="toctree-l2 current current-page"><a class="current reference internal" href="#">Measure (dsptoolbox.measure)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="dsptoolbox.plots.html">Plots (dsptoolbox.plots)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="dsptoolbox.room_acoustics.html">Room acoustics (dsptoolbox.room_acoustics)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="dsptoolbox.special.html">Special (dsptoolbox.special)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="dsptoolbox.standard_functions.html">Standard functions (dsptoolbox.*)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="dsptoolbox.transfer_functions.html">Transfer functions (dsptoolbox.transfer_functions)</a></li>
 </ul>
 </li>
 </ul>
@@ -201,14 +201,147 @@
               <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
             </button>
           </div>
-          <label class="toc-overlay-icon toc-content-icon no-toc" for="__toc">
+          <label class="toc-overlay-icon toc-content-icon" for="__toc">
             <div class="visually-hidden">Toggle table of contents sidebar</div>
             <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
           </label>
         </div>
         <article role="main">
-          <section id="measure-dsptools-measure">
-<h1>Measure (dsptools.measure)<a class="headerlink" href="#measure-dsptools-measure" title="Permalink to this heading">#</a></h1>
+          <section id="module-dsptoolbox.measure">
+<span id="measure-dsptoolbox-measure"></span><h1>Measure (dsptoolbox.measure)<a class="headerlink" href="#module-dsptoolbox.measure" title="Permalink to this heading">#</a></h1>
+<dl class="py function">
+<dt class="sig sig-object py" id="dsptoolbox.measure.play">
+<span class="sig-prename descclassname"><span class="pre">dsptoolbox.measure.</span></span><span class="sig-name descname"><span class="pre">play</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">signal</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../classes.html#dsptoolbox.classes.signal_class.Signal" title="dsptoolbox.classes.signal_class.Signal"><span class="pre">Signal</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">duration_seconds</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.11)"><span class="pre">Optional</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><span class="pre">float</span></a><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">normalized_dbfs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">-6</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.11)"><span class="pre">Optional</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">play_channels</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dsptoolbox.measure.play" title="Permalink to this definition">#</a></dt>
+<dd><p>Play some available device. Note that the channel numbers
+start here with 1.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>signal</strong><span class="classifier">Signal</span></dt><dd><p>Signal to be reproduced. Its channel number must match the the length
+of the play_channels vector.</p>
+</dd>
+<dt><strong>duration_seconds</strong><span class="classifier">float, optional</span></dt><dd><p>If <cite>None</cite>, the whole signal is played, otherwise it is trimmed to the
+given length. Default: <cite>None</cite>.</p>
+</dd>
+<dt><strong>normalized_dbfs: float, optional</strong></dt><dd><p>Normalizes the signal (dBFS peak level) before playing it.
+Set to <cite>None</cite> to ignore normalization. Default: -6.</p>
+</dd>
+<dt><strong>device</strong><span class="classifier">str, optional</span></dt><dd><p>I/O device to be used. If <cite>None</cite>, the default device is used.
+Default: <cite>None</cite>.</p>
+</dd>
+<dt><strong>play_channels</strong><span class="classifier">int or array-like, optional</span></dt><dd><p>Output channels that will play the signal. The number of channels
+should match the number of channels in signal. When <cite>None</cite>, the
+channels are automatically set. Default: <cite>None</cite>.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="dsptoolbox.measure.play_and_record">
+<span class="sig-prename descclassname"><span class="pre">dsptoolbox.measure.</span></span><span class="sig-name descname"><span class="pre">play_and_record</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">signal</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../classes.html#dsptoolbox.classes.signal_class.Signal" title="dsptoolbox.classes.signal_class.Signal"><span class="pre">Signal</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">duration_seconds</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.11)"><span class="pre">Optional</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><span class="pre">float</span></a><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">normalized_dbfs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">-6</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.11)"><span class="pre">Optional</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">play_channels</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rec_channels</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[1]</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dsptoolbox.measure.play_and_record" title="Permalink to this definition">#</a></dt>
+<dd><p>Play and record using some available device. Note that the channel
+numbers start here with 1.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>signal</strong><span class="classifier">Signal</span></dt><dd><p>Signal object to be played. The number of channels has to match the
+total length and order of play_channels. The sampling rate of signal
+will define the sampling rate of the recorded signals.</p>
+</dd>
+<dt><strong>duration_seconds</strong><span class="classifier">float, optional</span></dt><dd><p>If <cite>None</cite>, the whole signal is played, otherwise it is trimmed to the
+given length. Default: <cite>None</cite>.</p>
+</dd>
+<dt><strong>normalized_dbfs: float, optional</strong></dt><dd><p>Normalizes the signal (dBFS peak level) before playing it.
+Set to <cite>None</cite> to ignore normalization. Default: -6.</p>
+</dd>
+<dt><strong>device</strong><span class="classifier">str, optional</span></dt><dd><p>I/O device to be used. If <cite>None</cite>, the default device is used.
+Default: <cite>None</cite>.</p>
+</dd>
+<dt><strong>play_channels</strong><span class="classifier">int or array-like, optional</span></dt><dd><p>Output channels that will play the signal. The number of channels
+should match the number of channels in signal. When <cite>None</cite>, the
+channels are automatically set. Default: <cite>None</cite>.</p>
+</dd>
+<dt><strong>rec_channels</strong><span class="classifier">int or array-like, optional</span></dt><dd><p>Channel numbers that will be recorded. Default: [1].</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt><strong>rec_sig</strong><span class="classifier">Signal</span></dt><dd><p>Recorded signal.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="dsptoolbox.measure.print_device_info">
+<span class="sig-prename descclassname"><span class="pre">dsptoolbox.measure.</span></span><span class="sig-name descname"><span class="pre">print_device_info</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">device_number</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.11)"><span class="pre">Optional</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><span class="pre">int</span></a><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dsptoolbox.measure.print_device_info" title="Permalink to this definition">#</a></dt>
+<dd><p>Prints available audio devices or information about a certain device
+when the device number is given.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>device_number</strong><span class="classifier">int, optional</span></dt><dd><p>Prints information about the specific device and returns it as
+a dictionary. Use <cite>None</cite> to ignore. Default: <cite>None</cite>.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt><strong>d</strong><span class="classifier">dict</span></dt><dd><p>Only when <cite>device_number is not None</cite>.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="dsptoolbox.measure.record">
+<span class="sig-prename descclassname"><span class="pre">dsptoolbox.measure.</span></span><span class="sig-name descname"><span class="pre">record</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">duration_seconds</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sampling_rate_hz</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">48000</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.11)"><span class="pre">Optional</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rec_channels</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[1]</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dsptoolbox.measure.record" title="Permalink to this definition">#</a></dt>
+<dd><p>Record using some available device. Note that the channel numbers
+start here with 1.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>duration_seconds</strong><span class="classifier">float, optional</span></dt><dd><p>Duration of recording in seconds. Default: 5.</p>
+</dd>
+<dt><strong>sampling_rate_hz</strong><span class="classifier">int, optional</span></dt><dd><p>Sampling rate used for recording. Default: 48000.</p>
+</dd>
+<dt><strong>device</strong><span class="classifier">str, optional</span></dt><dd><p>I/O device to be used. If <cite>None</cite>, the default device is used.
+Default: <cite>None</cite>.</p>
+</dd>
+<dt><strong>rec_channels</strong><span class="classifier">int or array-like, optional</span></dt><dd><p>Number that will be recorded. Default: [1].</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt><strong>rec_sig</strong><span class="classifier">Signal</span></dt><dd><p>Recorded signal.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="dsptoolbox.measure.set_device">
+<span class="sig-prename descclassname"><span class="pre">dsptoolbox.measure.</span></span><span class="sig-name descname"><span class="pre">set_device</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">device_number</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.11)"><span class="pre">Optional</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><span class="pre">int</span></a><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dsptoolbox.measure.set_device" title="Permalink to this definition">#</a></dt>
+<dd><p>Takes in a device number to set it as the default. If <cite>None</cite> is passed,
+the available devices are first shown and then the user is asked for
+input to set the device.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>device_number</strong><span class="classifier">int, optional</span></dt><dd><p>Sets the device as default. Use <cite>None</cite> to ignore. Default: <cite>None</cite>.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
 </section>
 
         </article>
@@ -221,7 +354,7 @@
                 <div class="context">
                   <span>Next</span>
                 </div>
-                <div class="title">Plots (dsptools.plots)</div>
+                <div class="title">Plots (dsptoolbox.plots)</div>
               </div>
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
             </a>
@@ -232,7 +365,7 @@
                   <span>Previous</span>
                 </div>
                 
-                <div class="title">Generators (dsptools.generators)</div>
+                <div class="title">Generators (dsptoolbox.generators)</div>
                 
               </div>
             </a>
@@ -254,8 +387,31 @@
         
       </footer>
     </div>
-    <aside class="toc-drawer no-toc">
+    <aside class="toc-drawer">
       
+      
+      <div class="toc-sticky toc-scroll">
+        <div class="toc-title-container">
+          <span class="toc-title">
+            On this page
+          </span>
+        </div>
+        <div class="toc-tree-container">
+          <div class="toc-tree">
+            <ul>
+<li><a class="reference internal" href="#">Measure (dsptoolbox.measure)</a><ul>
+<li><a class="reference internal" href="#dsptoolbox.measure.play"><code class="docutils literal notranslate"><span class="pre">play()</span></code></a></li>
+<li><a class="reference internal" href="#dsptoolbox.measure.play_and_record"><code class="docutils literal notranslate"><span class="pre">play_and_record()</span></code></a></li>
+<li><a class="reference internal" href="#dsptoolbox.measure.print_device_info"><code class="docutils literal notranslate"><span class="pre">print_device_info()</span></code></a></li>
+<li><a class="reference internal" href="#dsptoolbox.measure.record"><code class="docutils literal notranslate"><span class="pre">record()</span></code></a></li>
+<li><a class="reference internal" href="#dsptoolbox.measure.set_device"><code class="docutils literal notranslate"><span class="pre">set_device()</span></code></a></li>
+</ul>
+</li>
+</ul>
+
+          </div>
+        </div>
+      </div>
       
       
     </aside>

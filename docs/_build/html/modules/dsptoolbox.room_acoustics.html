@@ -3,10 +3,10 @@
   <head><meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width,initial-scale=1"/>
     <meta name="color-scheme" content="light dark"><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
-<link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="next" title="Special (dsptools.special)" href="dsptoolbox.special.html" /><link rel="prev" title="Plots (dsptools.plots)" href="dsptoolbox.plots.html" />
+<link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="next" title="Special (dsptoolbox.special)" href="dsptoolbox.special.html" /><link rel="prev" title="Plots (dsptoolbox.plots)" href="dsptoolbox.plots.html" />
 
     <!-- Generated with Sphinx 5.3.0 and Furo 2022.12.07 -->
-        <title>Room acoustics (dsptools.room_acoustics) - dsptoolbox 0.0.2 documentation</title>
+        <title>Room acoustics (dsptoolbox.room_acoustics) - dsptoolbox 0.0.2 documentation</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?digest=91d0f0d1c444bdcb17a68e833c7a53903343c195" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo-extensions.css?digest=30d1aed668e5c3a91c3e3bf6a60b675221979f0e" />
@@ -134,7 +134,7 @@
           <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
         </button>
       </div>
-      <label class="toc-overlay-icon toc-header-icon no-toc" for="__toc">
+      <label class="toc-overlay-icon toc-header-icon" for="__toc">
         <div class="visually-hidden">Toggle table of contents sidebar</div>
         <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
       </label>
@@ -162,15 +162,15 @@
 </ul>
 <ul class="current">
 <li class="toctree-l1 current has-children"><a class="reference internal" href="../modules.html">Modules in dsptoolbox</a><input checked="" class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><div class="visually-hidden">Toggle child pages in navigation</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul class="current">
-<li class="toctree-l2"><a class="reference internal" href="dsptoolbox.distances.html">Distances (dsptools.distances)</a></li>
-<li class="toctree-l2"><a class="reference internal" href="dsptoolbox.filterbanks.html">Filterbanks (dsptools.filterbanks)</a></li>
-<li class="toctree-l2"><a class="reference internal" href="dsptoolbox.generators.html">Generators (dsptools.generators)</a></li>
-<li class="toctree-l2"><a class="reference internal" href="dsptoolbox.measure.html">Measure (dsptools.measure)</a></li>
-<li class="toctree-l2"><a class="reference internal" href="dsptoolbox.plots.html">Plots (dsptools.plots)</a></li>
-<li class="toctree-l2 current current-page"><a class="current reference internal" href="#">Room acoustics (dsptools.room_acoustics)</a></li>
-<li class="toctree-l2"><a class="reference internal" href="dsptoolbox.special.html">Special (dsptools.special)</a></li>
-<li class="toctree-l2"><a class="reference internal" href="dsptoolbox.standard_functions.html">Standard functions (dsptools.*)</a></li>
-<li class="toctree-l2"><a class="reference internal" href="dsptoolbox.transfer_functions.html">Transfer functions (dsptools.transfer_functions)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="dsptoolbox.distances.html">Distances (dsptoolbox.distances)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="dsptoolbox.filterbanks.html">Filterbanks (dsptoolbox.filterbanks)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="dsptoolbox.generators.html">Generators (dsptoolbox.generators)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="dsptoolbox.measure.html">Measure (dsptoolbox.measure)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="dsptoolbox.plots.html">Plots (dsptoolbox.plots)</a></li>
+<li class="toctree-l2 current current-page"><a class="current reference internal" href="#">Room acoustics (dsptoolbox.room_acoustics)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="dsptoolbox.special.html">Special (dsptoolbox.special)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="dsptoolbox.standard_functions.html">Standard functions (dsptoolbox.*)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="dsptoolbox.transfer_functions.html">Transfer functions (dsptoolbox.transfer_functions)</a></li>
 </ul>
 </li>
 </ul>
@@ -201,14 +201,112 @@
               <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
             </button>
           </div>
-          <label class="toc-overlay-icon toc-content-icon no-toc" for="__toc">
+          <label class="toc-overlay-icon toc-content-icon" for="__toc">
             <div class="visually-hidden">Toggle table of contents sidebar</div>
             <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
           </label>
         </div>
         <article role="main">
-          <section id="room-acoustics-dsptools-room-acoustics">
-<h1>Room acoustics (dsptools.room_acoustics)<a class="headerlink" href="#room-acoustics-dsptools-room-acoustics" title="Permalink to this heading">#</a></h1>
+          <section id="module-dsptoolbox.room_acoustics">
+<span id="room-acoustics-dsptoolbox-room-acoustics"></span><h1>Room acoustics (dsptoolbox.room_acoustics)<a class="headerlink" href="#module-dsptoolbox.room_acoustics" title="Permalink to this heading">#</a></h1>
+<dl class="py function">
+<dt class="sig sig-object py" id="dsptoolbox.room_acoustics.convolve_rir_on_signal">
+<span class="sig-prename descclassname"><span class="pre">dsptoolbox.room_acoustics.</span></span><span class="sig-name descname"><span class="pre">convolve_rir_on_signal</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">signal</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../classes.html#dsptoolbox.classes.signal_class.Signal" title="dsptoolbox.classes.signal_class.Signal"><span class="pre">Signal</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">rir</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../classes.html#dsptoolbox.classes.signal_class.Signal" title="dsptoolbox.classes.signal_class.Signal"><span class="pre">Signal</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">keep_peak_level</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">keep_length</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dsptoolbox.room_acoustics.convolve_rir_on_signal" title="Permalink to this definition">#</a></dt>
+<dd><p>Applies an RIR to a given signal. The RIR should also be a signal object
+with a single channel containing the RIR time data. Signal type should
+also be set to IR or RIR. By default, all channels are convolved with
+the RIR.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>signal</strong><span class="classifier">Signal</span></dt><dd><p>Signal to which the RIR is applied. All channels are affected.</p>
+</dd>
+<dt><strong>rir</strong><span class="classifier">Signal</span></dt><dd><p>Single-channel Signal object containing the RIR.</p>
+</dd>
+<dt><strong>keep_peak_level</strong><span class="classifier">bool, optional</span></dt><dd><p>When <cite>True</cite>, output signal is normalized to the peak level of
+the original signal. Default: <cite>True</cite>.</p>
+</dd>
+<dt><strong>keep_length</strong><span class="classifier">bool, optional</span></dt><dd><p>When <cite>True</cite>, the original length is kept after convolution, otherwise
+the output signal is longer than the input one. Default: <cite>True</cite>.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt><strong>new_sig</strong><span class="classifier">Signal</span></dt><dd><p>Convolved signal with RIR.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="dsptoolbox.room_acoustics.find_modes">
+<span class="sig-prename descclassname"><span class="pre">dsptoolbox.room_acoustics.</span></span><span class="sig-name descname"><span class="pre">find_modes</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">signal</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../classes.html#dsptoolbox.classes.signal_class.Signal" title="dsptoolbox.classes.signal_class.Signal"><span class="pre">Signal</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">f_range_hz</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[50,</span> <span class="pre">200]</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">proximity_effect</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dist_hz</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">5</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dsptoolbox.room_acoustics.find_modes" title="Permalink to this definition">#</a></dt>
+<dd><p>This metod is NOT validated. It might not be sufficient to find all
+modes in the given range.</p>
+<p>Computes the room modes of a set of RIR using different criteria:
+Complex mode indication function, sum of magnitude responses and group
+delay peaks of the first RIR.</p>
+<dl class="field-list">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl>
+<dt><strong>signal</strong><span class="classifier"><cite>Signal</cite></span></dt><dd><p>Signal containing the RIR’S from which to find the modes.</p>
+</dd>
+<dt><strong>f_range_hz</strong><span class="classifier">array-like, optional</span></dt><dd><p>Vector setting range for mode search. Default: [50, 200].</p>
+</dd>
+<dt><strong>proximity_effect</strong><span class="classifier">bool, optional</span></dt><dd><p>When <cite>True</cite>, only group delay criteria is used for finding modes
+up until 200 Hz. This is done since a gradient transducer will not
+easily see peaks in its magnitude response in low frequencies
+due to near-field effects.
+There is also an assessment that the modes are not dips of
+the magnitude response. Default: <cite>False</cite>.</p>
+</dd>
+<dt><strong>dist_hz</strong><span class="classifier">float, optional</span></dt><dd><p>Minimum distance (in Hz) between modes. Default: 5.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl>
+<dt><strong>f_modes</strong><span class="classifier"><cite>np.ndarray</cite></span></dt><dd><p>Vector containing frequencies where modes have been localized.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+<p class="rubric">References</p>
+<p><a class="reference external" href="http://papers.vibetech.com/Paper17-CMIF.pdf">http://papers.vibetech.com/Paper17-CMIF.pdf</a></p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="dsptoolbox.room_acoustics.reverb_time">
+<span class="sig-prename descclassname"><span class="pre">dsptoolbox.room_acoustics.</span></span><span class="sig-name descname"><span class="pre">reverb_time</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">signal</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../classes.html#dsptoolbox.classes.signal_class.Signal" title="dsptoolbox.classes.signal_class.Signal"><span class="pre">Signal</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">mode</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'T20'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dsptoolbox.room_acoustics.reverb_time" title="Permalink to this definition">#</a></dt>
+<dd><p>Computes reverberation time. T20, T30, T60 and EDT.</p>
+<dl class="field-list">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>signal</strong><span class="classifier">Signal</span></dt><dd><p>Signal for which to compute reverberation times. It must be type
+<cite>‘ir’</cite> or <cite>‘rir’</cite>.</p>
+</dd>
+<dt><strong>mode</strong><span class="classifier">str, optional</span></dt><dd><p>Reverberation time mode. Options are <cite>‘T20’</cite>, <cite>‘T30’</cite>, <cite>‘T60’</cite> or
+<cite>‘EDT’</cite>. Default: <cite>‘T20’</cite>.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl>
+<dt><strong>reverberation_times</strong><span class="classifier"><cite>np.ndarray</cite></span></dt><dd><p>Reverberation times for each channel.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+<p class="rubric">References</p>
+<ul class="simple">
+<li><p>DIN 3382</p></li>
+<li><p>ISO 3382-1:2009-10, Acoustics - Measurement of the reverberation time of</p></li>
+</ul>
+<p>rooms with reference to other acoustical parameters. pp. 22.</p>
+</dd></dl>
+
 </section>
 
         </article>
@@ -221,7 +319,7 @@
                 <div class="context">
                   <span>Next</span>
                 </div>
-                <div class="title">Special (dsptools.special)</div>
+                <div class="title">Special (dsptoolbox.special)</div>
               </div>
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
             </a>
@@ -232,7 +330,7 @@
                   <span>Previous</span>
                 </div>
                 
-                <div class="title">Plots (dsptools.plots)</div>
+                <div class="title">Plots (dsptoolbox.plots)</div>
                 
               </div>
             </a>
@@ -254,8 +352,29 @@
         
       </footer>
     </div>
-    <aside class="toc-drawer no-toc">
+    <aside class="toc-drawer">
       
+      
+      <div class="toc-sticky toc-scroll">
+        <div class="toc-title-container">
+          <span class="toc-title">
+            On this page
+          </span>
+        </div>
+        <div class="toc-tree-container">
+          <div class="toc-tree">
+            <ul>
+<li><a class="reference internal" href="#">Room acoustics (dsptoolbox.room_acoustics)</a><ul>
+<li><a class="reference internal" href="#dsptoolbox.room_acoustics.convolve_rir_on_signal"><code class="docutils literal notranslate"><span class="pre">convolve_rir_on_signal()</span></code></a></li>
+<li><a class="reference internal" href="#dsptoolbox.room_acoustics.find_modes"><code class="docutils literal notranslate"><span class="pre">find_modes()</span></code></a></li>
+<li><a class="reference internal" href="#dsptoolbox.room_acoustics.reverb_time"><code class="docutils literal notranslate"><span class="pre">reverb_time()</span></code></a></li>
+</ul>
+</li>
+</ul>
+
+          </div>
+        </div>
+      </div>
       
       
     </aside>

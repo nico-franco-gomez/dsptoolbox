@@ -1,7 +1,7 @@
-Filterbanks (dsptools.filterbanks)
-==================================
+Filterbanks (dsptoolbox.filterbanks)
+===================================================
 
-.. automodule:: dsptools.filterbanks
+.. automodule:: dsptoolbox.filterbanks
    :members:
    :undoc-members:
    :show-inheritance:

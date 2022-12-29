@@ -1,7 +1,7 @@
-Room acoustics (dsptools.room\_acoustics)
+Room acoustics (dsptoolbox.room\_acoustics)
 =============================================
 
-.. automodule:: dsptools.room_acoustics
+.. automodule:: dsptoolbox.room_acoustics
    :members:
    :undoc-members:
    :show-inheritance:

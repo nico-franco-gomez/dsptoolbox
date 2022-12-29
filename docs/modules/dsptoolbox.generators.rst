@@ -1,7 +1,7 @@
-Generators (dsptools.generators)
+Generators (dsptoolbox.generators)
 ==================================
 
-.. automodule:: dsptools.generators
+.. automodule:: dsptoolbox.generators
    :members:
    :undoc-members:
    :show-inheritance:

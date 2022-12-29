@@ -1,7 +1,7 @@
-Plots (dsptools.plots)
+Plots (dsptoolbox.plots)
 =========================
 
-.. automodule:: dsptools.plots
+.. automodule:: dsptoolbox.plots
    :members:
    :undoc-members:
    :show-inheritance:

@@ -3,10 +3,10 @@
   <head><meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width,initial-scale=1"/>
     <meta name="color-scheme" content="light dark"><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
-<link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="next" title="Measure (dsptools.measure)" href="dsptoolbox.measure.html" /><link rel="prev" title="Filterbanks (dsptools.filterbanks)" href="dsptoolbox.filterbanks.html" />
+<link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="next" title="Measure (dsptoolbox.measure)" href="dsptoolbox.measure.html" /><link rel="prev" title="Filterbanks (dsptoolbox.filterbanks)" href="dsptoolbox.filterbanks.html" />
 
     <!-- Generated with Sphinx 5.3.0 and Furo 2022.12.07 -->
-        <title>Generators (dsptools.generators) - dsptoolbox 0.0.2 documentation</title>
+        <title>Generators (dsptoolbox.generators) - dsptoolbox 0.0.2 documentation</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?digest=91d0f0d1c444bdcb17a68e833c7a53903343c195" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo-extensions.css?digest=30d1aed668e5c3a91c3e3bf6a60b675221979f0e" />
@@ -134,7 +134,7 @@
           <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
         </button>
       </div>
-      <label class="toc-overlay-icon toc-header-icon no-toc" for="__toc">
+      <label class="toc-overlay-icon toc-header-icon" for="__toc">
         <div class="visually-hidden">Toggle table of contents sidebar</div>
         <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
       </label>
@@ -162,15 +162,15 @@
 </ul>
 <ul class="current">
 <li class="toctree-l1 current has-children"><a class="reference internal" href="../modules.html">Modules in dsptoolbox</a><input checked="" class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><div class="visually-hidden">Toggle child pages in navigation</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul class="current">
-<li class="toctree-l2"><a class="reference internal" href="dsptoolbox.distances.html">Distances (dsptools.distances)</a></li>
-<li class="toctree-l2"><a class="reference internal" href="dsptoolbox.filterbanks.html">Filterbanks (dsptools.filterbanks)</a></li>
-<li class="toctree-l2 current current-page"><a class="current reference internal" href="#">Generators (dsptools.generators)</a></li>
-<li class="toctree-l2"><a class="reference internal" href="dsptoolbox.measure.html">Measure (dsptools.measure)</a></li>
-<li class="toctree-l2"><a class="reference internal" href="dsptoolbox.plots.html">Plots (dsptools.plots)</a></li>
-<li class="toctree-l2"><a class="reference internal" href="dsptoolbox.room_acoustics.html">Room acoustics (dsptools.room_acoustics)</a></li>
-<li class="toctree-l2"><a class="reference internal" href="dsptoolbox.special.html">Special (dsptools.special)</a></li>
-<li class="toctree-l2"><a class="reference internal" href="dsptoolbox.standard_functions.html">Standard functions (dsptools.*)</a></li>
-<li class="toctree-l2"><a class="reference internal" href="dsptoolbox.transfer_functions.html">Transfer functions (dsptools.transfer_functions)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="dsptoolbox.distances.html">Distances (dsptoolbox.distances)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="dsptoolbox.filterbanks.html">Filterbanks (dsptoolbox.filterbanks)</a></li>
+<li class="toctree-l2 current current-page"><a class="current reference internal" href="#">Generators (dsptoolbox.generators)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="dsptoolbox.measure.html">Measure (dsptoolbox.measure)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="dsptoolbox.plots.html">Plots (dsptoolbox.plots)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="dsptoolbox.room_acoustics.html">Room acoustics (dsptoolbox.room_acoustics)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="dsptoolbox.special.html">Special (dsptoolbox.special)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="dsptoolbox.standard_functions.html">Standard functions (dsptoolbox.*)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="dsptoolbox.transfer_functions.html">Transfer functions (dsptoolbox.transfer_functions)</a></li>
 </ul>
 </li>
 </ul>
@@ -201,14 +201,117 @@
               <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
             </button>
           </div>
-          <label class="toc-overlay-icon toc-content-icon no-toc" for="__toc">
+          <label class="toc-overlay-icon toc-content-icon" for="__toc">
             <div class="visually-hidden">Toggle table of contents sidebar</div>
             <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
           </label>
         </div>
         <article role="main">
-          <section id="generators-dsptools-generators">
-<h1>Generators (dsptools.generators)<a class="headerlink" href="#generators-dsptools-generators" title="Permalink to this heading">#</a></h1>
+          <section id="module-dsptoolbox.generators">
+<span id="generators-dsptoolbox-generators"></span><h1>Generators (dsptoolbox.generators)<a class="headerlink" href="#module-dsptoolbox.generators" title="Permalink to this heading">#</a></h1>
+<dl class="py function">
+<dt class="sig sig-object py" id="dsptoolbox.generators.chirp">
+<span class="sig-prename descclassname"><span class="pre">dsptoolbox.generators.</span></span><span class="sig-name descname"><span class="pre">chirp</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">type_of_chirp</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'log'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">range_hz</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">length_seconds</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sampling_rate_hz</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">48000</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">peak_level_dbfs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">-10</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">number_of_channels</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fade</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'log'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">padding_end_seconds</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.11)"><span class="pre">Optional</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><span class="pre">float</span></a><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dsptoolbox.generators.chirp" title="Permalink to this definition">#</a></dt>
+<dd><p>Creates a sweep signal.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>type_of_chirp</strong><span class="classifier">str, optional</span></dt><dd><p>Choose from <cite>‘lin’</cite>, <cite>‘log’</cite>.
+Default: <cite>‘log’</cite>.</p>
+</dd>
+<dt><strong>range_hz</strong><span class="classifier">array-like with length 2</span></dt><dd><p>Define range of chirp in Hz. When <cite>None</cite>, all frequencies between
+1 and nyquist are taken. Default: <cite>None</cite>.</p>
+</dd>
+<dt><strong>length_seconds</strong><span class="classifier">float, optional</span></dt><dd><p>Length of the generated signal in seconds. Default: 1.</p>
+</dd>
+<dt><strong>sampling_rate_hz</strong><span class="classifier">int, optional</span></dt><dd><p>Sampling rate in Hz. Default: 48000.</p>
+</dd>
+<dt><strong>peak_level_dbfs</strong><span class="classifier">float, optional</span></dt><dd><p>Peak level of the signal in dBFS. Default: -10.</p>
+</dd>
+<dt><strong>number_of_channels</strong><span class="classifier">int, optional</span></dt><dd><p>Number of channels (with the same chirp) to be created. Default: 1.</p>
+</dd>
+<dt><strong>fade</strong><span class="classifier">str, optional</span></dt><dd><p>Type of fade done on the generated signal. Options are <cite>‘exp’</cite>,
+<cite>‘lin’</cite>, <cite>‘log’</cite>. Pass <cite>None</cite> for no fading. Default: <cite>‘log’</cite>.</p>
+</dd>
+<dt><strong>padding_end_seconds</strong><span class="classifier">float, optional</span></dt><dd><p>Padding at the end of signal. Use <cite>None</cite> to avoid any padding.
+Default: <cite>None</cite>.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt><strong>chirp_sig</strong><span class="classifier">Signal</span></dt><dd><p>Chirp Signal object.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+<p class="rubric">References</p>
+<p><a class="reference external" href="https://de.wikipedia.org/wiki/Chirp">https://de.wikipedia.org/wiki/Chirp</a></p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="dsptoolbox.generators.dirac">
+<span class="sig-prename descclassname"><span class="pre">dsptoolbox.generators.</span></span><span class="sig-name descname"><span class="pre">dirac</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">length_samples</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">512</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">number_of_channels</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sampling_rate_hz</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">48000</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dsptoolbox.generators.dirac" title="Permalink to this definition">#</a></dt>
+<dd><p>Generates a dirac impulse Signal with the specified length and
+sampling rate.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>length_samples</strong><span class="classifier">int, optional</span></dt><dd><p>Length in samples. Default: 512.</p>
+</dd>
+<dt><strong>number_of_channels</strong><span class="classifier">int, optional</span></dt><dd><p>Number of channels to be generated with the same impulse. Default: 1.</p>
+</dd>
+<dt><strong>sampling_rate_hz</strong><span class="classifier">int, optional</span></dt><dd><p>Sampling rate to be used. Default: 480000.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt><strong>imp</strong><span class="classifier">Signal</span></dt><dd><p>Signal with dirac impulse.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="dsptoolbox.generators.noise">
+<span class="sig-prename descclassname"><span class="pre">dsptoolbox.generators.</span></span><span class="sig-name descname"><span class="pre">noise</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">type_of_noise</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'white'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">length_seconds</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sampling_rate_hz</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">48000</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">peak_level_dbfs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">-10</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">number_of_channels</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fade</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'log'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">padding_end_seconds</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.11)"><span class="pre">Optional</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><span class="pre">float</span></a><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dsptoolbox.generators.noise" title="Permalink to this definition">#</a></dt>
+<dd><p>Creates a noise signal.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>type_of_noise</strong><span class="classifier">str, optional</span></dt><dd><p>Choose from <cite>‘white’</cite>, <cite>‘pink’</cite>, <cite>‘red’</cite>, <cite>‘blue’</cite>, <cite>‘violet’</cite>.
+Default: <cite>‘white’</cite>.</p>
+</dd>
+<dt><strong>length_seconds</strong><span class="classifier">float, optional</span></dt><dd><p>Length of the generated signal in seconds. Default: 1.</p>
+</dd>
+<dt><strong>sampling_rate_hz</strong><span class="classifier">int, optional</span></dt><dd><p>Sampling rate in Hz. Default: 48000.</p>
+</dd>
+<dt><strong>peak_level_dbfs</strong><span class="classifier">float, optional</span></dt><dd><p>Peak level of the signal in dBFS. Default: -10.</p>
+</dd>
+<dt><strong>number_of_channels</strong><span class="classifier">int, optional</span></dt><dd><p>Number of channels (with different noise signals) to be created.
+Default: 1.</p>
+</dd>
+<dt><strong>fade</strong><span class="classifier">str, optional</span></dt><dd><p>Type of fade done on the generated signal. Options are <cite>‘exp’</cite>,
+<cite>‘lin’</cite>, <cite>‘log’</cite>. Pass <cite>None</cite> for no fading. Default: <cite>‘log’</cite>.</p>
+</dd>
+<dt><strong>padding_end_seconds</strong><span class="classifier">float, optional</span></dt><dd><p>Padding at the end of signal. Use <cite>None</cite> to avoid any padding.
+Default: <cite>None</cite>.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt><strong>noise_sig</strong><span class="classifier">Signal</span></dt><dd><p>Noise Signal object.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+<p class="rubric">References</p>
+<p><a class="reference external" href="https://en.wikipedia.org/wiki/Colors_of_noise">https://en.wikipedia.org/wiki/Colors_of_noise</a></p>
+</dd></dl>
+
 </section>
 
         </article>
@@ -221,7 +324,7 @@
                 <div class="context">
                   <span>Next</span>
                 </div>
-                <div class="title">Measure (dsptools.measure)</div>
+                <div class="title">Measure (dsptoolbox.measure)</div>
               </div>
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
             </a>
@@ -232,7 +335,7 @@
                   <span>Previous</span>
                 </div>
                 
-                <div class="title">Filterbanks (dsptools.filterbanks)</div>
+                <div class="title">Filterbanks (dsptoolbox.filterbanks)</div>
                 
               </div>
             </a>
@@ -254,8 +357,29 @@
         
       </footer>
     </div>
-    <aside class="toc-drawer no-toc">
+    <aside class="toc-drawer">
       
+      
+      <div class="toc-sticky toc-scroll">
+        <div class="toc-title-container">
+          <span class="toc-title">
+            On this page
+          </span>
+        </div>
+        <div class="toc-tree-container">
+          <div class="toc-tree">
+            <ul>
+<li><a class="reference internal" href="#">Generators (dsptoolbox.generators)</a><ul>
+<li><a class="reference internal" href="#dsptoolbox.generators.chirp"><code class="docutils literal notranslate"><span class="pre">chirp()</span></code></a></li>
+<li><a class="reference internal" href="#dsptoolbox.generators.dirac"><code class="docutils literal notranslate"><span class="pre">dirac()</span></code></a></li>
+<li><a class="reference internal" href="#dsptoolbox.generators.noise"><code class="docutils literal notranslate"><span class="pre">noise()</span></code></a></li>
+</ul>
+</li>
+</ul>
+
+          </div>
+        </div>
+      </div>
       
       
     </aside>

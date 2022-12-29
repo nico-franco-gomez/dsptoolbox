@@ -1,7 +1,7 @@
-Measure (dsptools.measure)
+Measure (dsptoolbox.measure)
 ==============================
 
-.. automodule:: dsptools.measure
+.. automodule:: dsptoolbox.measure
    :members:
    :undoc-members:
    :show-inheritance:

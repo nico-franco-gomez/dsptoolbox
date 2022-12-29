@@ -1,7 +1,7 @@
-Special (dsptools.special)
+Special (dsptoolbox.special)
 ==============================
 
-.. automodule:: dsptools.special
+.. automodule:: dsptoolbox.special
    :members:
    :undoc-members:
    :show-inheritance:

@@ -2,7 +2,7 @@
 Backend for transfer functions methods
 """
 import numpy as np
-from dsptools._general_helpers import _find_nearest, _calculate_window
+from dsptoolbox._general_helpers import _find_nearest, _calculate_window
 
 __all__ = ['_spectral_deconvolve', '_window_this_ir']
 

@@ -1,7 +1,7 @@
-Distances (dsptools.distances)
+Distances (dsptoolbox.distances)
 ================================
 
-.. automodule:: dsptools.distances
+.. automodule:: dsptoolbox.distances
    :members:
    :undoc-members:
    :show-inheritance:

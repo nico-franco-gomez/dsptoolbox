@@ -2,12 +2,12 @@
 Methods used for acquiring and windowing transfer functions
 """
 import numpy as np
-from dsptools import Signal
-from dsptools._general_helpers import (_find_frequencies_above_threshold)
+from dsptoolbox import Signal
+from dsptoolbox._general_helpers import (_find_frequencies_above_threshold)
 from ._transfer_functions import (_spectral_deconvolve,
                                   _window_this_ir)
-from dsptools._standard import _welch
-from dsptools.standard_functions import pad_trim
+from dsptoolbox._standard import _welch
+from dsptoolbox.standard_functions import pad_trim
 
 
 def spectral_deconvolve(num: Signal, denum: Signal, multichannel=False,

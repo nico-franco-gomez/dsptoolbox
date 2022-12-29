@@ -1,4 +1,4 @@
-dsptools
+dsptoolbox
 ====================================
 
 .. toctree::

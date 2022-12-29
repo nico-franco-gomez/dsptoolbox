@@ -1,7 +1,7 @@
-Experimental (dsptools.experimental)
-====================================
+Experimental (dsptoolbox.experimental)
+===================================================
 
-.. automodule:: dsptools.experimental
+.. automodule:: dsptoolbox.experimental
    :members:
    :undoc-members:
    :show-inheritance:

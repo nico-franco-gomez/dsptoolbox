@@ -1,7 +1,7 @@
-Transfer functions (dsptools.transfer\_functions)
-=================================================
+Transfer functions (dsptoolbox.transfer\_functions)
+==========================================================
 
-.. automodule:: dsptools.transfer_functions
+.. automodule:: dsptoolbox.transfer_functions
    :members:
    :undoc-members:
    :show-inheritance:

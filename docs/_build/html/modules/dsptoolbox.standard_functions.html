@@ -3,10 +3,10 @@
   <head><meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width,initial-scale=1"/>
     <meta name="color-scheme" content="light dark"><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
-<link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="next" title="Transfer functions (dsptools.transfer_functions)" href="dsptoolbox.transfer_functions.html" /><link rel="prev" title="Special (dsptools.special)" href="dsptoolbox.special.html" />
+<link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="next" title="Transfer functions (dsptoolbox.transfer_functions)" href="dsptoolbox.transfer_functions.html" /><link rel="prev" title="Special (dsptoolbox.special)" href="dsptoolbox.special.html" />
 
     <!-- Generated with Sphinx 5.3.0 and Furo 2022.12.07 -->
-        <title>Standard functions (dsptools.*) - dsptoolbox 0.0.2 documentation</title>
+        <title>Standard functions (dsptoolbox.*) - dsptoolbox 0.0.2 documentation</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?digest=91d0f0d1c444bdcb17a68e833c7a53903343c195" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo-extensions.css?digest=30d1aed668e5c3a91c3e3bf6a60b675221979f0e" />
@@ -134,7 +134,7 @@
           <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
         </button>
       </div>
-      <label class="toc-overlay-icon toc-header-icon no-toc" for="__toc">
+      <label class="toc-overlay-icon toc-header-icon" for="__toc">
         <div class="visually-hidden">Toggle table of contents sidebar</div>
         <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
       </label>
@@ -162,15 +162,15 @@
 </ul>
 <ul class="current">
 <li class="toctree-l1 current has-children"><a class="reference internal" href="../modules.html">Modules in dsptoolbox</a><input checked="" class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><div class="visually-hidden">Toggle child pages in navigation</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul class="current">
-<li class="toctree-l2"><a class="reference internal" href="dsptoolbox.distances.html">Distances (dsptools.distances)</a></li>
-<li class="toctree-l2"><a class="reference internal" href="dsptoolbox.filterbanks.html">Filterbanks (dsptools.filterbanks)</a></li>
-<li class="toctree-l2"><a class="reference internal" href="dsptoolbox.generators.html">Generators (dsptools.generators)</a></li>
-<li class="toctree-l2"><a class="reference internal" href="dsptoolbox.measure.html">Measure (dsptools.measure)</a></li>
-<li class="toctree-l2"><a class="reference internal" href="dsptoolbox.plots.html">Plots (dsptools.plots)</a></li>
-<li class="toctree-l2"><a class="reference internal" href="dsptoolbox.room_acoustics.html">Room acoustics (dsptools.room_acoustics)</a></li>
-<li class="toctree-l2"><a class="reference internal" href="dsptoolbox.special.html">Special (dsptools.special)</a></li>
-<li class="toctree-l2 current current-page"><a class="current reference internal" href="#">Standard functions (dsptools.*)</a></li>
-<li class="toctree-l2"><a class="reference internal" href="dsptoolbox.transfer_functions.html">Transfer functions (dsptools.transfer_functions)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="dsptoolbox.distances.html">Distances (dsptoolbox.distances)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="dsptoolbox.filterbanks.html">Filterbanks (dsptoolbox.filterbanks)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="dsptoolbox.generators.html">Generators (dsptoolbox.generators)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="dsptoolbox.measure.html">Measure (dsptoolbox.measure)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="dsptoolbox.plots.html">Plots (dsptoolbox.plots)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="dsptoolbox.room_acoustics.html">Room acoustics (dsptoolbox.room_acoustics)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="dsptoolbox.special.html">Special (dsptoolbox.special)</a></li>
+<li class="toctree-l2 current current-page"><a class="current reference internal" href="#">Standard functions (dsptoolbox.*)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="dsptoolbox.transfer_functions.html">Transfer functions (dsptoolbox.transfer_functions)</a></li>
 </ul>
 </li>
 </ul>
@@ -201,14 +201,206 @@
               <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
             </button>
           </div>
-          <label class="toc-overlay-icon toc-content-icon no-toc" for="__toc">
+          <label class="toc-overlay-icon toc-content-icon" for="__toc">
             <div class="visually-hidden">Toggle table of contents sidebar</div>
             <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
           </label>
         </div>
         <article role="main">
-          <section id="standard-functions-dsptools">
-<h1>Standard functions (dsptools.*)<a class="headerlink" href="#standard-functions-dsptools" title="Permalink to this heading">#</a></h1>
+          <section id="module-dsptoolbox.standard_functions">
+<span id="standard-functions-dsptoolbox"></span><h1>Standard functions (dsptoolbox.*)<a class="headerlink" href="#module-dsptoolbox.standard_functions" title="Permalink to this heading">#</a></h1>
+<p>Standard functions in DSP processes</p>
+<dl class="py function">
+<dt class="sig sig-object py" id="dsptoolbox.standard_functions.excess_group_delay">
+<span class="sig-prename descclassname"><span class="pre">dsptoolbox.standard_functions.</span></span><span class="sig-name descname"><span class="pre">excess_group_delay</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">signal</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../classes.html#dsptoolbox.classes.signal_class.Signal" title="dsptoolbox.classes.signal_class.Signal"><span class="pre">Signal</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dsptoolbox.standard_functions.excess_group_delay" title="Permalink to this definition">#</a></dt>
+<dd><p>Computes excess group delay.</p>
+<dl class="field-list">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>signal</strong><span class="classifier">Signal</span></dt><dd><p>Signal object for which to compute minimal group delay.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl>
+<dt><strong>f</strong><span class="classifier"><cite>np.ndarray</cite></span></dt><dd><p>Frequency vector.</p>
+</dd>
+<dt><strong>ex_gd</strong><span class="classifier"><cite>np.ndarray</cite></span></dt><dd><p>Excess group delays in seconds.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="dsptoolbox.standard_functions.group_delay">
+<span class="sig-prename descclassname"><span class="pre">dsptoolbox.standard_functions.</span></span><span class="sig-name descname"><span class="pre">group_delay</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">signal</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../classes.html#dsptoolbox.classes.signal_class.Signal" title="dsptoolbox.classes.signal_class.Signal"><span class="pre">Signal</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">method</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'direct'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dsptoolbox.standard_functions.group_delay" title="Permalink to this definition">#</a></dt>
+<dd><p>Computation of group delay.</p>
+<dl class="field-list">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>signal</strong><span class="classifier">Signal</span></dt><dd><p>Signal for which to compute group delay.</p>
+</dd>
+<dt><strong>method</strong><span class="classifier">str, optional</span></dt><dd><p><cite>‘direct’</cite> uses gradient with unwrapped phase. <cite>‘matlab’</cite> uses
+this implementation:
+<a class="reference external" href="https://www.dsprelated.com/freebooks/filters/Phase_Group_Delay.html">https://www.dsprelated.com/freebooks/filters/Phase_Group_Delay.html</a></p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl>
+<dt><strong>freqs</strong><span class="classifier"><cite>np.ndarray</cite></span></dt><dd><p>Frequency vector in Hz.</p>
+</dd>
+<dt><strong>group_delays</strong><span class="classifier"><cite>np.ndarray</cite></span></dt><dd><p>Matrix containing group delays in seconds.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="dsptoolbox.standard_functions.latency">
+<span class="sig-prename descclassname"><span class="pre">dsptoolbox.standard_functions.</span></span><span class="sig-name descname"><span class="pre">latency</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">in1</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../classes.html#dsptoolbox.classes.signal_class.Signal" title="dsptoolbox.classes.signal_class.Signal"><span class="pre">Signal</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">in2</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.11)"><span class="pre">Optional</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="../classes.html#dsptoolbox.classes.signal_class.Signal" title="dsptoolbox.classes.signal_class.Signal"><span class="pre">Signal</span></a><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dsptoolbox.standard_functions.latency" title="Permalink to this definition">#</a></dt>
+<dd><p>Computes latency between two signals using the correlation method.
+If there is no second signal, the latency between the first and the other
+channels of the is computed.</p>
+<dl class="field-list">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>in1</strong><span class="classifier">Signal</span></dt><dd><p>First signal.</p>
+</dd>
+<dt><strong>in2</strong><span class="classifier">Signal, optional</span></dt><dd><p>Second signal. Default: <cite>None</cite>.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl>
+<dt><strong>latency_per_channel_samples</strong><span class="classifier"><cite>np.ndarray</cite></span></dt><dd><p>Array with latency between two signals in samples per channel.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="dsptoolbox.standard_functions.merge_filterbanks">
+<span class="sig-prename descclassname"><span class="pre">dsptoolbox.standard_functions.</span></span><span class="sig-name descname"><span class="pre">merge_filterbanks</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fb1</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../classes.html#dsptoolbox.classes.filterbank.FilterBank" title="dsptoolbox.classes.filterbank.FilterBank"><span class="pre">FilterBank</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">fb2</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../classes.html#dsptoolbox.classes.filterbank.FilterBank" title="dsptoolbox.classes.filterbank.FilterBank"><span class="pre">FilterBank</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dsptoolbox.standard_functions.merge_filterbanks" title="Permalink to this definition">#</a></dt>
+<dd><p>Merges two filterbanks.</p>
+<dl class="field-list">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl>
+<dt><strong>fb1</strong><span class="classifier"><cite>FilterBank</cite></span></dt><dd><p>First filterbank.</p>
+</dd>
+<dt><strong>fb1</strong><span class="classifier"><cite>FilterBank</cite></span></dt><dd><p>Second filterbank.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl>
+<dt><strong>new_fb</strong><span class="classifier"><cite>FilterBank</cite></span></dt><dd><p>New filterbank with merged filters</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="dsptoolbox.standard_functions.merge_signals">
+<span class="sig-prename descclassname"><span class="pre">dsptoolbox.standard_functions.</span></span><span class="sig-name descname"><span class="pre">merge_signals</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">in1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">in2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">trimming_at_end</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dsptoolbox.standard_functions.merge_signals" title="Permalink to this definition">#</a></dt>
+<dd><p>Merges two signals by appending the channels of the second one to the
+first. If the length of in2 is not the same, trimming or padding is
+applied at the end.</p>
+<dl class="field-list">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl>
+<dt><strong>in1</strong><span class="classifier"><cite>Signal</cite> or <cite>MultiBandSignal</cite></span></dt><dd><p>First signal.</p>
+</dd>
+<dt><strong>in2</strong><span class="classifier"><cite>Signal</cite> or <cite>MultiBandSignal</cite></span></dt><dd><p>Second signal.</p>
+</dd>
+<dt><strong>trimming_at_end</strong><span class="classifier">bool, optional</span></dt><dd><p>If the signals do not have the same length, the second one is padded
+or trimmed. When <cite>True</cite>, padding/trimming is done at the end.
+Default: <cite>True</cite>.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl>
+<dt><strong>new_sig</strong><span class="classifier"><cite>Signal</cite></span></dt><dd><p>New merged signal.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="dsptoolbox.standard_functions.minimal_group_delay">
+<span class="sig-prename descclassname"><span class="pre">dsptoolbox.standard_functions.</span></span><span class="sig-name descname"><span class="pre">minimal_group_delay</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">signal</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../classes.html#dsptoolbox.classes.signal_class.Signal" title="dsptoolbox.classes.signal_class.Signal"><span class="pre">Signal</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dsptoolbox.standard_functions.minimal_group_delay" title="Permalink to this definition">#</a></dt>
+<dd><p>Computes minimal group delay</p>
+<dl class="field-list">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>signal</strong><span class="classifier">Signal</span></dt><dd><p>Signal object for which to compute minimal group delay.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl>
+<dt><strong>f</strong><span class="classifier"><cite>np.ndarray</cite></span></dt><dd><p>Frequency vector.</p>
+</dd>
+<dt><strong>min_gd</strong><span class="classifier"><cite>np.ndarray</cite></span></dt><dd><p>Minimal group delays in seconds as matrix.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="dsptoolbox.standard_functions.minimal_phase">
+<span class="sig-prename descclassname"><span class="pre">dsptoolbox.standard_functions.</span></span><span class="sig-name descname"><span class="pre">minimal_phase</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">signal</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../classes.html#dsptoolbox.classes.signal_class.Signal" title="dsptoolbox.classes.signal_class.Signal"><span class="pre">Signal</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dsptoolbox.standard_functions.minimal_phase" title="Permalink to this definition">#</a></dt>
+<dd><p>Gives back a matrix containing the minimal phase for every channel.</p>
+<dl class="field-list">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>signal</strong><span class="classifier">Signal</span></dt><dd><p>Signal for which to compute the minimal phase.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl>
+<dt><strong>f</strong><span class="classifier"><cite>np.ndarray</cite></span></dt><dd><p>Frequency vector.</p>
+</dd>
+<dt><strong>min_phases</strong><span class="classifier"><cite>np.ndarray</cite></span></dt><dd><p>Minimal phases as matrix.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="dsptoolbox.standard_functions.pad_trim">
+<span class="sig-prename descclassname"><span class="pre">dsptoolbox.standard_functions.</span></span><span class="sig-name descname"><span class="pre">pad_trim</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">signal</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../classes.html#dsptoolbox.classes.signal_class.Signal" title="dsptoolbox.classes.signal_class.Signal"><span class="pre">Signal</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">desired_length_samples</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><span class="pre">int</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">in_the_end</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dsptoolbox.standard_functions.pad_trim" title="Permalink to this definition">#</a></dt>
+<dd><p>Returns a copy of the signal with padded or trimmed time data.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>signal</strong><span class="classifier">Signal</span></dt><dd><p>Signal to be padded or trimmed.</p>
+</dd>
+<dt><strong>desired_length_samples</strong><span class="classifier">int</span></dt><dd><p>Length of resulting signal.</p>
+</dd>
+<dt><strong>in_the_end</strong><span class="classifier">bool, optional</span></dt><dd><p>Defines if padding or trimming should be done in the beginning or
+in the end of the signal. Default: <cite>True</cite>.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt><strong>new_signal</strong><span class="classifier">Signal</span></dt><dd><p>New padded signal.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
 </section>
 
         </article>
@@ -221,7 +413,7 @@
                 <div class="context">
                   <span>Next</span>
                 </div>
-                <div class="title">Transfer functions (dsptools.transfer_functions)</div>
+                <div class="title">Transfer functions (dsptoolbox.transfer_functions)</div>
               </div>
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
             </a>
@@ -232,7 +424,7 @@
                   <span>Previous</span>
                 </div>
                 
-                <div class="title">Special (dsptools.special)</div>
+                <div class="title">Special (dsptoolbox.special)</div>
                 
               </div>
             </a>
@@ -254,8 +446,34 @@
         
       </footer>
     </div>
-    <aside class="toc-drawer no-toc">
+    <aside class="toc-drawer">
       
+      
+      <div class="toc-sticky toc-scroll">
+        <div class="toc-title-container">
+          <span class="toc-title">
+            On this page
+          </span>
+        </div>
+        <div class="toc-tree-container">
+          <div class="toc-tree">
+            <ul>
+<li><a class="reference internal" href="#">Standard functions (dsptoolbox.*)</a><ul>
+<li><a class="reference internal" href="#dsptoolbox.standard_functions.excess_group_delay"><code class="docutils literal notranslate"><span class="pre">excess_group_delay()</span></code></a></li>
+<li><a class="reference internal" href="#dsptoolbox.standard_functions.group_delay"><code class="docutils literal notranslate"><span class="pre">group_delay()</span></code></a></li>
+<li><a class="reference internal" href="#dsptoolbox.standard_functions.latency"><code class="docutils literal notranslate"><span class="pre">latency()</span></code></a></li>
+<li><a class="reference internal" href="#dsptoolbox.standard_functions.merge_filterbanks"><code class="docutils literal notranslate"><span class="pre">merge_filterbanks()</span></code></a></li>
+<li><a class="reference internal" href="#dsptoolbox.standard_functions.merge_signals"><code class="docutils literal notranslate"><span class="pre">merge_signals()</span></code></a></li>
+<li><a class="reference internal" href="#dsptoolbox.standard_functions.minimal_group_delay"><code class="docutils literal notranslate"><span class="pre">minimal_group_delay()</span></code></a></li>
+<li><a class="reference internal" href="#dsptoolbox.standard_functions.minimal_phase"><code class="docutils literal notranslate"><span class="pre">minimal_phase()</span></code></a></li>
+<li><a class="reference internal" href="#dsptoolbox.standard_functions.pad_trim"><code class="docutils literal notranslate"><span class="pre">pad_trim()</span></code></a></li>
+</ul>
+</li>
+</ul>
+
+          </div>
+        </div>
+      </div>
       
       
     </aside>

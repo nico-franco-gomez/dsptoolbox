@@ -3,10 +3,10 @@
   <head><meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width,initial-scale=1"/>
     <meta name="color-scheme" content="light dark"><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
-<link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="next" title="Generators (dsptools.generators)" href="dsptoolbox.generators.html" /><link rel="prev" title="Distances (dsptools.distances)" href="dsptoolbox.distances.html" />
+<link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="next" title="Generators (dsptoolbox.generators)" href="dsptoolbox.generators.html" /><link rel="prev" title="Distances (dsptoolbox.distances)" href="dsptoolbox.distances.html" />
 
     <!-- Generated with Sphinx 5.3.0 and Furo 2022.12.07 -->
-        <title>Filterbanks (dsptools.filterbanks) - dsptoolbox 0.0.2 documentation</title>
+        <title>Filterbanks (dsptoolbox.filterbanks) - dsptoolbox 0.0.2 documentation</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?digest=91d0f0d1c444bdcb17a68e833c7a53903343c195" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo-extensions.css?digest=30d1aed668e5c3a91c3e3bf6a60b675221979f0e" />
@@ -134,7 +134,7 @@
           <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
         </button>
       </div>
-      <label class="toc-overlay-icon toc-header-icon no-toc" for="__toc">
+      <label class="toc-overlay-icon toc-header-icon" for="__toc">
         <div class="visually-hidden">Toggle table of contents sidebar</div>
         <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
       </label>
@@ -162,15 +162,15 @@
 </ul>
 <ul class="current">
 <li class="toctree-l1 current has-children"><a class="reference internal" href="../modules.html">Modules in dsptoolbox</a><input checked="" class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><div class="visually-hidden">Toggle child pages in navigation</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul class="current">
-<li class="toctree-l2"><a class="reference internal" href="dsptoolbox.distances.html">Distances (dsptools.distances)</a></li>
-<li class="toctree-l2 current current-page"><a class="current reference internal" href="#">Filterbanks (dsptools.filterbanks)</a></li>
-<li class="toctree-l2"><a class="reference internal" href="dsptoolbox.generators.html">Generators (dsptools.generators)</a></li>
-<li class="toctree-l2"><a class="reference internal" href="dsptoolbox.measure.html">Measure (dsptools.measure)</a></li>
-<li class="toctree-l2"><a class="reference internal" href="dsptoolbox.plots.html">Plots (dsptools.plots)</a></li>
-<li class="toctree-l2"><a class="reference internal" href="dsptoolbox.room_acoustics.html">Room acoustics (dsptools.room_acoustics)</a></li>
-<li class="toctree-l2"><a class="reference internal" href="dsptoolbox.special.html">Special (dsptools.special)</a></li>
-<li class="toctree-l2"><a class="reference internal" href="dsptoolbox.standard_functions.html">Standard functions (dsptools.*)</a></li>
-<li class="toctree-l2"><a class="reference internal" href="dsptoolbox.transfer_functions.html">Transfer functions (dsptools.transfer_functions)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="dsptoolbox.distances.html">Distances (dsptoolbox.distances)</a></li>
+<li class="toctree-l2 current current-page"><a class="current reference internal" href="#">Filterbanks (dsptoolbox.filterbanks)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="dsptoolbox.generators.html">Generators (dsptoolbox.generators)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="dsptoolbox.measure.html">Measure (dsptoolbox.measure)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="dsptoolbox.plots.html">Plots (dsptoolbox.plots)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="dsptoolbox.room_acoustics.html">Room acoustics (dsptoolbox.room_acoustics)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="dsptoolbox.special.html">Special (dsptoolbox.special)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="dsptoolbox.standard_functions.html">Standard functions (dsptoolbox.*)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="dsptoolbox.transfer_functions.html">Transfer functions (dsptoolbox.transfer_functions)</a></li>
 </ul>
 </li>
 </ul>
@@ -201,14 +201,88 @@
               <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
             </button>
           </div>
-          <label class="toc-overlay-icon toc-content-icon no-toc" for="__toc">
+          <label class="toc-overlay-icon toc-content-icon" for="__toc">
             <div class="visually-hidden">Toggle table of contents sidebar</div>
             <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
           </label>
         </div>
         <article role="main">
-          <section id="filterbanks-dsptools-filterbanks">
-<h1>Filterbanks (dsptools.filterbanks)<a class="headerlink" href="#filterbanks-dsptools-filterbanks" title="Permalink to this heading">#</a></h1>
+          <section id="module-dsptoolbox.filterbanks">
+<span id="filterbanks-dsptoolbox-filterbanks"></span><h1>Filterbanks (dsptoolbox.filterbanks)<a class="headerlink" href="#module-dsptoolbox.filterbanks" title="Permalink to this heading">#</a></h1>
+<dl class="py function">
+<dt class="sig sig-object py" id="dsptoolbox.filterbanks.linkwitz_riley_crossovers">
+<span class="sig-prename descclassname"><span class="pre">dsptoolbox.filterbanks.</span></span><span class="sig-name descname"><span class="pre">linkwitz_riley_crossovers</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">freqs</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">order</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sampling_rate_hz</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">48000</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dsptoolbox.filterbanks.linkwitz_riley_crossovers" title="Permalink to this definition">#</a></dt>
+<dd><p>Returns a linkwitz-riley crossovers filter bank.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>freqs</strong><span class="classifier">array-like</span></dt><dd><p>Frequencies at which to set the crossovers.</p>
+</dd>
+<dt><strong>order</strong><span class="classifier">array-like</span></dt><dd><p>Order of the crossovers. The higher, the steeper.</p>
+</dd>
+<dt><strong>sampling_rate_hz</strong><span class="classifier">int, optional</span></dt><dd><p>Sampling rate for the filterbank. Default: 48000.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt><strong>fb</strong><span class="classifier">LRFilterBank</span></dt><dd><p>Filter bank in form of LRFilterBank class which contains the same
+methods as the FilterBank class but is generated with different
+internal methods.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="dsptoolbox.filterbanks.reconstructing_fractional_octave_bands">
+<span class="sig-prename descclassname"><span class="pre">dsptoolbox.filterbanks.</span></span><span class="sig-name descname"><span class="pre">reconstructing_fractional_octave_bands</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">num_fractions</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">frequency_range</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">[63,</span> <span class="pre">16000]</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">overlap</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">slope</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_samples</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">4096</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sampling_rate_hz</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">48000</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dsptoolbox.filterbanks.reconstructing_fractional_octave_bands" title="Permalink to this definition">#</a></dt>
+<dd><p>Create and/or apply an amplitude preserving fractional octave filter
+bank. This implementation is taken from the pyfar package.
+See references for more information about it.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>num_fractions</strong><span class="classifier">int, optional</span></dt><dd><p>Octave fraction, e.g., <code class="docutils literal notranslate"><span class="pre">3</span></code> for third-octave bands. The default is
+<code class="docutils literal notranslate"><span class="pre">1</span></code>.</p>
+</dd>
+<dt><strong>frequency_range</strong><span class="classifier">tuple, optional</span></dt><dd><p>Frequency range for fractional octave in Hz. The default is
+<code class="docutils literal notranslate"><span class="pre">(63,</span> <span class="pre">16000)</span></code></p>
+</dd>
+<dt><strong>overlap</strong><span class="classifier">float</span></dt><dd><p>Band overlap of the filter slopes between 0 and 1. Smaller values yield
+wider pass-bands and steeper filter slopes. The default is <code class="docutils literal notranslate"><span class="pre">1</span></code>.</p>
+</dd>
+<dt><strong>slope</strong><span class="classifier">int, optional</span></dt><dd><p>Number &gt; 0 that defines the width and steepness of the filter slopes.
+Larger values yield wider pass-bands and steeper filter slopes. The
+default is <code class="docutils literal notranslate"><span class="pre">0</span></code>.</p>
+</dd>
+<dt><strong>n_samples</strong><span class="classifier">int, optional</span></dt><dd><p>Length of the filter in samples. Longer filters yield more exact
+filters. The default is <code class="docutils literal notranslate"><span class="pre">2**12</span></code>.</p>
+</dd>
+<dt><strong>sampling_rate</strong><span class="classifier">int</span></dt><dd><p>Sampling frequency in Hz. The default is <code class="docutils literal notranslate"><span class="pre">None</span></code>. Only required if
+<code class="docutils literal notranslate"><span class="pre">signal=None</span></code>.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt><strong>signal</strong><span class="classifier">Signal</span></dt><dd><p>The filtered signal. Only returned if <code class="docutils literal notranslate"><span class="pre">sampling_rate</span> <span class="pre">=</span> <span class="pre">None</span></code>.</p>
+</dd>
+<dt><strong>filter</strong><span class="classifier">FilterFIR</span></dt><dd><p>FIR Filter object. Only returned if <code class="docutils literal notranslate"><span class="pre">signal</span> <span class="pre">=</span> <span class="pre">None</span></code>.</p>
+</dd>
+<dt><strong>frequencies</strong><span class="classifier">np.ndarray</span></dt><dd><p>Center frequencies of the filters.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+<p class="rubric">References</p>
+<ul class="simple">
+<li><p><a class="reference external" href="https://pubmed.ncbi.nlm.nih.gov/20136211/">https://pubmed.ncbi.nlm.nih.gov/20136211/</a></p></li>
+<li><p><a class="reference external" href="https://github.com/pyfar/pyfar">https://github.com/pyfar/pyfar</a></p></li>
+</ul>
+</dd></dl>
+
 </section>
 
         </article>
@@ -221,7 +295,7 @@
                 <div class="context">
                   <span>Next</span>
                 </div>
-                <div class="title">Generators (dsptools.generators)</div>
+                <div class="title">Generators (dsptoolbox.generators)</div>
               </div>
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
             </a>
@@ -232,7 +306,7 @@
                   <span>Previous</span>
                 </div>
                 
-                <div class="title">Distances (dsptools.distances)</div>
+                <div class="title">Distances (dsptoolbox.distances)</div>
                 
               </div>
             </a>
@@ -254,8 +328,28 @@
         
       </footer>
     </div>
-    <aside class="toc-drawer no-toc">
+    <aside class="toc-drawer">
       
+      
+      <div class="toc-sticky toc-scroll">
+        <div class="toc-title-container">
+          <span class="toc-title">
+            On this page
+          </span>
+        </div>
+        <div class="toc-tree-container">
+          <div class="toc-tree">
+            <ul>
+<li><a class="reference internal" href="#">Filterbanks (dsptoolbox.filterbanks)</a><ul>
+<li><a class="reference internal" href="#dsptoolbox.filterbanks.linkwitz_riley_crossovers"><code class="docutils literal notranslate"><span class="pre">linkwitz_riley_crossovers()</span></code></a></li>
+<li><a class="reference internal" href="#dsptoolbox.filterbanks.reconstructing_fractional_octave_bands"><code class="docutils literal notranslate"><span class="pre">reconstructing_fractional_octave_bands()</span></code></a></li>
+</ul>
+</li>
+</ul>
+
+          </div>
+        </div>
+      </div>
       
       
     </aside>

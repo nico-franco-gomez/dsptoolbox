@@ -1,0 +1,273 @@
+\begin{sphinxtheindex}
+\let\bigletter\sphinxstyleindexlettergroup
+\let\spxpagem \sphinxstyleindexpagemain
+\let\spxentry \sphinxstyleindexentry
+\let\spxextra \sphinxstyleindexextra
+
+  \bigletter {\sphinxsymbolsname}
+  \item \spxentry{\_\_init\_\_()}\spxextra{dsptoolbox.classes.filter\_class.Filter method}, 
+		\hyperpage{14}
+  \item \spxentry{\_\_init\_\_()}\spxextra{dsptoolbox.classes.filterbank.FilterBank method}, 
+		\hyperpage{18}
+  \item \spxentry{\_\_init\_\_()}\spxextra{dsptoolbox.classes.multibandsignal.MultiBandSignal method}, 
+		\hyperpage{11}
+  \item \spxentry{\_\_init\_\_()}\spxextra{dsptoolbox.classes.signal\_class.Signal method}, 
+		\hyperpage{4}
+
+  \indexspace
+  \bigletter A
+  \item \spxentry{add\_band()}\spxextra{dsptoolbox.classes.multibandsignal.MultiBandSignal method}, 
+		\hyperpage{12}
+  \item \spxentry{add\_channel()}\spxextra{dsptoolbox.classes.signal\_class.Signal method}, 
+		\hyperpage{5}
+  \item \spxentry{add\_filter()}\spxextra{dsptoolbox.classes.filterbank.FilterBank method}, 
+		\hyperpage{19}
+
+  \indexspace
+  \bigletter B
+  \item \spxentry{bands}\spxextra{dsptoolbox.classes.multibandsignal.MultiBandSignal property}, 
+		\hyperpage{12}
+
+  \indexspace
+  \bigletter C
+  \item \spxentry{cepstrum()}\spxextra{in module dsptoolbox.special}, \hyperpage{32}
+  \item \spxentry{chirp()}\spxextra{in module dsptoolbox.generators}, \hyperpage{25}
+  \item \spxentry{collapse()}\spxextra{dsptoolbox.classes.multibandsignal.MultiBandSignal method}, 
+		\hyperpage{12}
+  \item \spxentry{compute\_transfer\_function()}\spxextra{in module dsptoolbox.transfer\_functions}, 
+		\hyperpage{35}
+  \item \spxentry{convolve\_rir\_on\_signal()}\spxextra{in module dsptoolbox.room\_acoustics}, 
+		\hyperpage{31}
+  \item \spxentry{copy()}\spxextra{dsptoolbox.classes.filter\_class.Filter method}, \hyperpage{15}
+  \item \spxentry{copy()}\spxextra{dsptoolbox.classes.filterbank.FilterBank method}, \hyperpage{19}
+  \item \spxentry{copy()}\spxextra{dsptoolbox.classes.multibandsignal.MultiBandSignal method}, 
+		\hyperpage{12}
+  \item \spxentry{copy()}\spxextra{dsptoolbox.classes.signal\_class.Signal method}, \hyperpage{5}
+
+  \indexspace
+  \bigletter D
+  \item \spxentry{dirac()}\spxextra{in module dsptoolbox.generators}, \hyperpage{26}
+  \item \spxentry{dsptoolbox.classes.filter\_class}
+    \subitem \spxentry{module}, \hyperpage{13}
+  \item \spxentry{dsptoolbox.classes.filterbank}
+    \subitem \spxentry{module}, \hyperpage{18}
+  \item \spxentry{dsptoolbox.classes.multibandsignal}
+    \subitem \spxentry{module}, \hyperpage{11}
+  \item \spxentry{dsptoolbox.classes.signal\_class}
+    \subitem \spxentry{module}, \hyperpage{3}
+  \item \spxentry{dsptoolbox.distances}
+    \subitem \spxentry{module}, \hyperpage{23}
+  \item \spxentry{dsptoolbox.filterbanks}
+    \subitem \spxentry{module}, \hyperpage{24}
+  \item \spxentry{dsptoolbox.generators}
+    \subitem \spxentry{module}, \hyperpage{25}
+  \item \spxentry{dsptoolbox.measure}
+    \subitem \spxentry{module}, \hyperpage{27}
+  \item \spxentry{dsptoolbox.plots}
+    \subitem \spxentry{module}, \hyperpage{29}
+  \item \spxentry{dsptoolbox.room\_acoustics}
+    \subitem \spxentry{module}, \hyperpage{31}
+  \item \spxentry{dsptoolbox.special}
+    \subitem \spxentry{module}, \hyperpage{32}
+  \item \spxentry{dsptoolbox.standard\_functions}
+    \subitem \spxentry{module}, \hyperpage{33}
+  \item \spxentry{dsptoolbox.transfer\_functions}
+    \subitem \spxentry{module}, \hyperpage{35}
+
+  \indexspace
+  \bigletter E
+  \item \spxentry{excess\_group\_delay()}\spxextra{in module dsptoolbox.standard\_functions}, 
+		\hyperpage{33}
+
+  \indexspace
+  \bigletter F
+  \item \spxentry{Filter}\spxextra{class in dsptoolbox.classes.filter\_class}, \hyperpage{13}
+  \item \spxentry{filter\_signal()}\spxextra{dsptoolbox.classes.filter\_class.Filter method}, 
+		\hyperpage{15}
+  \item \spxentry{filter\_signal()}\spxextra{dsptoolbox.classes.filterbank.FilterBank method}, 
+		\hyperpage{19}
+  \item \spxentry{FilterBank}\spxextra{class in dsptoolbox.classes.filterbank}, \hyperpage{18}
+  \item \spxentry{find\_modes()}\spxextra{in module dsptoolbox.room\_acoustics}, \hyperpage{31}
+
+  \indexspace
+  \bigletter G
+  \item \spxentry{general\_matrix\_plot()}\spxextra{in module dsptoolbox.plots}, \hyperpage{29}
+  \item \spxentry{general\_plot()}\spxextra{in module dsptoolbox.plots}, \hyperpage{29}
+  \item \spxentry{general\_subplots\_line()}\spxextra{in module dsptoolbox.plots}, \hyperpage{30}
+  \item \spxentry{get\_all\_bands()}\spxextra{dsptoolbox.classes.multibandsignal.MultiBandSignal method}, 
+		\hyperpage{12}
+  \item \spxentry{get\_coefficients()}\spxextra{dsptoolbox.classes.filter\_class.Filter method}, 
+		\hyperpage{15}
+  \item \spxentry{get\_coherence()}\spxextra{dsptoolbox.classes.signal\_class.Signal method}, 
+		\hyperpage{5}
+  \item \spxentry{get\_csm()}\spxextra{dsptoolbox.classes.signal\_class.Signal method}, 
+		\hyperpage{5}
+  \item \spxentry{get\_filter\_metadata()}\spxextra{dsptoolbox.classes.filter\_class.Filter method}, 
+		\hyperpage{16}
+  \item \spxentry{get\_ir()}\spxextra{dsptoolbox.classes.filter\_class.Filter method}, 
+		\hyperpage{16}
+  \item \spxentry{get\_spectrogram()}\spxextra{dsptoolbox.classes.signal\_class.Signal method}, 
+		\hyperpage{6}
+  \item \spxentry{get\_spectrum()}\spxextra{dsptoolbox.classes.signal\_class.Signal method}, 
+		\hyperpage{6}
+  \item \spxentry{get\_time\_vector()}\spxextra{dsptoolbox.classes.signal\_class.Signal method}, 
+		\hyperpage{6}
+  \item \spxentry{group\_delay()}\spxextra{in module dsptoolbox.standard\_functions}, 
+		\hyperpage{33}
+
+  \indexspace
+  \bigletter I
+  \item \spxentry{initialize\_zi()}\spxextra{dsptoolbox.classes.filter\_class.Filter method}, 
+		\hyperpage{16}
+  \item \spxentry{initialize\_zi()}\spxextra{dsptoolbox.classes.filterbank.FilterBank method}, 
+		\hyperpage{20}
+  \item \spxentry{itakura\_saito()}\spxextra{in module dsptoolbox.distances}, \hyperpage{23}
+
+  \indexspace
+  \bigletter L
+  \item \spxentry{latency()}\spxextra{in module dsptoolbox.standard\_functions}, \hyperpage{33}
+  \item \spxentry{linkwitz\_riley\_crossovers()}\spxextra{in module dsptoolbox.filterbanks}, 
+		\hyperpage{24}
+  \item \spxentry{log\_spectral()}\spxextra{in module dsptoolbox.distances}, \hyperpage{23}
+
+  \indexspace
+  \bigletter M
+  \item \spxentry{merge\_filterbanks()}\spxextra{in module dsptoolbox.standard\_functions}, 
+		\hyperpage{33}
+  \item \spxentry{merge\_signals()}\spxextra{in module dsptoolbox.standard\_functions}, 
+		\hyperpage{34}
+  \item \spxentry{minimal\_group\_delay()}\spxextra{in module dsptoolbox.standard\_functions}, 
+		\hyperpage{34}
+  \item \spxentry{minimal\_phase()}\spxextra{in module dsptoolbox.standard\_functions}, 
+		\hyperpage{34}
+  \item \spxentry{module}
+    \subitem \spxentry{dsptoolbox.classes.filter\_class}, \hyperpage{13}
+    \subitem \spxentry{dsptoolbox.classes.filterbank}, \hyperpage{18}
+    \subitem \spxentry{dsptoolbox.classes.multibandsignal}, \hyperpage{11}
+    \subitem \spxentry{dsptoolbox.classes.signal\_class}, \hyperpage{3}
+    \subitem \spxentry{dsptoolbox.distances}, \hyperpage{23}
+    \subitem \spxentry{dsptoolbox.filterbanks}, \hyperpage{24}
+    \subitem \spxentry{dsptoolbox.generators}, \hyperpage{25}
+    \subitem \spxentry{dsptoolbox.measure}, \hyperpage{27}
+    \subitem \spxentry{dsptoolbox.plots}, \hyperpage{29}
+    \subitem \spxentry{dsptoolbox.room\_acoustics}, \hyperpage{31}
+    \subitem \spxentry{dsptoolbox.special}, \hyperpage{32}
+    \subitem \spxentry{dsptoolbox.standard\_functions}, \hyperpage{33}
+    \subitem \spxentry{dsptoolbox.transfer\_functions}, \hyperpage{35}
+  \item \spxentry{MultiBandSignal}\spxextra{class in dsptoolbox.classes.multibandsignal}, 
+		\hyperpage{11}
+
+  \indexspace
+  \bigletter N
+  \item \spxentry{noise()}\spxextra{in module dsptoolbox.generators}, \hyperpage{26}
+  \item \spxentry{number\_of\_channels}\spxextra{dsptoolbox.classes.signal\_class.Signal property}, 
+		\hyperpage{6}
+
+  \indexspace
+  \bigletter P
+  \item \spxentry{pad\_trim()}\spxextra{in module dsptoolbox.standard\_functions}, \hyperpage{35}
+  \item \spxentry{play()}\spxextra{in module dsptoolbox.measure}, \hyperpage{27}
+  \item \spxentry{play\_and\_record()}\spxextra{in module dsptoolbox.measure}, \hyperpage{27}
+  \item \spxentry{plot\_coherence()}\spxextra{dsptoolbox.classes.signal\_class.Signal method}, 
+		\hyperpage{6}
+  \item \spxentry{plot\_csm()}\spxextra{dsptoolbox.classes.signal\_class.Signal method}, 
+		\hyperpage{7}
+  \item \spxentry{plot\_group\_delay()}\spxextra{dsptoolbox.classes.filter\_class.Filter method}, 
+		\hyperpage{16}
+  \item \spxentry{plot\_group\_delay()}\spxextra{dsptoolbox.classes.filterbank.FilterBank method}, 
+		\hyperpage{20}
+  \item \spxentry{plot\_group\_delay()}\spxextra{dsptoolbox.classes.signal\_class.Signal method}, 
+		\hyperpage{7}
+  \item \spxentry{plot\_magnitude()}\spxextra{dsptoolbox.classes.filter\_class.Filter method}, 
+		\hyperpage{16}
+  \item \spxentry{plot\_magnitude()}\spxextra{dsptoolbox.classes.filterbank.FilterBank method}, 
+		\hyperpage{20}
+  \item \spxentry{plot\_magnitude()}\spxextra{dsptoolbox.classes.signal\_class.Signal method}, 
+		\hyperpage{7}
+  \item \spxentry{plot\_phase()}\spxextra{dsptoolbox.classes.filter\_class.Filter method}, 
+		\hyperpage{17}
+  \item \spxentry{plot\_phase()}\spxextra{dsptoolbox.classes.filterbank.FilterBank method}, 
+		\hyperpage{20}
+  \item \spxentry{plot\_phase()}\spxextra{dsptoolbox.classes.signal\_class.Signal method}, 
+		\hyperpage{8}
+  \item \spxentry{plot\_spectrogram()}\spxextra{dsptoolbox.classes.signal\_class.Signal method}, 
+		\hyperpage{8}
+  \item \spxentry{plot\_time()}\spxextra{dsptoolbox.classes.signal\_class.Signal method}, 
+		\hyperpage{8}
+  \item \spxentry{plot\_zp()}\spxextra{dsptoolbox.classes.filter\_class.Filter method}, 
+		\hyperpage{17}
+  \item \spxentry{print\_device\_info()}\spxextra{in module dsptoolbox.measure}, \hyperpage{28}
+
+  \indexspace
+  \bigletter R
+  \item \spxentry{reconstructing\_fractional\_octave\_bands()}\spxextra{in module dsptoolbox.filterbanks}, 
+		\hyperpage{24}
+  \item \spxentry{record()}\spxextra{in module dsptoolbox.measure}, \hyperpage{28}
+  \item \spxentry{remove\_band()}\spxextra{dsptoolbox.classes.multibandsignal.MultiBandSignal method}, 
+		\hyperpage{12}
+  \item \spxentry{remove\_channel()}\spxextra{dsptoolbox.classes.signal\_class.Signal method}, 
+		\hyperpage{9}
+  \item \spxentry{remove\_filter()}\spxextra{dsptoolbox.classes.filterbank.FilterBank method}, 
+		\hyperpage{21}
+  \item \spxentry{reverb\_time()}\spxextra{in module dsptoolbox.room\_acoustics}, \hyperpage{32}
+
+  \indexspace
+  \bigletter S
+  \item \spxentry{same\_sampling\_rate}\spxextra{dsptoolbox.classes.multibandsignal.MultiBandSignal property}, 
+		\hyperpage{13}
+  \item \spxentry{sampling\_rate\_hz}\spxextra{dsptoolbox.classes.filter\_class.Filter property}, 
+		\hyperpage{18}
+  \item \spxentry{sampling\_rate\_hz}\spxextra{dsptoolbox.classes.multibandsignal.MultiBandSignal property}, 
+		\hyperpage{13}
+  \item \spxentry{sampling\_rate\_hz}\spxextra{dsptoolbox.classes.signal\_class.Signal property}, 
+		\hyperpage{9}
+  \item \spxentry{save\_filter()}\spxextra{dsptoolbox.classes.filter\_class.Filter method}, 
+		\hyperpage{18}
+  \item \spxentry{save\_filterbank()}\spxextra{dsptoolbox.classes.filterbank.FilterBank method}, 
+		\hyperpage{21}
+  \item \spxentry{save\_signal()}\spxextra{dsptoolbox.classes.multibandsignal.MultiBandSignal method}, 
+		\hyperpage{13}
+  \item \spxentry{save\_signal()}\spxextra{dsptoolbox.classes.signal\_class.Signal method}, 
+		\hyperpage{9}
+  \item \spxentry{set\_coherence()}\spxextra{dsptoolbox.classes.signal\_class.Signal method}, 
+		\hyperpage{9}
+  \item \spxentry{set\_csm\_parameters()}\spxextra{dsptoolbox.classes.signal\_class.Signal method}, 
+		\hyperpage{9}
+  \item \spxentry{set\_device()}\spxextra{in module dsptoolbox.measure}, \hyperpage{28}
+  \item \spxentry{set\_filter\_parameters()}\spxextra{dsptoolbox.classes.filter\_class.Filter method}, 
+		\hyperpage{18}
+  \item \spxentry{set\_spectrogram\_parameters()}\spxextra{dsptoolbox.classes.signal\_class.Signal method}, 
+		\hyperpage{9}
+  \item \spxentry{set\_spectrum\_parameters()}\spxextra{dsptoolbox.classes.signal\_class.Signal method}, 
+		\hyperpage{10}
+  \item \spxentry{set\_window()}\spxextra{dsptoolbox.classes.signal\_class.Signal method}, 
+		\hyperpage{10}
+  \item \spxentry{show()}\spxextra{in module dsptoolbox.plots}, \hyperpage{31}
+  \item \spxentry{show\_info()}\spxextra{dsptoolbox.classes.filter\_class.Filter method}, 
+		\hyperpage{18}
+  \item \spxentry{show\_info()}\spxextra{dsptoolbox.classes.filterbank.FilterBank method}, 
+		\hyperpage{21}
+  \item \spxentry{show\_info()}\spxextra{dsptoolbox.classes.multibandsignal.MultiBandSignal method}, 
+		\hyperpage{13}
+  \item \spxentry{show\_info()}\spxextra{dsptoolbox.classes.signal\_class.Signal method}, 
+		\hyperpage{10}
+  \item \spxentry{Signal}\spxextra{class in dsptoolbox.classes.signal\_class}, \hyperpage{3}
+  \item \spxentry{signal\_id}\spxextra{dsptoolbox.classes.signal\_class.Signal property}, 
+		\hyperpage{11}
+  \item \spxentry{signal\_type}\spxextra{dsptoolbox.classes.signal\_class.Signal property}, 
+		\hyperpage{11}
+  \item \spxentry{spectral\_deconvolve()}\spxextra{in module dsptoolbox.transfer\_functions}, 
+		\hyperpage{36}
+  \item \spxentry{swap\_channels()}\spxextra{dsptoolbox.classes.signal\_class.Signal method}, 
+		\hyperpage{11}
+
+  \indexspace
+  \bigletter T
+  \item \spxentry{time\_data}\spxextra{dsptoolbox.classes.signal\_class.Signal property}, 
+		\hyperpage{11}
+
+  \indexspace
+  \bigletter W
+  \item \spxentry{window\_ir()}\spxextra{in module dsptoolbox.transfer\_functions}, \hyperpage{36}
+
+\end{sphinxtheindex}

@@ -1,7 +1,7 @@
-Standard functions (dsptools.*)
+Standard functions (dsptoolbox.*)
 ===================================================================
 
-.. automodule:: dsptools.standard_functions
+.. automodule:: dsptoolbox.standard_functions
    :members:
    :undoc-members:
    :show-inheritance:
