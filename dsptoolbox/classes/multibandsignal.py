@@ -49,17 +49,17 @@ class MultiBandSignal():
     # ======== Properties and setters =========================================
     @property
     def sampling_rate_hz(self):
-        return self._sampling_rate_hz
+        return self.__sampling_rate_hz
 
     @sampling_rate_hz.setter
     def sampling_rate_hz(self, new_sampling_rate_hz):
         assert type(new_sampling_rate_hz) == int, \
             'Sampling rate can only be an integer'
-        self._sampling_rate_hz = new_sampling_rate_hz
+        self.__sampling_rate_hz = new_sampling_rate_hz
 
     @property
     def bands(self):
-        return self._bands
+        return self.__bands
 
     @bands.setter
     def bands(self, new_bands):
@@ -90,17 +90,17 @@ class MultiBandSignal():
                     assert s.time_data.shape[0] == self.band_length_samples,\
                         'The length of the bands is not always the same. ' +\
                         'This behaviour is not supported'
-        self._bands = new_bands
+        self.__bands = new_bands
 
     @property
     def same_sampling_rate(self):
-        return self._same_sampling_rate
+        return self.__same_sampling_rate
 
     @same_sampling_rate.setter
     def same_sampling_rate(self, new_same):
         assert type(new_same) == bool, \
             'Same sampling rate attribute must be a boolean'
-        self._same_sampling_rate = new_same
+        self.__same_sampling_rate = new_same
 
     def _generate_metadata(self):
         """Generates an information dictionary with metadata about the
@@ -192,9 +192,8 @@ class MultiBandSignal():
         initial = self.bands[0].time_data
         for n in range(1, len(self.bands)):
             initial += self.bands[n].time_data
-        new_sig = Signal(
-            None, initial,
-            self.sampling_rate_hz, signal_type=self.bands[0].signal_type)
+        new_sig = self.bands[0].copy()
+        new_sig.time_data = initial
         return new_sig
 
     def show_info(self, show_band_info: bool = False):

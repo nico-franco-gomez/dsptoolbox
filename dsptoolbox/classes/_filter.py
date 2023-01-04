@@ -6,7 +6,6 @@ from enum import Enum
 from scipy.signal import sosfiltfilt, sosfilt, lfilter, filtfilt
 from .signal_class import Signal
 from .multibandsignal import MultiBandSignal
-from copy import deepcopy
 
 
 def _get_biquad_type(number: int = None, name: str = None):
@@ -189,12 +188,12 @@ def _group_delay_filter(ba, length_samples: int = 512, fs_hz: int = 48000):
 
 def _filter_on_signal(signal: Signal, sos, channel=None,
                       zi=None, zero_phase: bool = False):
-    """Takes in a Signal object and filters selected channels. Exports a new
-    Signal object
+    """Takes in a `Signal` object and filters selected channels. Exports a new
+    `Signal` object.
 
     Parameters
     ----------
-    signal : class:Signal
+    signal : `Signal`
         Signal to be filtered.
     sos : array-like
         SOS coefficients of filter.
@@ -210,7 +209,7 @@ def _filter_on_signal(signal: Signal, sos, channel=None,
 
     Returns
     -------
-    new_signal : class:Signal
+    new_signal : `Signal`
         New Signal object.
 
     """
@@ -234,7 +233,7 @@ def _filter_on_signal(signal: Signal, sos, channel=None,
             else:
                 y = sosfilt(sos, signal.time_data[:, ch])
         new_time_data[:, ch] = y
-    new_signal = deepcopy(signal)
+    new_signal = signal.copy()
     new_signal.time_data = new_time_data
     if zi is not None:
         return new_signal, zi
@@ -244,12 +243,12 @@ def _filter_on_signal(signal: Signal, sos, channel=None,
 
 def _filter_on_signal_ba(signal: Signal, ba, channel=None,
                          zi=None, zero_phase: bool = False):
-    """Takes in a Signal object and filters selected channels. Exports a new
-    Signal object
+    """Takes in a `Signal` object and filters selected channels. Exports a new
+    `Signal` object.
 
     Parameters
     ----------
-    signal : class:Signal
+    signal : `Signal`
         Signal to be filtered.
     ba : array-like
         ba coefficients of filter.
@@ -265,7 +264,7 @@ def _filter_on_signal_ba(signal: Signal, ba, channel=None,
 
     Returns
     -------
-    new_signal : class:Signal
+    new_signal : `Signal`
         New Signal object.
 
     """
@@ -288,7 +287,7 @@ def _filter_on_signal_ba(signal: Signal, ba, channel=None,
             else:
                 y = lfilter(ba[0], ba[1], x=signal.time_data[:, ch])
         new_time_data[:, ch] = y
-    new_signal = deepcopy(signal)
+    new_signal = signal.copy()
     new_signal.time_data = new_time_data
     if zi is not None:
         return new_signal, zi
@@ -301,6 +300,30 @@ def _filterbank_on_signal(signal: Signal, filters, activate_zi: bool = False,
                           same_sampling_rate: bool = True):
     """Applies filter bank on a given signal.
 
+    Parameters
+    ----------
+    signal : `Signal`
+        Signal to be filtered.
+    filters : list
+        List containing filters to be applied to signal.
+    activate_zi : bool, optional
+        When `True`, the filter initial values for each channel are updated
+        while filtering. Default: `None`.
+    mode : str, optional
+        Mode of filtering. Choose from `'parallel'`, `'sequential'` and
+        `'summed'`. Default: `'parallel'`.
+    zero_phase : bool, optional
+        Uses zero-phase filtering on signal. Be aware that the filter order
+        is doubled in this case. Default: `False`.
+    same_sampling_rate : bool, optional
+        When `True`, the output MultiBandSignal (parallel filtering) has
+        same sampling rate for all bands. Default: `True`.
+
+    Returns
+    -------
+    new_signal : `Signal` or `MultiBandSignal`
+        New Signal object.
+
     """
     n_filt = len(filters)
     if mode == 'parallel':
@@ -312,7 +335,7 @@ def _filterbank_on_signal(signal: Signal, filters, activate_zi: bool = False,
         out_sig = MultiBandSignal(
             ss, same_sampling_rate=same_sampling_rate)
     elif mode == 'sequential':
-        out_sig = deepcopy(signal)
+        out_sig = signal.copy()
         for n in range(n_filt):
             out_sig = \
                 filters[n].filter_signal(
@@ -326,6 +349,6 @@ def _filterbank_on_signal(signal: Signal, filters, activate_zi: bool = False,
                     signal, activate_zi=activate_zi, zero_phase=zero_phase)
             new_time_data[:, :, n] = s.time_data
         new_time_data = np.sum(new_time_data, axis=-1)
-        out_sig = deepcopy(signal)
+        out_sig = signal.copy()
         out_sig.time_data = new_time_data
     return out_sig

@@ -29,8 +29,8 @@ def transfer_function_test():
         dsp.Signal(join('..', 'examples', 'data', 'chirp_stereo.wav'))
     raw = dsp.Signal(join('..', 'examples', 'data', 'chirp.wav'))
     tf = dsp.transfer_functions.spectral_deconvolve(
-        recorded_multi, raw, mode='regularized', multichannel=True,
-        padding=False, keep_original_length=True)
+        recorded_multi, raw, mode='regularized', padding=False,
+        keep_original_length=True)
     tf_wind = dsp.transfer_functions.window_ir(tf, at_start=False)
     tf_wind.plot_time()
     tf.plot_time()
@@ -87,23 +87,6 @@ def csm():
     dsp.plots.show()
 
 
-def smoothing():
-    import dsptoolbox as dsp
-    import numpy as np
-    import matplotlib.pyplot as plt
-    raw = dsp.Signal(join('..', 'examples', 'data', 'chirp_stereo.wav'))
-    f, bla = raw.get_spectrum()
-    spec_db = np.abs(bla[100:, 0])
-    spec_s = dsp.experimental._smoothing_log(
-        spec_db, 15, 'hann')
-    # import pyfar as pf
-    # pf.dsp.smooth_fractional_octave()
-
-    plt.plot(f[100:], spec_db)
-    plt.plot(f[100:], spec_s)
-    dsp.plots.show()
-
-
 def group_delay():
     import dsptoolbox as dsp
     import matplotlib.pyplot as plt
@@ -113,7 +96,7 @@ def group_delay():
         dsp.Signal(join('..', 'examples', 'data', 'chirp_stereo.wav'))
     raw = dsp.Signal(join('..', 'examples', 'data', 'chirp.wav'))
     tf = dsp.transfer_functions.spectral_deconvolve(
-        recorded_multi, raw, mode='regularized', multichannel=True)
+        recorded_multi, raw, mode='regularized')
     tf = dsp.transfer_functions.window_ir(tf)
     f, g1 = dsp.group_delay(tf, 'matlab')
     f, g2 = dsp.group_delay(tf, 'direct')
@@ -183,7 +166,7 @@ def minimum_phase_systems():
         dsp.Signal(join('..', 'examples', 'data', 'chirp_stereo.wav'))
     raw = dsp.Signal(join('..', 'examples', 'data', 'chirp.wav'))
     tf = dsp.transfer_functions.spectral_deconvolve(
-        recorded_multi, raw, mode='regularized', multichannel=True)
+        recorded_multi, raw, mode='regularized')
     tf = dsp.transfer_functions.window_ir(tf)
     f, bla = dsp.minimal_phase(tf)
     plt.subplot(121)
@@ -203,7 +186,7 @@ def room_acoustics():
         dsp.Signal(join('..', 'examples', 'data', 'chirp_stereo.wav'))
     raw = dsp.Signal(join('..', 'examples', 'data', 'chirp.wav'))
     tf = dsp.transfer_functions.spectral_deconvolve(
-        recorded_multi, raw, mode='regularized', multichannel=True)
+        recorded_multi, raw, mode='regularized')
     tf = dsp.transfer_functions.window_ir(tf)
     print(dsp.room_acoustics.reverb_time(tf, 'T20'))
     print(dsp.room_acoustics.reverb_time(tf, 'T30'))
@@ -248,7 +231,7 @@ def new_transfer_functions():
         dsp.Signal(join('..', 'examples', 'data', 'chirp_stereo.wav'))
     raw = dsp.Signal(join('..', 'examples', 'data', 'chirp.wav'))
     tf = dsp.transfer_functions.compute_transfer_function(
-        recorded_multi, raw, multichannel=True, mode='h2')
+        recorded_multi, raw, mode='h2')
     # tf.plot_magnitude(normalize=None)
     tf.plot_coherence()
     from scipy.signal import coherence
@@ -377,7 +360,7 @@ def cepstrum():
 
 def merging_signals():
     import dsptoolbox as dsp
-    
+
     recorded_multi = \
         dsp.Signal(join('..', 'examples', 'data', 'chirp_stereo.wav'))
     raw = dsp.Signal(join('..', 'examples', 'data', 'chirp.wav'))
@@ -385,13 +368,13 @@ def merging_signals():
     fb = \
         dsp.filterbanks.linkwitz_riley_crossovers(
             [1000, 2000], [4, 6], raw.sampling_rate_hz)
-    
+
     raw_b = fb.filter_signal(raw)
     recorded_multi_b = fb.filter_signal(recorded_multi)
 
     new_b = dsp.merge_signals(raw_b, recorded_multi_b)
     new_b.show_info()
-    
+
     # Lengths and such
     # raw = dsp.pad_trim(raw, len(raw.time_data)-100)
     # print(recorded_multi.time_data.shape, raw.time_data.shape)
@@ -439,10 +422,10 @@ def collapse():
 
 def smoothing():
     import dsptoolbox as dsp
-    import pyfar as pf
+    # import pyfar as pf
     import soundfile as sf
-    import matplotlib.pyplot as plt
-    import numpy as np
+    # import matplotlib.pyplot as plt
+    # import numpy as np
 
     audio, fs = sf.read(join('..', 'examples', 'data', 'chirp_mono.wav'))
     psig2 = dsp.Signal(time_data=audio, sampling_rate_hz=fs)

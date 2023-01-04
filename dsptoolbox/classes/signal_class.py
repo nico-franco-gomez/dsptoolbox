@@ -9,7 +9,7 @@ from copy import deepcopy
 import numpy as np
 from soundfile import read, write
 from dsptoolbox.plots import (general_plot,
-                            general_subplots_line, general_matrix_plot)
+                              general_subplots_line, general_matrix_plot)
 from ._plots import _csm_plot
 from dsptoolbox._general_helpers import \
     (_get_normalized_spectrum, _pad_trim, _find_nearest,
@@ -26,7 +26,7 @@ class Signal():
 
     """
     # ======== Constructor and State handler ==================================
-    def __init__(self, path=None, time_data=None,
+    def __init__(self, path: str = None, time_data=None,
                  sampling_rate_hz: int = 48000, signal_type: str = 'general',
                  signal_id: str = ''):
         """Signal class that saves mainly time data for being used with all the
@@ -126,7 +126,7 @@ class Signal():
     # ======== Properties and setters =========================================
     @property
     def time_data(self):
-        return self._time_data.copy()
+        return self.__time_data.copy()
 
     @time_data.setter
     def time_data(self, new_time_data):
@@ -145,43 +145,43 @@ class Signal():
             new_time_data /= time_data_max
             warn('Signal was over 0 dBFS, normalizing to 0 dBFS ' +
                  'peak level was triggered')
-        self._time_data = new_time_data
+        self.__time_data = new_time_data
         self.number_of_channels = new_time_data.shape[1]
         self.__update_state()
 
     @property
     def sampling_rate_hz(self):
-        return self._sampling_rate_hz
+        return self.__sampling_rate_hz
 
     @sampling_rate_hz.setter
     def sampling_rate_hz(self, new_sampling_rate_hz):
         assert type(new_sampling_rate_hz) == int, \
             'Sampling rate can only be an integer'
-        self._sampling_rate_hz = new_sampling_rate_hz
+        self.__sampling_rate_hz = new_sampling_rate_hz
 
     @property
     def signal_type(self):
-        return self._signal_type
+        return self.__signal_type
 
     @signal_type.setter
     def signal_type(self, new_signal_type):
         assert type(new_signal_type) == str, \
             'Signal type must be a string'
-        self._signal_type = new_signal_type.lower()
+        self.__signal_type = new_signal_type.lower()
 
     @property
     def signal_id(self):
-        return self._signal_id
+        return self.__signal_id
 
     @signal_id.setter
     def signal_id(self, new_signal_id):
         assert type(new_signal_id) == str, \
             'Signal ID must be a string'
-        self._signal_id = new_signal_id.lower()
+        self.__signal_id = new_signal_id.lower()
 
     @property
     def number_of_channels(self):
-        return self._number_of_channels
+        return self.__number_of_channels
 
     @number_of_channels.setter
     def number_of_channels(self, new_number):
@@ -189,7 +189,7 @@ class Signal():
             'Number of channels must be integer'
         assert new_number > 0, \
             'There has to be at least one channel'
-        self._number_of_channels = new_number
+        self.__number_of_channels = new_number
 
     def set_spectrum_parameters(self, method='welch', smoothe: int = 0,
                                 window_length_samples: int = 1024,
@@ -484,6 +484,30 @@ class Signal():
             f'[0 and {self.number_of_channels-1}]'
         self.time_data = self.time_data[:, new_order]
         self.__update_state()
+
+    def get_channels(self, channels):
+        """Returns a signal object with the selected channels.
+        Note: first channel index is 0!
+
+        Parameters
+        ----------
+        channels : array-like or int
+            Channels to be returned as a new Signal object.
+
+        Returns
+        -------
+        new_sig : `Signal`
+            New signal object with selected channels.
+
+        """
+        channels = np.array(channels).squeeze()
+        if channels.ndim > 1:
+            raise ValueError(
+                'Parameter channels must be only an object broadcastable to ' +
+                '1D Array')
+        new_sig = self.copy()
+        new_sig.time_data = self.time_data[:, channels]
+        return new_sig
 
     # ======== Getters ========================================================
     def get_spectrum(self, force_computation=False):
@@ -961,7 +985,7 @@ class Signal():
 
     def copy(self):
         """Returns a copy of the object.
-        
+
         Returns
         -------
         new_sig : `Signal`

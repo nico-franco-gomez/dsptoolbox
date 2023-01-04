@@ -26,7 +26,7 @@ Use pip to install dsptoolbox
 
 .. code-block:: console
 
-    $ pip install dsptoolbox
+    pip install dsptoolbox
 
 (Requires Python 3.10 or higher)
 

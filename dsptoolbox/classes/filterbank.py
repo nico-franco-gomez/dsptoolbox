@@ -198,9 +198,51 @@ class FilterBank():
             zero_phase=zero_phase,
             same_sampling_rate=self.same_sampling_rate)
 
-        new_sig.signal_type = signal.signal_type
-        new_sig.signal_id = signal.signal_id
+        # new_sig.signal_type = signal.signal_type
+        # new_sig.signal_id = signal.signal_id
         return new_sig
+
+    # ======== Get impulse ====================================================
+    def get_ir(self, mode='parallel', test_zi: bool = False,
+               zero_phase: bool = False):
+        """Returns impulse response from the filter bank.
+
+        Parameters
+        ----------
+        mode : str, optional
+            Filtering mode. Choose from `'parallel'`, `'sequential'` or
+            `'summed'`. Default: `'parallel'`.
+        test_zi : bool, optional
+            When `True`, filtering is done while updating filters' initial
+            values. Default: `False`.
+        zero_phase : bool, optional
+            When `True`, zero phase filtering is activated. Default: `False`.
+        
+        Returns
+        -------
+        ir : `MultiBandSignal` or `Signal`
+            Impulse response of the filter bank.
+
+        """
+        # Obtain biggest filter order from FilterBank
+        max_order = 0
+        for b in self.filters:
+            max_order = max(max_order, b.info['order'])
+        if max_order < 1024:
+            max_order = 1024
+        else:
+            max_order += 100
+        if hasattr(self, 'sampling_rate_hz'):
+            fs_hz = self.sampling_rate_hz
+        else:
+            fs_hz = 48000
+        d = dirac(
+            length_samples=max_order,
+            number_of_channels=1, sampling_rate_hz=fs_hz)
+        ir = self.filter_signal(
+            d, mode, activate_zi=test_zi, zero_phase=zero_phase)
+        return ir
+
 
     # ======== Prints and plots ===============================================
     def show_info(self, show_filter_info: bool = True):
