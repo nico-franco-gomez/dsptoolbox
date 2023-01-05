@@ -7,6 +7,7 @@ from .standard_functions import (latency,
                                  merge_filterbanks,
                                  pad_trim,
                                  fractional_octave_frequencies,
+                                 fade,
                                  normalize,
                                  resample,
                                  load_pkl_object)
@@ -19,7 +20,7 @@ from . import plots
 from . import generators
 from . import filterbanks
 from . import special
-from . import measure
+from . import audio_io
 
 __all__ = ['Signal',
            'MultiBandSignal',
@@ -27,6 +28,7 @@ __all__ = ['Signal',
            'FilterBank',
            'latency',
            'pad_trim',
+           'fade',
            'merge_signals',
            'merge_filterbanks',
            'group_delay',
@@ -45,6 +47,6 @@ __all__ = ['Signal',
            'filterbanks',
            'special',
            'experimental',
-           'measure']
+           'audio_io']
 
 __version__ = '0.0.3'

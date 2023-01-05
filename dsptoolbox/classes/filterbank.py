@@ -1,6 +1,7 @@
 from os import sep
 from pickle import dump, HIGHEST_PROTOCOL
 from copy import deepcopy
+from numpy import array
 
 from .signal_class import Signal
 from .filter_class import Filter
@@ -17,7 +18,7 @@ class FilterBank():
 
     """
     # ======== Constructor and initializers ===================================
-    def __init__(self, filters=[], same_sampling_rate: bool = True,
+    def __init__(self, filters: list = [], same_sampling_rate: bool = True,
                  info: dict = {}):
         """FilterBank object saves multiple filters and some metadata.
         It also allows for easy filtering with multiple filters.
@@ -27,7 +28,7 @@ class FilterBank():
 
         Parameters
         ----------
-        filters : list or tuple, optional
+        filters : list, optional
             List or tuple containing filters.
         same_sampling_rate : bool, optional
             When `True`, every Filter should have the same sampling rate.
@@ -46,20 +47,25 @@ class FilterBank():
 
         """
         #
-        assert type(filters) in (list, tuple), \
-            'Filters should be passed as list or as tuple'
+        assert type(filters) == list, \
+            'Filters should be passed as list'
         #
         self.same_sampling_rate = same_sampling_rate
+        self.filters = filters
         if filters:
             if self.same_sampling_rate:
                 self.sampling_rate_hz = filters[0].sampling_rate_hz
+            else:
+                sr = []
+                for f in filters:
+                    sr.append(f.sampling_rate_hz)
+                self.sampling_rate_hz = sr
             for ind, f in enumerate(filters):
                 assert type(f) == Filter, \
                     f'Object at index {ind} is not a supported Filter'
                 if self.same_sampling_rate:
                     assert f.sampling_rate_hz == self.sampling_rate_hz, \
                         'Sampling rates do not match'
-        self.filters = filters
         self._generate_metadata()
         self.info = self.info | info
 
@@ -89,6 +95,22 @@ class FilterBank():
         """
         for f in self.filters:
             f.initialize_zi(number_of_channels)
+
+    @property
+    def sampling_rate_hz(self):
+        return self.__sampling_rate_hz
+
+    @sampling_rate_hz.setter
+    def sampling_rate_hz(self, new_sampling_rate_hz):
+        new_sampling_rate_hz = array(new_sampling_rate_hz).squeeze()
+        if self.same_sampling_rate:
+            assert new_sampling_rate_hz.ndim == 0, \
+                'Sampling rate should be only a '
+            self.__sampling_rate_hz = int(new_sampling_rate_hz)
+        else:
+            assert len(self.filters) == len(new_sampling_rate_hz), \
+                'Sampling rate should be a vector with the length of filters'
+            self.__sampling_rate_hz = [int(s) for s in new_sampling_rate_hz]
 
     # ======== Add and remove =================================================
     def add_filter(self, filt: Filter, index: int = -1):
@@ -187,8 +209,6 @@ class FilterBank():
                 'the same time'
         if activate_zi:
             if len(self.filters[0].zi) != signal.number_of_channels:
-                # warn('zi values of the filter have not been correctly ' +
-                #      'intialized. They have now been started')
                 self.initialize_zi(signal.number_of_channels)
 
         new_sig = _filterbank_on_signal(
@@ -197,9 +217,6 @@ class FilterBank():
             activate_zi=activate_zi,
             zero_phase=zero_phase,
             same_sampling_rate=self.same_sampling_rate)
-
-        # new_sig.signal_type = signal.signal_type
-        # new_sig.signal_id = signal.signal_id
         return new_sig
 
     # ======== Get impulse ====================================================
@@ -217,7 +234,7 @@ class FilterBank():
             values. Default: `False`.
         zero_phase : bool, optional
             When `True`, zero phase filtering is activated. Default: `False`.
-        
+
         Returns
         -------
         ir : `MultiBandSignal` or `Signal`
@@ -242,7 +259,6 @@ class FilterBank():
         ir = self.filter_signal(
             d, mode, activate_zi=test_zi, zero_phase=zero_phase)
         return ir
-
 
     # ======== Prints and plots ===============================================
     def show_info(self, show_filter_info: bool = True):
@@ -533,7 +549,7 @@ class FilterBank():
 
     def copy(self):
         """Returns a copy of the object.
-        
+
         Returns
         -------
         new_sig : `FilterBank`

@@ -315,9 +315,9 @@ def recording():
 
     sleep(3)
 
-    dsp.measure.set_device()
+    dsp.audio_io.set_device()
     chirp = dsp.generators.chirp(padding_end_seconds=2)
-    s2 = dsp.measure.play_and_record(chirp)
+    s2 = dsp.audio_io.play_and_record(chirp)
     tf = dsp.transfer_functions.spectral_deconvolve(s2, chirp)
     tf = dsp.transfer_functions.window_ir(tf)
     tf.plot_magnitude()
@@ -339,22 +339,21 @@ def convolve_rir_signal():
     rir = dsp.Signal(join('..', 'examples', 'data', 'rir.wav'),
                      signal_type='rir')
     speech = dsp.Signal(join('..', 'examples', 'data', 'speech.flac'))
-    dsp.measure.set_device(2)
-    # dsp.measure.play(speech)
+    dsp.audio_io.set_device(2)
     new_speech = \
         dsp.room_acoustics.convolve_rir_on_signal(
             speech, rir, keep_length=False)
-    dsp.measure.play(new_speech)
+    dsp.audio_io.play(new_speech)
     dsp.plots.show()
 
 
 def cepstrum():
     import dsptoolbox as dsp
-    import matplotlib.pyplot as plt
     speech = dsp.Signal(join('..', 'examples', 'data', 'speech.flac'))
     c = dsp.special.cepstrum(speech, mode='real')
-    plt.plot(c)
-    # dsp.plots.general_plot(speech.get_time_vector(), c, log=False)
+    # import matplotlib.pyplot as plt
+    # plt.plot(c)
+    dsp.plots.general_plot(speech.time_vector_s, c, log=False)
     dsp.plots.show()
 
 
@@ -464,7 +463,7 @@ if __name__ == '__main__':
     # new_transfer_functions()  # -- coherence function from scipy differs
     # -> cross spectral density with welch's method differs in lower
     #    frequencies from scipy
-    # cepstrum()
+    cepstrum()
 
     # Next
     print()

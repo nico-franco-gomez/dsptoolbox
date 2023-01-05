@@ -104,7 +104,7 @@ def _sisdr(s: np.ndarray, shat: np.ndarray):
     -------
     sisdr : float
         SI-SDR value between two signals.
-    
+
     """
     alpha = (s @ shat)/(s @ s)
     sisdr = 10*np.log10(np.sum((alpha*s)**2) / np.sum((alpha*s - shat)**2))

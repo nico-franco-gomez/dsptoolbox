@@ -31,6 +31,9 @@ Added
 - added support for ``MultiBandSignal`` input in ``reverb_time`` function
 - added ``get_channel`` method in ``Signal`` class for retrieving specific channels from signal as signal objects
 - introduced support for 1d-arrays in plot functions and raise error if ndim>2
+- added property and specialized setter for multiple sampling rates in FilterBank and MultiBandSignal
+- ``get_stream_samples`` added in ``Signal`` class for streaming purposes
+- added ``fade`` method for signals
 
 Bugfix
 ~~~~~~
@@ -41,6 +44,8 @@ Bugfix
 - corrected errors in test file
 - corrected copying signals in `_filter.py` functions and ``MultiBandSignal.collapse`` method
 - references in pyfar functions corrected
+- bug fix in normalize function
+- minor bug fixes
 
 Misc
 ~~~~
@@ -52,3 +57,5 @@ Misc
 - package structure updated
 - general updates to docstrings
 - extended merging signals while trimming or padding in the end and in the beginning
+- changed module name from `measure` to `audio_io`
+- refactored ``time_vector_s`` handling in ``Signal`` class

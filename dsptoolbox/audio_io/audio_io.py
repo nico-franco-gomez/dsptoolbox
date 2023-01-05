@@ -1,11 +1,11 @@
 """
 Here are wrappers for streams with sounddevice. This is useful for
-measurements.
+measurements and testing audio streams
 """
-from sounddevice import (query_devices, default, wait, playrec, rec)
-from sounddevice import play as play_sd
-from dsptoolbox import Signal
+import sounddevice as sd
+from dsptoolbox import Signal, normalize, pad_trim
 from dsptoolbox._general_helpers import _normalize
+from ._audio_io import standard_callback
 
 
 def print_device_info(device_number: int = None):
@@ -16,7 +16,8 @@ def print_device_info(device_number: int = None):
     ----------
     device_number : int, optional
         Prints information about the specific device and returns it as
-        a dictionary. Use `None` to ignore. Default: `None`.
+        a dictionary. Use `None` to only print information about all devices
+        without returning anything. Default: `None`.
 
     Returns
     -------
@@ -25,9 +26,9 @@ def print_device_info(device_number: int = None):
 
     """
     if device_number is None:
-        print(query_devices())
+        print(sd.query_devices())
     else:
-        d = query_devices(device_number)
+        d = sd.query_devices(device_number)
         print(d)
         return d
 
@@ -46,14 +47,14 @@ def set_device(device_number: int = None):
     if device_number is None:
         txt = 'List of available devices'
         print(txt+'\n'+'-'*len(txt))
-        print(query_devices())
+        print(sd.query_devices())
         print('-'*len(txt))
         device_number = int(input(
             'Which device should be set as default? Between ' +
-            f'0 and {len(query_devices())-1}: '))
-    d = query_devices(device_number)['name']
+            f'0 and {len(sd.query_devices())-1}: '))
+    d = sd.query_devices(device_number)['name']
     print(f"""{d} will be used!""")
-    default.device = d
+    sd.default.device = d
 
 
 def play_and_record(signal: Signal, duration_seconds: float = None,
@@ -121,17 +122,17 @@ def play_and_record(signal: Signal, duration_seconds: float = None,
         play_data = _normalize(play_data, dbfs=normalized_dbfs, mode='peak')
 
     if device is not None:
-        default.device = device
+        sd.default.device = device
 
     print('\nReproduction and recording have started ' +
           f'({duration_seconds:.1f} s)...')
     rec_time_data = \
-        playrec(
+        sd.playrec(
             data=play_data,
             samplerate=signal.sampling_rate_hz,
             input_mapping=rec_channels,
             output_mapping=play_channels)
-    wait()
+    sd.wait()
     print('Reproduction and recording have ended\n')
 
     rec_sig = Signal(None, rec_time_data, signal.sampling_rate_hz)
@@ -169,15 +170,15 @@ def record(duration_seconds: float = 5, sampling_rate_hz: int = 48000,
         'Recording channel has to be 1 or more'
     #
     if device is not None:
-        default.device = device
+        sd.default.device = device
 
     print(f'\nRecording started ({duration_seconds:.1f} s)...')
     rec_time_data = \
-        rec(
+        sd.rec(
             frames=int(duration_seconds * sampling_rate_hz),
             samplerate=sampling_rate_hz,
             mapping=rec_channels)
-    wait()
+    sd.wait()
     print('Recording has ended\n')
 
     rec_sig = Signal(None, rec_time_data, sampling_rate_hz)
@@ -229,12 +230,86 @@ def play(signal: Signal, duration_seconds: float = None,
         play_data = _normalize(play_data, dbfs=normalized_dbfs, mode='peak')
     #
     if device is not None:
-        default.device = device
+        sd.default.device = device
 
     print(f'\nReproduction started ({duration_seconds:.1f} s)...')
-    play_sd(
+    sd.play(
         data=play_data,
         samplerate=signal.sampling_rate_hz,
         mapping=play_channels)
-    wait()
+    sd.wait()
     print('Reproduction has ended\n')
+
+
+def play_stream(signal: Signal, duration_seconds: float = None,
+                normalized_dbfs: float = -6, blocksize: int = 2048,
+                audio_callback=standard_callback,
+                device: str = None):
+    """Plays a signal using a stream and a callback function.
+    See `sounddevice.OutputStream` for extensive information about
+    functionalities.
+
+    NOTE: The `Signal`'s channel shape must match the device's
+    output channels. The start of the signal can be set using `Signal`'s method
+    `set_streaming_position`.
+
+    Parameters
+    ----------
+    signal : `Signal`
+        Signal to be reproduced.
+    duration_seconds : float, optional
+        Duration of the signal to be reproduced in seconds. If `None`, the
+        whole signal is played. Default: `None`.
+    normalized_dbfs : float, optional
+        Normalizes the signal to a certain dBFS value. Pass `None` to avoid
+        normalization. Default: -6.
+    blocksize : int, optional
+        Block size used for the stream. Powers of two are recommended.
+        Default: 2048.
+    audio_callback : callable, optional
+        This is the core of the stream! Callback modifies the signal as it is
+        passed to the audio device. The `standard_callback` just passes it
+        through. `audio_callback` is a function that take in a signal object
+        and passes a valid sounddevice callback. Their signatures are::
+
+            audio_callback(signal: Signal) -> callback
+
+            callback(outdata: numpy.ndarray, frames: int,
+                     time: CData, status: CallbackFlags) -> None
+
+        See `sounddevice`'s examples of callbacks for more general
+        information. Default: `standard_callback`.
+    device : str, optional
+        Device to be used in the audio stream. Pass `None` to use the default
+        device. Default: `None`.
+
+    """
+    if duration_seconds is not None:
+        duration_ms = int(duration_seconds*1000)
+        duration_samples = int(duration_seconds*signal.sampling_rate_hz)
+        signal = pad_trim(signal, duration_samples)
+    else:
+        duration_seconds = signal.time_vector_s[-1]
+        duration_ms = int(duration_seconds*1000)
+
+    if normalized_dbfs is not None:
+        signal = normalize(signal, peak_dbfs=normalized_dbfs)
+
+    if not hasattr(signal, '_streaming_position'):
+        signal.set_streaming_position()
+
+    if device is not None:
+        sd.default.device = device
+
+    with sd.OutputStream(signal.sampling_rate_hz, blocksize=blocksize,
+                         callback=audio_callback(signal),
+                         channels=signal.number_of_channels):
+        sd.sleep(duration_ms + 5)
+
+
+def CallbackStop():
+    """Wrapper around sounddevice's CallbackStop. Used for stopping audio
+    streamings.
+
+    """
+    sd.CallbackStop()

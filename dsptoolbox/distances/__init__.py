@@ -1,6 +1,8 @@
-from .distances import log_spectral, itakura_saito
+from .distances import (log_spectral, itakura_saito, snr, si_sdr)
 
 __all__ = [
     'log_spectral',
-    'itakura_saito'
+    'itakura_saito',
+    'snr',
+    'si_sdr',
 ]

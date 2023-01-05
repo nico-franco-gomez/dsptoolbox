@@ -22,7 +22,7 @@ __all__ = ['Signal', ]
 class Signal():
     """Class for general signals (time series). Most of the methods and
     supported computations are focused on audio signals, but some features
-    might be generalizable to all kind of time series.
+    might be generalizable to all kinds of time series.
 
     """
     # ======== Constructor and State handler ==================================
@@ -48,13 +48,13 @@ class Signal():
             impulse responses with `'ir'`, `'h1'`, `'h2'`, `'h3'` or `'rir'`.
             Default: `'general'`.
         signal_id : str, optional
-            An even more generic signal id that can be used by the user.
+            An even more generic signal id that can be set by the user.
             Default: `''`.
 
         Methods
         -------
         Time data:
-            add_channel, remove_channel, swap_channels.
+            add_channel, remove_channel, swap_channels, get_channels.
         Spectrum:
             set_spectrum_parameters, get_spectrum.
         Cross spectral matrix:
@@ -64,7 +64,7 @@ class Signal():
         Plots:
             plot_magnitude, plot_time, plot_spectrogram, plot_phase, plot_csm.
         General:
-            save_signal.
+            save_signal, get_stream_samples.
         Only for `signal_type in ('rir', 'ir', 'h1', 'h2', 'h3')`:
             set_window, set_coherence, plot_group_delay, plot_coherence.
 
@@ -75,6 +75,7 @@ class Signal():
         self.__spectrum_state_update = True
         self.__csm_state_update = True
         self.__spectrogram_state_update = True
+        self.__time_vector_update = True
         # Import data
         if path is not None:
             assert time_data is None, 'Constructor cannot take a path and ' +\
@@ -99,6 +100,7 @@ class Signal():
         self.__spectrum_state_update = True
         self.__csm_state_update = True
         self.__spectrogram_state_update = True
+        self.__time_vector_update = True
         self._generate_metadata()
 
     def _generate_metadata(self):
@@ -119,7 +121,8 @@ class Signal():
         """Internal method to generate a time vector on demand.
 
         """
-        self.time_vector_s = np.linspace(
+        self.__time_vector_update = False
+        self.__time_vector_s = np.linspace(
             0, len(self.time_data)/self.sampling_rate_hz,
             len(self.time_data))
 
@@ -190,6 +193,12 @@ class Signal():
         assert new_number > 0, \
             'There has to be at least one channel'
         self.__number_of_channels = new_number
+
+    @property
+    def time_vector_s(self):
+        if self.__time_vector_update:
+            self._generate_time_vector()
+        return self.__time_vector_s
 
     def set_spectrum_parameters(self, method='welch', smoothe: int = 0,
                                 window_length_samples: int = 1024,
@@ -662,18 +671,18 @@ class Signal():
         f, _ = self.get_spectrum()
         return f, self.coherence
 
-    def get_time_vector(self):
-        """Returns the time vector associated with the signal.
+    # def get_time_vector(self):
+    #     """Returns the time vector associated with the signal.
 
-        Returns
-        -------
-        time_vector_s : `np.ndarray`
-            Time vector in seconds.
+    #     Returns
+    #     -------
+    #     time_vector_s : `np.ndarray`
+    #         Time vector in seconds.
 
-        """
-        if not hasattr(self, 'time_vector_s'):
-            self._generate_time_vector()
-        return self.time_vector_s
+    #     """
+    #     if not hasattr(self, 'time_vector_s'):
+    #         self._generate_time_vector()
+    #     return self.time_vector_s
 
     # ======== Plots ==========================================================
     def plot_magnitude(self, range_hz=[20, 20e3], normalize: str = '1k',
@@ -1016,3 +1025,55 @@ class Signal():
 
         """
         print(self._get_metadata_string())
+
+    # ======== Streaming methods ==============================================
+    def set_streaming_position(self, position_samples: int = 0):
+        """Sets the start position for streaming.
+
+        Parameters
+        ----------
+        position_samples : int, optional
+            Position (in samples) for starting the stream. Default: 0.
+
+        """
+        assert self.time_data.shape[0] - position_samples > 0, \
+            'Position is beyond scope of the signal'
+        assert type(position_samples) == int, \
+            'Position must be in samples and thus an integer'
+        self.streaming_position = position_samples
+
+    def stream_samples(self, blocksize_samples: int, signal_mode: bool = True):
+        """Returns block of samples to be reproduced in an audio stream. Use
+        `set_streaming_position` to define start of streaming.
+
+        Parameters
+        ----------
+        blocksize_samples : int
+            Blocksize to be returned (in samples).
+        signal_mode : bool, optional
+            When `True` a `Signal` object is returned containing the desired
+            samples. `False` returns a numpy array. Default: `True`.
+
+        Returns
+        -------
+        sig : `np.ndarray` or `Signal`
+            Numpy array with samples used for reproduction with shape
+            (time_samples, channels) or `Signal` object.
+
+        """
+        if not hasattr(self, 'streaming_position'):
+            self.set_streaming_position()
+        sig = self.time_data[
+            self.streaming_position:self.streaming_position +
+            blocksize_samples, :].copy()
+        self.set_streaming_position(
+            self.streaming_position + blocksize_samples)
+        if signal_mode:
+            sig = Signal(
+                None, sig, self.sampling_rate_hz,
+                self.signal_type, self.signal_id)
+            # In an audio stream, welch's method for acquiring a spectrum
+            # is not very logical...
+            sig.set_spectrum_parameters(method='standard')
+            return sig
+        return sig

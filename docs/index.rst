@@ -1,5 +1,10 @@
+.. |dsptoolbox_logo| image:: logo/logo.png
+   :width: 700
+
+|dsptoolbox_logo|
+
 dsptoolbox
-====================================
+===========================
 
 .. toctree::
    :maxdepth: 2
@@ -16,9 +21,9 @@ dsptoolbox
 
    modules
 
+
 Indices and tables
 ==================
-
 * :ref:`genindex`
 * :ref:`modindex`
 * :ref:`search`

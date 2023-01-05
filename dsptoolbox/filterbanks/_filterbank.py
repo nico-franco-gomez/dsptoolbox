@@ -55,7 +55,7 @@ class LRFilterBank():
                 'even number'
         self.freqs = np.array(freqs).squeeze()
         self.order = np.array(order).squeeze()
-        if self.freqs.ndim > 0: 
+        if self.freqs.ndim > 0:
             self.freqs = np.sort(self.freqs)
             self.order = np.sort(self.order)
         else:
@@ -344,9 +344,9 @@ class LRFilterBank():
         if unwrap:
             phase = np.unwrap(phase, axis=0)
         fig, ax = general_plot(f, phase, range_hz, ylabel='Phase / rad',
-                                returns=True,
-                                labels=[f'Filter {h}'
-                                        for h in range(bs.number_of_bands)])
+                               returns=True,
+                               labels=[f'Filter {h}'
+                                       for h in range(bs.number_of_bands)])
         if returns:
             return fig, ax
 
@@ -388,9 +388,9 @@ class LRFilterBank():
                 np.squeeze(b.get_spectrum()[1]), delta_f=f[1]-f[0]))
         gd = np.squeeze(np.array(gd).T)*1e3
         fig, ax = general_plot(f, gd, range_hz, ylabel='Group delay / ms',
-                                returns=True,
-                                labels=[f'Filter {h}'
-                                        for h in range(bs.number_of_bands)])
+                               returns=True,
+                               labels=[f'Filter {h}'
+                                       for h in range(bs.number_of_bands)])
         if returns:
             return fig, ax
 
@@ -422,7 +422,7 @@ class LRFilterBank():
 
     def copy(self):
         """Returns a copy of the object.
-        
+
         Returns
         -------
         new_sig : `LRFilterBank`

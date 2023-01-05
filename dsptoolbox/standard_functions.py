@@ -12,7 +12,7 @@ from dsptoolbox._standard import (_latency,
                                   _center_frequencies_fractional_octaves_iec,
                                   _exact_center_frequencies_fractional_octaves)
 from dsptoolbox.classes._filter import _group_delay_filter
-from dsptoolbox._general_helpers import _pad_trim, _normalize
+from dsptoolbox._general_helpers import _pad_trim, _normalize, _fade
 from fractions import Fraction
 import pickle
 
@@ -219,14 +219,13 @@ def merge_signals(in1, in2, padding_trimming: bool = True,
         When `True` and `padding_trimming=True`, padding or trimming is done
         at the end of signal. Otherwise it is done in the beginning.
         Default: `True`.
-    
+
     Returns
     -------
     new_sig : `Signal`
         New merged signal.
 
     """
-    
     if type(in1) == Signal:
         assert type(in2) == Signal, \
             'Both signals have to be type Signal'
@@ -256,8 +255,8 @@ def merge_signals(in1, in2, padding_trimming: bool = True,
         for n in range(in1.number_of_bands):
             new_bands.append(
                 merge_signals(in1.bands[n], in2.bands[n],
-                padding_trimming,
-                at_end))
+                              padding_trimming,
+                              at_end))
         new_sig = MultiBandSignal(
             new_bands,
             same_sampling_rate=in1.same_sampling_rate, info=in1.info)
@@ -282,7 +281,7 @@ def merge_filterbanks(fb1: FilterBank, fb2: FilterBank):
     -------
     new_fb : `FilterBank`
         New filterbank with merged filters
-    
+
     """
     assert fb1.same_sampling_rate == fb2.same_sampling_rate, \
         'Both filterbanks should have the same settings regarding ' +\
@@ -290,7 +289,7 @@ def merge_filterbanks(fb1: FilterBank, fb2: FilterBank):
     if fb1.same_sampling_rate:
         assert fb1.sampling_rate_hz == fb2.sampling_rate_hz, \
             'Sampling rates do not match'
-    
+
     new_filters = fb1.filters
     for n in fb2.filters:
         new_filters.append(n)
@@ -313,7 +312,7 @@ def resample(sig: Signal, desired_sampling_rate_hz: int):
     -------
     new_sig : `Signal`
         Resampled signal.
-    
+
     """
     ratio = Fraction(
         numerator=desired_sampling_rate_hz, denominator=sig.sampling_rate_hz)
@@ -358,7 +357,7 @@ def fractional_octave_frequencies(
 
     References
     ----------
-    - This implementation is taken from the pyfar package. See 
+    - This implementation is taken from the pyfar package. See
       https://github.com/pyfar/pyfar
 
     """
@@ -396,7 +395,7 @@ def fractional_octave_frequencies(
 
 def normalize(sig, peak_dbfs: float = -6, each_channel: bool = False):
     """Normalizes a signal to a given peak value. It either normalizes each
-    channel or the signal as whole.
+    channel or the signal as a whole.
 
     Parameters
     ----------
@@ -415,7 +414,7 @@ def normalize(sig, peak_dbfs: float = -6, each_channel: bool = False):
     """
     if type(sig) == Signal:
         new_sig = sig.copy()
-        new_time_data = np.empty(sig.time_data)
+        new_time_data = np.empty_like(sig.time_data)
         if each_channel:
             for n in range(sig.number_of_channels):
                 new_time_data[:, n] = \
@@ -434,9 +433,19 @@ def normalize(sig, peak_dbfs: float = -6, each_channel: bool = False):
     return new_sig
 
 
-def load_pkl_object(path):
+def load_pkl_object(path: str):
     """WARNING: This is not secure. Only unpickle data you know!
     Loads a optimization object with all its attributes and methods.
+
+    Parameters
+    ----------
+    path : str
+        Path to the pickle object.
+
+    Returns
+    -------
+    obj : object
+        Unpacked pickle object.
 
     """
     obj = None
@@ -446,3 +455,57 @@ def load_pkl_object(path):
     with open(path2file, 'rb') as inp:
         obj = pickle.load(inp)
     return obj
+
+
+def fade(sig: Signal, type_fade: str = 'lin',
+         length_fade_seconds: float = None, at_start: bool = True,
+         at_end: bool = True):
+    """Applies fading to signal.
+
+    Parameters
+    ----------
+    sig : `Signal`
+        Signal to apply fade to.
+    type_fade : str, optional
+        Type of fading to be applied. Choose from `'exp'` (exponential),
+        `'lin'` (linear) or `'log'` (logarithmic). Default: `'lin'`.
+    length_fade_seconds : float, optional
+        Fade length in seconds. If `None`, 2.5% of the signal's length is used
+        for the fade. Default: `None`.
+    at_start : bool, optional
+        When `True`, the start of signal of faded. Default: `True`.
+    at_end : bool, optional
+        When `True`, the ending of signal of faded. Default: `True`.
+
+    Returns
+    -------
+    new_sig : `Signal`
+        New Signal
+
+    """
+    type_fade = type_fade.lower()
+    assert type_fade in ('lin', 'exp', 'log'), \
+        'Type of fade is invalid'
+    assert at_start or at_end, \
+        'At least start or end of signal should be faded'
+    if length_fade_seconds is None:
+        length_fade_seconds = sig.time_vector_s[-1]*0.025
+    assert length_fade_seconds < sig.time_vector_s[-1], \
+        'Fade length should not be longer than the signal itself'
+
+    new_time_data = np.empty_like(sig.time_data)
+    for n in range(sig.number_of_channels):
+        vec = sig.time_data[:, n]
+        if at_start:
+            new_time_data[:, n] = _fade(
+                vec, length_fade_seconds,
+                mode=type_fade,
+                sampling_rate_hz=sig.sampling_rate_hz, at_start=True)
+        if at_end:
+            new_time_data[:, n] = _fade(
+                vec, length_fade_seconds,
+                mode=type_fade,
+                sampling_rate_hz=sig.sampling_rate_hz, at_start=False)
+    new_sig = sig.copy()
+    new_sig.time_data = new_time_data
+    return new_sig

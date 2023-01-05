@@ -383,7 +383,7 @@ def _center_frequencies_fractional_octaves_iec(nominal, num_fractions):
 
     References
     ----------
-    - This implementation is taken from the pyfar package. See 
+    - This implementation is taken from the pyfar package. See
       https://github.com/pyfar/pyfar
 
     """
@@ -437,7 +437,7 @@ def _exact_center_frequencies_fractional_octaves(
 
     References
     ----------
-    - This implementation is taken from the pyfar package. See 
+    - This implementation is taken from the pyfar package. See
       https://github.com/pyfar/pyfar
 
     """

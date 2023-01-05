@@ -1,10 +1,10 @@
 # Fdb version 3
-["makeindex dsptoolbox.idx"] 1672310985 "dsptoolbox.idx" "dsptoolbox.ind" "dsptoolbox" 1672310986
-  "dsptoolbox.idx" 1672310986 20297 9f6ea3949ff6e3e7345e26228ea66dc8 "pdflatex"
+["makeindex dsptoolbox.idx"] 1672928574 "dsptoolbox.idx" "dsptoolbox.ind" "dsptoolbox" 1672928575
+  "dsptoolbox.idx" 1672928575 22760 fc9bd087acfec4d5a6e679975dd54b66 "pdflatex"
   (generated)
   "dsptoolbox.ilg"
   "dsptoolbox.ind"
-["pdflatex"] 1672310986 "dsptoolbox.tex" "dsptoolbox.pdf" "dsptoolbox" 1672310986
+["pdflatex"] 1672928574 "dsptoolbox.tex" "dsptoolbox.pdf" "dsptoolbox" 1672928575
   "/usr/local/texlive/2022/texmf-dist/fonts/enc/dvips/tex-gyre/q-ec.enc" 1529098226 2457 aaabbccba4df2a7f7371410ee4e075a3 ""
   "/usr/local/texlive/2022/texmf-dist/fonts/enc/dvips/tex-gyre/q-ts1.enc" 1529098226 3124 3813fd4c981d99822890a2861b0d274c ""
   "/usr/local/texlive/2022/texmf-dist/fonts/map/fontname/texfonts.map" 1577235249 3524 cb3e574dea2d1052e39280babc910dc8 ""
@@ -141,13 +141,14 @@
   "/usr/local/texlive/2022/texmf-var/fonts/map/pdftex/updmap/pdftex.map" 1647878959 4410336 7d30a02e9fa9a16d7d1f8d037ba69641 ""
   "/usr/local/texlive/2022/texmf-var/web2c/pdftex/pdflatex.fmt" 1668088017 2826445 1bf709c886ac242c357eccaf89a89e45 ""
   "/usr/local/texlive/2022/texmf.cnf" 1647878952 577 209b46be99c9075fd74d4c0369380e8c ""
-  "dsptoolbox.aux" 1672310986 19907 d6757c97dd5e12e747c8361731ae2535 "pdflatex"
-  "dsptoolbox.ind" 1672310985 13683 1cbf60722608699c4673f5c5ad9de84e "makeindex dsptoolbox.idx"
-  "dsptoolbox.out" 1672310986 3552 bada67981b384dd0ff31a7874f13d29e "pdflatex"
-  "dsptoolbox.tex" 1672310984 205252 94ff9a50c9af0fc34360014708352d8a ""
-  "dsptoolbox.toc" 1672310986 1728 3c489c7e63fc87d459fbf3a494218f80 "pdflatex"
+  "dsptoolbox.aux" 1672928575 21901 607d0c57f732a17572dbf0848bee266e "pdflatex"
+  "dsptoolbox.ind" 1672928574 15240 5768e796fc969b11ba785de3ca3fbb42 "makeindex dsptoolbox.idx"
+  "dsptoolbox.out" 1672928575 3568 420e63f141b337588fd22e44971aa1bb "pdflatex"
+  "dsptoolbox.tex" 1672928572 232222 4f726ae665958dfbe9452de62c5453a6 ""
+  "dsptoolbox.toc" 1672928575 1731 39686df2a2cb1f9741384ed0add135f2 "pdflatex"
+  "logo.png" 1672927121 268402 ca52117b93aaca610a2c529c07d4a2ee ""
   "sphinx.sty" 1671539846 36948 4c5348dcae5ec5bcf690d6226a2c6721 ""
-  "sphinxhighlight.sty" 1672310983 7490 72d023191655734567e0798eade2a1f7 ""
+  "sphinxhighlight.sty" 1672928572 7490 72d023191655734567e0798eade2a1f7 ""
   "sphinxlatexadmonitions.sty" 1671539846 10155 37f3cbe6b251ec0f2ce20d0b8c4fa3d7 ""
   "sphinxlatexcontainers.sty" 1671539846 901 d3a3a1b7b2547f47ade2499350b5c420 ""
   "sphinxlatexgraphics.sty" 1671539846 4840 a9578332b6f3b35e198751fb632c9b79 ""
@@ -162,7 +163,7 @@
   "sphinxlatexstyletext.sty" 1671539846 6310 230e9c67ef82453e767773679e1f6816 ""
   "sphinxlatextables.sty" 1671539846 57830 6dde33374ef653202d83f31844e4f3c5 ""
   "sphinxmanual.cls" 1671539846 4241 7b0d7a37df7b5715fb0dbd585c52ecdb ""
-  "sphinxmessages.sty" 1672310984 745 3f5fcd6cdd7964ed608767954a8ced6f ""
+  "sphinxmessages.sty" 1672928572 745 3f5fcd6cdd7964ed608767954a8ced6f ""
   "sphinxoptionsgeometry.sty" 1671539846 2061 47bb34b8ed8a78823eb0c886abfb9f4d ""
   "sphinxoptionshyperref.sty" 1671539846 1094 79beb8b8a3f10784f8cce804e0f9d3aa ""
   "sphinxpackageboxes.sty" 1671539846 18408 cacf96116848f46194438f1e659006ed ""

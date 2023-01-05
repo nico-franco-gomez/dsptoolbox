@@ -378,7 +378,7 @@ def _fractional_octave_smoothing(vector: np.ndarray, num_fractions: int = 3,
     -------
     vec_final : `np.ndarray`
         Vector after smoothing.
-    
+
     References
     ----------
     - Tylka, Joseph & Boren, Braxton & Choueiri, Edgar. (2017). A Generalized

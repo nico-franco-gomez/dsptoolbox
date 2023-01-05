@@ -9,9 +9,6 @@ from ._distances import (_log_spectral_distance,
                          _snr, _sisdr)
 
 
-__all__ = ['log_spectral', 'itakura_saito']
-
-
 def log_spectral(insig1: Signal, insig2: Signal, method: str = 'welch',
                  f_range_hz=[20, 20000], **kwargs):
     """Computes log spectral distance between two signals.
@@ -184,13 +181,13 @@ def si_sdr(target_signal: Signal, modified_signal: Signal):
     if target_signal.number_of_channels != 1:
         assert modified_signal.number_of_channels == \
             target_signal.number_of_channels, \
-                'Signals have different channel numbers'
+            'Signals have different channel numbers'
         multichannel = False
     else:
         multichannel = True
     assert modified_signal.time_data.shape[0] == \
         target_signal.time_data.shape[0], 'Length of signals do not match'
-    
+
     sdr = np.empty(modified_signal.number_of_channels)
     for n in range(modified_signal.number_of_channels):
         if multichannel:
