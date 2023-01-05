@@ -189,7 +189,7 @@ class LRFilterBank():
             readme='MultiBandSignal made using Linkwitz-Riley filter bank',
             filterbank_freqs=self.freqs,
             filterbank_order=self.order)
-        out_sig = MultiBandSignal(b, True, d)
+        out_sig = MultiBandSignal(bands=b, same_sampling_rate=True, info=d)
         return out_sig
 
     # ======== Update zi's and backend filtering ==============================

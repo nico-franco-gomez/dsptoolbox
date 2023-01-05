@@ -529,7 +529,7 @@ class Filter():
 
     def copy(self):
         """Returns a copy of the object.
-        
+
         Returns
         -------
         new_sig : `Filter`
