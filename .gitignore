@@ -5,3 +5,5 @@
 .vscode
 dist
 dsptoolbox.egg-info
+checklist_for_dev.txt
+docs/_build
