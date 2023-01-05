@@ -16,7 +16,7 @@ adheres to `Semantic Versioning <http://semver.org/spec/v2.0.0.html>`_.
 - Fractional time delay filter
 - Beamforming module
 
-`0.0.3`_ - 2023-01-05
+`0.0.4`_ - 2023-01-05
 ---------------------
 
 Added
@@ -46,6 +46,7 @@ Bugfix
 - references in pyfar functions corrected
 - bug fix in normalize function
 - minor bug fixes
+- documentation fixed
 
 Misc
 ~~~~
