@@ -11,12 +11,7 @@ Getting Started
 ===============
 
 Check out the `examples`_ for some basic examples of the dsptoolbox package
-and refer to the documentation for the complete description of classes and methods.
-
-.. note::
-    The documentation at `read the docs`_ is available but not working completely without errors
-    because of a bug in one of the modules needed to build the package. This will be fixed in the future.
-    Until then, please refer to the other available documentation.
+and refer to the `documentation`_ for the complete description of classes and methods.
 
 Installation
 ============
@@ -29,5 +24,5 @@ Use pip to install dsptoolbox
 
 (Requires Python 3.10 or higher)
 
-.. _read the docs: http://dsptoolbox.readthedocs.io/
+.. _documentation: http://dsptoolbox.readthedocs.io/
 .. _examples: https://github.com/nico-franco-gomez/dsptoolbox/tree/main/examples

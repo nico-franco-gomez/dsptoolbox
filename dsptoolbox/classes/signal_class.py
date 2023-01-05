@@ -736,8 +736,6 @@ class Signal():
             txt += f"""\nSmoothing: {smoothe}"""
         else:
             txt = None
-        # print(mag_db.shape)
-        # print([f'Channel {n}' for n in range(self.number_of_channels)])
         fig, ax = general_plot(f, mag_db, range_hz, ylabel='Magnitude / dB',
                                info_box=txt, returns=True,
                                labels=[f'Channel {n}' for n in

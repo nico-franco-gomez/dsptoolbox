@@ -46,6 +46,8 @@ class FilterBank():
             plot_magnitude, plot_phase, plot_group_delay, show_info.
 
         """
+        if filters is None:
+            filters = []
         #
         assert type(filters) == list, \
             'Filters should be passed as list'

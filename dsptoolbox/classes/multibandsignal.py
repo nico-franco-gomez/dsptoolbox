@@ -38,12 +38,14 @@ class MultiBandSignal():
             can be passed. Default: `None`.
 
         """
+        if bands is None:
+            bands = []
         self.same_sampling_rate = same_sampling_rate
         self.bands = bands
         self.number_of_bands = len(self.bands)
         if self.bands:
             if self.same_sampling_rate:
-                self.same_sampling_rate = self.bands[0].sampling_rate_hz
+                self.sampling_rate_hz = self.bands[0].sampling_rate_hz
             else:
                 sr = []
                 for b in self.bands:
