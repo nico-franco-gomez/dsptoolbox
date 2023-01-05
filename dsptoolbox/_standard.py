@@ -352,3 +352,100 @@ def _csm(time_data: np.ndarray, sampling_rate_hz: int,
         window_length_samples,
         1/sampling_rate_hz)
     return f, csm
+
+
+def _center_frequencies_fractional_octaves_iec(nominal, num_fractions):
+    """Returns the exact center frequencies for fractional octave bands
+    according to the IEC 61260:1:2014 standard.
+    octave ratio
+    .. G = 10^{3/10}
+    center frequencies
+    .. f_m = f_r G^{x/b}
+    .. f_m = f_e G^{(2x+1)/(2b)}
+    where b is the number of octave fractions, f_r is the reference frequency
+    chosen as 1000Hz and x is the index of the frequency band.
+
+    Parameters
+    ----------
+    num_fractions : 1, 3
+        The number of octave fractions. 1 returns octave center frequencies,
+        3 returns third octave center frequencies.
+
+    Returns
+    -------
+    nominal : array, float
+        The nominal (rounded) center frequencies specified in the standard.
+        Nominal frequencies are only returned for octave bands and third octave
+        bands
+    exact : array, float
+        The exact center frequencies, resulting in a uniform distribution of
+        frequency bands over the frequency range.
+
+    References
+    ----------
+    - This implementation is taken from the pyfar package. See
+      https://github.com/pyfar/pyfar
+
+    """
+    if num_fractions == 1:
+        nominal = np.array([
+            31.5, 63, 125, 250, 500, 1e3,
+            2e3, 4e3, 8e3, 16e3], dtype=float)
+    elif num_fractions == 3:
+        nominal = np.array([
+            25, 31.5, 40, 50, 63, 80, 100, 125, 160,
+            200, 250, 315, 400, 500, 630, 800, 1000,
+            1250, 1600, 2000, 2500, 3150, 4000, 5000,
+            6300, 8000, 10000, 12500, 16000, 20000], dtype=float)
+
+    reference_freq = 1e3
+    octave_ratio = 10**(3/10)
+
+    iseven = np.mod(num_fractions, 2) == 0
+    if ~iseven:
+        indices = np.around(
+            num_fractions * np.log(nominal/reference_freq)
+            / np.log(octave_ratio))
+        exponent = (indices/num_fractions)
+    else:
+        indices = np.around(
+            2.0*num_fractions *
+            np.log(nominal/reference_freq) / np.log(octave_ratio) - 1)/2
+        exponent = ((2*indices + 1) / num_fractions / 2)
+
+    exact = reference_freq * octave_ratio**exponent
+
+    return nominal, exact
+
+
+def _exact_center_frequencies_fractional_octaves(
+        num_fractions, frequency_range):
+    """Calculate the center frequencies of arbitrary fractional octave bands.
+
+    Parameters
+    ----------
+    num_fractions : int
+        The number of fractions
+    frequency_range
+        The upper and lower frequency limits
+
+    Returns
+    -------
+    exact : array, float
+        An array containing the center frequencies of the respective fractional
+        octave bands
+
+    References
+    ----------
+    - This implementation is taken from the pyfar package. See
+      https://github.com/pyfar/pyfar
+
+    """
+    ref_freq = 1e3
+    Nmax = np.around(num_fractions*(np.log2(frequency_range[1]/ref_freq)))
+    Nmin = np.around(num_fractions*(np.log2(ref_freq/frequency_range[0])))
+
+    indices = np.arange(-Nmin, Nmax+1)
+    exact = ref_freq * 2**(indices / num_fractions)
+
+    return exact

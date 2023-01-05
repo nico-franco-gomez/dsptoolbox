@@ -3,7 +3,7 @@ High-level methods for room acoustics functions
 """
 import numpy as np
 from scipy.signal import find_peaks, convolve
-from dsptoolbox import Signal
+from dsptoolbox import Signal, MultiBandSignal
 from dsptoolbox.standard_functions import group_delay
 from ._room_acoustics import (_reverb,
                               _complex_mode_identification,
@@ -14,7 +14,7 @@ from dsptoolbox._general_helpers import _find_nearest, _normalize
 __all__ = ['reverb_time', 'find_modes', 'convolve_rir_on_signal']
 
 
-def reverb_time(signal: Signal, mode: str = 'T20'):
+def reverb_time(signal, mode: str = 'T20'):
     """Computes reverberation time. T20, T30, T60 and EDT.
 
     Parameters
@@ -29,7 +29,8 @@ def reverb_time(signal: Signal, mode: str = 'T20'):
     Returns
     -------
     reverberation_times : `np.ndarray`
-        Reverberation times for each channel.
+        Reverberation times for each channel. Shape (band, channel)
+        if MultiBandSignal object is passed.
 
     References
     ----------
@@ -38,22 +39,33 @@ def reverb_time(signal: Signal, mode: str = 'T20'):
     rooms with reference to other acoustical parameters. pp. 22.
 
     """
-    assert signal.signal_type in ('ir', 'rir'), f'{signal.signal_type} is ' +\
-        'not a valid signal type for reverb_time. It should be ir or rir'
-    valid_modes = ('T20', 'T30', 'T60', 'EDT')
-    valid_modes = (mode.casefold() for n in valid_modes)
-    assert mode.casefold() in valid_modes, \
-        f'{mode} is not valid. Use either one of ' +\
-        'these: T20, T30, T60 or EDT'
+    if type(signal) == Signal:
+        assert signal.signal_type in ('ir', 'rir'), \
+            f'{signal.signal_type} is not a valid signal type for ' +\
+            'reverb_time. It should be ir or rir'
+        valid_modes = ('T20', 'T30', 'T60', 'EDT')
+        valid_modes = (mode.casefold() for n in valid_modes)
+        assert mode.casefold() in valid_modes, \
+            f'{mode} is not valid. Use either one of ' +\
+            'these: T20, T30, T60 or EDT'
 
-    reverberation_times = np.zeros((signal.number_of_channels))
-    for n in range(signal.number_of_channels):
-        reverberation_times[n] = \
-            _reverb(
-                signal.time_data[:, n],
-                signal.sampling_rate_hz,
-                mode.casefold())
-    return reverberation_times
+        reverberation_times = np.zeros((signal.number_of_channels))
+        for n in range(signal.number_of_channels):
+            reverberation_times[n] = \
+                _reverb(
+                    signal.time_data[:, n],
+                    signal.sampling_rate_hz,
+                    mode.casefold())
+    elif type(signal) == MultiBandSignal:
+        reverberation_times = \
+            np.zeros(
+                (signal.number_of_bands, signal.bands[0].number_of_channels))
+        for ind, b in enumerate(signal.bands):
+            reverberation_times[ind, :] = reverb_time(b, mode)
+    else:
+        raise TypeError(
+            'Passed signal should be of type Signal or MultiBandSignal')
+    return reverberation_times.squeeze()
 
 
 def find_modes(signal: Signal, f_range_hz=[50, 200],
@@ -75,9 +87,7 @@ def find_modes(signal: Signal, f_range_hz=[50, 200],
         When `True`, only group delay criteria is used for finding modes
         up until 200 Hz. This is done since a gradient transducer will not
         easily see peaks in its magnitude response in low frequencies
-        due to near-field effects.
-        There is also an assessment that the modes are not dips of
-        the magnitude response. Default: `False`.
+        due to near-field effects. Default: `False`.
     dist_hz : float, optional
         Minimum distance (in Hz) between modes. Default: 5.
 

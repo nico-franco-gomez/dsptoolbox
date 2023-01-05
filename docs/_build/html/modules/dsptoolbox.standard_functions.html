@@ -6,7 +6,7 @@
 <link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="next" title="Transfer functions (dsptoolbox.transfer_functions)" href="dsptoolbox.transfer_functions.html" /><link rel="prev" title="Special (dsptoolbox.special)" href="dsptoolbox.special.html" />
 
     <!-- Generated with Sphinx 5.3.0 and Furo 2022.12.07 -->
-        <title>Standard functions (dsptoolbox.*) - dsptoolbox 0.0.2 documentation</title>
+        <title>Standard functions (dsptoolbox.*) - dsptoolbox 0.0.3 documentation</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?digest=91d0f0d1c444bdcb17a68e833c7a53903343c195" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo-extensions.css?digest=30d1aed668e5c3a91c3e3bf6a60b675221979f0e" />
@@ -123,7 +123,7 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="../index.html"><div class="brand">dsptoolbox 0.0.2 documentation</div></a>
+      <a href="../index.html"><div class="brand">dsptoolbox 0.0.3 documentation</div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
@@ -146,7 +146,7 @@
       <div class="sidebar-sticky"><a class="sidebar-brand" href="../index.html">
   
   
-  <span class="sidebar-brand-text">dsptoolbox 0.0.2 documentation</span>
+  <span class="sidebar-brand-text">dsptoolbox 0.0.3 documentation</span>
   
 </a><form class="sidebar-search-container" method="get" action="../search.html" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
@@ -165,7 +165,7 @@
 <li class="toctree-l2"><a class="reference internal" href="dsptoolbox.distances.html">Distances (dsptoolbox.distances)</a></li>
 <li class="toctree-l2"><a class="reference internal" href="dsptoolbox.filterbanks.html">Filterbanks (dsptoolbox.filterbanks)</a></li>
 <li class="toctree-l2"><a class="reference internal" href="dsptoolbox.generators.html">Generators (dsptoolbox.generators)</a></li>
-<li class="toctree-l2"><a class="reference internal" href="dsptoolbox.measure.html">Measure (dsptoolbox.measure)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="dsptoolbox.audio_io.html">Audio IO (dsptoolbox.audio_io)</a></li>
 <li class="toctree-l2"><a class="reference internal" href="dsptoolbox.plots.html">Plots (dsptoolbox.plots)</a></li>
 <li class="toctree-l2"><a class="reference internal" href="dsptoolbox.room_acoustics.html">Room acoustics (dsptoolbox.room_acoustics)</a></li>
 <li class="toctree-l2"><a class="reference internal" href="dsptoolbox.special.html">Special (dsptoolbox.special)</a></li>
@@ -233,6 +233,77 @@
 </dd></dl>
 
 <dl class="py function">
+<dt class="sig sig-object py" id="dsptoolbox.standard_functions.fade">
+<span class="sig-prename descclassname"><span class="pre">dsptoolbox.standard_functions.</span></span><span class="sig-name descname"><span class="pre">fade</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sig</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../classes.html#dsptoolbox.classes.signal_class.Signal" title="dsptoolbox.classes.signal_class.Signal"><span class="pre">Signal</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">type_fade</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'lin'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">length_fade_seconds</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.11)"><span class="pre">Optional</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><span class="pre">float</span></a><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">at_start</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">at_end</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dsptoolbox.standard_functions.fade" title="Permalink to this definition">#</a></dt>
+<dd><p>Applies fading to signal.</p>
+<dl class="field-list">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl>
+<dt><strong>sig</strong><span class="classifier"><cite>Signal</cite></span></dt><dd><p>Signal to apply fade to.</p>
+</dd>
+<dt><strong>type_fade</strong><span class="classifier">str, optional</span></dt><dd><p>Type of fading to be applied. Choose from <cite>‘exp’</cite> (exponential),
+<cite>‘lin’</cite> (linear) or <cite>‘log’</cite> (logarithmic). Default: <cite>‘lin’</cite>.</p>
+</dd>
+<dt><strong>length_fade_seconds</strong><span class="classifier">float, optional</span></dt><dd><p>Fade length in seconds. If <cite>None</cite>, 2.5% of the signal’s length is used
+for the fade. Default: <cite>None</cite>.</p>
+</dd>
+<dt><strong>at_start</strong><span class="classifier">bool, optional</span></dt><dd><p>When <cite>True</cite>, the start of signal of faded. Default: <cite>True</cite>.</p>
+</dd>
+<dt><strong>at_end</strong><span class="classifier">bool, optional</span></dt><dd><p>When <cite>True</cite>, the ending of signal of faded. Default: <cite>True</cite>.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl>
+<dt><strong>new_sig</strong><span class="classifier"><cite>Signal</cite></span></dt><dd><p>New Signal</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="dsptoolbox.standard_functions.fractional_octave_frequencies">
+<span class="sig-prename descclassname"><span class="pre">dsptoolbox.standard_functions.</span></span><span class="sig-name descname"><span class="pre">fractional_octave_frequencies</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">num_fractions</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">frequency_range</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">(20,</span> <span class="pre">20000.0)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">return_cutoff</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dsptoolbox.standard_functions.fractional_octave_frequencies" title="Permalink to this definition">#</a></dt>
+<dd><p>Return the octave center frequencies according to the IEC 61260:1:2014
+standard.</p>
+<p>For numbers of fractions other than <code class="docutils literal notranslate"><span class="pre">1</span></code> and <code class="docutils literal notranslate"><span class="pre">3</span></code>, only the
+exact center frequencies are returned, since nominal frequencies are not
+specified by corresponding standards.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>num_fractions</strong><span class="classifier">int, optional</span></dt><dd><p>The number of bands an octave is divided into. Eg., <code class="docutils literal notranslate"><span class="pre">1</span></code> refers to
+octave bands and <code class="docutils literal notranslate"><span class="pre">3</span></code> to third octave bands. The default is <code class="docutils literal notranslate"><span class="pre">1</span></code>.</p>
+</dd>
+<dt><strong>frequency_range</strong><span class="classifier">array, tuple</span></dt><dd><p>The lower and upper frequency limits, the default is
+<code class="docutils literal notranslate"><span class="pre">frequency_range=(20,</span> <span class="pre">20e3)</span></code>.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt><strong>nominal</strong><span class="classifier">array, float</span></dt><dd><p>The nominal center frequencies in Hz specified in the standard.
+Nominal frequencies are only returned for octave bands and third octave
+bands.</p>
+</dd>
+<dt><strong>exact</strong><span class="classifier">array, float</span></dt><dd><p>The exact center frequencies in Hz, resulting in a uniform distribution
+of frequency bands over the frequency range.</p>
+</dd>
+<dt><strong>cutoff_freq</strong><span class="classifier">tuple, array, float</span></dt><dd><p>The lower and upper critical frequencies in Hz of the bandpass filters
+for each band as a tuple corresponding to <code class="docutils literal notranslate"><span class="pre">(f_lower,</span> <span class="pre">f_upper)</span></code>.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+<p class="rubric">References</p>
+<ul class="simple">
+<li><p>This implementation is taken from the pyfar package. See
+<a class="reference external" href="https://github.com/pyfar/pyfar">https://github.com/pyfar/pyfar</a></p></li>
+</ul>
+</dd></dl>
+
+<dl class="py function">
 <dt class="sig sig-object py" id="dsptoolbox.standard_functions.group_delay">
 <span class="sig-prename descclassname"><span class="pre">dsptoolbox.standard_functions.</span></span><span class="sig-name descname"><span class="pre">group_delay</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">signal</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../classes.html#dsptoolbox.classes.signal_class.Signal" title="dsptoolbox.classes.signal_class.Signal"><span class="pre">Signal</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">method</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'direct'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dsptoolbox.standard_functions.group_delay" title="Permalink to this definition">#</a></dt>
 <dd><p>Computation of group delay.</p>
@@ -283,6 +354,27 @@ channels of the is computed.</p>
 </dd></dl>
 
 <dl class="py function">
+<dt class="sig sig-object py" id="dsptoolbox.standard_functions.load_pkl_object">
+<span class="sig-prename descclassname"><span class="pre">dsptoolbox.standard_functions.</span></span><span class="sig-name descname"><span class="pre">load_pkl_object</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dsptoolbox.standard_functions.load_pkl_object" title="Permalink to this definition">#</a></dt>
+<dd><p>WARNING: This is not secure. Only unpickle data you know!
+Loads a optimization object with all its attributes and methods.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>path</strong><span class="classifier">str</span></dt><dd><p>Path to the pickle object.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt><strong>obj</strong><span class="classifier">object</span></dt><dd><p>Unpacked pickle object.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
 <dt class="sig sig-object py" id="dsptoolbox.standard_functions.merge_filterbanks">
 <span class="sig-prename descclassname"><span class="pre">dsptoolbox.standard_functions.</span></span><span class="sig-name descname"><span class="pre">merge_filterbanks</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fb1</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../classes.html#dsptoolbox.classes.filterbank.FilterBank" title="dsptoolbox.classes.filterbank.FilterBank"><span class="pre">FilterBank</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">fb2</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../classes.html#dsptoolbox.classes.filterbank.FilterBank" title="dsptoolbox.classes.filterbank.FilterBank"><span class="pre">FilterBank</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dsptoolbox.standard_functions.merge_filterbanks" title="Permalink to this definition">#</a></dt>
 <dd><p>Merges two filterbanks.</p>
@@ -291,7 +383,7 @@ channels of the is computed.</p>
 <dd class="field-odd"><dl>
 <dt><strong>fb1</strong><span class="classifier"><cite>FilterBank</cite></span></dt><dd><p>First filterbank.</p>
 </dd>
-<dt><strong>fb1</strong><span class="classifier"><cite>FilterBank</cite></span></dt><dd><p>Second filterbank.</p>
+<dt><strong>fb2</strong><span class="classifier"><cite>FilterBank</cite></span></dt><dd><p>Second filterbank.</p>
 </dd>
 </dl>
 </dd>
@@ -306,7 +398,7 @@ channels of the is computed.</p>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="dsptoolbox.standard_functions.merge_signals">
-<span class="sig-prename descclassname"><span class="pre">dsptoolbox.standard_functions.</span></span><span class="sig-name descname"><span class="pre">merge_signals</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">in1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">in2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">trimming_at_end</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dsptoolbox.standard_functions.merge_signals" title="Permalink to this definition">#</a></dt>
+<span class="sig-prename descclassname"><span class="pre">dsptoolbox.standard_functions.</span></span><span class="sig-name descname"><span class="pre">merge_signals</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">in1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">in2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">padding_trimming</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">at_end</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dsptoolbox.standard_functions.merge_signals" title="Permalink to this definition">#</a></dt>
 <dd><p>Merges two signals by appending the channels of the second one to the
 first. If the length of in2 is not the same, trimming or padding is
 applied at the end.</p>
@@ -317,8 +409,12 @@ applied at the end.</p>
 </dd>
 <dt><strong>in2</strong><span class="classifier"><cite>Signal</cite> or <cite>MultiBandSignal</cite></span></dt><dd><p>Second signal.</p>
 </dd>
-<dt><strong>trimming_at_end</strong><span class="classifier">bool, optional</span></dt><dd><p>If the signals do not have the same length, the second one is padded
-or trimmed. When <cite>True</cite>, padding/trimming is done at the end.
+<dt><strong>padding_trimming</strong><span class="classifier">bool, optional</span></dt><dd><p>If the signals do not have the same length, the second one is padded
+or trimmed. When <cite>True</cite>, padding/trimming is done.
+Default: <cite>True</cite>.</p>
+</dd>
+<dt><strong>at_end</strong><span class="classifier">bool, optional</span></dt><dd><p>When <cite>True</cite> and <cite>padding_trimming=True</cite>, padding or trimming is done
+at the end of signal. Otherwise it is done in the beginning.
 Default: <cite>True</cite>.</p>
 </dd>
 </dl>
@@ -377,6 +473,31 @@ Default: <cite>True</cite>.</p>
 </dd></dl>
 
 <dl class="py function">
+<dt class="sig sig-object py" id="dsptoolbox.standard_functions.normalize">
+<span class="sig-prename descclassname"><span class="pre">dsptoolbox.standard_functions.</span></span><span class="sig-name descname"><span class="pre">normalize</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sig</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">peak_dbfs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><span class="pre">float</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">-6</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">each_channel</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dsptoolbox.standard_functions.normalize" title="Permalink to this definition">#</a></dt>
+<dd><p>Normalizes a signal to a given peak value. It either normalizes each
+channel or the signal as a whole.</p>
+<dl class="field-list">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl>
+<dt><strong>sig</strong><span class="classifier"><cite>Signal</cite> or <cite>MultiBandSignal</cite></span></dt><dd><p>Signal to be normalized.</p>
+</dd>
+<dt><strong>peak_dbfs</strong><span class="classifier">float, optional</span></dt><dd><p>dBFS to which to normalize peak. Default: -6.</p>
+</dd>
+<dt><strong>each_channel</strong><span class="classifier">bool, optional</span></dt><dd><p>When <cite>True</cite>, each channel on its own is normalized. When <cite>False</cite>,
+the peak value for all channels is regarded. Default: <cite>False</cite>.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl>
+<dt><strong>new_sig</strong><span class="classifier"><cite>Signal</cite> or <cite>MultiBandSignal</cite></span></dt><dd></dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
 <dt class="sig sig-object py" id="dsptoolbox.standard_functions.pad_trim">
 <span class="sig-prename descclassname"><span class="pre">dsptoolbox.standard_functions.</span></span><span class="sig-name descname"><span class="pre">pad_trim</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">signal</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../classes.html#dsptoolbox.classes.signal_class.Signal" title="dsptoolbox.classes.signal_class.Signal"><span class="pre">Signal</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">desired_length_samples</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><span class="pre">int</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">in_the_end</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dsptoolbox.standard_functions.pad_trim" title="Permalink to this definition">#</a></dt>
 <dd><p>Returns a copy of the signal with padded or trimmed time data.</p>
@@ -395,6 +516,29 @@ in the end of the signal. Default: <cite>True</cite>.</p>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><dl class="simple">
 <dt><strong>new_signal</strong><span class="classifier">Signal</span></dt><dd><p>New padded signal.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="dsptoolbox.standard_functions.resample">
+<span class="sig-prename descclassname"><span class="pre">dsptoolbox.standard_functions.</span></span><span class="sig-name descname"><span class="pre">resample</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sig</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../classes.html#dsptoolbox.classes.signal_class.Signal" title="dsptoolbox.classes.signal_class.Signal"><span class="pre">Signal</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">desired_sampling_rate_hz</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><span class="pre">int</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dsptoolbox.standard_functions.resample" title="Permalink to this definition">#</a></dt>
+<dd><p>Resamples signal to the desired sampling rate using
+<cite>scipy.signal.resample_poly</cite> with an efficient polyphase representation.</p>
+<dl class="field-list">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl>
+<dt><strong>sig</strong><span class="classifier"><cite>Signal</cite></span></dt><dd><p>Signal to be resampled.</p>
+</dd>
+<dt><strong>desired_sampling_rate_hz</strong><span class="classifier">int</span></dt><dd><p>Sampling rate to convert the signal to.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl>
+<dt><strong>new_sig</strong><span class="classifier"><cite>Signal</cite></span></dt><dd><p>Resampled signal.</p>
 </dd>
 </dl>
 </dd>
@@ -460,13 +604,18 @@ in the end of the signal. Default: <cite>True</cite>.</p>
             <ul>
 <li><a class="reference internal" href="#">Standard functions (dsptoolbox.*)</a><ul>
 <li><a class="reference internal" href="#dsptoolbox.standard_functions.excess_group_delay"><code class="docutils literal notranslate"><span class="pre">excess_group_delay()</span></code></a></li>
+<li><a class="reference internal" href="#dsptoolbox.standard_functions.fade"><code class="docutils literal notranslate"><span class="pre">fade()</span></code></a></li>
+<li><a class="reference internal" href="#dsptoolbox.standard_functions.fractional_octave_frequencies"><code class="docutils literal notranslate"><span class="pre">fractional_octave_frequencies()</span></code></a></li>
 <li><a class="reference internal" href="#dsptoolbox.standard_functions.group_delay"><code class="docutils literal notranslate"><span class="pre">group_delay()</span></code></a></li>
 <li><a class="reference internal" href="#dsptoolbox.standard_functions.latency"><code class="docutils literal notranslate"><span class="pre">latency()</span></code></a></li>
+<li><a class="reference internal" href="#dsptoolbox.standard_functions.load_pkl_object"><code class="docutils literal notranslate"><span class="pre">load_pkl_object()</span></code></a></li>
 <li><a class="reference internal" href="#dsptoolbox.standard_functions.merge_filterbanks"><code class="docutils literal notranslate"><span class="pre">merge_filterbanks()</span></code></a></li>
 <li><a class="reference internal" href="#dsptoolbox.standard_functions.merge_signals"><code class="docutils literal notranslate"><span class="pre">merge_signals()</span></code></a></li>
 <li><a class="reference internal" href="#dsptoolbox.standard_functions.minimal_group_delay"><code class="docutils literal notranslate"><span class="pre">minimal_group_delay()</span></code></a></li>
 <li><a class="reference internal" href="#dsptoolbox.standard_functions.minimal_phase"><code class="docutils literal notranslate"><span class="pre">minimal_phase()</span></code></a></li>
+<li><a class="reference internal" href="#dsptoolbox.standard_functions.normalize"><code class="docutils literal notranslate"><span class="pre">normalize()</span></code></a></li>
 <li><a class="reference internal" href="#dsptoolbox.standard_functions.pad_trim"><code class="docutils literal notranslate"><span class="pre">pad_trim()</span></code></a></li>
+<li><a class="reference internal" href="#dsptoolbox.standard_functions.resample"><code class="docutils literal notranslate"><span class="pre">resample()</span></code></a></li>
 </ul>
 </li>
 </ul>

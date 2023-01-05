@@ -6,7 +6,7 @@
 <link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="next" title="Filterbanks (dsptoolbox.filterbanks)" href="dsptoolbox.filterbanks.html" /><link rel="prev" title="Modules in dsptoolbox" href="../modules.html" />
 
     <!-- Generated with Sphinx 5.3.0 and Furo 2022.12.07 -->
-        <title>Distances (dsptoolbox.distances) - dsptoolbox 0.0.2 documentation</title>
+        <title>Distances (dsptoolbox.distances) - dsptoolbox 0.0.3 documentation</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?digest=91d0f0d1c444bdcb17a68e833c7a53903343c195" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo-extensions.css?digest=30d1aed668e5c3a91c3e3bf6a60b675221979f0e" />
@@ -123,7 +123,7 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="../index.html"><div class="brand">dsptoolbox 0.0.2 documentation</div></a>
+      <a href="../index.html"><div class="brand">dsptoolbox 0.0.3 documentation</div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
@@ -146,7 +146,7 @@
       <div class="sidebar-sticky"><a class="sidebar-brand" href="../index.html">
   
   
-  <span class="sidebar-brand-text">dsptoolbox 0.0.2 documentation</span>
+  <span class="sidebar-brand-text">dsptoolbox 0.0.3 documentation</span>
   
 </a><form class="sidebar-search-container" method="get" action="../search.html" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
@@ -165,7 +165,7 @@
 <li class="toctree-l2 current current-page"><a class="current reference internal" href="#">Distances (dsptoolbox.distances)</a></li>
 <li class="toctree-l2"><a class="reference internal" href="dsptoolbox.filterbanks.html">Filterbanks (dsptoolbox.filterbanks)</a></li>
 <li class="toctree-l2"><a class="reference internal" href="dsptoolbox.generators.html">Generators (dsptoolbox.generators)</a></li>
-<li class="toctree-l2"><a class="reference internal" href="dsptoolbox.measure.html">Measure (dsptoolbox.measure)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="dsptoolbox.audio_io.html">Audio IO (dsptoolbox.audio_io)</a></li>
 <li class="toctree-l2"><a class="reference internal" href="dsptoolbox.plots.html">Plots (dsptoolbox.plots)</a></li>
 <li class="toctree-l2"><a class="reference internal" href="dsptoolbox.room_acoustics.html">Room acoustics (dsptoolbox.room_acoustics)</a></li>
 <li class="toctree-l2"><a class="reference internal" href="dsptoolbox.special.html">Special (dsptoolbox.special)</a></li>
@@ -248,6 +248,58 @@ it is computed in all frequencies. Default: [20, 20000].</p>
 </dl>
 </dd></dl>
 
+<dl class="py function">
+<dt class="sig sig-object py" id="dsptoolbox.distances.si_sdr">
+<span class="sig-prename descclassname"><span class="pre">dsptoolbox.distances.</span></span><span class="sig-name descname"><span class="pre">si_sdr</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">target_signal</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../classes.html#dsptoolbox.classes.signal_class.Signal" title="dsptoolbox.classes.signal_class.Signal"><span class="pre">Signal</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">modified_signal</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../classes.html#dsptoolbox.classes.signal_class.Signal" title="dsptoolbox.classes.signal_class.Signal"><span class="pre">Signal</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dsptoolbox.distances.si_sdr" title="Permalink to this definition">#</a></dt>
+<dd><p>Computes scale-invariant signal to distortion ratio from an original
+and a modified signal. If target signal only has one channel, it is
+assumed to be the target one for all the channels in the modified signal.
+See reference for details.</p>
+<dl class="field-list">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl>
+<dt><strong>tartget_signal</strong><span class="classifier"><cite>Signal</cite></span></dt><dd><p>Original signal.</p>
+</dd>
+<dt><strong>modified_signal</strong><span class="classifier"><cite>Signal</cite></span></dt><dd><p>Signal after modification/enhancement.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl>
+<dt><strong>sdr</strong><span class="classifier"><cite>np.ndarray</cite></span></dt><dd><p>SI-SDR per channel.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+<p class="rubric">References</p>
+<ul class="simple">
+<li><p><a class="reference external" href="https://arxiv.org/abs/1811.02508">https://arxiv.org/abs/1811.02508</a></p></li>
+</ul>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="dsptoolbox.distances.snr">
+<span class="sig-prename descclassname"><span class="pre">dsptoolbox.distances.</span></span><span class="sig-name descname"><span class="pre">snr</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">signal</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../classes.html#dsptoolbox.classes.signal_class.Signal" title="dsptoolbox.classes.signal_class.Signal"><span class="pre">Signal</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">noise</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../classes.html#dsptoolbox.classes.signal_class.Signal" title="dsptoolbox.classes.signal_class.Signal"><span class="pre">Signal</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dsptoolbox.distances.snr" title="Permalink to this definition">#</a></dt>
+<dd><p>Classical Signal-to-noise ratio. If noise only has one channel,
+it is assumed to be the noise for all channels of signal.</p>
+<dl class="field-list">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl>
+<dt><strong>signal</strong><span class="classifier"><cite>Signal</cite></span></dt><dd><p>Signal.</p>
+</dd>
+<dt><strong>noise</strong><span class="classifier"><cite>Signal</cite></span></dt><dd><p>Noise.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl>
+<dt><strong>snr_per_channel</strong><span class="classifier"><cite>np.ndarray</cite></span></dt><dd><p>SNR value per channel</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
 </section>
 
         </article>
@@ -308,6 +360,8 @@ it is computed in all frequencies. Default: [20, 20000].</p>
 <li><a class="reference internal" href="#">Distances (dsptoolbox.distances)</a><ul>
 <li><a class="reference internal" href="#dsptoolbox.distances.itakura_saito"><code class="docutils literal notranslate"><span class="pre">itakura_saito()</span></code></a></li>
 <li><a class="reference internal" href="#dsptoolbox.distances.log_spectral"><code class="docutils literal notranslate"><span class="pre">log_spectral()</span></code></a></li>
+<li><a class="reference internal" href="#dsptoolbox.distances.si_sdr"><code class="docutils literal notranslate"><span class="pre">si_sdr()</span></code></a></li>
+<li><a class="reference internal" href="#dsptoolbox.distances.snr"><code class="docutils literal notranslate"><span class="pre">snr()</span></code></a></li>
 </ul>
 </li>
 </ul>

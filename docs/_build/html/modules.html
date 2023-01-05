@@ -6,7 +6,7 @@
 <link rel="index" title="Index" href="genindex.html" /><link rel="search" title="Search" href="search.html" /><link rel="next" title="Distances (dsptoolbox.distances)" href="modules/dsptoolbox.distances.html" /><link rel="prev" title="Classes (dsptoolbox.classes)" href="classes.html" />
 
     <!-- Generated with Sphinx 5.3.0 and Furo 2022.12.07 -->
-        <title>Modules in dsptoolbox - dsptoolbox 0.0.2 documentation</title>
+        <title>Modules in dsptoolbox - dsptoolbox 0.0.3 documentation</title>
       <link rel="stylesheet" type="text/css" href="_static/pygments.css" />
     <link rel="stylesheet" type="text/css" href="_static/styles/furo.css?digest=91d0f0d1c444bdcb17a68e833c7a53903343c195" />
     <link rel="stylesheet" type="text/css" href="_static/styles/furo-extensions.css?digest=30d1aed668e5c3a91c3e3bf6a60b675221979f0e" />
@@ -123,7 +123,7 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="index.html"><div class="brand">dsptoolbox 0.0.2 documentation</div></a>
+      <a href="index.html"><div class="brand">dsptoolbox 0.0.3 documentation</div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
@@ -146,7 +146,7 @@
       <div class="sidebar-sticky"><a class="sidebar-brand" href="index.html">
   
   
-  <span class="sidebar-brand-text">dsptoolbox 0.0.2 documentation</span>
+  <span class="sidebar-brand-text">dsptoolbox 0.0.3 documentation</span>
   
 </a><form class="sidebar-search-container" method="get" action="search.html" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
@@ -165,7 +165,7 @@
 <li class="toctree-l2"><a class="reference internal" href="modules/dsptoolbox.distances.html">Distances (dsptoolbox.distances)</a></li>
 <li class="toctree-l2"><a class="reference internal" href="modules/dsptoolbox.filterbanks.html">Filterbanks (dsptoolbox.filterbanks)</a></li>
 <li class="toctree-l2"><a class="reference internal" href="modules/dsptoolbox.generators.html">Generators (dsptoolbox.generators)</a></li>
-<li class="toctree-l2"><a class="reference internal" href="modules/dsptoolbox.measure.html">Measure (dsptoolbox.measure)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/dsptoolbox.audio_io.html">Audio IO (dsptoolbox.audio_io)</a></li>
 <li class="toctree-l2"><a class="reference internal" href="modules/dsptoolbox.plots.html">Plots (dsptoolbox.plots)</a></li>
 <li class="toctree-l2"><a class="reference internal" href="modules/dsptoolbox.room_acoustics.html">Room acoustics (dsptoolbox.room_acoustics)</a></li>
 <li class="toctree-l2"><a class="reference internal" href="modules/dsptoolbox.special.html">Special (dsptoolbox.special)</a></li>
@@ -215,6 +215,8 @@
 <li class="toctree-l1"><a class="reference internal" href="modules/dsptoolbox.distances.html">Distances (dsptoolbox.distances)</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="modules/dsptoolbox.distances.html#dsptoolbox.distances.itakura_saito"><code class="docutils literal notranslate"><span class="pre">itakura_saito()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="modules/dsptoolbox.distances.html#dsptoolbox.distances.log_spectral"><code class="docutils literal notranslate"><span class="pre">log_spectral()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/dsptoolbox.distances.html#dsptoolbox.distances.si_sdr"><code class="docutils literal notranslate"><span class="pre">si_sdr()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/dsptoolbox.distances.html#dsptoolbox.distances.snr"><code class="docutils literal notranslate"><span class="pre">snr()</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="modules/dsptoolbox.filterbanks.html">Filterbanks (dsptoolbox.filterbanks)</a><ul>
@@ -228,12 +230,15 @@
 <li class="toctree-l2"><a class="reference internal" href="modules/dsptoolbox.generators.html#dsptoolbox.generators.noise"><code class="docutils literal notranslate"><span class="pre">noise()</span></code></a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="modules/dsptoolbox.measure.html">Measure (dsptoolbox.measure)</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="modules/dsptoolbox.measure.html#dsptoolbox.measure.play"><code class="docutils literal notranslate"><span class="pre">play()</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="modules/dsptoolbox.measure.html#dsptoolbox.measure.play_and_record"><code class="docutils literal notranslate"><span class="pre">play_and_record()</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="modules/dsptoolbox.measure.html#dsptoolbox.measure.print_device_info"><code class="docutils literal notranslate"><span class="pre">print_device_info()</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="modules/dsptoolbox.measure.html#dsptoolbox.measure.record"><code class="docutils literal notranslate"><span class="pre">record()</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="modules/dsptoolbox.measure.html#dsptoolbox.measure.set_device"><code class="docutils literal notranslate"><span class="pre">set_device()</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="modules/dsptoolbox.audio_io.html">Audio IO (dsptoolbox.audio_io)</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="modules/dsptoolbox.audio_io.html#dsptoolbox.audio_io.CallbackStop"><code class="docutils literal notranslate"><span class="pre">CallbackStop()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/dsptoolbox.audio_io.html#dsptoolbox.audio_io.play"><code class="docutils literal notranslate"><span class="pre">play()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/dsptoolbox.audio_io.html#dsptoolbox.audio_io.play_and_record"><code class="docutils literal notranslate"><span class="pre">play_and_record()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/dsptoolbox.audio_io.html#dsptoolbox.audio_io.play_stream"><code class="docutils literal notranslate"><span class="pre">play_stream()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/dsptoolbox.audio_io.html#dsptoolbox.audio_io.print_device_info"><code class="docutils literal notranslate"><span class="pre">print_device_info()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/dsptoolbox.audio_io.html#dsptoolbox.audio_io.record"><code class="docutils literal notranslate"><span class="pre">record()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/dsptoolbox.audio_io.html#dsptoolbox.audio_io.set_device"><code class="docutils literal notranslate"><span class="pre">set_device()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/dsptoolbox.audio_io.html#dsptoolbox.audio_io.standard_callback"><code class="docutils literal notranslate"><span class="pre">standard_callback()</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="modules/dsptoolbox.plots.html">Plots (dsptoolbox.plots)</a><ul>
@@ -255,13 +260,18 @@
 </li>
 <li class="toctree-l1"><a class="reference internal" href="modules/dsptoolbox.standard_functions.html">Standard functions (dsptoolbox.*)</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="modules/dsptoolbox.standard_functions.html#dsptoolbox.standard_functions.excess_group_delay"><code class="docutils literal notranslate"><span class="pre">excess_group_delay()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/dsptoolbox.standard_functions.html#dsptoolbox.standard_functions.fade"><code class="docutils literal notranslate"><span class="pre">fade()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/dsptoolbox.standard_functions.html#dsptoolbox.standard_functions.fractional_octave_frequencies"><code class="docutils literal notranslate"><span class="pre">fractional_octave_frequencies()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="modules/dsptoolbox.standard_functions.html#dsptoolbox.standard_functions.group_delay"><code class="docutils literal notranslate"><span class="pre">group_delay()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="modules/dsptoolbox.standard_functions.html#dsptoolbox.standard_functions.latency"><code class="docutils literal notranslate"><span class="pre">latency()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/dsptoolbox.standard_functions.html#dsptoolbox.standard_functions.load_pkl_object"><code class="docutils literal notranslate"><span class="pre">load_pkl_object()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="modules/dsptoolbox.standard_functions.html#dsptoolbox.standard_functions.merge_filterbanks"><code class="docutils literal notranslate"><span class="pre">merge_filterbanks()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="modules/dsptoolbox.standard_functions.html#dsptoolbox.standard_functions.merge_signals"><code class="docutils literal notranslate"><span class="pre">merge_signals()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="modules/dsptoolbox.standard_functions.html#dsptoolbox.standard_functions.minimal_group_delay"><code class="docutils literal notranslate"><span class="pre">minimal_group_delay()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="modules/dsptoolbox.standard_functions.html#dsptoolbox.standard_functions.minimal_phase"><code class="docutils literal notranslate"><span class="pre">minimal_phase()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/dsptoolbox.standard_functions.html#dsptoolbox.standard_functions.normalize"><code class="docutils literal notranslate"><span class="pre">normalize()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="modules/dsptoolbox.standard_functions.html#dsptoolbox.standard_functions.pad_trim"><code class="docutils literal notranslate"><span class="pre">pad_trim()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="modules/dsptoolbox.standard_functions.html#dsptoolbox.standard_functions.resample"><code class="docutils literal notranslate"><span class="pre">resample()</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="modules/dsptoolbox.transfer_functions.html">Transfer functions (dsptoolbox.transfer_functions)</a><ul>

@@ -5,10 +5,8 @@ import numpy as np
 from dsptoolbox import Signal
 from dsptoolbox._general_helpers import _find_nearest
 from ._distances import (_log_spectral_distance,
-                         _itakura_saito_measure)
-
-
-__all__ = ['log_spectral', 'itakura_saito']
+                         _itakura_saito_measure,
+                         _snr, _sisdr)
 
 
 def log_spectral(insig1: Signal, insig2: Signal, method: str = 'welch',
@@ -116,3 +114,86 @@ def itakura_saito(insig1: Signal, insig2: Signal, method: str = 'welch',
             _itakura_saito_measure(
                 psd1[ids[0]:ids[1], n], psd2[ids[0]:ids[1], n], f)
     return distances
+
+
+def snr(signal: Signal, noise: Signal):
+    """Classical Signal-to-noise ratio. If noise only has one channel,
+    it is assumed to be the noise for all channels of signal.
+
+    Parameters
+    ----------
+    signal : `Signal`
+        Signal.
+    noise : `Signal`
+        Noise.
+
+    Returns
+    -------
+    snr_per_channel : `np.ndarray`
+        SNR value per channel
+
+    """
+    assert signal.sampling_rate_hz == noise.sampling_rate_hz,\
+        'Sampling rates do not match'
+    if noise.number_of_channels != 1:
+        assert signal.number_of_channels == noise.number_of_channels,\
+            'Signals have different channel numbers'
+        multichannel = False
+    else:
+        multichannel = True
+
+    snr_per_channel = np.empty(signal.number_of_channels)
+    for n in range(signal.number_of_channels):
+        if multichannel:
+            n_noise = 0
+        else:
+            n_noise = n
+        snr_per_channel[n] = _snr(
+            signal.time_data[:, n], noise.time_data[:, n_noise])
+    return snr_per_channel
+
+
+def si_sdr(target_signal: Signal, modified_signal: Signal):
+    """Computes scale-invariant signal to distortion ratio from an original
+    and a modified signal. If target signal only has one channel, it is
+    assumed to be the target one for all the channels in the modified signal.
+    See reference for details.
+
+    Parameters
+    ----------
+    tartget_signal : `Signal`
+        Original signal.
+    modified_signal : `Signal`
+        Signal after modification/enhancement.
+
+    Returns
+    -------
+    sdr : `np.ndarray`
+        SI-SDR per channel.
+
+    References
+    ----------
+    - https://arxiv.org/abs/1811.02508
+
+    """
+    assert modified_signal.sampling_rate_hz == target_signal.sampling_rate_hz,\
+        'Sampling rates do not match'
+    if target_signal.number_of_channels != 1:
+        assert modified_signal.number_of_channels == \
+            target_signal.number_of_channels, \
+            'Signals have different channel numbers'
+        multichannel = False
+    else:
+        multichannel = True
+    assert modified_signal.time_data.shape[0] == \
+        target_signal.time_data.shape[0], 'Length of signals do not match'
+
+    sdr = np.empty(modified_signal.number_of_channels)
+    for n in range(modified_signal.number_of_channels):
+        if multichannel:
+            n_1 = 0
+        else:
+            n_1 = n
+        sdr[n] = _sisdr(
+            target_signal.time_data[:, n_1], modified_signal.time_data[:, n])
+    return sdr

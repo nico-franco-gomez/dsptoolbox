@@ -10,11 +10,13 @@ from dsptoolbox._standard import _welch
 from dsptoolbox.standard_functions import pad_trim
 
 
-def spectral_deconvolve(num: Signal, denum: Signal, multichannel=False,
+def spectral_deconvolve(num: Signal, denum: Signal,
                         mode='regularized', start_stop_hz=None,
                         threshold_db=-30, padding: bool = False,
                         keep_original_length: bool = False):
-    """Deconvolution by spectral division of two signals.
+    """Deconvolution by spectral division of two signals. If the denominator
+    signal only has one channel, the deconvolution is done using it for all
+    channels of the numerator.
 
     Parameters
     ----------
@@ -22,9 +24,6 @@ def spectral_deconvolve(num: Signal, denum: Signal, multichannel=False,
         Signal to deconvolve from.
     denum : `Signal`
         Signal to deconvolve.
-    multichannel : bool, optional
-        When `True`, the first channel of denum is used for all channels
-        in num. Default: `False`.
     mode : str, optional
         `'window'` uses a spectral window in the numerator. `'regularized'`
         uses a regularized inversion. `'standard'` uses direct deconvolution.
@@ -51,12 +50,14 @@ def spectral_deconvolve(num: Signal, denum: Signal, multichannel=False,
         Deconvolved signal.
 
     """
-    if multichannel:
-        assert num.time_data.shape[0] == denum.time_data.shape[0], \
-            'Lengths do not match for spectral deconvolution'
+    assert num.time_data.shape[0] == denum.time_data.shape[0], \
+        'Lengths do not match for spectral deconvolution'
+    if denum.number_of_channels != 1:
+        assert num.number_of_channels == denum.number_of_channels, \
+            'The number of channels do not match.'
+        multichannel = False
     else:
-        assert num.time_data.shape == denum.time_data.shape, \
-            'Channel number or length does not match'
+        multichannel = True
     assert num.sampling_rate_hz == denum.sampling_rate_hz, \
         'Sampling rates do not match'
     assert mode in ('regularized', 'window', 'standard'),\
@@ -168,12 +169,13 @@ def window_ir(signal: Signal, constant_percentage=0.75, exp2_trim: int = 13,
 
 
 def compute_transfer_function(output: Signal, input: Signal, mode='h2',
-                              multichannel: bool = True,
                               window_length_samples: int = 1024, **kwargs):
     """Gets transfer function H1, H2 or H3.
     H1: for noise in the output signal. `Gxy/Gxx`.
     H2: for noise in the input signal. `Gyy/Gyx`.
     H3: for noise in both signals. `G_xy / np.abs(G_xy) * (G_yy/G_xx)**0.5`.
+    If the input signal only has one channel, it is assumed to be the input
+    for all of the channels of the output.
 
     Parameters
     ----------
@@ -184,9 +186,6 @@ def compute_transfer_function(output: Signal, input: Signal, mode='h2',
     mode : str, optional
         Type of transfer function. `'h1'`, `'h2'` and `'h3'` are available.
         Default: `'h2'`.
-    multichannel : bool, optional
-        When `True`,  only the first channel of input is used for all output
-        channels. Default: `True`.
     window_length_samples : int, optional
         Window length for the IR. Spectrum has the length
         window_length_samples//2 + 1. Default: 1024.
@@ -209,11 +208,12 @@ def compute_transfer_function(output: Signal, input: Signal, mode='h2',
         'Sampling rates do not match'
     assert input.time_data.shape[0] == output.time_data.shape[0], \
         'Signal lengths do not match'
-    if not multichannel:
+    if input.number_of_channels != 1:
         assert input.number_of_channels == output.number_of_channels, \
-            'Channel number does not match between signals. ' +\
-            'Set multichannel to True if only first channel of ' +\
-            'input should be used.'
+            'Channel number does not match between signals'
+        multichannel = False
+    else:
+        multichannel = True
     H_time = np.zeros((window_length_samples, output.number_of_channels))
     coherence = np.zeros((window_length_samples//2 + 1,
                           output.number_of_channels))

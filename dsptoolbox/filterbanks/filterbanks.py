@@ -5,8 +5,8 @@ object
 import numpy as np
 from scipy.signal import windows
 import warnings
-from dsptoolbox import Filter, FilterBank
-from ._filterbank import LRFilterBank, fractional_octave_frequencies
+from dsptoolbox import Filter, FilterBank, fractional_octave_frequencies
+from ._filterbank import LRFilterBank
 
 
 def linkwitz_riley_crossovers(freqs, order, sampling_rate_hz: int = 48000):

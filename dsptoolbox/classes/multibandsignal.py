@@ -1,6 +1,6 @@
 from .signal_class import Signal
 from os import sep
-from numpy import zeros
+from numpy import zeros, array
 from copy import deepcopy
 from pickle import dump, HIGHEST_PROTOCOL
 
@@ -17,7 +17,7 @@ class MultiBandSignal():
 
     """
     # ======== Constructor and initializers ===================================
-    def __init__(self, bands=None, same_sampling_rate: bool = True,
+    def __init__(self, bands: list = [], same_sampling_rate: bool = True,
                  info: dict = {}):
         """`MultiBandSignal` contains a composite band list where each index
         is a Signal object with the same number of channels. For multirate
@@ -25,7 +25,7 @@ class MultiBandSignal():
 
         Parameters
         ----------
-        bands : list or tuple, optional
+        bands : list, optional
             List or tuple containing different Signal objects. All of them
             should be associated to the same Signal. This means that the
             channel numbers have to match. Set to `None` for initializing the
@@ -38,37 +38,52 @@ class MultiBandSignal():
             can be passed. Default: `None`.
 
         """
-        if bands is None:
-            bands = []
         self.same_sampling_rate = same_sampling_rate
         self.bands = bands
         self.number_of_bands = len(self.bands)
+        if self.bands:
+            if self.same_sampling_rate:
+                self.same_sampling_rate = self.bands[0].sampling_rate_hz
+            else:
+                sr = []
+                for b in self.bands:
+                    sr.append(b.sampling_rate_hz)
+                self.sampling_rate_hz = sr
         self._generate_metadata()
         self.info = self.info | info
 
     # ======== Properties and setters =========================================
     @property
     def sampling_rate_hz(self):
-        return self._sampling_rate_hz
+        return self.__sampling_rate_hz
 
     @sampling_rate_hz.setter
     def sampling_rate_hz(self, new_sampling_rate_hz):
-        assert type(new_sampling_rate_hz) == int, \
+        new_sampling_rate_hz = array(new_sampling_rate_hz).squeeze()
+        assert new_sampling_rate_hz.dtype == int, \
             'Sampling rate can only be an integer'
-        self._sampling_rate_hz = new_sampling_rate_hz
+        if self.same_sampling_rate:
+            assert new_sampling_rate_hz.ndim == 0, \
+                'MultiBandSignal has only one sample rate'
+            self.__sampling_rate_hz = int(new_sampling_rate_hz)
+        else:
+            assert self.number_of_bands == len(new_sampling_rate_hz), \
+                'Number of bands does not match number of sampling rates'
+            self.__sampling_rate_hz = [int(s) for s in new_sampling_rate_hz]
 
     @property
     def bands(self):
-        return self._bands
+        return self.__bands
 
     @bands.setter
     def bands(self, new_bands):
-        assert type(new_bands) in (list, tuple), \
-            'bands has to be a list, tuple or None'
+        assert type(new_bands) == list, \
+            'bands has to be a list'
         if new_bands:
             # Check length and number of channels
             self.number_of_channels = new_bands[0].number_of_channels
             self.signal_type = new_bands[0].signal_type
+            sr = []
             for s in new_bands:
                 assert type(s) == Signal, f'{type(s)} is not a valid ' +\
                     'band type. Use Signal objects'
@@ -77,9 +92,12 @@ class MultiBandSignal():
                     'behaviour is not supported'
                 assert s.signal_type == self.signal_type, \
                     'Signal types do not match'
+                sr.append(s.sampling_rate_hz)
             if self.same_sampling_rate:
                 self.sampling_rate_hz = new_bands[0].sampling_rate_hz
                 self.band_length_samples = new_bands[0].time_data.shape[0]
+            else:
+                self.same_sampling_rate = sr
             # Check sampling rate and duration
             if self.same_sampling_rate:
                 for s in new_bands:
@@ -90,17 +108,17 @@ class MultiBandSignal():
                     assert s.time_data.shape[0] == self.band_length_samples,\
                         'The length of the bands is not always the same. ' +\
                         'This behaviour is not supported'
-        self._bands = new_bands
+        self.__bands = new_bands
 
     @property
     def same_sampling_rate(self):
-        return self._same_sampling_rate
+        return self.__same_sampling_rate
 
     @same_sampling_rate.setter
     def same_sampling_rate(self, new_same):
         assert type(new_same) == bool, \
             'Same sampling rate attribute must be a boolean'
-        self._same_sampling_rate = new_same
+        self.__same_sampling_rate = new_same
 
     def _generate_metadata(self):
         """Generates an information dictionary with metadata about the
@@ -185,16 +203,15 @@ class MultiBandSignal():
         -------
         new_sig : `Signal`
             Collapsed Signal.
-        
+
         """
         assert self.same_sampling_rate, \
             'Collapsing is only available for same sampling rate bands'
         initial = self.bands[0].time_data
         for n in range(1, len(self.bands)):
             initial += self.bands[n].time_data
-        new_sig = Signal(
-            None, initial,
-            self.sampling_rate_hz, signal_type=self.bands[0].signal_type)
+        new_sig = self.bands[0].copy()
+        new_sig.time_data = initial
         return new_sig
 
     def show_info(self, show_band_info: bool = False):
@@ -283,10 +300,10 @@ class MultiBandSignal():
         path += '.pkl'
         with open(path, 'wb') as data_file:
             dump(self, data_file, HIGHEST_PROTOCOL)
-    
+
     def copy(self):
         """Returns a copy of the object.
-        
+
         Returns
         -------
         new_sig : `MultiBandSignal`

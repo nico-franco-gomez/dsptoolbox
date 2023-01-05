@@ -4,8 +4,7 @@ Readme
 
 This is a toolbox in form of a python package that handles algorithms to be used in dsp (digital signal processing) projects.
 
-It is a personal project that is under active development and it will take some time until it reaches a certain level of maturity.
-If you find some implementations interesting or useful, please feel free to use it for your projects and expand or change
+This project is under active development and it will take some time until it reaches a certain level of maturity. Beware that backwards compatibility is not an actual concern and important changes to the API might come in the future. If you find some implementations interesting or useful, please feel free to use it for your projects and expand or change
 functionalities.
 
 Getting Started
@@ -26,7 +25,7 @@ Use pip to install dsptoolbox
 
 .. code-block:: console
 
-    $ pip install dsptoolbox
+    pip install dsptoolbox
 
 (Requires Python 3.10 or higher)
 

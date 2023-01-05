@@ -6,7 +6,7 @@
 <link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="next" title="Special (dsptoolbox.special)" href="dsptoolbox.special.html" /><link rel="prev" title="Plots (dsptoolbox.plots)" href="dsptoolbox.plots.html" />
 
     <!-- Generated with Sphinx 5.3.0 and Furo 2022.12.07 -->
-        <title>Room acoustics (dsptoolbox.room_acoustics) - dsptoolbox 0.0.2 documentation</title>
+        <title>Room acoustics (dsptoolbox.room_acoustics) - dsptoolbox 0.0.3 documentation</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?digest=91d0f0d1c444bdcb17a68e833c7a53903343c195" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo-extensions.css?digest=30d1aed668e5c3a91c3e3bf6a60b675221979f0e" />
@@ -123,7 +123,7 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="../index.html"><div class="brand">dsptoolbox 0.0.2 documentation</div></a>
+      <a href="../index.html"><div class="brand">dsptoolbox 0.0.3 documentation</div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
@@ -146,7 +146,7 @@
       <div class="sidebar-sticky"><a class="sidebar-brand" href="../index.html">
   
   
-  <span class="sidebar-brand-text">dsptoolbox 0.0.2 documentation</span>
+  <span class="sidebar-brand-text">dsptoolbox 0.0.3 documentation</span>
   
 </a><form class="sidebar-search-container" method="get" action="../search.html" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
@@ -165,7 +165,7 @@
 <li class="toctree-l2"><a class="reference internal" href="dsptoolbox.distances.html">Distances (dsptoolbox.distances)</a></li>
 <li class="toctree-l2"><a class="reference internal" href="dsptoolbox.filterbanks.html">Filterbanks (dsptoolbox.filterbanks)</a></li>
 <li class="toctree-l2"><a class="reference internal" href="dsptoolbox.generators.html">Generators (dsptoolbox.generators)</a></li>
-<li class="toctree-l2"><a class="reference internal" href="dsptoolbox.measure.html">Measure (dsptoolbox.measure)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="dsptoolbox.audio_io.html">Measure (dsptoolbox.audio_io)</a></li>
 <li class="toctree-l2"><a class="reference internal" href="dsptoolbox.plots.html">Plots (dsptoolbox.plots)</a></li>
 <li class="toctree-l2 current current-page"><a class="current reference internal" href="#">Room acoustics (dsptoolbox.room_acoustics)</a></li>
 <li class="toctree-l2"><a class="reference internal" href="dsptoolbox.special.html">Special (dsptoolbox.special)</a></li>
@@ -258,9 +258,7 @@ delay peaks of the first RIR.</p>
 <dt><strong>proximity_effect</strong><span class="classifier">bool, optional</span></dt><dd><p>When <cite>True</cite>, only group delay criteria is used for finding modes
 up until 200 Hz. This is done since a gradient transducer will not
 easily see peaks in its magnitude response in low frequencies
-due to near-field effects.
-There is also an assessment that the modes are not dips of
-the magnitude response. Default: <cite>False</cite>.</p>
+due to near-field effects. Default: <cite>False</cite>.</p>
 </dd>
 <dt><strong>dist_hz</strong><span class="classifier">float, optional</span></dt><dd><p>Minimum distance (in Hz) between modes. Default: 5.</p>
 </dd>
@@ -279,7 +277,7 @@ the magnitude response. Default: <cite>False</cite>.</p>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="dsptoolbox.room_acoustics.reverb_time">
-<span class="sig-prename descclassname"><span class="pre">dsptoolbox.room_acoustics.</span></span><span class="sig-name descname"><span class="pre">reverb_time</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">signal</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../classes.html#dsptoolbox.classes.signal_class.Signal" title="dsptoolbox.classes.signal_class.Signal"><span class="pre">Signal</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">mode</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'T20'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dsptoolbox.room_acoustics.reverb_time" title="Permalink to this definition">#</a></dt>
+<span class="sig-prename descclassname"><span class="pre">dsptoolbox.room_acoustics.</span></span><span class="sig-name descname"><span class="pre">reverb_time</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">signal</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mode</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'T20'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dsptoolbox.room_acoustics.reverb_time" title="Permalink to this definition">#</a></dt>
 <dd><p>Computes reverberation time. T20, T30, T60 and EDT.</p>
 <dl class="field-list">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -294,7 +292,8 @@ the magnitude response. Default: <cite>False</cite>.</p>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><dl>
-<dt><strong>reverberation_times</strong><span class="classifier"><cite>np.ndarray</cite></span></dt><dd><p>Reverberation times for each channel.</p>
+<dt><strong>reverberation_times</strong><span class="classifier"><cite>np.ndarray</cite></span></dt><dd><p>Reverberation times for each channel. Shape (band, channel)
+if MultiBandSignal object is passed.</p>
 </dd>
 </dl>
 </dd>

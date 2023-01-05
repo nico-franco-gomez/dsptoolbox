@@ -12,7 +12,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "dsptoolbox"
-version = "0.0.2"
+dynamic = ["version"]
 license = "MIT"
 authors = [
   { name="Nicolas Franco-Gomez" },
@@ -61,3 +61,6 @@ dependencies = [
   "twine",
   "hatch",
 ]
+
+[tool.hatch.version]
+path = "dsptoolbox/__init__.py"

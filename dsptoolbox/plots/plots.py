@@ -51,6 +51,10 @@ def general_plot(x, matrix, range_x=None, range_y=None, log: bool = True,
 
     """
     fig, ax = plt.subplots(1, 1, figsize=(8, 5))
+    if matrix.ndim == 1:
+        matrix = matrix[..., None]
+    elif matrix.ndim > 2:
+        raise ValueError('Only 2D-arrays are supported')
     for n in range(matrix.shape[1]):
         if labels is not None:
             ax.plot(x, matrix[:, n], label=labels[n])
@@ -124,6 +128,10 @@ def general_subplots_line(x, matrix, column: bool = True,
         Returned only when `returns=True`.
 
     """
+    if matrix.ndim == 1:
+        matrix = matrix[..., None]
+    elif matrix.ndim > 2:
+        raise ValueError('Unsupported dimension. Matrix must be a 2D-array')
     number_of_channels = matrix.shape[1]
     if column:
         fig, ax = plt.subplots(number_of_channels, 1, sharex=sharex,
@@ -202,6 +210,8 @@ def general_matrix_plot(matrix, range_x=None, range_y=None, range_z=None,
         Returned only when `returns=True`.
 
     """
+    assert matrix.ndim == 2, \
+        'Only 2D-arrays are supported for this plot type'
     extent = None
     if range_x is not None:
         assert range_y is not None, 'When x range is given, y range is ' +\

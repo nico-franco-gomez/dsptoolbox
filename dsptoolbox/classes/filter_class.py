@@ -73,7 +73,7 @@ class Filter():
         For `biquad`:
             eq_type, freqs, gain, q, filter_id (optional).
             gain (float): in dB.
-            eq_type (int or str): 0 = Bell/Peaking, 1 = Lowpass, 2 = Highpass,
+            eq_type (int or str): 0 = Peaking, 1 = Lowpass, 2 = Highpass,
                 3 = Bandpass skirt, 4 = Bandpass peak, 5 = Notch, 6 = Allpass,
                 7 = Lowshelf, 8 = Highshelf.
 
@@ -120,13 +120,13 @@ class Filter():
 
     @property
     def sampling_rate_hz(self):
-        return self._sampling_rate_hz
+        return self.__sampling_rate_hz
 
     @sampling_rate_hz.setter
     def sampling_rate_hz(self, new_sampling_rate_hz):
         assert type(new_sampling_rate_hz) == int, \
             'Sampling rate can only be an integer'
-        self._sampling_rate_hz = new_sampling_rate_hz
+        self.__sampling_rate_hz = new_sampling_rate_hz
 
     # ======== Filtering ======================================================
     def filter_signal(self, signal: Signal, channel=None,
@@ -234,7 +234,7 @@ class Filter():
             filter_configuration['eq_type'] = \
                 _get_biquad_type(filter_configuration['eq_type']).capitalize()
             self.sos = sig.tf2sos(ba[0], ba[1])
-            filter_configuration['order'] = max(len(ba[0]), len(ba[1]))
+            filter_configuration['order'] = max(len(ba[0]), len(ba[1])) - 1
         else:
             assert ('ba' in filter_configuration) ^ \
                 ('sos' in filter_configuration) ^ \
@@ -246,14 +246,14 @@ class Filter():
                 if len(self.ba[0]) < 10 and len(self.ba[1]) < 10:
                     self.sos = sig.tf2sos(self.ba[0], self.ba[1])
                 filter_configuration['order'] = \
-                    max(len(self.ba[0]), len(self.ba[1]))
+                    max(len(self.ba[0]), len(self.ba[1])) - 1
             if ('zpk' in filter_configuration):
                 z, p, k = filter_configuration['zpk']
                 self.sos = sig.zpk2sos(z, p, k)
-                filter_configuration['order'] = len(self.sos)*2
+                filter_configuration['order'] = len(self.sos)*2 - 1
             if ('sos' in filter_configuration):
                 self.sos = filter_configuration['sos']
-                filter_configuration['order'] = len(self.sos)*2
+                filter_configuration['order'] = len(self.sos)*2 - 1
         self.info = filter_configuration
         self.info['sampling_rate_hz'] = self.sampling_rate_hz
         self.info['filter_type'] = filter_type

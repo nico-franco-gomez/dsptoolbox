@@ -7,6 +7,8 @@ import os
 import sys
 sys.path.insert(0, os.path.abspath('..'))
 
+from dsptoolbox import __version__
+
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
@@ -14,8 +16,8 @@ project = 'dsptoolbox'
 copyright = '2022, Nicolas Franco-Gomez'
 author = 'Nicolas Franco-Gomez'
 
-release = '0.0.2'
-version = '0.0.2'
+release = __version__
+version = __version__
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration

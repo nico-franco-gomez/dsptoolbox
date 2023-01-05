@@ -89,18 +89,51 @@ def _calculate_window(points, window_length: int,
 
 def _get_normalized_spectrum(f, spectra: np.ndarray, mode='standard',
                              f_range_hz=[20, 20000], normalize: str = None,
-                             phase=False, smoothe: int = 0):
+                             smoothe: int = 0, phase=False):
     """This function gives a normalized magnitude spectrum with frequency
     vector for a given range. It is also smoothed. Use `None` for the
     spectrum without f_range_hz.
 
+    Parameters
+    ----------
+    f : `np.ndarray`
+        Frequency vector.
+    spectra : `np.ndarray`
+        Spectrum matrix.
+    mode : str, optional
+        Mode of spectrum, needed for factor in dB respresentation.
+        Choose from `'standard'` or `'welch'`. Default: `'standard'`.
+    f_range_hz : array-like with length 2
+        Range of frequencies to get the normalized spectrum back.
+        Default: [20, 20e3].
+    normalize : str, optional
+        Normalize spectrum (per channel). Choose from `'1k'` (for 1 kHz),
+        `'max'` (maximum value) or `None` for no normalization.
+        Default: `None`.
+    smoothe : int, optional
+        1/smoothe-fractional octave band smoothing for magnitude spectra.
+        Pass `0` for no smoothing.
+        Default: 0.
+    phase : bool, optional
+        When `True`, phase spectra are also returned. Default: `False`.
+
+    Returns
+    -------
+    f : `np.ndarray`
+        Frequency vector.
+    mag_spectra : `np.ndarray`
+        Magnitude spectrum matrix.
+    phase_spectra : `np.ndarray`
+        Phase spectrum matrix, only returned when `phase=True`.
+
     """
     if normalize is not None:
-        assert normalize in ('1k', 'np.max'), \
+        normalize = normalize.lower()
+        assert normalize in ('1k', 'max'), \
             f'{normalize} is not a valid normalization mode. Please use ' +\
-            '1k or np.max'
+            '1k or max'
     # Shaping
-    if len(spectra.shape) < 2:
+    if spectra.ndim < 2:
         spectra = spectra[..., None]
     # Check for complex spectrum if phase is required
     if phase:
@@ -345,7 +378,7 @@ def _fractional_octave_smoothing(vector: np.ndarray, num_fractions: int = 3,
     -------
     vec_final : `np.ndarray`
         Vector after smoothing.
-    
+
     References
     ----------
     - Tylka, Joseph & Boren, Braxton & Choueiri, Edgar. (2017). A Generalized

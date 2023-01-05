@@ -1,7 +1,7 @@
-Measure (dsptoolbox.measure)
+Audio IO (dsptoolbox.audio_io)
 ==============================
 
-.. automodule:: dsptoolbox.measure
+.. automodule:: dsptoolbox.audio_io
    :members:
    :undoc-members:
    :show-inheritance:
