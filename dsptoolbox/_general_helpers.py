@@ -156,7 +156,7 @@ def _get_normalized_spectrum(f, spectra: np.ndarray, mode='standard',
         id2 = ids[1]+1  # Contains endpoint
     else:
         id1 = 0
-        id2 = -1
+        id2 = len(f)
 
     mag_spectra = np.zeros((id2-id1, spectra.shape[1]))
     phase_spectra = np.zeros_like(mag_spectra)
@@ -238,7 +238,7 @@ def _compute_number_frames(window_length: int, step: int, signal_length: int):
     window_length : int
         Length of the window to be used.
     step : int
-        Step size in samples. It is defined as window_length - overlap.
+        Step size in samples. It is defined as `window_length - overlap`.
     signal_length : int
         Total signal length.
 
@@ -331,7 +331,15 @@ def _fade(s: np.ndarray, length_seconds: float = 0.1, mode: str = 'exp',
     l_samples = int(length_seconds * sampling_rate_hz)
     assert len(s) > l_samples, \
         'Signal is shorter than the desired fade'
-    assert len(s.shape) == 1, 'The fade only takes 1d-arrays'
+    single_vec = False
+    if s.ndim == 1:
+        s = s[..., None]
+        single_vec = True
+    elif s.ndim == 0:
+        raise ValueError('Fading can only be applied to vectors, not scalars')
+    else:
+        assert s.ndim == 2, \
+            'Fade only supports 1D and 2D vectors'
 
     if mode == 'exp':
         db = np.linspace(-100, 0, l_samples)
@@ -343,10 +351,12 @@ def _fade(s: np.ndarray, length_seconds: float = 0.1, mode: str = 'exp',
         fade = 10**(db/20)
         fade = 1 - np.flip(fade)
     if not at_start:
-        s = np.flip(s)
-    s[:l_samples] *= fade
+        s = np.flip(s, axis=0)
+    s[:l_samples, :] *= fade[..., None]
     if not at_start:
-        s = np.flip(s)
+        s = np.flip(s, axis=0)
+    if single_vec:
+        s = s.squeeze()
     return s
 
 
@@ -438,3 +448,48 @@ def _fractional_octave_smoothing(vector: np.ndarray, num_fractions: int = 3,
     if one_dim:
         vec_final = vec_final.squeeze()
     return vec_final
+
+
+def _frequency_weightning(f: np.ndarray, weightning_mode: str = 'a',
+                          db_output: bool = True):
+    """Returns the weights for frequency-weightning.
+
+    Parameters
+    ----------
+    f : `np.ndarray`
+        Frequency vector.
+    weightning_mode : str, optional
+        Type of weightning. Choose from `'a'` or `'c'`. Default: `'a'`.
+    db_output : str, optional
+        When `True`, output is given in dB. Default: `True`.
+
+    Returns
+    -------
+    weights : `np.ndarray`
+        Weightning values.
+
+    References
+    ----------
+    - https://en.wikipedia.org/wiki/A-weighting
+
+    """
+    f = np.squeeze(f)
+    assert f.ndim == 1, \
+        'Frequency must be a 1D-array'
+    weightning_mode = weightning_mode.lower()
+    assert weightning_mode in ('a', 'c'), \
+        'weightning_mode must be a or c'
+
+    ind1k = np.argmin(np.abs(f - 1e3))
+
+    if weightning_mode == 'a':
+        weights = 12194**2*f**4 / \
+            ((f**2 + 20.6**2) *
+             np.sqrt((f**2 + 107.7**2) * (f**2 + 737.9**2)) *
+             (f**2 + 12194**2))
+    else:
+        weights = 12194**2 * f**2 / ((f**2 + 20.6**2) * (f**2 + 12194**2))
+    weights /= weights[ind1k]
+    if db_output:
+        weights = 20*np.log10(weights)
+    return weights

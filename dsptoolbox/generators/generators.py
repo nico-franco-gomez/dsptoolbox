@@ -5,20 +5,22 @@ used
 """
 import numpy as np
 from dsptoolbox.classes.signal_class import Signal
-from dsptoolbox._general_helpers import _normalize, _fade, _pad_trim
+from dsptoolbox._general_helpers import (
+    _normalize, _fade, _pad_trim, _frequency_weightning)
 from dsptoolbox.classes._filter import _impulse
 
 
 def noise(type_of_noise: str = 'white', length_seconds: float = 1,
           sampling_rate_hz: int = 48000, peak_level_dbfs: float = -10,
           number_of_channels: int = 1, fade: str = 'log',
-          padding_end_seconds: float = None):
+          padding_end_seconds: float = None) -> Signal:
     """Creates a noise signal.
 
     Parameters
     ----------
     type_of_noise : str, optional
-        Choose from `'white'`, `'pink'`, `'red'`, `'blue'`, `'violet'`.
+        Choose from `'white'`, `'pink'`, `'red'`, `'blue'`, `'violet'` or
+        `'grey'`.
         Default: `'white'`.
     length_seconds : float, optional
         Length of the generated signal in seconds. Default: 1.
@@ -30,15 +32,17 @@ def noise(type_of_noise: str = 'white', length_seconds: float = 1,
         Number of channels (with different noise signals) to be created.
         Default: 1.
     fade : str, optional
-        Type of fade done on the generated signal. Options are `'exp'`,
-        `'lin'`, `'log'`. Pass `None` for no fading. Default: `'log'`.
+        Type of fade done on the generated signal. By default, 10% of signal
+        length (without the padding in the end) is faded at the beginning and
+        end. Options are `'exp'`, `'lin'`, `'log'`.
+        Pass `None` for no fading. Default: `'log'`.
     padding_end_seconds : float, optional
         Padding at the end of signal. Use `None` to avoid any padding.
         Default: `None`.
 
     Returns
     -------
-    noise_sig : Signal
+    noise_sig : `Signal`
         Noise Signal object.
 
     References
@@ -47,10 +51,9 @@ def noise(type_of_noise: str = 'white', length_seconds: float = 1,
 
     """
     valid_noises = ('white', 'pink', 'red', 'blue', 'violet', 'grey')
-    valid_noises = (n.casefold() for n in valid_noises)
-    assert type_of_noise.casefold() in valid_noises, \
+    type_of_noise = type_of_noise.lower()
+    assert type_of_noise in valid_noises, \
         f'{type_of_noise} is not valid'
-    type_of_noise = type_of_noise.casefold()
     assert length_seconds > 0, 'Length has to be positive'
     assert peak_level_dbfs <= 0, 'Peak level cannot surpass 0 dBFS'
     assert number_of_channels >= 1, 'At least one channel should be generated'
@@ -70,14 +73,21 @@ def noise(type_of_noise: str = 'white', length_seconds: float = 1,
         mag = np.ones(len(f)) + np.random.normal(0, 0.025, len(f))
         mag[0] = 0
         ph = np.random.uniform(-np.pi, np.pi, len(f))
-        if type_of_noise == 'pink'.casefold():
+        if type_of_noise == 'pink':
             mag[1:] /= f[1:]
-        elif type_of_noise == 'red'.casefold():
+        elif type_of_noise == 'red':
             mag[1:] /= (f[1:]**2)
-        elif type_of_noise == 'blue'.casefold():
+        elif type_of_noise == 'blue':
             mag[1:] *= f[1:]
-        elif type_of_noise == 'violet'.casefold():
+        elif type_of_noise == 'violet':
             mag[1:] *= (f[1:]**2)
+        elif type_of_noise == 'grey':
+            # Set to 15 Hz to cover whole audible spectrum but without
+            # numerical instabilities because of large values in lower
+            # frequencies
+            id_low = np.argmin(np.abs(f - 15))
+            w = _frequency_weightning(f, 'a', db_output=False)
+            mag[id_low:] /= w[id_low:]
         vec = _normalize(np.fft.irfft(mag*np.exp(1j*ph)),
                          dbfs=peak_level_dbfs, mode='peak')
         if fade is not None:
@@ -97,7 +107,7 @@ def noise(type_of_noise: str = 'white', length_seconds: float = 1,
 def chirp(type_of_chirp: str = 'log', range_hz=None, length_seconds: float = 1,
           sampling_rate_hz: int = 48000, peak_level_dbfs: float = -10,
           number_of_channels: int = 1, fade: str = 'log',
-          padding_end_seconds: float = None):
+          padding_end_seconds: float = None) -> Signal:
     """Creates a sweep signal.
 
     Parameters
@@ -117,15 +127,17 @@ def chirp(type_of_chirp: str = 'log', range_hz=None, length_seconds: float = 1,
     number_of_channels : int, optional
         Number of channels (with the same chirp) to be created. Default: 1.
     fade : str, optional
-        Type of fade done on the generated signal. Options are `'exp'`,
-        `'lin'`, `'log'`. Pass `None` for no fading. Default: `'log'`.
+        Type of fade done on the generated signal. By default, 10% of signal
+        length (without the padding in the end) is faded at the beginning and
+        end. Options are `'exp'`, `'lin'`, `'log'`.
+        Pass `None` for no fading. Default: `'log'`.
     padding_end_seconds : float, optional
         Padding at the end of signal. Use `None` to avoid any padding.
         Default: `None`.
 
     Returns
     -------
-    chirp_sig : Signal
+    chirp_sig : `Signal`
         Chirp Signal object.
 
     References
@@ -157,26 +169,26 @@ def chirp(type_of_chirp: str = 'log', range_hz=None, length_seconds: float = 1,
     if type_of_chirp == 'lin':
         k = (range_hz[1]-range_hz[0])/length_seconds
         freqs = (range_hz[0] + k/2*t)*2*np.pi
-        chirp = np.sin(freqs*t)
+        chirp_td = np.sin(freqs*t)
     elif type_of_chirp == 'log':
         k = np.exp((np.log(range_hz[1])-np.log(range_hz[0]))/length_seconds)
-        chirp = \
+        chirp_td = \
             np.sin(2*np.pi*range_hz[0]/np.log(k)*(k**t-1))
-    chirp = _normalize(chirp, peak_level_dbfs, mode='peak')
+    chirp_td = _normalize(chirp_td, peak_level_dbfs, mode='peak')
 
     if fade is not None:
         fade_length = 0.05 * length_seconds
-        chirp = _fade(s=chirp, length_seconds=fade_length, mode=fade,
-                      sampling_rate_hz=sampling_rate_hz, at_start=True)
-        chirp = _fade(s=chirp, length_seconds=fade_length, mode=fade,
-                      sampling_rate_hz=sampling_rate_hz, at_start=False)
+        chirp_td = _fade(s=chirp_td, length_seconds=fade_length, mode=fade,
+                         sampling_rate_hz=sampling_rate_hz, at_start=True)
+        chirp_td = _fade(s=chirp_td, length_seconds=fade_length, mode=fade,
+                         sampling_rate_hz=sampling_rate_hz, at_start=False)
 
-    chirp = _pad_trim(chirp, l_samples+p_samples)
+    chirp_td = _pad_trim(chirp_td, l_samples+p_samples)
 
-    chirp_n = chirp[..., None]
+    chirp_n = chirp_td[..., None]
     if number_of_channels != 1:
-        for n in range(number_of_channels):
-            chirp_n = np.append(chirp_n, chirp[..., None], axis=1)
+        for n in range(1, number_of_channels):
+            chirp_n = np.append(chirp_n, chirp_td[..., None], axis=1)
     # Signal
     chirp_sig = Signal(None, chirp_n, sampling_rate_hz,
                        signal_type='chirp', signal_id=type_of_chirp)
@@ -184,7 +196,7 @@ def chirp(type_of_chirp: str = 'log', range_hz=None, length_seconds: float = 1,
 
 
 def dirac(length_samples: int = 512, number_of_channels: int = 1,
-          sampling_rate_hz: int = 48000):
+          sampling_rate_hz: int = 48000) -> Signal:
     """Generates a dirac impulse Signal with the specified length and
     sampling rate.
 
@@ -199,7 +211,7 @@ def dirac(length_samples: int = 512, number_of_channels: int = 1,
 
     Returns
     -------
-    imp : Signal
+    imp : `Signal`
         Signal with dirac impulse.
 
     """
@@ -211,3 +223,79 @@ def dirac(length_samples: int = 512, number_of_channels: int = 1,
         td[:, n] = _impulse(length_samples=length_samples)
     imp = Signal(None, td, sampling_rate_hz, signal_type='dirac')
     return imp
+
+
+def sinus(frequency_hz: float = 1000, length_seconds: float = 1,
+          sampling_rate_hz: int = 48000, peak_level_dbfs: float = -10,
+          number_of_channels: int = 1, uncorrelated: bool = False,
+          fade: str = 'log', padding_end_seconds: float = None) -> Signal:
+    """Creates a multi-channel sinus tone.
+
+    Parameters
+    ----------
+    frequency_hz : float, optional
+        Frequency (in Hz) for the sinus tone. Default: 1000.
+    length_seconds : float, optional
+        Length of the generated signal in seconds. Default: 1.
+    sampling_rate_hz : int, optional
+        Sampling rate in Hz. Default: 48000.
+    peak_level_dbfs : float, optional
+        Peak level of the signal in dBFS. Default: -10.
+    number_of_channels : int, optional
+        Number of channels (with the same chirp) to be created. Default: 1.
+    uncorrelated : bool, optional
+        When `True`, each tone gets a random phase shift so that the signals
+        are not perfectly correlated. Default: `False`.
+    fade : str, optional
+        Type of fade done on the generated signal. By default, 10% of signal
+        length (without the padding in the end) is faded at the beginning and
+        end. Options are `'exp'`, `'lin'`, `'log'`.
+        Pass `None` for no fading. Default: `'log'`.
+    padding_end_seconds : float, optional
+        Padding at the end of signal. Use `None` to avoid any padding.
+        Default: `None`.
+
+    Returns
+    -------
+    sinus_sig : `Signal`
+        Sinus tone signal.
+
+    """
+    assert frequency_hz < sampling_rate_hz//2, \
+        'Frequency must be beneath nyquist frequency'
+    assert frequency_hz > 0, \
+        'Frequency must be bigger than 0'
+
+    if padding_end_seconds is not None:
+        p_samples = int(padding_end_seconds * sampling_rate_hz)
+    else:
+        p_samples = 0
+    l_samples = int(sampling_rate_hz * length_seconds)
+    n_vec = np.arange(l_samples)
+
+    td = np.empty((l_samples, number_of_channels))
+    for n in range(number_of_channels):
+        if uncorrelated:
+            phase_shift = np.random.uniform(-np.pi, np.pi)
+        else:
+            phase_shift = 0
+        td[:, n] = np.sin(
+            frequency_hz / sampling_rate_hz * 2 * np.pi * n_vec + phase_shift)
+
+    td = _normalize(td, peak_level_dbfs, mode='peak')
+
+    if fade is not None:
+        fade_length = 0.05 * length_seconds
+        td = _fade(
+            s=td, length_seconds=fade_length, mode=fade,
+            sampling_rate_hz=sampling_rate_hz, at_start=True)
+        td = _fade(
+            s=td, length_seconds=fade_length, mode=fade,
+            sampling_rate_hz=sampling_rate_hz, at_start=False)
+
+    td = _pad_trim(td, l_samples+p_samples)
+
+    # Signal
+    sinus_sig = Signal(None, td, sampling_rate_hz,
+                       signal_type='general')
+    return sinus_sig

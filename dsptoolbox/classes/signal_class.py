@@ -29,8 +29,8 @@ class Signal():
     def __init__(self, path: str = None, time_data=None,
                  sampling_rate_hz: int = 48000, signal_type: str = 'general',
                  signal_id: str = ''):
-        """Signal class that saves mainly time data for being used with all the
-        methods.
+        """Signal class that saves time data, channel and sampling rate
+        information as well as spectrum, cross-spectral matrix and more.
 
         Parameters
         ----------
@@ -128,11 +128,12 @@ class Signal():
 
     # ======== Properties and setters =========================================
     @property
-    def time_data(self):
+    def time_data(self) -> np.ndarray:
         return self.__time_data.copy()
 
     @time_data.setter
     def time_data(self, new_time_data):
+        # Shape of Time Data array
         if not type(new_time_data) == np.ndarray:
             new_time_data = np.array(new_time_data)
         assert len(new_time_data.shape) <= 2, \
@@ -141,19 +142,38 @@ class Signal():
             ' be [time samples, channels]'
         if len(new_time_data.shape) < 2:
             new_time_data = new_time_data[..., None]
+
+        # Assume always that there are more time samples than channels
         if new_time_data.shape[1] > new_time_data.shape[0]:
             new_time_data = new_time_data.T
+
+        # Handle complex data
+        if np.iscomplexobj(new_time_data):
+            new_time_data_imag = np.imag(new_time_data)
+            new_time_data = np.real(new_time_data)
+        else:
+            new_time_data_imag = None
+
+        # Normalization for real time data
         time_data_max = np.max(np.abs(new_time_data))
         if time_data_max > 1:
             new_time_data /= time_data_max
             warn('Signal was over 0 dBFS, normalizing to 0 dBFS ' +
                  'peak level was triggered')
+            # Imaginary part is also scaled by same factor as real part
+            if new_time_data_imag is not None:
+                new_time_data_imag /= time_data_max
+
+        # Set time data (real and imaginary)
         self.__time_data = new_time_data
+        self.time_data_imaginary = new_time_data_imag
+
+        # Set number of channels
         self.number_of_channels = new_time_data.shape[1]
         self.__update_state()
 
     @property
-    def sampling_rate_hz(self):
+    def sampling_rate_hz(self) -> int:
         return self.__sampling_rate_hz
 
     @sampling_rate_hz.setter
@@ -163,7 +183,7 @@ class Signal():
         self.__sampling_rate_hz = new_sampling_rate_hz
 
     @property
-    def signal_type(self):
+    def signal_type(self) -> str:
         return self.__signal_type
 
     @signal_type.setter
@@ -173,7 +193,7 @@ class Signal():
         self.__signal_type = new_signal_type.lower()
 
     @property
-    def signal_id(self):
+    def signal_id(self) -> str:
         return self.__signal_id
 
     @signal_id.setter
@@ -183,7 +203,7 @@ class Signal():
         self.__signal_id = new_signal_id.lower()
 
     @property
-    def number_of_channels(self):
+    def number_of_channels(self) -> int:
         return self.__number_of_channels
 
     @number_of_channels.setter
@@ -195,10 +215,24 @@ class Signal():
         self.__number_of_channels = new_number
 
     @property
-    def time_vector_s(self):
+    def time_vector_s(self) -> np.ndarray:
         if self.__time_vector_update:
             self._generate_time_vector()
         return self.__time_vector_s
+
+    @property
+    def time_data_imaginary(self) -> np.ndarray | None:
+        if self.__time_data_imaginary is None:
+            warn('Imaginary part of time data was called, but there is ' +
+                 'None. None is returned.')
+        return self.__time_data_imaginary
+
+    @time_data_imaginary.setter
+    def time_data_imaginary(self, new_imag: np.ndarray):
+        if new_imag is not None:
+            assert new_imag.shape == self.__time_data.shape, \
+                'Shape of imaginary part time data does not match'
+        self.__time_data_imaginary = new_imag
 
     def set_spectrum_parameters(self, method='welch', smoothe: int = 0,
                                 window_length_samples: int = 1024,
@@ -484,15 +518,17 @@ class Signal():
         """
         new_order = np.array(new_order).squeeze()
         assert new_order.ndim == 1, \
-            'Too many dimensions are given in the new arrangement vector'
+            'Too many or too few dimensions are given in the new ' +\
+            'arrangement vector'
         assert self.number_of_channels == len(new_order), \
             'The number of channels does not match'
         assert all(new_order < self.number_of_channels) \
             and all(new_order >= 0), \
             'Indexes of new channels have to be in ' +\
-            f'[0 and {self.number_of_channels-1}]'
+            f'[0, {self.number_of_channels-1}]'
+        assert len(np.unique(new_order)) == len(new_order), \
+            'There are repeated indexes in the new order vector'
         self.time_data = self.time_data[:, new_order]
-        self.__update_state()
 
     def get_channels(self, channels):
         """Returns a signal object with the selected channels.
@@ -509,11 +545,14 @@ class Signal():
             New signal object with selected channels.
 
         """
-        channels = np.array(channels).squeeze()
+        channels = np.atleast_1d(np.asarray(channels).squeeze())
         if channels.ndim > 1:
             raise ValueError(
                 'Parameter channels must be only an object broadcastable to ' +
                 '1D Array')
+        assert all(channels < self.number_of_channels), \
+            'Indexes of new channels have to be smaller than the number ' +\
+            f'of channels {self.number_of_channels}'
         new_sig = self.copy()
         new_sig.time_data = self.time_data[:, channels]
         return new_sig
@@ -545,7 +584,7 @@ class Signal():
                         (self.
                          _spectrum_parameters
                          ['window_length_samples'] // 2 + 1,
-                         self.number_of_channels))
+                         self.number_of_channels), dtype='cfloat')
                 for n in range(self.number_of_channels):
                     spectrum[:, n] = \
                         _welch(self.time_data[:, n],
@@ -670,19 +709,6 @@ class Signal():
             'There is no coherence data saved in the Signal object'
         f, _ = self.get_spectrum()
         return f, self.coherence
-
-    # def get_time_vector(self):
-    #     """Returns the time vector associated with the signal.
-
-    #     Returns
-    #     -------
-    #     time_vector_s : `np.ndarray`
-    #         Time vector in seconds.
-
-    #     """
-    #     if not hasattr(self, 'time_vector_s'):
-    #         self._generate_time_vector()
-    #     return self.time_vector_s
 
     # ======== Plots ==========================================================
     def plot_magnitude(self, range_hz=[20, 20e3], normalize: str = '1k',
@@ -920,7 +946,7 @@ class Signal():
             f, sp = self.get_spectrum()
             ph = np.angle(sp)
             if unwrap:
-                ph = unwrap(ph, axis=0)
+                ph = np.unwrap(ph, axis=0)
             fig, ax = general_plot(
                 x=f,
                 matrix=ph,
@@ -1034,11 +1060,13 @@ class Signal():
             Position (in samples) for starting the stream. Default: 0.
 
         """
-        assert self.time_data.shape[0] - position_samples > 0, \
-            'Position is beyond scope of the signal'
+        stop_flag = False
+        if self.time_data.shape[0] - position_samples < 0:
+            stop_flag = True
         assert type(position_samples) == int, \
             'Position must be in samples and thus an integer'
         self.streaming_position = position_samples
+        return stop_flag
 
     def stream_samples(self, blocksize_samples: int, signal_mode: bool = True):
         """Returns block of samples to be reproduced in an audio stream. Use
@@ -1057,14 +1085,17 @@ class Signal():
         sig : `np.ndarray` or `Signal`
             Numpy array with samples used for reproduction with shape
             (time_samples, channels) or `Signal` object.
+        stop_flag : bool
+            When `True`, all samples of the available signal have been
+            reproduced and the stream should be stopped.
 
         """
         if not hasattr(self, 'streaming_position'):
-            self.set_streaming_position()
+            stop_flag = self.set_streaming_position()
         sig = self.time_data[
             self.streaming_position:self.streaming_position +
             blocksize_samples, :].copy()
-        self.set_streaming_position(
+        stop_flag = self.set_streaming_position(
             self.streaming_position + blocksize_samples)
         if signal_mode:
             sig = Signal(
@@ -1073,5 +1104,4 @@ class Signal():
             # In an audio stream, welch's method for acquiring a spectrum
             # is not very logical...
             sig.set_spectrum_parameters(method='standard')
-            return sig
-        return sig
+        return sig, stop_flag

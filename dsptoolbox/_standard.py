@@ -160,7 +160,7 @@ def _group_delay_direct(phase: np.ndarray, delta_f: float = 1):
     -------
     gd : `np.ndarray`
         Group delay vector either in s or in samples if no
-        sampling rate is given.
+        frequency step is given.
 
     """
     if np.iscomplexobj(phase):
@@ -172,29 +172,29 @@ def _group_delay_direct(phase: np.ndarray, delta_f: float = 1):
     return gd
 
 
-def _minimal_phase(magnitude: np.ndarray, unwrapped: bool = True):
-    """Computes minimal phase from magnitude spectrum.
+def _minimum_phase(magnitude: np.ndarray, unwrapped: bool = True):
+    """Computes minimum phase system from magnitude spectrum.
 
     Parameters
     ----------
     magnitude : `np.ndarray`
-        Spectrum for which to compute the minimal phase. If real, it is assumed
+        Spectrum for which to compute the minimum phase. If real, it is assumed
         to be already the magnitude.
     uwrapped : bool, optional
         If `True`, the unwrapped phase is given. Default: `True`.
 
     Returns
     -------
-    minimal_phase : `np.ndarray`
+    minimum_phase : `np.ndarray`
         Minimal phase of the system.
 
     """
     if np.iscomplexobj(magnitude):
-        magnitude = abs(magnitude)
-    minimal_phase = -np.imag(hilbert(np.log(magnitude)))
+        magnitude = np.abs(magnitude)
+    minimum_phase = -np.imag(hilbert(np.log(magnitude)))
     if not unwrapped:
-        minimal_phase = np.angle(np.exp(1j*minimal_phase))
-    return minimal_phase
+        minimum_phase = np.angle(np.exp(1j*minimum_phase))
+    return minimum_phase
 
 
 def _stft(x: np.ndarray, fs_hz: int, window_length_samples: int = 2048,

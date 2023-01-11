@@ -5,6 +5,7 @@ from os import sep
 from pickle import dump, HIGHEST_PROTOCOL
 from warnings import warn
 from copy import deepcopy
+import numpy as np
 
 import scipy.signal as sig
 from .signal_class import Signal
@@ -32,15 +33,18 @@ class Filter():
         Constructor
         -----------
         A dictionary containing the filter configuration parameters should
-        be passed. It is a wrapper around `scipy.signal.sig.iirfilter`,
-        `scipy.signal.sig.firwin` and `_biquad_coefficients`.
+        be passed. It is a wrapper around `scipy.signal.iirfilter`,
+        `scipy.signal.firwin` and `_biquad_coefficients`. See down below for
+        the parameters needed for creating the filters. Alternatively, you can
+        pass directly the filter coefficients while setting
+        `filter_type = 'other'`.
 
         Parameters
         ----------
         filter_type : str, optional
-            String defining the filter type. Options are `iir`, `fir`,
-            `biquad` or `other`. Default: creates a dummy biquad bell filter
-            with no gain.
+            String defining the filter type. Options are `'iir'`, `'fir'`,
+            `'biquad'` or `'other'`. Default: creates a dummy biquad bell
+            filter with no gain.
         filter_configuration : dict, optional
             Dictionary containing configuration for the filter.
             Default: some dummy parameters.
@@ -50,32 +54,43 @@ class Filter():
         Notes
         -----
         For `iir`:
-            order, freqs, type_of_pass, filter_design_method,
+            Keys: order, freqs, type_of_pass, filter_design_method,
             filter_id (optional).
-            freqs (float, array-like): array with len 2 when 'bandpass'
-                or 'bandstop'.
-            type_of_pass (str): 'bandpass', 'lowpass', 'highpass', 'bandstop'.
-            filter_design_method (str): 'butter', 'bessel', 'ellip', 'cheby1',
-                'cheby2'.
+
+            - order (int): Filter order
+            - freqs (float, array-like): array with len 2 when 'bandpass'
+              or 'bandstop'.
+            - type_of_pass (str): 'bandpass', 'lowpass', 'highpass',
+              'bandstop'.
+            - filter_design_method (str): 'butter', 'bessel', 'ellip',
+              'cheby1', 'cheby2'.
 
         For `fir`:
-            order, freqs, type_of_pass, filter_design_method (optional),
+            Keys: order, freqs, type_of_pass, filter_design_method (optional),
             width (optional, necessary for 'kaiser'), filter_id (optional).
-            filter_design_method (str): Window to be used. Default: 'hamming'.
-                Supported types are: 'boxcar', 'triang', 'blackman', 'hamming',
-                'hann', 'bartlett', 'flattop', 'parzen', 'bohman',
-                'blackmanharris', 'nuttall', 'barthann', 'cosine',
-                'exponential', 'tukey', 'taylor'.
-            width (float): estimated width of transition region in Hz for
-                kaiser window. Default: `None`.
-            type_of_pass (str): 'bandpass', 'lowpass', 'highpass', 'bandstop'.
+
+            - order (int): Filter order.
+            - freqs (float, array-like): array with len 2 when 'bandpass'
+              or 'bandstop'.
+            - type_of_pass (str): 'bandpass', 'lowpass', 'highpass',
+              'bandstop'.
+            - filter_design_method (str): Window to be used. Default:
+              'hamming'. Supported types are: 'boxcar', 'triang',
+              'blackman', 'hamming', 'hann', 'bartlett', 'flattop',
+              'parzen', 'bohman', 'blackmanharris', 'nuttall', 'barthann',
+              'cosine', 'exponential', 'tukey', 'taylor'.
+            - width (float): estimated width of transition region in Hz for
+              kaiser window. Default: `None`.
 
         For `biquad`:
-            eq_type, freqs, gain, q, filter_id (optional).
-            gain (float): in dB.
-            eq_type (int or str): 0 = Peaking, 1 = Lowpass, 2 = Highpass,
-                3 = Bandpass skirt, 4 = Bandpass peak, 5 = Notch, 6 = Allpass,
-                7 = Lowshelf, 8 = Highshelf.
+            Keys: eq_type, freqs, gain, q, filter_id (optional).
+
+            - eq_type (int or str): 0 = Peaking, 1 = Lowpass, 2 = Highpass,
+              3 = Bandpass skirt, 4 = Bandpass peak, 5 = Notch, 6 = Allpass,
+              7 = Lowshelf, 8 = Highshelf.
+            - freqs: float or array-like with length 2 (depending on eq_type).
+            - gain (float): in dB.
+            - q (float): Q-factor.
 
         For `other` or `general`:
             ba or sos or zpk, filter_id (optional).
@@ -91,6 +106,7 @@ class Filter():
             filter_signal.
 
         """
+        self.warning_if_complex = True
         self.sampling_rate_hz = sampling_rate_hz
         if filter_configuration is None:
             filter_configuration = \
@@ -112,10 +128,10 @@ class Filter():
         """
         self.zi = []
         if hasattr(self, 'sos'):
-            for n in range(number_of_channels):
+            for _ in range(number_of_channels):
                 self.zi.append(sig.sosfilt_zi(self.sos))
         else:
-            for n in range(number_of_channels):
+            for _ in range(number_of_channels):
                 self.zi.append(sig.lfilter_zi(self.ba[0], self.ba[1]))
 
     @property
@@ -128,9 +144,20 @@ class Filter():
             'Sampling rate can only be an integer'
         self.__sampling_rate_hz = new_sampling_rate_hz
 
+    @property
+    def warning_if_complex(self):
+        return self.__warning_if_complex
+
+    @warning_if_complex.setter
+    def warning_if_complex(self, new_warning):
+        assert type(new_warning) == bool, \
+            'This attribute must be of boolean type'
+        self.__warning_if_complex = new_warning
+
     # ======== Filtering ======================================================
-    def filter_signal(self, signal: Signal, channel=None,
-                      activate_zi: bool = False, zero_phase: bool = False):
+    def filter_signal(self, signal: Signal, channels=None,
+                      activate_zi: bool = False, zero_phase: bool = False) \
+            -> Signal:
         """Takes in a `Signal` object and filters selected channels. Exports a
         new `Signal` object.
 
@@ -138,7 +165,7 @@ class Filter():
         ----------
         signal : `Signal`
             Signal to be filtered.
-        channel : int or array-like, optional
+        channels : int or array-like, optional
             Channel or array of channels to be filtered. When `None`, all
             channels are filtered. Default: `None`.
         activate_zi : int, optional
@@ -153,36 +180,59 @@ class Filter():
             New Signal object.
 
         """
+        # Zero phase and zi
         assert not (activate_zi and zero_phase), \
             'Filter initial and final values cannot be updated when ' +\
             'filtering with zero-phase'
+        # Channels
+        if channels is None:
+            channels = np.arange(signal.number_of_channels)
+        else:
+            channels = np.squeeze(channels)
+            channels = np.atleast_1d(channels)
+            assert channels.ndim == 1, \
+                'channels can be only a 1D-array or an int'
+            assert all(channels < signal.number_of_channels),\
+                f'Selected channels ({channels}) are not valid for the ' +\
+                f'signal with {signal.number_of_channels} channels'
+
+        # Zi – create always for all channels and selected channels will get
+        # updated while filtering
         if activate_zi:
             if len(self.zi) != signal.number_of_channels:
-                # warn('zi values of the filter have not been correctly ' +
-                #      'intialized. They have now been started')
+                warn('zi values of the filter have not been correctly ' +
+                     'intialized for the number of channels. They have now' +
+                     ' been corrected')
                 self.initialize_zi(signal.number_of_channels)
             zi_old = self.zi
         else:
             zi_old = None
+
+        # Check filter length compared to signal
         if self.info['order'] > signal.time_data.shape[0]:
             warn('Filter is longer than signal, results might be ' +
                  'meaningless!')
+
+        # Filter with SOS when possible
         if hasattr(self, 'sos'):
             new_signal, zi_new = \
                 _filter_on_signal(
                     signal=signal,
                     sos=self.sos,
-                    channel=channel,
+                    channels=channels,
                     zi=zi_old,
-                    zero_phase=zero_phase)
+                    zero_phase=zero_phase,
+                    warning_on_complex_output=self.warning_if_complex)
         else:
+            # Filter with ba
             new_signal, zi_new = \
                 _filter_on_signal_ba(
                     signal=signal,
                     ba=self.ba,
-                    channel=channel,
+                    channels=channels,
                     zi=zi_old,
-                    zero_phase=zero_phase)
+                    zero_phase=zero_phase,
+                    warning_on_complex_output=self.warning_if_complex)
         if activate_zi:
             self.zi = zi_new
         return new_signal
@@ -208,13 +258,13 @@ class Filter():
                 filter_configuration['width'] = None
             # Filter creation
             self.ba = \
-                [sig.firwin(numtaps=filter_configuration['order'],
+                [sig.firwin(numtaps=filter_configuration['order']+1,
                             cutoff=filter_configuration['freqs'],
                             window=filter_configuration
                             ['filter_design_method'],
                             width=filter_configuration['width'],
                             pass_zero=filter_configuration['type_of_pass'],
-                            fs=self.sampling_rate_hz), [1]]
+                            fs=self.sampling_rate_hz), np.asarray([1])]
             if len(self.ba[0]) < 10 and len(self.ba[1]) < 10:
                 self.sos = sig.tf2sos(self.ba[0], self.ba[1])
         elif filter_type == 'biquad':
@@ -243,6 +293,7 @@ class Filter():
                 'should be passed to create a filter'
             if ('ba' in filter_configuration):
                 self.ba = filter_configuration['ba']
+                # Use SOS if order is less than 10
                 if len(self.ba[0]) < 10 and len(self.ba[1]) < 10:
                     self.sos = sig.tf2sos(self.ba[0], self.ba[1])
                 filter_configuration['order'] = \
@@ -321,7 +372,7 @@ class Filter():
             signal_type='ir')
         return ir_filt
 
-    def get_coefficients(self, mode='sos'):
+    def get_coefficients(self, mode: str = 'sos'):
         """Returns the filter coefficients.
 
         Parameters
@@ -337,11 +388,47 @@ class Filter():
 
         """
         if mode == 'sos':
-            coefficients = self.sos
+            if hasattr(self, 'sos'):
+                coefficients = self.sos
+            else:
+                if self.info['order'] > 500:
+                    inp = None
+                    while inp not in ('y', 'n'):
+                        inp = input(
+                            'This filter has a large order ' +
+                            f'''({self.info['order']}). Are you sure you ''' +
+                            'want to get sos? Computation might' +
+                            ' take long time. (y/n)')
+                        inp = inp.lower()
+                        if inp == 'y':
+                            break
+                        if inp == 'n':
+                            return None
+                coefficients = sig.tf2sos(self.ba[0], self.ba[1])
         elif mode == 'ba':
-            coefficients = sig.sos2tf(self.sos)
+            if hasattr(self, 'sos'):
+                coefficients = sig.sos2tf(self.sos)
+            else:
+                coefficients = self.ba
         elif mode == 'zpk':
-            coefficients = sig.sos2zpk(self.sos)
+            if hasattr(self, 'sos'):
+                coefficients = sig.sos2zpk(self.sos)
+            else:
+                # Check if filter is too long
+                if self.info['order'] > 500:
+                    inp = None
+                    while inp not in ('y', 'n'):
+                        inp = input(
+                            'This filter has a large order ' +
+                            f'''({self.info['order']}). Are you sure you ''' +
+                            'want to get zeros and poles? Computation might' +
+                            ' take long time. (y/n)')
+                        inp = inp.lower()
+                        if inp == 'y':
+                            break
+                        if inp == 'n':
+                            return None
+                coefficients = sig.tf2zpk(self.ba[0], self.ba[1])
         else:
             raise ValueError(f'{mode} is not valid. Use sos, ba or zpk')
         return coefficients
@@ -381,9 +468,14 @@ class Filter():
             Returned only when `returns=True`.
 
         """
+        if self.info['order'] > length_samples:
+            length_samples = self.info['order'] + 100
+            warn(f'length_samples ({length_samples}) is shorter than the ' +
+                 f'''filter order {self.info['order']}. Length will be ''' +
+                 'automatically extended.')
         ir = self.get_ir(length_samples=length_samples)
-        fig, ax = ir.plot_magnitude(range_hz, normalize, 0,
-                                    show_info_box=False, returns=True)
+        fig, ax = ir.plot_magnitude(
+            range_hz, normalize, show_info_box=False, returns=True)
         if show_info_box:
             txt = self._get_metadata_string()
             ax.text(0.1, 0.5, txt, transform=ax.transAxes,
@@ -416,6 +508,11 @@ class Filter():
             Returned only when `returns=True`.
 
         """
+        if self.info['order'] > length_samples:
+            length_samples = self.info['order'] + 100
+            warn(f'length_samples ({length_samples}) is shorter than the ' +
+                 f'''filter order {self.info['order']}. Length will be ''' +
+                 'automatically extended.')
         if hasattr(self, 'sos'):
             ba = sig.sos2tf(self.sos)
         else:
@@ -425,9 +522,9 @@ class Filter():
         gd *= 1e3
         ymax = None
         ymin = None
-        if any(abs(gd) > 20):
+        if any(abs(gd) > 50):
             ymin = -2
-            ymax = 20
+            ymax = 50
         fig, ax = general_plot(
             x=f,
             matrix=gd[..., None],
@@ -468,6 +565,11 @@ class Filter():
             Returned only when `returns=True`.
 
         """
+        if self.info['order'] > length_samples:
+            length_samples = self.info['order'] + 100
+            warn(f'length_samples ({length_samples}) is shorter than the ' +
+                 f'''filter order {self.info['order']}. Length will be ''' +
+                 'automatically extended.')
         ir = self.get_ir(length_samples=length_samples)
         fig, ax = ir.plot_phase(range_hz, unwrap, returns=True)
         if show_info_box:
@@ -494,6 +596,21 @@ class Filter():
             Returned only when `returns=True`.
 
         """
+        # Ask explicitely if filter is very long
+        if self.info['order'] > 500:
+            inp = None
+            while inp not in ('y', 'n'):
+                inp = input(
+                    'This filter has a large order ' +
+                    f'''({self.info['order']}). Are you sure you want to''' +
+                    ' plot zeros and poles? Computation might take long ' +
+                    'time. (y/n)')
+                inp = inp.lower()
+                if inp == 'y':
+                    break
+                if inp == 'n':
+                    return None
+        #
         if hasattr(self, 'sos'):
             z, p, k = sig.sos2zpk(self.sos)
         else:

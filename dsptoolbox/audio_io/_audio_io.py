@@ -2,14 +2,19 @@
 Backend for audio io module
 """
 from sounddevice import CallbackStop
-from dsptoolbox import Signal
+from dsptoolbox import Signal, normalize, fade
 from numpy import ndarray
 
 
 def standard_callback(signal: Signal):
-    """This is a standard callback that passes blocks of samples to an output
-    stream. The arguments are fixed and must match the expected signature
-    of the `sounddevice.OutputStream` object.
+    """This standard callback function takes in a signal and does
+    preprocessing (normalization and fade). After that, it returns a callback
+    valid for the `sounddevice.OutputStream`.
+
+    Parameters
+    ----------
+    signal : `Signal`
+        Signal to be played through the audio stream.
 
     Returns
     -------
@@ -17,9 +22,13 @@ def standard_callback(signal: Signal):
         Function to be used as callback for the output stream. The signature
         must be valid for sounddevice's callback::
 
-            call(outdata: ndarray, frames: int, time, status) -> None
+            call(outdata: np.ndarray, frames: int, time, status) -> None
 
     """
+    # Normalize
+    signal = normalize(signal)
+    # Fade in and fade out
+    signal = fade(signal, length_fade_seconds=signal.time_vector_s[-1]*0.05)
 
     def call(outdata: ndarray, frames: int, time, status) -> None:
         """Standard version of an audio callback with a signal object.
@@ -38,14 +47,10 @@ def standard_callback(signal: Signal):
         """
         if status:
             print(status)
-        # Out as a signal object
-        out = signal.stream_samples(frames)
-        # Cast to numpy array
-        out = out.time_data
-        chunksize = len(out)
-        if chunksize < frames:
-            outdata[:chunksize] = out
-            outdata[chunksize:] = 0
+        out, flag = signal.stream_samples(frames, signal_mode=False)
+        if flag:
+            outdata[:len(out)] = out
+            outdata[len(out):] = 0
             raise CallbackStop()
         outdata[:] = out
     return call

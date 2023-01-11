@@ -2,8 +2,9 @@
 Backend for filter class and general filtering functions.
 """
 import numpy as np
+from warnings import warn
 from enum import Enum
-from scipy.signal import sosfiltfilt, sosfilt, lfilter, filtfilt
+import scipy.signal as sig
 from .signal_class import Signal
 from .multibandsignal import MultiBandSignal
 
@@ -18,7 +19,9 @@ def _get_biquad_type(number: int = None, name: str = None):
                        'highshelf')
         name = name.lower()
         assert name in valid_names, f'{name} is not a valid name. Please ' +\
-            'select from the _biquad_coefficients'
+            '''select from the ('peaking', 'lowpass', 'highpass',
+            'bandpass_skirt', 'bandpass_peak', 'notch', 'allpass', 'lowshelf',
+            'highshelf')'''
 
     class biquad(Enum):
         peaking = 0
@@ -148,7 +151,7 @@ def _impulse(length_samples: int = 512):
 def _group_delay_filter(ba, length_samples: int = 512, fs_hz: int = 48000):
     """Computes group delay using the method in
     https://www.dsprelated.com/freebooks/filters/Phase_Group_Delay.html.
-    The implementation is mostly taken from scipy.signal.group_delay !
+    The implementation is mostly taken from `scipy.signal.group_delay` !
 
     Parameters
     ----------
@@ -186,8 +189,9 @@ def _group_delay_filter(ba, length_samples: int = 512, fs_hz: int = 48000):
     return f, gd
 
 
-def _filter_on_signal(signal: Signal, sos, channel=None,
-                      zi=None, zero_phase: bool = False):
+def _filter_on_signal(signal: Signal, sos, channels=None,
+                      zi=None, zero_phase: bool = False,
+                      warning_on_complex_output: bool = True):
     """Takes in a `Signal` object and filters selected channels. Exports a new
     `Signal` object.
 
@@ -197,7 +201,7 @@ def _filter_on_signal(signal: Signal, sos, channel=None,
         Signal to be filtered.
     sos : array-like
         SOS coefficients of filter.
-    channel : int or array-like, optional
+    channels : int or array-like, optional
         Channel or array of channels to be filtered. When `None`, all
         channels are filtered. Default: `None`.
     zi : array-like, optional
@@ -206,6 +210,9 @@ def _filter_on_signal(signal: Signal, sos, channel=None,
     zero_phase : bool, optional
         Uses zero-phase filtering on signal. Be aware that the filter
         is doubled in this case. Default: `False`.
+    warning_on_complex_output: bool, optional
+        When `True`, there is a warning when the output is complex. Either way,
+        only the real part is regarded. Default: `True`.
 
     Returns
     -------
@@ -213,36 +220,52 @@ def _filter_on_signal(signal: Signal, sos, channel=None,
         New Signal object.
 
     """
+    # Time Data
     new_time_data = signal.time_data
-    if channel is None:
-        channels = range(signal.number_of_channels)
+
+    # zi unpacking
+    if zi is not None:
+        zi = np.moveaxis(np.asarray(zi), 0, -1)
+
+    # Channels
+    if channels is None:
+        channels = np.arange(signal.number_of_channels)
+
+    # Filtering
+    if zi is not None:
+        y, zi[:, :, channels] = \
+            sig.sosfilt(
+                sos, signal.time_data[:, channels],
+                zi=zi[:, :, channels], axis=0)
     else:
-        if type(channel) == int:
-            channel = [channel]
-        assert all(channel < signal.number_of_channels),\
-            f'Selected channels ({channel}) are not valid for the signal'
-        channels = [int(i) for i in channel]
-    for ch in channels:
-        if zi is not None:
-            y, zi[ch] = \
-                sosfilt(
-                    sos, signal.time_data[:, ch], zi=zi[ch])
+        if zero_phase:
+            y = sig.sosfiltfilt(sos, signal.time_data[:, channels], axis=0)
         else:
-            if zero_phase:
-                y = sosfiltfilt(sos, signal.time_data[:, ch])
-            else:
-                y = sosfilt(sos, signal.time_data[:, ch])
-        new_time_data[:, ch] = y
+            y = sig.sosfilt(sos, signal.time_data[:, channels], axis=0)
+
+    # Cast to real if complex
+    if np.iscomplexobj(y):
+        if warning_on_complex_output:
+            warn('Filter output is complex. Imaginary part is saved in ' +
+                 'Signal as time_data_imaginary')
+        new_time_data = new_time_data.astype('cfloat')
+
+    # Create new signal
+    new_time_data[:, channels] = y
     new_signal = signal.copy()
     new_signal.time_data = new_time_data
+
+    # zi packing
     if zi is not None:
-        return new_signal, zi
-    else:
-        return new_signal, None
+        zi_new = []
+        for n in range(signal.number_of_channels):
+            zi_new.append(zi[:, :, n])
+    return new_signal, zi
 
 
-def _filter_on_signal_ba(signal: Signal, ba, channel=None,
-                         zi=None, zero_phase: bool = False):
+def _filter_on_signal_ba(signal: Signal, ba, channels=None,
+                         zi=None, zero_phase: bool = False,
+                         warning_on_complex_output: bool = True):
     """Takes in a `Signal` object and filters selected channels. Exports a new
     `Signal` object.
 
@@ -250,17 +273,22 @@ def _filter_on_signal_ba(signal: Signal, ba, channel=None,
     ----------
     signal : `Signal`
         Signal to be filtered.
-    ba : array-like
-        ba coefficients of filter.
-    channel : int or array-like, optional
+    ba : list
+        List with ba coefficients of filter. Form ba=[b, a] where b and a
+        are of type `np.ndarray`.
+    channels : array-like, optional
         Channel or array of channels to be filtered. When `None`, all
         channels are filtered. Default: `None`.
-    zi : array-like, optional
+    zi : list, optional
         When not `None`, the filter state values are updated after filtering.
+        They should be passed as a list with the zi 1D-arrays.
         Default: `None`.
     zero_phase : bool, optional
         Uses zero-phase filtering on signal. Be aware that the filter
         is doubled in this case. Default: `False`.
+    warning_on_complex_output: bool, optional
+        When `True`, there is a warning when the output is complex. Either way,
+        only the real part is regarded. Default: `True`.
 
     Returns
     -------
@@ -268,31 +296,59 @@ def _filter_on_signal_ba(signal: Signal, ba, channel=None,
         New Signal object.
 
     """
+    # Take lfilter function, might be a different one depending if filter is
+    # FIR or IIR
+    lfilter = sig.lfilter
+    # See if it is FIR Filter and normalize to a[0] = 1
+    ba[0] = np.atleast_1d(ba[0])
+    ba[1] = np.atleast_1d(np.asarray(ba[1]).squeeze())
+    if len(ba[1]) == 1:
+        ba[0] = np.asarray(ba[0]) / np.squeeze(ba[1])
+        ba[1] = 1
+        lfilter = _lfilter_fir
+
+    # Time Data
     new_time_data = signal.time_data
-    if channel is None:
-        channels = range(signal.number_of_channels)
+
+    # zi unpacking
+    if zi is not None:
+        zi = np.asarray(zi).T
+
+    # Channels
+    if channels is None:
+        channels = np.arange(signal.number_of_channels)
+
+    # Filtering
+    if zi is not None:
+        y, zi[:, channels] = lfilter(
+                ba[0], a=ba[1], x=signal.time_data[:, channels],
+                zi=zi[:, channels])
     else:
-        if type(channel) == int:
-            channel = [channel]
-        assert all(channel < signal.number_of_channels),\
-            f'Selected channels ({channel}) are not valid for the signal'
-        channels = [int(i) for i in channel]
-    for ch in channels:
-        if zi is not None:
-            y, zi[ch] = \
-                lfilter(ba[0], ba[1], x=signal.time_data[:, ch], zi=zi[ch])
+        if zero_phase:
+            y = sig.filtfilt(
+                b=ba[0], a=ba[1], x=signal.time_data[:, channels], axis=0)
         else:
-            if zero_phase:
-                y = filtfilt(ba[0], ba[1], x=signal.time_data[:, ch])
-            else:
-                y = lfilter(ba[0], ba[1], x=signal.time_data[:, ch])
-        new_time_data[:, ch] = y
+            y = lfilter(
+                ba[0], a=ba[1], x=signal.time_data[:, channels])
+
+    # Take only real part if output is complex
+    if np.iscomplexobj(y):
+        if warning_on_complex_output:
+            warn('Filter output is complex. Imaginary part is saved in ' +
+                 'Signal as time_data_imaginary')
+        new_time_data = new_time_data.astype('cfloat')
+
+    # Create new signal
+    new_time_data[:, channels] = y
     new_signal = signal.copy()
     new_signal.time_data = new_time_data
+
+    # zi packing
     if zi is not None:
-        return new_signal, zi
-    else:
-        return new_signal, None
+        zi_new = []
+        for n in range(zi.shape[1]):
+            zi_new.append(zi[:, n])
+    return new_signal, zi
 
 
 def _filterbank_on_signal(signal: Signal, filters, activate_zi: bool = False,
@@ -352,3 +408,47 @@ def _filterbank_on_signal(signal: Signal, filters, activate_zi: bool = False,
         out_sig = signal.copy()
         out_sig.time_data = new_time_data
     return out_sig
+
+
+def _lfilter_fir(b: np.ndarray, a: np.ndarray, x: np.ndarray,
+                 zi: np.ndarray = None):
+    """Variant to the `scipy.signal.lfilter` that uses `scipy.signal.convolve`
+    for filtering. The advantage of this is that the convolution will be
+    automatically made using fft or direct, depending on the inputs' sizes.
+    This is only used for FIR filters.
+
+    """
+    assert a == 1, \
+        f'{a} is not valid. It has to be 1 in order to be a valid FIR filter'
+
+    # b dimensions handling
+    if b.ndim != 1:
+        b = np.squeeze(b)
+        assert b.ndim == 1, \
+            'FIR Filters for audio must be 1D-arrays'
+
+    # Dimensions of zi and x must match
+    if zi is not None:
+        assert zi.ndim == x.ndim, \
+            'Vector to filter and initial values should have the same ' +\
+            'number of dimensions!'
+    if x.ndim < 2:
+        x = x[..., None]
+        if zi is not None:
+            zi = zi[..., None]
+    assert x.ndim == 2, \
+        'Filtering only works on 2D-arrays'
+
+    # Convolving
+    y = sig.convolve(x, b[..., None], mode='full')
+
+    # Use zi's and take zf's
+    if zi is not None:
+        y[:zi.shape[0], :] += zi
+        zf = y[-zi.shape[0]:, :]
+
+    # Trim output
+    y = y[:x.shape[0], :]
+    if zi is None:
+        return y
+    return y, zf

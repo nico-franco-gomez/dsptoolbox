@@ -15,7 +15,7 @@ from dsptoolbox._standard import _group_delay_direct
 
 
 class LRFilterBank():
-    """This is special crafted class for a Linkwitz-Riley crossovers filter
+    """This is specially crafted class for a Linkwitz-Riley crossovers filter
     bank since its implementation might be hard to generalize.
 
     It is a cascaded structure that handles every band and its respective
@@ -56,8 +56,9 @@ class LRFilterBank():
         self.freqs = np.array(freqs).squeeze()
         self.order = np.array(order).squeeze()
         if self.freqs.ndim > 0:
-            self.freqs = np.sort(self.freqs)
-            self.order = np.sort(self.order)
+            freqs_order = self.freqs.argsort()
+            self.freqs = self.freqs[freqs_order]
+            self.order = self.order[freqs_order]
         else:
             self.freqs = self.freqs[..., None]
             self.order = self.order[..., None]
@@ -123,6 +124,17 @@ class LRFilterBank():
                     al.append([allp_zi_l, allp_zi_h])
                     allpass_zi.append(al)
             self.channels_zi.append([cross_zi, allpass_zi])
+
+    def center_frequencies(self):
+        """Returns center frequencies for the filter bank.
+
+        """
+        split_freqs = list(self.freqs)
+        split_freqs.append(0)
+        split_freqs.append(self.sampling_rate_hz//2)
+        split_freqs = list(sorted(split_freqs))
+        return [(split_freqs[i+1]+split_freqs[i])/2
+                for i in range(len(split_freqs)-1)]
 
     # ======== Filtering ======================================================
     def filter_signal(self, s: Signal, activate_zi: bool = False):
@@ -246,6 +258,30 @@ class LRFilterBank():
             return s_l, s_h
         else:
             return s_l + s_h
+
+    # ======== IR =============================================================
+    def get_ir(self, test_zi: bool = False):
+        """Returns impulse response from the filter bank. For this filter bank
+        only `mode='parallel'` is valid and there is no zero phase filtering.
+
+        Parameters
+        ----------
+        test_zi : bool, optional
+            When `True`, filtering is done while updating filters' initial
+            values. Default: `False`.
+
+        Returns
+        -------
+        ir : `MultiBandSignal` or `Signal`
+            Impulse response of the filter bank.
+
+        """
+        d = dirac(
+            length_samples=1024,
+            number_of_channels=1)
+        ir = self.filter_signal(
+            d, activate_zi=test_zi)
+        return ir
 
     # ======== Prints and plots ===============================================
     def plot_magnitude(self, range_hz=[20, 20e3], test_zi: bool = False,

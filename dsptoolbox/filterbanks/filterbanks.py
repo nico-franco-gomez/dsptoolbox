@@ -5,7 +5,8 @@ object
 import numpy as np
 from scipy.signal import windows
 import warnings
-from dsptoolbox import Filter, FilterBank, fractional_octave_frequencies
+from dsptoolbox import (Filter, FilterBank, fractional_octave_frequencies,
+                        erb_frequencies)
 from ._filterbank import LRFilterBank
 
 
@@ -23,7 +24,7 @@ def linkwitz_riley_crossovers(freqs, order, sampling_rate_hz: int = 48000):
 
     Returns
     -------
-    fb : LRFilterBank
+    LRFilterBank
         Filter bank in form of LRFilterBank class which contains the same
         methods as the FilterBank class but is generated with different
         internal methods.
@@ -35,9 +36,9 @@ def linkwitz_riley_crossovers(freqs, order, sampling_rate_hz: int = 48000):
 def reconstructing_fractional_octave_bands(
         num_fractions: int = 1, frequency_range=[63, 16000],
         overlap: float = 1, slope: int = 0, n_samples: int = 2**12,
-        sampling_rate_hz: int = 48000):
+        sampling_rate_hz: int = 48000) -> FilterBank:
     """Create and/or apply an amplitude preserving fractional octave filter
-    bank. This implementation is taken from the pyfar package.
+    bank. This implementation is taken directly from the pyfar package.
     See references for more information about it.
 
     Parameters
@@ -64,12 +65,8 @@ def reconstructing_fractional_octave_bands(
 
     Returns
     -------
-    signal : Signal
-        The filtered signal. Only returned if ``sampling_rate = None``.
-    filter : FilterFIR
-        FIR Filter object. Only returned if ``signal = None``.
-    frequencies : np.ndarray
-        Center frequencies of the filters.
+    filt_bank : `FilterBank`
+        Filter Bank object with FIR filters.
 
     References
     ----------
@@ -166,3 +163,74 @@ def reconstructing_fractional_octave_bands(
     filt_bank = FilterBank(filters=filters)
 
     return filt_bank
+
+
+def auditory_filters_gammatone(freq_range_hz=[20, 20000],
+                               resolution: float = 1,
+                               sampling_rate_hz: int = 48000) -> FilterBank:
+    """Generate an auditory filter bank for analysis purposes. This code was
+    taken and adapted from the pyfar package. In this implementation, the
+    reference frequency is fixed to 1000 Hz and there is no support for
+    reconstructing the original signal.
+
+    For a more general implementation of this filter bank (reconstruction
+    capabilities) please refer to the pyfar package or the octave/matlab
+    auditory modelling toolbox. See references.
+
+    Parameters
+    ----------
+    freq_range : array-like
+        The upper and lower frequency in Hz between which the filter bank is
+        constructed. Values must be larger than 0 and not exceed half the
+        sampling rate.
+    resolution : number
+        The frequency resolution of the filter bands in equivalent rectangular
+        bandwidth (ERB) units. The bands of the filter bank are distributed
+        linearly on the ERB scale. The default value of ``1`` results in one
+        filter band per ERB. A value of ``0.5`` would result in two filter
+        bands per ERB.
+    sampling_rate_hz : int, optional
+        The sampling rate of the filter bank in Hz. Default: 48000.
+
+    Returns
+    -------
+    gammatone_fb : FilterBank
+        Gammatone filter bank.
+
+    """
+    # Create frequencies
+    frequencies_hz = erb_frequencies(freq_range_hz, resolution)
+    n_bands = len(frequencies_hz)
+
+    # Eq. (13) in Hohmann 2002
+    erb_aud = 24.7 + frequencies_hz / 9.265
+
+    # Eq. (14.3) in Hohmann 2002 (precomputed values for order=4)
+    a_gamma = np.pi * 720 * 2**(-6) / 36
+    # Eq. (14.2) in Hohmann 2002
+    b = erb_aud / a_gamma
+    # Eq. (14.1) in Hohmann 2002
+    lam = np.exp(-2 * np.pi * b / sampling_rate_hz)
+    # Eq. (10) in Hohmann 2002
+    beta = 2 * np.pi * frequencies_hz / sampling_rate_hz
+    # Eq. (1) in Hohmann 2002 (these are the a_1 coefficients)
+    coefficients = lam * np.exp(1j * beta)
+    # normalization from Sec. 2.2 in Hohmann 2002
+    # (this is the b_0 coefficient)
+    normalizations = 2 * (1-np.abs(coefficients))**4
+
+    filters = []
+    for bb in range(n_bands):
+        sos_section = np.tile(np.atleast_2d(
+            [1, 0, 0, 1, -coefficients[bb], 0]),
+            (4, 1))
+        sos_section[3, 0] = normalizations[bb]
+        f = Filter('other', {'sos': sos_section}, sampling_rate_hz)
+        f.warning_if_complex = False
+        filters.append(f)
+
+    gammatone_fb = FilterBank(
+        filters,
+        same_sampling_rate=True,
+        info={'Type of filter bank': 'Gammatone filter bank'})
+    return gammatone_fb
