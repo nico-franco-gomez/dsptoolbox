@@ -13,7 +13,7 @@ from dsptoolbox.standard_functions import pad_trim
 def spectral_deconvolve(num: Signal, denum: Signal,
                         mode='regularized', start_stop_hz=None,
                         threshold_db=-30, padding: bool = False,
-                        keep_original_length: bool = False):
+                        keep_original_length: bool = False) -> Signal:
     """Deconvolution by spectral division of two signals. If the denominator
     signal only has one channel, the deconvolution is done using it for all
     channels of the numerator.
@@ -115,12 +115,12 @@ def spectral_deconvolve(num: Signal, denum: Signal,
 
 
 def window_ir(signal: Signal, constant_percentage=0.75, exp2_trim: int = 13,
-              window_type='hann', at_start: bool = True):
+              window_type='hann', at_start: bool = True) -> Signal:
     """Windows an IR with trimming and selection of constant valued length.
 
     Parameters
     ----------
-    signal: Signal
+    signal: `Signal`
         Signal to window
     constant_percentage: float, optional
         Percentage (between 0 and 1) of the window that should be
@@ -139,7 +139,7 @@ def window_ir(signal: Signal, constant_percentage=0.75, exp2_trim: int = 13,
 
     Returns
     -------
-    new_sig : Signal
+    new_sig : `Signal`
         Windowed signal. The used window is also saved under `new_sig.window`.
 
     """
@@ -169,7 +169,8 @@ def window_ir(signal: Signal, constant_percentage=0.75, exp2_trim: int = 13,
 
 
 def compute_transfer_function(output: Signal, input: Signal, mode='h2',
-                              window_length_samples: int = 1024, **kwargs):
+                              window_length_samples: int = 1024, **kwargs) -> \
+        Signal:
     """Gets transfer function H1, H2 or H3.
     H1: for noise in the output signal. `Gxy/Gxx`.
     H2: for noise in the input signal. `Gyy/Gyx`.
@@ -179,9 +180,9 @@ def compute_transfer_function(output: Signal, input: Signal, mode='h2',
 
     Parameters
     ----------
-    output : Signal
+    output : `Signal`
         Signal with output channels.
-    input : Signal
+    input : `Signal`
         Signal with input channels.
     mode : str, optional
         Type of transfer function. `'h1'`, `'h2'` and `'h3'` are available.
@@ -195,7 +196,7 @@ def compute_transfer_function(output: Signal, input: Signal, mode='h2',
 
     Returns
     -------
-    tf : Signal
+    tf : `Signal`
         Transfer functions. Coherences are also computed and saved in the
         Signal object.
 

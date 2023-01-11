@@ -1,9 +1,11 @@
 from os import sep
 from pickle import dump, HIGHEST_PROTOCOL
 from copy import deepcopy
-from numpy import array
+import numpy as np
+from warnings import warn
 
 from .signal_class import Signal
+from .multibandsignal import MultiBandSignal
 from .filter_class import Filter
 from ._filter import _filterbank_on_signal
 from dsptoolbox.generators import dirac
@@ -29,7 +31,7 @@ class FilterBank():
         Parameters
         ----------
         filters : list, optional
-            List or tuple containing filters.
+            List containing filters.
         same_sampling_rate : bool, optional
             When `True`, every Filter should have the same sampling rate.
             Set to `False` for a multirate system. Default: `True`.
@@ -54,21 +56,6 @@ class FilterBank():
         #
         self.same_sampling_rate = same_sampling_rate
         self.filters = filters
-        if filters:
-            if self.same_sampling_rate:
-                self.sampling_rate_hz = filters[0].sampling_rate_hz
-            else:
-                sr = []
-                for f in filters:
-                    sr.append(f.sampling_rate_hz)
-                self.sampling_rate_hz = sr
-            for ind, f in enumerate(filters):
-                assert type(f) == Filter, \
-                    f'Object at index {ind} is not a supported Filter'
-                if self.same_sampling_rate:
-                    assert f.sampling_rate_hz == self.sampling_rate_hz, \
-                        'Sampling rates do not match'
-        self._generate_metadata()
         self.info = self.info | info
 
     def _generate_metadata(self):
@@ -76,7 +63,7 @@ class FilterBank():
 
         """
         self.info = {}
-        self.info['number_of_filters'] = len(self.filters)
+        self.info['number_of_filters'] = self.number_of_filters
         self.info['same_sampling_rate'] = self.same_sampling_rate
         if self.same_sampling_rate:
             if hasattr(self, 'sampling_rate_hz'):
@@ -99,20 +86,58 @@ class FilterBank():
             f.initialize_zi(number_of_channels)
 
     @property
-    def sampling_rate_hz(self):
+    def sampling_rate_hz(self) -> int:
         return self.__sampling_rate_hz
 
     @sampling_rate_hz.setter
     def sampling_rate_hz(self, new_sampling_rate_hz):
-        new_sampling_rate_hz = array(new_sampling_rate_hz).squeeze()
+        new_sampling_rate_hz = np.asarray(new_sampling_rate_hz).squeeze()
         if self.same_sampling_rate:
             assert new_sampling_rate_hz.ndim == 0, \
-                'Sampling rate should be only a '
+                'Sampling rate should be only an integer'
             self.__sampling_rate_hz = int(new_sampling_rate_hz)
         else:
-            assert len(self.filters) == len(new_sampling_rate_hz), \
+            assert self.number_of_filters == len(new_sampling_rate_hz), \
                 'Sampling rate should be a vector with the length of filters'
             self.__sampling_rate_hz = [int(s) for s in new_sampling_rate_hz]
+
+    @property
+    def filters(self) -> list:
+        return self.__filters
+
+    @filters.setter
+    def filters(self, new_filters):
+        if new_filters is None:
+            new_filters = []
+        assert type(new_filters) == list, \
+            'Filters have to be passed as a list'
+        self.number_of_filters = len(new_filters)
+        if new_filters:
+            if self.same_sampling_rate:
+                self.sampling_rate_hz = new_filters[0].sampling_rate_hz
+            else:
+                sr = []
+                for f in new_filters:
+                    sr.append(f.sampling_rate_hz)
+                self.sampling_rate_hz = sr
+            for ind, f in enumerate(new_filters):
+                assert type(f) == Filter, \
+                    f'Object at index {ind} is not a supported Filter'
+                if self.same_sampling_rate:
+                    assert f.sampling_rate_hz == self.sampling_rate_hz, \
+                        'Sampling rates do not match'
+        self.__filters = new_filters
+        self._generate_metadata()
+
+    @property
+    def same_sampling_rate(self) -> bool:
+        return self.__same_sampling_rate
+
+    @same_sampling_rate.setter
+    def same_sampling_rate(self, new_same):
+        assert type(new_same) == bool, \
+            'same_sampling_rate must be a boolean'
+        self.__same_sampling_rate = new_same
 
     # ======== Add and remove =================================================
     def add_filter(self, filt: Filter, index: int = -1):
@@ -157,14 +182,42 @@ class FilterBank():
             index = len(self.filters) - 1
         assert index in range(len(self.filters)), \
             f'There is no filter at index {index}.'
-        f = self.filters.pop(index)
-        self._generate_metadata()
+        n_f = self.filters.copy()
+        f = n_f.pop(index)
+        self.filters = n_f
+        del n_f
         if return_filter:
             return f
 
+    def swap_filters(self, new_order):
+        """Rearranges the filters in the new given order.
+
+        Parameters
+        ----------
+        new_order : array-like
+            New rearrangement of filters.
+
+        """
+        new_order = np.array(new_order).squeeze()
+        assert new_order.ndim == 1, \
+            'Too many or too few dimensions are given in the new ' +\
+            'arrangement vector'
+        assert self.number_of_filters == len(new_order), \
+            'The number of channels does not match'
+        assert all(new_order < self.number_of_filters) \
+            and all(new_order >= 0), \
+            'Indexes of new channels have to be in ' +\
+            f'[0, {self.number_of_filters-1}]'
+        assert len(np.unique(new_order)) == len(new_order), \
+            'There are repeated indexes in the new order vector'
+        n_f = [self.filters[i] for i in new_order]
+        self.filters = n_f
+        del n_f
+
     # ======== Filtering ======================================================
     def filter_signal(self, signal: Signal, mode: str = 'parallel',
-                      activate_zi: bool = False, zero_phase: bool = False):
+                      activate_zi: bool = False, zero_phase: bool = False) -> \
+            Signal | MultiBandSignal:
         """Applies the filter bank to a signal and returns a multiband signal
         or a `Signal` object.
         `'parallel'`: returns a `MultiBandSignal` object where each band is
@@ -222,8 +275,9 @@ class FilterBank():
         return new_sig
 
     # ======== Get impulse ====================================================
-    def get_ir(self, mode='parallel', test_zi: bool = False,
-               zero_phase: bool = False):
+    def get_ir(self, mode: str = 'parallel', length_samples: int = 2048,
+               test_zi: bool = False, zero_phase: bool = False) -> \
+            Signal | MultiBandSignal:
         """Returns impulse response from the filter bank.
 
         Parameters
@@ -231,6 +285,10 @@ class FilterBank():
         mode : str, optional
             Filtering mode. Choose from `'parallel'`, `'sequential'` or
             `'summed'`. Default: `'parallel'`.
+        length_samples : int, optional
+            Length of the impulse response to be generated. If some filter
+            is longer than the given length, then the length is adapted.
+            Default: 2048.
         test_zi : bool, optional
             When `True`, filtering is done while updating filters' initial
             values. Default: `False`.
@@ -247,17 +305,25 @@ class FilterBank():
         max_order = 0
         for b in self.filters:
             max_order = max(max_order, b.info['order'])
-        if max_order < 1024:
-            max_order = 1024
-        else:
-            max_order += 100
-        if hasattr(self, 'sampling_rate_hz'):
-            fs_hz = self.sampling_rate_hz
-        else:
-            fs_hz = 48000
+        if max_order > length_samples:
+            warn(f'Filter order {max_order} is longer than {length_samples}.' +
+                 'The length will be adapted to be 100 samples longer than' +
+                 ' the longest filter')
+            length_samples = max_order + 100
+
+        # Sampling rate
+        fs_hz = self.sampling_rate_hz
+        if type(fs_hz) != int:
+            raise RuntimeError(
+                'This method is only available for same sampling rate ' +
+                'filter banks')
+
+        # Impulse
         d = dirac(
-            length_samples=max_order,
+            length_samples=length_samples,
             number_of_channels=1, sampling_rate_hz=fs_hz)
+
+        # Filtering
         ir = self.filter_signal(
             d, mode, activate_zi=test_zi, zero_phase=zero_phase)
         return ir
@@ -297,7 +363,8 @@ class FilterBank():
         print()
 
     def plot_magnitude(self, mode: str = 'parallel', range_hz=[20, 20e3],
-                       test_zi: bool = False, returns: bool = False):
+                       length_samples: int = 2048, test_zi: bool = False,
+                       returns: bool = False):
         """Plots the magnitude response of each filter.
 
         Parameters
@@ -309,6 +376,9 @@ class FilterBank():
             sums up every frequency response. Default: `'parallel'`.
         range_hz : array-like, optional
             Range of Hz to plot. Default: [20, 20e3].
+        length_samples : int, optional
+            Length (in samples) of the IR to be generated for the plot.
+            Default: 2048.
         test_zi : bool, optional
             Uses the zi's of each filter to test the FilterBank's output.
             Default: `False`.
@@ -321,18 +391,22 @@ class FilterBank():
             Returned only when `returns=True`.
 
         """
-        import numpy as np
-        if hasattr(self.filters[-1], 'ba'):
-            length_samples = \
-                max(len(self.filters[-1].ba[0]),
-                    len(self.filters[-1].ba[1])) + 2
-        else:
-            length_samples = len(self.filters[-1].sos)*2 + 2
-        if length_samples < 1024:
-            length_samples = 1024
+        # Length handling
+        max_order = 0
+        for b in self.filters:
+            max_order = max(max_order, b.info['order'])
+        if max_order > length_samples:
+            warn(f'Filter order {max_order} is longer than {length_samples}.' +
+                 'The length will be adapted to be 100 samples longer than' +
+                 ' the longest filter')
+            length_samples = max_order + 100
+
+        # Impulse
         d = dirac(
             length_samples=length_samples,
             number_of_channels=1, sampling_rate_hz=48000)
+
+        # Filtering and plot
         if mode == 'parallel':
             bs = self.filter_signal(d, mode='parallel', activate_zi=test_zi)
             specs = []
@@ -354,7 +428,8 @@ class FilterBank():
                                    returns=True,
                                    labels=[f'Filter {h}'
                                            for h in range(bs.number_of_bands)],
-                                   range_y=range_y)
+                                   range_y=range_y,
+                                   tight_layout=False)
         elif mode == 'sequential':
             bs = self.filter_signal(d, mode='sequential', activate_zi=test_zi)
             bs.set_spectrum_parameters(method='standard')
@@ -386,8 +461,8 @@ class FilterBank():
             return fig, ax
 
     def plot_phase(self, mode: str = 'parallel', range_hz=[20, 20e3],
-                   test_zi: bool = False, unwrap: bool = False,
-                   returns: bool = False):
+                   unwrap: bool = False, length_samples: int = 2048,
+                   test_zi: bool = False, returns: bool = False):
         """Plots the phase response of each filter.
 
         Parameters
@@ -399,11 +474,14 @@ class FilterBank():
             sums up every filter output. Default: `'parallel'`.
         range_hz : array-like, optional
             Range of Hz to plot. Default: [20, 20e3].
+        unwrap : bool, optional
+            When `True`, unwrapped phase is plotted. Default: `False`.
+        length_samples : int, optional
+            Length (in samples) of the IR to be generated for the plot.
+            Default: 2048.
         test_zi : bool, optional
             Uses the zi's of each filter to test the FilterBank's output.
             Default: `False`.
-        unwrap : bool, optional
-            When `True`, unwrapped phase is plotted. Default: `False`.
         returns : bool, optional
             When `True`, the figure and axis are returned. Default: `False`.
 
@@ -413,18 +491,22 @@ class FilterBank():
             Returned only when `returns=True`.
 
         """
-        import numpy as np
-        if hasattr(self.filters[-1], 'ba'):
-            length_samples = \
-                max(len(self.filters[-1].ba[0]),
-                    len(self.filters[-1].ba[1])) + 2
-        else:
-            length_samples = len(self.filters[-1].sos)*2 + 2
-        if length_samples < 1024:
-            length_samples = 1024
+        # Length handling
+        max_order = 0
+        for b in self.filters:
+            max_order = max(max_order, b.info['order'])
+        if max_order > length_samples:
+            warn(f'Filter order {max_order} is longer than {length_samples}.' +
+                 'The length will be adapted to be 100 samples longer than' +
+                 ' the longest filter')
+            length_samples = max_order + 100
+
+        # Generate impulse
         d = dirac(
             length_samples=length_samples,
             number_of_channels=1, sampling_rate_hz=48000)
+
+        # Plot
         if mode == 'parallel':
             bs = self.filter_signal(d, mode='parallel', activate_zi=test_zi)
             phase = []
@@ -437,7 +519,8 @@ class FilterBank():
             fig, ax = general_plot(f, phase, range_hz, ylabel='Phase / rad',
                                    returns=True,
                                    labels=[f'Filter {h}'
-                                           for h in range(bs.number_of_bands)])
+                                           for h in range(bs.number_of_bands)],
+                                   tight_layout=False)
         elif mode == 'sequential':
             bs = self.filter_signal(d, mode='sequential', activate_zi=test_zi)
             f, sp = bs.get_spectrum()
@@ -463,7 +546,8 @@ class FilterBank():
             return fig, ax
 
     def plot_group_delay(self, mode: str = 'parallel', range_hz=[20, 20e3],
-                         test_zi: bool = False, returns: bool = False):
+                         length_samples: int = 2048, test_zi: bool = False,
+                         returns: bool = False):
         """Plots the phase response of each filter.
 
         Parameters
@@ -475,6 +559,9 @@ class FilterBank():
             sums up every filter output. Default: `'parallel'`.
         range_hz : array-like, optional
             Range of Hz to plot. Default: [20, 20e3].
+        length_samples : int, optional
+            Length (in samples) of the IR to be generated for the plot.
+            Default: 2048.
         test_zi : bool, optional
             Uses the zi's of each filter to test the FilterBank's output.
             Default: `False`.
@@ -487,18 +574,22 @@ class FilterBank():
             Returned only when `returns=True`.
 
         """
-        import numpy as np
-        if hasattr(self.filters[-1], 'ba'):
-            length_samples = \
-                max(len(self.filters[-1].ba[0]),
-                    len(self.filters[-1].ba[1])) + 2
-        else:
-            length_samples = len(self.filters[-1].sos)*2 + 2
-        if length_samples < 1024:
-            length_samples = 1024
+        # Length handling
+        max_order = 0
+        for b in self.filters:
+            max_order = max(max_order, b.info['order'])
+        if max_order > length_samples:
+            warn(f'Filter order {max_order} is longer than {length_samples}.' +
+                 'The length will be adapted to be 100 samples longer than' +
+                 ' the longest filter')
+            length_samples = max_order + 100
+
+        # Impulse
         d = dirac(
             length_samples=length_samples,
             number_of_channels=1, sampling_rate_hz=48000)
+
+        # Plot
         if mode == 'parallel':
             bs = self.filter_signal(d, mode='parallel', activate_zi=test_zi)
             gd = []
@@ -510,7 +601,8 @@ class FilterBank():
             fig, ax = general_plot(f, gd, range_hz, ylabel='Group delay / ms',
                                    returns=True,
                                    labels=[f'Filter {h}'
-                                           for h in range(bs.number_of_bands)])
+                                           for h in range(bs.number_of_bands)],
+                                   tight_layout=False)
         elif mode == 'sequential':
             bs = self.filter_signal(d, mode='sequential', activate_zi=test_zi)
             f, sp = bs.get_spectrum()

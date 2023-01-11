@@ -168,11 +168,11 @@ def minimum_phase_systems():
     tf = dsp.transfer_functions.spectral_deconvolve(
         recorded_multi, raw, mode='regularized')
     tf = dsp.transfer_functions.window_ir(tf)
-    f, bla = dsp.minimal_phase(tf)
+    f, bla = dsp.minimum_phase(tf)
     plt.subplot(121)
     plt.semilogx(f, bla)
     plt.subplot(122)
-    f, bla = dsp.minimal_group_delay(tf)
+    f, bla = dsp.minimum_group_delay(tf)
     f, bla2 = dsp.group_delay(tf)
     plt.semilogx(f, (bla2-bla)*1e3)
     dsp.plots.show()
@@ -292,13 +292,14 @@ def generators():
     # wno = dsp.generators.noise('red', peak_level_dbfs=-5)
     # wno = dsp.generators.noise('blue')
     # wno = dsp.generators.noise('violet')
+    wno = dsp.generators.noise('grey', length_seconds=2)
     # wno.plot_magnitude(normalize=None)
 
     # Chirps
-    wno = dsp.generators.chirp(type_of_chirp='log', length_seconds=5,
-                               fade='log',
-                               padding_end_seconds=2, number_of_channels=1,
-                               peak_level_dbfs=-20, range_hz=[20, 24e3])
+    # wno = dsp.generators.chirp(type_of_chirp='log', length_seconds=5,
+    #                            fade='log',
+    #                            padding_end_seconds=2, number_of_channels=1,
+    #                            peak_level_dbfs=-20, range_hz=[20, 24e3])
 
     # Plots
     wno.plot_magnitude(range_hz=[20, 24e3])
@@ -421,16 +422,158 @@ def collapse():
 
 def smoothing():
     import dsptoolbox as dsp
-    # import pyfar as pf
-    import soundfile as sf
-    # import matplotlib.pyplot as plt
-    # import numpy as np
 
-    audio, fs = sf.read(join('..', 'examples', 'data', 'chirp_mono.wav'))
-    psig2 = dsp.Signal(time_data=audio, sampling_rate_hz=fs)
+    psig2 = dsp.Signal(join('..', 'examples', 'data', 'chirp_mono.wav'))
     psig2.set_spectrum_parameters(method='standard')
     psig2.plot_magnitude(smoothe=4)
     dsp.plots.show()
+
+
+def min_phase_signal():
+    import dsptoolbox as dsp
+
+    recorded_multi = \
+        dsp.Signal(join('..', 'examples', 'data', 'chirp_mono.wav'))
+    # recorded_multi = \
+    #     dsp.Signal(join('..', 'examples', 'data', 'chirp_stereo.wav'))
+    raw = dsp.Signal(join('..', 'examples', 'data', 'chirp.wav'))
+    ir = dsp.transfer_functions.spectral_deconvolve(recorded_multi, raw)
+    ir = dsp.transfer_functions.window_ir(ir)
+    # ir.plot_phase()
+    _, sp = ir.get_spectrum()
+    min_ir = dsp.special.min_phase_from_mag(sp, ir.sampling_rate_hz)
+    # min_ir.plot_phase()
+    # min_ir.plot_time()
+    ir.plot_group_delay()
+    min_ir.plot_group_delay()
+    dsp.plots.show()
+
+
+def lin_phase_signal():
+    import dsptoolbox as dsp
+
+    # recorded_multi = \
+    #     dsp.Signal(join('..', 'examples', 'data', 'chirp_mono.wav'))
+    recorded_multi = \
+        dsp.Signal(join('..', 'examples', 'data', 'chirp_stereo.wav'))
+    raw = dsp.Signal(join('..', 'examples', 'data', 'chirp.wav'))
+    ir = dsp.transfer_functions.spectral_deconvolve(recorded_multi, raw)
+    ir = dsp.transfer_functions.window_ir(ir)
+    _, sp = ir.get_spectrum()
+    lin_ir = dsp.special.lin_phase_from_mag(
+        sp, ir.sampling_rate_hz, group_delay_ms='minimal',
+        check_causality=True)
+    # Phases
+    # ir.plot_phase(unwrap=True)
+    # lin_ir.plot_phase(unwrap=True)
+
+    # Time signals
+    # ir.plot_time()
+    # lin_ir.plot_time()
+
+    # Group delays
+    ir.plot_group_delay()
+    lin_ir.plot_group_delay()
+    dsp.plots.show()
+
+
+def gammatone_filters():
+    import dsptoolbox as dsp
+
+    fb = dsp.filterbanks.auditory_filters_gammatone()
+
+    # Filtering and listening to result
+    # speech = dsp.Signal(join('..', 'examples', 'data', 'speech.flac'))
+    # speech = fb.filter_signal(speech, mode='parallel')
+    # speech_band = speech.bands[7]
+    # dsp.audio_io.play(speech_band)
+
+    # Plotting filter bank
+    fb.plot_magnitude(mode='summed')
+    fb.plot_magnitude(mode='parallel', length_samples=2**13)
+    dsp.plots.show()
+
+
+def ir2filt():
+    import dsptoolbox as dsp
+    import scipy.signal as sig
+
+    sig.freqz
+    recorded_multi = \
+        dsp.Signal(join('..', 'examples', 'data', 'chirp_stereo.wav'))
+    raw = dsp.Signal(join('..', 'examples', 'data', 'chirp.wav'))
+    ir = dsp.transfer_functions.spectral_deconvolve(recorded_multi, raw)
+    ir = dsp.transfer_functions.window_ir(ir)
+
+    f = dsp.ir_to_filter(ir, channel=0, phase_mode='direct')
+    f.plot_magnitude()
+    dsp.plots.show()
+
+
+def fwsnrseg():
+    import dsptoolbox as dsp
+
+    recorded_multi = \
+        dsp.Signal(join('..', 'examples', 'data', 'chirp_stereo.wav'))
+    # raw = dsp.Signal(join('..', 'examples', 'data', 'chirp.wav'))
+
+    c0 = recorded_multi.get_channels(0)
+    c1 = recorded_multi.get_channels(1)
+    fw = dsp.distances.fw_snr_seg(c0, c1)
+    print(fw)
+
+
+def true_peak():
+    import dsptoolbox as dsp
+
+    s = dsp.Signal(join('..', 'examples', 'data', 'chirp_stereo.wav'))
+
+    # Testing for multibandsignal
+    # from dsptoolbox.filterbanks import auditory_filters_gammatone
+    # fb = auditory_filters_gammatone([40, 1e3])
+    # s = fb.filter_signal(s)
+    t, p = dsp.true_peak_level(s)
+    print(t, p)
+    print('difference: ', t - p, ' dB')
+
+
+def sinus_tone():
+    import dsptoolbox as dsp
+
+    c = dsp.generators.sinus(
+        frequency_hz=500, length_seconds=2, number_of_channels=3,
+        uncorrelated=True, fade='log')
+    # c.plot_time()
+    c.plot_magnitude()
+    dsp.plots.show()
+
+
+def band_swapping():
+    import dsptoolbox as dsp
+    s = dsp.generators.noise(
+        'grey', number_of_channels=3, sampling_rate_hz=16000,
+        length_seconds=3)
+
+    # fb = dsp.filterbanks.reconstructing_fractional_octave_bands(
+    #     frequency_range=[250, 2000], sampling_rate_hz=s.sampling_rate_hz)
+    fb = dsp.filterbanks.auditory_filters_gammatone(
+        [50, 500], sampling_rate_hz=s.sampling_rate_hz)
+
+    s_f = fb.filter_signal(s, mode='parallel')
+    print(s_f.number_of_bands)
+    bands = []
+    bands.append(s_f.bands[0])
+    bands.append(s_f.bands[1])
+
+    s_multi = dsp.MultiBandSignal(bands)
+    s_multi.show_info(True)
+    s_multi.add_band(s_f.bands[2])
+    s_multi.show_info(True)
+    s_multi.remove_band(0)
+    s_multi.show_info(True)
+
+    s_multi.swap_bands([1, 0])
+    s_multi.show_info(True)
 
 
 if __name__ == '__main__':
@@ -458,12 +601,20 @@ if __name__ == '__main__':
     # merging_fbs()
     # collapse()
     # smoothing()
+    # min_phase_signal()
+    # lin_phase_signal()
+    # gammatone_filters()
+    ir2filt()
+    # true_peak()
+    # sinus_tone()
+    # band_swapping()
 
     # Weird results - needs validation
+    # fwsnrseg()
     # new_transfer_functions()  # -- coherence function from scipy differs
     # -> cross spectral density with welch's method differs in lower
     #    frequencies from scipy
-    cepstrum()
+    # cepstrum()  # -> needs validation with some other tool
 
     # Next
     print()

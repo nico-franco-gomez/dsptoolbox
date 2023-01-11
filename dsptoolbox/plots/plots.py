@@ -19,7 +19,7 @@ def show():
 def general_plot(x, matrix, range_x=None, range_y=None, log: bool = True,
                  labels=None, xlabel: str = 'Frequency / Hz',
                  ylabel: str = None, info_box: str = None,
-                 returns: bool = False):
+                 tight_layout: bool = True, returns: bool = False):
     """Generic plot template.
 
     Parameters
@@ -41,6 +41,8 @@ def general_plot(x, matrix, range_x=None, range_y=None, log: bool = True,
     info_box : str, optional
         String containing extra information to be shown in a info box on the
         plot. Default: None.
+    tight_layout: bool, optional
+        When `True`, tight layout is activated. Default: `True`.
     returns : bool, optional
         When `True`, the figure and axis are returned. Default: `False`.
 
@@ -83,7 +85,8 @@ def general_plot(x, matrix, range_x=None, range_y=None, log: bool = True,
         ax.text(0.1, 0.5, info_box, transform=ax.transAxes,
                 verticalalignment='top',
                 bbox=dict(boxstyle='round', facecolor='grey', alpha=0.75))
-    fig.tight_layout()
+    if tight_layout:
+        fig.tight_layout()
     if returns:
         return fig, ax
 

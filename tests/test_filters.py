@@ -28,11 +28,11 @@ def filtering():
 
     # config = dict(eq_type='lowshelf', freqs=1500, gain=10, q=0.7)
     # filt = dsp.Filter('biquad', config)
-    # config = dict(order=150, freqs=[1500, 2000], type_of_pass='bandpass')
-    # filt = dsp.Filter('fir', config)
-    config = dict(order=10, freqs=[1500, 2000], type_of_pass='bandpass',
-                  filter_design_method='bessel')
-    filt = dsp.Filter('iir', config)
+    config = dict(order=150, freqs=[1500, 2000], type_of_pass='bandpass')
+    filt = dsp.Filter('fir', config)
+    # config = dict(order=10, freqs=[1500, 2000], type_of_pass='bandpass',
+    #               filter_design_method='bessel')
+    # filt = dsp.Filter('iir', config)
     recorded_multi = \
         dsp.Signal(join('..', 'examples', 'data', 'chirp_stereo.wav'))
     new_rec = filt.filter_signal(recorded_multi)
@@ -43,25 +43,34 @@ def filtering():
 
 def filter_bank_add_remove():
     import dsptoolbox as dsp
-
     fb = dsp.FilterBank()
+    fb.show_info(True)
 
-    # filters = {}
+    # Filter 1
     config = dict(order=5, freqs=[1500, 2000], type_of_pass='bandpass',
                   filter_design_method='bessel')
-    # filters[0] = dsp.Filter('iir', config)
     fb.add_filter(dsp.Filter('iir', config))
-    config = dict(order=150, freqs=[1500, 2000], type_of_pass='bandpass')
-    # filters[1] = dsp.Filter('fir', config)
-    fb.add_filter(dsp.Filter('fir', config))
-    config = dict(eq_type='highshelf', freqs=1500, gain=10, q=0.7)
-    # filters[2] = dsp.Filter('biquad', config)
-    fb.add_filter(dsp.Filter('biquad', config))
     fb.show_info(True)
-    # fb = dsp.FilterBank(filters, None)
+    # Filter 2
+    config = dict(order=150, freqs=[1500, 2000], type_of_pass='bandpass')
+    fb.add_filter(dsp.Filter('fir', config))
+    # Filter 3
+    config = dict(eq_type='highshelf', freqs=1500, gain=10, q=0.7)
+    fb.add_filter(dsp.Filter('biquad', config))
+    # Filter 4
+    config = dict(order=150, freqs=[1500, 2000], type_of_pass='bandpass')
+    fb.add_filter(dsp.Filter('fir', config), index=0)
+    # Show info
+    fb.show_info(True)
+
+    # Remove
     fb.remove_filter(0)
     fb.show_info(False)
-    fb.save_filterbank()
+
+    new_order = [2, 1, 0]
+    fb.swap_filters(new_order)
+    fb.show_info(True)
+    # fb.save_filterbank()
 
 
 def filter_bank_filter():
@@ -116,8 +125,8 @@ def perfect_reconstruction():
 if __name__ == '__main__':
     # filter_functionalities()
     # filtering()
-    # filter_bank_add_remove()
-    filter_bank_filter()
+    filter_bank_add_remove()
+    # filter_bank_filter()
     # perfect_reconstruction()
 
     print()

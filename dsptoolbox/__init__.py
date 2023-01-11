@@ -1,16 +1,19 @@
 from .standard_functions import (latency,
                                  group_delay,
-                                 minimal_phase,
-                                 minimal_group_delay,
+                                 minimum_phase,
+                                 minimum_group_delay,
                                  excess_group_delay,
                                  merge_signals,
                                  merge_filterbanks,
                                  pad_trim,
                                  fractional_octave_frequencies,
                                  fade,
+                                 ir_to_filter,
                                  normalize,
+                                 true_peak_level,
                                  resample,
-                                 load_pkl_object)
+                                 load_pkl_object,
+                                 erb_frequencies)
 from .classes import Filter, FilterBank, Signal, MultiBandSignal
 from . import transfer_functions
 from . import distances
@@ -34,9 +37,12 @@ __all__ = ['Signal',
            'group_delay',
            'resample',
            'normalize',
+           'true_peak_level',
+           'ir_to_filter',
+           'erb_frequencies',
            'load_pkl_object',
-           'minimal_phase',
-           'minimal_group_delay',
+           'minimum_phase',
+           'minimum_group_delay',
            'excess_group_delay',
            'fractional_octave_frequencies',
            'transfer_functions',
@@ -49,4 +55,4 @@ __all__ = ['Signal',
            'experimental',
            'audio_io']
 
-__version__ = '0.0.4'
+__version__ = '0.0.5'

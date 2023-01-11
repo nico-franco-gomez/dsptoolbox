@@ -3,7 +3,7 @@ Here are wrappers for streams with sounddevice. This is useful for
 measurements and testing audio streams
 """
 import sounddevice as sd
-from dsptoolbox import Signal, normalize, pad_trim
+from dsptoolbox import Signal
 from dsptoolbox._general_helpers import _normalize
 from ._audio_io import standard_callback
 
@@ -41,7 +41,8 @@ def set_device(device_number: int = None):
     Parameters
     ----------
     device_number : int, optional
-        Sets the device as default. Use `None` to ignore. Default: `None`.
+        Sets the device as default. Use `None` to be prompted with the
+        options. Default: `None`.
 
     """
     if device_number is None:
@@ -59,7 +60,7 @@ def set_device(device_number: int = None):
 
 def play_and_record(signal: Signal, duration_seconds: float = None,
                     normalized_dbfs: float = -6, device: str = None,
-                    play_channels=None, rec_channels=[1]):
+                    play_channels=None, rec_channels=[1]) -> Signal:
     """Play and record using some available device. Note that the channel
     numbers start here with 1.
 
@@ -87,7 +88,7 @@ def play_and_record(signal: Signal, duration_seconds: float = None,
 
     Returns
     -------
-    rec_sig : Signal
+    rec_sig : `Signal`
         Recorded signal.
 
     """
@@ -140,7 +141,7 @@ def play_and_record(signal: Signal, duration_seconds: float = None,
 
 
 def record(duration_seconds: float = 5, sampling_rate_hz: int = 48000,
-           device: str = None, rec_channels=[1]):
+           device: str = None, rec_channels=[1]) -> Signal:
     """Record using some available device. Note that the channel numbers
     start here with 1.
 
@@ -158,7 +159,7 @@ def record(duration_seconds: float = 5, sampling_rate_hz: int = 48000,
 
     Returns
     -------
-    rec_sig : Signal
+    rec_sig : `Signal`
         Recorded signal.
 
     """
@@ -241,10 +242,9 @@ def play(signal: Signal, duration_seconds: float = None,
     print('Reproduction has ended\n')
 
 
-def play_stream(signal: Signal, duration_seconds: float = None,
-                normalized_dbfs: float = -6, blocksize: int = 2048,
-                audio_callback=standard_callback,
-                device: str = None):
+def play_through_stream(signal: Signal, blocksize: int = 2048,
+                        audio_callback=standard_callback,
+                        device: str = None):
     """Plays a signal using a stream and a callback function.
     See `sounddevice.OutputStream` for extensive information about
     functionalities.
@@ -257,24 +257,21 @@ def play_stream(signal: Signal, duration_seconds: float = None,
     ----------
     signal : `Signal`
         Signal to be reproduced.
-    duration_seconds : float, optional
-        Duration of the signal to be reproduced in seconds. If `None`, the
-        whole signal is played. Default: `None`.
-    normalized_dbfs : float, optional
-        Normalizes the signal to a certain dBFS value. Pass `None` to avoid
-        normalization. Default: -6.
     blocksize : int, optional
         Block size used for the stream. Powers of two are recommended.
         Default: 2048.
     audio_callback : callable, optional
         This is the core of the stream! Callback modifies the signal as it is
-        passed to the audio device. The `standard_callback` just passes it
-        through. `audio_callback` is a function that take in a signal object
-        and passes a valid sounddevice callback. Their signatures are::
+        passed to the audio device. The `standard_callback` passes it through
+        with a stage of preprocessing (normalizing and fade). `audio_callback`
+        is a function that takes in a signal object and passes a valid
+        sounddevice callback. There can be preprocessing but it shouldn't
+        change the total length of the signal!
+        Their signatures are::
 
             audio_callback(signal: Signal) -> callback
 
-            callback(outdata: numpy.ndarray, frames: int,
+            callback(outdata: np.ndarray, frames: int,
                      time: CData, status: CallbackFlags) -> None
 
         See `sounddevice`'s examples of callbacks for more general
@@ -283,28 +280,28 @@ def play_stream(signal: Signal, duration_seconds: float = None,
         Device to be used in the audio stream. Pass `None` to use the default
         device. Default: `None`.
 
+    References
+    ----------
+    - https://python-sounddevice.readthedocs.io/en/0.4.5/
+
     """
-    if duration_seconds is not None:
-        duration_ms = int(duration_seconds*1000)
-        duration_samples = int(duration_seconds*signal.sampling_rate_hz)
-        signal = pad_trim(signal, duration_samples)
-    else:
-        duration_seconds = signal.time_vector_s[-1]
-        duration_ms = int(duration_seconds*1000)
 
-    if normalized_dbfs is not None:
-        signal = normalize(signal, peak_dbfs=normalized_dbfs)
-
-    if not hasattr(signal, '_streaming_position'):
+    if not hasattr(signal, 'streaming_position'):
         signal.set_streaming_position()
+
+    duration_samples = signal.time_data.shape[0] - signal.streaming_position
+    duration_ms = int(duration_samples/signal.sampling_rate_hz*1000)
 
     if device is not None:
         sd.default.device = device
 
-    with sd.OutputStream(signal.sampling_rate_hz, blocksize=blocksize,
-                         callback=audio_callback(signal),
-                         channels=signal.number_of_channels):
-        sd.sleep(duration_ms + 5)
+    try:
+        with sd.OutputStream(signal.sampling_rate_hz, blocksize=blocksize,
+                             callback=audio_callback(signal),
+                             channels=signal.number_of_channels):
+            sd.sleep(duration_ms + 5)
+    except Exception as e:
+        print(e)
 
 
 def CallbackStop():
@@ -313,3 +310,67 @@ def CallbackStop():
 
     """
     sd.CallbackStop()
+
+
+def sleep(seconds: float):
+    """Wrapper around sounddevice's sleep. Use for waiting while a stream
+    happens.
+
+    Parameters
+    ----------
+    seconds : float
+        Seconds to wait.
+
+    """
+    sd.sleep(int(seconds*1000))
+
+
+def output_stream(signal: Signal, blocksize=2048,
+                  device=None, latency=None,
+                  extra_settings=None, callback=None, finished_callback=None,
+                  clip_off=None, dither_off=None, never_drop_input=None,
+                  prime_output_buffers_using_stream_callback=None):
+    """Creates and return a sounddevice's OutputStream object. See
+    sounddevice's documentation for more information.
+
+    Parameters
+    ----------
+    signal : `Signal`
+        Signal for which the output stream will be created.
+    blocksize : int, optional
+        Block size to be used during the stream. Default: 2048.
+    device : str, optional
+        Device to be used. Pass `None` to use default device. Default: `None`.
+    callback : callable
+        Function that defines the audio callback::
+
+            callback(outdata: np.ndarray, frames: int,
+                     time: CData, status: CallbackFlags) -> None
+
+    finished_callback : callable
+    clip_off
+    dither_off
+    never_drop_input
+    prime_output_buffers_using_stream_callback
+
+    Returns
+    -------
+    stream : `sd.OutputStream`
+        Stream object.
+
+    References
+    ----------
+    - https://python-sounddevice.readthedocs.io/en/0.4.5/
+
+    """
+    pobusc = prime_output_buffers_using_stream_callback
+    stream = sd.OutputStream(
+        samplerate=signal.sampling_rate_hz, blocksize=blocksize,
+        device=device, channels=signal.number_of_channels,
+        dtype=None, latency=latency,
+        extra_settings=extra_settings, callback=callback,
+        finished_callback=finished_callback,
+        clip_off=clip_off, dither_off=dither_off,
+        never_drop_input=never_drop_input,
+        prime_output_buffers_using_stream_callback=pobusc)
+    return stream

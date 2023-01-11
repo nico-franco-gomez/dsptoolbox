@@ -7,29 +7,39 @@ from dsptoolbox import Signal, MultiBandSignal
 from dsptoolbox.standard_functions import group_delay
 from ._room_acoustics import (_reverb,
                               _complex_mode_identification,
-                              _sum_magnitude_spectra)
+                              _sum_magnitude_spectra,
+                              _find_ir_start)
 from dsptoolbox._general_helpers import _find_nearest, _normalize
 
 
 __all__ = ['reverb_time', 'find_modes', 'convolve_rir_on_signal']
 
 
-def reverb_time(signal, mode: str = 'T20'):
+def reverb_time(signal: Signal | MultiBandSignal, mode: str = 'T20',
+                ir_start: int = None, return_ir_start: bool = False):
     """Computes reverberation time. T20, T30, T60 and EDT.
 
     Parameters
     ----------
-    signal : Signal
+    signal : `Signal` or `MultiBandSignal`
         Signal for which to compute reverberation times. It must be type
         `'ir'` or `'rir'`.
     mode : str, optional
         Reverberation time mode. Options are `'T20'`, `'T30'`, `'T60'` or
         `'EDT'`. Default: `'T20'`.
+    ir_start : int, optional
+        When not `None`, it is used as the index of the start of the impulse
+        response. Otherwise it is automatically computed. Default: `None`.
+    return_ir_start : bool, optional
+        When `True`, not only reverberation times are returned but also the
+        index of the start of the impulse response (for the first channel
+        only). It should not be set to `True` when `ir_start is not None`.
+        Default: `False`.
 
     Returns
     -------
     reverberation_times : `np.ndarray`
-        Reverberation times for each channel. Shape (band, channel)
+        Reverberation times for each channel. Shape is (band, channel)
         if MultiBandSignal object is passed.
 
     References
@@ -48,23 +58,52 @@ def reverb_time(signal, mode: str = 'T20'):
         assert mode.casefold() in valid_modes, \
             f'{mode} is not valid. Use either one of ' +\
             'these: T20, T30, T60 or EDT'
-
+        assert not (return_ir_start and (ir_start is not None)), \
+            'Pass either ir_start or set return_ir_start to True, but not ' +\
+            'both'
         reverberation_times = np.zeros((signal.number_of_channels))
-        for n in range(signal.number_of_channels):
+        if return_ir_start:
+            reverberation_times[0], ir_start = \
+                _reverb(
+                    signal.time_data[:, 0].copy(),
+                    signal.sampling_rate_hz,
+                    mode.casefold(),
+                    ir_start=None,
+                    return_ir_start=True)
+        else:
+            reverberation_times[0] = \
+                _reverb(
+                    signal.time_data[:, 0].copy(),
+                    signal.sampling_rate_hz,
+                    mode.casefold(),
+                    ir_start=ir_start,
+                    return_ir_start=False)
+        for n in range(1, signal.number_of_channels):
             reverberation_times[n] = \
                 _reverb(
-                    signal.time_data[:, n],
+                    signal.time_data[:, n].copy(),
                     signal.sampling_rate_hz,
-                    mode.casefold())
+                    mode.casefold(),
+                    ir_start=ir_start,
+                    return_ir_start=False)
     elif type(signal) == MultiBandSignal:
         reverberation_times = \
             np.zeros(
                 (signal.number_of_bands, signal.bands[0].number_of_channels))
-        for ind, b in enumerate(signal.bands):
-            reverberation_times[ind, :] = reverb_time(b, mode)
+        if ir_start is None:
+            reverberation_times[0, :], ir_start = reverb_time(
+                signal.bands[0], mode,
+                ir_start=None,
+                return_ir_start=True)
+        for ind in range(1, signal.number_of_bands):
+            reverberation_times[ind, :] = reverb_time(
+                signal.bands[ind], mode,
+                ir_start=ir_start, return_ir_start=False)
     else:
         raise TypeError(
             'Passed signal should be of type Signal or MultiBandSignal')
+    if return_ir_start:
+        return reverberation_times.squeeze(), ir_start
     return reverberation_times.squeeze()
 
 
@@ -98,7 +137,7 @@ def find_modes(signal: Signal, f_range_hz=[50, 200],
 
     References
     ----------
-    http://papers.vibetech.com/Paper17-CMIF.pdf
+    - http://papers.vibetech.com/Paper17-CMIF.pdf
 
     """
     assert len(f_range_hz) == 2, 'Range of frequencies must have a ' +\
@@ -171,7 +210,7 @@ def find_modes(signal: Signal, f_range_hz=[50, 200],
 
 def convolve_rir_on_signal(signal: Signal, rir: Signal,
                            keep_peak_level: bool = True,
-                           keep_length: bool = True):
+                           keep_length: bool = True) -> Signal:
     """Applies an RIR to a given signal. The RIR should also be a signal object
     with a single channel containing the RIR time data. Signal type should
     also be set to IR or RIR. By default, all channels are convolved with
@@ -192,7 +231,7 @@ def convolve_rir_on_signal(signal: Signal, rir: Signal,
 
     Returns
     -------
-    new_sig : Signal
+    new_sig : `Signal`
         Convolved signal with RIR.
 
     """
@@ -231,3 +270,35 @@ def convolve_rir_on_signal(signal: Signal, rir: Signal,
         signal_type=signal.signal_type,
         signal_id=signal.signal_id+' (convolved with RIR)')
     return new_sig
+
+
+def find_ir_start(signal: Signal, threshold_dbfs: float = -20):
+    """This function finds the start of an IR defined as the first sample
+    where a certain threshold is surpassed.
+
+    Parameters
+    ----------
+    signal : `Signal`
+        IR signal.
+    threshold_dbfs : float, optional
+        Threshold that should be passed (in dBFS). Default: -20.
+
+    Returns
+    -------
+    start_index : int or `np.ndarray`
+        Index of IR start for each channel. Returns an integer when signal
+        only has one channel
+
+    References
+    ----------
+    - ISO 3382-1:2009-10, Acoustics - Measurement of the reverberation time of
+      rooms with reference to other acoustical parameters. pp. 22.
+
+    """
+    assert threshold_dbfs <= 0, \
+        'Threshold must be negative'
+    start_index = np.empty(signal.number_of_channels)
+    for n in range(signal.number_of_channels):
+        start_index[n] = \
+            _find_ir_start(signal.time_data[:, n], threshold_dbfs)
+    return start_index.squeeze()
