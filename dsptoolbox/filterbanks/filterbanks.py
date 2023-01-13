@@ -7,7 +7,7 @@ from scipy.signal import windows
 import warnings
 from dsptoolbox import (Filter, FilterBank, fractional_octave_frequencies,
                         erb_frequencies)
-from ._filterbank import LRFilterBank
+from ._filterbank import LRFilterBank, GammaToneFilterBank
 
 
 def linkwitz_riley_crossovers(freqs, order, sampling_rate_hz: int = 48000):
@@ -35,7 +35,7 @@ def linkwitz_riley_crossovers(freqs, order, sampling_rate_hz: int = 48000):
 
 def reconstructing_fractional_octave_bands(
         num_fractions: int = 1, frequency_range=[63, 16000],
-        overlap: float = 1, slope: int = 0, n_samples: int = 2**12,
+        overlap: float = 1, slope: int = 0, n_samples: int = 2**11,
         sampling_rate_hz: int = 48000) -> FilterBank:
     """Create and/or apply an amplitude preserving fractional octave filter
     bank. This implementation is taken directly from the pyfar package.
@@ -58,7 +58,7 @@ def reconstructing_fractional_octave_bands(
         default is ``0``.
     n_samples : int, optional
         Length of the filter in samples. Longer filters yield more exact
-        filters. The default is ``2**12``.
+        filters. The default is ``2**11``.
     sampling_rate : int
         Sampling frequency in Hz. The default is ``None``. Only required if
         ``signal=None``.
@@ -167,15 +167,15 @@ def reconstructing_fractional_octave_bands(
 
 def auditory_filters_gammatone(freq_range_hz=[20, 20000],
                                resolution: float = 1,
-                               sampling_rate_hz: int = 48000) -> FilterBank:
+                               sampling_rate_hz: int = 48000) \
+        -> GammaToneFilterBank:
     """Generate an auditory filter bank for analysis purposes. This code was
     taken and adapted from the pyfar package. In this implementation, the
-    reference frequency is fixed to 1000 Hz and there is no support for
-    reconstructing the original signal.
+    reference frequency is fixed to 1000 Hz and delay to 4 ms.
 
-    For a more general implementation of this filter bank (reconstruction
-    capabilities) please refer to the pyfar package or the octave/matlab
-    auditory modelling toolbox. See references.
+    For a more general implementation of this filter bank please refer to the
+    pyfar package or the octave/matlab auditory modelling toolbox.
+    See references.
 
     Parameters
     ----------
@@ -194,8 +194,13 @@ def auditory_filters_gammatone(freq_range_hz=[20, 20000],
 
     Returns
     -------
-    gammatone_fb : FilterBank
-        Gammatone filter bank.
+    gammatone_fb : GammaToneFilterBank
+        Auditory filters, gamma tone filter bank.
+
+    References
+    ----------
+    - pyfar: https://github.com/pyfar/pyfar
+    - auditory modelling toolbox: https://www.amtoolbox.org
 
     """
     # Create frequencies
@@ -229,8 +234,10 @@ def auditory_filters_gammatone(freq_range_hz=[20, 20000],
         f.warning_if_complex = False
         filters.append(f)
 
-    gammatone_fb = FilterBank(
+    gammatone_fb = GammaToneFilterBank(
         filters,
-        same_sampling_rate=True,
-        info={'Type of filter bank': 'Gammatone filter bank'})
+        info={'Type of filter bank': 'Gammatone filter bank'},
+        frequencies=frequencies_hz,
+        coefficients=coefficients,
+        normalizations=normalizations)
     return gammatone_fb

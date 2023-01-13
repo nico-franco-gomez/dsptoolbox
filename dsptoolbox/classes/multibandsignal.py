@@ -3,6 +3,7 @@ from os import sep
 from numpy import zeros, array, unique
 from copy import deepcopy
 from pickle import dump, HIGHEST_PROTOCOL
+from warnings import warn
 
 
 class MultiBandSignal():
@@ -230,9 +231,15 @@ class MultiBandSignal():
         """
         assert self.same_sampling_rate, \
             'Collapsing is only available for same sampling rate bands'
-        initial = self.bands[0].time_data
-        for n in range(1, len(self.bands)):
-            initial += self.bands[n].time_data
+        if self.bands[0].time_data_imaginary is None:
+            initial = self.bands[0].time_data
+            for n in range(1, len(self.bands)):
+                initial += self.bands[n].time_data
+        else:
+            initial = zeros(self.bands[0].time_data.shape, dtype='cfloat')
+            for n in range(len(self.bands)):
+                initial += self.bands[n].time_data
+                initial += self.bands[n].time_data_imaginary * 1j
         new_sig = self.bands[0].copy()
         new_sig.time_data = initial
         return new_sig
@@ -289,21 +296,39 @@ class MultiBandSignal():
 
         """
         if self.same_sampling_rate:
-            new_time_data = \
-                zeros((self.bands[0].time_data.shape[0], len(self.bands)))
-            for n in range(len(self.bands)):
-                new_time_data[:, n] = \
-                    self.bands[n].time_data[:, channel].copy()
+            # Check if there is complex time data
+            if self.bands[0].time_data_imaginary is None:
+                new_time_data = \
+                    zeros((self.bands[0].time_data.shape[0], len(self.bands)))
+                for n in range(len(self.bands)):
+                    new_time_data[:, n] = \
+                        self.bands[n].time_data[:, channel].copy()
+            else:
+                new_time_data = \
+                    zeros((self.bands[0].time_data.shape[0],
+                          len(self.bands)), dtype='cfloat')
+                for n in range(len(self.bands)):
+                    new_time_data[:, n] = \
+                        self.bands[n].time_data[:, channel] + \
+                        self.bands[n].time_data_imaginary[:, channel] * 1j
             sig = Signal(None, new_time_data, self.sampling_rate_hz)
             return sig
         else:
             new_time_data = []
             d = {}
             sr = []
-            for n in range(len(self.bands)):
-                new_time_data.append(
-                    self.bands[n].time_data[:, channel].copy())
-                sr.append(self.bands[n].sampling_rate_hz)
+            if self.bands[0].time_data_imaginary is None:
+                for n in range(len(self.bands)):
+                    new_time_data.append(
+                        self.bands[n].time_data[:, channel])
+                    sr.append(self.bands[n].sampling_rate_hz)
+            else:
+                for n in range(len(self.bands)):
+                    new_time_data.append(
+                        self.bands[n].time_data[:, channel] +
+                        self.bands[n].time_data_imaginary[:, channel] * 1j)
+                    sr.append(self.bands[n].sampling_rate_hz)
+                warn('Output is complex since signal data had imaginary part')
             d['sampling_rates'] = sr
             return new_time_data, d
 

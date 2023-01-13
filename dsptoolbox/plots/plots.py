@@ -10,7 +10,7 @@ set_style('whitegrid')
 
 
 def show():
-    """Wrapper around matplotlib's show.
+    """Show created plots by using this wrapper around matplotlib's show.
 
     """
     plt.show()

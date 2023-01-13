@@ -1,3 +1,6 @@
+.. image:: docs/logo/logo.png
+   :width: 600
+
 ======
 Readme
 ======

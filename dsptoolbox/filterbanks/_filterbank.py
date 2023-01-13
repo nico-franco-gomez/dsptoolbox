@@ -2,21 +2,25 @@
 Backend for the creation of specific filter banks
 """
 import numpy as np
+from warnings import warn
 from os import sep
 from pickle import dump, HIGHEST_PROTOCOL
 from copy import deepcopy
 
 from scipy.signal import (sosfilt, sosfilt_zi, butter)
-from dsptoolbox import Signal, MultiBandSignal
+from dsptoolbox import Signal, MultiBandSignal, FilterBank
+
 from dsptoolbox.generators import dirac
 from dsptoolbox.plots import general_plot
 from dsptoolbox._general_helpers import _get_normalized_spectrum
 from dsptoolbox._standard import _group_delay_direct
 
 
+# ============== First implementation
 class LRFilterBank():
     """This is specially crafted class for a Linkwitz-Riley crossovers filter
-    bank since its implementation might be hard to generalize.
+    bank since its implementation might be hard to generalize or inherit from
+    the FilterBank class.
 
     It is a cascaded structure that handles every band and its respective
     initial values for the filters to work in streaming applications. Since
@@ -40,31 +44,33 @@ class LRFilterBank():
         sampling_rate_hz : int, optional
             Sampling rate for the filter bank. Default: 48000.
         info : dict, optional
-            Dictionary containing additional information about the filter bank.
+            Dictionary containing additional information about the filter
+            bank.
             It is empty by default and updated after the filter bank is
             created.
 
         """
         if type(order) == int:
-            order = [order]*len(freqs)
+            order = np.ones(len(freqs))*order
+        freqs = np.atleast_1d(np.asarray(freqs).squeeze())
+        order = np.atleast_1d(np.asarray(order).squeeze())
         assert len(freqs) == len(order), \
             'Number of frequencies and number of order of the crossovers ' +\
             'do not match'
         for o in order:
             assert o % 2 == 0, 'Order of the crossovers has to be an ' +\
                 'even number'
-        self.freqs = np.array(freqs).squeeze()
-        self.order = np.array(order).squeeze()
-        if self.freqs.ndim > 0:
-            freqs_order = self.freqs.argsort()
-            self.freqs = self.freqs[freqs_order]
-            self.order = self.order[freqs_order]
-        else:
-            self.freqs = self.freqs[..., None]
-            self.order = self.order[..., None]
+        freqs_order = freqs.argsort()
+        self.freqs = freqs[freqs_order]
+        self.order = order[freqs_order]
         self.number_of_cross = len(freqs)
         self.number_of_bands = self.number_of_cross + 1
         self.sampling_rate_hz = sampling_rate_hz
+        # Center Frequencies
+        split_freqs = np.insert(self.freqs, 0, 0)
+        split_freqs = np.insert(self.freqs, -1, sampling_rate_hz//2)
+        self.center_frequencies = [(split_freqs[i+1]+split_freqs[i])/2
+                                   for i in range(len(split_freqs)-1)]
         #
         self._create_filters_sos()
         self._generate_metadata()
@@ -110,7 +116,7 @@ class LRFilterBank():
         # cross0_zi = [[low_zi, high_zi], [allpass1_zi], [allpass2_zi], ...]
         # allpass1_zi = [low_zi, high_zi]
         self.channels_zi = []
-        for i3 in range(number_of_channels):
+        for _ in range(number_of_channels):
             cross_zi = []
             allpass_zi = []
             for i in range(self.number_of_cross):
@@ -125,37 +131,37 @@ class LRFilterBank():
                     allpass_zi.append(al)
             self.channels_zi.append([cross_zi, allpass_zi])
 
-    def center_frequencies(self):
-        """Returns center frequencies for the filter bank.
-
-        """
-        split_freqs = list(self.freqs)
-        split_freqs.append(0)
-        split_freqs.append(self.sampling_rate_hz//2)
-        split_freqs = list(sorted(split_freqs))
-        return [(split_freqs[i+1]+split_freqs[i])/2
-                for i in range(len(split_freqs)-1)]
-
     # ======== Filtering ======================================================
-    def filter_signal(self, s: Signal, activate_zi: bool = False):
+    def filter_signal(self, s: Signal, mode: str = 'parallel',
+                      activate_zi: bool = False) -> MultiBandSignal | Signal:
         """Filters a signal regarding the zi's of the filters and returns
         a MultiBandSignal. Only `'parallel'` mode is available for this type
         of filter bank.
 
         Parameters
         ----------
-        s : Signal
+        s : `Signal`
             Signal to be filtered.
+        mode : str, optional
+            Way to apply filter bank to the signal. Supported modes are:
+            `'parallel'`, `'summed'`. Default: `'parallel'`.
         activate_zi : bool, optional
             When `True`, the zi's are activated for filtering.
             Default: `False`.
 
         Returns
         -------
-        outsig : MultiBandSignal
+        outsig : `MultiBandSignal`
             A MultiBandSignal object containing all bands and all channels.
 
         """
+        mode = mode.lower()
+        assert mode in ('parallel', 'sequential', 'summed'), \
+            f'{mode} is not a valid mode. Use parallel, sequential or summed'
+        if mode == 'sequential':
+            warn('sequential mode is not supported for this filter bank. ' +
+                 'It is automatically changed to summed')
+            mode = 'summed'
         assert s.sampling_rate_hz == self.sampling_rate_hz, \
             'Sampling rates do not match'
         new_time_data = \
@@ -173,7 +179,8 @@ class LRFilterBank():
                 for cn in range(self.number_of_cross):
                     band, in_sig[:, ch] = \
                         self._two_way_split_zi(
-                            in_sig[:, ch], channel_number=ch, cross_number=cn)
+                            in_sig[:, ch], channel_number=ch,
+                            cross_number=cn)
                     # band, in_sig[:, ch] = self._filt(in_sig[:, ch], cn)
                     for ap_n in range(cn+1, self.number_of_cross):
                         band = \
@@ -202,9 +209,11 @@ class LRFilterBank():
             filterbank_freqs=self.freqs,
             filterbank_order=self.order)
         out_sig = MultiBandSignal(bands=b, same_sampling_rate=True, info=d)
+        if mode == 'summed':
+            out_sig = out_sig.collapse()
         return out_sig
 
-    # ======== Update zi's and backend filtering ==============================
+    # ======== Update zi's and backend filtering ============================
     def _allpass_zi(self, s, channel_number, cross_number, ap_number):
         # Unpack zi's
         ap_zi = self.channels_zi[channel_number][1][cross_number][ap_number]
@@ -261,11 +270,15 @@ class LRFilterBank():
 
     # ======== IR =============================================================
     def get_ir(self, test_zi: bool = False):
-        """Returns impulse response from the filter bank. For this filter bank
-        only `mode='parallel'` is valid and there is no zero phase filtering.
+        """Returns impulse response from the filter bank. For this filter
+        bank only `mode='parallel'` is valid and there is no zero phase
+        filtering.
 
         Parameters
         ----------
+        mode : str, optional
+            Way to apply filter bank to the signal. Supported modes are:
+            `'parallel'`, `'summed'`. Default: `'parallel'`.
         test_zi : bool, optional
             When `True`, filtering is done while updating filters' initial
             values. Default: `False`.
@@ -284,15 +297,18 @@ class LRFilterBank():
         return ir
 
     # ======== Prints and plots ===============================================
-    def plot_magnitude(self, range_hz=[20, 20e3], test_zi: bool = False,
-                       returns: bool = False):
-        """Plots the magnitude response of each filter. Only `'parallel'` mode
-        is supported, thus no mode parameter can be set.
+    def plot_magnitude(self, range_hz=[20, 20e3], mode: str = 'parallel',
+                       test_zi: bool = False, returns: bool = False):
+        """Plots the magnitude response of each filter. Only `'parallel'`
+        mode is supported, thus no mode parameter can be set.
 
         Parameters
         ----------
         range_hz : array_like, optional
             Range of Hz to plot. Default: [20, 20e3].
+        mode : str, optional
+            Way to apply filter bank to the signal. Supported modes are:
+            `'parallel'`. Default: `'parallel'`.
         test_zi : bool, optional
             Uses the zi's of each filter to test the FilterBank's output.
             Default: `False`.
@@ -305,9 +321,14 @@ class LRFilterBank():
             Returned only when `returns=True`.
 
         """
+        mode = mode.lower()
+        if mode != 'parallel':
+            warn('Plotting for LRFilterBank is only supported with parallel ' +
+                 'mode. Setting to parallel')
         d = dirac(
-            length_samples=1024, number_of_channels=1, sampling_rate_hz=48000)
-        bs = self.filter_signal(d, test_zi)
+            length_samples=1024, number_of_channels=1,
+            sampling_rate_hz=48000)
+        bs = self.filter_signal(d, mode='parallel', activate_zi=test_zi)
         specs = []
         f = bs.bands[0].get_spectrum()[0]
         summed = []
@@ -340,7 +361,7 @@ class LRFilterBank():
         if returns:
             return fig, ax
 
-    def plot_phase(self, range_hz=[20, 20e3],
+    def plot_phase(self, range_hz=[20, 20e3], mode: str = 'parallel',
                    test_zi: bool = False, unwrap: bool = False,
                    returns: bool = False):
         """Plots the phase response of each filter.
@@ -348,8 +369,8 @@ class LRFilterBank():
         Parameters
         ----------
         mode : str, optional
-            Type of plot. `'parallel'` plots every filter's frequency response.
-            `'summed'` sums up every filter output. Default: `'parallel'`.
+            Way to apply filter bank to the signal. Supported modes are:
+            `'parallel'`. Default: `'parallel'`.
         range_hz : array-like, optional
             Range of Hz to plot. Default: [20, 20e3].
         test_zi : bool, optional
@@ -366,12 +387,15 @@ class LRFilterBank():
             Returned only when `returns=True`.
 
         """
-        import numpy as np
+        mode = mode.lower()
+        if mode != 'parallel':
+            warn('Plotting for LRFilterBank is only supported with parallel ' +
+                 'mode. Setting to parallel')
         length_samples = 1024
         d = dirac(
             length_samples=length_samples,
             number_of_channels=1, sampling_rate_hz=48000)
-        bs = self.filter_signal(d, activate_zi=test_zi)
+        bs = self.filter_signal(d, mode='parallel', activate_zi=test_zi)
         phase = []
         f = bs.bands[0].get_spectrum()[0]
         for b in bs.bands:
@@ -386,17 +410,15 @@ class LRFilterBank():
         if returns:
             return fig, ax
 
-    def plot_group_delay(self, range_hz=[20, 20e3],
+    def plot_group_delay(self, range_hz=[20, 20e3], mode: str = 'parallel',
                          test_zi: bool = False, returns: bool = False):
         """Plots the phase response of each filter.
 
         Parameters
         ----------
         mode : str, optional
-            Type of plot. `'parallel'` plots every filter's frequency response,
-            `'sequential'` plots the frequency response after having filtered
-            one impulse with every filter in the FilterBank. `'summed'`
-            sums up every filter output. Default: `'parallel'`.
+            Way to apply filter bank to the signal. Supported modes are:
+            `'parallel'`. Default: `'parallel'`.
         range_hz : array-like, optional
             Range of Hz to plot. Default: [20, 20e3].
         test_zi : bool, optional
@@ -411,12 +433,15 @@ class LRFilterBank():
             Returned only when `returns=True`.
 
         """
-        import numpy as np
+        mode = mode.lower()
+        if mode != 'parallel':
+            warn('Plotting for LRFilterBank is only supported with parallel ' +
+                 'mode. Setting to parallel')
         length_samples = 1024
         d = dirac(
             length_samples=length_samples,
             number_of_channels=1, sampling_rate_hz=48000)
-        bs = self.filter_signal(d, activate_zi=test_zi)
+        bs = self.filter_signal(d, mode='parallel', activate_zi=test_zi)
         gd = []
         f = bs.bands[0].get_spectrum()[0]
         for b in bs.bands:
@@ -451,7 +476,8 @@ class LRFilterBank():
 
         """
         if '.' in path.split(sep)[-1]:
-            raise ValueError('Please introduce the saving path without format')
+            raise ValueError('Please introduce the saving path without ' +
+                             'format')
         path += '.pkl'
         with open(path, 'wb') as data_file:
             dump(self, data_file, HIGHEST_PROTOCOL)
@@ -466,3 +492,164 @@ class LRFilterBank():
 
         """
         return deepcopy(self)
+
+
+class GammaToneFilterBank(FilterBank):
+    """This class extends the FilterBank to the reconstruction
+    possibilites of the Gamma Tone Filter Bank."""
+    def __init__(self, filters: list, info: dict, frequencies: np.ndarray,
+                 coefficients: np.ndarray, normalizations: np.ndarray):
+        """Constructor for the Gamma Tone Filter Bank. It is only available as
+        a constant sampling rate filter bank.
+
+        Parameters
+        ----------
+        filters : list
+            List with gamma tone filters.
+        info : dict
+            Dictionary containing basic information about the filter bank.
+        frequencies : `np.ndarray`
+            Frequencies used for the filters.
+        coefficients : `np.ndarray`
+            Filter coefficients.
+        normalizations : `np.ndarray`
+            Normalizations.
+
+        """
+        super().__init__(filters, same_sampling_rate=True, info=info)
+
+        self._frequencies = frequencies
+        self._coefficients = coefficients
+        self._normalizations = normalizations
+
+        self._delay = 0.004  # Delay in ms
+        self._compute_delays_and_phase_factors()
+        self._compute_gains()
+
+    # ======== Extra methods for the GammaToneFilterBank ======================
+    def _compute_delays_and_phase_factors(self):
+        """Section 4 in Hohmann 2002 describes how to derive these values. This
+        is a direct Python port of the corresponding function in the AMT
+        toolbox `hohmann2002_process.m`.
+
+        """
+        # the delay in samples
+        delay_samples = int(np.round(self._delay * self.sampling_rate_hz))
+
+        # apply filterbank to impulse to estimate the required values
+        d = dirac(delay_samples + 3, sampling_rate_hz=self.sampling_rate_hz)
+        d = self.filter_signal(d, mode='parallel')
+        d = d.get_all_bands(channel=0)
+        real, imag = d.time_data, d.time_data_imaginary
+
+        real = real.T
+        imag = imag.T
+        ir = real + 1j * imag
+        env = np.abs(ir)
+
+        # sample at which the maximum occurs
+        # (excluding last sample for a safe calculation of the slope below)
+        idx_max = np.argmax(env[:, :delay_samples + 1], axis=-1)
+        delays = delay_samples - idx_max
+
+        # calculate the phase factor from the slopes
+        slopes = np.array([ir[bb, idx + 1] - ir[bb, idx - 1]
+                           for bb, idx in enumerate(idx_max)])
+
+        phase_factors = 1j / (slopes / np.abs(slopes))
+
+        self._delays = delays
+        self._phase_factors = phase_factors
+
+    def _compute_gains(self):
+        """Section 4 in Hohmann 2002 describes how to derive these values. This
+        is a direct Python port of the corresponding function in the AMT
+        toolbox `hohmann2002_process.m`.
+
+        """
+        # positive and negative center frequencies in the z-plane
+        z = np.atleast_2d(
+            np.exp(2j * np.pi * self._frequencies / self.sampling_rate_hz)).T
+        z_conj = np.conjugate(z)
+
+        # calculate transfer function at all center frequencies for all bands
+        # (matrixes contain center frequencies along first dimension and
+        h_pos = (1 - np.atleast_2d(self._coefficients) / z)**(-4) * \
+            np.atleast_2d(self._normalizations)
+        h_neg = (1 - np.atleast_2d(self._coefficients) / z_conj)**(-4) * \
+            np.atleast_2d(self._normalizations)
+
+        # apply delay and phase correction
+        phase_factors = np.atleast_2d(self._phase_factors)
+        delays = np.atleast_2d(self._delays)
+        h_pos *= phase_factors * z**(-delays)
+        h_neg *= phase_factors * np.conjugate(z)**(-delays)
+
+        # combine positive and negative spectrum
+        h = (h_pos + np.conjugate(h_neg)) / 2
+
+        # iteratively find gains
+        gains = np.ones((self.number_of_filters, 1))
+        for ii in range(100):
+            h_fin = np.matmul(h, gains)
+            gains /= np.abs(h_fin)
+
+        self._gains = gains.flatten()
+
+    # ======== Reconstruct signal =============================================
+    def reconstruct(self, signal: MultiBandSignal) -> Signal:
+        """This method reconstructs a signal filtered with the gamma tone
+        filter bank. The passed signal should be a MultiBandSignal and have
+        imaginary time data.
+
+        The summation process is described in Section 4 of Hohmann 2002 and
+        uses the pre-calculated delays, phase factors and gains.
+
+        Parameters
+        ----------
+        signal : `MultiBandSignal`
+            Signal with multiple bands and imaginary time data needed to
+            reconstruct the original filtered signal.
+
+        Returns
+        -------
+        reconstructed_sig : `Signal`
+            The summed input.  ``summed.cshape`` matches the ``cshape`` or the
+            original signal before it was filtered.
+
+        """
+        condition = all([signal.bands[n].time_data_imaginary is not None
+                         for n in range(signal.number_of_bands)])
+        assert condition, \
+            'Not all bands have imaginary time data. Reconstruction cannot ' +\
+            'be done'
+        shape = (signal.number_of_bands,
+                 signal.bands[0].time_data.shape[0],
+                 signal.number_of_channels)
+        # (bands, time samples, channels)
+        time = np.empty(shape, dtype='cfloat')
+        for ind, b in enumerate(signal.bands):
+            time[ind, :, :] = b.time_data + b.time_data_imaginary * 1j
+
+        # Reordering axis for later to (bands, channels, time samples) or
+        # (bands, time samples) when single channel
+        if time.shape[-1] == 1:
+            time = time.squeeze()
+        else:
+            time = np.moveaxis(time, -1, 1)
+
+        reconstructed_sig = signal.bands[0].copy()
+
+        # apply phase shift, delay, and gain
+        for bb, (phase_factor, delay, gain) in enumerate(zip(
+                self._phase_factors, self._delays, self._gains)):
+
+            time[bb] = \
+                np.real(np.roll(time[bb], delay, axis=-1) * phase_factor) * \
+                gain
+
+        # sum and squeeze first axis (the signal is already real, but the data
+        # type is still complex)
+        reconstructed_sig.time_data = \
+            np.sum(np.real(time), axis=0)
+        return reconstructed_sig

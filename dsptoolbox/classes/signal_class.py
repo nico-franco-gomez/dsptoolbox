@@ -225,7 +225,7 @@ class Signal():
         if self.__time_data_imaginary is None:
             warn('Imaginary part of time data was called, but there is ' +
                  'None. None is returned.')
-        return self.__time_data_imaginary
+        return self.__time_data_imaginary.copy()
 
     @time_data_imaginary.setter
     def time_data_imaginary(self, new_imag: np.ndarray):

@@ -195,8 +195,9 @@ def chirp(type_of_chirp: str = 'log', range_hz=None, length_seconds: float = 1,
     return chirp_sig
 
 
-def dirac(length_samples: int = 512, number_of_channels: int = 1,
-          sampling_rate_hz: int = 48000) -> Signal:
+def dirac(length_samples: int = 512, delay_samples: int = 0,
+          number_of_channels: int = 1, sampling_rate_hz: int = 48000) \
+        -> Signal:
     """Generates a dirac impulse Signal with the specified length and
     sampling rate.
 
@@ -204,6 +205,8 @@ def dirac(length_samples: int = 512, number_of_channels: int = 1,
     ----------
     length_samples : int, optional
         Length in samples. Default: 512.
+    delay_samples : int, optional
+        Delay of the impulse in samples. Default: 0.
     number_of_channels : int, optional
         Number of channels to be generated with the same impulse. Default: 1.
     sampling_rate_hz : int, optional
@@ -215,12 +218,18 @@ def dirac(length_samples: int = 512, number_of_channels: int = 1,
         Signal with dirac impulse.
 
     """
-    assert length_samples > 0, 'Only positive lengths are valid'
+    assert type(length_samples) == int and length_samples > 0, \
+        'Only positive lengths are valid'
+    assert type(delay_samples) == int and delay_samples >= 0, \
+        'Only positive delay is supported'
+    assert delay_samples < length_samples, \
+        'Delay is bigger than the samples of the signal'
     assert number_of_channels > 0, 'At least one channel has to be created'
     assert sampling_rate_hz > 0, 'Sampling rate can only be positive'
     td = np.zeros((length_samples, number_of_channels))
     for n in range(number_of_channels):
-        td[:, n] = _impulse(length_samples=length_samples)
+        td[:, n] = _impulse(
+            length_samples=length_samples, delay_samples=delay_samples)
     imp = Signal(None, td, sampling_rate_hz, signal_type='dirac')
     return imp
 

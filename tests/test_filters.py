@@ -77,23 +77,16 @@ def filter_bank_filter():
     import dsptoolbox as dsp
 
     # Standard filter bank
-    # fb = dsp.FilterBank()
-    # config = dict(order=5, freqs=[1500, 2000], type_of_pass='bandpass',
-    #               filter_design_method='bessel')
-    # fb.add_filter(dsp.Filter('iir', config))
-    # config = dict(order=150, freqs=[1500, 2000], type_of_pass='bandpass')
-    # fb.add_filter(dsp.Filter('fir', config))
-
-    # Linkwitz-Riley filter bank
-    fb = dsp.filterbanks.linkwitz_riley_crossovers(
-        [1000, 1500], [4, 6])
-    fb.show_info()
-    fb.plot_phase(unwrap=True, test_zi=True)
-    # fb.plot_group_delay()
+    fb = dsp.FilterBank()
+    config = dict(order=5, freqs=[1500, 2000], type_of_pass='bandpass',
+                  filter_design_method='bessel')
+    fb.add_filter(dsp.Filter('iir', config))
+    config = dict(order=150, freqs=[1500, 2000], type_of_pass='bandpass')
+    fb.add_filter(dsp.Filter('fir', config))
 
     # Parallel
     # fb.plot_magnitude(test_zi=True)
-    # fb.plot_magnitude(test_zi=False)
+    fb.plot_magnitude(test_zi=False)
     # fb.plot_magnitude(mode='sequential', test_zi=True)
 
     # Single filter
@@ -106,6 +99,23 @@ def filter_bank_filter():
     dsp.plots.show()
 
 
+def linkwitz_riley():
+    import dsptoolbox as dsp
+
+    # Linkwitz-Riley filter bank
+    fb = dsp.filterbanks.linkwitz_riley_crossovers(
+        [1000, 1500], [4, 6])
+    fb.show_info()
+    # fb.plot_phase(unwrap=True, test_zi=True)
+    # fb.plot_group_delay()
+
+    # Parallel
+    # fb.plot_magnitude(test_zi=True)
+    # fb.plot_magnitude(test_zi=False)
+    # fb.plot_magnitude(mode='sequential', test_zi=True)
+    dsp.plots.show()
+
+
 def perfect_reconstruction():
     import dsptoolbox as dsp
 
@@ -114,19 +124,35 @@ def perfect_reconstruction():
     # fig, ax = \
     #     fb.plot_phase(
     #         mode='parallel', length_samples=2**12, unwrap=True, returns=True)
-    # fig, ax = \
-    #     fb.plot_magnitude(mode='parallel', returns=True)
+    fig, ax = \
+        fb.plot_magnitude(mode='parallel', returns=True)
     # ax.set_ylim([-5, 5])
     # fb.plot_phase(mode='parallel', unwrap=True)
-    fb.plot_group_delay(mode='summed')
+    # fb.plot_group_delay(mode='summed')
+    dsp.plots.show()
+
+
+def gamma_tone_reconstruction():
+    import dsptoolbox as dsp
+
+    # s = dsp.generators.dirac(length_samples=2**12, number_of_channels=2)
+    s = dsp.generators.noise(length_seconds=2, number_of_channels=1)
+    s.plot_magnitude()
+    g_dsp = dsp.filterbanks.auditory_filters_gammatone([20, 20e3])
+    s_bla = g_dsp.filter_signal(s)
+    s2 = g_dsp.reconstruct(s_bla)
+    s_bla.collapse().plot_magnitude()
+    s2.plot_magnitude()
     dsp.plots.show()
 
 
 if __name__ == '__main__':
     # filter_functionalities()
     # filtering()
-    filter_bank_add_remove()
+    # filter_bank_add_remove()
     # filter_bank_filter()
+    # linkwitz_riley()
     # perfect_reconstruction()
+    # gamma_tone_reconstruction()
 
     print()

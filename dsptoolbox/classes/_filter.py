@@ -7,6 +7,7 @@ from enum import Enum
 import scipy.signal as sig
 from .signal_class import Signal
 from .multibandsignal import MultiBandSignal
+from dsptoolbox._general_helpers import _polyphase_decomposition, _pad_trim
 
 
 def _get_biquad_type(number: int = None, name: str = None):
@@ -129,13 +130,15 @@ def _biquad_coefficients(eq_type=0, fs_hz: int = 48000,
     return b, a
 
 
-def _impulse(length_samples: int = 512):
+def _impulse(length_samples: int = 512, delay_samples: int = 0):
     """Creates an impulse with the given length
 
     Parameters
     ----------
     length_samples : int, optional
-        Length for the impulse.
+        Length for the impulse. Default: 512.
+    delay_samples : int, optional
+        Delay of the impulse. Default: 0.
 
     Returns
     -------
@@ -144,7 +147,7 @@ def _impulse(length_samples: int = 512):
 
     """
     imp = np.zeros(length_samples)
-    imp[0] = 1
+    imp[delay_samples] = 1
     return imp
 
 
@@ -218,6 +221,8 @@ def _filter_on_signal(signal: Signal, sos, channels=None,
     -------
     new_signal : `Signal`
         New Signal object.
+    zi : list
+        None if passed zi was None.
 
     """
     # Time Data
@@ -243,7 +248,7 @@ def _filter_on_signal(signal: Signal, sos, channels=None,
         else:
             y = sig.sosfilt(sos, signal.time_data[:, channels], axis=0)
 
-    # Cast to real if complex
+    # Check for complex output
     if np.iscomplexobj(y):
         if warning_on_complex_output:
             warn('Filter output is complex. Imaginary part is saved in ' +
@@ -264,7 +269,8 @@ def _filter_on_signal(signal: Signal, sos, channels=None,
 
 
 def _filter_on_signal_ba(signal: Signal, ba, channels=None,
-                         zi=None, zero_phase: bool = False,
+                         zi: list = None, zero_phase: bool = False,
+                         filter_type: str = 'iir',
                          warning_on_complex_output: bool = True):
     """Takes in a `Signal` object and filters selected channels. Exports a new
     `Signal` object.
@@ -286,6 +292,9 @@ def _filter_on_signal_ba(signal: Signal, ba, channels=None,
     zero_phase : bool, optional
         Uses zero-phase filtering on signal. Be aware that the filter
         is doubled in this case. Default: `False`.
+    filter_type : str, optional
+        Filter type. When FIR, an own implementation of lfilter is used,
+        otherwise scipy.signal.lfilter is used. Default: `'iir'`.
     warning_on_complex_output: bool, optional
         When `True`, there is a warning when the output is complex. Either way,
         only the real part is regarded. Default: `True`.
@@ -294,18 +303,19 @@ def _filter_on_signal_ba(signal: Signal, ba, channels=None,
     -------
     new_signal : `Signal`
         New Signal object.
+    zi : list
+        None if passed zi was None.
 
     """
     # Take lfilter function, might be a different one depending if filter is
     # FIR or IIR
-    lfilter = sig.lfilter
-    # See if it is FIR Filter and normalize to a[0] = 1
-    ba[0] = np.atleast_1d(ba[0])
-    ba[1] = np.atleast_1d(np.asarray(ba[1]).squeeze())
-    if len(ba[1]) == 1:
-        ba[0] = np.asarray(ba[0]) / np.squeeze(ba[1])
-        ba[1] = 1
+    if filter_type == 'fir':
         lfilter = _lfilter_fir
+    elif filter_type in ('iir', 'biquad'):
+        lfilter = sig.lfilter
+    else:
+        raise ValueError(
+            f'{filter_type} is not supported. Use either fir or iir')
 
     # Time Data
     new_time_data = signal.time_data
@@ -331,7 +341,7 @@ def _filter_on_signal_ba(signal: Signal, ba, channels=None,
             y = lfilter(
                 ba[0], a=ba[1], x=signal.time_data[:, channels])
 
-    # Take only real part if output is complex
+    # Check for complex output
     if np.iscomplexobj(y):
         if warning_on_complex_output:
             warn('Filter output is complex. Imaginary part is saved in ' +
@@ -418,7 +428,7 @@ def _lfilter_fir(b: np.ndarray, a: np.ndarray, x: np.ndarray,
     This is only used for FIR filters.
 
     """
-    assert a == 1, \
+    assert len(a) == 1, \
         f'{a} is not valid. It has to be 1 in order to be a valid FIR filter'
 
     # b dimensions handling
@@ -452,3 +462,132 @@ def _lfilter_fir(b: np.ndarray, a: np.ndarray, x: np.ndarray,
     if zi is None:
         return y
     return y, zf
+
+
+def _filter_and_downsample(time_data: np.ndarray, down_factor: int,
+                           ba_coefficients: list, polyphase: bool) \
+        -> np.ndarray:
+    """Filters and downsamples time data. If polyphase is `True`, it is
+    assumed that the filter is FIR and only b-coefficients are used. In
+    that case, an efficient downsampling is done, otherwise standard filtering
+    and downsampling is applied.
+
+    NOTE: There must be a bug with this implementation because it is not
+    exactly the same output as when one uses normal filtering or
+    `scipy.signal.resample_poly`. Perceptually there is no difference between
+    the two results, though.
+
+    Parameters
+    ----------
+    time_data : `np.ndarray`
+        Time data to be filtered and resampled. Shape should be (time samples,
+        channels).
+    down_factor : int
+        Factor by which it will be downsampled.
+    ba_coefficients : list
+        List containing [b, a] coefficients. If polyphase is set to `True`,
+        only b coefficients are regarded.
+    polyphase : bool
+        Use polyphase representation or not.
+
+    Returns
+    -------
+    new_time_data : `np.ndarray`
+        New time data with downsampling.
+
+    """
+    if time_data.ndim == 1:
+        time_data = time_data[..., None]
+    assert time_data.ndim == 2, \
+        'Shape for time data should be (time samples, channels)'
+
+    if polyphase:
+        poly = _polyphase_decomposition(time_data, down_factor, flip=False)
+        # (time samples, polyphase components, channels)
+        b = ba_coefficients[0]
+        half_length = (len(b) - 1) // 2
+        b_poly = _polyphase_decomposition(
+            b, down_factor, flip=False).squeeze() / down_factor
+        new_time_data = np.zeros(
+            (poly.shape[0]+b_poly.shape[0]-1, poly.shape[2]))
+        for ch in range(poly.shape[2]):
+            new_time_data[:, ch] += \
+                np.sum(sig.convolve(
+                    poly[:, :, ch], b_poly, mode='full'), axis=1)
+        new_time_data = \
+            new_time_data[
+                half_length//down_factor:-half_length//down_factor, :]
+    else:
+        new_time_data = sig.lfilter(
+            ba_coefficients[0], ba_coefficients[1], x=time_data, axis=0)
+        new_time_data = new_time_data[::down_factor]
+
+    return new_time_data
+
+
+def _filter_and_upsample(time_data: np.ndarray, up_factor: int,
+                         ba_coefficients: list, polyphase: bool):
+    """Filters and upsamples time data. If polyphase is `True`, it is
+    assumed that the filter is FIR and only b-coefficients are used. In
+    that case, an efficient polyphase upsampling is done, otherwise standard
+    upsampling and filtering is applied.
+
+    NOTE: The polyphase version might not be more efficient since it uses
+    two loops. Also selecting the right middle samples has not been
+    successfully implemented.
+
+    Parameters
+    ----------
+    time_data : `np.ndarray`
+        Time data to be filtered and resampled. Shape should be (time samples,
+        channels).
+    up_factor : int
+        Factor by which it will be upsampled.
+    ba_coefficients : list
+        List containing [b, a] coefficients. If polyphase is set to `True`,
+        only b coefficients are regarded.
+    polyphase : bool
+        Use polyphase representation or not.
+
+    Returns
+    -------
+    new_time_data : `np.ndarray`
+        New time data with downsampling.
+
+    """
+    if time_data.ndim == 1:
+        time_data = time_data[..., None]
+    assert time_data.ndim == 2, \
+        'Shape for time data should be (time samples, channels)'
+
+    if polyphase:
+        b = ba_coefficients[0]
+        half_length = (len(b) - 1) // 2
+
+        # Decompose filter
+        b_poly = _polyphase_decomposition(b, up_factor).squeeze()
+
+        # Accumulator
+        extra_tap = len(b) % up_factor
+        if extra_tap == 0:
+            extra_tap = up_factor
+        new_time_data = np.zeros(
+            (time_data.shape[0] * up_factor + len(b) - extra_tap))
+
+        # Interpolate per channel and per polyphase component – should be
+        # a better way to do it without the loops...
+        for ch in range(time_data.shape[1]):
+            for ind in range(up_factor):
+                new_time_data[ind::up_factor, ch] = sig.convolve(
+                        time_data[:, ch], b_poly[:, ind], mode='full')
+        new_time_data = \
+            new_time_data[half_length+1:-half_length+1, :] * up_factor
+        new_time_data = _pad_trim(
+            new_time_data, time_data.shape[0]*up_factor)
+    else:
+        new_time_data = np.zeros(
+            (time_data.shape[0]*up_factor, time_data.shape[1]))
+        new_time_data[::up_factor] = time_data
+        new_time_data = sig.lfilter(
+            ba_coefficients[0], ba_coefficients[1], x=new_time_data, axis=0)
+    return new_time_data
