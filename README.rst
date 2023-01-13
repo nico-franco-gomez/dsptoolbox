@@ -1,5 +1,6 @@
 .. image:: docs/logo/logo.png
-   :width: 600
+   :width: 700
+   :align: center
 
 ======
 Readme
