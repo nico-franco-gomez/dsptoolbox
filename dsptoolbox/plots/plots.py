@@ -34,6 +34,8 @@ def general_plot(x, matrix, range_x=None, range_y=None, log: bool = True,
         Range to show for y axis. Default: None.
     log : bool, optional
         Show x axis as logarithmic. Default: `True`.
+    labels : list or str, optional
+        Labels for the drawn lines as list of strings. Default: `None`.
     xlabel : str, optional
         Label for x axis. Default: None.
     ylabel : str, optional
@@ -57,6 +59,11 @@ def general_plot(x, matrix, range_x=None, range_y=None, log: bool = True,
         matrix = matrix[..., None]
     elif matrix.ndim > 2:
         raise ValueError('Only 2D-arrays are supported')
+    if labels is not None:
+        if type(labels) not in (list, tuple):
+            assert type(labels) == str, \
+                'labels should be a list or a string'
+            labels = [labels]
     for n in range(matrix.shape[1]):
         if labels is not None:
             ax.plot(x, matrix[:, n], label=labels[n])

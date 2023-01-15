@@ -7,8 +7,10 @@ under a same category.
 """
 import numpy as np
 import pickle
-from scipy.signal import resample_poly
+from scipy.signal import resample_poly, convolve
+from scipy.special import iv as bessel_first_mod
 from fractions import Fraction
+from warnings import warn
 
 from dsptoolbox.classes.signal_class import Signal
 from dsptoolbox.classes.multibandsignal import MultiBandSignal
@@ -18,7 +20,8 @@ from dsptoolbox._standard import (_latency,
                                   _group_delay_direct,
                                   _minimum_phase,
                                   _center_frequencies_fractional_octaves_iec,
-                                  _exact_center_frequencies_fractional_octaves)
+                                  _exact_center_frequencies_fractional_octaves,
+                                  _kaiser_window_beta)
 from dsptoolbox.classes._filter import _group_delay_filter
 from dsptoolbox._general_helpers import _pad_trim, _normalize, _fade
 from dsptoolbox.special import min_phase_from_mag, lin_phase_from_mag
@@ -708,3 +711,163 @@ def true_peak_level(sig: Signal | MultiBandSignal):
         raise TypeError(
             'Passed signal must be of type Signal or MultiBandSignal')
     return true_peak_levels, peak_levels
+
+
+def fractional_delay(sig: Signal | MultiBandSignal, delay_seconds: float,
+                     channels=None, keep_length: bool = False,
+                     order: int = 30, side_lobe_suppression_db: float = 60) \
+        -> Signal | MultiBandSignal:
+    """Apply fractional time delay to a signal. This
+    implementation is taken and adapted from the pyfar package.
+
+    Parameters
+    ----------
+    sig : `Signal` or `MultiBandSignal`
+        Signal to be delayed.
+    delay_seconds : float
+        Delay in seconds.
+    channels : int or array-like, optional
+        Channels to be delayed. Pass `None` to delay all channels.
+        Default: `None`.
+    keep_length : bool, optional
+        When `True`, the signal retains its original length and loses
+        information for the latest samples. If only specific channels are to be
+        delayed, and keep_length is set to `False`, the remaining channels are
+        zero-padded in the end. Default: `False`.
+    order : int, optional
+        Order of the sinc filter, higher order yields better results at the
+        expense of computation time. Default: 30.
+    side_lobe_suppression_db : float, optional
+        Side lobe suppresion in dB for the Kaiser window. Default: 60.
+
+    Returns
+    -------
+    out_sig : `Signal` or `MultiBandSignal`
+        Newly created Signal
+
+    References
+    ----------
+    - The pyfar package: https://github.com/pyfar/pyfar
+    - T. I. Laakso, V. Välimäki, M. Karjalainen, and U. K. Laine,
+      'Splitting the unit delay,' IEEE Signal Processing Magazine 13,
+      30-60 (1996). doi:10.1109/79.482137
+    - A. V. Oppenheim and R. W. Schafer, Discrete-time signal processing,
+      (Upper Saddle et al., Pearson, 2010), Third edition.
+
+    """
+    assert delay_seconds > 0, \
+        'Delay must be positive'
+    assert side_lobe_suppression_db > 0, \
+        'Side lobe suppression must be positive'
+    if type(sig) == Signal:
+        if sig.time_data_imaginary is not None:
+            warn('Imaginary time data will be ignored in this function. ' +
+                 'Delay it manually by creating another signal object, if ' +
+                 'needed.')
+        delay_samples = delay_seconds*sig.sampling_rate_hz
+        assert delay_samples < sig.time_data.shape[0], \
+            'Delay too large for the given signal'
+        assert order + 1 < sig.time_data.shape[0], \
+            'Filter order is longer than the signal itself'
+        if channels is None:
+            channels = np.arange(sig.number_of_channels)
+        channels = np.atleast_1d(np.asarray(channels).squeeze())
+        assert np.all(channels < sig.number_of_channels), \
+            'There is at least an invalid channel number'
+        assert len(np.unique(channels)) == len(channels), \
+            'At least one channel is repeated'
+
+        # =========== separate integer and fractional delay ===================
+        delay_int = np.atleast_1d(delay_samples).astype(int)
+        delay_frac = np.atleast_1d(delay_samples - delay_int)
+        # force delay_frac >= 0 as required by Laakso et al. 1996 Eq. (2)
+        mask = delay_frac < 0
+        delay_int[mask] -= 1
+        delay_frac[mask] += 1
+
+        # =========== get sinc function =======================================
+        if order % 2:
+            M_opt = delay_frac.astype("int") - (order-1)/2
+        else:
+            M_opt = np.round(delay_frac) - order / 2
+        # get matrix versions of the fractional shift and M_opt
+        delay_frac_matrix = np.tile(
+            delay_frac[..., np.newaxis],
+            tuple(np.ones(delay_frac.ndim, dtype="int")) + (order + 1, ))
+        M_opt_matrix = np.tile(
+            M_opt[..., np.newaxis],
+            tuple(np.ones(M_opt.ndim, dtype="int")) + (order + 1, ))
+        # discrete time vector
+        n = np.arange(order + 1) + M_opt_matrix - delay_frac_matrix
+        sinc = np.sinc(n)
+
+        # =========== get kaiser window =======================================
+        #  beta parameter for side lobe rejection according to
+        # Oppenheim (2010) Eq. (10.13)
+        beta = _kaiser_window_beta(np.abs(side_lobe_suppression_db))
+
+        # Kaiser window according to Oppenheim (2010) Eq. (10.12)
+        alpha = order / 2
+        L = np.arange(order + 1).astype("float") - delay_frac_matrix
+        # required to counter operations on M_opt and make sure that the maxima
+        # of the underlying continuous sinc function and Kaiser window appear
+        # at the same time
+        if order % 2:
+            L += .5
+        else:
+            L[delay_frac_matrix > .5] += 1
+        Z = beta * np.sqrt(
+            np.array(1 - ((L - alpha) / alpha)**2, dtype="complex"))
+        # suppress small imaginary parts
+        kaiser = np.real(bessel_first_mod(0, Z)) / bessel_first_mod(0, beta)
+
+        # =========== create and apply fractional delay filter ================
+        # compute filter and match dimensions
+        frac_delay_filter = (sinc * kaiser).squeeze()
+
+        # Copy data
+        new_time_data = sig.time_data
+
+        # Create space for the filter in the end of signal
+        new_time_data = _pad_trim(
+            new_time_data,
+            sig.time_data.shape[0] + len(frac_delay_filter) - 1)
+
+        # Delay channels
+        new_time_data[:, channels] = convolve(
+            sig.time_data[:, channels], frac_delay_filter[..., None],
+            mode='full')
+
+        # =========== apply integer delay =====================================
+        delay_int += M_opt.astype("int")
+        delay_int = np.squeeze(delay_int)
+
+        # First pad all channels in the end
+        new_time_data = _pad_trim(
+            new_time_data,
+            delay_int+new_time_data.shape[0], in_the_end=True)
+
+        # Now delay channels
+        new_time_data[delay_int:, channels] = \
+            new_time_data[:-delay_int, channels]
+        new_time_data[:delay_int, channels] = 0
+
+        # =========== handle length ===========================================
+        if keep_length:
+            new_time_data = new_time_data[:sig.time_data.shape[0], :]
+
+        # =========== give out object =========================================
+        out_sig = sig.copy()
+        out_sig.time_data = new_time_data
+
+    elif type(sig) == MultiBandSignal:
+        new_bands = []
+        out_sig = sig.copy()
+        for b in sig.bands:
+            new_bands.append(
+                fractional_delay(b, delay_seconds, channels, keep_length))
+        out_sig.bands = new_bands
+    else:
+        raise TypeError('Passed signal should be either type Signal or ' +
+                        'MultiBandSignal')
+    return out_sig

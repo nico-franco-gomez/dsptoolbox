@@ -11,10 +11,33 @@ adheres to `Semantic Versioning <http://semver.org/spec/v2.0.0.html>`_.
 `To Do's for future releases`_
 ------------------------------
 
-- Automated testing with pytest
-- Validation of transfer functions, coherence and distances with some external tool
-- Fractional time delay filter
-- Beamforming module
+- Automated testing, ideally with pytest
+- Validation of transfer functions (h1, h2, h3), coherence and distances
+  with some external tool
+- Validation for distance measures
+
+`0.1.0`_ - 2023-01-13
+---------------------
+
+Added
+~~~~~~
+- GammaToneFilterBank with reconstruction capabilities
+- fractional time delay in standard module
+- delay_samples parameter for dirac signal
+- polyphase representations in `_general_helpers.py`
+- filtering and resampling has been implemented in the ``Filter`` class:
+  if filter is iir normal filtering and downsampling (or the other way around
+  for upsampling) is done. If filter is fir, an efficient polyphase representation is used
+
+Bugfix
+~~~~~
+- time_data_imaginary gives now a copy of the time data
+- energy normalization in distance measures now allows for scale-invariant comparison
+- corrected sampling rate in plot generation for FilterBank
+
+Misc
+~~~~
+- add image in the beginning of repository's readme
 
 `0.0.5`_ - 2023-01-11
 ---------------------

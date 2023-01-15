@@ -1,5 +1,5 @@
 .. image:: docs/logo/logo.png
-   :width: 700
+   :width: 800
    :align: center
 
 ======

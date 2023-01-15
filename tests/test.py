@@ -576,6 +576,23 @@ def band_swapping():
     s_multi.show_info(True)
 
 
+def fractional_time_delay():
+    import dsptoolbox as dsp
+
+    # Signal
+    s = dsp.generators.noise('grey', length_seconds=2, number_of_channels=3)
+    s.plot_time()
+    s_d = dsp.fractional_delay(s, 10.5e-3, channels=[-1])
+    s_d.plot_time()
+
+    # MultiBandSignal
+    # fb = dsp.filterbanks.auditory_filters_gammatone([500, 1000])
+    # sb = fb.filter_signal(s)
+    # s_d = dsp.fractional_delay(sb, 10.5e-3, channels=1)
+    # s_d.bands[0].plot_time()
+    dsp.plots.show()
+
+
 if __name__ == '__main__':
     # plotting_test()
     # package_structure_test()
@@ -604,7 +621,7 @@ if __name__ == '__main__':
     # min_phase_signal()
     # lin_phase_signal()
     # gammatone_filters()
-    ir2filt()
+    # ir2filt()
     # true_peak()
     # sinus_tone()
     # band_swapping()
@@ -617,4 +634,5 @@ if __name__ == '__main__':
     # cepstrum()  # -> needs validation with some other tool
 
     # Next
+    fractional_time_delay()
     print()

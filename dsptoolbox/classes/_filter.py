@@ -502,18 +502,19 @@ def _filter_and_downsample(time_data: np.ndarray, down_factor: int,
         'Shape for time data should be (time samples, channels)'
 
     if polyphase:
-        poly = _polyphase_decomposition(time_data, down_factor, flip=False)
+        poly, _ = _polyphase_decomposition(time_data, down_factor, flip=False)
         # (time samples, polyphase components, channels)
         b = ba_coefficients[0]
         half_length = (len(b) - 1) // 2
-        b_poly = _polyphase_decomposition(
-            b, down_factor, flip=False).squeeze() / down_factor
+        b_poly, _ = _polyphase_decomposition(b, down_factor, flip=True)
         new_time_data = np.zeros(
             (poly.shape[0]+b_poly.shape[0]-1, poly.shape[2]))
         for ch in range(poly.shape[2]):
-            new_time_data[:, ch] += \
-                np.sum(sig.convolve(
-                    poly[:, :, ch], b_poly, mode='full'), axis=1)
+            temp = np.zeros(new_time_data.shape[0])
+            for n in range(poly.shape[1]):
+                temp += sig.convolve(
+                    poly[:, n, ch], b_poly[:, n, 0], mode='full')
+            new_time_data[:, ch] = temp
         new_time_data = \
             new_time_data[
                 half_length//down_factor:-half_length//down_factor, :]
@@ -532,9 +533,9 @@ def _filter_and_upsample(time_data: np.ndarray, up_factor: int,
     that case, an efficient polyphase upsampling is done, otherwise standard
     upsampling and filtering is applied.
 
-    NOTE: The polyphase version might not be more efficient since it uses
-    two loops. Also selecting the right middle samples has not been
-    successfully implemented.
+    NOTE: The polyphase implementation uses two loops: once for the polyphase
+    components and once for the channels. Hence, it might not be much faster
+    than usual filtering.
 
     Parameters
     ----------
@@ -565,25 +566,25 @@ def _filter_and_upsample(time_data: np.ndarray, up_factor: int,
         half_length = (len(b) - 1) // 2
 
         # Decompose filter
-        b_poly = _polyphase_decomposition(b, up_factor).squeeze()
+        b_poly, padding = _polyphase_decomposition(b, up_factor)
+        b_poly *= up_factor
 
-        # Accumulator
-        extra_tap = len(b) % up_factor
-        if extra_tap == 0:
-            extra_tap = up_factor
+        # Accumulator – Length is not right!
         new_time_data = np.zeros(
-            (time_data.shape[0] * up_factor + len(b) - extra_tap))
+            ((time_data.shape[0] + b_poly.shape[0] - 1)*up_factor,
+            time_data.shape[1]))
 
         # Interpolate per channel and per polyphase component – should be
         # a better way to do it without the loops...
         for ch in range(time_data.shape[1]):
             for ind in range(up_factor):
                 new_time_data[ind::up_factor, ch] = sig.convolve(
-                        time_data[:, ch], b_poly[:, ind], mode='full')
-        new_time_data = \
-            new_time_data[half_length+1:-half_length+1, :] * up_factor
-        new_time_data = _pad_trim(
-            new_time_data, time_data.shape[0]*up_factor)
+                        time_data[:, ch], b_poly[:, ind, 0], mode='full')
+        if padding == up_factor:
+            new_time_data = new_time_data[half_length:-half_length, :]
+        else:
+            new_time_data = \
+                new_time_data[half_length+padding:-half_length+padding, :]
     else:
         new_time_data = np.zeros(
             (time_data.shape[0]*up_factor, time_data.shape[1]))

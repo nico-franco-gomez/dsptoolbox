@@ -135,7 +135,7 @@ class Signal():
     def time_data(self, new_time_data):
         # Shape of Time Data array
         if not type(new_time_data) == np.ndarray:
-            new_time_data = np.array(new_time_data)
+            new_time_data = np.asarray(new_time_data)
         assert len(new_time_data.shape) <= 2, \
             f'{len(new_time_data.shape)} has ' +\
             'too many dimensions for time data. Dimensions should' +\

@@ -404,7 +404,7 @@ class FilterBank():
         # Impulse
         d = dirac(
             length_samples=length_samples,
-            number_of_channels=1, sampling_rate_hz=48000)
+            number_of_channels=1, sampling_rate_hz=self.sampling_rate_hz)
 
         # Filtering and plot
         if mode == 'parallel':
@@ -504,7 +504,7 @@ class FilterBank():
         # Generate impulse
         d = dirac(
             length_samples=length_samples,
-            number_of_channels=1, sampling_rate_hz=48000)
+            number_of_channels=1, sampling_rate_hz=self.sampling_rate_hz)
 
         # Plot
         if mode == 'parallel':
@@ -587,7 +587,7 @@ class FilterBank():
         # Impulse
         d = dirac(
             length_samples=length_samples,
-            number_of_channels=1, sampling_rate_hz=48000)
+            number_of_channels=1, sampling_rate_hz=self.sampling_rate_hz)
 
         # Plot
         if mode == 'parallel':

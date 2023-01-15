@@ -519,6 +519,8 @@ def _polyphase_decomposition(in_sig: np.ndarray,
     poly : `np.ndarray`
         Rearranged vector with polyphase representation. New shape is
         (time samples, polyphase components, channels).
+    padding : int
+        Amount of padded elements in the beginning of array.
 
     """
     # Dimensions of vector
@@ -530,16 +532,17 @@ def _polyphase_decomposition(in_sig: np.ndarray,
     n = number_polyphase_components
     # Pad zeros in the beginning to avoid remainder
     remainder = in_sig.shape[0] % n
+    padding = n-remainder
     if remainder != 0:
         in_sig = _pad_trim(
-            in_sig, in_sig.shape[0]+n-remainder, axis=0, in_the_end=False)
+            in_sig, in_sig.shape[0]+padding, axis=0, in_the_end=False)
     # Here (time samples, polyphase, channels)
     poly = np.zeros((in_sig.shape[0]//n, n, in_sig.shape[1]))
     for ind in range(n):
         poly[:, ind, :] = in_sig[ind::n, :]
     if flip:
         poly = np.flip(poly, axis=1)
-    return poly
+    return poly, padding
 
 
 def _polyphase_reconstruction(poly: np.ndarray):

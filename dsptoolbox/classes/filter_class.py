@@ -257,21 +257,21 @@ class Filter():
         channels and sampling rates that are achievable by (only) down- or
         upsampling. This method is for allowing specific filters to be
         decimators/interpolators. If you just want to resample a signal,
-        use function in the standard module.
+        use the function in the standard module.
 
         If this filter is iir, standard resampling is applied. If it is
         fir, an efficient polyphase representation will be used.
 
-        NOTE: Beware that no extra lowpass filter is used in the resampling
-        step which can lead to aliases or other effects if this Filter is not
-        adequate!
+        NOTE: Beware that no additional lowpass filter is used in the
+        resampling step which can lead to aliases or other effects if this
+        Filter is not adequate!
 
         Parameters
         ----------
         signal : `Signal`
             Signal to be filtered and resampled.
         new_sampling_rate_hz : int
-            New sampling rate to be used.
+            New sampling rate to resample to.
 
         Returns
         -------
@@ -295,9 +295,6 @@ class Filter():
         else:
             raise ValueError('Wrong filter type for filtering and resampling')
 
-        # Take filter coefficients
-        filter_coefficients = self.ba
-
         # Check if down- or upsampling is required
         if fraction[0] == 1:
             assert signal.sampling_rate_hz == self.sampling_rate_hz, \
@@ -305,16 +302,17 @@ class Filter():
             new_time_data = _filter_and_downsample(
                 time_data=signal.time_data,
                 down_factor=fraction[1],
-                ba_coefficients=filter_coefficients,
+                ba_coefficients=self.ba,
                 polyphase=polyphase)
         elif fraction[1] == 1:
             assert signal.sampling_rate_hz*fraction[0] == \
                 self.sampling_rate_hz, \
-                'Sampling rates do not match'
+                'Sampling rates do not match. For the upsampler, the ' +\
+                '''sampling rate of the filter should match the output's'''
             new_time_data = _filter_and_upsample(
                 time_data=signal.time_data,
                 up_factor=fraction[0],
-                ba_coefficients=filter_coefficients,
+                ba_coefficients=self.ba,
                 polyphase=polyphase)
 
         new_sig = signal.copy()
@@ -378,7 +376,8 @@ class Filter():
                 'Only (and at least) one type of filter coefficients ' +\
                 'should be passed to create a filter'
             if ('ba' in filter_configuration):
-                self.ba = filter_configuration['ba']
+                b, a = filter_configuration['ba']
+                self.ba = [np.atleast_1d(b), np.atleast_1d(a)]
                 filter_configuration['order'] = \
                     max(len(self.ba[0]), len(self.ba[1])) - 1
             if ('zpk' in filter_configuration):
