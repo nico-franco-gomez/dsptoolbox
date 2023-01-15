@@ -16,6 +16,10 @@ seaborn>=0.12
 # librosa  # validation
 # pyfar  # validation
 
+# jupyter notebooks:
+# ipykernel
+# ipympl
+
 # docs:
 furo # theme
 numpydoc # numpy-like documentation
