@@ -28,6 +28,7 @@ Added
 - filtering and resampling has been implemented in the ``Filter`` class:
   if filter is iir normal filtering and downsampling (or the other way around
   for upsampling) is done. If filter is fir, an efficient polyphase representation is used
+- ``log_mel_spectrogram`` and ``mel_filterbank`` added in special module
 
 Bugfix
 ~~~~~

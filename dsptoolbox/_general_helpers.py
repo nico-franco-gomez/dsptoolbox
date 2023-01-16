@@ -574,3 +574,66 @@ def _polyphase_reconstruction(poly: np.ndarray):
     for ind in range(n):
         in_sig[ind::n, :] = poly[:, ind, :]
     return in_sig
+
+
+def _hz2mel(f: np.ndarray):
+    """Convert frequency in Hz into mel.
+
+    Parameters
+    ----------
+    f : float or array-like
+        Frequency in Hz.
+
+    Returns
+    -------
+    float or array-like
+        Frequency value in mel.
+
+    References
+    ----------
+    - https://en.wikipedia.org/wiki/Mel_scale
+
+    """
+    return 2595*np.log10(1+f/700)
+
+
+def _mel2hz(mel: np.ndarray):
+    """Convert frequency in mel into Hz.
+
+    Parameters
+    ----------
+    mel : float or array-like
+        Frequency in mel.
+
+    Returns
+    -------
+    float or array-like
+        Frequency value in Hz.
+
+    References
+    ----------
+    - https://en.wikipedia.org/wiki/Mel_scale
+
+    """
+    return 700*(10**(mel/2595) - 1)
+
+
+def _get_fractional_octave_bandwidth(f_c: float, fraction: int = 1):
+    """Returns an array with lower and upper bounds for a given center
+    frequency with (1/fraction)-octave width.
+
+    Parameters
+    ----------
+    f_c : float
+        Center frequency.
+    fraction : int, optional
+        Octave fraction to define bandwidth. Default: 1.
+
+    Returns
+    -------
+    f_bounds : `np.ndarray`
+        Array of length 2 with lower and upper bounds.
+
+    """
+    fraction /= 2
+    return np.array([f_c*2**(-1/fraction), f_c*2**(1/fraction)])

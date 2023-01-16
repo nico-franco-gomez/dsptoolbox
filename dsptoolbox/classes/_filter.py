@@ -7,7 +7,7 @@ from enum import Enum
 import scipy.signal as sig
 from .signal_class import Signal
 from .multibandsignal import MultiBandSignal
-from dsptoolbox._general_helpers import _polyphase_decomposition, _pad_trim
+from dsptoolbox._general_helpers import _polyphase_decomposition
 
 
 def _get_biquad_type(number: int = None, name: str = None):
@@ -504,17 +504,22 @@ def _filter_and_downsample(time_data: np.ndarray, down_factor: int,
     if polyphase:
         poly, _ = _polyphase_decomposition(time_data, down_factor, flip=False)
         # (time samples, polyphase components, channels)
+        # Polyphase representation of filter and filter length
         b = ba_coefficients[0]
         half_length = (len(b) - 1) // 2
         b_poly, _ = _polyphase_decomposition(b, down_factor, flip=True)
         new_time_data = np.zeros(
             (poly.shape[0]+b_poly.shape[0]-1, poly.shape[2]))
+        # Accumulator for each channel – it would be better to find a way
+        # to do it without loops, but using scipy.signal.convolve since it
+        # is advantageous compared to numpy.convolve
         for ch in range(poly.shape[2]):
             temp = np.zeros(new_time_data.shape[0])
             for n in range(poly.shape[1]):
                 temp += sig.convolve(
                     poly[:, n, ch], b_poly[:, n, 0], mode='full')
             new_time_data[:, ch] = temp
+        # Take correct values from vector
         new_time_data = \
             new_time_data[
                 half_length//down_factor:-half_length//down_factor, :]
@@ -572,7 +577,7 @@ def _filter_and_upsample(time_data: np.ndarray, up_factor: int,
         # Accumulator – Length is not right!
         new_time_data = np.zeros(
             ((time_data.shape[0] + b_poly.shape[0] - 1)*up_factor,
-            time_data.shape[1]))
+             time_data.shape[1]))
 
         # Interpolate per channel and per polyphase component – should be
         # a better way to do it without the loops...
@@ -580,6 +585,8 @@ def _filter_and_upsample(time_data: np.ndarray, up_factor: int,
             for ind in range(up_factor):
                 new_time_data[ind::up_factor, ch] = sig.convolve(
                         time_data[:, ch], b_poly[:, ind, 0], mode='full')
+
+        # Take right samples from filtered signal
         if padding == up_factor:
             new_time_data = new_time_data[half_length:-half_length, :]
         else:
