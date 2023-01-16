@@ -43,7 +43,7 @@ class FilterBank():
         Methods
         -------
         General
-            add_filter, remove_filter, save_filterbank.
+            add_filter, remove_filter, swap_filters, copy, save_filterbank.
         Prints and plots
             plot_magnitude, plot_phase, plot_group_delay, show_info.
 
@@ -397,14 +397,14 @@ class FilterBank():
             max_order = max(max_order, b.info['order'])
         if max_order > length_samples:
             warn(f'Filter order {max_order} is longer than {length_samples}.' +
-                 'The length will be adapted to be 100 samples longer than' +
+                 ' The length will be adapted to be 100 samples longer than' +
                  ' the longest filter')
             length_samples = max_order + 100
 
         # Impulse
         d = dirac(
             length_samples=length_samples,
-            number_of_channels=1, sampling_rate_hz=48000)
+            number_of_channels=1, sampling_rate_hz=self.sampling_rate_hz)
 
         # Filtering and plot
         if mode == 'parallel':
@@ -456,7 +456,7 @@ class FilterBank():
             fig, ax = general_plot(
                 f, sp, range_hz, ylabel='Magnitude / dB',
                 returns=True,
-                labels='Summed')
+                labels=['Summed'])
         if returns:
             return fig, ax
 
@@ -497,14 +497,14 @@ class FilterBank():
             max_order = max(max_order, b.info['order'])
         if max_order > length_samples:
             warn(f'Filter order {max_order} is longer than {length_samples}.' +
-                 'The length will be adapted to be 100 samples longer than' +
+                 ' The length will be adapted to be 100 samples longer than' +
                  ' the longest filter')
             length_samples = max_order + 100
 
         # Generate impulse
         d = dirac(
             length_samples=length_samples,
-            number_of_channels=1, sampling_rate_hz=48000)
+            number_of_channels=1, sampling_rate_hz=self.sampling_rate_hz)
 
         # Plot
         if mode == 'parallel':
@@ -541,7 +541,7 @@ class FilterBank():
             fig, ax = general_plot(
                 f, ph, range_hz, ylabel='Phase / rad',
                 returns=True,
-                labels='Summed')
+                labels=['Summed'])
         if returns:
             return fig, ax
 
@@ -580,14 +580,14 @@ class FilterBank():
             max_order = max(max_order, b.info['order'])
         if max_order > length_samples:
             warn(f'Filter order {max_order} is longer than {length_samples}.' +
-                 'The length will be adapted to be 100 samples longer than' +
+                 ' The length will be adapted to be 100 samples longer than' +
                  ' the longest filter')
             length_samples = max_order + 100
 
         # Impulse
         d = dirac(
             length_samples=length_samples,
-            number_of_channels=1, sampling_rate_hz=48000)
+            number_of_channels=1, sampling_rate_hz=self.sampling_rate_hz)
 
         # Plot
         if mode == 'parallel':
@@ -619,7 +619,7 @@ class FilterBank():
             fig, ax = general_plot(
                 f, gd[..., None], range_hz, ylabel='Group delay / ms',
                 returns=True,
-                labels='Summed')
+                labels=['Summed'])
         if returns:
             return fig, ax
 

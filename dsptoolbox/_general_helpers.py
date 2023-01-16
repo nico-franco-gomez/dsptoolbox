@@ -493,3 +493,147 @@ def _frequency_weightning(f: np.ndarray, weightning_mode: str = 'a',
     if db_output:
         weights = 20*np.log10(weights)
     return weights
+
+
+def _polyphase_decomposition(in_sig: np.ndarray,
+                             number_polyphase_components: int,
+                             flip: bool = False) -> np.ndarray:
+    """Converts input signal array with shape (time samples, channels) into
+    its polyphase representation with shape (time samples, polyphase
+    components, channels).
+
+    Parameters
+    ----------
+    in_sig : `np.ndarray`
+        Input signal array to be rearranged in polyphase representation. It
+        should have the shape (time samples, channels).
+    number_polyphase_components : int
+        Number of polyphase components to be used.
+    flip : bool, optional
+        When `True`, axis of polyphase components is flipped. Needed for
+        downsampling with FIR filter because of the reversing of filter
+        coefficients. Default: `False`.
+
+    Returns
+    -------
+    poly : `np.ndarray`
+        Rearranged vector with polyphase representation. New shape is
+        (time samples, polyphase components, channels).
+    padding : int
+        Amount of padded elements in the beginning of array.
+
+    """
+    # Dimensions of vector
+    if in_sig.ndim == 1:
+        in_sig = in_sig[..., None]
+    assert in_sig.ndim == 2, \
+        'Vector should have exactly two dimensions: (time samples, channels)'
+    # Rename for practical purposes
+    n = number_polyphase_components
+    # Pad zeros in the beginning to avoid remainder
+    remainder = in_sig.shape[0] % n
+    padding = n-remainder
+    if remainder != 0:
+        in_sig = _pad_trim(
+            in_sig, in_sig.shape[0]+padding, axis=0, in_the_end=False)
+    # Here (time samples, polyphase, channels)
+    poly = np.zeros((in_sig.shape[0]//n, n, in_sig.shape[1]))
+    for ind in range(n):
+        poly[:, ind, :] = in_sig[ind::n, :]
+    if flip:
+        poly = np.flip(poly, axis=1)
+    return poly, padding
+
+
+def _polyphase_reconstruction(poly: np.ndarray):
+    """Returns the reconstructed input signal array from its polyphase
+    representation, possibly with a different length if padded was needed for
+    reconstruction. Polyphase representation shape is assumed to be
+    (time samples, polyphase components, channels).
+
+    Parameters
+    ----------
+    poly : `np.ndarray`
+        Array with 3 dimensions (time samples, polyphase components, channels)
+        as polyphase respresentation of signal.
+
+    Returns
+    -------
+    in_sig : `np.ndarray`
+        Rearranged vector with shape (time samples, channels).
+
+    """
+    # If squeezed array with one channel is passed
+    if poly.ndim == 2:
+        poly = poly[..., None]
+    assert poly.ndim == 3, \
+        'Invalid shape. The dimensions must be (time samples, polyphase ' +\
+        'components, channels)'
+    n = poly.shape[1]
+    in_sig = np.zeros((poly.shape[0]*n, poly.shape[2]))
+    for ind in range(n):
+        in_sig[ind::n, :] = poly[:, ind, :]
+    return in_sig
+
+
+def _hz2mel(f: np.ndarray):
+    """Convert frequency in Hz into mel.
+
+    Parameters
+    ----------
+    f : float or array-like
+        Frequency in Hz.
+
+    Returns
+    -------
+    float or array-like
+        Frequency value in mel.
+
+    References
+    ----------
+    - https://en.wikipedia.org/wiki/Mel_scale
+
+    """
+    return 2595*np.log10(1+f/700)
+
+
+def _mel2hz(mel: np.ndarray):
+    """Convert frequency in mel into Hz.
+
+    Parameters
+    ----------
+    mel : float or array-like
+        Frequency in mel.
+
+    Returns
+    -------
+    float or array-like
+        Frequency value in Hz.
+
+    References
+    ----------
+    - https://en.wikipedia.org/wiki/Mel_scale
+
+    """
+    return 700*(10**(mel/2595) - 1)
+
+
+def _get_fractional_octave_bandwidth(f_c: float, fraction: int = 1):
+    """Returns an array with lower and upper bounds for a given center
+    frequency with (1/fraction)-octave width.
+
+    Parameters
+    ----------
+    f_c : float
+        Center frequency.
+    fraction : int, optional
+        Octave fraction to define bandwidth. Default: 1.
+
+    Returns
+    -------
+    f_bounds : `np.ndarray`
+        Array of length 2 with lower and upper bounds.
+
+    """
+    fraction /= 2
+    return np.array([f_c*2**(-1/fraction), f_c*2**(1/fraction)])

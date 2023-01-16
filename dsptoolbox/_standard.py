@@ -449,3 +449,37 @@ def _exact_center_frequencies_fractional_octaves(
     exact = ref_freq * 2**(indices / num_fractions)
 
     return exact
+
+
+def _kaiser_window_beta(A):
+    """Return a shape parameter beta to create kaiser window based on desired
+    side lobe suppression in dB.
+
+    This function has been taken from the pyfar package. See references.
+
+    Parameters
+    ----------
+    A : float
+        Side lobe suppression in dB
+
+    Returns
+    -------
+    beta : float
+        Shape parameter beta after [#]_, Eq. 7.75
+
+    References
+    ----------
+    - A. V. Oppenheim and R. W. Schafer, Discrete-time signal processing,
+      Third edition, Upper Saddle, Pearson, 2010.
+    - The pyfar package: https://github.com/pyfar/pyfar
+
+    """
+    A = np.abs(A)
+    if A > 50:
+        beta = 0.1102 * (A - 8.7)
+    elif A >= 21:
+        beta = 0.5842 * (A - 21)**0.4 + 0.07886 * (A - 21)
+    else:
+        beta = 0.0
+
+    return beta

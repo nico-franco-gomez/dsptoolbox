@@ -135,7 +135,7 @@ class Signal():
     def time_data(self, new_time_data):
         # Shape of Time Data array
         if not type(new_time_data) == np.ndarray:
-            new_time_data = np.array(new_time_data)
+            new_time_data = np.asarray(new_time_data)
         assert len(new_time_data.shape) <= 2, \
             f'{len(new_time_data.shape)} has ' +\
             'too many dimensions for time data. Dimensions should' +\
@@ -225,7 +225,7 @@ class Signal():
         if self.__time_data_imaginary is None:
             warn('Imaginary part of time data was called, but there is ' +
                  'None. None is returned.')
-        return self.__time_data_imaginary
+        return self.__time_data_imaginary.copy()
 
     @time_data_imaginary.setter
     def time_data_imaginary(self, new_imag: np.ndarray):
@@ -381,7 +381,7 @@ class Signal():
     def set_spectrogram_parameters(self, channel_number: int = 0,
                                    window_length_samples: int = 1024,
                                    window_type: str = 'hann',
-                                   overlap_percent=75,
+                                   overlap_percent=50,
                                    detrend: bool = True, padding: bool = True,
                                    scaling: bool = False):
         """Sets all necessary parameters for the computation of the
@@ -392,7 +392,7 @@ class Signal():
         window_length_samples : int, optional
             Window size. Default: 1024.
         overlap_percent : float, optional
-            Overlap in percent. Default: 75.
+            Overlap in percent. Default: 50.
         detrend : bool, optional
             Detrending (subtracting mean). Default: True.
         padding : bool, optional
@@ -668,7 +668,7 @@ class Signal():
         f_hz : `np.ndarray`
             Frequency vector.
         spectrogram : `np.ndarray`
-            Spectrogram.
+            Complex spectrogram.
 
         """
         condition = not hasattr(self, 'spectrogram') or force_computation or \

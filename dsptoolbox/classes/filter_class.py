@@ -6,16 +6,17 @@ from pickle import dump, HIGHEST_PROTOCOL
 from warnings import warn
 from copy import deepcopy
 import numpy as np
+from fractions import Fraction
 
 import scipy.signal as sig
 from .signal_class import Signal
 from ._filter import (_biquad_coefficients, _impulse,
                       _group_delay_filter, _get_biquad_type,
-                      _filter_on_signal, _filter_on_signal_ba)
+                      _filter_on_signal, _filter_on_signal_ba,
+                      _filter_and_downsample,
+                      _filter_and_upsample)
 from ._plots import _zp_plot
 from dsptoolbox.plots import general_plot
-
-__all__ = ['Filter']
 
 
 class Filter():
@@ -69,7 +70,7 @@ class Filter():
             Keys: order, freqs, type_of_pass, filter_design_method (optional),
             width (optional, necessary for 'kaiser'), filter_id (optional).
 
-            - order (int): Filter order.
+            - order (int): Filter order, i.e., number of taps - 1.
             - freqs (float, array-like): array with len 2 when 'bandpass'
               or 'bandstop'.
             - type_of_pass (str): 'bandpass', 'lowpass', 'highpass',
@@ -112,7 +113,7 @@ class Filter():
             filter_configuration = \
                 {'eq_type': 0, 'freqs': 1000, 'gain': 0, 'q': 1,
                  'filter_id': 'dummy'}
-        self.set_filter_parameters(filter_type, filter_configuration)
+        self.set_filter_parameters(filter_type.lower(), filter_configuration)
         self.initialize_zi()
 
     def initialize_zi(self, number_of_channels: int = 1):
@@ -154,6 +155,16 @@ class Filter():
             'This attribute must be of boolean type'
         self.__warning_if_complex = new_warning
 
+    @property
+    def filter_type(self):
+        return self.__filter_type
+
+    @filter_type.setter
+    def filter_type(self, new_type: str):
+        assert type(new_type) == str, \
+            'Filter type must be a string'
+        self.__filter_type = new_type.lower()
+
     # ======== Filtering ======================================================
     def filter_signal(self, signal: Signal, channels=None,
                       activate_zi: bool = False, zero_phase: bool = False) \
@@ -167,7 +178,9 @@ class Filter():
             Signal to be filtered.
         channels : int or array-like, optional
             Channel or array of channels to be filtered. When `None`, all
-            channels are filtered. Default: `None`.
+            channels are filtered. If only some channels are selected, these
+            will be filtered and the others will be bypassed (and returned).
+            Default: `None`.
         activate_zi : int, optional
             Gives the zi to update the filter values. Default: `False`.
         zero_phase : bool, optional
@@ -232,10 +245,80 @@ class Filter():
                     channels=channels,
                     zi=zi_old,
                     zero_phase=zero_phase,
+                    filter_type=self.filter_type,
                     warning_on_complex_output=self.warning_if_complex)
         if activate_zi:
             self.zi = zi_new
         return new_signal
+
+    def filter_and_resample_signal(self, signal: Signal,
+                                   new_sampling_rate_hz: int) -> Signal:
+        """Filters and resamples signal. This is only available for all
+        channels and sampling rates that are achievable by (only) down- or
+        upsampling. This method is for allowing specific filters to be
+        decimators/interpolators. If you just want to resample a signal,
+        use the function in the standard module.
+
+        If this filter is iir, standard resampling is applied. If it is
+        fir, an efficient polyphase representation will be used.
+
+        NOTE: Beware that no additional lowpass filter is used in the
+        resampling step which can lead to aliases or other effects if this
+        Filter is not adequate!
+
+        Parameters
+        ----------
+        signal : `Signal`
+            Signal to be filtered and resampled.
+        new_sampling_rate_hz : int
+            New sampling rate to resample to.
+
+        Returns
+        -------
+        new_sig : `Signal`
+            New down- or upsampled signal.
+
+        """
+        fraction = Fraction(
+            new_sampling_rate_hz, signal.sampling_rate_hz).as_integer_ratio()
+        assert fraction[0] == 1 or fraction[1] == 1, \
+            f'{new_sampling_rate_hz} is not valid because it needs down- ' +\
+            f'AND upsampling (Up/Down: {fraction[0]}/{fraction[1]})'
+
+        # Check if standard or polyphase representation is to be used
+        if self.filter_type == 'fir':
+            polyphase = True
+        elif self.filter_type in ('iir', 'biquad'):
+            if not hasattr(self, 'ba'):
+                self.ba = sig.sos2tf(self.sos)
+            polyphase = False
+        else:
+            raise ValueError('Wrong filter type for filtering and resampling')
+
+        # Check if down- or upsampling is required
+        if fraction[0] == 1:
+            assert signal.sampling_rate_hz == self.sampling_rate_hz, \
+                'Sampling rates do not match'
+            new_time_data = _filter_and_downsample(
+                time_data=signal.time_data,
+                down_factor=fraction[1],
+                ba_coefficients=self.ba,
+                polyphase=polyphase)
+        elif fraction[1] == 1:
+            assert signal.sampling_rate_hz*fraction[0] == \
+                self.sampling_rate_hz, \
+                'Sampling rates do not match. For the upsampler, the ' +\
+                '''sampling rate of the filter should match the output's'''
+            new_time_data = _filter_and_upsample(
+                time_data=signal.time_data,
+                up_factor=fraction[0],
+                ba_coefficients=self.ba,
+                polyphase=polyphase)
+
+        new_sig = signal.copy()
+        new_sig.sampling_rate_hz = new_sampling_rate_hz
+        new_sig.time_data = new_time_data
+        return new_sig
 
     # ======== Setters ========================================================
     def set_filter_parameters(self, filter_type: str,
@@ -250,6 +333,7 @@ class Filter():
                               ftype=filter_configuration
                               ['filter_design_method'],
                               output='sos')
+            self.filter_type = filter_type
         elif filter_type == 'fir':
             # Preparing parameters
             if 'filter_design_method' not in filter_configuration.keys():
@@ -265,8 +349,7 @@ class Filter():
                             width=filter_configuration['width'],
                             pass_zero=filter_configuration['type_of_pass'],
                             fs=self.sampling_rate_hz), np.asarray([1])]
-            if len(self.ba[0]) < 10 and len(self.ba[1]) < 10:
-                self.sos = sig.tf2sos(self.ba[0], self.ba[1])
+            self.filter_type = filter_type
         elif filter_type == 'biquad':
             # Preparing parameters
             if type(filter_configuration['eq_type']) == str:
@@ -285,6 +368,7 @@ class Filter():
                 _get_biquad_type(filter_configuration['eq_type']).capitalize()
             self.sos = sig.tf2sos(ba[0], ba[1])
             filter_configuration['order'] = max(len(ba[0]), len(ba[1])) - 1
+            self.filter_type = filter_type
         else:
             assert ('ba' in filter_configuration) ^ \
                 ('sos' in filter_configuration) ^ \
@@ -292,10 +376,8 @@ class Filter():
                 'Only (and at least) one type of filter coefficients ' +\
                 'should be passed to create a filter'
             if ('ba' in filter_configuration):
-                self.ba = filter_configuration['ba']
-                # Use SOS if order is less than 10
-                if len(self.ba[0]) < 10 and len(self.ba[1]) < 10:
-                    self.sos = sig.tf2sos(self.ba[0], self.ba[1])
+                b, a = filter_configuration['ba']
+                self.ba = [np.atleast_1d(b), np.atleast_1d(a)]
                 filter_configuration['order'] = \
                     max(len(self.ba[0]), len(self.ba[1])) - 1
             if ('zpk' in filter_configuration):
@@ -305,15 +387,40 @@ class Filter():
             if ('sos' in filter_configuration):
                 self.sos = filter_configuration['sos']
                 filter_configuration['order'] = len(self.sos)*2 - 1
+            # Change filter type to 'fir' or 'iir' depending on coefficients
+            self._check_and_update_filter_type()
+
+        # Update Metadata about the Filter
         self.info = filter_configuration
         self.info['sampling_rate_hz'] = self.sampling_rate_hz
-        self.info['filter_type'] = filter_type
+        self.info['filter_type'] = self.filter_type
         if hasattr(self, 'ba'):
             self.info['preferred_method_of_filtering'] = 'ba'
         elif hasattr(self, 'sos'):
             self.info['preferred_method_of_filtering'] = 'sos'
         if 'filter_id' not in self.info.keys():
             self.info['filter_id'] = None
+
+    # ======== Check type =====================================================
+    def _check_and_update_filter_type(self):
+        """Internal method to check filter type (if FIR or IIR) and update
+        its filter type.
+
+        """
+        # Get filter coefficients
+        if hasattr(self, 'ba'):
+            b, a = self.ba[0], self.ba[1]
+        elif hasattr(self, 'sos'):
+            b, a = sig.sos2tf(self.sos)
+        # Trim zeros for a
+        a = np.atleast_1d(np.trim_zeros(a))
+        # Check length of a coefficients and decide filter type
+        if len(a) == 1:
+            b /= a[0]
+            a = a / a[0]
+            self.filter_type = 'fir'
+        else:
+            self.filter_type = 'iir'
 
     # ======== Getters ========================================================
     def get_filter_metadata(self):

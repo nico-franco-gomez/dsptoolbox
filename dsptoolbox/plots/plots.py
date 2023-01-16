@@ -10,7 +10,7 @@ set_style('whitegrid')
 
 
 def show():
-    """Wrapper around matplotlib's show.
+    """Show created plots by using this wrapper around matplotlib's show.
 
     """
     plt.show()
@@ -34,6 +34,8 @@ def general_plot(x, matrix, range_x=None, range_y=None, log: bool = True,
         Range to show for y axis. Default: None.
     log : bool, optional
         Show x axis as logarithmic. Default: `True`.
+    labels : list or str, optional
+        Labels for the drawn lines as list of strings. Default: `None`.
     xlabel : str, optional
         Label for x axis. Default: None.
     ylabel : str, optional
@@ -57,6 +59,11 @@ def general_plot(x, matrix, range_x=None, range_y=None, log: bool = True,
         matrix = matrix[..., None]
     elif matrix.ndim > 2:
         raise ValueError('Only 2D-arrays are supported')
+    if labels is not None:
+        if type(labels) not in (list, tuple):
+            assert type(labels) == str, \
+                'labels should be a list or a string'
+            labels = [labels]
     for n in range(matrix.shape[1]):
         if labels is not None:
             ax.plot(x, matrix[:, n], label=labels[n])
@@ -173,11 +180,13 @@ def general_subplots_line(x, matrix, column: bool = True,
         return fig, ax
 
 
-def general_matrix_plot(matrix, range_x=None, range_y=None, range_z=None,
+def general_matrix_plot(matrix, range_x=None, range_y=None,
+                        range_z: float = None,
                         xlabel: str = None, ylabel: str = None,
                         zlabel: str = None, xlog: bool = False,
                         ylog: bool = False, colorbar: bool = True,
-                        cmap: str = 'magma', returns: bool = False):
+                        cmap: str = 'magma', lower_origin: bool = True,
+                        returns: bool = False):
     """Generic plot template for a matrix's heatmap.
 
     Parameters
@@ -185,15 +194,17 @@ def general_matrix_plot(matrix, range_x=None, range_y=None, range_z=None,
     matrix : `np.ndarray`
         Matrix with data to plot.
     range_x : array-like, optional
-        Range to show for x axis. Default: None.
+        Range to show for x axis. Default: `None`.
     range_y : array-like, optional
-        Range to show for y axis. Default: None.
+        Range to show for y axis. Default: `None`.
+    range_z : float, optional
+        Dynamic range to show. Default: `None`.
     xlabel : str, optional
-        Label for x axis. Default: None.
+        Label for x axis. Default: `None`.
     ylabel : str, optional
-        Label for y axis. Default: None.
+        Label for y axis. Default: `None`.
     zlabel : str, optional
-        Label for z axis. Default: None.
+        Label for z axis. Default: `None`.
     xlog : bool, optional
         Show x axis as logarithmic. Default: `False`.
     ylog : bool, optional
@@ -204,6 +215,9 @@ def general_matrix_plot(matrix, range_x=None, range_y=None, range_z=None,
         Type of colormap to use from matplotlib.
         See https://matplotlib.org/stable/tutorials/colors/colormaps.html.
         Default: `'magma'`.
+    lower_origin : bool, optional
+        When `True`, the origin of the vertical axis of the matrix is put
+        below. Default: `True`.
     returns : bool, optional
         When `True`, the figure and axis are returned. Default: `False`.
 
@@ -234,16 +248,21 @@ def general_matrix_plot(matrix, range_x=None, range_y=None, range_z=None,
     else:
         max_val = max(matrix)
         min_val = min(matrix)
+    
+    if lower_origin:
+        origin = 'lower'
+    else:
+        origin = 'upper'
 
     if extent is None:
         col = ax.imshow(
             matrix,
-            alpha=0.95, cmap=cmap, vmin=min_val, vmax=max_val, origin='lower',
+            alpha=0.95, cmap=cmap, vmin=min_val, vmax=max_val, origin=origin,
             aspect='auto')
     else:
         col = ax.imshow(
             matrix, extent=extent,
-            alpha=0.95, cmap=cmap, vmin=min_val, vmax=max_val, origin='lower',
+            alpha=0.95, cmap=cmap, vmin=min_val, vmax=max_val, origin=origin,
             aspect='auto')
     if colorbar:
         if zlabel is not None:

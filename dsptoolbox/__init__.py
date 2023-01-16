@@ -6,6 +6,7 @@ from .standard_functions import (latency,
                                  merge_signals,
                                  merge_filterbanks,
                                  pad_trim,
+                                 fractional_delay,
                                  fractional_octave_frequencies,
                                  fade,
                                  ir_to_filter,
@@ -37,6 +38,7 @@ __all__ = ['Signal',
            'group_delay',
            'resample',
            'normalize',
+           'fractional_delay',
            'true_peak_level',
            'ir_to_filter',
            'erb_frequencies',
@@ -55,4 +57,4 @@ __all__ = ['Signal',
            'experimental',
            'audio_io']
 
-__version__ = '0.0.5'
+__version__ = '0.1.0'

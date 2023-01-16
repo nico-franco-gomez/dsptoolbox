@@ -14,7 +14,8 @@ from ._distances import (_log_spectral_distance,
 
 
 def log_spectral(insig1: Signal, insig2: Signal, method: str = 'welch',
-                 f_range_hz=[20, 20000], **kwargs):
+                 f_range_hz=[20, 20000], energy_normalization: bool = True,
+                 **kwargs):
     """Computes log spectral distance between two signals.
 
     Parameters
@@ -23,9 +24,18 @@ def log_spectral(insig1: Signal, insig2: Signal, method: str = 'welch',
         Signal 1.
     insig2 : Signal
         Signal 2.
-    f_range_hz : array, optional
+    method : str, optional
+        Method to compute the spectrum. Choose from `'welch'` or `'standard'`.
+        Default: `'welch'`.
+    f_range_hz : array-like with length 2, optional
         Range of frequencies in which to compute the distance. When `None`,
         it is computed in all frequencies. Default: [20, 20000].
+    energy_normalization : bool, optional
+        When `True`, the observed part of the spectrum is energy-normalized.
+        Default: `True`.
+    **kwargs : dict, optional
+        Additional parameters to be used in the computation of spectrum.
+        Relevant only when `method='welch'`.
 
     Returns
     -------
@@ -69,14 +79,19 @@ def log_spectral(insig1: Signal, insig2: Signal, method: str = 'welch',
 
     distances = np.zeros(insig1.number_of_channels)
     for n in range(insig1.number_of_channels):
+        x = psd1[ids[0]:ids[1], n]
+        y = psd2[ids[0]:ids[1], n]
+        if energy_normalization:
+            x /= np.sum(x)
+            y /= np.sum(y)
         distances[n] = \
-            _log_spectral_distance(
-                psd1[ids[0]:ids[1], n], psd2[ids[0]:ids[1], n], f)
+            _log_spectral_distance(x, y, f)
     return distances
 
 
 def itakura_saito(insig1: Signal, insig2: Signal, method: str = 'welch',
-                  f_range_hz=[20, 20000], **kwargs):
+                  f_range_hz=[20, 20000], energy_normalization: bool = True,
+                  **kwargs):
     """Computes itakura-saito measure between two signals. Beware that this
     measure is not symmetric (x, y) != (y, x).
 
@@ -86,9 +101,18 @@ def itakura_saito(insig1: Signal, insig2: Signal, method: str = 'welch',
         Signal 1.
     insig2 : Signal
         Signal 2.
-    f_range_hz : array, optional
+    method : str, optional
+        Method to compute the spectrum. Choose from `'welch'` or `'standard'`.
+        Default: `'welch'`.
+    f_range_hz : array-like with length 2, optional
         Range of frequencies in which to compute the distance. When `None`,
         it is computed in all frequencies. Default: [20, 20000].
+    energy_normalization : bool, optional
+        When `True`, the observed part of the spectrum is energy-normalized.
+        Default: `True`.
+    **kwargs : dict, optional
+        Additional parameters to be used in the computation of spectrum.
+        Relevant only when `method='welch'`.
 
     Returns
     -------
@@ -132,9 +156,13 @@ def itakura_saito(insig1: Signal, insig2: Signal, method: str = 'welch',
 
     distances = np.zeros(insig1.number_of_channels)
     for n in range(insig1.number_of_channels):
+        x = psd1[ids[0]:ids[1], n]
+        y = psd2[ids[0]:ids[1], n]
+        if energy_normalization:
+            x /= np.sum(x)
+            y /= np.sum(y)
         distances[n] = \
-            _itakura_saito_measure(
-                psd1[ids[0]:ids[1], n], psd2[ids[0]:ids[1], n], f)
+            _itakura_saito_measure(x, y, f)
     return distances
 
 
@@ -188,7 +216,8 @@ def si_sdr(target_signal: Signal, modified_signal: Signal):
     Parameters
     ----------
     target_signal : `Signal`
-        Original signal.
+        Original signal. If it only has one channel and the modified signal
+        has multiple, it is assumed to be the target signal for all channels.
     modified_signal : `Signal`
         Signal after modification/enhancement.
 
@@ -225,7 +254,7 @@ def si_sdr(target_signal: Signal, modified_signal: Signal):
     return sdr
 
 
-def fw_snr_seg(x: Signal, xhat: Signal, freq_range_hz=[20, 10e3],
+def fw_snr_seg(x: Signal, xhat: Signal, f_range_hz=[20, 10e3],
                snr_range_db=[-10, 35], gamma: float = 0.2):
     """Frequency-weighted segmental SNR (fwSNRseg) computation between two
     signals.
@@ -233,8 +262,8 @@ def fw_snr_seg(x: Signal, xhat: Signal, freq_range_hz=[20, 10e3],
     This distance measure divides the signal into auditory frequency
     bands (using the auditory gammatone filters) and splits the signal in time
     frames to further compute SNR. This distance was shown to correlate
-    relatively well with results from listening tests and other subjective
-    measurements. See references for more information.
+    relatively well with results from listening tests and other objective
+    measures. See references for more information.
 
     NOTE: the time window is fixed to be a 75 ms Hamming window with 50%
     overlap instead as gaussian window (as in the paper) since no length
@@ -248,7 +277,7 @@ def fw_snr_seg(x: Signal, xhat: Signal, freq_range_hz=[20, 10e3],
         others.
     xhat : `Signal`
         Enhanced/modified signal.
-    freq_range_hz : array-like with length of 2, optional
+    f_range_hz : array-like with length of 2, optional
         Frequency range in which to analyze the signals. Default: [20, 10e3].
     snr_range_db : array-like with length of 2, optional
         SNR range to be regarded. If any frame throws a value outside this
@@ -286,9 +315,9 @@ def fw_snr_seg(x: Signal, xhat: Signal, freq_range_hz=[20, 10e3],
             'Invalid number of channels for this measurement'
         multichannel = True
     # Frequency range
-    assert len(freq_range_hz) == 2, \
+    assert len(f_range_hz) == 2, \
         'Frequency range must have lower and upper bounds'
-    f_range = np.asarray(freq_range_hz)
+    f_range = np.asarray(f_range_hz)
     f_range.sort()
     assert f_range[1] < fs_hz//2, \
         f'Upper frequency range {f_range[1]} must be smaller than nyquist ' +\
