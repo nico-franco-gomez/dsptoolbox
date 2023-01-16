@@ -20,8 +20,6 @@
     :target: https://pypi.org/project/dsptoolbox/
     :alt: PyPI version
 
---------------------------------------------------------------------------------
-
 Readme
 ======
 
