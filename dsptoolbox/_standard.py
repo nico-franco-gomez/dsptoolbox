@@ -483,3 +483,55 @@ def _kaiser_window_beta(A):
         beta = 0.0
 
     return beta
+
+
+def _indexes_above_threshold_dbfs(time_vec: np.ndarray, threshold_dbfs: float,
+                                  attack_samples: int, release_samples: int):
+    """Returns indexes with power above a passed threshold (in dBFS) in a time
+    series. time_vec is normalized prior to computation.
+
+    Parameters
+    ----------
+    time_vec : `np.ndarray`
+        Time series for which to find indexes above power threshold.
+    threshold_dbfs : float
+        Threshold to be used.
+    attack_samples : int
+        Number of samples representing attack time signal has surpassed
+        power threshold.
+    release_samples : int
+        Number of samples representing release time after signal has decayed
+        below power threshold.
+
+    Returns
+    -------
+    indexes_above : `np.ndarray`
+        Array of type boolean with length of time_vec indicating indexes
+        above threshold with `True` and below with `False`.
+
+    """
+    time_vec = np.asarray(time_vec).squeeze()
+    assert time_vec.ndim == 1, \
+        'Function is implemented for 1D-arrays only'
+
+    # Find peak value index
+    max_ind = np.argmax(np.abs(time_vec))
+
+    # Power in dB
+    time_power = 20*np.log10(np.abs(time_vec))
+
+    # Normalization
+    time_power -= time_power[max_ind]
+
+    # All indexes above threshold
+    indexes_above_0 = time_power > threshold_dbfs
+    indexes_above = np.zeros_like(indexes_above_0).astype(bool)
+
+    # Apply release and attack
+    for ind in range(len(indexes_above)):
+        # Attack after certain amount of samples surpass threshold
+        ind_attack = 0 if ind-attack_samples < 0 else ind-attack_samples
+        if np.all(indexes_above_0[ind_attack:ind]):
+            indexes_above[ind:ind+release_samples] = True
+            indexes_above[ind] = True
+    return indexes_above

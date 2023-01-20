@@ -15,10 +15,10 @@ def _get_biquad_type(number: int = None, name: str = None):
 
     """
     if name is not None:
+        name = name.lower()
         valid_names = ('peaking', 'lowpass', 'highpass', 'bandpass_skirt',
                        'bandpass_peak', 'notch', 'allpass', 'lowshelf',
                        'highshelf')
-        name = name.lower()
         assert name in valid_names, f'{name} is not a valid name. Please ' +\
             '''select from the ('peaking', 'lowpass', 'highpass',
             'bandpass_skirt', 'bandpass_peak', 'notch', 'allpass', 'lowshelf',
@@ -46,15 +46,28 @@ def _get_biquad_type(number: int = None, name: str = None):
     return r
 
 
-def _biquad_coefficients(eq_type=0, fs_hz: int = 48000,
+def _biquad_coefficients(eq_type: int | str = 0, fs_hz: int = 48000,
                          frequency_hz: float = 1000, gain_db: float = 1,
                          q: float = 1):
     """Creates the filter coefficients for biquad filters.
-    https://www.musicdsp.org/en/latest/_downloads/3e1dc886e7849251d6747b194d482272/Audio-EQ-Cookbook.txt
     eq_type: 0 PEAKING, 1 LOWPASS, 2 HIGHPASS, 3 BANDPASS_SKIRT,
         4 BANDPASS_PEAK, 5 NOTCH, 6 ALLPASS, 7 LOWSHELF, 8 HIGHSHELF.
 
+    References
+    ----------
+    - https://www.w3.org/TR/2021/NOTE-audio-eq-cookbook-20210608/
+
     """
+    # Asserts and input safety
+    if type(eq_type) is str:
+        eq_type = _get_biquad_type(None, eq_type)
+    # frequency_hz
+    frequency_hz = np.asarray(frequency_hz)
+    if frequency_hz.ndim > 0:
+        frequency_hz = np.mean(frequency_hz)
+        warn('More than one frequency was passed for biquad filter. This is ' +
+             'not supported. A mean of passed frequencies was used for the ' +
+             'design but this might not give the intended result!')
     A = np.sqrt(10**(gain_db / 20.0))
     Omega = 2.0 * np.pi * (frequency_hz / fs_hz)
     sn = np.sin(Omega)

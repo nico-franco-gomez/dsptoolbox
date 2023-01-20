@@ -451,7 +451,7 @@ class Filter():
                      capitalize()}: {self.info[k]}\n"""
         return txt
 
-    def get_ir(self, length_samples: int = 512):
+    def get_ir(self, length_samples: int = 512, zero_phase: bool = False):
         """Gets an impulse response of the filter with given length.
 
         Parameters
@@ -466,18 +466,9 @@ class Filter():
 
         """
         ir_filt = _impulse(length_samples)
-        if hasattr(self, 'sos'):
-            ir_filt = sig.sosfilt(sos=self.sos, x=ir_filt)
-        else:
-            ir_filt = sig.lfilter(self.ba[0], self.ba[1], x=ir_filt)
-            if length_samples < max(len(self.ba[0]), len(self.ba[1])):
-                warn('Length is shorter than filter, results might be ' +
-                     'meaningless')
-        ir_filt = Signal(
-            None, ir_filt,
-            sampling_rate_hz=self.sampling_rate_hz,
-            signal_type='ir')
-        return ir_filt
+        ir_filt = Signal(None, ir_filt, self.sampling_rate_hz, 'ir')
+        return self.filter_signal(ir_filt, zero_phase=zero_phase)
+
 
     def get_coefficients(self, mode: str = 'sos'):
         """Returns the filter coefficients.
@@ -549,7 +540,7 @@ class Filter():
 
     def plot_magnitude(self, length_samples: int = 512, range_hz=[20, 20e3],
                        normalize: str = None, show_info_box: bool = True,
-                       returns: bool = False):
+                       zero_phase: bool = False, returns: bool = False):
         """Plots magnitude spectrum.
         Change parameters of spectrum with set_spectrum_parameters.
 
@@ -566,6 +557,8 @@ class Filter():
             maximal value. Use `None` for no normalization. Default: `None`.
         show_info_box : bool, optional
             Shows an information box on the plot. Default: `True`.
+        zero_phase : bool, optional
+            Plots magnitude for zero phase filtering. Default: `False`.
         returns : bool, optional
             When `True` figure and axis are returned. Default: `False`.
 
@@ -580,7 +573,7 @@ class Filter():
             warn(f'length_samples ({length_samples}) is shorter than the ' +
                  f'''filter order {self.info['order']}. Length will be ''' +
                  'automatically extended.')
-        ir = self.get_ir(length_samples=length_samples)
+        ir = self.get_ir(length_samples=length_samples, zero_phase=zero_phase)
         fig, ax = ir.plot_magnitude(
             range_hz, normalize, show_info_box=False, returns=True)
         if show_info_box:

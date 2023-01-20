@@ -27,12 +27,12 @@ keywords = [
 ]
 requires-python = ">=3.10"
 dependencies = [
+  "matplotlib",
   "numpy",
   "scipy",
+  "seaborn",
   "soundfile",
   "sounddevice",
-  "matplotlib",
-  "seaborn",
 ]
 classifiers = [
     "Programming Language :: Python :: 3",
@@ -60,6 +60,7 @@ dependencies = [
   "flake8",
   "twine",
   "hatch",
+  "wheel",
 ]
 
 [tool.hatch.version]

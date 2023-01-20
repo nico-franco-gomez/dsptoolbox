@@ -243,7 +243,7 @@ def play(signal: Signal, duration_seconds: float = None,
 
 
 def play_through_stream(signal: Signal, blocksize: int = 2048,
-                        audio_callback=standard_callback,
+                        audio_callback: callable = standard_callback,
                         device: str = None):
     """Plays a signal using a stream and a callback function.
     See `sounddevice.OutputStream` for extensive information about
@@ -262,14 +262,13 @@ def play_through_stream(signal: Signal, blocksize: int = 2048,
         Default: 2048.
     audio_callback : callable, optional
         This is the core of the stream! Callback modifies the signal as it is
-        passed to the audio device. The `standard_callback` passes it through
-        with a stage of preprocessing (normalizing and fade). `audio_callback`
-        is a function that takes in a signal object and passes a valid
-        sounddevice callback. There can be preprocessing but it shouldn't
-        change the total length of the signal!
+        passed to the audio device. `audio_callback` is a function that takes
+        in a signal object and passes a valid sounddevice callback.
+        There can be preprocessing but it shouldn't change the total length
+        of the signal! Refer to `standard_callback` for an example.
         Their signatures are::
 
-            audio_callback(signal: Signal) -> callback
+            audio_callback(signal: Signal) -> callable
 
             callback(outdata: np.ndarray, frames: int,
                      time: CData, status: CallbackFlags) -> None

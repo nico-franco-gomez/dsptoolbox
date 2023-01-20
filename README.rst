@@ -32,7 +32,7 @@ Getting Started
 ===============
 
 Check out the `examples`_ for some basic examples of the dsptoolbox package
-and refer to the `documentation`_ for the complete description of classes and methods.
+and refer to the `documentation`_ for the complete description of classes and functions.
 
 Installation
 ============
@@ -45,5 +45,18 @@ Use pip to install dsptoolbox
 
 (Requires Python 3.10 or higher)
 
+In order to install the package successfully using Linux, you need to install
+PortAudio manually, since installing `sounddevice`_ will not do it automatically. To do this,
+run the following commands on your console:
+
+.. code-block:: console
+
+    $ sudo apt-get install libasound-dev libportaudio2 libsndfile1
+
+If this does not work properly for some reason, refer to the documentation for
+`sounddevice`_ or `PortAudio`_.
+
 .. _documentation: http://dsptoolbox.readthedocs.io/
 .. _examples: https://github.com/nico-franco-gomez/dsptoolbox/tree/main/examples
+.. _sounddevice: https://python-sounddevice.readthedocs.io/en/0.4.5/
+.. _PortAudio: http://www.portaudio.com

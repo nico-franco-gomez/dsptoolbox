@@ -248,7 +248,7 @@ def general_matrix_plot(matrix, range_x=None, range_y=None,
     else:
         max_val = max(matrix)
         min_val = min(matrix)
-    
+
     if lower_origin:
         origin = 'lower'
     else:

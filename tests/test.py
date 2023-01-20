@@ -1,5 +1,7 @@
 '''
-Testing script
+Testing script:
+So far, only 'manual' tests have been written here.
+TODO: create automatic tests
 '''
 from os.path import join
 
@@ -441,7 +443,7 @@ def min_phase_signal():
     ir = dsp.transfer_functions.window_ir(ir)
     # ir.plot_phase()
     _, sp = ir.get_spectrum()
-    min_ir = dsp.special.min_phase_from_mag(sp, ir.sampling_rate_hz)
+    min_ir = dsp.transfer_functions.min_phase_from_mag(sp, ir.sampling_rate_hz)
     # min_ir.plot_phase()
     # min_ir.plot_time()
     ir.plot_group_delay()
@@ -460,7 +462,7 @@ def lin_phase_signal():
     ir = dsp.transfer_functions.spectral_deconvolve(recorded_multi, raw)
     ir = dsp.transfer_functions.window_ir(ir)
     _, sp = ir.get_spectrum()
-    lin_ir = dsp.special.lin_phase_from_mag(
+    lin_ir = dsp.transfer_functions.lin_phase_from_mag(
         sp, ir.sampling_rate_hz, group_delay_ms='minimal',
         check_causality=True)
     # Phases
@@ -593,6 +595,21 @@ def fractional_time_delay():
     dsp.plots.show()
 
 
+def synthetic_rir():
+    import dsptoolbox as dsp
+
+    rir = dsp.room_acoustics.generate_synthetic_rir(
+        room_dimensions_meters=[4, 5, 6],
+        source_position=[2, 2.5, 3], receiver_position=[2, 1, 5.5],
+        total_length_seconds=0.5,
+        sampling_rate_hz=48000, desired_reverb_time_seconds=None)
+    rir.plot_time()
+    # rir.plot_magnitude()
+    # rir.plot_phase(unwrap=True)
+    # rir.plot_group_delay()
+    dsp.plots.show()
+
+
 if __name__ == '__main__':
     # plotting_test()
     # package_structure_test()
@@ -625,6 +642,7 @@ if __name__ == '__main__':
     # true_peak()
     # sinus_tone()
     # band_swapping()
+    # fractional_time_delay()
 
     # Weird results - needs validation
     # fwsnrseg()
@@ -634,5 +652,5 @@ if __name__ == '__main__':
     # cepstrum()  # -> needs validation with some other tool
 
     # Next
-    fractional_time_delay()
+    synthetic_rir()
     print()

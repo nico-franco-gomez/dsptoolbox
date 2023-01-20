@@ -8,6 +8,7 @@ from .standard_functions import (latency,
                                  pad_trim,
                                  fractional_delay,
                                  fractional_octave_frequencies,
+                                 activity_detector,
                                  fade,
                                  ir_to_filter,
                                  normalize,
@@ -37,6 +38,7 @@ __all__ = ['Signal',
            'merge_filterbanks',
            'group_delay',
            'resample',
+           'activity_detector',
            'normalize',
            'fractional_delay',
            'true_peak_level',
@@ -57,4 +59,4 @@ __all__ = ['Signal',
            'experimental',
            'audio_io']
 
-__version__ = '0.1.0'
+__version__ = '0.1.1'

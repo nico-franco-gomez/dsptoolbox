@@ -7,7 +7,7 @@ from os import sep
 from pickle import dump, HIGHEST_PROTOCOL
 from copy import deepcopy
 
-from scipy.signal import (sosfilt, sosfilt_zi, butter)
+from scipy.signal import (sosfilt, sosfilt_zi, butter, sosfiltfilt)
 from dsptoolbox import Signal, MultiBandSignal, FilterBank
 
 from dsptoolbox.generators import dirac
@@ -133,7 +133,8 @@ class LRFilterBank():
 
     # ======== Filtering ======================================================
     def filter_signal(self, s: Signal, mode: str = 'parallel',
-                      activate_zi: bool = False) -> MultiBandSignal | Signal:
+                      activate_zi: bool = False, zero_phase: bool = False) \
+            -> MultiBandSignal | Signal:
         """Filters a signal regarding the zi's of the filters and returns
         a MultiBandSignal. Only `'parallel'` mode is available for this type
         of filter bank.
@@ -148,6 +149,8 @@ class LRFilterBank():
         activate_zi : bool, optional
             When `True`, the zi's are activated for filtering.
             Default: `False`.
+        zero_phase : bool, optional
+            Activates zero phase filtering. Default: `False`.
 
         Returns
         -------
@@ -164,18 +167,20 @@ class LRFilterBank():
             mode = 'summed'
         assert s.sampling_rate_hz == self.sampling_rate_hz, \
             'Sampling rates do not match'
-        new_time_data = \
-            np.zeros((s.time_data.shape[0],
-                      s.number_of_channels,
-                      self.number_of_bands))
+        assert not (activate_zi and zero_phase), \
+            'Zero phase filtering and activating zi is a valid setting'
+        new_time_data = np.zeros((s.time_data.shape[0],
+                                  s.number_of_channels,
+                                  self.number_of_bands))
         in_sig = s.time_data
 
-        for ch in range(s.number_of_channels):
-            if activate_zi:
-                if not hasattr(self, 'channels_zi'):
-                    self.initialize_zi(s.number_of_channels)
-                elif len(self.channels_zi) != s.number_of_channels:
-                    self.initialize_zi(s.number_of_channels)
+        # Filter with zi
+        if activate_zi:
+            if not hasattr(self, 'channels_zi'):
+                self.initialize_zi(s.number_of_channels)
+            elif len(self.channels_zi) != s.number_of_channels:
+                self.initialize_zi(s.number_of_channels)
+            for ch in range(s.number_of_channels):
                 for cn in range(self.number_of_cross):
                     band, in_sig[:, ch] = \
                         self._two_way_split_zi(
@@ -191,14 +196,23 @@ class LRFilterBank():
                     new_time_data[:, ch, cn] = band
                 # Last high frequency component
                 new_time_data[:, ch, cn+1] = in_sig[:, ch]
-            else:
-                for cn in range(self.number_of_cross):
-                    band, in_sig[:, ch] = self._filt(in_sig[:, ch], cn)
-                    for ap_n in range(cn+1, self.number_of_cross):
-                        band = self._filt(band, ap_n, split=False)
-                    new_time_data[:, ch, cn] = band
-                # Last high frequency component
-                new_time_data[:, ch, cn+1] = in_sig[:, ch]
+        # Zero phase
+        elif zero_phase:
+            for cn in range(self.number_of_cross):
+                new_time_data[:, :, cn] = \
+                    sosfiltfilt(self.sos[cn][0], in_sig, axis=0)
+                in_sig = sosfiltfilt(self.sos[cn][1], in_sig, axis=0)
+            # Last high frequency component
+            new_time_data[:, :, cn+1] = in_sig
+        # Standard filtering
+        else:
+            for cn in range(self.number_of_cross):
+                band, in_sig = self._filt(in_sig, cn)
+                for ap_n in range(cn+1, self.number_of_cross):
+                    band = self._filt(band, ap_n, split=False)
+                new_time_data[:, :, cn] = band
+            # Last high frequency component
+            new_time_data[:, :, cn+1] = in_sig
 
         b = []
         for n in range(self.number_of_bands):
@@ -258,11 +272,11 @@ class LRFilterBank():
 
         """
         # Low band
-        s_l = sosfilt(self.sos[f_number][0], x=s)
-        s_l = sosfilt(self.sos[f_number][0], x=s_l)
+        s_l = sosfilt(self.sos[f_number][0], x=s, axis=0)
+        s_l = sosfilt(self.sos[f_number][0], x=s_l, axis=0)
         # High band
-        s_h = sosfilt(self.sos[f_number][1], x=s)
-        s_h = sosfilt(self.sos[f_number][1], x=s_h)
+        s_h = sosfilt(self.sos[f_number][1], x=s, axis=0)
+        s_h = sosfilt(self.sos[f_number][1], x=s_h, axis=0)
         if split:
             return s_l, s_h
         else:
@@ -298,7 +312,8 @@ class LRFilterBank():
 
     # ======== Prints and plots ===============================================
     def plot_magnitude(self, range_hz=[20, 20e3], mode: str = 'parallel',
-                       test_zi: bool = False, returns: bool = False):
+                       test_zi: bool = False, zero_phase: bool = False,
+                       returns: bool = False):
         """Plots the magnitude response of each filter. Only `'parallel'`
         mode is supported, thus no mode parameter can be set.
 
@@ -309,6 +324,8 @@ class LRFilterBank():
         mode : str, optional
             Way to apply filter bank to the signal. Supported modes are:
             `'parallel'`. Default: `'parallel'`.
+        zero_phase : bool, optional
+            Activates zero phase filtering. Default: `False`.
         test_zi : bool, optional
             Uses the zi's of each filter to test the FilterBank's output.
             Default: `False`.
@@ -328,7 +345,8 @@ class LRFilterBank():
         d = dirac(
             length_samples=1024, number_of_channels=1,
             sampling_rate_hz=48000)
-        bs = self.filter_signal(d, mode='parallel', activate_zi=test_zi)
+        bs = self.filter_signal(d, mode='parallel', activate_zi=test_zi,
+                                zero_phase=zero_phase)
         specs = []
         f = bs.bands[0].get_spectrum()[0]
         summed = []
@@ -362,8 +380,8 @@ class LRFilterBank():
             return fig, ax
 
     def plot_phase(self, range_hz=[20, 20e3], mode: str = 'parallel',
-                   test_zi: bool = False, unwrap: bool = False,
-                   returns: bool = False):
+                   test_zi: bool = False, zero_phase: bool = True,
+                   unwrap: bool = False, returns: bool = False):
         """Plots the phase response of each filter.
 
         Parameters
@@ -376,6 +394,8 @@ class LRFilterBank():
         test_zi : bool, optional
             Uses the zi's of each filter to test the FilterBank's output.
             Default: `False`.
+        zero_phase : bool, optional
+            Activates zero phase filtering. Default: `False`.
         unwrap : bool, optional
             When `True`, unwrapped phase is plotted. Default: `False`.
         returns : bool, optional
@@ -388,30 +408,40 @@ class LRFilterBank():
 
         """
         mode = mode.lower()
-        if mode != 'parallel':
-            warn('Plotting for LRFilterBank is only supported with parallel ' +
-                 'mode. Setting to parallel')
+        assert mode in ('parallel', 'summed'), \
+            f'{mode} is not supported. Use either parallel or summed'
         length_samples = 1024
         d = dirac(
             length_samples=length_samples,
             number_of_channels=1, sampling_rate_hz=48000)
-        bs = self.filter_signal(d, mode='parallel', activate_zi=test_zi)
-        phase = []
-        f = bs.bands[0].get_spectrum()[0]
-        for b in bs.bands:
-            phase.append(np.angle(b.get_spectrum()[1]))
-        phase = np.squeeze(np.array(phase).T)
+
+        if mode == 'parallel':
+            bs = self.filter_signal(d, mode='parallel', activate_zi=test_zi,
+                                    zero_phase=zero_phase)
+            phase = []
+            f = bs.bands[0].get_spectrum()[0]
+            for b in bs.bands:
+                phase.append(np.angle(b.get_spectrum()[1]))
+            phase = np.squeeze(np.array(phase).T)
+            labels = [f'Filter {h}' for h in range(bs.number_of_bands)]
+        elif mode == 'summed':
+            bs = self.filter_signal(d, mode='summed', activate_zi=test_zi,
+                                    zero_phase=zero_phase)
+            f, phase = bs.get_spectrum()
+            phase = np.angle(phase)
+            labels = ['Summed']
+
         if unwrap:
             phase = np.unwrap(phase, axis=0)
         fig, ax = general_plot(f, phase, range_hz, ylabel='Phase / rad',
                                returns=True,
-                               labels=[f'Filter {h}'
-                                       for h in range(bs.number_of_bands)])
+                               labels=labels)
         if returns:
             return fig, ax
 
     def plot_group_delay(self, range_hz=[20, 20e3], mode: str = 'parallel',
-                         test_zi: bool = False, returns: bool = False):
+                         test_zi: bool = False, zero_phase: bool = False,
+                         returns: bool = False):
         """Plots the phase response of each filter.
 
         Parameters
@@ -424,6 +454,8 @@ class LRFilterBank():
         test_zi : bool, optional
             Uses the zi's of each filter to test the FilterBank's output.
             Default: `False`.
+        zero_phase : bool, optional
+            Activates zero phase filtering. Default: `False`.
         returns : bool, optional
             When `True`, the figure and axis are returned. Default: `False`.
 
@@ -434,24 +466,31 @@ class LRFilterBank():
 
         """
         mode = mode.lower()
-        if mode != 'parallel':
-            warn('Plotting for LRFilterBank is only supported with parallel ' +
-                 'mode. Setting to parallel')
+        assert mode in ('parallel', 'summed'), \
+            f'{mode} is not supported. Use either parallel or summed'
         length_samples = 1024
         d = dirac(
             length_samples=length_samples,
             number_of_channels=1, sampling_rate_hz=48000)
-        bs = self.filter_signal(d, mode='parallel', activate_zi=test_zi)
-        gd = []
-        f = bs.bands[0].get_spectrum()[0]
-        for b in bs.bands:
-            gd.append(_group_delay_direct(
-                np.squeeze(b.get_spectrum()[1]), delta_f=f[1]-f[0]))
-        gd = np.squeeze(np.array(gd).T)*1e3
+        if mode == 'parallel':
+            bs = self.filter_signal(d, mode='parallel', activate_zi=test_zi,
+                                    zero_phase=zero_phase)
+            gd = []
+            f = bs.bands[0].get_spectrum()[0]
+            for b in bs.bands:
+                gd.append(_group_delay_direct(
+                    np.squeeze(b.get_spectrum()[1]), delta_f=f[1]-f[0]))
+            gd = np.squeeze(np.array(gd).T)*1e3
+            labels = [f'Filter {h}' for h in range(bs.number_of_bands)]
+        elif mode == 'summed':
+            bs = self.filter_signal(d, mode='summed', activate_zi=test_zi,
+                                    zero_phase=zero_phase)
+            f, sp = bs.get_spectrum()
+            gd = _group_delay_direct(sp.squeeze(), delta_f=f[1]-f[0])
+            labels = ['Summed']
         fig, ax = general_plot(f, gd, range_hz, ylabel='Group delay / ms',
                                returns=True,
-                               labels=[f'Filter {h}'
-                                       for h in range(bs.number_of_bands)])
+                               labels=labels)
         if returns:
             return fig, ax
 
