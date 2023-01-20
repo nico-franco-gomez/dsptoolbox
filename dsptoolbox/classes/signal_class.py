@@ -223,8 +223,9 @@ class Signal():
     @property
     def time_data_imaginary(self) -> np.ndarray | None:
         if self.__time_data_imaginary is None:
-            warn('Imaginary part of time data was called, but there is ' +
-                 'None. None is returned.')
+            # warn('Imaginary part of time data was called, but there is ' +
+            #      'None. None is returned.')
+            return None
         return self.__time_data_imaginary.copy()
 
     @time_data_imaginary.setter
@@ -805,8 +806,8 @@ class Signal():
 
     def plot_group_delay(self, range_hz=[20, 20000], returns: bool = False):
         """Plots group delay of each channel.
-        Only works if `signal_type in ('ir', 'h1', 'h2', 'h3', 'rir', chirp,
-        noise, dirac)`.
+        Only works if `signal_type in ('ir', 'h1', 'h2', 'h3', 'rir', 'chirp',
+        'noise', 'dirac')`.
 
         Parameters
         ----------

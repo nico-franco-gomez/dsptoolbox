@@ -21,13 +21,15 @@ from dsptoolbox._standard import (_latency,
                                   _minimum_phase,
                                   _center_frequencies_fractional_octaves_iec,
                                   _exact_center_frequencies_fractional_octaves,
-                                  _kaiser_window_beta)
+                                  _kaiser_window_beta,
+                                  _indexes_above_threshold_dbfs)
 from dsptoolbox.classes._filter import _group_delay_filter
 from dsptoolbox._general_helpers import _pad_trim, _normalize, _fade
-from dsptoolbox.special import min_phase_from_mag, lin_phase_from_mag
+from dsptoolbox.transfer_functions import (
+    min_phase_from_mag, lin_phase_from_mag)
 
 
-def latency(in1: Signal, in2: Signal = None):
+def latency(in1: Signal, in2: Signal = None) -> np.ndarray:
     """Computes latency between two signals using the correlation method.
     If there is no second signal, the latency between the first and the other
     channels of the is computed.
@@ -545,7 +547,7 @@ def fade(sig: Signal, type_fade: str = 'lin',
 
 
 def erb_frequencies(freq_range_hz=[20, 20000], resolution: float = 1,
-                    reference_frequency_hz=1000):
+                    reference_frequency_hz=1000) -> np.ndarray:
     """Get frequencies that are linearly spaced on the ERB frequency scale.
     This implementation was taken and adapted from the pyfar package. See
     references.
@@ -614,7 +616,7 @@ def erb_frequencies(freq_range_hz=[20, 20000], resolution: float = 1,
 
 
 def ir_to_filter(signal: Signal, channel: int = 0,
-                 phase_mode: str = 'direct') -> Signal:
+                 phase_mode: str = 'direct') -> Filter:
     """This function takes in a signal with type ir or rir and turns the
     selected channel into an FIR filter. With `phase_mode` it is possible
     to use minimum phase or minimum linear phase.
@@ -871,3 +873,98 @@ def fractional_delay(sig: Signal | MultiBandSignal, delay_seconds: float,
         raise TypeError('Passed signal should be either type Signal or ' +
                         'MultiBandSignal')
     return out_sig
+
+
+def activity_detector(signal: Signal, channel: int = 0,
+                      threshold_dbfs: float = -20, pre_filter: Filter = None,
+                      attack_time_ms: float = 0.5,
+                      release_time_ms: float = 25) \
+        -> tuple[Signal, dict]:
+    """This is a simple signal activity detector that uses a power threshold
+    relative to maximum peak level in a given signal (for one channel).
+    It returns the signal and a dictionary containing noise (as a signal) and
+    the time indexes corresponding to the bins that were found to surpass
+    the threshold according to attack and release times.
+
+    Prefiltering (for example with a bandpass filter) is possible when a
+    pre_filter is passed.
+
+    See Returns to gain insight into the returned dictionary and its keys.
+
+    Parameters
+    ----------
+    signal : `Signal`
+        Signal in which to detect activity.
+    channel : int, optional
+        Channel in which to perform the detection. Default: 0.
+    threshold_dbfs : float, optional
+        Threshold in dBFS (relative to the signal's maximum peak level) to
+        separate noise from activity. Default: -20.
+    pre_filter : `Filter`, optional
+        Filter used for prefiltering the signal. It can be for instance a
+        bandpass filter selecting the relevant frequencies in which the
+        activity might be. Pass `None` to avoid any pre filtering.
+        Default: `None`.
+    attack_time_ms : float, optional
+        Attack time (in ms). It corresponds to the time that the signal has
+        to surpass the power threshold in order to be regarded as valid
+        acitivity. Pass 0 to attack immediately. Default: 0.5.
+    release_time_ms : float, optional
+        Release time (in ms) for activity detector after signal has fallen
+        below power threshold. Pass 0 to release immediately. Default: 25.
+
+    Returns
+    -------
+    detected_sig : `Signal`
+        Detected signal.
+    others : dict
+        Dictionary containing following keys:
+        - `'noise'`: left-out noise in original signal (below threshold).
+        - `'signal_indexes'`: array of boolean that describes which indexes
+          of the original time series belong to signal and which to noise.
+          `True` at index n means index n was passed to signal.
+        - `'noise_indexes'`: the inverse array to `'signal_indexes'`.
+
+    """
+    assert type(channel) == int, \
+        'Channel must be type integer. Function is not implemented for ' +\
+        'multiple channels.'
+    assert threshold_dbfs < 0, \
+        'Threshold must be below zero'
+    assert release_time_ms >= 0, \
+        'Release time must be positive'
+
+    # Get relevant channel
+    signal = signal.get_channels(channel)
+
+    # Pre-filtering
+    if pre_filter is not None:
+        assert type(pre_filter) == Filter, \
+            'pre_filter must be of type Filter'
+        assert signal.sampling_rate_hz == pre_filter.sampling_rate_hz, \
+            'Sampling rates for signal and pre filter do not match'
+        signal_filtered = pre_filter.filter_signal(signal)
+    else:
+        signal_filtered = signal
+
+    # Release samples
+    release_time_samples = int(release_time_ms*signal.sampling_rate_hz*1e-3)
+    attack_time_samples = int(attack_time_ms*signal.sampling_rate_hz*1e-3)
+
+    # Get indexes
+    signal_indexes = _indexes_above_threshold_dbfs(
+        signal_filtered.time_data, threshold_dbfs=threshold_dbfs,
+        attack_samples=attack_time_samples,
+        release_samples=release_time_samples)
+    noise_indexes = ~signal_indexes
+
+    # Separate signals
+    detected_sig = signal.copy()
+    noise = signal.copy()
+    detected_sig.time_data = signal.time_data[signal_indexes, 0]
+    noise.time_data = signal.time_data[noise_indexes, 0]
+
+    others = dict(
+        noise=noise, signal_indexes=signal_indexes,
+        noise_indexes=noise_indexes)
+    return detected_sig, others

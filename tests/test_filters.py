@@ -106,13 +106,14 @@ def linkwitz_riley():
     fb = dsp.filterbanks.linkwitz_riley_crossovers(
         [1000, 1500], [4, 6])
     fb.show_info()
-    # fb.plot_phase(unwrap=True, test_zi=True)
-    # fb.plot_group_delay()
+    # fb.plot_phase(mode='summed', unwrap=True,
+    #               test_zi=False, zero_phase=False)
+    # fb.plot_group_delay(mode='summed', zero_phase=True)
 
     # Parallel
     # fb.plot_magnitude(test_zi=True)
-    # fb.plot_magnitude(test_zi=False)
-    # fb.plot_magnitude(mode='sequential', test_zi=True)
+    fb.plot_magnitude(test_zi=False, zero_phase=True)
+    # fb.plot_magnitude(mode='parallel', test_zi=False, zero_phase=True)
     dsp.plots.show()
 
 
@@ -125,7 +126,7 @@ def perfect_reconstruction():
     #     fb.plot_phase(
     #         mode='parallel', length_samples=2**12, unwrap=True, returns=True)
     fig, ax = \
-        fb.plot_magnitude(mode='parallel', returns=True)
+        fb.plot_magnitude(mode='parallel')
     # ax.set_ylim([-5, 5])
     # fb.plot_phase(mode='parallel', unwrap=True)
     # fb.plot_group_delay(mode='summed')
@@ -151,7 +152,7 @@ if __name__ == '__main__':
     # filtering()
     # filter_bank_add_remove()
     # filter_bank_filter()
-    # linkwitz_riley()
+    linkwitz_riley()
     # perfect_reconstruction()
     # gamma_tone_reconstruction()
 

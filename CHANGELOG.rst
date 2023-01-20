@@ -14,7 +14,30 @@ adheres to `Semantic Versioning <http://semver.org/spec/v2.0.0.html>`_.
 - Automated testing, ideally with pytest
 - Validation of transfer functions (h1, h2, h3), coherence and distances
   with some external tool
-- Validation for distance measures
+
+`0.1.1`_ - 2023-01-20
+---------------------
+
+Added
+~~~~~~
+- the method for finding room modes now includes the ``prune_antimodes`` parameter which checks for modes that are dips in the room impulse response and leaves these out
+- filter class can now plot magnitude directly with zero_phase filtering
+- ``activity_detector`` added in standard module
+- ``spectral_average`` in transfer_functions module
+- ``generate_synthetic_rir`` in room_acoustics module
+
+Bugfix
+~~~~~~
+- start of impulse responses for multibandsignals is now done for each signal separately since filtering could lead to different group delays in each band
+- assertion that ``start_stop_hz`` is ``None`` when standard method is selected in ``transfer_functions.spectral_deconvolve()``
+- _biquad_coefficients can now take strings as eq_type
+- refactored part of filtering function in Linkwitz-Riley filter bank such that no unnecessary loops are used
+
+Misc
+~~~~~
+- turned off warning if time_data_imaginary is called and happens to be None
+- corrected or extended docstrings
+- moved linear and minimum phase system generation from special to transfer_functions module
 
 `0.1.0`_ - 2023-01-13
 ---------------------
@@ -39,6 +62,7 @@ Bugfix
 Misc
 ~~~~
 - add image in the beginning of repository's readme
+
 
 `0.0.5`_ - 2023-01-11
 ---------------------

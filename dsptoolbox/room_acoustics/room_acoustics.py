@@ -3,20 +3,20 @@ High-level methods for room acoustics functions
 """
 import numpy as np
 from scipy.signal import find_peaks, convolve
-from dsptoolbox import Signal, MultiBandSignal
+from warnings import warn
+
+from dsptoolbox.classes import Signal, MultiBandSignal, Filter
 from dsptoolbox.standard_functions import group_delay
 from ._room_acoustics import (_reverb,
                               _complex_mode_identification,
                               _sum_magnitude_spectra,
-                              _find_ir_start)
-from dsptoolbox._general_helpers import _find_nearest, _normalize
-
-
-__all__ = ['reverb_time', 'find_modes', 'convolve_rir_on_signal']
+                              _find_ir_start,
+                              _generate_rir)
+from dsptoolbox._general_helpers import _find_nearest, _normalize, _pad_trim
 
 
 def reverb_time(signal: Signal | MultiBandSignal, mode: str = 'T20',
-                ir_start: int = None, return_ir_start: bool = False):
+                ir_start: int = None):
     """Computes reverberation time. T20, T30, T60 and EDT.
 
     Parameters
@@ -29,12 +29,8 @@ def reverb_time(signal: Signal | MultiBandSignal, mode: str = 'T20',
         `'EDT'`. Default: `'T20'`.
     ir_start : int, optional
         When not `None`, it is used as the index of the start of the impulse
-        response. Otherwise it is automatically computed. Default: `None`.
-    return_ir_start : bool, optional
-        When `True`, not only reverberation times are returned but also the
-        index of the start of the impulse response (for the first channel
-        only). It should not be set to `True` when `ir_start is not None`.
-        Default: `False`.
+        response. Otherwise it is automatically computed as the first point
+        where the normalized IR arrives at -20 dBFS. Default: `None`.
 
     Returns
     -------
@@ -58,27 +54,8 @@ def reverb_time(signal: Signal | MultiBandSignal, mode: str = 'T20',
         assert mode.casefold() in valid_modes, \
             f'{mode} is not valid. Use either one of ' +\
             'these: T20, T30, T60 or EDT'
-        assert not (return_ir_start and (ir_start is not None)), \
-            'Pass either ir_start or set return_ir_start to True, but not ' +\
-            'both'
         reverberation_times = np.zeros((signal.number_of_channels))
-        if return_ir_start:
-            reverberation_times[0], ir_start = \
-                _reverb(
-                    signal.time_data[:, 0].copy(),
-                    signal.sampling_rate_hz,
-                    mode.casefold(),
-                    ir_start=None,
-                    return_ir_start=True)
-        else:
-            reverberation_times[0] = \
-                _reverb(
-                    signal.time_data[:, 0].copy(),
-                    signal.sampling_rate_hz,
-                    mode.casefold(),
-                    ir_start=ir_start,
-                    return_ir_start=False)
-        for n in range(1, signal.number_of_channels):
+        for n in range(signal.number_of_channels):
             reverberation_times[n] = \
                 _reverb(
                     signal.time_data[:, n].copy(),
@@ -90,31 +67,34 @@ def reverb_time(signal: Signal | MultiBandSignal, mode: str = 'T20',
         reverberation_times = \
             np.zeros(
                 (signal.number_of_bands, signal.bands[0].number_of_channels))
-        if ir_start is None:
-            reverberation_times[0, :], ir_start = reverb_time(
-                signal.bands[0], mode,
-                ir_start=None,
-                return_ir_start=True)
-        for ind in range(1, signal.number_of_bands):
+        for ind in range(signal.number_of_bands):
             reverberation_times[ind, :] = reverb_time(
                 signal.bands[ind], mode,
-                ir_start=ir_start, return_ir_start=False)
+                ir_start=ir_start)
     else:
         raise TypeError(
             'Passed signal should be of type Signal or MultiBandSignal')
-    if return_ir_start:
-        return reverberation_times.squeeze(), ir_start
     return reverberation_times.squeeze()
 
 
 def find_modes(signal: Signal, f_range_hz=[50, 200],
-               proximity_effect: bool = False, dist_hz: float = 5):
+               proximity_effect: bool = False, dist_hz: float = 5,
+               prune_antimodes: bool = False):
     """This metod is NOT validated. It might not be sufficient to find all
     modes in the given range.
 
     Computes the room modes of a set of RIR using different criteria:
     Complex mode indication function, sum of magnitude responses and group
-    delay peaks of the first RIR.
+    delay peaks of RIRs. If modes are identified in at least two of the three
+    criteria, they are considered as such.
+
+    The parameter prune antimodes is used to avoid getting modes that are
+    dips (and not peaks) in the frequency responses. This is done after
+    mode identification and is therefore only needed when proximity effect is
+    set to `True` and mode identification is done using group delay criteria,
+    since, for modes to be identified as such, they would need
+    to exhibit peaks in at least the CMIF or sum of all magnitude spectra. If
+    they were dips, they would be ignored anyway.
 
     Parameters
     ----------
@@ -129,6 +109,11 @@ def find_modes(signal: Signal, f_range_hz=[50, 200],
         due to near-field effects. Default: `False`.
     dist_hz : float, optional
         Minimum distance (in Hz) between modes. Default: 5.
+    prune_antimodes : bool, optional
+        See if the detected modes are dips in the frequency response of the
+        first RIR. This is only needed for the group delay method, which
+        is essential when proximity_effect is set to `True`.
+        Default: `False`.
 
     Returns
     -------
@@ -154,6 +139,7 @@ def find_modes(signal: Signal, f_range_hz=[50, 200],
     f = f[ids[0]:ids[1]]
     df = f[1]-f[0]
 
+    # Compute CMIF and sum of all magnitude spectra
     cmif = _complex_mode_identification(sp[ids[0]:ids[1], :]).squeeze()
     sum_sp = _sum_magnitude_spectra(sp[ids[0]:ids[1], :])
 
@@ -170,6 +156,8 @@ def find_modes(signal: Signal, f_range_hz=[50, 200],
         id_, _ = find_peaks(group_ms[:, n], width=width)
         id_group.append(id_)
 
+    # When proximity effect is activated, only group delays will be used up
+    # until 200 Hz
     if proximity_effect:
         f_modes = np.array([])
         for n in range(signal.number_of_channels):
@@ -187,6 +175,13 @@ def find_modes(signal: Signal, f_range_hz=[50, 200],
             if f_modes.count(f_m) >= 2:
                 temp.append(f_m)
         f_modes = set(temp)
+
+        # Assessment that lower modes are peaks (not dips)
+        # of the magnitude response (first RIR)
+        if prune_antimodes:
+            antimodes, _ = \
+                find_peaks(1/np.abs(sp[ids[0]:ids[1], 0]), width=width)
+            f_antimodes = f[antimodes]
     else:
         f_modes = set()
         ind_200 = 0
@@ -205,6 +200,10 @@ def find_modes(signal: Signal, f_range_hz=[50, 200],
             f_modes.add(f[n])
     f_modes = np.sort(list(f_modes))
 
+    # "Antimode" detection – only when proximity effect is True
+    if proximity_effect and prune_antimodes:
+        anti = np.intersect1d(f_antimodes, f_modes)
+        f_modes = np.setdiff1d(f_modes, anti)
     return f_modes.astype(int)
 
 
@@ -302,3 +301,93 @@ def find_ir_start(signal: Signal, threshold_dbfs: float = -20):
         start_index[n] = \
             _find_ir_start(signal.time_data[:, n], threshold_dbfs)
     return start_index.squeeze()
+
+
+def generate_synthetic_rir(room_dimensions_meters, source_position,
+                           receiver_position,
+                           total_length_seconds: float = 0.5,
+                           sampling_rate_hz: int = 48000,
+                           desired_reverb_time_seconds: float = None) \
+        -> Signal:
+    """This function returns a synthetized RIR in a shoebox-room using the
+    image source model. The implementation is based on Brinkmann,
+    et al. See References for limitations and advantages of this method.
+
+    NOTE: Depending on the computer and the given reverberation time, this
+          function can take a relatively long time to compute. If a faster or
+          more flexible implementation is needed, please refer to the
+          package pyroomacoustics.
+
+    Parameters
+    ----------
+    room_dimensions_meters : array-like
+        Vector with length 3 representing room dimensions in x, y and z
+        coordinates in meters, respectively.
+    source_position : array-like
+        Vector with length 3 corresponding to the source's position (x, y, z)
+        in meters.
+    receiver_position : array-like
+        Vector with length 3 corresponding to the receiver's position (x, y, z)
+        in meters.
+    total_length_seconds : float, optional
+        Total length of the output RIR in seconds. Default: 0.5.
+    sampling_rate_hz : int, optional
+        Sampling rate of the generated impulse (in Hz). Default: 48000.
+    desired_reverb_time_seconds : float, optional
+        Desired reverberation time in seconds for the RIR to have
+        (approximately). When `None`, reverberation time is set to be 75% of
+        the total time.
+
+    Returns
+    -------
+    rir : `Signal`
+        Newly generated RIR.
+
+    References
+    ----------
+    - Brinkmann, Fabian & Erbes, Vera & Weinzierl, Stefan. (2018). Extending
+      the closed form image source model for source directivity.
+    - pyroomacoustics: https://github.com/LCAV/pyroomacoustics
+
+    """
+    room_dimensions_meters = np.asarray(room_dimensions_meters)
+    assert room_dimensions_meters.ndim == 1 and \
+        len(room_dimensions_meters) == 3 and \
+        np.all(room_dimensions_meters > 0), \
+        'The dimensions for the room are not correct'
+    source_position = np.asarray(source_position)
+    assert source_position.shape == room_dimensions_meters.shape, \
+        'Invalid shape for source position vector'
+    assert np.all(source_position < room_dimensions_meters), \
+        'Source positions have values bigger than the room'
+    receiver_position = np.asarray(receiver_position)
+    assert receiver_position.shape == room_dimensions_meters.shape, \
+        'Invalid shape for receiver position vector'
+    assert np.all(receiver_position < room_dimensions_meters), \
+        'Receiver positions have values bigger than the room'
+
+    if desired_reverb_time_seconds is None:
+        desired_reverb_time_seconds = 0.75 * total_length_seconds
+    if desired_reverb_time_seconds > total_length_seconds:
+        warn('Total length of RIR is smaller than the desired reverberation ' +
+             'time')
+
+    total_length_samples = int(total_length_seconds*sampling_rate_hz)
+    rir = _generate_rir(
+        dim=room_dimensions_meters, s_pos=source_position,
+        r_pos=receiver_position, rt=desired_reverb_time_seconds,
+        sr=sampling_rate_hz)
+    rir = _pad_trim(rir, total_length_samples)
+    # Prune possible nan values
+    np.nan_to_num(rir, copy=False, nan=0)
+    rir = Signal(
+        None, rir, sampling_rate_hz,
+        signal_type='rir',
+        signal_id='Synthetized RIR using the image source method')
+    # Bandpass signal in order to have a realistic audio signal representation
+    f = Filter('iir',
+               dict(order=12, filter_design_method='bessel',
+                    type_of_pass='bandpass',
+                    freqs=[30, (sampling_rate_hz//2)*0.9]))
+    rir = f.filter_signal(rir)
+    return rir

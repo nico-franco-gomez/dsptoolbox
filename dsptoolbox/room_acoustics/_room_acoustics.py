@@ -137,3 +137,99 @@ def _sum_magnitude_spectra(magnitudes: np.ndarray):
         magnitudes = abs(magnitudes)
     summed = np.sum(magnitudes, axis=1)
     return summed
+
+
+def _generate_rir(dim, s_pos, r_pos, rt, sr):
+    """Generate RIR using image source model according to Brinkmann, et al.
+
+    Parameters
+    ----------
+    dim : `np.ndarray`
+        Room dimensions.
+    s_pos : `np.ndarray`
+        Source position.
+    r_pos : `np.ndarray`
+        Receiver position.
+    rt : float
+        Desired reverberation time to achieve in RIR.
+    sr : int
+        Sampling rate in Hz.
+
+    Returns
+    -------
+    rir : `np.ndarray`
+        Time vector of the RIR.
+
+    References
+    ----------
+    - Brinkmann, Fabian & Erbes, Vera & Weinzierl, Stefan. (2018). Extending
+      the closed form image source model for source directivity.
+
+    """
+    # Room dimensions
+    surface = dim @ np.roll(dim, 1) * 2
+    volume = np.prod(dim)
+
+    # Desired T60 and corresponding alpha (absorption coefficient)
+    alpha = 0.16*volume/(surface*rt)
+    assert alpha < 1, \
+        'Selected room dimensions and reverberation time are not valid, ' +\
+        f'since needed absorption coefficient is larger than one ({alpha}).' +\
+        ' Try again changing these parameters'
+
+    # Beta coefficient same for all walls – could be easily expanded to be
+    # different for all walls
+    beta = np.sqrt(1 - alpha)
+
+    # Speed of sound
+    c = 343
+    # Estimated maximum order for computation based on reverberation time
+    t_max = rt*1.1
+    l_max = c*t_max/2/dim
+    LIMIT = np.ceil(np.sqrt(l_max @ l_max)).astype(int)
+
+    # Initialize empty vector
+    rir_vec = np.zeros(int(t_max*5 * sr))
+
+    def seconds2samples(t):
+        return np.asarray(t*sr).astype(int)
+
+    # Vectorized computation of nested sums U (Eq. 2)
+    u_vectors = np.array([
+        [0, 0, 0],
+        [0, 0, 1], [0, 1, 0], [1, 0, 0],
+        [0, 1, 1], [1, 0, 1], [1, 1, 0],
+        [1, 1, 1]
+    ])
+    # Helper matrix for vectorized computation
+    helper_matrix = np.zeros((u_vectors.shape[0]*u_vectors.shape[1], 1))
+    helper_matrix[:u_vectors.shape[1], 0] = 1
+    for _ in range(1, u_vectors.shape[0]):
+        helper_matrix = np.append(
+            helper_matrix,
+            np.roll(helper_matrix[:, -1], u_vectors.shape[1])[..., None],
+            axis=-1)
+
+    # Distance (according to Eq. 6)
+    def get_distance(lvec):
+        pos = (((1 - 2*u_vectors)*s_pos) +
+               (2*lvec*dim) - r_pos).flatten()**2
+        return (pos @ helper_matrix)**0.5
+
+    # Damping term (Numerator in Eq. 8)
+    def get_damping(lvec):
+        diff = np.abs(lvec - u_vectors)
+        return np.prod(beta**diff, axis=1)*np.prod(beta**np.abs(lvec))
+
+    # Core computation (Eq. 1) – could be further optimized by vectorizing
+    # the outer loops
+    for lind in np.arange(-LIMIT, LIMIT+1):
+        for mind in np.arange(-LIMIT, LIMIT+1):
+            for nind in np.arange(-LIMIT, LIMIT+1):
+                l0 = np.array([lind, mind, nind])
+                # Distances
+                ds = get_distance(l0)
+                # Write into RIR
+                rir_vec[seconds2samples(ds/c)] += \
+                    get_damping(l0) / (4*np.pi*ds)
+    return rir_vec
