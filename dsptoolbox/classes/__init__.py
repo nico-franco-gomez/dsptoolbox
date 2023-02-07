@@ -7,7 +7,7 @@ Here are the classes of the dsptoolbox:
             and a sampling rate)
 - `MultiBandSignal` (signal with multiple bands and multirate capabilities)
 - `Filter` (filter class with filtering methods)
-- `FilterBank`
+- `FilterBank` (class containing a group of `Filters` and their metadata)
 
 """
 from .filter_class import Filter

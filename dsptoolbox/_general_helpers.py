@@ -4,9 +4,10 @@ General functionality from helper methods
 import numpy as np
 from scipy.signal import windows
 from scipy.interpolate import interp1d
+from scipy.linalg import toeplitz as toeplitz_scipy
 
 
-def _find_nearest(points, vector):
+def _find_nearest(points, vector) -> np.ndarray:
     """Gives back the indexes with the nearest points in vector
 
     Parameters
@@ -18,7 +19,7 @@ def _find_nearest(points, vector):
 
     Returns
     -------
-    indexes : int or np.array
+    indexes : `np.ndarray`
         Indexes of the points.
 
     """
@@ -33,7 +34,7 @@ def _find_nearest(points, vector):
 
 def _calculate_window(points, window_length: int,
                       window_type='hann', at_start: bool = True,
-                      inverse=False):
+                      inverse=False) -> np.ndarray:
     """Creates a custom window with given indexes
 
     Parameters
@@ -54,7 +55,7 @@ def _calculate_window(points, window_length: int,
 
     Returns
     -------
-    window_full: np.array
+    window_full: np.ndarray
         Custom window.
 
     """
@@ -89,7 +90,8 @@ def _calculate_window(points, window_length: int,
 
 def _get_normalized_spectrum(f, spectra: np.ndarray, mode='standard',
                              f_range_hz=[20, 20000], normalize: str = None,
-                             smoothe: int = 0, phase=False):
+                             smoothe: int = 0, phase=False) \
+        -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """This function gives a normalized magnitude spectrum with frequency
     vector for a given range. It is also smoothed. Use `None` for the
     spectrum without f_range_hz.
@@ -180,7 +182,8 @@ def _get_normalized_spectrum(f, spectra: np.ndarray, mode='standard',
     return f[id1:id2], mag_spectra
 
 
-def _find_frequencies_above_threshold(spec, f, threshold_db, normalize=True):
+def _find_frequencies_above_threshold(spec, f, threshold_db, normalize=True) \
+        -> list:
     """Finds frequencies above a certain threshold in a given spectrum.
 
     """
@@ -192,37 +195,40 @@ def _find_frequencies_above_threshold(spec, f, threshold_db, normalize=True):
 
 
 def _pad_trim(vector: np.ndarray, desired_length: int, axis: int = 0,
-              in_the_end: bool = True):
+              in_the_end: bool = True) -> np.ndarray:
     """Pads (with zeros) or trim (depending on size and desired length).
 
     """
     throw_axis = False
-    if len(vector.shape) < 2:
+    if vector.ndim < 2:
         assert axis == 0, 'You can only pad along the 0 axis'
         vector = vector[..., None]
         throw_axis = True
+    elif vector.ndim > 2:
+        vector = vector.squeeze()
+        if vector.ndim > 2:
+            raise ValueError(
+                'This function is only implemented for 1D and 2D arrays')
     type_of_data = vector.dtype
     diff = desired_length - vector.shape[axis]
     if axis == 1:
         vector = vector.T
     if diff > 0:
         if not in_the_end:
-            vector = np.flip(vector, axis=axis)
-        new_vec = \
-            np.concatenate(
-                [vector,
-                    np.zeros((diff, vector.shape[1]),
-                             dtype=type_of_data)])
+            vector = np.flip(vector, axis=0)
+        new_vec = np.concatenate(
+            [vector, np.zeros((diff, vector.shape[1]),
+                              dtype=type_of_data)])
         if not in_the_end:
-            new_vec = np.flip(new_vec, axis=axis)
+            new_vec = np.flip(new_vec, axis=0)
     elif diff < 0:
         if not in_the_end:
-            vector = np.flip(vector, axis=axis)
+            vector = np.flip(vector, axis=0)
         new_vec = vector[:desired_length, :]
         if not in_the_end:
-            new_vec = np.flip(new_vec, axis=axis)
+            new_vec = np.flip(new_vec, axis=0)
     else:
-        new_vec = vector
+        new_vec = vector.copy()
     if axis == 1:
         new_vec = new_vec.T
     if throw_axis:
@@ -230,7 +236,8 @@ def _pad_trim(vector: np.ndarray, desired_length: int, axis: int = 0,
     return new_vec
 
 
-def _compute_number_frames(window_length: int, step: int, signal_length: int):
+def _compute_number_frames(window_length: int, step: int, signal_length: int) \
+        -> tuple[int, int]:
     """Gives back the number of frames that will be computed.
 
     Parameters
@@ -255,7 +262,7 @@ def _compute_number_frames(window_length: int, step: int, signal_length: int):
     return n_frames, padding_samples
 
 
-def _normalize(s: np.ndarray, dbfs: float, mode='peak'):
+def _normalize(s: np.ndarray, dbfs: float, mode='peak') -> np.ndarray:
     """Normalizes a signal.
 
     Parameters
@@ -285,14 +292,14 @@ def _normalize(s: np.ndarray, dbfs: float, mode='peak'):
     return s
 
 
-def _rms(x: np.ndarray):
+def _rms(x: np.ndarray) -> np.ndarray:
     """Root mean square computation.
 
     """
     return np.sqrt(np.sum(x**2)/len(x))
 
 
-def _amplify_db(s: np.ndarray, db: float):
+def _amplify_db(s: np.ndarray, db: float) -> np.ndarray:
     """Amplify by dB.
 
     """
@@ -300,7 +307,7 @@ def _amplify_db(s: np.ndarray, db: float):
 
 
 def _fade(s: np.ndarray, length_seconds: float = 0.1, mode: str = 'exp',
-          sampling_rate_hz: int = 48000, at_start: bool = True):
+          sampling_rate_hz: int = 48000, at_start: bool = True) -> np.ndarray:
     """Create a fade in signal.
 
     Parameters
@@ -362,8 +369,7 @@ def _fade(s: np.ndarray, length_seconds: float = 0.1, mode: str = 'exp',
 
 def _fractional_octave_smoothing(vector: np.ndarray, num_fractions: int = 3,
                                  window_type='hamming',
-                                 extra_parameters: tuple = None,
-                                 window_vec: np.ndarray = None):
+                                 window_vec: np.ndarray = None) -> np.ndarray:
     """Smoothes a vector using interpolation to a logarithmic scale. Usually
     done for smoothing of frequency data. This implementation is taken from
     the pyfar package, see references.
@@ -376,10 +382,7 @@ def _fractional_octave_smoothing(vector: np.ndarray, num_fractions: int = 3,
         Fraction of octave to be smoothed across. Default: 3 (third band).
     window_type : str, optional
         Type of window to be used. See `scipy.signal.windows.get_window` for
-        valid types. Default: `'gaussian'`.
-    extra_parameters : tuple, optional
-        Additional parameters to be passed to the function
-        `scipy.signal.windows.get_window`. Default: `None`.
+        valid types. Default: `'hamming'`.
     window_vec : `np.ndarray`, optional
         Window vector to be used as a window. `window_type` should be set to
         `None` if this direct window is going to be used. Default: `None`.
@@ -414,16 +417,12 @@ def _fractional_octave_smoothing(vector: np.ndarray, num_fractions: int = 3,
     n_window = int(2 * np.floor(1 / (num_fractions * beta * 2)) + 1)
     # Generate window
     if window_type is not None:
-        if extra_parameters is not None:
-            pass_window = []
-            pass_window.append(window_type)
-            for e in extra_parameters:
-                pass_window.append(e)
-            pass_window = tuple(pass_window)
-        else:
-            pass_window = window_type
-        window = windows.get_window(pass_window, n_window, fftbins=False)
+        assert window_vec is None, \
+            'When window type is passed, no window vector should be added'
+        window = windows.get_window(window_type, n_window, fftbins=False)
     else:
+        assert window_type is None, \
+            'When using a window as a vector, window type should be None'
         window = window_vec
     # Dimension handling
     one_dim = False
@@ -451,7 +450,7 @@ def _fractional_octave_smoothing(vector: np.ndarray, num_fractions: int = 3,
 
 
 def _frequency_weightning(f: np.ndarray, weightning_mode: str = 'a',
-                          db_output: bool = True):
+                          db_output: bool = True) -> np.ndarray:
     """Returns the weights for frequency-weightning.
 
     Parameters
@@ -545,7 +544,7 @@ def _polyphase_decomposition(in_sig: np.ndarray,
     return poly, padding
 
 
-def _polyphase_reconstruction(poly: np.ndarray):
+def _polyphase_reconstruction(poly: np.ndarray) -> np.ndarray:
     """Returns the reconstructed input signal array from its polyphase
     representation, possibly with a different length if padded was needed for
     reconstruction. Polyphase representation shape is assumed to be
@@ -576,7 +575,7 @@ def _polyphase_reconstruction(poly: np.ndarray):
     return in_sig
 
 
-def _hz2mel(f: np.ndarray):
+def _hz2mel(f: np.ndarray) -> np.ndarray:
     """Convert frequency in Hz into mel.
 
     Parameters
@@ -597,7 +596,7 @@ def _hz2mel(f: np.ndarray):
     return 2595*np.log10(1+f/700)
 
 
-def _mel2hz(mel: np.ndarray):
+def _mel2hz(mel: np.ndarray) -> np.ndarray:
     """Convert frequency in mel into Hz.
 
     Parameters
@@ -618,7 +617,8 @@ def _mel2hz(mel: np.ndarray):
     return 700*(10**(mel/2595) - 1)
 
 
-def _get_fractional_octave_bandwidth(f_c: float, fraction: int = 1):
+def _get_fractional_octave_bandwidth(f_c: float, fraction: int = 1) \
+        -> np.ndarray:
     """Returns an array with lower and upper bounds for a given center
     frequency with (1/fraction)-octave width.
 
@@ -627,7 +627,8 @@ def _get_fractional_octave_bandwidth(f_c: float, fraction: int = 1):
     f_c : float
         Center frequency.
     fraction : int, optional
-        Octave fraction to define bandwidth. Default: 1.
+        Octave fraction to define bandwidth. Passing 0 just returns the center
+        frequency as lower and upper bounds. Default: 1.
 
     Returns
     -------
@@ -635,5 +636,31 @@ def _get_fractional_octave_bandwidth(f_c: float, fraction: int = 1):
         Array of length 2 with lower and upper bounds.
 
     """
-    fraction /= 2
-    return np.array([f_c*2**(-1/fraction), f_c*2**(1/fraction)])
+    if fraction == 0:
+        return np.array([f_c, f_c])
+    return np.array([f_c*2**(-2/fraction), f_c*2**(2/fraction)])
+
+
+def _toeplitz(h: np.ndarray, length_of_input: int) -> np.ndarray:
+    """Creates a toeplitz matrix from a system response given an input length.
+
+    Parameters
+    ----------
+    h : `np.ndarray`
+        System's impulse response.
+    length_of_input : int
+        Input length needed for the shape of the toeplitz matrix.
+
+    Returns
+    -------
+    `np.ndarray`
+        Toeplitz matrix with shape (len(h)+length_of_input-1, length_of_input).
+        Convolution is done by using dot product from the right::
+
+            convolve_result = toeplitz_matrix @ input_vector
+
+    """
+    column = np.hstack([h, np.zeros(length_of_input - 1)])
+    row = np.zeros((length_of_input))
+    row[0] = h[0]
+    return toeplitz_scipy(c=column, r=row)

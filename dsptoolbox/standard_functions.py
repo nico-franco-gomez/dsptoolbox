@@ -32,7 +32,7 @@ from dsptoolbox.transfer_functions import (
 def latency(in1: Signal, in2: Signal = None) -> np.ndarray:
     """Computes latency between two signals using the correlation method.
     If there is no second signal, the latency between the first and the other
-    channels of the is computed.
+    channels is computed.
 
     Parameters
     ----------
@@ -52,15 +52,18 @@ def latency(in1: Signal, in2: Signal = None) -> np.ndarray:
             'Channel number does not match'
         latency_per_channel_samples = _latency(in1.time_data, in2.time_data)
     else:
+        assert in1.number_of_channels > 1, \
+            'Signal should have at least two channels'
         latency_per_channel_samples = \
-            np.zeros(in1.number_of_channels, dtype=int)
+            np.zeros(in1.number_of_channels-1, dtype=int)
         for n in range(in1.number_of_channels-1):
             latency_per_channel_samples[n] = \
-                _latency(in1.time_data[:, n], in1.time_data[:, n+1])
+                _latency(in1.time_data[:, 0], in1.time_data[:, n+1])
     return latency_per_channel_samples
 
 
-def group_delay(signal: Signal, method='matlab'):
+def group_delay(signal: Signal, method='matlab') \
+        -> tuple[np.ndarray, np.ndarray]:
     """Computation of group delay.
 
     Parameters
@@ -107,7 +110,7 @@ def group_delay(signal: Signal, method='matlab'):
     return f, group_delays
 
 
-def minimum_phase(signal: Signal):
+def minimum_phase(signal: Signal) -> tuple[np.ndarray, np.ndarray]:
     """Gives back a matrix containing the minimal phase for every channel.
 
     Parameters
@@ -134,7 +137,7 @@ def minimum_phase(signal: Signal):
     return f, min_phases
 
 
-def minimum_group_delay(signal: Signal):
+def minimum_group_delay(signal: Signal) -> tuple[np.ndarray, np.ndarray]:
     """Computes minimum group delay of given signal.
 
     Parameters
@@ -161,7 +164,7 @@ def minimum_group_delay(signal: Signal):
     return f, min_gd
 
 
-def excess_group_delay(signal: Signal):
+def excess_group_delay(signal: Signal) -> tuple[np.ndarray, np.ndarray]:
     """Computes excess group delay.
 
     Parameters
@@ -236,8 +239,8 @@ def merge_signals(in1: Signal | MultiBandSignal, in2: Signal | MultiBandSignal,
         Signal | MultiBandSignal:
     """Merges two signals by appending the channels of the second one to the
     first. If the length of in2 is not the same, trimming or padding is
-    applied at the end when `padding_trimming=True`, otherwise an error
-    is raised.
+    applied to in2 when `padding_trimming=True`, otherwise an error
+    is raised. `at_end=True` applies the padding/trimming at the end of signal.
 
     Parameters
     ----------
@@ -294,7 +297,6 @@ def merge_signals(in1: Signal | MultiBandSignal, in2: Signal | MultiBandSignal,
         new_sig = MultiBandSignal(
             new_bands,
             same_sampling_rate=in1.same_sampling_rate, info=in1.info)
-        new_sig._generate_metadata()  # Bug with number of channels
     else:
         raise ValueError(
             'Signals have to be type of type Signal or MultiBandSignal')
@@ -508,9 +510,9 @@ def fade(sig: Signal, type_fade: str = 'lin',
         Fade length in seconds. If `None`, 2.5% of the signal's length is used
         for the fade. Default: `None`.
     at_start : bool, optional
-        When `True`, the start of signal of faded. Default: `True`.
+        When `True`, the start of signal is faded. Default: `True`.
     at_end : bool, optional
-        When `True`, the ending of signal of faded. Default: `True`.
+        When `True`, the ending of signal is faded. Default: `True`.
 
     Returns
     -------
@@ -617,8 +619,8 @@ def erb_frequencies(freq_range_hz=[20, 20000], resolution: float = 1,
 
 def ir_to_filter(signal: Signal, channel: int = 0,
                  phase_mode: str = 'direct') -> Filter:
-    """This function takes in a signal with type ir or rir and turns the
-    selected channel into an FIR filter. With `phase_mode` it is possible
+    """This function takes in a signal with type `'ir'` or `'rir'` and turns
+    the selected channel into an FIR filter. With `phase_mode` it is possible
     to use minimum phase or minimum linear phase.
 
     Parameters
@@ -628,8 +630,9 @@ def ir_to_filter(signal: Signal, channel: int = 0,
     channel : int, optional
         Channel of the signal to be used. Default: 0.
     phase_mode : str, optional
-        Phase of the FIR filter. Choose from `'direct'` (no phase changing),
-        `'min'` (minimum phase) or `'lin'` (linear phase). Default: `'direct'`.
+        Phase of the FIR filter. Choose from `'direct'` (no changes to phase),
+        `'min'` (minimum phase) or `'lin'` (minimum linear phase).
+        Default: `'direct'`.
 
     Returns
     -------
@@ -663,7 +666,8 @@ def ir_to_filter(signal: Signal, channel: int = 0,
     return filt
 
 
-def true_peak_level(sig: Signal | MultiBandSignal):
+def true_peak_level(sig: Signal | MultiBandSignal) \
+        -> tuple[np.ndarray, np.ndarray]:
     """Computes true-peak level of a signal using the standardized method
     by the Rec. ITU-R BS.1770-4. See references.
 
@@ -720,7 +724,7 @@ def fractional_delay(sig: Signal | MultiBandSignal, delay_seconds: float,
                      order: int = 30, side_lobe_suppression_db: float = 60) \
         -> Signal | MultiBandSignal:
     """Apply fractional time delay to a signal. This
-    implementation is taken and adapted from the pyfar package.
+    implementation is taken and adapted from the pyfar package. See references.
 
     Parameters
     ----------
@@ -757,11 +761,13 @@ def fractional_delay(sig: Signal | MultiBandSignal, delay_seconds: float,
       (Upper Saddle et al., Pearson, 2010), Third edition.
 
     """
-    assert delay_seconds > 0, \
+    assert delay_seconds >= 0, \
         'Delay must be positive'
     assert side_lobe_suppression_db > 0, \
         'Side lobe suppression must be positive'
     if type(sig) == Signal:
+        if delay_seconds == 0:
+            return sig
         if sig.time_data_imaginary is not None:
             warn('Imaginary time data will be ignored in this function. ' +
                  'Delay it manually by creating another signal object, if ' +
@@ -844,15 +850,10 @@ def fractional_delay(sig: Signal | MultiBandSignal, delay_seconds: float,
         delay_int += M_opt.astype("int")
         delay_int = np.squeeze(delay_int)
 
-        # First pad all channels in the end
+        # Delay all channels in the beginning
         new_time_data = _pad_trim(
             new_time_data,
-            delay_int+new_time_data.shape[0], in_the_end=True)
-
-        # Now delay channels
-        new_time_data[delay_int:, channels] = \
-            new_time_data[:-delay_int, channels]
-        new_time_data[:delay_int, channels] = 0
+            delay_int+new_time_data.shape[0], in_the_end=False)
 
         # =========== handle length ===========================================
         if keep_length:
@@ -887,7 +888,7 @@ def activity_detector(signal: Signal, channel: int = 0,
     the threshold according to attack and release times.
 
     Prefiltering (for example with a bandpass filter) is possible when a
-    pre_filter is passed.
+    `pre_filter` is passed.
 
     See Returns to gain insight into the returned dictionary and its keys.
 
@@ -919,7 +920,8 @@ def activity_detector(signal: Signal, channel: int = 0,
         Detected signal.
     others : dict
         Dictionary containing following keys:
-        - `'noise'`: left-out noise in original signal (below threshold).
+        - `'noise'`: left-out noise in original signal (below threshold) as
+          `Signal` object.
         - `'signal_indexes'`: array of boolean that describes which indexes
           of the original time series belong to signal and which to noise.
           `True` at index n means index n was passed to signal.

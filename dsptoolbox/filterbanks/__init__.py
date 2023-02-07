@@ -16,13 +16,19 @@ Psychoacoustics:
 
 - `auditory_filters_gammatone()`
 
+Other:
+
+- `qmf_crossover()`
+
 """
 from .filterbanks import (linkwitz_riley_crossovers,
                           reconstructing_fractional_octave_bands,
-                          auditory_filters_gammatone)
+                          auditory_filters_gammatone,
+                          qmf_crossover)
 
 __all__ = [
     'linkwitz_riley_crossovers',
     'reconstructing_fractional_octave_bands',
     'auditory_filters_gammatone',
+    'qmf_crossover',
 ]

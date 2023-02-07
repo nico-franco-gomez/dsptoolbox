@@ -16,7 +16,7 @@ from dsptoolbox._general_helpers import _find_nearest, _normalize, _pad_trim
 
 
 def reverb_time(signal: Signal | MultiBandSignal, mode: str = 'T20',
-                ir_start: int = None):
+                ir_start: int = None) -> np.ndarray:
     """Computes reverberation time. T20, T30, T60 and EDT.
 
     Parameters
@@ -49,28 +49,23 @@ def reverb_time(signal: Signal | MultiBandSignal, mode: str = 'T20',
         assert signal.signal_type in ('ir', 'rir'), \
             f'{signal.signal_type} is not a valid signal type for ' +\
             'reverb_time. It should be ir or rir'
+        mode = mode.upper()
         valid_modes = ('T20', 'T30', 'T60', 'EDT')
-        valid_modes = (mode.casefold() for n in valid_modes)
-        assert mode.casefold() in valid_modes, \
+        assert mode in valid_modes, \
             f'{mode} is not valid. Use either one of ' +\
             'these: T20, T30, T60 or EDT'
         reverberation_times = np.zeros((signal.number_of_channels))
         for n in range(signal.number_of_channels):
-            reverberation_times[n] = \
-                _reverb(
-                    signal.time_data[:, n].copy(),
-                    signal.sampling_rate_hz,
-                    mode.casefold(),
-                    ir_start=ir_start,
-                    return_ir_start=False)
+            reverberation_times[n] = _reverb(
+                signal.time_data[:, n].copy(), signal.sampling_rate_hz,
+                mode.casefold(), ir_start=ir_start, return_ir_start=False)
     elif type(signal) == MultiBandSignal:
         reverberation_times = \
             np.zeros(
                 (signal.number_of_bands, signal.bands[0].number_of_channels))
         for ind in range(signal.number_of_bands):
             reverberation_times[ind, :] = reverb_time(
-                signal.bands[ind], mode,
-                ir_start=ir_start)
+                signal.bands[ind], mode, ir_start=ir_start)
     else:
         raise TypeError(
             'Passed signal should be of type Signal or MultiBandSignal')
@@ -79,7 +74,7 @@ def reverb_time(signal: Signal | MultiBandSignal, mode: str = 'T20',
 
 def find_modes(signal: Signal, f_range_hz=[50, 200],
                proximity_effect: bool = False, dist_hz: float = 5,
-               prune_antimodes: bool = False):
+               prune_antimodes: bool = False) -> np.ndarray:
     """This metod is NOT validated. It might not be sufficient to find all
     modes in the given range.
 
@@ -253,25 +248,21 @@ def convolve_rir_on_signal(signal: Signal, rir: Signal,
     for n in range(signal.number_of_channels):
         if keep_peak_level:
             old_peak = 20*np.log10(np.max(np.abs(signal.time_data[:, n])))
-        new_time_data[:, n] = \
-            convolve(
-                signal.time_data[:, n],
-                rir.time_data[:, 0],
-                mode='full')[:total_length_samples]
+        new_time_data[:, n] = convolve(
+            signal.time_data[:, n], rir.time_data[:, 0],
+            mode='full')[:total_length_samples]
         if keep_peak_level:
-            new_time_data[:, n] = \
-                _normalize(new_time_data[:, n], old_peak, mode='peak')
+            new_time_data[:, n] = _normalize(
+                new_time_data[:, n], old_peak, mode='peak')
 
     new_sig = Signal(
-        None,
-        new_time_data,
-        signal.sampling_rate_hz,
+        None, new_time_data, signal.sampling_rate_hz,
         signal_type=signal.signal_type,
         signal_id=signal.signal_id+' (convolved with RIR)')
     return new_sig
 
 
-def find_ir_start(signal: Signal, threshold_dbfs: float = -20):
+def find_ir_start(signal: Signal, threshold_dbfs: float = -20) -> np.ndarray:
     """This function finds the start of an IR defined as the first sample
     where a certain threshold is surpassed.
 
@@ -284,7 +275,7 @@ def find_ir_start(signal: Signal, threshold_dbfs: float = -20):
 
     Returns
     -------
-    start_index : int or `np.ndarray`
+    start_index : `np.ndarray`
         Index of IR start for each channel. Returns an integer when signal
         only has one channel
 
@@ -305,18 +296,19 @@ def find_ir_start(signal: Signal, threshold_dbfs: float = -20):
 
 def generate_synthetic_rir(room_dimensions_meters, source_position,
                            receiver_position,
+                           sampling_rate_hz: int,
                            total_length_seconds: float = 0.5,
-                           sampling_rate_hz: int = 48000,
-                           desired_reverb_time_seconds: float = None) \
+                           desired_reverb_time_seconds: float = None,
+                           apply_bandpass: bool = True) \
         -> Signal:
     """This function returns a synthetized RIR in a shoebox-room using the
     image source model. The implementation is based on Brinkmann,
     et al. See References for limitations and advantages of this method.
 
     NOTE: Depending on the computer and the given reverberation time, this
-          function can take a relatively long time to compute. If a faster or
+          function can take a relatively long runtime. If a faster or
           more flexible implementation is needed, please refer to the
-          package pyroomacoustics.
+          pyroomacoustics package (see references).
 
     Parameters
     ----------
@@ -331,12 +323,15 @@ def generate_synthetic_rir(room_dimensions_meters, source_position,
         in meters.
     total_length_seconds : float, optional
         Total length of the output RIR in seconds. Default: 0.5.
-    sampling_rate_hz : int, optional
-        Sampling rate of the generated impulse (in Hz). Default: 48000.
+    sampling_rate_hz : int
+        Sampling rate of the generated impulse (in Hz). Default: `None`.
     desired_reverb_time_seconds : float, optional
         Desired reverberation time in seconds for the RIR to have
         (approximately). When `None`, reverberation time is set to be 75% of
         the total time.
+    apply_bandpass : bool, optional
+        When `True`, a bandpass filter is applied to signal in order to obtain
+        a more realistic audio representation of the RIR. Default: `True`.
 
     Returns
     -------
@@ -350,6 +345,8 @@ def generate_synthetic_rir(room_dimensions_meters, source_position,
     - pyroomacoustics: https://github.com/LCAV/pyroomacoustics
 
     """
+    assert sampling_rate_hz is not None, \
+        'Sampling rate can not be None'
     room_dimensions_meters = np.asarray(room_dimensions_meters)
     assert room_dimensions_meters.ndim == 1 and \
         len(room_dimensions_meters) == 3 and \
@@ -381,13 +378,15 @@ def generate_synthetic_rir(room_dimensions_meters, source_position,
     # Prune possible nan values
     np.nan_to_num(rir, copy=False, nan=0)
     rir = Signal(
-        None, rir, sampling_rate_hz,
-        signal_type='rir',
+        None, rir, sampling_rate_hz, signal_type='rir',
         signal_id='Synthetized RIR using the image source method')
+
     # Bandpass signal in order to have a realistic audio signal representation
-    f = Filter('iir',
-               dict(order=12, filter_design_method='bessel',
-                    type_of_pass='bandpass',
-                    freqs=[30, (sampling_rate_hz//2)*0.9]))
-    rir = f.filter_signal(rir)
+    if apply_bandpass:
+        f = Filter(
+            'iir', dict(order=12, filter_design_method='bessel',
+                        type_of_pass='bandpass',
+                        freqs=[30, (sampling_rate_hz//2)*0.9]),
+            sampling_rate_hz=sampling_rate_hz)
+        rir = f.filter_signal(rir)
     return rir

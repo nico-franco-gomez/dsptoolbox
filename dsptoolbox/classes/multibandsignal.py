@@ -18,8 +18,8 @@ class MultiBandSignal():
 
     """
     # ======== Constructor and initializers ===================================
-    def __init__(self, bands: list = [], same_sampling_rate: bool = True,
-                 info: dict = {}):
+    def __init__(self, bands: list = None, same_sampling_rate: bool = True,
+                 info: dict = None):
         """`MultiBandSignal` contains a composite band list where each index
         is a Signal object with the same number of channels. For multirate
         systems, the parameter `same_sampling_rate` has to be set to `False`.
@@ -39,6 +39,8 @@ class MultiBandSignal():
             can be passed. Default: `None`.
 
         """
+        if info is None:
+            info = {}
         self.same_sampling_rate = same_sampling_rate
         self.bands = bands
         self.info = self.info | info
@@ -58,8 +60,9 @@ class MultiBandSignal():
                 'MultiBandSignal has only one sample rate'
             self.__sampling_rate_hz = int(new_sampling_rate_hz)
         else:
-            assert self.number_of_bands == len(new_sampling_rate_hz), \
-                'Number of bands does not match number of sampling rates'
+            if hasattr(self, '__bands'):
+                assert self.number_of_bands == len(new_sampling_rate_hz), \
+                    'Number of bands does not match number of sampling rates'
             self.__sampling_rate_hz = [int(s) for s in new_sampling_rate_hz]
 
     @property
@@ -70,6 +73,8 @@ class MultiBandSignal():
     def bands(self, new_bands):
         if new_bands is None:
             new_bands = []
+        if type(new_bands) == tuple:
+            new_bands = list(new_bands)
         assert type(new_bands) == list, \
             'bands has to be a list'
         if new_bands:
@@ -90,7 +95,7 @@ class MultiBandSignal():
                 self.sampling_rate_hz = new_bands[0].sampling_rate_hz
                 self.band_length_samples = new_bands[0].time_data.shape[0]
             else:
-                self.same_sampling_rate = sr
+                self.sampling_rate_hz = sr
             # Check sampling rate and duration
             if self.same_sampling_rate:
                 for s in new_bands:
@@ -148,27 +153,16 @@ class MultiBandSignal():
             Index at which to insert the new Signal. Default: -1.
 
         """
+        bs = self.bands.copy()
         if not self.bands:
-            self.number_of_channels = sig.number_of_channels
-            self.sampling_rate_hz = sig.sampling_rate_hz
-            self.band_length_samples = sig.time_data.shape[0]
-            self.signal_type = sig.signal_type
-            self.bands.append(sig)
+            bs.append(sig)
+            self.bands = bs
         else:
-            assert sig.number_of_channels == self.number_of_channels, \
-                'The number of channels does not match'
-            assert sig.signal_type == self.signal_type, \
-                'Signal types do not match'
-            if self.same_sampling_rate:
-                assert sig.sampling_rate_hz == self.sampling_rate_hz, \
-                    'Sampling rate of band does not match with the one ' +\
-                    'of MultiBandSignal'
-                assert sig.time_data.shape[0] == self.band_length_samples, \
-                    'The band length does not match'
             if index == -1:
-                self.bands.append(sig)
+                bs.append(sig)
             else:
-                self.bands.insert(index, sig)
+                bs.insert(index, sig)
+            self.bands = bs
         self._generate_metadata()
 
     def remove_band(self, index: int = -1, return_band: bool = False):
@@ -185,11 +179,9 @@ class MultiBandSignal():
 
         """
         assert self.bands, 'There are no filters to remove'
-        if index == -1:
-            index = len(self.bands) - 1
-        assert index in range(len(self.bands)), \
-            f'There is no band at index {index}.'
-        f = self.bands.pop(index)
+        bs = self.bands.copy()
+        f = bs.pop(index)
+        self.bands = bs
         self._generate_metadata()
         if return_band:
             return f
@@ -208,16 +200,15 @@ class MultiBandSignal():
             'Too many or too few dimensions are given in the new ' +\
             'arrangement vector'
         assert self.number_of_bands == len(new_order), \
-            'The number of channels does not match'
+            'The number of bands does not match'
         assert all(new_order < self.number_of_bands) \
             and all(new_order >= 0), \
-            'Indexes of new channels have to be in ' +\
+            'Indexes of new bands have to be in ' +\
             f'[0, {self.number_of_bands-1}]'
         assert len(unique(new_order)) == len(new_order), \
             'There are repeated indexes in the new order vector'
         n_b = [self.bands[i] for i in new_order]
         self.bands = n_b
-        del n_b
 
     def collapse(self) -> Signal:
         """Collapses MultiBandSignal by summing all of its bands and returning
@@ -276,7 +267,7 @@ class MultiBandSignal():
         print()
 
     # ======== Getters ========================================================
-    def get_all_bands(self, channel: int = 0) -> Signal | list:
+    def get_all_bands(self, channel: int = 0) -> Signal | tuple[list, list]:
         """Broadcasts and returns the `MultiBandSignal` as a `Signal` object
         with all bands as channels in the output. This is done only for a
         single channel of the original signal.
@@ -288,11 +279,11 @@ class MultiBandSignal():
 
         Returns
         -------
-        sig : `Signal` or list of `np.ndarray` and dict
+        sig : `Signal` or list of `np.ndarray` and list of int
             Multichannel signal with all the bands. If the `MultiBandSignal`
             does not have the same sampling rate for all signals, a list with
-            the time data vectors and a dictionary containing their sampling
-            rates with the key `'sampling_rates'` are returned.
+            the time data vectors and a list containing their sampling
+            rates are returned.
 
         """
         if self.same_sampling_rate:
@@ -315,7 +306,6 @@ class MultiBandSignal():
             return sig
         else:
             new_time_data = []
-            d = {}
             sr = []
             if self.bands[0].time_data_imaginary is None:
                 for n in range(len(self.bands)):
@@ -329,8 +319,7 @@ class MultiBandSignal():
                         self.bands[n].time_data_imaginary[:, channel] * 1j)
                     sr.append(self.bands[n].sampling_rate_hz)
                 warn('Output is complex since signal data had imaginary part')
-            d['sampling_rates'] = sr
-            return new_time_data, d
+            return new_time_data, sr
 
     # ======== Saving and copying =============================================
     def save_signal(self, path: str = 'multibandsignal'):

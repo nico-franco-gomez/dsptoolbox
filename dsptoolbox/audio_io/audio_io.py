@@ -347,10 +347,10 @@ def output_stream(signal: Signal, blocksize=2048,
                      time: CData, status: CallbackFlags) -> None
 
     finished_callback : callable
-    clip_off
-    dither_off
-    never_drop_input
-    prime_output_buffers_using_stream_callback
+    clip_off : optional
+    dither_off : optional
+    never_drop_input : optional
+    prime_output_buffers_using_stream_callback : optional
 
     Returns
     -------

@@ -4,6 +4,7 @@ Backend for standard functions
 import numpy as np
 from scipy.signal import correlate, check_COLA, windows, hilbert
 from ._general_helpers import _pad_trim, _compute_number_frames
+from warnings import warn
 
 
 def _latency(in1: np.ndarray, in2: np.ndarray):
@@ -22,10 +23,10 @@ def _latency(in1: np.ndarray, in2: np.ndarray):
     return latency_per_channel_samples
 
 
-def _welch(x, y, fs_hz, window_type: str = 'hann',
+def _welch(x, y, fs_hz: int, window_type: str = 'hann',
            window_length_samples: int = 1024, overlap_percent=50,
            detrend: bool = True, average: str = 'mean',
-           scaling: str = 'power'):
+           scaling: str = 'power spectral density') -> np.ndarray:
     """Cross spectral density computation with Welch's method.
 
     Parameters
@@ -50,15 +51,30 @@ def _welch(x, y, fs_hz, window_type: str = 'hann',
         Type of mean to be computed. Take `'mean'` or `'median'`.
         Default: `'mean'`
     scaling : str, optional
-        Scaling for spectral power density or spectrum. Takes `'power'` or
-        `'spectrum'`. Default: `'power'`.
+        Scaling. Use `'power spectrum'`, `'power spectral density'`,
+        `'amplitude spectrum'` or `'amplitude spectral density'`. Pass `None`
+        to avoid any scaling. See references for details about scaling.
+        Default: `'power spectral density'`.
 
     Returns
     -------
     csd : `np.ndarray`
-        Cross spectral density vector. Complex-valued if x and y are different.
+        Complex cross spectral density vector if x and y are different.
+        Alternatively, the (real) autocorrelation power spectral density when
+        x and y are the same. If density or spectrum depends on scaling.
+
+    References
+    ----------
+    - Heinzel, G., Rüdiger, A., & Schilling, R. (2002). Spectrum and spectral
+      density estimation by the Discrete Fourier transform (DFT), including a
+      comprehensive list of window functions and some new at-top windows.
+    - Allen, B., Anderson, W. G., Brady, P. R., Brown, D. A., & Creighton,
+      J. D. E. (2005). FINDCHIRP: an algorithm for detection of gravitational
+      waves from inspiraling compact binaries.
+      See http://arxiv.org/abs/gr-qc/0509116.
 
     """
+    # from time import time
     if type(x) != np.ndarray:
         x = np.array(x).squeeze()
     if type(y) != np.ndarray:
@@ -67,81 +83,121 @@ def _welch(x, y, fs_hz, window_type: str = 'hann',
         'Shapes of data do not match'
     assert len(x.shape) < 2, f'{x.shape} are too many dimensions. Use flat' +\
         ' arrays instead'
-    valid_window_sizes = np.array([int(2**x) for x in range(7, 17)])
+    valid_window_sizes = np.array([int(2**x) for x in range(4, 17)])
     assert window_length_samples in valid_window_sizes, \
-        'Window length should be a power of 2 between [128, 65536] or ' +\
-        '[2**7, 2**16]'
-    assert overlap_percent > 0 and overlap_percent < 100, 'overlap_percent ' +\
-        'should be between 0 and 100'
+        'Window length should be a power of 2 between [16, 65536] or ' +\
+        '[2**4, 2**16]'
+    assert overlap_percent >= 0 and overlap_percent < 100, \
+        'overlap_percent should be between 0 and 100'
     valid_average = ['mean', 'median']
     assert average in valid_average, f'{average} is not valid. Use ' +\
         'either mean or median'
-    valid_scaling = ['power', 'spectrum']
+    valid_scaling = ['power spectrum', 'power spectral density',
+                     'amplitude spectrum', 'amplitude spectral density', None]
     assert scaling in valid_scaling, f'{scaling} is not valid. Use ' +\
-        'either power or spectrum'
+        'power spectrum, power spectral density, amplitude spectrum, ' +\
+        'amplitude spectral density or None'
 
     # Window and step
-    window = \
-        windows.get_window(window_type, window_length_samples, fftbins=True)
+    window = windows.get_window(
+        window_type, window_length_samples, fftbins=True)
     overlap_samples = int(overlap_percent/100 * window_length_samples)
     step = window_length_samples - overlap_samples
 
     # Check COLA
-    assert check_COLA(window, nperseg=len(window), noverlap=overlap_samples),\
-        'Selected window type and overlap do not meet the constant overlap ' +\
-        'and add constraint. Please select other.'
+    if not check_COLA(window, nperseg=len(window), noverlap=overlap_samples):
+        warn('Selected window type and overlap do not meet the constant ' +
+             'overlap and add constraint! Results might be distorted')
 
     # Start Parameters
     n_frames, padding_samp = \
         _compute_number_frames(window_length_samples, step, len(x))
     x = _pad_trim(x, len(x) + padding_samp)
     y = _pad_trim(y, len(y) + padding_samp)
-    magnitude = np.zeros((window_length_samples//2+1, n_frames), dtype='float')
-    phase = np.zeros_like(magnitude)
+    x_frames = np.zeros((window_length_samples, n_frames), dtype='float')
+    y_frames = np.zeros_like(x_frames)
 
+    # Create time frames
     start = 0
     for n in range(n_frames):
-        time_x = x[start:start+window_length_samples].copy()
-        time_y = y[start:start+window_length_samples].copy()
-        # Windowing
-        time_x *= window
-        time_y *= window
-        # Detrend
-        if detrend:
-            time_x -= np.mean(time_x)
-            time_y -= np.mean(time_y)
-        # Spectra
-        sp_x = np.fft.rfft(time_x)
-        sp_y = np.fft.rfft(time_y)
-        m = np.conjugate(sp_x) * sp_y
-        magnitude[:, n] = abs(m)
-        phase[:, n] = np.unwrap(np.angle(m))
+        x_frames[:, n] = x[start:start+window_length_samples].copy()
+        y_frames[:, n] = y[start:start+window_length_samples].copy()
         start += step
 
-    # mean without first and last arrays
-    if average == 'mean':
-        magnitude = np.mean(magnitude[:, 1:-2], axis=-1)
-        phase = np.mean(phase[:, 1:-2], axis=-1)
-    else:
-        magnitude = np.median(magnitude[:, 1:-2], axis=-1)
-        phase = np.median(phase[:, 1:-2], axis=-1)
+    # Window
+    x_frames *= window[..., None]
+    y_frames *= window[..., None]
 
-    # Cross spectral density
-    if not all(x == y):
-        csd = magnitude * np.exp(1j*phase)
+    # Detrend
+    if detrend:
+        x_frames -= np.mean(x_frames, axis=0)
+        y_frames -= np.mean(y_frames, axis=0)
+
+    # Combine
+    sp_frames = np.fft.rfft(x_frames, axis=0).conjugate() * \
+        np.fft.rfft(y_frames, axis=0)
+
+    # ==== Averaging of magnitude and unwrapped phase much slower...
+    # # Get magnitude and phase
+    # magnitude = np.abs(sp_frames)
+    # phase = np.unwrap(np.angle(sp_frames), axis=0)
+
+    # # mean without first and last arrays
+    # if average == 'mean':
+    #     magnitude = np.mean(magnitude[:, 1:-1], axis=-1)
+    #     phase = np.mean(phase[:, 1:-1], axis=-1)
+    # else:
+    #     magnitude = np.median(magnitude[:, 1:-1], axis=-1)
+    #     phase = np.median(phase[:, 1:-1], axis=-1)
+
+    # # Cross spectral density
+    # csd = magnitude * np.exp(1j*phase)
+
+    # Direct averaging much faster
+    if average == 'mean':
+        csd = np.mean(sp_frames, axis=-1)
     else:
-        csd = magnitude
+        csd = np.median(sp_frames.real, axis=-1) + 1j * \
+            np.median(sp_frames.imag, axis=-1)
+        # Bias according to reference
+        n = sp_frames.shape[1] if sp_frames.shape[1] % 2 == 1 else \
+            sp_frames.shape[1] - 1
+        bias = np.sum((-1)**(n+1)/n)
+        # This is taken from scipy, it is somewhat different to the paper
+        # ii_2 = 2 * np.arange(1., (n-1) // 2 + 1)
+        # bias = 1 + np.sum(1. / (ii_2 + 1) - 1. / ii_2)
+        csd /= bias
+
+    # Weightning (with 2 because one-sided)
+    if scaling in ('power spectrum', 'amplitude spectrum'):
+        factor = 2 / np.sum(window)**2
+    elif scaling in ('power spectral density', 'amplitude spectral density'):
+        factor = 2 / (window @ window) / fs_hz
+        # With this factor, energy can be regained by integrating the psd
+        # while taking into account the frequency step
+        # =====================================
+        # This is not consistent with scipy or the reference paper but does
+        # arrive at the right energy when summing over the psd (without taking
+        # frequency step into account)
+        # factor = 2 / (window @ window) / window_length_samples
+    else:
+        factor = 1
 
     # Zero frequency fix when detrending
     if detrend:
         csd[0] = csd[1]
 
-    # Weightning (with 2 because one-sided)
-    if scaling == 'power':
-        factor = 2 / (window @ window) / fs_hz
-    else:
-        factor = 2 / sum(window)**2 / fs_hz
-    csd[1:] = csd[1:]*factor
+    csd *= factor
+    csd[0] /= 2
+    csd[-1] /= 2
+
+    if 'amplitude' in scaling:
+        csd = np.sqrt(csd)
+
+    # Cast to real output if there is no imaginary part
+    if np.all(csd.imag == 0):
+        csd = csd.real
+
     return csd
 
 
@@ -222,7 +278,8 @@ def _stft(x: np.ndarray, fs_hz: int, window_length_samples: int = 2048,
         When `True`, the original signal is padded in the beginning and ending
         so that no energy is lost due to windowing. Default: `True`.
     scaling : bool, optional
-        When `True`, the output is scaled with sampling rate. Default: `False`.
+        When `True`, the output is scaled as an amplitude spectrum, otherwise
+        no scaling is applied. See references for details. Default: `False`.
 
     Returns
     -------
@@ -231,15 +288,21 @@ def _stft(x: np.ndarray, fs_hz: int, window_length_samples: int = 2048,
     freqs_hz : `np.ndarray`
         Frequency vector.
     stft : `np.ndarray`
-        STFT matrix.
+        STFT matrix with shape (frequency, time).
+
+    References
+    ----------
+    - Heinzel, G., Rüdiger, A., & Schilling, R. (2002). Spectrum and spectral
+      density estimation by the Discrete Fourier transform (DFT), including a
+      comprehensive list of window functions and some new at-top windows.
 
     """
-    valid_window_sizes = np.array([int(2**x) for x in range(7, 17)])
+    valid_window_sizes = np.array([int(2**x) for x in range(4, 17)])
     assert window_length_samples in valid_window_sizes, \
-        'Window length should be a power of 2 between [128, 65536] or ' +\
-        '[2**7, 2**16]'
-    assert overlap_percent > 0 and overlap_percent < 100, 'overlap_percent ' +\
-        'should be between 0 and 100'
+        'Window length should be a power of 2 between [16, 65536] or ' +\
+        '[2**4, 2**16]'
+    assert overlap_percent >= 0 and overlap_percent < 100, 'overlap_percent' +\
+        ' should be between 0 and 100'
 
     # Window and step
     window = \
@@ -248,9 +311,9 @@ def _stft(x: np.ndarray, fs_hz: int, window_length_samples: int = 2048,
     step = window_length_samples - overlap_samples
 
     # Check COLA
-    assert check_COLA(window, nperseg=len(window), noverlap=overlap_samples),\
-        'Selected window type and overlap do not meet the constant overlap ' +\
-        'and add constraint. Please select other.'
+    if not check_COLA(window, nperseg=len(window), noverlap=overlap_samples):
+        warn('Selected window type and overlap do not meet the constant ' +
+             'overlap and add constraint! Results might be distorted')
 
     # Padding
     if padding:
@@ -262,23 +325,25 @@ def _stft(x: np.ndarray, fs_hz: int, window_length_samples: int = 2048,
         _compute_number_frames(window_length_samples, step, len(x))
 
     x = _pad_trim(x, len(x) + padding_samp)
-    stft = np.zeros((window_length_samples//2+1, n_frames), dtype='cfloat')
+    time_x = np.zeros((window_length_samples, n_frames), dtype='float')
 
+    # Create time frames
     start = 0
     for n in range(n_frames):
-        time_x = x[start:start+window_length_samples].copy()
-        # Windowing
-        time_x *= window
-        # Detrend
-        if detrend:
-            time_x -= np.mean(time_x)
-        # Spectra
-        stft[:, n] = np.fft.rfft(time_x)
+        time_x[:, n] = x[start:start+window_length_samples].copy()
         start += step
-
+    # Windowing
+    time_x *= window[..., None]
+    # Detrend
+    if detrend:
+        time_x -= np.mean(time_x, axis=0)
+    # Spectra
+    stft = np.fft.rfft(time_x, axis=0)
     # Scaling
     if scaling:
-        factor = 2 / sum(window)**2
+        factor = np.sqrt(2 / np.sum(window)**2)
+        # factor = 2 / np.sum(window**2) / window_length_samples
+        # factor = 2 / np.sum(window)**2 / fs_hz * window_length_samples
     else:
         factor = 1
     stft *= factor
@@ -299,7 +364,7 @@ def _csm(time_data: np.ndarray, sampling_rate_hz: int,
     ----------
     time_data : `np.ndarray`
         Signal
-    fs_hz : int
+    sampling_rate_hz : int
         Sampling rate in Hz.
     window_length_samples : int, optional
         Window length to be used. Determines frequency resolution in the end.
@@ -312,11 +377,13 @@ def _csm(time_data: np.ndarray, sampling_rate_hz: int,
     detrend : bool, optional
         Detrending from each time segment (removing mean). Default: True.
     average : str, optional
-        Type of mean to be computed. Take `'mean'` or `'np.median'`.
+        Type of mean to be computed. Take `'mean'` or `'median'`.
         Default: `'mean'`
     scaling : str, optional
-        Scaling for spectral power density or spectrum. Takes `'power'` or
-        `'spectrum'`. Default: `'power'`.
+        Scaling. Use `'power spectrum'`, `'power spectral density'`,
+        `'amplitude spectrum'` or `'amplitude spectral density'`. Pass `None`
+        to avoid any scaling. See references for details about scaling.
+        Default: `'power spectral density'`.
 
     Returns
     -------
@@ -325,15 +392,23 @@ def _csm(time_data: np.ndarray, sampling_rate_hz: int,
     csm : `np.ndarray`
         Cross spectral matrix with shape (frequency, channels, channels).
 
+    References
+    ----------
+    - Heinzel, G., Rüdiger, A., & Schilling, R. (2002). Spectrum and spectral
+      density estimation by the Discrete Fourier transform (DFT), including a
+      comprehensive list of window functions and some new at-top windows.
+
     """
     number_of_channels = time_data.shape[1]
     csm = np.zeros((window_length_samples//2+1,
                     number_of_channels,
                     number_of_channels), dtype=np.complex64)
-
     for ind1 in range(number_of_channels):
         for ind2 in range(ind1, number_of_channels):
-            csm[:, ind1, ind2] = \
+            # Complex conjugate second signal and not first (like transposing
+            # the matrix)
+            # csm[:, ind1, ind2] = \
+            csm[:, ind2, ind1] = \
                 _welch(time_data[:, ind1],
                        time_data[:, ind2],
                        sampling_rate_hz,
@@ -344,14 +419,184 @@ def _csm(time_data: np.ndarray, sampling_rate_hz: int,
                        average=average,
                        scaling=scaling)
             if ind1 == ind2:
-                csm[:, ind1, ind2] /= 2
-    for nfreq in range(csm.shape[0]):
-        csm[nfreq, :, :] = \
-            csm[nfreq, :, :] + csm[nfreq, :, :].T.conjugate()
-    f = np.fft.rfftfreq(
-        window_length_samples,
-        1/sampling_rate_hz)
+                csm[:, ind1, ind2] *= 0.5
+    csm += np.swapaxes(csm, 1, 2).conjugate()
+    f = np.fft.rfftfreq(window_length_samples, 1/sampling_rate_hz)
     return f, csm
+
+
+# =============================================================================
+# It was shown that this helper class was not faster than the _csm function.
+# Vectorizing some of the computations did not seem to bring any advantages
+# to the speed. Especially, np.fft.rfft was a little slower and np.unwrap was
+# much slower when applied to large matrices along specific dimensions...
+# =============================================================================
+# class _CSMHelper():
+#     """This is a helper class to compute the csm in an efficient manner.
+
+#     """
+#     def __init__(self, time_data: np.ndarray, sampling_rate_hz: int,
+#                  window_length_samples: int = 1024,
+#                  window_type: str = 'hann', overlap_percent: int = 50,
+#                  detrend: bool = True, average: str = 'mean',
+#                  scaling: str = 'power'):
+#         """Computes the cross spectral matrix of a multichannel signal.
+#         Output matrix has (frequency, channels, channels).
+
+#         Parameters
+#         ----------
+#         time_data : `np.ndarray`
+#             Signal
+#         sampling_rate_hz : int
+#             Sampling rate in Hz.
+#         window_length_samples : int, optional
+#             Window length to be used. Determines frequency resolution in the
+#             end. Only powers of 2 are accepted. Default: 1024.
+#         window_type : str, optional
+#             Window type to be used. Refer to scipy.signal.windows for
+#             available ones. Default: `'hann'`
+#         overlap_percent : int, optional
+#             Overlap in percentage. Default: 50.
+#         detrend : bool, optional
+#             Detrending from each time segment (removing mean). Default: True.
+#         average : str, optional
+#             Type of mean to be computed. Take `'mean'` or `'np.median'`.
+#             Default: `'mean'`
+#         scaling : str, optional
+#             Scaling for spectral power density or spectrum. Takes `'power'`
+#             or `'spectrum'`. Default: `'power'`.
+
+#         Attributes
+#         ----------
+#         All passed parameters are saved as attributes.
+
+#         - `get_csm()`: Method to trigger the computation of csm.
+
+#         """
+#         assert time_data.shape[1] > 1, \
+#             'There has to be at least 2 channels to compute the csm'
+#         valid_window_sizes = np.array([int(2**x) for x in range(7, 17)])
+#         assert window_length_samples in valid_window_sizes, \
+#             'Window length should be a power of 2 between [128, 65536] ' +\
+#             'or [2**7, 2**16]'
+#         assert overlap_percent > 0 and overlap_percent < 100, \
+#             'overlap_percent should be between 0 and 100'
+#         valid_average = ['mean', 'median']
+#         assert average in valid_average, f'{average} is not valid. Use ' +\
+#             'either mean or median'
+#         valid_scaling = ['power', 'spectrum']
+#         assert scaling in valid_scaling, f'{scaling} is not valid. Use ' +\
+#             'either power or spectrum'
+
+#         # Window and step
+#         window = windows.get_window(
+#             window_type, window_length_samples, fftbins=True)
+#         overlap_samples = int(overlap_percent/100 * window_length_samples)
+#         step = window_length_samples - overlap_samples
+
+#         # Check COLA
+#         assert check_COLA(
+#             window, nperseg=len(window), noverlap=overlap_samples),\
+#             'Selected window type and overlap do not meet the constant ' +\
+#             'overlap and add constraint. Please select other.'
+
+#         # Save all attributes in object
+#         self.time_data = time_data
+#         self.window = window
+#         self.window_length_samples = window_length_samples
+#         self.sampling_rate_hz = sampling_rate_hz
+#         self.overlap_samples = overlap_samples
+#         self.step = step
+#         self.detrend = detrend
+
+#         if average == 'mean':
+#             self.average_func = np.mean
+#         else:
+#             self.average_func = np.median
+
+#         if scaling == 'power':
+#             self.factor = 2 / (window @ window) / sampling_rate_hz
+#         else:
+#             self.factor = 2 / sum(window)**2 / sampling_rate_hz
+#         self.f_vec = \
+#             np.fft.rfftfreq(window_length_samples, 1/sampling_rate_hz)
+
+#     def _compute_framed_spectra(self):
+#         """Computes the framed spectra.
+
+#         """
+#         # Compute number of needed frames and padding
+#         original_length = self.time_data.shape[0]
+#         n_frames, padding_samp = _compute_number_frames(
+#             self.window_length_samples, self.step, original_length)
+#         self.time_data = _pad_trim(
+#             self.time_data, original_length + padding_samp)
+#         td_frames = np.zeros(
+#             (self.window_length_samples, n_frames, self.time_data.shape[1]),
+#             dtype='float')
+#         self.n_frames = n_frames
+
+#         # Create time frames (time samples, frame, channel)
+#         start = 0
+#         for n in range(n_frames):
+#             td_frames[:, n, :] = \
+#                 self.time_data[
+#                     start:start+self.window_length_samples, :].copy()
+#             start += self.step
+
+#         # Window
+#         td_frames *= self.window[:, np.newaxis, np.newaxis]
+#         # Detrend
+#         if self.detrend:
+#             td_frames -= np.mean(td_frames, axis=0)
+#         # Spectra (frequency bins, frames, channel)
+#         self.sp_frames = np.fft.rfft(td_frames, axis=0)
+
+#     def get_csm(self):
+#         """Computes and returns the CSM.
+
+#         Returns
+#         -------
+#         f : `np.ndarray`
+#             Frequency vector.
+#         csm : `np.ndarray`
+#             Cross-spectral density matrix with shape
+#             (frequency, channel, channel).
+
+#         """
+#         self._compute_framed_spectra()
+#         number_of_channels = self.time_data.shape[1]
+#         csm_framed = np.zeros((self.window_length_samples//2+1,
+#                                self.n_frames,
+#                                number_of_channels,
+#                                number_of_channels), dtype=np.complex64)
+
+#         # Maybe second loop can be vectorized by using np.roll along one
+#         # channel axis. There would be unnecessary computations but it
+#         # might be faster
+#         for ind1 in range(number_of_channels):
+#             for ind2 in range(ind1, number_of_channels):
+#                 csm_framed[:, :, ind1, ind2] = \
+#                     np.conjugate(self.sp_frames[:, :, ind1]) * \
+#                     self.sp_frames[:, :, ind2]
+#                 if ind1 == ind2:
+#                     csm_framed[:, :, ind1, ind2] *= 0.5
+
+#         # Get magnitude and phase
+#         magnitude = np.abs(csm_framed)
+#         # phase = np.angle(csm_framed)
+#         phase = np.unwrap(np.angle(csm_framed), axis=0)
+#         del csm_framed
+#         # Average along frames (axis=1)
+#         magnitude = self.average_func(magnitude, axis=1)
+#         phase = self.average_func(phase, axis=1)
+
+#         # Redo matrix with factor
+#         csm = magnitude * np.exp(1j*phase) * self.factor
+#         # csm = np.mean(csm_framed, axis=1) * self.factor
+#         # Complete lower triangle csm matrix
+#         csm += np.swapaxes(csm, 1, 2).conjugate()
+#         return self.f_vec, csm
 
 
 def _center_frequencies_fractional_octaves_iec(nominal, num_fractions):
@@ -533,5 +778,4 @@ def _indexes_above_threshold_dbfs(time_vec: np.ndarray, threshold_dbfs: float,
         ind_attack = 0 if ind-attack_samples < 0 else ind-attack_samples
         if np.all(indexes_above_0[ind_attack:ind]):
             indexes_above[ind:ind+release_samples] = True
-            indexes_above[ind] = True
     return indexes_above

@@ -1,5 +1,5 @@
 """
-Contains Filter classes
+Contains Filter class
 """
 from os import sep
 from pickle import dump, HIGHEST_PROTOCOL
@@ -7,8 +7,10 @@ from warnings import warn
 from copy import deepcopy
 import numpy as np
 from fractions import Fraction
-
+from matplotlib.figure import Figure
+from matplotlib.axes import Axes
 import scipy.signal as sig
+
 from .signal_class import Signal
 from ._filter import (_biquad_coefficients, _impulse,
                       _group_delay_filter, _get_biquad_type,
@@ -27,7 +29,7 @@ class Filter():
     # ======== Constructor and initializers ===================================
     def __init__(self, filter_type: str = 'biquad',
                  filter_configuration: dict = None,
-                 sampling_rate_hz: int = 48000):
+                 sampling_rate_hz: int = None):
         """The Filter class contains all parameters and metadata needed for
         using a digital filter.
 
@@ -50,7 +52,7 @@ class Filter():
             Dictionary containing configuration for the filter.
             Default: some dummy parameters.
         sampling_rate_hz : int, optional
-            Sampling rate in Hz for the digital filter. Default: 48000.
+            Sampling rate in Hz for the digital filter. Default: `None`.
 
         Notes
         -----
@@ -94,7 +96,7 @@ class Filter():
             - q (float): Q-factor.
 
         For `other` or `general`:
-            ba or sos or zpk, filter_id (optional).
+            ba or sos or zpk, filter_id (optional), freqs (optional).
 
         Methods
         -------
@@ -127,6 +129,8 @@ class Filter():
             Default: 1.
 
         """
+        assert number_of_channels > 0, \
+            '''Zi's have to be initialized for at least one channel'''
         self.zi = []
         if hasattr(self, 'sos'):
             for _ in range(number_of_channels):
@@ -141,6 +145,8 @@ class Filter():
 
     @sampling_rate_hz.setter
     def sampling_rate_hz(self, new_sampling_rate_hz):
+        assert new_sampling_rate_hz is not None, \
+            'Sampling rate can not be None'
         assert type(new_sampling_rate_hz) == int, \
             'Sampling rate can only be an integer'
         self.__sampling_rate_hz = new_sampling_rate_hz
@@ -451,7 +457,8 @@ class Filter():
                      capitalize()}: {self.info[k]}\n"""
         return txt
 
-    def get_ir(self, length_samples: int = 512, zero_phase: bool = False):
+    def get_ir(self, length_samples: int = 512, zero_phase: bool = False) \
+            -> Signal:
         """Gets an impulse response of the filter with given length.
 
         Parameters
@@ -469,8 +476,8 @@ class Filter():
         ir_filt = Signal(None, ir_filt, self.sampling_rate_hz, 'ir')
         return self.filter_signal(ir_filt, zero_phase=zero_phase)
 
-
-    def get_coefficients(self, mode: str = 'sos'):
+    def get_coefficients(self, mode: str = 'sos') -> list | np.ndarray | \
+            tuple[np.ndarray, np.ndarray, np.ndarray]:
         """Returns the filter coefficients.
 
         Parameters
@@ -482,12 +489,15 @@ class Filter():
         Returns
         -------
         coefficients : array-like
-            Array with filter parameters.
+            Array with filter coefficients with shape depending on mode:
+            - `'ba'`: list(b, a) with b and a of type `np.ndarray`.
+            - `'sos'`: `np.ndarray`
+            - `'zpk'`: tuple(z, p, k) with z, p, k of type `np.ndarray`
 
         """
         if mode == 'sos':
             if hasattr(self, 'sos'):
-                coefficients = self.sos
+                coefficients = self.sos.copy()
             else:
                 if self.info['order'] > 500:
                     inp = None
@@ -507,7 +517,7 @@ class Filter():
             if hasattr(self, 'sos'):
                 coefficients = sig.sos2tf(self.sos)
             else:
-                coefficients = self.ba
+                coefficients = deepcopy(self.ba)
         elif mode == 'zpk':
             if hasattr(self, 'sos'):
                 coefficients = sig.sos2zpk(self.sos)
@@ -540,7 +550,7 @@ class Filter():
 
     def plot_magnitude(self, length_samples: int = 512, range_hz=[20, 20e3],
                        normalize: str = None, show_info_box: bool = True,
-                       zero_phase: bool = False, returns: bool = False):
+                       zero_phase: bool = False):
         """Plots magnitude spectrum.
         Change parameters of spectrum with set_spectrum_parameters.
 
@@ -559,13 +569,13 @@ class Filter():
             Shows an information box on the plot. Default: `True`.
         zero_phase : bool, optional
             Plots magnitude for zero phase filtering. Default: `False`.
-        returns : bool, optional
-            When `True` figure and axis are returned. Default: `False`.
 
         Returns
         -------
-        fig, ax
-            Returned only when `returns=True`.
+        fig : `matplotlib.figure.Figure`
+            Figure.
+        ax : `matplotlib.axes.Axes`
+            Axes.
 
         """
         if self.info['order'] > length_samples:
@@ -575,18 +585,17 @@ class Filter():
                  'automatically extended.')
         ir = self.get_ir(length_samples=length_samples, zero_phase=zero_phase)
         fig, ax = ir.plot_magnitude(
-            range_hz, normalize, show_info_box=False, returns=True)
+            range_hz, normalize, show_info_box=False)
         if show_info_box:
             txt = self._get_metadata_string()
             ax.text(0.1, 0.5, txt, transform=ax.transAxes,
                     verticalalignment='top',
                     bbox=dict(boxstyle='round', facecolor='grey', alpha=0.75))
-        if returns:
-            return fig, ax
+        return fig, ax
 
     def plot_group_delay(self, length_samples: int = 512,
-                         range_hz=[20, 20e3], show_info_box: bool = False,
-                         returns: bool = True):
+                         range_hz=[20, 20e3], show_info_box: bool = False) ->\
+            tuple[Figure, Axes]:
         """Plots group delay of the filter. Different methods are used for
         FIR or IIR filters.
 
@@ -599,13 +608,13 @@ class Filter():
             Default: [20, 20000].
         show_info_box : bool, optional
             Shows an information box on the plot. Default: `False`.
-        returns : bool, optional
-            When `True` figure and axis are returned. Default: `False`.
 
         Returns
         -------
-        fig, ax
-            Returned only when `returns=True`.
+        fig : `matplotlib.figure.Figure`
+            Figure.
+        ax : `matplotlib.axes.Axes`
+            Axes.
 
         """
         if self.info['order'] > length_samples:
@@ -626,23 +635,18 @@ class Filter():
             ymin = -2
             ymax = 50
         fig, ax = general_plot(
-            x=f,
-            matrix=gd[..., None],
-            range_x=range_hz,
-            range_y=[ymin, ymax],
-            ylabel='Group delay / ms',
-            returns=True)
+            x=f, matrix=gd[..., None], range_x=range_hz, range_y=[ymin, ymax],
+            ylabel='Group delay / ms', returns=True)
         if show_info_box:
             txt = self._get_metadata_string()
             ax.text(0.1, 0.5, txt, transform=ax.transAxes,
                     verticalalignment='top',
                     bbox=dict(boxstyle='round', facecolor='grey', alpha=0.75))
-        if returns:
-            return fig, ax
+        return fig, ax
 
     def plot_phase(self, length_samples: int = 512, range_hz=[20, 20e3],
-                   unwrap: bool = False, show_info_box: bool = False,
-                   returns: bool = False):
+                   unwrap: bool = False, show_info_box: bool = False) ->\
+            tuple[Figure, Axes]:
         """Plots phase spectrum.
 
         Parameters
@@ -656,13 +660,13 @@ class Filter():
             Unwraps the phase to show. Default: `False`.
         show_info_box : bool, optional
             Shows an information box on the plot. Default: `False`.
-        returns : bool, optional
-            When `True` figure and axis are returned. Default: `False`.
 
         Returns
         -------
-        fig, ax
-            Returned only when `returns=True`.
+        fig : `matplotlib.figure.Figure`
+            Figure.
+        ax : `matplotlib.axes.Axes`
+            Axes.
 
         """
         if self.info['order'] > length_samples:
@@ -671,29 +675,28 @@ class Filter():
                  f'''filter order {self.info['order']}. Length will be ''' +
                  'automatically extended.')
         ir = self.get_ir(length_samples=length_samples)
-        fig, ax = ir.plot_phase(range_hz, unwrap, returns=True)
+        fig, ax = ir.plot_phase(range_hz, unwrap)
         if show_info_box:
             txt = self._get_metadata_string()
             ax.text(0.1, 0.5, txt, transform=ax.transAxes,
                     verticalalignment='top',
                     bbox=dict(boxstyle='round', facecolor='grey', alpha=0.75))
-        if returns:
-            return fig, ax
+        return fig, ax
 
-    def plot_zp(self, show_info_box: bool = False, returns: bool = False):
+    def plot_zp(self, show_info_box: bool = False) -> tuple[Figure, Axes]:
         """Plots zeros and poles with the unit circle.
 
         Parameters
         ----------
-        returns : bool, optional
-            When `True` figure and axis are returned. Default: `False`.
         show_info_box : bool, optional
             Shows an information box on the plot. Default: `False`.
 
         Returns
         -------
-        fig, ax
-            Returned only when `returns=True`.
+        fig : `matplotlib.figure.Figure`
+            Figure.
+        ax : `matplotlib.axes.Axes`
+            Axes.
 
         """
         # Ask explicitely if filter is very long
@@ -723,8 +726,7 @@ class Filter():
             ax.text(0.1, 0.5, txt, transform=ax.transAxes,
                     verticalalignment='top',
                     bbox=dict(boxstyle='round', facecolor='grey', alpha=0.75))
-        if returns:
-            return fig, ax
+        return fig, ax
 
     # ======== Saving and export ==============================================
     def save_filter(self, path: str = 'filter'):

@@ -7,6 +7,7 @@ The modules and functions of dsptoolbox are listed down below.
    :maxdepth: 2
 
    modules/dsptoolbox.distances
+   modules/dsptoolbox.beamforming
    modules/dsptoolbox.filterbanks
    modules/dsptoolbox.generators
    modules/dsptoolbox.audio_io

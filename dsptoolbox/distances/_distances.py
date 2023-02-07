@@ -6,7 +6,8 @@ from scipy.integrate import simpson
 from dsptoolbox._general_helpers import _compute_number_frames, _pad_trim
 
 
-def _log_spectral_distance(x: np.ndarray, y: np.ndarray, f):
+def _log_spectral_distance(x: np.ndarray, y: np.ndarray, f: np.ndarray) \
+        -> float:
     """Computes log spectral distance between two signals.
 
     Parameters
@@ -31,7 +32,8 @@ def _log_spectral_distance(x: np.ndarray, y: np.ndarray, f):
     return log_spec
 
 
-def _itakura_saito_measure(x: np.ndarray, y: np.ndarray, f):
+def _itakura_saito_measure(x: np.ndarray, y: np.ndarray, f: np.ndarray) \
+        -> float:
     """Computes log spectral distance between two signals.
 
     Parameters
@@ -55,7 +57,7 @@ def _itakura_saito_measure(x: np.ndarray, y: np.ndarray, f):
     return ism
 
 
-def _snr(s: np.ndarray, n: np.ndarray):
+def _snr(s: np.ndarray, n: np.ndarray) -> float:
     """Computes SNR from the passed numpy arrays.
 
     Parameters
@@ -74,7 +76,7 @@ def _snr(s: np.ndarray, n: np.ndarray):
     return 20*np.log10(rms(s)/rms(n))
 
 
-def rms(x: np.ndarray):
+def rms(x: np.ndarray) -> float:
     """Root mean squared value of a discrete time series
 
     Parameters
@@ -91,7 +93,7 @@ def rms(x: np.ndarray):
     return np.sqrt(np.sum(x**2)/len(x))
 
 
-def _sisdr(s: np.ndarray, shat: np.ndarray):
+def _sisdr(s: np.ndarray, shat: np.ndarray) -> float:
     """Scale-invariant signal-to-distortion ratio
 
     Parameters

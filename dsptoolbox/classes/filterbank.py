@@ -3,6 +3,8 @@ from pickle import dump, HIGHEST_PROTOCOL
 from copy import deepcopy
 import numpy as np
 from warnings import warn
+from matplotlib.figure import Figure
+from matplotlib.axes import Axes
 
 from .signal_class import Signal
 from .multibandsignal import MultiBandSignal
@@ -20,8 +22,8 @@ class FilterBank():
 
     """
     # ======== Constructor and initializers ===================================
-    def __init__(self, filters: list = [], same_sampling_rate: bool = True,
-                 info: dict = {}):
+    def __init__(self, filters: list = None, same_sampling_rate: bool = True,
+                 info: dict = None):
         """FilterBank object saves multiple filters and some metadata.
         It also allows for easy filtering with multiple filters.
         Since the digital filters that are supported are linear systems,
@@ -48,12 +50,8 @@ class FilterBank():
             plot_magnitude, plot_phase, plot_group_delay, show_info.
 
         """
-        if filters is None:
-            filters = []
-        #
-        assert type(filters) == list, \
-            'Filters should be passed as list'
-        #
+        if info is None:
+            info = {}
         self.same_sampling_rate = same_sampling_rate
         self.filters = filters
         self.info = self.info | info
@@ -86,7 +84,7 @@ class FilterBank():
             f.initialize_zi(number_of_channels)
 
     @property
-    def sampling_rate_hz(self) -> int:
+    def sampling_rate_hz(self) -> int | np.ndarray:
         return self.__sampling_rate_hz
 
     @sampling_rate_hz.setter
@@ -97,8 +95,7 @@ class FilterBank():
                 'Sampling rate should be only an integer'
             self.__sampling_rate_hz = int(new_sampling_rate_hz)
         else:
-            assert self.number_of_filters == len(new_sampling_rate_hz), \
-                'Sampling rate should be a vector with the length of filters'
+            new_sampling_rate_hz = np.atleast_1d(new_sampling_rate_hz)
             self.__sampling_rate_hz = [int(s) for s in new_sampling_rate_hz]
 
     @property
@@ -109,9 +106,10 @@ class FilterBank():
     def filters(self, new_filters):
         if new_filters is None:
             new_filters = []
+        if type(new_filters) == tuple:
+            new_filters = list(new_filters)
         assert type(new_filters) == list, \
             'Filters have to be passed as a list'
-        self.number_of_filters = len(new_filters)
         if new_filters:
             if self.same_sampling_rate:
                 self.sampling_rate_hz = new_filters[0].sampling_rate_hz
@@ -128,6 +126,10 @@ class FilterBank():
                         'Sampling rates do not match'
         self.__filters = new_filters
         self._generate_metadata()
+
+    @property
+    def number_of_filters(self) -> int:
+        return len(self.__filters)
 
     @property
     def same_sampling_rate(self) -> bool:
@@ -153,18 +155,21 @@ class FilterBank():
         """
         if not self.filters:
             self.sampling_rate_hz = filt.sampling_rate_hz
-            self.filters.append(filt)
+            self.filters = [filt]
         else:
+            fs = self.filters.copy()
             if self.same_sampling_rate:
                 assert self.sampling_rate_hz == filt.sampling_rate_hz, \
                     'Sampling rates do not match'
             if index == -1:
-                self.filters.append(filt)
+                fs.append(filt)
             else:
-                self.filters.insert(index, filt)
+                fs.insert(index, filt)
+            self.filters = fs
         self._generate_metadata()
 
-    def remove_filter(self, index: int = -1, return_filter: bool = False):
+    def remove_filter(self, index: int = -1, return_filter: bool = False) ->\
+            None | Filter:
         """Removes a filter from the filter bank.
 
         Parameters
@@ -185,7 +190,6 @@ class FilterBank():
         n_f = self.filters.copy()
         f = n_f.pop(index)
         self.filters = n_f
-        del n_f
         if return_filter:
             return f
 
@@ -203,16 +207,15 @@ class FilterBank():
             'Too many or too few dimensions are given in the new ' +\
             'arrangement vector'
         assert self.number_of_filters == len(new_order), \
-            'The number of channels does not match'
+            'The number of filters does not match'
         assert all(new_order < self.number_of_filters) \
             and all(new_order >= 0), \
-            'Indexes of new channels have to be in ' +\
+            'Indexes of new filters have to be in ' +\
             f'[0, {self.number_of_filters-1}]'
         assert len(np.unique(new_order)) == len(new_order), \
             'There are repeated indexes in the new order vector'
         n_f = [self.filters[i] for i in new_order]
         self.filters = n_f
-        del n_f
 
     # ======== Filtering ======================================================
     def filter_signal(self, signal: Signal, mode: str = 'parallel',
@@ -224,7 +227,7 @@ class FilterBank():
         the output of each filter.
         `'sequential'`: applies each filter to the given Signal in a sequential
         manner and returns output with same dimension.
-        `'summed'`: applies every filter as parallel and then summs the outputs
+        `'summed'`: applies every filter as parallel and then sums the outputs
         returning same dimensional output as input.
 
         Parameters
@@ -248,6 +251,10 @@ class FilterBank():
             New signal after filtering.
 
         """
+        if type(signal) == MultiBandSignal:
+            raise TypeError(
+                'This method only supports Signal objects. Use ' +
+                'filter_multiband_signal() for multirate parallel filtering')
         mode = mode.lower()
         assert mode in ('parallel', 'sequential', 'summed'), \
             f'{mode} is not a valid mode. Use parallel, sequential or summed'
@@ -255,9 +262,8 @@ class FilterBank():
             assert self.same_sampling_rate, \
                 'Multirate filtering is not valid for sequential or summed ' +\
                 'filtering'
-        if self.same_sampling_rate:
-            assert signal.sampling_rate_hz == self.sampling_rate_hz, \
-                'Sampling rates do not match'
+        assert np.all(signal.sampling_rate_hz == self.sampling_rate_hz), \
+            'Sampling rates do not match'
         if zero_phase:
             assert not activate_zi, \
                 'Zero-phase filtering and zi cannot be used at ' +\
@@ -272,6 +278,51 @@ class FilterBank():
             activate_zi=activate_zi,
             zero_phase=zero_phase,
             same_sampling_rate=self.same_sampling_rate)
+        return new_sig
+
+    def filter_multiband_signal(self, mbsignal: MultiBandSignal,
+                                activate_zi: bool = False,
+                                zero_phase: bool = False) -> \
+            MultiBandSignal:
+        """Applies the filter bank to a `MultiBandSignal` and returns the
+        output as a `MultiBandSignal` as well. Only `'parallel'` mode is
+        supported.
+
+        NOTE: all channels contained in the `MultiBandSignal` are filtered.
+
+        Parameters
+        ----------
+        signal : `Signal`
+            Signal to be filtered.
+        activate_zi : bool, optional
+            Takes in the filter initial values and updates them for
+            streaming purposes. Default: `False`.
+        zero_phase : bool, optional
+            Activates zero_phase filtering for the filter bank. It cannot be
+            used at the same time with `zi=True`. Default: `False`.
+
+        Returns
+        -------
+        new_sig : `MultiBandSignal`.
+            New signal after filtering.
+
+        """
+        assert np.all(mbsignal.sampling_rate_hz == self.sampling_rate_hz), \
+            'Sampling rates do not match'
+        if zero_phase:
+            assert not activate_zi, \
+                'Zero-phase filtering and zi cannot be used at ' +\
+                'the same time'
+        if activate_zi:
+            if len(self.filters[0].zi) != mbsignal.number_of_channels:
+                self.initialize_zi(mbsignal.number_of_channels)
+
+        new_sig = mbsignal.copy()
+
+        for n in range(mbsignal.number_of_bands):
+            new_sig.bands[n] = self.filters[n].filter_signal(
+                mbsignal.bands[n], channels=None, activate_zi=activate_zi,
+                zero_phase=zero_phase)
         return new_sig
 
     # ======== Get impulse ====================================================
@@ -301,6 +352,11 @@ class FilterBank():
             Impulse response of the filter bank.
 
         """
+        # No plotting for multirate system
+        if not self.same_sampling_rate:
+            warn('Plotting for multirate FilterBank is not supported, ' +
+                 'skipping IR generation')
+            return None
         # Obtain biggest filter order from FilterBank
         max_order = 0
         for b in self.filters:
@@ -313,10 +369,6 @@ class FilterBank():
 
         # Sampling rate
         fs_hz = self.sampling_rate_hz
-        if type(fs_hz) != int:
-            raise RuntimeError(
-                'This method is only available for same sampling rate ' +
-                'filter banks')
 
         # Impulse
         d = dirac(
@@ -363,8 +415,8 @@ class FilterBank():
         print()
 
     def plot_magnitude(self, mode: str = 'parallel', range_hz=[20, 20e3],
-                       length_samples: int = 2048, test_zi: bool = False,
-                       returns: bool = False):
+                       length_samples: int = 2048, test_zi: bool = False) ->\
+            tuple[Figure, Axes]:
         """Plots the magnitude response of each filter.
 
         Parameters
@@ -382,15 +434,20 @@ class FilterBank():
         test_zi : bool, optional
             Uses the zi's of each filter to test the FilterBank's output.
             Default: `False`.
-        returns : bool, optional
-            When `True`, the figure and axis are returned. Default: `False`.
 
         Returns
         -------
-        fig, ax
-            Returned only when `returns=True`.
+        fig : `matplotlib.figure.Figure`
+            Figure.
+        ax : `matplotlib.axes.Axes`
+            Axes.
 
         """
+        # No plotting for multirate system
+        if not self.same_sampling_rate:
+            warn('Plotting for multirate FilterBank is not supported, ' +
+                 'skipping plots')
+            return None
         # Length handling
         max_order = 0
         for b in self.filters:
@@ -413,11 +470,10 @@ class FilterBank():
             f = bs.bands[0].get_spectrum()[0]
             for b in bs.bands:
                 b.set_spectrum_parameters(method='standard')
-                f, sp = \
-                    _get_normalized_spectrum(
-                        f, np.squeeze(b.get_spectrum()[1]),
-                        f_range_hz=range_hz,
-                        normalize=None)
+                f, sp = _get_normalized_spectrum(
+                    f, np.squeeze(b.get_spectrum()[1]),
+                    f_range_hz=range_hz,
+                    normalize=None)
                 specs.append(np.squeeze(sp))
             specs = np.array(specs).T
             if np.min(specs) < np.max(specs)-50:
@@ -435,13 +491,9 @@ class FilterBank():
             bs.set_spectrum_parameters(method='standard')
             f, sp = bs.get_spectrum()
             f, sp = _get_normalized_spectrum(
-                f, np.squeeze(sp),
-                f_range_hz=range_hz,
-                normalize=None
-            )
+                f, np.squeeze(sp), f_range_hz=range_hz, normalize=None)
             fig, ax = general_plot(
-                f, sp, range_hz, ylabel='Magnitude / dB',
-                returns=True,
+                f, sp, range_hz, ylabel='Magnitude / dB', returns=True,
                 labels=[f'Sequential - Channel {n}'
                         for n in range(bs.number_of_channels)])
         elif mode == 'summed':
@@ -449,20 +501,15 @@ class FilterBank():
             bs.set_spectrum_parameters(method='standard')
             f, sp = bs.get_spectrum()
             f, sp = _get_normalized_spectrum(
-                f, np.squeeze(sp),
-                f_range_hz=range_hz,
-                normalize=None
-            )
+                f, np.squeeze(sp), f_range_hz=range_hz, normalize=None)
             fig, ax = general_plot(
-                f, sp, range_hz, ylabel='Magnitude / dB',
-                returns=True,
+                f, sp, range_hz, ylabel='Magnitude / dB', returns=True,
                 labels=['Summed'])
-        if returns:
-            return fig, ax
+        return fig, ax
 
     def plot_phase(self, mode: str = 'parallel', range_hz=[20, 20e3],
                    unwrap: bool = False, length_samples: int = 2048,
-                   test_zi: bool = False, returns: bool = False):
+                   test_zi: bool = False) -> tuple[Figure, Axes]:
         """Plots the phase response of each filter.
 
         Parameters
@@ -482,15 +529,20 @@ class FilterBank():
         test_zi : bool, optional
             Uses the zi's of each filter to test the FilterBank's output.
             Default: `False`.
-        returns : bool, optional
-            When `True`, the figure and axis are returned. Default: `False`.
 
         Returns
         -------
-        fig, ax
-            Returned only when `returns=True`.
+        fig : `matplotlib.figure.Figure`
+            Figure.
+        ax : `matplotlib.axes.Axes`
+            Axes.
 
         """
+        # No plotting for multirate system
+        if not self.same_sampling_rate:
+            warn('Plotting for multirate FilterBank is not supported, ' +
+                 'skipping plots')
+            return None
         # Length handling
         max_order = 0
         for b in self.filters:
@@ -542,12 +594,11 @@ class FilterBank():
                 f, ph, range_hz, ylabel='Phase / rad',
                 returns=True,
                 labels=['Summed'])
-        if returns:
-            return fig, ax
+        return fig, ax
 
     def plot_group_delay(self, mode: str = 'parallel', range_hz=[20, 20e3],
-                         length_samples: int = 2048, test_zi: bool = False,
-                         returns: bool = False):
+                         length_samples: int = 2048, test_zi: bool = False) ->\
+            tuple[Figure, Axes]:
         """Plots the phase response of each filter.
 
         Parameters
@@ -565,15 +616,20 @@ class FilterBank():
         test_zi : bool, optional
             Uses the zi's of each filter to test the FilterBank's output.
             Default: `False`.
-        returns : bool, optional
-            When `True`, the figure and axis are returned. Default: `False`.
 
         Returns
         -------
-        fig, ax
-            Returned only when `returns=True`.
+        fig : `matplotlib.figure.Figure`
+            Figure.
+        ax : `matplotlib.axes.Axes`
+            Axes.
 
         """
+        # No plotting for multirate system
+        if not self.same_sampling_rate:
+            warn('Plotting for multirate FilterBank is not supported, ' +
+                 'skipping plots')
+            return None
         # Length handling
         max_order = 0
         for b in self.filters:
@@ -620,8 +676,7 @@ class FilterBank():
                 f, gd[..., None], range_hz, ylabel='Group delay / ms',
                 returns=True,
                 labels=['Summed'])
-        if returns:
-            return fig, ax
+        return fig, ax
 
     # ======== Saving and export ==============================================
     def save_filterbank(self, path: str = 'filterbank'):

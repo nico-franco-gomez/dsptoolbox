@@ -1,7 +1,8 @@
 """
 Plots
 -----
-This module contains plotting templates that use matplotlib.
+This module contains plotting templates that use matplotlib and seaborn for
+styling.
 
 - `general_matrix_plot()`
 - `general_plot()`

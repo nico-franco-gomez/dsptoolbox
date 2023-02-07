@@ -1,13 +1,19 @@
 """
 Here are methods considered as somewhat special or less common.
 """
-import numpy as np
 from dsptoolbox.classes.signal_class import Signal
 from dsptoolbox.plots import general_matrix_plot
 from dsptoolbox._general_helpers import _hz2mel, _mel2hz
 
+import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib.figure import Figure
+from matplotlib.axes import Axes
+from seaborn import set_style
+set_style('whitegrid')
 
-def cepstrum(signal: Signal, mode='power'):
+
+def cepstrum(signal: Signal, mode='power') -> np.ndarray:
     """Returns the cepstrum of a given signal in the Quefrency domain.
 
     Parameters
@@ -50,7 +56,7 @@ def cepstrum(signal: Signal, mode='power'):
 
 def log_mel_spectrogram(s: Signal, channel: int = 0, range_hz=None,
                         n_bands: int = 40, generate_plot: bool = True,
-                        **kwargs):
+                        stft_parameters: dict = None):
     """Returns the log mel spectrogram of the specific signal and channel.
 
     Parameters
@@ -67,9 +73,10 @@ def log_mel_spectrogram(s: Signal, channel: int = 0, range_hz=None,
     generate_plot : bool, optional
         Plots the obtained results. Use ``dsptoolbox.plots.show()`` to show
         the plot. Default: `True`.
-    **kwargs : dict, optional
-        Pass arguments to define computation of STFT. If nothing is passed, the
-        parameters set in the signal will be used.
+    stft_parameters : dict, optional
+        Pass arguments to define computation of STFT. If `None` is passed, the
+        parameters already set in the signal will be used. Refer to
+        `Signal.set_spectrogram_parameters()` for details. Default: `None`.
 
     Returns
     -------
@@ -80,24 +87,38 @@ def log_mel_spectrogram(s: Signal, channel: int = 0, range_hz=None,
     log_mel_sp : `np.ndarray`
         Log mel spectrogram.
 
+    When `generate_plot=True`:
+
+    time_s : `np.ndarray`
+        Time vector.
+    f_mel : `np.ndarray`
+        Frequency vector in Mel.
+    log_mel_sp : `np.ndarray`
+        Log mel spectrogram.
+    fig : `matplotlib.figure.Figure`
+        Figure.
+    ax : `matplotlib.axes.Axes`
+        Axes.
+
     """
-    if kwargs:
-        s.set_spectrogram_parameters(**kwargs)
+    if stft_parameters is not None:
+        s.set_spectrogram_parameters(**stft_parameters)
     time_s, f_hz, sp = s.get_spectrogram(channel)
     mfilt, f_mel = mel_filterbank(f_hz, range_hz, n_bands, normalize=True)
     log_mel_sp = mfilt @ np.abs(sp)
-    log_mel_sp = 20*np.log10(log_mel_sp+1e-30)
+    log_mel_sp = 20*np.log10(np.clip(log_mel_sp, a_min=1e-20, a_max=None))
     if generate_plot:
-        general_matrix_plot(
+        fig, ax = general_matrix_plot(
             log_mel_sp, range_x=[time_s[0], time_s[-1]],
             range_y=[f_mel[0], f_mel[-1]], range_z=50,
             ylabel='Frequency / Mel', xlabel='Time / s',
-            ylog=False)
+            ylog=False, returns=True)
+        return time_s, f_mel, log_mel_sp, fig, ax
     return time_s, f_mel, log_mel_sp
 
 
 def mel_filterbank(f_hz: np.ndarray, range_hz=None, n_bands: int = 40,
-                   normalize: bool = True):
+                   normalize: bool = True) -> tuple[np.ndarray, np.ndarray]:
     """Creates equidistant mel triangle filters in a given range. The returned
     matrix can be used to convert Hz into Mel in a spectrogram.
 
@@ -139,6 +160,11 @@ def mel_filterbank(f_hz: np.ndarray, range_hz=None, n_bands: int = 40,
         assert len(range_hz) == 2, \
             'range_hz should be an array with exactly two values!'
         range_hz = np.sort(range_hz)
+        assert range_hz[-1] <= f_hz[-1], \
+            f'Upper frequency in range {range_hz[-1]} is bigger than ' +\
+            f'nyquist frequency {f_hz[-1]}'
+        assert range_hz[0] >= 0, \
+            'Lower frequency in range must be positive'
 
     # Compute band center frequencies in mel
     range_mel = _hz2mel(range_hz)
@@ -164,3 +190,57 @@ def mel_filterbank(f_hz: np.ndarray, range_hz=None, n_bands: int = 40,
         if normalize:
             mel_filters[n, :] /= np.sum(mel_filters[n, :])
     return mel_filters, bands_mel
+
+
+def plot_waterfall(sig: Signal, channel: int = 0,
+                   dynamic_range_db: float = 40,
+                   stft_parameters: dict = None) -> tuple[Figure, Axes]:
+    """Generates and returns a waterfall plot from a signal. The settings
+    for the spectrogram saved in the signal are the ones used for the plot
+    generation.
+
+    Parameters
+    ----------
+    sig : `Signal`
+        Signal to plot waterfall diagramm for.
+    channel : int, optional
+        Channel to take for the waterfall plot.
+    dynamic_range_db : float, optional
+        Sets the maximum dynamic range in dB to show in the plot. Pass `None`
+        to avoid setting any dynamic range. Default: 40.
+    stft_parameters : dict, optional
+        Dictionary containing settings for the stft. If `None` is passed,
+        the parameters already set in `Signal` object are used. Refer to
+        `Signal.set_spectrogram_parameters()` for details. Default: `None`.
+
+    Returns
+    -------
+    fig : `matplotlib.figure.Figure`
+        Figure.
+    ax : `matplotlib.axes.Axes`
+        Axes.
+
+    """
+    assert dynamic_range_db > 0, \
+        'Dynamic range has to be more than 0'
+    if stft_parameters is not None:
+        sig.set_spectrogram_parameters(**stft_parameters)
+    t, f, stft = sig.get_spectrogram(channel_number=channel)
+
+    stft = np.abs(stft)
+    z_label_extra = ''
+    if dynamic_range_db is not None:
+        stft /= np.max(stft)
+        clip_val = 10**(-dynamic_range_db/20)
+        stft = np.clip(stft, a_min=clip_val, a_max=None)
+        z_label_extra = 'FS (normalized @ peak)'
+
+    fig, ax = plt.subplots(figsize=(10, 8), subplot_kw=dict(projection='3d'))
+    tt, ff = np.meshgrid(t, f)
+    ax.plot_surface(tt, ff, 20*np.log10(stft), cmap='magma')
+    ax.set_xlabel('Time / s')
+    ax.set_ylabel('Frequency / Hz')
+    ax.set_zlabel('dB'+z_label_extra)
+    fig.tight_layout()
+    # fig.colorbar(surface, ax=ax, shrink=0.4, aspect=10)
+    return fig, ax

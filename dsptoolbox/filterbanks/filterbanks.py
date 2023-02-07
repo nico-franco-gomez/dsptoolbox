@@ -7,20 +7,22 @@ from scipy.signal import windows
 import warnings
 from dsptoolbox import (Filter, FilterBank, fractional_octave_frequencies,
                         erb_frequencies)
-from ._filterbank import LRFilterBank, GammaToneFilterBank
+from ._filterbank import (LRFilterBank, GammaToneFilterBank, QMFCrossover)
 
 
-def linkwitz_riley_crossovers(freqs, order, sampling_rate_hz: int = 48000):
+def linkwitz_riley_crossovers(crossover_frequencies_hz, order,
+                              sampling_rate_hz: int) ->\
+        LRFilterBank:
     """Returns a linkwitz-riley crossovers filter bank.
 
     Parameters
     ----------
-    freqs : array-like
+    crossover_frequencies_hz : array-like
         Frequencies at which to set the crossovers.
     order : array-like
         Order of the crossovers. The higher, the steeper.
-    sampling_rate_hz : int, optional
-        Sampling rate for the filterbank. Default: 48000.
+    sampling_rate_hz : int
+        Sampling rate for the filterbank.
 
     Returns
     -------
@@ -30,13 +32,13 @@ def linkwitz_riley_crossovers(freqs, order, sampling_rate_hz: int = 48000):
         internal methods.
 
     """
-    return LRFilterBank(freqs, order, sampling_rate_hz)
+    return LRFilterBank(crossover_frequencies_hz, order, sampling_rate_hz)
 
 
 def reconstructing_fractional_octave_bands(
-        num_fractions: int = 1, frequency_range=[63, 16000],
+        num_fractions: int = 1, frequency_range_hz=[63, 16000],
         overlap: float = 1, slope: int = 0, n_samples: int = 2**11,
-        sampling_rate_hz: int = 48000) -> FilterBank:
+        sampling_rate_hz: int = None) -> FilterBank:
     """Create and/or apply an amplitude preserving fractional octave filter
     bank. This implementation is taken directly from the pyfar package.
     See references for more information about it.
@@ -46,7 +48,7 @@ def reconstructing_fractional_octave_bands(
     num_fractions : int, optional
         Octave fraction, e.g., ``3`` for third-octave bands. The default is
         ``1``.
-    frequency_range : tuple, optional
+    frequency_range_hz : tuple, optional
         Frequency range for fractional octave in Hz. The default is
         ``(63, 16000)``
     overlap : float
@@ -60,8 +62,7 @@ def reconstructing_fractional_octave_bands(
         Length of the filter in samples. Longer filters yield more exact
         filters. The default is ``2**11``.
     sampling_rate : int
-        Sampling frequency in Hz. The default is ``None``. Only required if
-        ``signal=None``.
+        Sampling frequency in Hz. The default is ``None``.
 
     Returns
     -------
@@ -74,6 +75,8 @@ def reconstructing_fractional_octave_bands(
     - https://github.com/pyfar/pyfar
 
     """
+    assert sampling_rate_hz is not None, \
+        'Sampling rate should not be None'
     valid_lengths = 2**(np.arange(5, 18))
     assert n_samples in valid_lengths, \
         'Only lengths between 2**5 and 2**17 are allowed'
@@ -89,7 +92,7 @@ def reconstructing_fractional_octave_bands(
 
     # fractional octave frequencies
     _, f_m, f_cut_off = fractional_octave_frequencies(
-        num_fractions, frequency_range, return_cutoff=True)
+        num_fractions, frequency_range_hz, return_cutoff=True)
 
     # discard fractional octaves, if the center frequency exceeds
     # half the sampling rate
@@ -165,9 +168,9 @@ def reconstructing_fractional_octave_bands(
     return filt_bank
 
 
-def auditory_filters_gammatone(freq_range_hz=[20, 20000],
+def auditory_filters_gammatone(frequency_range_hz=[20, 20000],
                                resolution: float = 1,
-                               sampling_rate_hz: int = 48000) \
+                               sampling_rate_hz: int = None) \
         -> GammaToneFilterBank:
     """Generate an auditory filter bank for analysis purposes. This code was
     taken and adapted from the pyfar package. In this implementation, the
@@ -179,7 +182,7 @@ def auditory_filters_gammatone(freq_range_hz=[20, 20000],
 
     Parameters
     ----------
-    freq_range : array-like
+    frequency_range_hz : array-like
         The upper and lower frequency in Hz between which the filter bank is
         constructed. Values must be larger than 0 and not exceed half the
         sampling rate.
@@ -190,12 +193,18 @@ def auditory_filters_gammatone(freq_range_hz=[20, 20000],
         filter band per ERB. A value of ``0.5`` would result in two filter
         bands per ERB.
     sampling_rate_hz : int, optional
-        The sampling rate of the filter bank in Hz. Default: 48000.
+        The sampling rate of the filter bank in Hz. Default: `None`.
 
     Returns
     -------
     gammatone_fb : GammaToneFilterBank
         Auditory filters, gamma tone filter bank.
+
+    Methods
+    -------
+    Apart from all the methods of the `FilterBank` class, there is also the
+    `reconstruct()` method, which takes a `MultiBandSignal` and recreates
+    the original `Signal` from it.
 
     References
     ----------
@@ -203,8 +212,12 @@ def auditory_filters_gammatone(freq_range_hz=[20, 20000],
     - auditory modelling toolbox: https://www.amtoolbox.org
 
     """
+    assert sampling_rate_hz is not None, \
+        'A sampling rate must be passed to create the filter bank'
+    assert np.max(frequency_range_hz) <= sampling_rate_hz//2, \
+        'Highest frequency should not be higher than the nyquist frequency'
     # Create frequencies
-    frequencies_hz = erb_frequencies(freq_range_hz, resolution)
+    frequencies_hz = erb_frequencies(frequency_range_hz, resolution)
     n_bands = len(frequencies_hz)
 
     # Eq. (13) in Hohmann 2002
@@ -241,3 +254,50 @@ def auditory_filters_gammatone(freq_range_hz=[20, 20000],
         coefficients=coefficients,
         normalizations=normalizations)
     return gammatone_fb
+
+
+def qmf_crossover(lowpass: Filter) -> QMFCrossover:
+    """This creates quadrature mirror filters that work as a two band,
+    maximally decimated filter bank. For a 1st order FIR filter, this filter
+    bank is ensured to have perfect reconstruction capabilities.
+
+    Parameters
+    ----------
+    lowpass : `Filter`
+        Lowpass filter prototype with which to create the other filters.
+
+    Returns
+    -------
+    fb : `QMFilterBank`
+        Quadrature mirror filters crossover.
+
+    References
+    ----------
+    - https://ccrma.stanford.edu/~jos/sasp/Quadrature_Mirror_Filters_QMF.html
+
+    """
+    return QMFCrossover(lowpass)
+
+
+# Not yet working
+# def cqf_crossover(lowpass: Filter) -> CQFCrossover:
+#     """This creates conjugate quadrature filters that work as a two band,
+#     maximally decimated filter bank. This crossover has perfect magnitude
+#     reconstruction.
+
+#     Parameters
+#     ----------
+#     lowpass : `Filter`
+#         Lowpass filter prototype with which to create the other filters.
+
+#     Returns
+#     -------
+#     fb : `CQFCrossover`
+#         Conjugate quadrature filters crossover.
+
+#     References
+#     ----------
+#     - https://tinyurl.com/2cssq2oa
+
+#     """
+#     return CQFCrossover(lowpass)

@@ -15,7 +15,7 @@ from ._distances import (_log_spectral_distance,
 
 def log_spectral(insig1: Signal, insig2: Signal, method: str = 'welch',
                  f_range_hz=[20, 20000], energy_normalization: bool = True,
-                 **kwargs):
+                 spectrum_parameters: dict = None) -> np.ndarray:
     """Computes log spectral distance between two signals.
 
     Parameters
@@ -33,9 +33,10 @@ def log_spectral(insig1: Signal, insig2: Signal, method: str = 'welch',
     energy_normalization : bool, optional
         When `True`, the observed part of the spectrum is energy-normalized.
         Default: `True`.
-    **kwargs : dict, optional
-        Additional parameters to be used in the computation of spectrum.
-        Relevant only when `method='welch'`.
+    spectrum_parameters : dict, optional
+        Additional parameters to be used in the computation of spectrum. Pass
+        `None` to use default parameters in the
+        `Signal.set_spectrum_parameters()` method. Default: `None`.
 
     Returns
     -------
@@ -51,6 +52,8 @@ def log_spectral(insig1: Signal, insig2: Signal, method: str = 'welch',
         'Sampling rates do not match'
     assert insig1.number_of_channels == insig2.number_of_channels,\
         'Signals have different channel numbers'
+    if spectrum_parameters is None:
+        spectrum_parameters = {}
 
     fs_hz = insig1.sampling_rate_hz
     if f_range_hz is None:
@@ -63,8 +66,8 @@ def log_spectral(insig1: Signal, insig2: Signal, method: str = 'welch',
             'frequency must be smaller than the nyquist frequency'
         assert not any(f_range_hz < 0), 'Frequencies in range must be ' +\
             'positive'
-    insig1.set_spectrum_parameters(method=method, **kwargs)
-    insig2.set_spectrum_parameters(method=method, **kwargs)
+    insig1.set_spectrum_parameters(method=method, **spectrum_parameters)
+    insig2.set_spectrum_parameters(method=method, **spectrum_parameters)
     f, spec1 = insig1.get_spectrum()
     f, spec2 = insig2.get_spectrum()
 
@@ -91,7 +94,7 @@ def log_spectral(insig1: Signal, insig2: Signal, method: str = 'welch',
 
 def itakura_saito(insig1: Signal, insig2: Signal, method: str = 'welch',
                   f_range_hz=[20, 20000], energy_normalization: bool = True,
-                  **kwargs):
+                  spectrum_parameters: dict = None) -> np.ndarray:
     """Computes itakura-saito measure between two signals. Beware that this
     measure is not symmetric (x, y) != (y, x).
 
@@ -110,9 +113,10 @@ def itakura_saito(insig1: Signal, insig2: Signal, method: str = 'welch',
     energy_normalization : bool, optional
         When `True`, the observed part of the spectrum is energy-normalized.
         Default: `True`.
-    **kwargs : dict, optional
-        Additional parameters to be used in the computation of spectrum.
-        Relevant only when `method='welch'`.
+    spectrum_parameters : dict, optional
+        Additional parameters to be used in the computation of spectrum. Pass
+        `None` to use default parameters in the
+        `Signal.set_spectrum_parameters()` method. Default: `None`.
 
     Returns
     -------
@@ -128,6 +132,8 @@ def itakura_saito(insig1: Signal, insig2: Signal, method: str = 'welch',
         'Sampling rates do not match'
     assert insig1.number_of_channels == insig2.number_of_channels,\
         'Signals have different channel numbers'
+    if spectrum_parameters is None:
+        spectrum_parameters = {}
 
     fs_hz = insig1.sampling_rate_hz
     if f_range_hz is None:
@@ -140,8 +146,8 @@ def itakura_saito(insig1: Signal, insig2: Signal, method: str = 'welch',
             'frequency must be smaller than the nyquist frequency'
         assert not any(f_range_hz < 0), 'Frequencies in range must be ' +\
             'positive'
-    insig1.set_spectrum_parameters(method=method, **kwargs)
-    insig2.set_spectrum_parameters(method=method, **kwargs)
+    insig1.set_spectrum_parameters(method=method, **spectrum_parameters)
+    insig2.set_spectrum_parameters(method=method, **spectrum_parameters)
     f, spec1 = insig1.get_spectrum()
     f, spec2 = insig2.get_spectrum()
 
@@ -166,7 +172,7 @@ def itakura_saito(insig1: Signal, insig2: Signal, method: str = 'welch',
     return distances
 
 
-def snr(signal: Signal, noise: Signal):
+def snr(signal: Signal, noise: Signal) -> np.ndarray:
     """Classical Signal-to-noise ratio. If noise only has one channel,
     it is assumed to be the noise for all channels of signal.
 
@@ -207,7 +213,7 @@ def snr(signal: Signal, noise: Signal):
     return snr_per_channel
 
 
-def si_sdr(target_signal: Signal, modified_signal: Signal):
+def si_sdr(target_signal: Signal, modified_signal: Signal) -> np.ndarray:
     """Computes scale-invariant signal to distortion ratio from an original
     and a modified signal. If target signal only has one channel, it is
     assumed to be the target for all the channels in the modified signal.
@@ -255,7 +261,7 @@ def si_sdr(target_signal: Signal, modified_signal: Signal):
 
 
 def fw_snr_seg(x: Signal, xhat: Signal, f_range_hz=[20, 10e3],
-               snr_range_db=[-10, 35], gamma: float = 0.2):
+               snr_range_db=[-10, 35], gamma: float = 0.2) -> np.ndarray:
     """Frequency-weighted segmental SNR (fwSNRseg) computation between two
     signals.
 
@@ -340,7 +346,7 @@ def fw_snr_seg(x: Signal, xhat: Signal, f_range_hz=[20, 10e3],
         f'{gamma} is not in the valid range for gamma [0.1, 5]'
     # Generate filter bank
     aud_fb = auditory_filters_gammatone(
-        freq_range_hz=f_range, resolution=1, sampling_rate_hz=fs_hz)
+        frequency_range_hz=f_range, resolution=1, sampling_rate_hz=fs_hz)
     x = aud_fb.filter_signal(x, mode='parallel')
     xhat = aud_fb.filter_signal(xhat, mode='parallel')
     # SNR time-segmented with weighting function
