@@ -11,7 +11,7 @@ from dsptoolbox.classes._filter import _impulse
 
 
 def noise(type_of_noise: str = 'white', length_seconds: float = 1,
-          sampling_rate_hz: int = 48000, peak_level_dbfs: float = -10,
+          sampling_rate_hz: int = None, peak_level_dbfs: float = -10,
           number_of_channels: int = 1, fade: str = 'log',
           padding_end_seconds: float = None) -> Signal:
     """Creates a noise signal.
@@ -24,8 +24,8 @@ def noise(type_of_noise: str = 'white', length_seconds: float = 1,
         Default: `'white'`.
     length_seconds : float, optional
         Length of the generated signal in seconds. Default: 1.
-    sampling_rate_hz : int, optional
-        Sampling rate in Hz. Default: 48000.
+    sampling_rate_hz : int
+        Sampling rate in Hz. Default: `None`.
     peak_level_dbfs : float, optional
         Peak level of the signal in dBFS. Default: -10.
     number_of_channels : int, optional
@@ -47,9 +47,11 @@ def noise(type_of_noise: str = 'white', length_seconds: float = 1,
 
     References
     ----------
-    https://en.wikipedia.org/wiki/Colors_of_noise
+    - https://en.wikipedia.org/wiki/Colors_of_noise
 
     """
+    assert sampling_rate_hz is not None, \
+        'Sampling rate can not be None'
     valid_noises = ('white', 'pink', 'red', 'blue', 'violet', 'grey')
     type_of_noise = type_of_noise.lower()
     assert type_of_noise in valid_noises, \
@@ -57,46 +59,49 @@ def noise(type_of_noise: str = 'white', length_seconds: float = 1,
     assert length_seconds > 0, 'Length has to be positive'
     assert peak_level_dbfs <= 0, 'Peak level cannot surpass 0 dBFS'
     assert number_of_channels >= 1, 'At least one channel should be generated'
-    if padding_end_seconds is not None:
-        assert padding_end_seconds > 0, 'Padding has to be a positive time'
 
     l_samples = int(length_seconds * sampling_rate_hz)
     f = np.fft.rfftfreq(l_samples, 1/sampling_rate_hz)
 
-    if padding_end_seconds is not None:
+    if padding_end_seconds not in (None, 0):
+        assert padding_end_seconds > 0, 'Padding has to be a positive time'
         p_samples = int(padding_end_seconds * sampling_rate_hz)
     else:
         p_samples = 0
     time_data = np.zeros((l_samples+p_samples, number_of_channels))
 
-    for n in range(number_of_channels):
-        mag = np.ones(len(f)) + np.random.normal(0, 0.025, len(f))
-        mag[0] = 0
-        ph = np.random.uniform(-np.pi, np.pi, len(f))
-        if type_of_noise == 'pink':
-            mag[1:] /= f[1:]
-        elif type_of_noise == 'red':
-            mag[1:] /= (f[1:]**2)
-        elif type_of_noise == 'blue':
-            mag[1:] *= f[1:]
-        elif type_of_noise == 'violet':
-            mag[1:] *= (f[1:]**2)
-        elif type_of_noise == 'grey':
-            # Set to 15 Hz to cover whole audible spectrum but without
-            # numerical instabilities because of large values in lower
-            # frequencies
-            id_low = np.argmin(np.abs(f - 15))
-            w = _frequency_weightning(f, 'a', db_output=False)
-            mag[id_low:] /= w[id_low:]
-        vec = _normalize(np.fft.irfft(mag*np.exp(1j*ph)),
-                         dbfs=peak_level_dbfs, mode='peak')
-        if fade is not None:
-            fade_length = 0.05 * length_seconds
-            vec = _fade(s=vec, length_seconds=fade_length, mode=fade,
-                        sampling_rate_hz=sampling_rate_hz, at_start=True)
-            vec = _fade(s=vec, length_seconds=fade_length, mode=fade,
-                        sampling_rate_hz=sampling_rate_hz, at_start=False)
-        time_data[:l_samples, n] = vec
+    mag = np.ones((len(f), number_of_channels)) + \
+        np.random.normal(0, 0.025, (len(f), number_of_channels))
+
+    # Set to 15 Hz to cover whole audible spectrum but without
+    # numerical instabilities because of large values in lower
+    # frequencies
+    id_low = np.argmin(np.abs(f - 15))
+    mag[0] = 0
+    if type_of_noise != 'white':
+        mag[:id_low] *= 1e-20
+
+    ph = np.random.uniform(-np.pi, np.pi, (len(f), number_of_channels))
+    if type_of_noise == 'pink':
+        mag[id_low:, :] /= f[id_low:][..., None]
+    elif type_of_noise == 'red':
+        mag[id_low:, :] /= (f[id_low:]**2)[..., None]
+    elif type_of_noise == 'blue':
+        mag[id_low:, :] *= f[id_low:][..., None]
+    elif type_of_noise == 'violet':
+        mag[id_low:, :] *= (f[id_low:]**2)[..., None]
+    elif type_of_noise == 'grey':
+        w = _frequency_weightning(f, 'a', db_output=False)
+        mag[id_low:, :] /= w[id_low:][..., None]
+    t_vec = np.fft.irfft(mag*np.exp(1j*ph), n=l_samples, axis=0)
+    vec = _normalize(t_vec, dbfs=peak_level_dbfs, mode='peak')
+    if fade is not None:
+        fade_length = 0.05 * length_seconds
+        vec = _fade(s=vec, length_seconds=fade_length, mode=fade,
+                    sampling_rate_hz=sampling_rate_hz, at_start=True)
+        vec = _fade(s=vec, length_seconds=fade_length, mode=fade,
+                    sampling_rate_hz=sampling_rate_hz, at_start=False)
+    time_data[:l_samples, :] = vec
 
     id = type_of_noise.lower()+' noise'
     noise_sig = Signal(None, time_data, sampling_rate_hz, signal_type='noise',
@@ -105,7 +110,7 @@ def noise(type_of_noise: str = 'white', length_seconds: float = 1,
 
 
 def chirp(type_of_chirp: str = 'log', range_hz=None, length_seconds: float = 1,
-          sampling_rate_hz: int = 48000, peak_level_dbfs: float = -10,
+          sampling_rate_hz: int = None, peak_level_dbfs: float = -10,
           number_of_channels: int = 1, fade: str = 'log',
           padding_end_seconds: float = None) -> Signal:
     """Creates a sweep signal.
@@ -120,8 +125,8 @@ def chirp(type_of_chirp: str = 'log', range_hz=None, length_seconds: float = 1,
         1 and nyquist are taken. Default: `None`.
     length_seconds : float, optional
         Length of the generated signal in seconds. Default: 1.
-    sampling_rate_hz : int, optional
-        Sampling rate in Hz. Default: 48000.
+    sampling_rate_hz : int
+        Sampling rate in Hz. Default: `None`.
     peak_level_dbfs : float, optional
         Peak level of the signal in dBFS. Default: -10.
     number_of_channels : int, optional
@@ -142,9 +147,11 @@ def chirp(type_of_chirp: str = 'log', range_hz=None, length_seconds: float = 1,
 
     References
     ----------
-    https://de.wikipedia.org/wiki/Chirp
+    - https://de.wikipedia.org/wiki/Chirp
 
     """
+    assert sampling_rate_hz is not None, \
+        'Sampling rate can not be None'
     type_of_chirp = type_of_chirp.lower()
     assert type_of_chirp in ('lin', 'log'), \
         f'{type_of_chirp} is not a valid type. Select lin or np.log'
@@ -159,7 +166,8 @@ def chirp(type_of_chirp: str = 'log', range_hz=None, length_seconds: float = 1,
             'nyquist frequency'
     else:
         range_hz = [1, sampling_rate_hz//2]
-    if padding_end_seconds is not None:
+    if padding_end_seconds not in (None, 0):
+        assert padding_end_seconds > 0, 'Padding has to be a positive time'
         p_samples = int(padding_end_seconds * sampling_rate_hz)
     else:
         p_samples = 0
@@ -196,7 +204,7 @@ def chirp(type_of_chirp: str = 'log', range_hz=None, length_seconds: float = 1,
 
 
 def dirac(length_samples: int = 512, delay_samples: int = 0,
-          number_of_channels: int = 1, sampling_rate_hz: int = 48000) \
+          number_of_channels: int = 1, sampling_rate_hz: int = None) \
         -> Signal:
     """Generates a dirac impulse Signal with the specified length and
     sampling rate.
@@ -209,8 +217,8 @@ def dirac(length_samples: int = 512, delay_samples: int = 0,
         Delay of the impulse in samples. Default: 0.
     number_of_channels : int, optional
         Number of channels to be generated with the same impulse. Default: 1.
-    sampling_rate_hz : int, optional
-        Sampling rate to be used. Default: 480000.
+    sampling_rate_hz : int
+        Sampling rate to be used. Default: `None`.
 
     Returns
     -------
@@ -218,6 +226,8 @@ def dirac(length_samples: int = 512, delay_samples: int = 0,
         Signal with dirac impulse.
 
     """
+    assert sampling_rate_hz is not None, \
+        'Sampling rate can not be None'
     assert type(length_samples) == int and length_samples > 0, \
         'Only positive lengths are valid'
     assert type(delay_samples) == int and delay_samples >= 0, \
@@ -235,7 +245,7 @@ def dirac(length_samples: int = 512, delay_samples: int = 0,
 
 
 def sinus(frequency_hz: float = 1000, length_seconds: float = 1,
-          sampling_rate_hz: int = 48000, peak_level_dbfs: float = -10,
+          sampling_rate_hz: int = None, peak_level_dbfs: float = -10,
           number_of_channels: int = 1, uncorrelated: bool = False,
           fade: str = 'log', padding_end_seconds: float = None) -> Signal:
     """Creates a multi-channel sinus tone.
@@ -246,8 +256,8 @@ def sinus(frequency_hz: float = 1000, length_seconds: float = 1,
         Frequency (in Hz) for the sinus tone. Default: 1000.
     length_seconds : float, optional
         Length of the generated signal in seconds. Default: 1.
-    sampling_rate_hz : int, optional
-        Sampling rate in Hz. Default: 48000.
+    sampling_rate_hz : int
+        Sampling rate in Hz. Default: `None`.
     peak_level_dbfs : float, optional
         Peak level of the signal in dBFS. Default: -10.
     number_of_channels : int, optional
@@ -270,12 +280,15 @@ def sinus(frequency_hz: float = 1000, length_seconds: float = 1,
         Sinus tone signal.
 
     """
+    assert sampling_rate_hz is not None, \
+        'Sampling rate can not be None'
     assert frequency_hz < sampling_rate_hz//2, \
         'Frequency must be beneath nyquist frequency'
     assert frequency_hz > 0, \
         'Frequency must be bigger than 0'
 
-    if padding_end_seconds is not None:
+    if padding_end_seconds not in (None, 0):
+        assert padding_end_seconds > 0, 'Padding has to be a positive time'
         p_samples = int(padding_end_seconds * sampling_rate_hz)
     else:
         p_samples = 0

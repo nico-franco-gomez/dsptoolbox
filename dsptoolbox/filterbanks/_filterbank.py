@@ -8,7 +8,7 @@ from pickle import dump, HIGHEST_PROTOCOL
 from copy import deepcopy
 
 from scipy.signal import (sosfilt, sosfilt_zi, butter, sosfiltfilt)
-from dsptoolbox import Signal, MultiBandSignal, FilterBank
+from dsptoolbox.classes import Signal, MultiBandSignal, FilterBank, Filter
 
 from dsptoolbox.generators import dirac
 from dsptoolbox.plots import general_plot
@@ -30,7 +30,7 @@ class LRFilterBank():
     """
     # ======== Constructor and initiliazers ===================================
     def __init__(self, freqs, order=4, sampling_rate_hz: int = 48000,
-                 info: dict = {}):
+                 info: dict = None):
         """Constructor for a linkwitz-riley crossovers filter bank. This is a
         near perfect magnitude reconstruction filter bank.
 
@@ -50,10 +50,15 @@ class LRFilterBank():
             created.
 
         """
+        if info is None:
+            info = {}
         if type(order) == int:
             order = np.ones(len(freqs))*order
         freqs = np.atleast_1d(np.asarray(freqs).squeeze())
         order = np.atleast_1d(np.asarray(order).squeeze())
+        assert np.max(freqs) <= sampling_rate_hz//2, \
+            'Highest frequency is above nyquist frequency for the given ' +\
+            'sampling rate'
         assert len(freqs) == len(order), \
             'Number of frequencies and number of order of the crossovers ' +\
             'do not match'
@@ -653,8 +658,7 @@ class GammaToneFilterBank(FilterBank):
         Returns
         -------
         reconstructed_sig : `Signal`
-            The summed input.  ``summed.cshape`` matches the ``cshape`` or the
-            original signal before it was filtered.
+            The summed input.
 
         """
         condition = all([signal.bands[n].time_data_imaginary is not None
@@ -692,3 +696,450 @@ class GammaToneFilterBank(FilterBank):
         reconstructed_sig.time_data = \
             np.sum(np.real(time), axis=0)
         return reconstructed_sig
+
+
+class BaseCrossover(FilterBank):
+    """This base class for crossovers is used to hold all maximally decimated
+    crossover methods together.
+
+    """
+    def __init__(self, analysis_filters: list, synthesis_filters: list,
+                 info: dict = None):
+        """Constructor for a crossover. Analysis and synthesis filters are
+        needed for creating an instance.
+
+        Parameters
+        ----------
+        analysis_filters : list
+            List containing two filters that correspond to lowpass and highpass
+            analysis filters.
+        synthesis_filters : list
+            List containing two filters that correspond to low- and highpass
+            synthesis filters
+        info : dict, optional
+            Dictionary containing generic information about the crossover.
+
+        Attributes and methods
+        ----------------------
+        - All of attributes and methods of `FilterBank`.
+        - `filters_synthesis`: list with synthesis filters.
+        - `reconstruct_signal()`: reconstructs a signal by taking in a multi-
+          band signal.
+
+        """
+        assert len(analysis_filters) == 2, \
+            'Exactly two filters are needed for a valid crossover'
+        self.filters_synthesis = synthesis_filters
+        super().__init__(filters=analysis_filters,
+                         same_sampling_rate=True, info=info)
+
+    # ======== Extra properties ===============================================
+    @property
+    def filters_synthesis(self):
+        return self.__filters_synthesis
+
+    @filters_synthesis.setter
+    def filters_synthesis(self, new_filters):
+        assert len(new_filters) == 2, \
+            'Two synthesis filters are needed in a crossover'
+        assert all([type(n) == Filter for n in new_filters]), \
+            'Filters have to be of type Filter'
+        self.__filters_synthesis = new_filters
+
+    # ======== Filtering ======================================================
+    def filter_signal(self, signal: Signal, mode: str = 'parallel',
+                      activate_zi: bool = False, downsample: bool = True) \
+            -> Signal | MultiBandSignal:
+        if not downsample:
+            return super().filter_signal(
+                signal, mode, activate_zi, zero_phase=False)
+        # ========== In case of downsampling while filtering ==================
+        mode = mode.lower()
+        assert mode in ('parallel', 'sequential', 'summed'), \
+            f'{mode} is not a valid mode. Use parallel, sequential or summed'
+        assert signal.sampling_rate_hz == self.sampling_rate_hz, \
+            'Sampling rates do not match'
+        if activate_zi:
+            if len(self.filters[0].zi) != signal.number_of_channels:
+                self.initialize_zi(signal.number_of_channels)
+        new_sig = _crossover_downsample(
+            signal, self.filters, mode=mode, down_factor=2)
+        return new_sig
+
+    # ======== Reconstructing =================================================
+    def reconstruct_signal(self, signal: MultiBandSignal,
+                           upsample: bool = True):
+        """Reconstructs a two band signal using the synthesis filters of the
+        crossover.
+
+        Parameters
+        ----------
+        signal : `MultiBandSignal`
+            Multi-band signal containing two bands from which to reconstruct
+            the original signal. It is assumed that the first band is the
+            low-frequency content.
+        upsample : bool, optional
+            When `True`, the signal's sampling rate is doubled.
+            Default: `True`.
+
+        Returns
+        -------
+        reconstructed : `Signal`
+            Reconstructed signal.
+
+        """
+        assert signal.number_of_bands == 2, \
+            'There must be exactly two bands in order to reconstruct ' +\
+            'signal using a crossover'
+        uf = 2 if upsample else 1
+        return _reconstruct_from_crossover_upsample(
+            signal.bands[0], signal.bands[1], self.filters_synthesis,
+            up_factor=uf)
+
+    # ======== Plotting =======================================================
+    def plot_magnitude(self, mode: str = 'parallel', range_hz=[20, 20e3],
+                       length_samples: int = 2048, test_zi: bool = False,
+                       downsample: bool = True):
+        if not downsample:
+            return super().plot_magnitude(
+                mode, range_hz, length_samples, test_zi)
+
+        # If downsampling is activated
+        max_order = 0
+        for b in self.filters:
+            max_order = max(max_order, b.info['order'])
+        if max_order > length_samples:
+            warn(f'Filter order {max_order} is longer than {length_samples}.' +
+                 ' The length will be adapted to be 100 samples longer than' +
+                 ' the longest filter')
+            length_samples = max_order + 100
+
+        # Impulse
+        d = dirac(
+            length_samples=length_samples,
+            number_of_channels=1, sampling_rate_hz=self.sampling_rate_hz)
+
+        # Filtering and plot
+        if mode == 'parallel':
+            bs = self.filter_signal(d, mode='parallel',
+                                    activate_zi=test_zi, downsample=True)
+            specs = []
+            f = bs.bands[0].get_spectrum()[0]
+            for b in bs.bands:
+                b.set_spectrum_parameters(method='standard')
+                f, sp = _get_normalized_spectrum(
+                    f, np.squeeze(b.get_spectrum()[1]), f_range_hz=range_hz,
+                    normalize=None)
+                specs.append(np.squeeze(sp))
+            specs = np.array(specs).T
+            if np.min(specs) < np.max(specs)-50:
+                range_y = [np.max(specs)-50, np.max(specs)+2]
+            else:
+                range_y = None
+            fig, ax = general_plot(f, specs, range_hz, ylabel='Magnitude / dB',
+                                   returns=True,
+                                   labels=[f'Filter {h}'
+                                           for h in range(bs.number_of_bands)],
+                                   range_y=range_y,
+                                   tight_layout=False)
+        elif mode == 'sequential':
+            bs = self.filter_signal(d, mode='sequential',
+                                    activate_zi=test_zi, downsample=True)
+            bs.set_spectrum_parameters(method='standard')
+            f, sp = bs.get_spectrum()
+            f, sp = _get_normalized_spectrum(
+                f, np.squeeze(sp), f_range_hz=range_hz, normalize=None)
+            fig, ax = general_plot(
+                f, sp, range_hz, ylabel='Magnitude / dB',
+                returns=True,
+                labels=[f'Sequential - Channel {n}'
+                        for n in range(bs.number_of_channels)])
+        elif mode == 'summed':
+            bs = self.filter_signal(d, mode='summed',
+                                    activate_zi=test_zi, downsample=True)
+            bs.set_spectrum_parameters(method='standard')
+            f, sp = bs.get_spectrum()
+            f, sp = _get_normalized_spectrum(
+                f, np.squeeze(sp), f_range_hz=range_hz, normalize=None)
+            fig, ax = general_plot(
+                f, sp, range_hz, ylabel='Magnitude / dB', returns=True,
+                labels=['Summed'])
+        return fig, ax
+
+
+class QMFCrossover(BaseCrossover):
+    """This class contains methods for the creation of quadrature mirror
+    filters, with which near-perfect signal reconstruction can be achieved.
+
+    """
+    def __init__(self, lowpass: Filter):
+        """Create a quadrature mirror filters crossover based on a lowpass
+        filter prototype.
+
+        Parameters
+        ----------
+        lowpass : `Filter`
+            Lowpass filter prototype.
+
+        References
+        ----------
+        - https://tinyurl.com/2a3frbyv
+
+        """
+        if 'freqs' in lowpass.info:
+            if lowpass.info['freqs'] != lowpass.sampling_rate_hz//4:
+                warn('Cut-off frequency for lowpass filter should be half ' +
+                     'the nyquist frequency.')
+        # Create FilterBank
+        super().__init__(
+            analysis_filters=self._get_analysis_filters(lowpass),
+            synthesis_filters=self._get_synthesis_filters(lowpass),
+            info=dict(Info='Quadrature mirror filters crossover'))
+
+    def _get_analysis_filters(self, lowpass: Filter):
+        """Create and return analysis filters based on a lowpass prototype.
+
+        Parameters
+        ----------
+        lowpass : `Filter`
+            Lowpass prototype.
+
+        Returns
+        -------
+        analysis_filters : list
+            List containing exactly two analysis filters. The first one is
+            the passed lowpass prototype.
+
+        References
+        ----------
+        - https://tinyurl.com/2a3frbyv
+
+        """
+        if lowpass.filter_type == 'fir':
+            # Create highpass filter based on lowpass
+            b_base, _ = lowpass.get_coefficients(mode='ba')
+            b_high = b_base.copy()
+            # H1(z) = H0(-z) <-> odd coefficients are multiplied by -1
+            b_high[1::2] *= -1
+            # Create filter
+            highpass = Filter(
+                'other', dict(ba=[b_high, [1]]),
+                sampling_rate_hz=lowpass.sampling_rate_hz)
+            # Type of filter bank
+            self.fir_filterbank = True
+        else:
+            z_base, p_base, k_base = lowpass.get_coefficients(mode='zpk')
+            zpk_new = [z_base*-1, p_base*-1, k_base]
+            highpass = Filter(
+                'other', dict(zpk=zpk_new),
+                sampling_rate_hz=lowpass.sampling_rate_hz)
+            # Type of filter bank
+            self.fir_filterbank = False
+        return [lowpass, highpass]
+
+    def _get_synthesis_filters(self, lowpass: Filter):
+        """Create and return synthesis filters based on a lowpass prototype.
+
+        Parameters
+        ----------
+        lowpass : `Filter`
+            Lowpass prototype.
+
+        Returns
+        -------
+        synthesis_filters : list
+            List containing exactly two synthesis filters. The first one is
+            the passed lowpass prototype.
+
+        References
+        ----------
+        - https://tinyurl.com/2a3frbyv
+
+        """
+        b, a = lowpass.get_coefficients(mode='ba')
+        hp_filter = Filter('other', dict(ba=[-b, a]),
+                           sampling_rate_hz=lowpass.sampling_rate_hz)
+        return [lowpass, hp_filter]
+
+# Not Working so far
+# class CQFCrossover(BaseCrossover):
+#     """This class contains methods for the creation of conjugate quadrature
+#     filters, with which perfect (magnitude) reconstruction can be achieved.
+#     Since these filters do not generally have linear phase, there might be
+#     some phase distortion after reconstruction.
+
+#     """
+#     def __init__(self, lowpass: Filter):
+#         """Create a conjugate quadrature filters crossover based on a lowpass
+#         filter prototype.
+
+#         Parameters
+#         ----------
+#         lowpass : `Filter`
+#             Lowpass filter prototype.
+
+#         References
+#         ----------
+#         - https://tinyurl.com/2cssq2oa
+
+#         """
+#         if 'freqs' in lowpass.info:
+#             if lowpass.info['freqs'] != lowpass.sampling_rate_hz//4:
+#                 warn('Cut-off frequency for lowpass filter should be half ' +
+#                      'the nyquist frequency.')
+#         # Create FilterBank
+#         super().__init__(
+#             analysis_filters=self._get_analysis_filters(lowpass),
+#             synthesis_filters=self._get_synthesis_filters(lowpass),
+#             info=dict(Info='Quadrature mirror filters crossover'))
+
+#     def _get_analysis_filters(self, lowpass: Filter):
+#         """Create and return analysis filters based on a lowpass prototype.
+
+#         Parameters
+#         ----------
+#         lowpass : `Filter`
+#             Lowpass prototype.
+
+#         Returns
+#         -------
+#         analysis_filters : list
+#             List containing exactly two analysis filters. The first one is
+#             the passed lowpass prototype.
+
+#         References
+#         ----------
+#         - https://tinyurl.com/2cssq2oa
+
+#         """
+#         if lowpass.filter_type == 'fir':
+#             # Create highpass filter based on lowpass
+#             b_base, _ = lowpass.get_coefficients(mode='ba')
+#             b_high = b_base.copy()
+#             b_high = np.flip(b_high)
+#             b_high[::2] *= -1
+#             # Create filter
+#             highpass = Filter(
+#                 'other', dict(ba=[b_high, [1]]),
+#                 sampling_rate_hz=lowpass.sampling_rate_hz)
+#             # Type of filter bank
+#             self.fir_filterbank = True
+#         else:
+#             raise ValueError('This type of crossover is only supported ' +
+#                              'for FIR filters')
+#         return [lowpass, highpass]
+
+#     def _get_synthesis_filters(self, lowpass: Filter):
+#         """Create and return synthesis filters based on a lowpass prototype.
+
+#         Parameters
+#         ----------
+#         lowpass : `Filter`
+#             Lowpass prototype.
+
+#         Returns
+#         -------
+#         synthesis_filters : list
+#             List containing exactly two synthesis filters.
+
+#         References
+#         ----------
+#         - https://tinyurl.com/2cssq2oa
+
+#         """
+#         b, a = lowpass.get_coefficients(mode='ba')
+#         lp_filter = Filter('other', dict(ba=[np.flip(b), a]),
+#                            sampling_rate_hz=lowpass.sampling_rate_hz)
+#         b[::2] *= -1
+#         hp_filter = Filter('other', dict(ba=[b, a]),
+#                            sampling_rate_hz=lowpass.sampling_rate_hz)
+#         return [lp_filter, hp_filter]
+
+
+def _crossover_downsample(signal: Signal, filters: list, mode: str,
+                          down_factor: int = 2) -> Signal | MultiBandSignal:
+    """Apply crossover and downsample on signal.
+
+    Parameters
+    ----------
+    signal : `Signal`
+        Signal to which to apply the crossover.
+    filters : list
+        List containing filters to use. Since it is a crossover, it should
+        have 2 filters.
+    mode : str
+        Mode of filtering. Choose from `'parallel'`, `'sequential'` and
+        `'summed'`.
+    down_factor : int, optional
+        Down factor for decimation. Default: 2.
+
+    Returns
+    -------
+    new_signal : `Signal` or `MultiBandSignal`
+        New Signal object.
+
+    """
+    n_filt = len(filters)
+    assert n_filt == 2, \
+        'A crossover should contain exactly 2 filters'
+    if mode == 'parallel':
+        ss = []
+        for n in range(n_filt):
+            ss.append(filters[n].filter_and_resample_signal(
+                signal,
+                new_sampling_rate_hz=signal.sampling_rate_hz//down_factor))
+        out_sig = MultiBandSignal(
+            ss, same_sampling_rate=True)
+    elif mode == 'sequential':
+        out_sig = signal.copy()
+        for n in range(n_filt):
+            out_sig = filters[n].filter_and_resample_signal(
+                signal,
+                new_sampling_rate_hz=signal.sampling_rate_hz//down_factor)
+    else:
+        new_time_data = \
+            np.zeros((signal.time_data.shape[0]//down_factor,
+                      signal.number_of_channels, n_filt))
+        for n in range(n_filt):
+            s = filters[n].filter_and_resample_signal(
+                signal,
+                new_sampling_rate_hz=signal.sampling_rate_hz//down_factor)
+            new_time_data[:, :, n] = s.time_data
+        new_time_data = np.sum(new_time_data, axis=-1)
+        out_sig = signal.copy()
+        out_sig.sampling_rate_hz = signal.sampling_rate_hz//down_factor
+        out_sig.time_data = new_time_data
+    return out_sig
+
+
+def _reconstruct_from_crossover_upsample(sig_low: Signal, sig_high: Signal,
+                                         filters: list,
+                                         up_factor: int = 2) -> Signal:
+    """Reconstructs signal from crossover.
+
+    Parameters
+    ----------
+    sig_low : `Signal`
+        Low-frequency band.
+    sig_high : `Signal`
+        High-frequency band.
+    filters : list
+        List containing the two synthesis filters.
+    up_factor : int, optional
+        Factor by which to upsample. Default: 2.
+
+    Returns
+    -------
+    rec_sig : `Signal`
+        Reconstructed signal.
+
+    """
+    n_filt = len(filters)
+    assert n_filt == 2, \
+        'A crossover should contain exactly 2 filters'
+    rec_sig = filters[0].filter_and_resample_signal(
+        sig_low, new_sampling_rate_hz=sig_low.sampling_rate_hz*up_factor)
+    temp_sig = filters[1].filter_and_resample_signal(
+        sig_high, new_sampling_rate_hz=sig_low.sampling_rate_hz*up_factor)
+    rec_sig.time_data += temp_sig.time_data
+    return rec_sig

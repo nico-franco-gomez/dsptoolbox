@@ -6,7 +6,8 @@ from dsptoolbox._general_helpers import _find_nearest, _calculate_window
 
 
 def _spectral_deconvolve(num_fft: np.ndarray, denum_fft: np.ndarray, freqs_hz,
-                         mode='regularized', start_stop_hz=None):
+                         time_signal_length: int, mode='regularized',
+                         start_stop_hz=None) -> np.ndarray:
     assert num_fft.shape == denum_fft.shape, 'Shapes do not match'
     assert len(freqs_hz) == len(num_fft), 'Frequency vector does not match'
 
@@ -21,17 +22,17 @@ def _spectral_deconvolve(num_fft: np.ndarray, denum_fft: np.ndarray, freqs_hz,
         denum_reg = denum_fft.conj() /\
             (denum_fft.conj()*denum_fft + eps)
         new_time_data = \
-            np.fft.irfft(num_fft * denum_reg)
+            np.fft.irfft(num_fft * denum_reg, n=time_signal_length)
     elif mode == 'window':
         ids = _find_nearest(start_stop_hz, freqs_hz)
         window = _calculate_window(ids, len(freqs_hz), inverse=False)
         window += 10**(-200/10)
         num_fft_n = num_fft * window
         new_time_data = np.fft.irfft(
-            np.divide(num_fft_n, denum_fft))
+            np.divide(num_fft_n, denum_fft), n=time_signal_length)
     elif mode == 'standard':
         new_time_data = np.fft.irfft(
-            np.divide(num_fft, denum_fft))
+            np.divide(num_fft, denum_fft), n=time_signal_length)
     else:
         raise ValueError(f'{mode} is not supported. Choose window' +
                          ', regularized or standard')
@@ -40,7 +41,7 @@ def _spectral_deconvolve(num_fft: np.ndarray, denum_fft: np.ndarray, freqs_hz,
 
 def _window_this_ir(vec, total_length: int, window_type: str = 'hann',
                     exp2_trim: int = 13, constant_percentage: float = 0.75,
-                    at_start: bool = True):
+                    at_start: bool = True) -> tuple[np.ndarray, np.ndarray]:
     # Trimming
     if exp2_trim is not None:
         # Padding

@@ -9,16 +9,19 @@ matplotlib>=3.6
 seaborn>=0.12
 
 # dev:
-# hatch # build
-# wheel # build
-# twine # upload build
-# flake8  # linter
-# librosa  # validation
+hatch # build
+wheel # build
+twine # upload build
+flake8  # linter
+pytest # tests
+# librosa  # validation, does not work on python 3.11 since numba is not supported yet
 # pyfar  # validation
+# pyroomacoustics # validation
 
 # jupyter notebooks:
-# ipykernel
-# ipympl
+ipykernel
+ipympl
+notebook
 
 # docs:
 furo # theme

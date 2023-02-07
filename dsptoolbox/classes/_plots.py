@@ -24,6 +24,10 @@ def _zp_plot(z, p, returns: bool = False):
 
 
 def _csm_plot(f, csm, range_x=None, log=True, with_phase=True, returns=True):
+    """Function to plot cross-spectral matrix. Since it is very specialized,
+    it is not in the plots module.
+
+    """
     ch = csm.shape[1]
     if range_x is not None:
         id0, id1 = _find_nearest(range_x, f)

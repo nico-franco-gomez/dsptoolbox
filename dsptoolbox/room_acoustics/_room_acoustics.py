@@ -51,13 +51,14 @@ def _reverb(h, fs_hz, mode, ir_start: int = None,
     edc = 10*np.log10(edc / edc[max_ind])
     # Reverb
     i1 = np.where(edc < -5)[0][0]
-    if mode.casefold() == 'T20'.casefold():
+    mode = mode.upper()
+    if mode == 'T20':
         i2 = np.where(edc < -25)[0][0]
-    elif mode.casefold() == 'T30'.casefold():
+    elif mode == 'T30':
         i2 = np.where(edc < -35)[0][0]
-    elif mode.casefold() == 'T60'.casefold():
+    elif mode == 'T60':
         i2 = np.where(edc < -65)[0][0]
-    elif mode.casefold() == 'EDT'.casefold():
+    elif mode == 'EDT':
         i1 = np.where(edc < 0)[0][0]
         i2 = np.where(edc < -10)[0][0]
     else:
@@ -82,7 +83,8 @@ def _find_ir_start(ir, threshold_db=-20):
     return np.arange(len(energy_curve_db))[energy_curve_db > threshold_db][0]
 
 
-def _complex_mode_identification(spectra: np.ndarray, n_functions: int = 1):
+def _complex_mode_identification(spectra: np.ndarray, n_functions: int = 1) ->\
+        np.ndarray:
     """Complex transfer matrix and CMIF from:
     http://papers.vibetech.com/Paper17-CMIF.pdf
 
@@ -119,7 +121,7 @@ def _complex_mode_identification(spectra: np.ndarray, n_functions: int = 1):
     return cmif
 
 
-def _sum_magnitude_spectra(magnitudes: np.ndarray):
+def _sum_magnitude_spectra(magnitudes: np.ndarray) -> np.ndarray:
     """np.sum of all magnitude spectra
 
     Parameters
@@ -139,7 +141,7 @@ def _sum_magnitude_spectra(magnitudes: np.ndarray):
     return summed
 
 
-def _generate_rir(dim, s_pos, r_pos, rt, sr):
+def _generate_rir(dim, s_pos, r_pos, rt, sr) -> np.ndarray:
     """Generate RIR using image source model according to Brinkmann, et al.
 
     Parameters

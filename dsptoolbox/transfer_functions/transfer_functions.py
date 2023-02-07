@@ -15,8 +15,8 @@ def spectral_deconvolve(num: Signal, denum: Signal,
                         threshold_db=-30, padding: bool = False,
                         keep_original_length: bool = False) -> Signal:
     """Deconvolution by spectral division of two signals. If the denominator
-    signal only has one channel, the deconvolution is done using it for all
-    channels of the numerator.
+    signal only has one channel, the deconvolution is done using that channel
+    for all channels of the numerator.
 
     Parameters
     ----------
@@ -34,7 +34,7 @@ def spectral_deconvolve(num: Signal, denum: Signal,
         4 frequency points can be also manually given. `None` uses no
         spectral window. If mode is standard, start_stop_hz has to be set
         to `None`. Default: `None`.
-    threshold : int, optional
+    threshold_db : int, optional
         Threshold in dBFS for the automatic creation of the window.
         Default: -30.
     padding : bool, optional
@@ -51,6 +51,8 @@ def spectral_deconvolve(num: Signal, denum: Signal,
         Deconvolved signal.
 
     """
+    num = num.copy()
+    denum = denum.copy()
     assert num.time_data.shape[0] == denum.time_data.shape[0], \
         'Lengths do not match for spectral deconvolution'
     if denum.number_of_channels != 1:
@@ -73,8 +75,7 @@ def spectral_deconvolve(num: Signal, denum: Signal,
     if padding:
         num.time_data = _pad_trim(num.time_data, original_length*2)
         denum.time_data = _pad_trim(denum.time_data, original_length*2)
-        # num = pad_trim(num, original_length*2)
-        # denum = pad_trim(denum, original_length*2)
+    fft_length = original_length*2 if padding else original_length
 
     denum.set_spectrum_parameters(method='standard')
     _, denum_fft = denum.get_spectrum()
@@ -85,17 +86,11 @@ def spectral_deconvolve(num: Signal, denum: Signal,
     new_time_data = np.zeros_like(num.time_data)
 
     for n in range(num.number_of_channels):
-        if multichannel:
-            n_denum = 0
-        else:
-            n_denum = n
+        n_denum = 0 if multichannel else n
         if mode != 'standard':
-            #
             if start_stop_hz is None:
-                start_stop_hz = \
-                    _find_frequencies_above_threshold(
-                        denum_fft[:, n_denum], freqs_hz, threshold_db)
-            #
+                start_stop_hz = _find_frequencies_above_threshold(
+                    denum_fft[:, n_denum], freqs_hz, threshold_db)
             if len(start_stop_hz) == 2:
                 temp = []
                 temp.append(start_stop_hz[0]/np.sqrt(2))
@@ -108,9 +103,9 @@ def spectral_deconvolve(num: Signal, denum: Signal,
             else:
                 raise ValueError('start_stop_hz vector should have 2 or 4' +
                                  ' values')
-        new_time_data[:, n] = \
-            _spectral_deconvolve(
+        new_time_data[:, n] = _spectral_deconvolve(
                 num_fft[:, n], denum_fft[:, n_denum], freqs_hz,
+                fft_length,
                 start_stop_hz=start_stop_hz,
                 mode=mode)
     new_sig = Signal(None, new_time_data, num.sampling_rate_hz,
@@ -118,7 +113,6 @@ def spectral_deconvolve(num: Signal, denum: Signal,
     if padding:
         if keep_original_length:
             new_sig.time_data = _pad_trim(new_sig.time_data, original_length)
-            # new_sig = pad_trim(new_sig, original_length)
     return new_sig
 
 
@@ -131,8 +125,8 @@ def window_ir(signal: Signal, constant_percentage=0.75, exp2_trim: int = 13,
     signal: `Signal`
         Signal to window
     constant_percentage: float, optional
-        Percentage (between 0 and 1) of the window that should be
-        constant value. Default: 0.75
+        Percentage (between 0 and 1) of the window's length that should be
+        constant value. Default: 0.75.
     exp2_trim: int, optional
         Exponent of two defining the length to which the IR should be
         trimmed. For avoiding trimming set to `None`. Default: 13.
@@ -140,7 +134,8 @@ def window_ir(signal: Signal, constant_percentage=0.75, exp2_trim: int = 13,
         Window function to be used. Available selection from
         scipy.signal.windows: `barthann`, `bartlett`, `blackman`,
         `boxcar`, `cosine`, `hamming`, `hann`, `flattop`, `nuttall` and
-        others without extra parameters. Default: `hann`.
+        others. Pass a tuple with window type and extra parameters if needed.
+        Default: `hann`.
     at_start: bool, optional
         Windows the start with a rising window as well as the end.
         Default: `True`.
@@ -159,8 +154,9 @@ def window_ir(signal: Signal, constant_percentage=0.75, exp2_trim: int = 13,
         total_length = len(signal.time_data)
     new_time_data = np.zeros((total_length, signal.number_of_channels))
 
+    window = np.zeros((total_length, signal.number_of_channels))
     for n in range(signal.number_of_channels):
-        new_time_data[:, n], window = \
+        new_time_data[:, n], window[:, n] = \
             _window_this_ir(
                 signal.time_data[:, n],
                 total_length,
@@ -177,12 +173,13 @@ def window_ir(signal: Signal, constant_percentage=0.75, exp2_trim: int = 13,
 
 
 def compute_transfer_function(output: Signal, input: Signal, mode='h2',
-                              window_length_samples: int = 1024, **kwargs) -> \
+                              window_length_samples: int = 1024,
+                              spectrum_parameters: dict = None) -> \
         Signal:
-    """Gets transfer function H1, H2 or H3.
+    """Gets transfer function H1, H2 or H3 (for stochastic signals).
     H1: for noise in the output signal. `Gxy/Gxx`.
     H2: for noise in the input signal. `Gyy/Gyx`.
-    H3: for noise in both signals. `G_xy / np.abs(G_xy) * (G_yy/G_xx)**0.5`.
+    H3: for noise in both signals. `G_xy / abs(G_xy) * (G_yy/G_xx)**0.5`.
     If the input signal only has one channel, it is assumed to be the input
     for all of the channels of the output.
 
@@ -198,15 +195,16 @@ def compute_transfer_function(output: Signal, input: Signal, mode='h2',
     window_length_samples : int, optional
         Window length for the IR. Spectrum has the length
         window_length_samples//2 + 1. Default: 1024.
-    **kwargs : dict, optional
+    spectrum_parameters : dict, optional
         Extra parameters for the computation of the cross spectral densities
-        using welch's method.
+        using welch's method. See `Signal.set_spectrum_parameters()`
+        for details. Default: empty dictionary.
 
     Returns
     -------
     tf : `Signal`
-        Transfer functions. Coherences are also computed and saved in the
-        Signal object.
+        Transfer functions as `Signal` object. Coherences are also computed
+        and saved in the `Signal` object.
 
     """
     mode = mode.casefold()
@@ -223,6 +221,11 @@ def compute_transfer_function(output: Signal, input: Signal, mode='h2',
         multichannel = False
     else:
         multichannel = True
+    if spectrum_parameters is None:
+        spectrum_parameters = {}
+    assert type(spectrum_parameters) == dict, \
+        'Spectrum parameters should be passed as a dictionary'
+
     H_time = np.zeros((window_length_samples, output.number_of_channels))
     coherence = np.zeros((window_length_samples//2 + 1,
                           output.number_of_channels))
@@ -232,14 +235,14 @@ def compute_transfer_function(output: Signal, input: Signal, mode='h2',
             input.time_data[:, 0],
             input.sampling_rate_hz,
             window_length_samples=window_length_samples,
-            **kwargs)
+            **spectrum_parameters)
     for n in range(output.number_of_channels):
         G_yy = _welch(
             output.time_data[:, n],
             output.time_data[:, n],
             input.sampling_rate_hz,
             window_length_samples=window_length_samples,
-            **kwargs)
+            **spectrum_parameters)
         if multichannel:
             n_input = 0
         else:
@@ -249,27 +252,28 @@ def compute_transfer_function(output: Signal, input: Signal, mode='h2',
                 input.time_data[:, n_input],
                 input.sampling_rate_hz,
                 window_length_samples=window_length_samples,
-                **kwargs)
+                **spectrum_parameters)
         if mode == 'h2'.casefold():
             G_yx = _welch(
                     output.time_data[:, n],
                     input.time_data[:, n_input],
                     output.sampling_rate_hz,
                     window_length_samples=window_length_samples,
-                    **kwargs)
+                    **spectrum_parameters)
         G_xy = _welch(
             input.time_data[:, n_input],
             output.time_data[:, n],
             output.sampling_rate_hz,
             window_length_samples=window_length_samples,
-            **kwargs)
+            **spectrum_parameters)
 
         if mode == 'h1'.casefold():
             H_time[:, n] = np.fft.irfft(G_xy / G_xx)
         elif mode == 'h2'.casefold():
             H_time[:, n] = np.fft.irfft(G_yy / G_yx)
         elif mode == 'h3'.casefold():
-            H_time[:, n] = np.fft.irfft(G_xy / np.abs(G_xy) * (G_yy/G_xx)**0.5)
+            H_time[:, n] = np.fft.irfft(
+                G_xy / np.abs(G_xy) * (G_yy/G_xx)**0.5)
         coherence[:, n] = np.abs(G_xy)**2 / G_xx / G_yy
     tf = Signal(None, H_time, output.sampling_rate_hz,
                 signal_type=mode.lower())
@@ -277,9 +281,9 @@ def compute_transfer_function(output: Signal, input: Signal, mode='h2',
     return tf
 
 
-def spectral_average(signal: Signal):
+def spectral_average(signal: Signal) -> Signal:
     """Averages all channels of a given IR using their magnitude and
-    phase spectra.
+    phase spectra and returns the averaged IR.
 
     Parameters
     ----------
@@ -298,6 +302,8 @@ def spectral_average(signal: Signal):
     assert signal.number_of_channels > 1, \
         'Signal has only one channel so no meaningful averaging can be done'
 
+    l_samples = signal.time_data.shape[0]
+
     # Obtain channel magnitude and phase spectra
     _, sp = signal.get_spectrum()
     mag = np.abs(sp)
@@ -310,7 +316,7 @@ def spectral_average(signal: Signal):
     new_sp = new_mag * np.exp(1j*new_pha)
 
     # New time data and signal object
-    new_time_data = np.fft.irfft(new_sp[..., None], axis=0)
+    new_time_data = np.fft.irfft(new_sp[..., None], n=l_samples, axis=0)
     avg_sig = signal.copy()
     avg_sig.time_data = new_time_data
     return avg_sig
@@ -359,16 +365,16 @@ def min_phase_from_mag(spectrum: np.ndarray, sampling_rate_hz: int,
 
 
 def lin_phase_from_mag(spectrum: np.ndarray, sampling_rate_hz: int,
-                       group_delay_ms='minimal',
+                       group_delay_ms: str | float = 'minimum',
                        check_causality: bool = True,
-                       signal_type: str = 'ir'):
+                       signal_type: str = 'ir') -> Signal:
     """Returns a linear phase signal from a magnitude spectrum. It is possible
-    to return the smallest causal group delay by checking the minimal phase
+    to return the smallest causal group delay by checking the minimum phase
     version of the signal and choosing a constant group delay that is never
     lower than minimum group delay (for each channel). A value for the group
     delay can be also passed directly and applied to all channels. If check
     causility is activated, it is assessed that the given group delay is not
-    less than each minimal group delay. If deactivated, the generated phase
+    less than each minimum group delay. If deactivated, the generated phase
     could lead to a non-causal system!
 
     Parameters
@@ -379,12 +385,12 @@ def lin_phase_from_mag(spectrum: np.ndarray, sampling_rate_hz: int,
         Signal's sampling rate in Hz.
     group_delay_ms : str or float, optional
         Constant group delay that the phase should have for all channels
-        (in ms). Pass `'minimal'` to create a signal with the minimum linear
+        (in ms). Pass `'minimum'` to create a signal with the minimum linear
         phase possible (that is different for each channel).
-        Default: `'minimal'`.
+        Default: `'minimum'`.
     check_causality : bool, optional
         When `True`, it is assessed for each channel that the given group
-        delay is not lower than the minimal group delay. Default: `True`.
+        delay is not lower than the minimum group delay. Default: `True`.
     signal_type : str, optional
         Type of signal to be returned. Default: `'ir'`.
 
@@ -407,8 +413,8 @@ def lin_phase_from_mag(spectrum: np.ndarray, sampling_rate_hz: int,
     minimum_group_delay = False
     if type(group_delay_ms) == str:
         group_delay_ms = group_delay_ms.lower()
-        assert group_delay_ms == 'minimal', \
-            'Group delay should be set to minimal'
+        assert group_delay_ms == 'minimum', \
+            'Group delay should be set to minimum'
         minimum_group_delay = True
     elif type(group_delay_ms) in (float, int):
         group_delay_ms /= 1000

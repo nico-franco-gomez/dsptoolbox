@@ -11,16 +11,47 @@ adheres to `Semantic Versioning <http://semver.org/spec/v2.0.0.html>`_.
 `To Do's for future releases`_
 ------------------------------
 
-- Automated testing, ideally with pytest
-- Validation of transfer functions (h1, h2, h3), coherence and distances
-  with some external tool
+- Validation for results from tests in every module (so far many tests are
+  only regarding functionality)
 
-`0.1.1`_ - 2023-01-20
+`0.2.0`_ - 2023-02-07
 ---------------------
 
 Added
 ~~~~~~
-- the method for finding room modes now includes the ``prune_antimodes`` parameter which checks for modes that are dips in the room impulse response and leaves these out
+- ``plot_waterfall`` in special module
+- beamforming algorithms added as a module called beamforming
+- number of filters property in ``FilterBank``
+- vectorized ``generators.noise`` for faster multi channel noise generation
+- quadrature mirror filters crossovers
+
+Bugfix
+~~~~~~
+- now the original signal length is used everywhere as an argument to ``numpy.fft.irfft``
+  to avoid reconstruction issues for odd-length signals
+- now ``Signal`` and ``Filter`` can not be created without explicitely passing a
+  sampling rate
+- corrected scaling when using ``_welch`` for spectrum and now clearer scalings
+  can be passed
+- allowed for 0 percent overlap when computing spectrum, csm or stft
+- other minor fixes
+
+Misc
+~~~~~
+- added automated testing using pytest (and changed requirements)
+- added support for python 3.11
+- extended and corrected docstrings
+- change to warning instead of assertion error after not passing the COLA condition
+  for stft, welch or csm
+- optimized computation of cross-spectral matrix
+
+`0.1.1 <https://pypi.org/project/dsptoolbox/0.1.1/>`_ - 2023-01-20
+---------------------
+
+Added
+~~~~~~
+- the method for finding room modes now includes the ``prune_antimodes`` 
+  parameter which checks for modes that are dips in the room impulse response and leaves these out
 - filter class can now plot magnitude directly with zero_phase filtering
 - ``activity_detector`` added in standard module
 - ``spectral_average`` in transfer_functions module
@@ -28,10 +59,12 @@ Added
 
 Bugfix
 ~~~~~~
-- start of impulse responses for multibandsignals is now done for each signal separately since filtering could lead to different group delays in each band
+- start of impulse responses for multibandsignals is now done for each signal separately
+  since filtering could lead to different group delays in each band
 - assertion that ``start_stop_hz`` is ``None`` when standard method is selected in ``transfer_functions.spectral_deconvolve()``
 - _biquad_coefficients can now take strings as eq_type
-- refactored part of filtering function in Linkwitz-Riley filter bank such that no unnecessary loops are used
+- refactored part of filtering function in Linkwitz-Riley filter bank such that
+  no unnecessary loops are used
 
 Misc
 ~~~~~
@@ -39,7 +72,7 @@ Misc
 - corrected or extended docstrings
 - moved linear and minimum phase system generation from special to transfer_functions module
 
-`0.1.0`_ - 2023-01-13
+`0.1.0 <https://pypi.org/project/dsptoolbox/0.1.0/>`_ - 2023-01-13
 ---------------------
 
 Added
@@ -64,7 +97,7 @@ Misc
 - add image in the beginning of repository's readme
 
 
-`0.0.5`_ - 2023-01-11
+`0.0.5 <https://pypi.org/project/dsptoolbox/0.0.5/>`_ - 2023-01-11
 ---------------------
 
 Added
@@ -89,7 +122,8 @@ Bug fixes
 - bug in _get_normalized_spectrum helper function
 - bug in the order of the [filter] order vector in Linkwitz-Riley FliterBank class
 - bug in ``Signal`` class where unwrapped phase could not be plotted correctly
-- plots.general_plot can now use tight_layout() or not. Activating it could be counterproductive in cases where the legend is very large since it squishes the axes
+- plots.general_plot can now use tight_layout() or not. Activating it could be
+  counterproductive in cases where the legend is very large since it squishes the axes
 - changed spectrum array dtype to cfloat to ensure that complex spectrum is always created
 
 Misc
@@ -101,7 +135,7 @@ Misc
 - newly improved filtering function for FIR filters that uses ``scipy.signal.convolve`` instead of ``numpy.convolve``
 
 
-`0.0.4`_ - 2023-01-05
+`0.0.4 <https://pypi.org/project/dsptoolbox/0.0.4/>`_ - 2023-01-05
 ---------------------
 
 Added

@@ -25,8 +25,9 @@ Readme
 
 This is a toolbox in form of a python package that contains algorithms to be used in dsp (digital signal processing) projects.
 
-This project is under active development and it will take some time until it reaches a certain level of maturity. Beware that backwards compatibility is not an actual concern and important changes to the API might come in the future. If you find some implementations interesting or useful, please feel free to use it for your projects and expand or change
-functionalities.
+This project is under active development and it will take some time until it reaches a certain level of maturity.
+Beware that backwards compatibility is not an actual concern and important changes to the API might come in the future.
+If you find some implementations interesting or useful, please feel free to use it for your projects and expand or change functionalities.
 
 Getting Started
 ===============

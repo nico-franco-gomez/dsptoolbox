@@ -5,9 +5,11 @@ from warnings import warn
 from pickle import dump, HIGHEST_PROTOCOL
 from os import sep
 from copy import deepcopy
-
 import numpy as np
 from soundfile import read, write
+from matplotlib.figure import Figure
+from matplotlib.axes import Axes
+
 from dsptoolbox.plots import (general_plot,
                               general_subplots_line, general_matrix_plot)
 from ._plots import _csm_plot
@@ -15,8 +17,6 @@ from dsptoolbox._general_helpers import \
     (_get_normalized_spectrum, _pad_trim, _find_nearest,
      _fractional_octave_smoothing)
 from dsptoolbox._standard import (_welch, _group_delay_direct, _stft, _csm)
-
-__all__ = ['Signal', ]
 
 
 class Signal():
@@ -27,7 +27,7 @@ class Signal():
     """
     # ======== Constructor and State handler ==================================
     def __init__(self, path: str = None, time_data=None,
-                 sampling_rate_hz: int = 48000, signal_type: str = 'general',
+                 sampling_rate_hz: int = None, signal_type: str = 'general',
                  signal_id: str = ''):
         """Signal class that saves time data, channel and sampling rate
         information as well as spectrum, cross-spectral matrix and more.
@@ -45,8 +45,8 @@ class Signal():
             Sampling rate of the signal in Hz. Default: 48000.
         signal_type : str, optional
             A generic signal type. Some functionalities are only unlocked for
-            impulse responses with `'ir'`, `'h1'`, `'h2'`, `'h3'` or `'rir'`.
-            Default: `'general'`.
+            impulse responses with `'ir'`, `'h1'`, `'h2'`, `'h3'`, `'rir'`,
+            `'chirp'`, `'noise'` or `'dirac'`. Default: `'general'`.
         signal_id : str, optional
             An even more generic signal id that can be set by the user.
             Default: `''`.
@@ -80,7 +80,16 @@ class Signal():
         if path is not None:
             assert time_data is None, 'Constructor cannot take a path and ' +\
                 'a vector at the same time'
+            assert sampling_rate_hz is None, \
+                'Constructor cannot take a path and a sampling rate at the' +\
+                ' same time'
             time_data, sampling_rate_hz = read(path)
+        else:
+            assert time_data is not None, \
+                'Either a path to an audio file or a time vector has to be ' +\
+                'passed'
+            assert sampling_rate_hz is not None, \
+                'A sampling rate should be passed!'
         self.sampling_rate_hz = sampling_rate_hz
         self.time_data = time_data
         if signal_type in ('rir', 'ir', 'h1', 'h2', 'h3', 'chirp',
@@ -136,8 +145,10 @@ class Signal():
         # Shape of Time Data array
         if not type(new_time_data) == np.ndarray:
             new_time_data = np.asarray(new_time_data)
-        assert len(new_time_data.shape) <= 2, \
-            f'{len(new_time_data.shape)} has ' +\
+        if new_time_data.ndim > 2:
+            new_time_data = new_time_data.squeeze()
+        assert new_time_data.ndim <= 2, \
+            f'{new_time_data.ndim} are ' +\
             'too many dimensions for time data. Dimensions should' +\
             ' be [time samples, channels]'
         if len(new_time_data.shape) < 2:
@@ -212,6 +223,8 @@ class Signal():
             'Number of channels must be integer'
         assert new_number > 0, \
             'There has to be at least one channel'
+        assert new_number == self.time_data.shape[1], \
+            'Number of channels does not match with time data vector'
         self.__number_of_channels = new_number
 
     @property
@@ -239,7 +252,7 @@ class Signal():
                                 window_length_samples: int = 1024,
                                 window_type='hann', overlap_percent=50,
                                 detrend=True, average='mean',
-                                scaling='power'):
+                                scaling='power spectral density'):
         """Sets all necessary parameters for the computation of the spectrum.
 
         Parameters
@@ -252,12 +265,13 @@ class Signal():
             algorithm, refer to
             `dsptoolbox._general_helpers._fractional_octave_smoothing()`.
             If smoothing is applied here, `Signal.get_spectrum()` returns
-            the smoothed spectrum as well.
-            Default: 0 (no smoothing).
+            the smoothed spectrum as well and `Signal.plot_magnitude()` plots
+            the smoothed version. Default: 0 (no smoothing).
         window_length_samples : int, optional
             Window size. Default: 1024.
-        window_type : str,optional
-            Choose type of window from the options in scipy.windows.
+        window_type : str, optional
+            Choose type of window. `scipy.signal.windows.get_window()` is used.
+            Pass a tuple if the window needs extra parameters.
             Default: `'hann'`.
         overlap_percent : float, optional
             Overlap in percent. Default: 50.
@@ -267,18 +281,29 @@ class Signal():
             Averaging method. Choose from `'mean'` or `'median'`.
             Default: `'mean'`.
         scaling : str, optional
-            Type of scaling. '`power'` or `'spectrum'`. Default: `'power'`.
+            Scaling for welch's method. Use `'power spectrum'`,
+            `'power spectral density'`, `'amplitude spectrum'` or
+            `'amplitude spectral density'`. Pass `None` to avoid any scaling.
+            See references for details about scaling. When method is set to
+            standard, no scaling is applied unless `'amplitude spectrum'` is
+            selected. Default: `'power spectral density'`.
+
+        References
+        ----------
+        - Heinzel, G., Rüdiger, A., & Schilling, R. (2002). Spectrum and
+          spectral density estimation by the Discrete Fourier transform (DFT),
+          including a comprehensive list of window functions and some new
+          at-top windows.
 
         """
         assert method in ('welch', 'standard'), \
             f'{method} is not a valid method. Use welch or standard'
-        if self.signal_type in ('h1', 'h2', 'h3'):
+        if self.signal_type in ('h1', 'h2', 'h3', 'rir', 'ir'):
             if method != 'standard':
                 method = 'standard'
-                warn(
-                    f'For a signal of type {self.signal_type} ' +
-                    'the spectrum has to be the standard one and not welch.' +
-                    ' This has been automatically changed.')
+                warn(f'For a signal of type {self.signal_type} ' +
+                     'the spectrum has to be the standard one and not welch.' +
+                     ' This has been automatically changed.')
         _new_spectrum_parameters = \
             dict(
                 method=method,
@@ -300,7 +325,7 @@ class Signal():
                 self._spectrum_parameters = _new_spectrum_parameters
                 self.__spectrum_state_update = True
 
-    def set_window(self, window):
+    def set_window(self, window: np.ndarray):
         """Sets the window used for the IR. It only works for
         `signal_type in ('ir', 'h1', 'h2', 'h3', 'rir')`.
 
@@ -314,8 +339,8 @@ class Signal():
         assert self.signal_type in valid_signal_types, \
             f'{self.signal_type} is not valid. Please set it to ir or ' +\
             'h1, h2, h3, rir'
-        assert len(window) == self.time_data.shape[0], \
-            f'{len(window)} does not match shape {self.time_data.shape}'
+        assert window.shape == self.time_data.shape, \
+            f'{window.shape} does not match shape {self.time_data.shape}'
         self.window = window
 
     def set_coherence(self, coherence: np.ndarray):
@@ -342,7 +367,7 @@ class Signal():
     def set_csm_parameters(self, window_length_samples: int = 1024,
                            window_type='hann', overlap_percent=75,
                            detrend=True, average='mean',
-                           scaling='power'):
+                           scaling='power spectral density'):
         """Sets all necessary parameters for the computation of the CSM.
 
         Parameters
@@ -357,7 +382,17 @@ class Signal():
             Averaging method. Choose from `'mean'` or `'median'`.
             Default: `'mean'`.
         scaling : str, optional
-            Type of scaling. '`power'` or `'spectrum'`. Default: `'power'`.
+            Scaling. Use `'power spectrum'`, `'power spectral density'`,
+            `'amplitude spectrum'` or `'amplitude spectral density'`. Pass
+            `None` to avoid any scaling. See references for details about
+            scaling. Default: `'power spectral density'`.
+
+        References
+        ----------
+        - Heinzel, G., Rüdiger, A., & Schilling, R. (2002). Spectrum and
+          spectral density estimation by the Discrete Fourier transform (DFT),
+          including a comprehensive list of window functions and some new
+          at-top windows.
 
         """
         _new_csm_parameters = \
@@ -390,17 +425,30 @@ class Signal():
 
         Parameters
         ----------
+        channel_number : int, optional
+            Channel for which to compute the spectrogram. Default: 0.
         window_length_samples : int, optional
             Window size. Default: 1024.
+        window_type : str, optional
+            Type of window to use. Default: `'hann'`.
         overlap_percent : float, optional
             Overlap in percent. Default: 50.
         detrend : bool, optional
-            Detrending (subtracting mean). Default: True.
+            Detrending (subtracting mean). Default: `True`.
         padding : bool, optional
             Padding signal in the beginning and end to center it.
             Default: True.
         scaling : bool, optional
-            Scaling or not after np.fft. Default: False.
+            When `True`, the output is scaled as an amplitude spectrum,
+            otherwise no scaling is applied. See references for details.
+            Default: `False`.
+
+        References
+        ----------
+        - Heinzel, G., Rüdiger, A., & Schilling, R. (2002). Spectrum and
+          spectral density estimation by the Discrete Fourier transform (DFT),
+          including a comprehensive list of window functions and some new
+          at-top windows.
 
         """
         _new_spectrogram_parameters = \
@@ -456,30 +504,26 @@ class Signal():
             'as the sampling rate'
         if not type(new_time_data) == np.ndarray:
             new_time_data = np.array(new_time_data)
-        assert len(new_time_data.shape) <= 2, \
-            f'{len(new_time_data.shape)} has ' +\
+        if new_time_data.ndim > 2:
+            new_time_data = new_time_data.squeeze()
+        assert new_time_data.ndim <= 2, \
+            f'{new_time_data.ndim} are ' +\
             'too many dimensions for time data. Dimensions should' +\
             ' be (time samples, channels)'
-        if len(new_time_data.shape) < 2:
+        if new_time_data.ndim < 2:
             new_time_data = new_time_data[..., None]
         if new_time_data.shape[1] > new_time_data.shape[0]:
             new_time_data = new_time_data.T
 
         diff = new_time_data.shape[0] - self.time_data.shape[0]
         if diff != 0:
-            if diff < 0:
-                txt = 'Padding'
-            else:
-                txt = 'Trimming'
+            txt = 'Padding' if diff < 0 else 'Trimming'
             if padding_trimming:
                 new_time_data = \
-                    _pad_trim(
-                        new_time_data,
-                        self.time_data.shape[0],
-                        axis=0, in_the_end=True)
-                warn(
-                    f'{txt} has been performed ' +
-                    'on the end of the new signal to match original one.')
+                    _pad_trim(new_time_data, self.time_data.shape[0],
+                              axis=0, in_the_end=True)
+                warn(f'{txt} has been performed ' +
+                     'on the end of the new signal to match original one.')
             else:
                 raise AttributeError(
                     f'{new_time_data.shape[0]} does not match ' +
@@ -559,7 +603,8 @@ class Signal():
         return new_sig
 
     # ======== Getters ========================================================
-    def get_spectrum(self, force_computation=False):
+    def get_spectrum(self, force_computation=False) \
+            -> tuple[np.ndarray, np.ndarray]:
         """Returns spectrum.
 
         Parameters
@@ -580,26 +625,26 @@ class Signal():
 
         if condition:
             if self._spectrum_parameters['method'] == 'welch':
-                spectrum = \
-                    np.zeros(
-                        (self.
-                         _spectrum_parameters
-                         ['window_length_samples'] // 2 + 1,
-                         self.number_of_channels), dtype='cfloat')
+                spectrum = np.zeros((self._spectrum_parameters
+                                     ['window_length_samples'] // 2 + 1,
+                                     self.number_of_channels), dtype='float')
                 for n in range(self.number_of_channels):
-                    spectrum[:, n] = \
-                        _welch(self.time_data[:, n],
-                               self.time_data[:, n],
-                               self.sampling_rate_hz,
-                               self._spectrum_parameters['window_type'],
-                               self.
-                               _spectrum_parameters['window_length_samples'],
-                               self._spectrum_parameters['overlap_percent'],
-                               self._spectrum_parameters['detrend'],
-                               self._spectrum_parameters['average'],
-                               self._spectrum_parameters['scaling'])
+                    spectrum[:, n] = _welch(
+                        self.time_data[:, n], self.time_data[:, n],
+                        self.sampling_rate_hz,
+                        self._spectrum_parameters['window_type'],
+                        self._spectrum_parameters['window_length_samples'],
+                        self._spectrum_parameters['overlap_percent'],
+                        self._spectrum_parameters['detrend'],
+                        self._spectrum_parameters['average'],
+                        self._spectrum_parameters['scaling'])
+                time_length = \
+                    self._spectrum_parameters['window_length_samples']
             elif self._spectrum_parameters['method'] == 'standard':
+                # Get spectrum
                 spectrum = np.fft.rfft(self.time_data, axis=0)
+
+                # Smoothing
                 if self._spectrum_parameters['smoothe'] != 0:
                     temp_abs = _fractional_octave_smoothing(
                         np.abs(spectrum), self._spectrum_parameters['smoothe'])
@@ -607,10 +652,15 @@ class Signal():
                         np.angle(spectrum),
                         self._spectrum_parameters['smoothe'])
                     spectrum = temp_abs*np.exp(1j*temp_phase)
+
+                # Length of signal for frequency vector and scaling
+                time_length = self.time_data.shape[0]
+                if self._spectrum_parameters['scaling'] \
+                        == 'amplitude spectrum':
+                    spectrum /= time_length
             self.spectrum = []
             self.spectrum.append(
-                np.fft.rfftfreq(
-                    spectrum.shape[0]*2 - 1, 1/self.sampling_rate_hz))
+                np.fft.rfftfreq(time_length, 1/self.sampling_rate_hz))
             self.spectrum.append(spectrum)
             spectrum_freqs = self.spectrum[0]
             self.__spectrum_state_update = False
@@ -618,9 +668,10 @@ class Signal():
             spectrum_freqs, spectrum = self.spectrum[0], self.spectrum[1]
         return spectrum_freqs.copy(), spectrum.copy()
 
-    def get_csm(self, force_computation=False):
+    def get_csm(self, force_computation=False) -> \
+            tuple[np.ndarray, np.ndarray]:
         """Get Cross spectral matrix for all channels with the shape
-        (frequencies, channels, channels)
+        (frequencies, channels, channels).
 
         Returns
         -------
@@ -637,22 +688,14 @@ class Signal():
             self.__csm_state_update
 
         if condition:
-            self.csm = _csm(self.time_data,
-                            self.sampling_rate_hz,
-                            window_length_samples=self.
-                            _csm_parameters['window_length_samples'],
-                            window_type=self._csm_parameters['window_type'],
-                            overlap_percent=self.
-                            _csm_parameters['overlap_percent'],
-                            detrend=self._csm_parameters['detrend'],
-                            average=self._csm_parameters['average'],
-                            scaling=self._csm_parameters['scaling'])
+            self.csm = _csm(self.time_data, self.sampling_rate_hz,
+                            **self._csm_parameters)
             self.__csm_state_update = False
-        f_csm, csm = self.csm[0], self.csm[1]
-        return f_csm, csm
+        return self.csm[0].copy(), self.csm[1].copy()
 
     def get_spectrogram(self, channel_number: int = 0,
-                        force_computation: bool = False):
+                        force_computation: bool = False) -> \
+            tuple[np.ndarray, np.ndarray, np.ndarray]:
         """Returns a matrix containing the STFT of a specific channel.
 
         Parameters
@@ -669,7 +712,7 @@ class Signal():
         f_hz : `np.ndarray`
             Frequency vector.
         spectrogram : `np.ndarray`
-            Complex spectrogram.
+            Complex spectrogram with shape (frequency, time).
 
         """
         condition = not hasattr(self, 'spectrogram') or force_computation or \
@@ -679,23 +722,21 @@ class Signal():
 
         if condition:
             self._spectrogram_parameters['channel_number'] = channel_number
-            self.spectrogram = \
-                _stft(
-                    self.time_data[:, channel_number],
-                    self.sampling_rate_hz,
-                    self._spectrogram_parameters['window_length_samples'],
-                    self._spectrogram_parameters['window_type'],
-                    self._spectrogram_parameters['overlap_percent'],
-                    self._spectrogram_parameters['detrend'],
-                    self._spectrogram_parameters['padding'],
-                    self._spectrogram_parameters['scaling']
-                    )
+            self.spectrogram = _stft(
+                self.time_data[:, channel_number],
+                self.sampling_rate_hz,
+                self._spectrogram_parameters['window_length_samples'],
+                self._spectrogram_parameters['window_type'],
+                self._spectrogram_parameters['overlap_percent'],
+                self._spectrogram_parameters['detrend'],
+                self._spectrogram_parameters['padding'],
+                self._spectrogram_parameters['scaling'])
             self.__spectrogram_state_update = False
         t_s, f_hz, spectrogram = \
             self.spectrogram[0], self.spectrogram[1], self.spectrogram[2]
         return t_s, f_hz, spectrogram
 
-    def get_coherence(self):
+    def get_coherence(self) -> tuple[np.ndarray, np.ndarray]:
         """Returns the coherence matrix.
 
         Returns
@@ -714,7 +755,7 @@ class Signal():
     # ======== Plots ==========================================================
     def plot_magnitude(self, range_hz=[20, 20e3], normalize: str = '1k',
                        range_db=None, smoothe: int = 0,
-                       show_info_box: bool = False, returns: bool = False):
+                       show_info_box: bool = False) -> tuple[Figure, Axes]:
         """Plots magnitude spectrum.
         Change parameters of spectrum with set_spectrum_parameters.
         NOTE: Smoothing is only applied on the plot data.
@@ -727,7 +768,9 @@ class Signal():
         normalize : str, optional
             Mode for normalization, supported are `'1k'` for normalization
             with value at frequency 1 kHz or `'max'` for normalization with
-            maximal value. Use `None` for no normalization. Default: `'1k'`.
+            maximal value. Use `None` for no normalization (only by the
+            sampling rate if standard method for spectrum is selected).
+            Default: `'1k'`.
         range_db : array-like with length 2, optional
             Range in dB for which to plot the magnitude response.
             Default: `None`.
@@ -738,16 +781,19 @@ class Signal():
             Plots a info box regarding spectrum parameters and plot parameters.
             If it is str, it overwrites the standard message.
             Default: `False`.
-        returns : bool, optional
-            When `True` figure and axis are returned. Default: `False`.
 
         Returns
         -------
-        fig, ax
-            Only returned if `returns=True`.
+        fig : `matplotlib.figure.Figure`
+            Figure.
+        ax : `matplotlib.axes.Axes`
+            Axes.
 
         """
         f, sp = self.get_spectrum()
+        if self._spectrum_parameters['method'] == 'standard' \
+                and normalize is None:
+            sp = sp/self.time_data.shape[0]*2
         f, mag_db = _get_normalized_spectrum(
             f=f,
             spectra=sp,
@@ -763,27 +809,30 @@ class Signal():
             txt += f"""\nSmoothing: {smoothe}"""
         else:
             txt = None
-        fig, ax = general_plot(f, mag_db, range_hz, ylabel='Magnitude / dB',
+        if normalize is not None:
+            if normalize == '1k':
+                y_extra = ' (normalized @ 1 kHz)'
+            elif normalize == 'max':
+                y_extra = ' (normalized @ peak)'
+        else:
+            y_extra = 'FS'
+        fig, ax = general_plot(f, mag_db, range_hz,
+                               ylabel='Magnitude / dB'+y_extra,
                                info_box=txt, returns=True,
                                labels=[f'Channel {n}' for n in
                                        range(self.number_of_channels)],
                                range_y=range_db)
-        if returns:
-            return fig, ax
+        return fig, ax
 
-    def plot_time(self, returns: bool = False):
+    def plot_time(self) -> tuple[Figure, Axes]:
         """Plots time signals.
-
-        Parameters
-        ----------
-        returns : bool, optional
-            When `True`, the plot's figure and axis are returned.
-            Default: `False`.
 
         Returns
         -------
-        fig, ax
-            Only returned if `returns=True`.
+        fig : `matplotlib.figure.Figure`
+            Figure.
+        ax : `matplotlib.axes.Axes`
+            Axes.
 
         """
         if not hasattr(self, 'time_vector_s'):
@@ -799,12 +848,11 @@ class Signal():
             mx = np.max(np.abs(self.time_data[:, n])) * 1.1
             if hasattr(self, 'window'):
                 ax[n].plot(self.time_vector_s,
-                           self.window * mx / 1.1, alpha=0.75)
+                           self.window[:, n] * mx / 1.1, alpha=0.75)
             ax[n].set_ylim([-mx, mx])
-        if returns:
-            return fig, ax
+        return fig, ax
 
-    def plot_group_delay(self, range_hz=[20, 20000], returns: bool = False):
+    def plot_group_delay(self, range_hz=[20, 20000]) -> tuple[Figure, Axes]:
         """Plots group delay of each channel.
         Only works if `signal_type in ('ir', 'h1', 'h2', 'h3', 'rir', 'chirp',
         'noise', 'dirac')`.
@@ -814,14 +862,13 @@ class Signal():
         range_hz : array-like with length 2, optional
             Range of frequencies for which to show group delay.
             Default: [20, 20e3].
-        returns : bool, optional
-            When `True`, the plot's figure and axis are returned.
-            Default: `False`.
 
         Returns
         -------
-        fig, ax
-            Only returned if `returns=True`.
+        fig : `matplotlib.figure.Figure`
+            Figure.
+        ax : `matplotlib.axes.Axes`
+            Axes.
 
         """
         valid_signal_types = (
@@ -839,12 +886,12 @@ class Signal():
             labels=[f'Channel {n}' for n in range(self.number_of_channels)],
             ylabel='Group delay / ms',
             returns=True)
-        if returns:
-            return fig, ax
+        return fig, ax
 
-    def plot_spectrogram(self, channel_number: int = 0, logfreqs: bool = True,
-                         returns: bool = False):
-        """Plots STFT matrix of the given channel.
+    def plot_spectrogram(self, channel_number: int = 0,
+                         logfreqs: bool = True) -> tuple[Figure, Axes]:
+        """Plots STFT matrix of the given channel. The levels in the plot can
+        go down until -400 dB.
 
         Parameters
         ----------
@@ -853,52 +900,50 @@ class Signal():
         logfreqs : bool, optional
             When `True`, frequency axis is plotted logarithmically.
             Default: `True`.
-        returns : bool, optional
-            When `True`, the plot's figure and axis are returned.
-            Default: `False`.
 
         Returns
         -------
-        fig, ax
-            Only returned if `returns=True`.
+        fig : `matplotlib.figure.Figure`
+            Figure.
+        ax : `matplotlib.axes.Axes`
+            Axes.
 
         """
         t, f, stft = self.get_spectrogram(channel_number)
-        epsilon = 10**(-100/10)
         ids = _find_nearest([20, 20000], f)
         if ids[0] == 0:
             ids[0] += 1
         f = f[ids[0]:ids[1]]
         stft = stft[ids[0]:ids[1], :]
-        stft_db = 20*np.log10(np.abs(stft)+epsilon)
+        stft_db = 20*np.log10(np.clip(np.abs(stft), 1e-20, None))
         stft_db = np.nan_to_num(stft_db, nan=np.min(stft_db))
+        if self._spectrogram_parameters['scaling']:
+            zlabel = 'dB (Pa$^2$/Hz)'
+        else:
+            zlabel = 'dB (No Scaling)'
         fig, ax = general_matrix_plot(
             matrix=stft_db, range_x=(t[0], t[-1]),
             range_y=(f[0], f[-1]), range_z=50,
-            xlabel='Time / s', ylabel='Frequency / Hz', zlabel='dB',
+            xlabel='Time / s', ylabel='Frequency / Hz',
+            zlabel=zlabel,
             xlog=False, ylog=logfreqs,
             colorbar=True, returns=True)
-        if returns:
-            return fig, ax
+        return fig, ax
 
-    def plot_coherence(self, returns: bool = False):
+    def plot_coherence(self) -> tuple[Figure, Axes]:
         """Plots coherence measurements if there are any.
-
-        Parameters
-        ----------
-        returns : bool, optional
-            When `True`, the plot's figure and axis are returned.
-            Default: `False`.
 
         Returns
         -------
-        fig, ax
-            Only returned if `returns=True`.
+        fig : `matplotlib.figure.Figure`
+            Figure.
+        ax : `matplotlib.axes.Axes`
+            Axes.
 
         """
-        assert hasattr(self, 'coherence'), \
-            'There is no coherence data saved in the Signal object'
-
+        if not hasattr(self, 'coherence'):
+            raise AttributeError('There is no coherence data saved in the ' +
+                                 'Signal object')
         f, coh = self.get_coherence()
         fig, ax = \
             general_subplots_line(
@@ -911,13 +956,11 @@ class Signal():
                          for n in range(self.number_of_channels)],
                 xlabels='Frequency / Hz',
                 range_y=[-0.1, 1.1],
-                returns=True
-                )
-        if returns:
-            return fig, ax
+                returns=True)
+        return fig, ax
 
-    def plot_phase(self, range_hz=[20, 20e3], unwrap: bool = False,
-                   returns: bool = False):
+    def plot_phase(self, range_hz=[20, 20e3], unwrap: bool = False) \
+            -> tuple[Figure, Axes]:
         """Plots phase of the frequency response, only available if the method
         for the spectrum parameters is not welch.
 
@@ -928,40 +971,35 @@ class Signal():
             Default: [20, 20e3].
         unwrap : bool, optional
             When `True`, the unwrapped phase is plotted. Default: `False`.
-        returns : bool, optional
-            When `True`, the plot's figure and axis are returned.
-            Default: `False`.
 
         Returns
         -------
-        fig, ax
-            Only returned if `returns=True`.
+        fig : `matplotlib.figure.Figure`
+            Figure.
+        ax : `matplotlib.axes.Axes`
+            Axes.
 
         """
-        if self._spectrum_parameters['method'] == 'welch':
-            raise AttributeError(
-                'Phase cannot be plotted since the spectrum is ' +
-                'welch. Please change spectrum parameters method to ' +
-                'standard')
-        else:
-            f, sp = self.get_spectrum()
-            ph = np.angle(sp)
-            if unwrap:
-                ph = np.unwrap(ph, axis=0)
-            fig, ax = general_plot(
-                x=f,
-                matrix=ph,
-                range_x=range_hz,
-                labels=[f'Channel {n}'
-                        for n in range(self.number_of_channels)],
-                ylabel='Phase / rad',
-                returns=True
-            )
-            if returns:
-                return fig, ax
+        assert self._spectrum_parameters['method'] == 'standard', \
+            'Phase cannot be plotted since the spectrum is ' +\
+            'welch. Please change spectrum parameters method to ' +\
+            'standard'
+        f, sp = self.get_spectrum()
+        ph = np.angle(sp)
+        if unwrap:
+            ph = np.unwrap(ph, axis=0)
+        fig, ax = general_plot(
+            x=f,
+            matrix=ph,
+            range_x=range_hz,
+            labels=[f'Channel {n}'
+                    for n in range(self.number_of_channels)],
+            ylabel='Phase / rad',
+            returns=True)
+        return fig, ax
 
     def plot_csm(self, range_hz=[20, 20e3], logx: bool = True,
-                 with_phase: bool = True, returns: bool = False):
+                 with_phase: bool = True) -> tuple[Figure, Axes]:
         """Plots the cross spectral matrix of the multichannel signal.
 
         Parameters
@@ -972,18 +1010,18 @@ class Signal():
             Logarithmic x axis. Default: `True`.
         with_phase : bool, optional
             When `True`, the unwrapped phase is also plotted. Default: `True`.
-        returns : bool, optional
-            Gives back figure and axis objects. Default: `False`.
 
         Returns
         -------
-        fig, ax if `returns = True`.
+        fig : `matplotlib.figure.Figure`
+            Figure.
+        ax : `matplotlib.axes.Axes`
+            Axes.
 
         """
         f, csm = self.get_csm()
         fig, ax = _csm_plot(f, csm, range_hz, logx, with_phase, returns=True)
-        if returns:
-            return fig, ax
+        return fig, ax
 
     # ======== Saving and copy ================================================
     def save_signal(self, path: str = 'signal', mode: str = 'wav'):
@@ -1028,7 +1066,7 @@ class Signal():
         """
         return deepcopy(self)
 
-    def _get_metadata_string(self):
+    def _get_metadata_string(self) -> str:
         """Helper for creating a string containing all signal info.
 
         """
@@ -1052,13 +1090,19 @@ class Signal():
         print(self._get_metadata_string())
 
     # ======== Streaming methods ==============================================
-    def set_streaming_position(self, position_samples: int = 0):
+    def set_streaming_position(self, position_samples: int = 0) -> bool:
         """Sets the start position for streaming.
 
         Parameters
         ----------
         position_samples : int, optional
             Position (in samples) for starting the stream. Default: 0.
+
+        Returns
+        -------
+        stop_flag : bool
+            When `True`, all of the available time samples in the signal have
+            been used.
 
         """
         stop_flag = False
@@ -1069,7 +1113,8 @@ class Signal():
         self.streaming_position = position_samples
         return stop_flag
 
-    def stream_samples(self, blocksize_samples: int, signal_mode: bool = True):
+    def stream_samples(self, blocksize_samples: int,
+                       signal_mode: bool = True):
         """Returns block of samples to be reproduced in an audio stream. Use
         `set_streaming_position` to define start of streaming.
 
