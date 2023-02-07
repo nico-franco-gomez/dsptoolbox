@@ -12,7 +12,7 @@ Classes:
 - `LineGrid()`
 - `MicArray()`
 - `SteeringVector()`
-- `BeamformerFrequency()`
+- `BeamformerFrequencyDAS()`
 - `BeamformerTime()`
 - `Source()`
 
