@@ -247,7 +247,8 @@ def _minimum_phase(magnitude: np.ndarray, unwrapped: bool = True):
     """
     if np.iscomplexobj(magnitude):
         magnitude = np.abs(magnitude)
-    minimum_phase = -np.imag(hilbert(np.log(magnitude)))
+    minimum_phase = -np.imag(hilbert(np.log(np.clip(
+        magnitude, a_min=1e-25, a_max=None))))
     if not unwrapped:
         minimum_phase = np.angle(np.exp(1j*minimum_phase))
     return minimum_phase

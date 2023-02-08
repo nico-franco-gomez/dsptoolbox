@@ -8,6 +8,7 @@ under a same category.
 import numpy as np
 import pickle
 from scipy.signal import resample_poly, convolve
+# from scipy.signal import minimum_phase as min_phase_scipy
 from scipy.special import iv as bessel_first_mod
 from fractions import Fraction
 from warnings import warn
@@ -17,13 +18,13 @@ from dsptoolbox.classes.multibandsignal import MultiBandSignal
 from dsptoolbox.classes.filterbank import FilterBank
 from dsptoolbox.classes.filter_class import Filter
 from dsptoolbox._standard import (_latency,
-                                  _group_delay_direct,
-                                  _minimum_phase,
+                                  # _group_delay_direct,
+                                  # _minimum_phase,  # replaced by scipy
                                   _center_frequencies_fractional_octaves_iec,
                                   _exact_center_frequencies_fractional_octaves,
                                   _kaiser_window_beta,
                                   _indexes_above_threshold_dbfs)
-from dsptoolbox.classes._filter import _group_delay_filter
+# from dsptoolbox.classes._filter import _group_delay_filter
 from dsptoolbox._general_helpers import _pad_trim, _normalize, _fade
 from dsptoolbox.transfer_functions import (
     min_phase_from_mag, lin_phase_from_mag)
@@ -32,7 +33,9 @@ from dsptoolbox.transfer_functions import (
 def latency(in1: Signal, in2: Signal = None) -> np.ndarray:
     """Computes latency between two signals using the correlation method.
     If there is no second signal, the latency between the first and the other
-    channels is computed.
+    channels is computed. `in1` is to be understood as a the delayed version
+    of `in2` for the latency to be positive. The other way around will give
+    the same result but negative.
 
     Parameters
     ----------
@@ -60,134 +63,6 @@ def latency(in1: Signal, in2: Signal = None) -> np.ndarray:
             latency_per_channel_samples[n] = \
                 _latency(in1.time_data[:, 0], in1.time_data[:, n+1])
     return latency_per_channel_samples
-
-
-def group_delay(signal: Signal, method='matlab') \
-        -> tuple[np.ndarray, np.ndarray]:
-    """Computation of group delay.
-
-    Parameters
-    ----------
-    signal : Signal
-        Signal for which to compute group delay.
-    method : str, optional
-        `'direct'` uses gradient with unwrapped phase. `'matlab'` uses
-        this implementation:
-        https://www.dsprelated.com/freebooks/filters/Phase_Group_Delay.html.
-        Default: `'matlab'`.
-
-    Returns
-    -------
-    freqs : `np.ndarray`
-        Frequency vector in Hz.
-    group_delays : `np.ndarray`
-        Matrix containing group delays in seconds with shape (gd, channel).
-
-    """
-    method = method.lower()
-    assert method in ('direct', 'matlab'), \
-        f'{method} is not valid. Use direct or matlab'
-
-    signal.set_spectrum_parameters('standard')
-    f, sp = signal.get_spectrum()
-    if method == 'direct':
-        group_delays = np.zeros((sp.shape[0], sp.shape[1]))
-        for n in range(signal.number_of_channels):
-            group_delays[:, n] = _group_delay_direct(sp[:, n], f[1]-f[0])
-    else:
-        group_delays = \
-            np.zeros(
-                (signal.time_data.shape[0]//2+1,
-                 signal.time_data.shape[1]))
-        for n in range(signal.number_of_channels):
-            b = signal.time_data[:, n].copy()
-            a = [1]
-            _, group_delays[:, n] = \
-                _group_delay_filter(
-                    [b, a],
-                    len(b)//2+1,
-                    signal.sampling_rate_hz)
-    return f, group_delays
-
-
-def minimum_phase(signal: Signal) -> tuple[np.ndarray, np.ndarray]:
-    """Gives back a matrix containing the minimal phase for every channel.
-
-    Parameters
-    ----------
-    signal : Signal
-        Signal for which to compute the minimal phase.
-
-    Returns
-    -------
-    f : `np.ndarray`
-        Frequency vector.
-    min_phases : `np.ndarray`
-        Minimal phases as matrix with shape (phase, channel).
-
-    """
-    assert signal.signal_type in ('rir', 'ir', 'h1', 'h2', 'h3'), \
-        'Signal type must be rir or ir'
-    signal.set_spectrum_parameters('standard')
-    f, sp = signal.get_spectrum()
-
-    min_phases = np.zeros((sp.shape[0], sp.shape[1]), dtype='float')
-    for n in range(signal.number_of_channels):
-        min_phases[:, n] = _minimum_phase(np.abs(sp[:, n]), unwrapped=False)
-    return f, min_phases
-
-
-def minimum_group_delay(signal: Signal) -> tuple[np.ndarray, np.ndarray]:
-    """Computes minimum group delay of given signal.
-
-    Parameters
-    ----------
-    signal : Signal
-        Signal object for which to compute minimal group delay.
-
-    Returns
-    -------
-    f : `np.ndarray`
-        Frequency vector.
-    min_gd : `np.ndarray`
-        Minimal group delays in seconds as matrix with shape (gd, channel).
-
-    References
-    ----------
-    - https://www.roomeqwizard.com/help/help_en-GB/html/minimumphase.html
-
-    """
-    f, min_phases = minimum_phase(signal)
-    min_gd = np.zeros_like(min_phases)
-    for n in range(signal.number_of_channels):
-        min_gd[:, n] = _group_delay_direct(min_phases[:, n], f[1]-f[0])
-    return f, min_gd
-
-
-def excess_group_delay(signal: Signal) -> tuple[np.ndarray, np.ndarray]:
-    """Computes excess group delay.
-
-    Parameters
-    ----------
-    signal : Signal
-        Signal object for which to compute minimal group delay.
-
-    Returns
-    -------
-    f : `np.ndarray`
-        Frequency vector.
-    ex_gd : `np.ndarray`
-        Excess group delays in seconds with shape (excess_gd, channel).
-
-    References
-    ----------
-    - https://www.roomeqwizard.com/help/help_en-GB/html/minimumphase.html
-
-    """
-    f, min_gd = minimum_group_delay(signal)
-    f, gd = group_delay(signal)
-    ex_gd = gd - min_gd
-    return f, ex_gd
 
 
 def pad_trim(signal: Signal | MultiBandSignal, desired_length_samples: int,

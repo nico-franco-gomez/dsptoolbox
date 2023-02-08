@@ -699,7 +699,7 @@ class TestMultiBandSignal():
         mbs.show_info()
         mbs.copy()
 
-        with pytest.raises(AssertionError):
+        with pytest.raises(IndexError):
             mbs.remove_band(4)
         with pytest.raises(AssertionError):
             mbs.swap_bands([1, 1])
