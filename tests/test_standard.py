@@ -37,60 +37,6 @@ class TestStandardModule():
         value = dsp.latency(s)
         assert np.all(np.abs(value) == delay_samples)
 
-    def test_group_delay(self):
-        # Check only that some result is produced, validity should be checked
-        # somewhere else
-        td = self.audio_multi.time_data
-        td = td[:10_000, :]
-        s = dsp.Signal(None, td, self.fs)
-        dsp.group_delay(s, method='matlab')
-        dsp.group_delay(s, method='direct')
-
-        # Single-channel plausibility check
-        dsp.group_delay(s.get_channels(0))
-
-    def test_minimum_phase(self):
-        # Check only that some result is produced, validity should be checked
-        # somewhere else
-        td = self.audio_multi.time_data
-        td = td[:10_000, :]
-        # Only works for some signal types
-        s = dsp.Signal(None, td, self.fs, signal_type='rir')
-        dsp.minimum_phase(s)
-        with pytest.raises(AssertionError):
-            s1 = dsp.Signal(None, td, self.fs)
-            dsp.minimum_phase(s1)
-        # Single-channel plausibility check
-        dsp.minimum_phase(s.get_channels(0))
-
-    def test_minimum_group_delay(self):
-        # Check only that some result is produced, validity should be checked
-        # somewhere else
-        td = self.audio_multi.time_data
-        td = td[:10_000, :]
-        # Only works for some signal types
-        s = dsp.Signal(None, td, self.fs, signal_type='rir')
-        dsp.minimum_group_delay(s)
-        with pytest.raises(AssertionError):
-            s1 = dsp.Signal(None, td, self.fs)
-            dsp.minimum_group_delay(s1)
-        # Single-channel plausibility check
-        dsp.minimum_group_delay(s.get_channels(0))
-
-    def test_excess_group_delay(self):
-        # Check only that some result is produced, validity should be checked
-        # somewhere else
-        td = self.audio_multi.time_data
-        td = td[:10_000, :]
-        # Only works for some signal types
-        s = dsp.Signal(None, td, self.fs, signal_type='rir')
-        dsp.excess_group_delay(s)
-        with pytest.raises(AssertionError):
-            s1 = dsp.Signal(None, td, self.fs)
-            dsp.excess_group_delay(s1)
-        # Single-channel plausibility check
-        dsp.excess_group_delay(s.get_channels(0))
-
     def test_pad_trim(self):
         # Check for signal: Trim at the end
         trim_length = 40_000

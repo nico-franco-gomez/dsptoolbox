@@ -1,6 +1,5 @@
 from .standard_functions import (
-    latency, group_delay, minimum_phase, minimum_group_delay,
-    excess_group_delay, merge_signals, merge_filterbanks, pad_trim,
+    latency, merge_signals, merge_filterbanks, pad_trim,
     fractional_delay, fractional_octave_frequencies, activity_detector, fade,
     ir_to_filter, normalize, true_peak_level, resample, load_pkl_object,
     erb_frequencies
@@ -22,14 +21,13 @@ __all__ = [
 
     # Functions in standard module
     'latency', 'pad_trim', 'fade', 'merge_signals', 'merge_filterbanks',
-    'group_delay', 'resample', 'activity_detector', 'normalize',
+    'resample', 'activity_detector', 'normalize',
     'fractional_delay', 'true_peak_level', 'ir_to_filter', 'erb_frequencies',
-    'load_pkl_object', 'minimum_phase', 'minimum_group_delay',
-    'excess_group_delay', 'fractional_octave_frequencies',
+    'load_pkl_object', 'fractional_octave_frequencies',
 
     # Modules
     'transfer_functions', 'distances', 'room_acoustics', 'plots', 'generators',
     'filterbanks', 'special', 'audio_io', 'beamforming',
 ]
 
-__version__ = '0.2.0'
+__version__ = '0.2.1'

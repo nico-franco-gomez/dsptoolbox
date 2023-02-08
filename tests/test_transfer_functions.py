@@ -1,5 +1,6 @@
 import dsptoolbox as dsp
 from os.path import join
+import pytest
 
 
 class TestTransferFunctionsModule():
@@ -84,3 +85,70 @@ class TestTransferFunctionsModule():
         f, sp = self.y_st.get_spectrum()
         dsp.transfer_functions.lin_phase_from_mag(
             sp, self.y_st.sampling_rate_hz, group_delay_ms='minimum')
+
+    def test_group_delay(self):
+        ir = dsp.transfer_functions.spectral_deconvolve(
+            self.y_st, self.x, mode='regularized', start_stop_hz=None,
+            threshold_db=-30, padding=False, keep_original_length=False)
+        ir = dsp.transfer_functions.window_ir(
+            ir, window_type='hann', exp2_trim=12, at_start=True)
+        # Check only that some result is produced, validity should be checked
+        # somewhere else
+        dsp.transfer_functions.group_delay(ir, method='matlab')
+        dsp.transfer_functions.group_delay(ir, method='direct')
+
+        # Single-channel plausibility check
+        dsp.transfer_functions.group_delay(ir.get_channels(0))
+
+    def test_minimum_phase(self):
+        ir = dsp.transfer_functions.spectral_deconvolve(
+            self.y_st, self.x, mode='regularized', start_stop_hz=None,
+            threshold_db=-30, padding=False, keep_original_length=False)
+        ir = dsp.transfer_functions.window_ir(
+            ir, window_type='hann', exp2_trim=12, at_start=True)
+        # Check only that some result is produced, validity should be checked
+        # somewhere else
+        # Only works for some signal types
+        dsp.transfer_functions.minimum_phase(ir)
+        with pytest.raises(AssertionError):
+            s1 = dsp.Signal(None, ir.time_data, ir.sampling_rate_hz)
+            dsp.transfer_functions.minimum_phase(s1)
+        # Single-channel plausibility check
+        dsp.transfer_functions.minimum_phase(ir.get_channels(0))
+
+    def test_minimum_group_delay(self):
+        ir = dsp.transfer_functions.spectral_deconvolve(
+            self.y_st, self.x, mode='regularized', start_stop_hz=None,
+            threshold_db=-30, padding=False, keep_original_length=False)
+        ir = dsp.transfer_functions.window_ir(
+            ir, window_type='hann', exp2_trim=12, at_start=True)
+        # Check only that some result is produced, validity should be checked
+        # somewhere else
+        # Only works for some signal types
+        dsp.transfer_functions.minimum_group_delay(ir)
+        with pytest.raises(AssertionError):
+            s1 = dsp.Signal(None, ir.time_data, ir.sampling_rate_hz)
+            dsp.transfer_functions.minimum_group_delay(s1)
+        # Single-channel plausibility check
+        dsp.transfer_functions.minimum_group_delay(ir.get_channels(0))
+
+    def test_excess_group_delay(self):
+        ir = dsp.transfer_functions.spectral_deconvolve(
+            self.y_st, self.x, mode='regularized', start_stop_hz=None,
+            threshold_db=-30, padding=False, keep_original_length=False)
+        ir = dsp.transfer_functions.window_ir(
+            ir, window_type='hann', exp2_trim=12, at_start=True)
+        # Check only that some result is produced, validity should be checked
+        # somewhere else
+        # Only works for some signal types
+        dsp.transfer_functions.excess_group_delay(ir)
+        with pytest.raises(AssertionError):
+            s1 = dsp.Signal(None, ir.time_data, ir.sampling_rate_hz)
+            dsp.transfer_functions.excess_group_delay(s1)
+        # Single-channel plausibility check
+        dsp.transfer_functions.excess_group_delay(ir.get_channels(0))
+
+    def test_min_phase_ir(self):
+        # Only functionality, computation is done using scipy's minimum phase
+        s = dsp.Signal(join('examples', 'data', 'rir.wav'), signal_type='rir')
+        dsp.transfer_functions.min_phase_ir(s)

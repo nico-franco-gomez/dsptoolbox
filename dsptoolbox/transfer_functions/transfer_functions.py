@@ -2,12 +2,14 @@
 Methods used for acquiring and windowing transfer functions
 """
 import numpy as np
+from scipy.signal import minimum_phase as min_phase_scipy
 from dsptoolbox.classes.signal_class import Signal
 from dsptoolbox._general_helpers import (_find_frequencies_above_threshold)
 from ._transfer_functions import (_spectral_deconvolve,
                                   _window_this_ir)
 from dsptoolbox._standard import (
     _welch, _minimum_phase, _group_delay_direct, _pad_trim)
+from dsptoolbox.classes._filter import _group_delay_filter
 
 
 def spectral_deconvolve(num: Signal, denum: Signal,
@@ -324,8 +326,8 @@ def spectral_average(signal: Signal) -> Signal:
 
 def min_phase_from_mag(spectrum: np.ndarray, sampling_rate_hz: int,
                        signal_type: str = 'ir'):
-    """Returns a minimal phase signal from a magnitude spectrum using
-    the hilbert transform.
+    """Returns a minimum-phase signal from a magnitude spectrum using
+    the discrete hilbert transform.
 
     Parameters
     ----------
@@ -339,7 +341,7 @@ def min_phase_from_mag(spectrum: np.ndarray, sampling_rate_hz: int,
     Returns
     -------
     sig_min_phase : `Signal`
-        Signal with same magnitude spectrum but minimal phase.
+        Signal with same magnitude spectrum but minimum phase.
 
     References
     ----------
@@ -446,3 +448,163 @@ def lin_phase_from_mag(spectrum: np.ndarray, sampling_rate_hz: int,
         None, time_data=time_data,
         sampling_rate_hz=sampling_rate_hz, signal_type=signal_type)
     return sig_lin_phase
+
+
+def min_phase_ir(sig: Signal):
+    """Returns same IR with minimum phase. The output is always padded to
+    keep the length of the original IR.
+
+    Parameters
+    ----------
+    sig : `Signal`
+        IR for which to compute minimum phase IR.
+
+    Returns
+    -------
+    min_phase_sig : `Signal`
+        Minimum-phase IR.
+
+    """
+    assert sig.signal_type in ('rir', 'ir'), \
+        'Signal type must be either rir or ir'
+    new_time_data = np.zeros_like(sig.time_data)
+
+    for n in range(sig.number_of_channels):
+        temp = min_phase_scipy(
+            sig.time_data[:, n], method='homomorphic', n_fft=None)
+        new_time_data[:, n] = _pad_trim(temp, new_time_data.shape[0])
+    min_phase_sig = sig.copy()
+    min_phase_sig.time_data = new_time_data
+    return min_phase_sig
+
+
+def group_delay(signal: Signal, method='matlab') \
+        -> tuple[np.ndarray, np.ndarray]:
+    """Computes and returns group delay.
+
+    Parameters
+    ----------
+    signal : Signal
+        Signal for which to compute group delay.
+    method : str, optional
+        `'direct'` uses gradient with unwrapped phase. `'matlab'` uses
+        this implementation:
+        https://www.dsprelated.com/freebooks/filters/Phase_Group_Delay.html.
+        Default: `'matlab'`.
+
+    Returns
+    -------
+    freqs : `np.ndarray`
+        Frequency vector in Hz.
+    group_delays : `np.ndarray`
+        Matrix containing group delays in seconds with shape (gd, channel).
+
+    """
+    method = method.lower()
+    assert method in ('direct', 'matlab'), \
+        f'{method} is not valid. Use direct or matlab'
+
+    signal.set_spectrum_parameters('standard')
+    f, sp = signal.get_spectrum()
+    if method == 'direct':
+        group_delays = np.zeros((sp.shape[0], sp.shape[1]))
+        for n in range(signal.number_of_channels):
+            group_delays[:, n] = _group_delay_direct(sp[:, n], f[1]-f[0])
+    else:
+        group_delays = \
+            np.zeros(
+                (signal.time_data.shape[0]//2+1,
+                 signal.time_data.shape[1]))
+        for n in range(signal.number_of_channels):
+            b = signal.time_data[:, n].copy()
+            a = [1]
+            _, group_delays[:, n] = _group_delay_filter(
+                [b, a], len(b)//2+1, signal.sampling_rate_hz)
+    return f, group_delays
+
+
+def minimum_phase(signal: Signal) -> tuple[np.ndarray, np.ndarray]:
+    """Gives back a matrix containing the minimum phase for every channel. The
+    original length is of the input is kept.
+
+    Parameters
+    ----------
+    signal : `Signal`
+        IR for which to compute the minimum phase.
+
+    Returns
+    -------
+    f : `np.ndarray`
+        Frequency vector.
+    min_phases : `np.ndarray`
+        Minimum phases as matrix with shape (phase, channel).
+
+    """
+    assert signal.signal_type in ('rir', 'ir', 'h1', 'h2', 'h3'), \
+        'Signal type must be rir or ir'
+    f = np.fft.rfftfreq(signal.time_data.shape[0], d=1/signal.sampling_rate_hz)
+
+    min_phases = np.zeros((len(f), signal.number_of_channels), dtype='float')
+    for n in range(signal.number_of_channels):
+        temp = min_phase_scipy(
+            signal.time_data[:, n], method='homomorphic', n_fft=None)
+        min_phases[:, n] = np.angle(np.fft.rfft(
+            _pad_trim(temp, signal.time_data.shape[0])))
+    return f, min_phases
+
+
+def minimum_group_delay(signal: Signal) -> tuple[np.ndarray, np.ndarray]:
+    """Computes minimum group delay of given IR.
+
+    Parameters
+    ----------
+    signal : `Signal`
+        IR for which to compute minimal group delay.
+
+    Returns
+    -------
+    f : `np.ndarray`
+        Frequency vector.
+    min_gd : `np.ndarray`
+        Minimum group delays in seconds as matrix with shape (gd, channel).
+
+    References
+    ----------
+    - https://www.roomeqwizard.com/help/help_en-GB/html/minimumphase.html
+
+    """
+    assert signal.signal_type in ('rir', 'ir'), \
+        'Only valid for rir or ir'
+    f, min_phases = minimum_phase(signal)
+    min_gd = np.zeros_like(min_phases)
+    for n in range(signal.number_of_channels):
+        min_gd[:, n] = _group_delay_direct(min_phases[:, n], f[1]-f[0])
+    return f, min_gd
+
+
+def excess_group_delay(signal: Signal) -> tuple[np.ndarray, np.ndarray]:
+    """Computes excess group delay of an IR.
+
+    Parameters
+    ----------
+    signal : `Signal`
+        IR for which to compute minimal group delay.
+
+    Returns
+    -------
+    f : `np.ndarray`
+        Frequency vector.
+    ex_gd : `np.ndarray`
+        Excess group delays in seconds with shape (excess_gd, channel).
+
+    References
+    ----------
+    - https://www.roomeqwizard.com/help/help_en-GB/html/minimumphase.html
+
+    """
+    assert signal.signal_type in ('rir', 'ir'), \
+        'Only valid for rir or ir'
+    f, min_gd = minimum_group_delay(signal)
+    f, gd = group_delay(signal)
+    ex_gd = gd - min_gd
+    return f, ex_gd

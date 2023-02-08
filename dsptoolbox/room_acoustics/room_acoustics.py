@@ -6,7 +6,7 @@ from scipy.signal import find_peaks, convolve
 from warnings import warn
 
 from dsptoolbox.classes import Signal, MultiBandSignal, Filter
-from dsptoolbox.standard_functions import group_delay
+from dsptoolbox.transfer_functions import group_delay
 from ._room_acoustics import (_reverb,
                               _complex_mode_identification,
                               _sum_magnitude_spectra,

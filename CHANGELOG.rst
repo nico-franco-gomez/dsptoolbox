@@ -14,7 +14,7 @@ adheres to `Semantic Versioning <http://semver.org/spec/v2.0.0.html>`_.
 - Validation for results from tests in every module (so far many tests are
   only regarding functionality)
 
-`0.2.0 <https://pypi.org/project/dsptoolbox/>`_ - 2023-02-07
+`0.2.1 <https://pypi.org/project/dsptoolbox/0.2.1>`_ - 2023-02-08
 ---------------------
 
 Added
@@ -44,6 +44,7 @@ Misc
 - change to warning instead of assertion error after not passing the COLA condition
   for stft, welch or csm
 - optimized computation of cross-spectral matrix
+- relocated some functions from standard to transfer functions module
 
 `0.1.1 <https://pypi.org/project/dsptoolbox/0.1.1/>`_ - 2023-01-20
 ---------------------
