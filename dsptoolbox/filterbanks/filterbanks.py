@@ -36,33 +36,31 @@ def linkwitz_riley_crossovers(crossover_frequencies_hz, order,
 
 
 def reconstructing_fractional_octave_bands(
-        num_fractions: int = 1, frequency_range_hz=[63, 16000],
+        octave_fraction: int = 1, frequency_range_hz=[63, 16000],
         overlap: float = 1, slope: int = 0, n_samples: int = 2**11,
         sampling_rate_hz: int = None) -> FilterBank:
-    """Create and/or apply an amplitude preserving fractional octave filter
-    bank. This implementation is taken directly from the pyfar package.
-    See references for more information about it.
+    """Create a perfect reconstruction filter bank with linear-phase
+    characteristics. According to (Antoni J., 2010). This implementation is
+    taken from the pyfar package. See references for more information about it.
 
     Parameters
     ----------
-    num_fractions : int, optional
-        Octave fraction, e.g., ``3`` for third-octave bands. The default is
-        ``1``.
+    octave_fraction : int, optional
+        Octave fraction used to define bandwidth. Default: 1.
     frequency_range_hz : tuple, optional
-        Frequency range for fractional octave in Hz. The default is
-        ``(63, 16000)``
-    overlap : float
+        Frequency range in Hz. Default:[ 63, 16e3].
+    overlap : float, optional
         Band overlap of the filter slopes between 0 and 1. Smaller values yield
-        wider pass-bands and steeper filter slopes. The default is ``1``.
+        wider pass-bands and steeper filter slopes. Default: 1.
     slope : int, optional
         Number > 0 that defines the width and steepness of the filter slopes.
-        Larger values yield wider pass-bands and steeper filter slopes. The
-        default is ``0``.
+        Larger values yield wider pass-bands and steeper filter slopes.
+        Default: 0.
     n_samples : int, optional
-        Length of the filter in samples. Longer filters yield more exact
-        filters. The default is ``2**11``.
+        Length of the filter in samples. Longer filters are more precise.
+        Default: 2**11 = 2048.
     sampling_rate : int
-        Sampling frequency in Hz. The default is ``None``.
+        Sampling frequency in Hz. Default: `None`.
 
     Returns
     -------
@@ -71,7 +69,9 @@ def reconstructing_fractional_octave_bands(
 
     References
     ----------
-    - https://pubmed.ncbi.nlm.nih.gov/20136211/
+    - Antoni J. Orthogonal-like fractional-octave-band filters. J Acoust Soc
+      Am. 2010 Feb;127(2):884-95. doi: 10.1121/1.3273888. PMID: 20136211.
+      https://pubmed.ncbi.nlm.nih.gov/20136211/
     - https://github.com/pyfar/pyfar
 
     """
@@ -87,12 +87,12 @@ def reconstructing_fractional_octave_bands(
     if not isinstance(slope, int) or slope < 0:
         raise ValueError("slope must be a positive integer.")
 
-    # number of frequency bins
-    n_bins = int(n_samples // 2 + 1)
-
     # fractional octave frequencies
     _, f_m, f_cut_off = fractional_octave_frequencies(
-        num_fractions, frequency_range_hz, return_cutoff=True)
+        octave_fraction, frequency_range_hz, return_cutoff=True)
+
+    # number of frequency bins
+    n_bins = int(n_samples // 2 + 1)
 
     # discard fractional octaves, if the center frequency exceeds
     # half the sampling rate
@@ -102,12 +102,12 @@ def reconstructing_fractional_octave_bands(
 
     # DFT lines of the lower cut-off and center frequency as in
     # Antoni, Eq. (14)
-    k_1 = \
-        np.round(n_samples * f_cut_off[0][f_id] / sampling_rate_hz).astype(int)
-    k_m = \
-        np.round(n_samples * f_m[f_id] / sampling_rate_hz).astype(int)
-    k_2 = \
-        np.round(n_samples * f_cut_off[1][f_id] / sampling_rate_hz).astype(int)
+    k_1 = np.round(
+        n_samples * f_cut_off[0][f_id] / sampling_rate_hz).astype(int)
+    k_m = np.round(
+        n_samples * f_m[f_id] / sampling_rate_hz).astype(int)
+    k_2 = np.round(
+        n_samples * f_cut_off[1][f_id] / sampling_rate_hz).astype(int)
 
     # overlap in samples (symmetrical around the cut-off frequencies)
     P = np.round(overlap / 2 * (k_2 - k_m)).astype(int)
@@ -182,17 +182,16 @@ def auditory_filters_gammatone(frequency_range_hz=[20, 20000],
 
     Parameters
     ----------
-    frequency_range_hz : array-like
+    frequency_range_hz : array-like, optional
         The upper and lower frequency in Hz between which the filter bank is
         constructed. Values must be larger than 0 and not exceed half the
-        sampling rate.
-    resolution : number
+        sampling rate. Default: [20, 20e3].
+    resolution : number, optional
         The frequency resolution of the filter bands in equivalent rectangular
         bandwidth (ERB) units. The bands of the filter bank are distributed
-        linearly on the ERB scale. The default value of ``1`` results in one
-        filter band per ERB. A value of ``0.5`` would result in two filter
-        bands per ERB.
-    sampling_rate_hz : int, optional
+        linearly on the ERB scale. The default value of 1 results in one
+        filter band per ERB. Default: 1.
+    sampling_rate_hz : int
         The sampling rate of the filter bank in Hz. Default: `None`.
 
     Returns

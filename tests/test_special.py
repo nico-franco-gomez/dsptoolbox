@@ -1,6 +1,7 @@
 import dsptoolbox as dsp
 import pytest
 from os.path import join
+from numpy import linspace
 
 
 class TestSpecialModule():
@@ -33,6 +34,16 @@ class TestSpecialModule():
             dsp.special.log_mel_spectrogram(
                 self.speech, range_hz=[20, 30e3], n_bands=10,
                 generate_plot=False, stft_parameters=None)
+
+    def test_mel_filters(self):
+        # Only functionality
+        f = linspace(0, 24000, 2048)
+        dsp.special.mel_filterbank(
+            f_hz=f, range_hz=None, n_bands=30, normalize=False)
+        dsp.special.mel_filterbank(
+            f_hz=f, range_hz=[1e3, 5e3], n_bands=10, normalize=False)
+        dsp.special.mel_filterbank(
+            f_hz=f, range_hz=None, n_bands=30, normalize=True)
 
     def test_plot_waterfall(self):
         # Only functionality

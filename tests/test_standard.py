@@ -1,6 +1,7 @@
 import pytest
 import dsptoolbox as dsp
 import numpy as np
+import os
 
 
 class TestStandardModule():
@@ -175,9 +176,16 @@ class TestStandardModule():
     def test_fractional_delay(self):
         # Delay in seconds
         delay_s = 150/self.fs
+
+        # All channels
         s = dsp.fractional_delay(self.audio_multi, delay_s)
         lat = dsp.latency(s, self.audio_multi)
         assert np.all(np.isclose(np.abs(lat), 150))
+
+        # Selected channels only
+        s = dsp.fractional_delay(self.audio_multi, delay_s, channels=0)
+        lat = dsp.latency(s, self.audio_multi)
+        assert np.all(np.isclose(np.abs(lat), [150, 0, 0]))
 
     def test_activity_detector(self):
         # Only functionality tested
@@ -185,3 +193,25 @@ class TestStandardModule():
         s = dsp.generators.sinus(sampling_rate_hz=self.fs)
         s = dsp.pad_trim(s, s.time_data.shape[0]*2)
         dsp.activity_detector(s)
+
+    def test_filter_to_ir(self):
+        f = dsp.Filter(
+            'fir', dict(order=216, freqs=1000, type_of_pass='highpass'),
+            self.fs)
+        s = dsp.filter_to_ir(f)
+        assert s.time_data.shape[0] == 216+1
+
+        with pytest.raises(AssertionError):
+            f = dsp.Filter(
+                'iir', dict(order=10, freqs=1000, type_of_pass='highpass'),
+                self.fs)
+            dsp.filter_to_ir(f)
+
+    def test_load_pkl_object(self):
+        f = dsp.Filter(
+            'fir', dict(order=216, freqs=1000, type_of_pass='highpass'),
+            self.fs)
+        f.save_filter(os.path.join('tests', 'f'))
+        dsp.load_pkl_object(os.path.join('tests', 'f'))
+        dsp.load_pkl_object(os.path.join('tests', 'f.pkl'))
+        os.remove(os.path.join('tests', 'f.pkl'))

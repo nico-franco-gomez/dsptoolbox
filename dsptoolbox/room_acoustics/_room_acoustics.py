@@ -43,7 +43,7 @@ def _reverb(h, fs_hz, mode, ir_start: int = None,
     energy_curve = h**2
     epsilon = 1e-20
     if ir_start is None:
-        max_ind = _find_ir_start(h, threshold_db=-20)
+        max_ind = _find_ir_start(h, threshold_dbfs=-20)
     else:
         max_ind = ir_start
     edc = np.sum(energy_curve) - np.cumsum(energy_curve)
@@ -72,15 +72,17 @@ def _reverb(h, fs_hz, mode, ir_start: int = None,
     return (60 / np.abs(reg[0]))
 
 
-def _find_ir_start(ir, threshold_db=-20):
+def _find_ir_start(ir, threshold_dbfs=-20):
     """Find start of an IR using a threshold. Done for 1D-arrays.
 
     """
     energy_curve = ir**2
-    epsilon = 1e-20
-    energy_curve_db = 10*np.log10(energy_curve / max(energy_curve)
-                                  + epsilon)
-    return np.arange(len(energy_curve_db))[energy_curve_db > threshold_db][0]
+    energy_curve_db = 10*np.log10(
+        np.clip(energy_curve/np.max(energy_curve), a_min=1e-30, a_max=None))
+    ind = np.where(energy_curve_db > threshold_dbfs)[0][0] - 1
+    if ind < 0:
+        ind = 0
+    return ind
 
 
 def _complex_mode_identification(spectra: np.ndarray, n_functions: int = 1) ->\
