@@ -14,6 +14,25 @@ adheres to `Semantic Versioning <http://semver.org/spec/v2.0.0.html>`_.
 - Validation for results from tests in every module (so far many tests are
   only regarding functionality)
 
+`0.2.2 <https://pypi.org/project/dsptoolbox/0.2.2>`_ - 2023-02-21
+---------------------
+
+Added
+~~~~~~
+- New beamforming formulations added in ``beamforming`` module and renamed
+  some formulations for better clarity
+
+Bugfix
+~~~~~~~
+- minor fixes
+- minimum phase IR now done for equiripple filters, linear-phase filters and
+  general IR's with different methods
+
+Misc
+~~~~~
+- docstrings corrected and extended
+- refactored beamformer formulations for clearer inheritance structure
+
 `0.2.1 <https://pypi.org/project/dsptoolbox/0.2.1>`_ - 2023-02-08
 ---------------------
 

@@ -700,7 +700,7 @@ class GammaToneFilterBank(FilterBank):
 
 class BaseCrossover(FilterBank):
     """This base class for crossovers is used to hold all maximally decimated
-    crossover methods together.
+    crossover classes together.
 
     """
     def __init__(self, analysis_filters: list, synthesis_filters: list,

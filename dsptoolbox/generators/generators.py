@@ -70,8 +70,7 @@ def noise(type_of_noise: str = 'white', length_seconds: float = 1,
         p_samples = 0
     time_data = np.zeros((l_samples+p_samples, number_of_channels))
 
-    mag = np.ones((len(f), number_of_channels)) + \
-        np.random.normal(0, 0.025, (len(f), number_of_channels))
+    mag = np.random.normal(2, 0.0025, (len(f), number_of_channels))
 
     # Set to 15 Hz to cover whole audible spectrum but without
     # numerical instabilities because of large values in lower

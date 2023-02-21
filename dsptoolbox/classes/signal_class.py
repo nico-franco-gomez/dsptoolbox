@@ -3,7 +3,6 @@ Signal class
 """
 from warnings import warn
 from pickle import dump, HIGHEST_PROTOCOL
-from os import sep
 from copy import deepcopy
 import numpy as np
 from soundfile import read, write
@@ -15,7 +14,7 @@ from dsptoolbox.plots import (general_plot,
 from ._plots import _csm_plot
 from dsptoolbox._general_helpers import \
     (_get_normalized_spectrum, _pad_trim, _find_nearest,
-     _fractional_octave_smoothing)
+     _fractional_octave_smoothing, _check_format_in_path)
 from dsptoolbox._standard import (_welch, _group_delay_direct, _stft, _csm)
 
 
@@ -247,6 +246,9 @@ class Signal():
             assert new_imag.shape == self.__time_data.shape, \
                 'Shape of imaginary part time data does not match'
         self.__time_data_imaginary = new_imag
+
+    def __len__(self):
+        return self.time_data.shape[0]
 
     def set_spectrum_parameters(self, method='welch', smoothe: int = 0,
                                 window_length_samples: int = 1024,
@@ -1034,20 +1036,15 @@ class Signal():
             (without format). Default: `'signal'`
             (local folder, object named signal).
         mode : str, optional
-            Mode of saving. Available modes are `'wav'`, `'flac'`, `'pickle'`.
+            Mode of saving. Available modes are `'wav'`, `'flac'`, `'pkl'`.
             Default: `'wav'`.
 
         """
-        if '.' in path.split(sep)[-1]:
-            raise ValueError('Please introduce the saving path without format')
-        if mode == 'wav':
-            path += '.wav'
+        mode = mode.lower()
+        path = _check_format_in_path(path, mode)
+        if mode in ('wav', 'flac'):
             write(path, self.time_data, self.sampling_rate_hz)
-        elif mode == 'flac':
-            path += '.flac'
-            write(path, self.time_data, self.sampling_rate_hz)
-        elif mode == 'pickle':
-            path += '.pkl'
+        elif mode == 'pkl':
             with open(path, 'wb') as data_file:
                 dump(self, data_file, HIGHEST_PROTOCOL)
         else:

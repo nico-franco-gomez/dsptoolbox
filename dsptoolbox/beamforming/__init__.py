@@ -12,8 +12,11 @@ Classes:
 - `LineGrid()`
 - `MicArray()`
 - `SteeringVector()`
-- `BeamformerFrequencyDAS()`
-- `BeamformerTime()`
+- `BeamformerDASFrequency()`
+- `BeamformerDASTime()`
+- `BeamformerCleanSC()`
+- `BeamformerOrthogonal()`
+- `BeamformerFunctional()`
 - `Source()`
 
 Functions:
@@ -34,8 +37,11 @@ from .beamforming import (
     LineGrid,
     MicArray,
     SteeringVector,
-    BeamformerFrequencyDAS,
-    BeamformerTime,
+    BeamformerDASFrequency,
+    BeamformerCleanSC,
+    BeamformerOrthogonal,
+    BeamformerFunctional,
+    BeamformerDASTime,
     MonopoleSource,
     mix_sources_on_array,
 )
@@ -47,8 +53,11 @@ __all__ = [
     'LineGrid',
     'MicArray',
     'SteeringVector',
-    'BeamformerFrequencyDAS',
-    'BeamformerTime',
+    'BeamformerDASFrequency',
+    'BeamformerCleanSC',
+    'BeamformerOrthogonal',
+    'BeamformerFunctional',
+    'BeamformerDASTime',
     'MonopoleSource',
     'mix_sources_on_array',
 ]

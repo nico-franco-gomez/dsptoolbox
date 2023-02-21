@@ -1,9 +1,10 @@
-from .signal_class import Signal
-from os import sep
 from numpy import zeros, array, unique
 from copy import deepcopy
 from pickle import dump, HIGHEST_PROTOCOL
 from warnings import warn
+
+from .signal_class import Signal
+from dsptoolbox._general_helpers import _check_format_in_path
 
 
 class MultiBandSignal():
@@ -122,6 +123,9 @@ class MultiBandSignal():
 
     @property
     def number_of_bands(self) -> int:
+        return len(self.bands)
+
+    def __len__(self):
         return len(self.bands)
 
     def _generate_metadata(self):
@@ -333,9 +337,7 @@ class MultiBandSignal():
             (local folder, object named multibandsignal).
 
         """
-        if '.' in path.split(sep)[-1]:
-            raise ValueError('Please introduce the saving path without format')
-        path += '.pkl'
+        path = _check_format_in_path(path, 'pkl')
         with open(path, 'wb') as data_file:
             dump(self, data_file, HIGHEST_PROTOCOL)
 

@@ -198,3 +198,104 @@ class BasePoints():
         index = np.argmin(dist)
         coord = self.coordinates[index, :]
         return index, coord
+
+
+def _clean_sc_deconvolve(map: np.ndarray, csm: np.ndarray, h: np.ndarray,
+                         h_H: np.ndarray, maximum_iterations: int,
+                         remove_diagonal_csm: bool, safety_factor: float) \
+        -> np.ndarray:
+    """Computes and returns the degraded csm.
+
+    Parameters
+    ----------
+    map : `np.ndarray`
+        Initial beamforming map to be deconvolved for a single frequency
+        with shape (point).
+    csm : `np.ndarray`
+        Cross-spectral matrix for a single frequency with shape (mic, mic).
+    h : `np.ndarray`
+        Steering vector for a single frequency with shape (mic, grid point).
+    h_H : `np.ndarray`
+        Steering vector (hermitian transposed) for a single frequency with
+        shape (grid point, mic).
+    maximum_iterations : int
+        Maximum number of iterations to deconvolve.
+    remove_diagonal_csm : bool
+        When `True`, the main diagonal of the csm is removed in each
+        computation.
+    safety_factor : float
+        Also called loop gain, the safety factor dampens the result from
+        each iteration. Should be between 0 and 1.
+
+    Returns
+    -------
+    `np.ndarray`
+        Deconvolved beamforming map.
+
+    References
+    ----------
+    - [1]: Sijtsma P. CLEAN Based on Spatial Source Coherence. International
+      Journal of Aeroacoustics. 2007;6(4):357-374.
+      doi:10.1260/147547207783359459.
+
+    """
+    # CSM without diagonal
+    D = csm
+
+    # Save last CSM to check stopping criterion given in [1]
+    D = np.append(D[None, ...]*2, D[None, ...], axis=0)
+
+    # Save powers for stopping criterion – Alternative
+    # powers = np.zeros(maximum_iterations)
+
+    second_map = np.zeros_like(map)
+
+    # Deconvolve
+    for itr in range(maximum_iterations):
+        # Find maximum in map
+        maximum_power_ind = np.argmax(map)
+        maximum_power = map[maximum_power_ind]
+
+        # Store maximum value
+        second_map[maximum_power_ind] += maximum_power * safety_factor
+
+        # Stopping criterion
+        if np.linalg.norm(D[1, :, :], ord=1) >= \
+                np.linalg.norm(D[0, :, :], ord=1):
+            break
+
+        # Alternatively...
+        # powers[itr] = maximum_power.real
+        # if np.all(maximum_power > powers[itr-3:itr-1]):
+        #     break
+
+        # Steering vector to maximum point
+        w_max = h[:, maximum_power_ind]
+        h_ = w_max.copy()
+
+        # For saving computations later in loop
+        w_max_squared = w_max.conjugate()*w_max
+        D_ = D[1, :, :] @ w_max / maximum_power
+
+        # Computation of G, according to [1], only a couple iterations
+        # are needed; following acoular, 20 are used here
+        for _ in range(20):
+            H = h_.conjugate()*h_
+            h_ = (D_ + H * w_max) / np.sqrt(1 + H @ w_max_squared)
+
+        G = np.outer(h_, h_.conjugate()) * maximum_power
+
+        if remove_diagonal_csm:
+            np.fill_diagonal(G, 0)
+
+        for gind in range(len(map)):
+            # Clean map
+            map[gind] -= np.linalg.multi_dot([
+                h_H[gind, :], G, h[:, gind]]) * safety_factor
+
+        # Swap degraded CSM
+        temp = D[1, :, :].copy()
+        D[1, :, :] = D[1, :, :] - safety_factor * G
+        D[0, :, :] = temp
+
+    return second_map

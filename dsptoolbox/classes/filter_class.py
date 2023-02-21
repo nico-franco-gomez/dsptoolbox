@@ -1,7 +1,6 @@
 """
 Contains Filter class
 """
-from os import sep
 from pickle import dump, HIGHEST_PROTOCOL
 from warnings import warn
 from copy import deepcopy
@@ -19,6 +18,7 @@ from ._filter import (_biquad_coefficients, _impulse,
                       _filter_and_upsample)
 from ._plots import _zp_plot
 from dsptoolbox.plots import general_plot
+from dsptoolbox._general_helpers import _check_format_in_path
 
 
 class Filter():
@@ -57,7 +57,7 @@ class Filter():
         Notes
         -----
         For `iir`:
-            Keys: order, freqs, type_of_pass, filter_design_method,
+            Keys: order, freqs, type_of_pass, filter_design_method (optional),
             filter_id (optional).
 
             - order (int): Filter order
@@ -65,8 +65,8 @@ class Filter():
               or 'bandstop'.
             - type_of_pass (str): 'bandpass', 'lowpass', 'highpass',
               'bandstop'.
-            - filter_design_method (str): 'butter', 'bessel', 'ellip',
-              'cheby1', 'cheby2'.
+            - filter_design_method (str): Default: 'butter'. Supported methods
+              are: 'butter', 'bessel', 'ellip', 'cheby1', 'cheby2'.
 
         For `fir`:
             Keys: order, freqs, type_of_pass, filter_design_method (optional),
@@ -106,7 +106,7 @@ class Filter():
             show_filter_parameters, plot_magnitude, plot_group_delay,
             plot_phase, plot_zp.
         Filtering
-            filter_signal.
+            filter_signal, filter_and_resample_signal.
 
         """
         self.warning_if_complex = True
@@ -170,6 +170,9 @@ class Filter():
         assert type(new_type) == str, \
             'Filter type must be a string'
         self.__filter_type = new_type.lower()
+
+    def __len__(self):
+        return self.info['order']+1
 
     # ======== Filtering ======================================================
     def filter_signal(self, signal: Signal, channels=None,
@@ -330,31 +333,31 @@ class Filter():
     def set_filter_parameters(self, filter_type: str,
                               filter_configuration: dict):
         if filter_type == 'iir':
-            self.sos = \
-                sig.iirfilter(N=filter_configuration['order'],
-                              Wn=filter_configuration['freqs'],
-                              btype=filter_configuration['type_of_pass'],
-                              analog=False,
-                              fs=self.sampling_rate_hz,
-                              ftype=filter_configuration
-                              ['filter_design_method'],
-                              output='sos')
+            if 'filter_design_method' not in filter_configuration:
+                filter_configuration['filter_design_method'] = 'butter'
+            self.sos = sig.iirfilter(
+                N=filter_configuration['order'],
+                Wn=filter_configuration['freqs'],
+                btype=filter_configuration['type_of_pass'],
+                analog=False,
+                fs=self.sampling_rate_hz,
+                ftype=filter_configuration['filter_design_method'],
+                output='sos')
             self.filter_type = filter_type
         elif filter_type == 'fir':
             # Preparing parameters
-            if 'filter_design_method' not in filter_configuration.keys():
+            if 'filter_design_method' not in filter_configuration:
                 filter_configuration['filter_design_method'] = 'hamming'
-            if 'width' not in filter_configuration.keys():
+            if 'width' not in filter_configuration:
                 filter_configuration['width'] = None
             # Filter creation
-            self.ba = \
-                [sig.firwin(numtaps=filter_configuration['order']+1,
-                            cutoff=filter_configuration['freqs'],
-                            window=filter_configuration
-                            ['filter_design_method'],
-                            width=filter_configuration['width'],
-                            pass_zero=filter_configuration['type_of_pass'],
-                            fs=self.sampling_rate_hz), np.asarray([1])]
+            self.ba = [sig.firwin(
+                numtaps=filter_configuration['order']+1,
+                cutoff=filter_configuration['freqs'],
+                window=filter_configuration['filter_design_method'],
+                width=filter_configuration['width'],
+                pass_zero=filter_configuration['type_of_pass'],
+                fs=self.sampling_rate_hz), np.asarray([1])]
             self.filter_type = filter_type
         elif filter_type == 'biquad':
             # Preparing parameters
@@ -362,13 +365,12 @@ class Filter():
                 filter_configuration['eq_type'] = \
                     _get_biquad_type(None, filter_configuration['eq_type'])
             # Filter creation
-            ba = \
-                _biquad_coefficients(
-                    eq_type=filter_configuration['eq_type'],
-                    fs_hz=self.sampling_rate_hz,
-                    frequency_hz=filter_configuration['freqs'],
-                    gain_db=filter_configuration['gain'],
-                    q=filter_configuration['q'])
+            ba = _biquad_coefficients(
+                eq_type=filter_configuration['eq_type'],
+                fs_hz=self.sampling_rate_hz,
+                frequency_hz=filter_configuration['freqs'],
+                gain_db=filter_configuration['gain'],
+                q=filter_configuration['q'])
             # Setting back
             filter_configuration['eq_type'] = \
                 _get_biquad_type(filter_configuration['eq_type']).capitalize()
@@ -404,7 +406,7 @@ class Filter():
             self.info['preferred_method_of_filtering'] = 'ba'
         elif hasattr(self, 'sos'):
             self.info['preferred_method_of_filtering'] = 'sos'
-        if 'filter_id' not in self.info.keys():
+        if 'filter_id' not in self.info:
             self.info['filter_id'] = None
 
     # ======== Check type =====================================================
@@ -736,13 +738,11 @@ class Filter():
         ----------
         path : str, optional
             Path for the filter to be saved. Use only folder1/folder2/name
-            (without format). Default: `'filter'`
-            (local folder, object named filter).
+            (it can be passed with .pkl at the end or without it).
+            Default: `'filter'` (local folder, object named filter).
 
         """
-        if '.' in path.split(sep)[-1]:
-            raise ValueError('Please introduce the saving path without format')
-        path += '.pkl'
+        path = _check_format_in_path(path, 'pkl')
         with open(path, 'wb') as data_file:
             dump(self, data_file, HIGHEST_PROTOCOL)
 

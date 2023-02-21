@@ -638,7 +638,7 @@ def _get_fractional_octave_bandwidth(f_c: float, fraction: int = 1) \
     """
     if fraction == 0:
         return np.array([f_c, f_c])
-    return np.array([f_c*2**(-2/fraction), f_c*2**(2/fraction)])
+    return np.array([f_c*2**(-1/fraction/2), f_c*2**(1/fraction/2)])
 
 
 def _toeplitz(h: np.ndarray, length_of_input: int) -> np.ndarray:
@@ -664,3 +664,30 @@ def _toeplitz(h: np.ndarray, length_of_input: int) -> np.ndarray:
     row = np.zeros((length_of_input))
     row[0] = h[0]
     return toeplitz_scipy(c=column, r=row)
+
+
+def _check_format_in_path(path: str, desired_format: str) -> str:
+    """Checks if a given path already has a format and it matches the desired
+    format. If not, an assertion error is raised. If the path does not have
+    any format, the desired one is added.
+
+    Parameters
+    ----------
+    path : str
+        Path of file.
+    desired_format : str
+        Format that the file should have.
+
+    Returns
+    -------
+    str
+        Path with the desired format.
+
+    """
+    format = path.split('.')
+    if len(format) != 1:
+        assert format[-1] == desired_format, \
+            f'{format[-1]} is not the desired format'
+    else:
+        path += f'.{desired_format}'
+    return path
