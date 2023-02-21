@@ -21,7 +21,7 @@ class TestFilterbanksModule():
     def test_reconstructing_fractional_octave_bands(self):
         # Only functionality
         dsp.filterbanks.reconstructing_fractional_octave_bands(
-            num_fractions=1, frequency_range_hz=[63, 1024], overlap=0.5,
+            octave_fraction=1, frequency_range_hz=[63, 1024], overlap=0.5,
             slope=1, n_samples=2**10, sampling_rate_hz=5_000)
 
     def test_auditory_filters_gammatone(self):

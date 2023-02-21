@@ -532,7 +532,7 @@ def beamforming_basics():
     # Beamformer
     noise = dsp.generators.noise(
         number_of_channels=ma.number_of_points, sampling_rate_hz=20_000)
-    bf = dsp.beamforming.BeamformerFrequencyDAS(noise, ma, g, st)
+    bf = dsp.beamforming.BeamformerDASFrequency(noise, ma, g, st)
     bf.plot_setting()
     bf.show_info()
     print(bf.get_frequency_range_from_he())
@@ -661,7 +661,7 @@ def beamforming_complete_test_2D():
     st = dsp.beamforming.SteeringVector(formulation='true location')
 
     # Create beamformer and plot setting
-    bf = dsp.beamforming.BeamformerFrequencyDAS(s, ma, g, st, )
+    bf = dsp.beamforming.BeamformerDASFrequency(s, ma, g, st, )
     _, ax = bf.plot_setting()
     ax.scatter(ns.coordinates[0], ns.coordinates[1], ns.coordinates[2])
 
@@ -699,7 +699,7 @@ def beamforming_complete_test_time():
     xval = np.arange(-0.5, 0.5, 0.1)
     g = dsp.beamforming.LineGrid(xval, 'y', 0.5, 0)
 
-    bf = dsp.beamforming.BeamformerTime(s, ma, g)
+    bf = dsp.beamforming.BeamformerDASTime(s, ma, g)
     _, ax = bf.plot_setting()
     ax.scatter(ns.coordinates[0], ns.coordinates[1], ns.coordinates[2])
     ax.scatter(sp.coordinates[0], sp.coordinates[1], sp.coordinates[2])
@@ -747,7 +747,7 @@ def beamforming_3d_grid():
     st = dsp.beamforming.SteeringVector(formulation='true location')
 
     # Define beamformer and plot setting
-    bf = dsp.beamforming.BeamformerFrequencyDAS(s, ma, g, st, c=343)
+    bf = dsp.beamforming.BeamformerDASFrequency(s, ma, g, st, c=343)
     fig, ax = bf.plot_setting()
     ax.scatter(ns.coordinates[0], ns.coordinates[1], ns.coordinates[2])
     # ax.scatter(sp.coordinates[0], sp.coordinates[1], sp.coordinates[2])
@@ -799,7 +799,7 @@ if __name__ == '__main__':
     # beamforming_complete_test_2D()
     # beamforming_complete_test_time()
     # cepstrum()
-    # beamforming_3d_grid()
+    beamforming_3d_grid()
 
     # Next
     print()

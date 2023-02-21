@@ -237,6 +237,10 @@ class TestSignal():
         t_ = np.linspace(0, le/self.fs, le)
         assert np.all(t == t_)
 
+    def test_length_signal(self):
+        s = dsp.Signal(time_data=self.time_vec, sampling_rate_hz=self.fs)
+        assert len(s) == s.time_data.shape[0]
+
 
 class TestFilterClass():
     """Tests for the Filter class.
@@ -396,6 +400,14 @@ class TestFilterClass():
 
         assert np.all(np.isclose(t_res_sc, t_res))
 
+    def test_filter_length(self):
+        b = sig.firwin(
+            1500, (self.fs//2//2),
+            pass_zero='lowpass', fs=self.fs, window='flattop')
+        f = dsp.Filter('other', filter_configuration=dict(ba=[b, 1]),
+                       sampling_rate_hz=self.fs)
+        assert len(f) == len(b)
+
 
 class TestFilterBankClass():
     fs = 44100
@@ -490,6 +502,7 @@ class TestFilterBankClass():
         # Swap (and Assertions)
         fb.swap_filters([1, 0])
         assert fb.number_of_filters == 2
+        assert len(fb) == 2
         assert fb.sampling_rate_hz == self.fs
 
         with pytest.raises(AssertionError):
@@ -760,6 +773,7 @@ class TestMultiBandSignal():
 
         mbs.swap_bands([1, 0])
         assert mbs.number_of_bands == 2
+        assert len(mbs) == 2
         assert mbs.number_of_channels == self.s.number_of_channels
         assert np.all(mbs.sampling_rate_hz ==
                       [self.s.sampling_rate_hz, s2.sampling_rate_hz])

@@ -3,7 +3,8 @@ Methods used for acquiring and windowing transfer functions
 """
 import numpy as np
 from scipy.signal import minimum_phase as min_phase_scipy
-from dsptoolbox.classes.signal_class import Signal
+
+from dsptoolbox.classes import Signal
 from dsptoolbox._general_helpers import (_find_frequencies_above_threshold)
 from ._transfer_functions import (_spectral_deconvolve,
                                   _window_this_ir)
@@ -356,9 +357,8 @@ def min_phase_from_mag(spectrum: np.ndarray, sampling_rate_hz: int,
         spectrum = spectrum.T
     spectrum = np.abs(spectrum)
     min_spectrum = np.empty(spectrum.shape, dtype='cfloat')
-    for n in range(spectrum.shape[1]):
-        phase = _minimum_phase(spectrum[:, n], False)
-        min_spectrum[:, n] = spectrum[:, n]*np.exp(1j*phase)
+    phase = _minimum_phase(spectrum, False)
+    min_spectrum = spectrum*np.exp(1j*phase)
     time_data = np.fft.irfft(min_spectrum, axis=0)
     sig_min_phase = Signal(
         None, time_data=time_data,
@@ -450,29 +450,36 @@ def lin_phase_from_mag(spectrum: np.ndarray, sampling_rate_hz: int,
     return sig_lin_phase
 
 
-def min_phase_ir(sig: Signal):
-    """Returns same IR with minimum phase. The output is always padded to
+def min_phase_ir(sig: Signal, equiripple: bool = False) -> Signal:
+    """Returns same signal with minimum phase. A `Filter` can also be passed
+    if it is an FIR filter. If the IR is symmetric,
+    `scipy.signal.minimum_phase` is used. Otherwise, a direct hilbert transform
+    of the log magnitude spectrum is applied. The output is always padded to
     keep the length of the original IR.
 
     Parameters
     ----------
     sig : `Signal`
         IR for which to compute minimum phase IR.
+    equiripple : bool, optional
+        When `True` a specialized method for turning an equiripple filter's IR
+        into a minimum-phase IR is used. Default: `False`.
 
     Returns
     -------
     min_phase_sig : `Signal`
-        Minimum-phase IR.
+        Minimum-phase IR as time signal or filter (depending on input).
 
     """
+    # Computation
     assert sig.signal_type in ('rir', 'ir'), \
         'Signal type must be either rir or ir'
     new_time_data = np.zeros_like(sig.time_data)
 
-    for n in range(sig.number_of_channels):
-        temp = min_phase_scipy(
-            sig.time_data[:, n], method='homomorphic', n_fft=None)
-        new_time_data[:, n] = _pad_trim(temp, new_time_data.shape[0])
+    _, min_phases = minimum_phase(sig, equiripple=equiripple)
+    _, sp = sig.get_spectrum()
+
+    new_time_data = np.fft.irfft(np.abs(sp)*np.exp(1j*min_phases), axis=0)
     min_phase_sig = sig.copy()
     min_phase_sig.time_data = new_time_data
     return min_phase_sig
@@ -523,14 +530,21 @@ def group_delay(signal: Signal, method='matlab') \
     return f, group_delays
 
 
-def minimum_phase(signal: Signal) -> tuple[np.ndarray, np.ndarray]:
-    """Gives back a matrix containing the minimum phase for every channel. The
-    original length is of the input is kept.
+def minimum_phase(signal: Signal, equiripple: bool = False)\
+        -> tuple[np.ndarray, np.ndarray]:
+    """Gives back a matrix containing the minimum phase signal for each
+    channel. If it is symmetric, `scipy.signal.minimum_phase` is used.
+    Otherwise, the minimum phase is won through the direct hilbert transform of
+    the log magnitude spectrum. The original length is of the input is
+    always kept.
 
     Parameters
     ----------
     signal : `Signal`
         IR for which to compute the minimum phase.
+    equiripple : bool, optional
+        When `True` a specialized method for turning an equiripple filter's IR
+        into a minimum-phase IR is used. Default: `False`.
 
     Returns
     -------
@@ -542,14 +556,25 @@ def minimum_phase(signal: Signal) -> tuple[np.ndarray, np.ndarray]:
     """
     assert signal.signal_type in ('rir', 'ir', 'h1', 'h2', 'h3'), \
         'Signal type must be rir or ir'
-    f = np.fft.rfftfreq(signal.time_data.shape[0], d=1/signal.sampling_rate_hz)
+    symmetrical = np.all(np.isclose(
+        signal.time_data, np.flip(signal.time_data, axis=0)))
 
-    min_phases = np.zeros((len(f), signal.number_of_channels), dtype='float')
-    for n in range(signal.number_of_channels):
-        temp = min_phase_scipy(
-            signal.time_data[:, n], method='homomorphic', n_fft=None)
-        min_phases[:, n] = np.angle(np.fft.rfft(
-            _pad_trim(temp, signal.time_data.shape[0])))
+    if symmetrical or equiripple:
+        method = 'hilbert' if equiripple else 'homomorphic'
+        f = np.fft.rfftfreq(
+            signal.time_data.shape[0], d=1/signal.sampling_rate_hz)
+        min_phases = np.zeros(
+            (len(f), signal.number_of_channels), dtype='float')
+        for n in range(signal.number_of_channels):
+            temp = min_phase_scipy(
+                signal.time_data[:, n], method=method, n_fft=None)
+            min_phases[:, n] = np.angle(np.fft.rfft(
+                _pad_trim(temp, signal.time_data.shape[0])))
+    else:
+        signal.set_spectrum_parameters('standard')
+        f, sp = signal.get_spectrum()
+        min_phases = np.zeros((sp.shape[0], sp.shape[1]), dtype='float')
+        min_phases = _minimum_phase(np.abs(sp), unwrapped=False)
     return f, min_phases
 
 

@@ -112,7 +112,7 @@ class TestBeamformingModule():
         # Simulate combining signals on array
         dsp.beamforming.mix_sources_on_array([sp, ns], ma)
 
-    def test_beamformer_das(self):
+    def test_beamformer_frequency(self):
         # Only functionality
         # Mic Array
         ma = self.points_uniform.copy()
@@ -136,10 +136,26 @@ class TestBeamformingModule():
         st = dsp.beamforming.SteeringVector(formulation='true location')
 
         # Create beamformer and plot setting
-        bf = dsp.beamforming.BeamformerFrequencyDAS(s, ma, g, st)
-
+        bf = dsp.beamforming.BeamformerDASFrequency(s, ma, g, st)
         # Get and show map
         bf.get_beamformer_map(2000, 0, remove_csm_diagonal=True)
+
+        # Create beamformer and plot setting
+        bf = dsp.beamforming.BeamformerOrthogonal(s, ma, g, st)
+        # Get and show map
+        bf.get_beamformer_map(2000, 0, number_eigenvalues=None)
+
+        # Create beamformer and plot setting
+        bf = dsp.beamforming.BeamformerFunctional(s, ma, g, st)
+        # Get and show map
+        bf.get_beamformer_map(2000, 0, gamma=10)
+
+        # Create beamformer and plot setting
+        bf = dsp.beamforming.BeamformerCleanSC(s, ma, g, st)
+        # Get and show map
+        bf.get_beamformer_map(
+            2000, 0, maximum_iterations=10, safety_factor=0.5,
+            remove_diagonal_csm=True)
 
     def test_beamformer_time(self):
         # Only functionality
@@ -158,5 +174,5 @@ class TestBeamformingModule():
         # Grid
         xval = np.arange(-0.5, 0.5, 0.1)
         g = dsp.beamforming.LineGrid(xval, 'y', 0.5, 0)
-        bf = dsp.beamforming.BeamformerTime(s, ma, g)
+        bf = dsp.beamforming.BeamformerDASTime(s, ma, g)
         bf.get_beamformer_output()
