@@ -40,9 +40,8 @@ def reverb_time(signal: Signal | MultiBandSignal, mode: str = 'T20',
 
     References
     ----------
-    - DIN 3382
-    - ISO 3382-1:2009-10, Acoustics - Measurement of the reverberation time of
-    rooms with reference to other acoustical parameters. pp. 22.
+    - DIN EN ISO 3382-1:2009-10, Acoustics - Measurement of the reverberation
+      time of rooms with reference to other acoustical parameters.
 
     """
     if type(signal) == Signal:
@@ -58,7 +57,7 @@ def reverb_time(signal: Signal | MultiBandSignal, mode: str = 'T20',
         for n in range(signal.number_of_channels):
             reverberation_times[n] = _reverb(
                 signal.time_data[:, n].copy(), signal.sampling_rate_hz,
-                mode.casefold(), ir_start=ir_start, return_ir_start=False)
+                mode, ir_start=ir_start, return_ir_start=False)
     elif type(signal) == MultiBandSignal:
         reverberation_times = \
             np.zeros(

@@ -70,7 +70,10 @@ class TestTransferFunctionsModule():
     def test_spectral_average(self):
         # Only functionality is tested
         h = dsp.transfer_functions.spectral_deconvolve(self.y_st, self.x)
-        dsp.transfer_functions.spectral_average(h)
+        h.plot_phase()
+        h = dsp.transfer_functions.spectral_average(h)
+        h.plot_phase()
+        dsp.plots.show()
 
     def test_min_phase_from_mag(self):
         # Only functionality is tested
@@ -151,4 +154,4 @@ class TestTransferFunctionsModule():
     def test_min_phase_ir(self):
         # Only functionality, computation is done using scipy's minimum phase
         s = dsp.Signal(join('examples', 'data', 'rir.wav'), signal_type='rir')
-        dsp.transfer_functions.min_phase_ir(s)
+        s = dsp.transfer_functions.min_phase_ir(s)

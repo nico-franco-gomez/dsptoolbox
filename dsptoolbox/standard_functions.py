@@ -8,7 +8,6 @@ under a same category.
 import numpy as np
 import pickle
 from scipy.signal import resample_poly, convolve
-# from scipy.signal import minimum_phase as min_phase_scipy
 from scipy.special import iv as bessel_first_mod
 from fractions import Fraction
 from warnings import warn
@@ -18,14 +17,12 @@ from dsptoolbox.classes.multibandsignal import MultiBandSignal
 from dsptoolbox.classes.filterbank import FilterBank
 from dsptoolbox.classes.filter_class import Filter
 from dsptoolbox._standard import (_latency,
-                                  # _group_delay_direct,
-                                  # _minimum_phase,  # replaced by scipy
                                   _center_frequencies_fractional_octaves_iec,
                                   _exact_center_frequencies_fractional_octaves,
                                   _kaiser_window_beta,
                                   _indexes_above_threshold_dbfs)
-# from dsptoolbox.classes._filter import _group_delay_filter
-from dsptoolbox._general_helpers import _pad_trim, _normalize, _fade
+from dsptoolbox._general_helpers import (
+    _pad_trim, _normalize, _fade, _check_format_in_path)
 from dsptoolbox.transfer_functions import (
     min_phase_from_mag, lin_phase_from_mag)
 
@@ -96,6 +93,8 @@ def pad_trim(signal: Signal | MultiBandSignal, desired_length_samples: int,
                     desired_length_samples,
                     in_the_end=in_the_end)
         new_sig = signal.copy()
+        if hasattr(new_sig, 'window'):
+            del new_sig.window
         new_sig.time_data = new_time_data
     elif type(signal) == MultiBandSignal:
         assert signal.same_sampling_rate, \
@@ -152,6 +151,8 @@ def merge_signals(in1: Signal | MultiBandSignal, in2: Signal | MultiBandSignal,
                     'is not activated')
         new_time_data = np.append(in1.time_data, in2.time_data, axis=1)
         new_sig = in1.copy()
+        if hasattr(new_sig, 'window'):
+            del new_sig.window
         new_sig.time_data = new_time_data
     elif type(in1) == MultiBandSignal:
         assert type(in2) == MultiBandSignal, \
@@ -230,17 +231,23 @@ def resample(sig: Signal, desired_sampling_rate_hz: int) -> Signal:
     u, d = ratio.as_integer_ratio()
     new_time_data = resample_poly(sig.time_data, up=u, down=d, axis=0)
     new_sig = sig.copy()
+    if hasattr(new_sig, 'window'):
+        del new_sig.window
     new_sig.time_data = new_time_data
     new_sig.sampling_rate_hz = desired_sampling_rate_hz
     return new_sig
 
 
-def fractional_octave_frequencies(
-        num_fractions=1, frequency_range=(20, 20e3), return_cutoff=False):
+def fractional_octave_frequencies(num_fractions=1,
+                                  frequency_range=(20, 20e3),
+                                  return_cutoff=False) \
+        -> tuple[np.ndarray, np.ndarray, np.ndarray] | \
+        tuple[np.ndarray, np.ndarray]:
     """Return the octave center frequencies according to the IEC 61260:1:2014
-    standard.
+    standard. This implementation has been taken from the pyfar package. See
+    references.
 
-    For numbers of fractions other than ``1`` and ``3``, only the
+    For numbers of fractions other than `1` and `3`, only the
     exact center frequencies are returned, since nominal frequencies are not
     specified by corresponding standards.
 
@@ -264,12 +271,11 @@ def fractional_octave_frequencies(
         of frequency bands over the frequency range.
     cutoff_freq : tuple, array, float
         The lower and upper critical frequencies in Hz of the bandpass filters
-        for each band as a tuple corresponding to ``(f_lower, f_upper)``.
+        for each band as a tuple corresponding to `(f_lower, f_upper)`.
 
     References
     ----------
-    - This implementation is taken from the pyfar package. See
-      https://github.com/pyfar/pyfar
+    - The pyfar package: https://github.com/pyfar/pyfar
 
     """
     nominal = None
@@ -347,7 +353,7 @@ def normalize(sig: Signal | MultiBandSignal, peak_dbfs: float = -6,
 
 def load_pkl_object(path: str):
     """WARNING: This is not secure. Only unpickle data you know!
-    Loads a optimization object with all its attributes and methods.
+    Loads an object with all its attributes and methods.
 
     Parameters
     ----------
@@ -361,10 +367,8 @@ def load_pkl_object(path: str):
 
     """
     obj = None
-    assert path[-4:] == '.pkl', \
-        'Only pickle objects can be loaded'
-    path2file = path
-    with open(path2file, 'rb') as inp:
+    path = _check_format_in_path(path, 'pkl')
+    with open(path, 'rb') as inp:
         obj = pickle.load(inp)
     return obj
 
@@ -424,16 +428,16 @@ def fade(sig: Signal, type_fade: str = 'lin',
 
 
 def erb_frequencies(freq_range_hz=[20, 20000], resolution: float = 1,
-                    reference_frequency_hz=1000) -> np.ndarray:
+                    reference_frequency_hz: float = 1000) -> np.ndarray:
     """Get frequencies that are linearly spaced on the ERB frequency scale.
     This implementation was taken and adapted from the pyfar package. See
     references.
 
     Parameters
     ----------
-    freq_range : array-like
+    freq_range : array-like, optional
         The upper and lower frequency limits in Hz between which the frequency
-        vector is computed.
+        vector is computed. Default: [20, 20e3].
     resolution : float, optional
         The frequency resolution in ERB units. 1 returns frequencies that are
         spaced by 1 ERB unit, a value of 0.5 would return frequencies that are
@@ -450,6 +454,7 @@ def erb_frequencies(freq_range_hz=[20, 20000], resolution: float = 1,
 
     References
     ----------
+    - The pyfar package: https://github.com/pyfar/pyfar
     - B. C. J. Moore, An introduction to the psychology of hearing,
       (Leiden, Boston, Brill, 2013), 6th ed.
     - V. Hohmann, “Frequency analysis and synthesis using a gammatone
@@ -457,7 +462,6 @@ def erb_frequencies(freq_range_hz=[20, 20000], resolution: float = 1,
     - P. L. Søndergaard, and P. Majdak, “The auditory modeling toolbox,”
       in The technology of binaural listening, edited by J. Blauert
       (Heidelberg et al., Springer, 2013) pp. 33-56.
-    - The pyfar package: https://github.com/pyfar/pyfar
 
     """
 
@@ -539,6 +543,30 @@ def ir_to_filter(signal: Signal, channel: int = 0,
     filt = Filter(
         'other', {'ba': [b, a]}, sampling_rate_hz=signal.sampling_rate_hz)
     return filt
+
+
+def filter_to_ir(fir: Filter) -> Signal:
+    """Takes in an FIR filter and converts it into an IR by taking its
+    b coefficients.
+
+    Parameters
+    ----------
+    fir : `Filter`
+        Filter containing an FIR filter.
+
+    Returns
+    -------
+    new_sig : `Signal`
+        New IR signal.
+
+    """
+    assert fir.filter_type == 'fir', \
+        'This is only valid is only available for FIR filters'
+    b, _ = fir.get_coefficients(mode='ba')
+    new_sig = Signal(
+        None, b, sampling_rate_hz=fir.sampling_rate_hz, signal_type='ir',
+        signal_id='IR from FIR filter')
+    return new_sig
 
 
 def true_peak_level(sig: Signal | MultiBandSignal) \
@@ -638,8 +666,6 @@ def fractional_delay(sig: Signal | MultiBandSignal, delay_seconds: float,
     """
     assert delay_seconds >= 0, \
         'Delay must be positive'
-    assert side_lobe_suppression_db > 0, \
-        'Side lobe suppression must be positive'
     if type(sig) == Signal:
         if delay_seconds == 0:
             return sig
@@ -725,10 +751,22 @@ def fractional_delay(sig: Signal | MultiBandSignal, delay_seconds: float,
         delay_int += M_opt.astype("int")
         delay_int = np.squeeze(delay_int)
 
-        # Delay all channels in the beginning
+        channels_not = np.setdiff1d(
+            channels, np.arange(new_time_data.shape[1]))
+        not_delayed = new_time_data[:, channels_not]
+        delayed = new_time_data[:, channels]
+
+        # Delay respective channels in the beginning and add zeros in the end
+        # to the others
+        delayed = _pad_trim(
+            delayed, delay_int+new_time_data.shape[0], in_the_end=False)
+        not_delayed = _pad_trim(
+            not_delayed, delay_int+new_time_data.shape[0], in_the_end=True)
+
         new_time_data = _pad_trim(
-            new_time_data,
-            delay_int+new_time_data.shape[0], in_the_end=False)
+            new_time_data, delay_int+new_time_data.shape[0], in_the_end=True)
+        new_time_data[:, channels_not] = not_delayed
+        new_time_data[:, channels] = delayed
 
         # =========== handle length ===========================================
         if keep_length:
@@ -736,6 +774,8 @@ def fractional_delay(sig: Signal | MultiBandSignal, delay_seconds: float,
 
         # =========== give out object =========================================
         out_sig = sig.copy()
+        if hasattr(out_sig, 'window'):
+            del out_sig.window
         out_sig.time_data = new_time_data
 
     elif type(sig) == MultiBandSignal:

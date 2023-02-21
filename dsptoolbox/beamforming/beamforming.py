@@ -13,7 +13,7 @@ from dsptoolbox.classes import Signal
 from dsptoolbox import fractional_delay, merge_signals, pad_trim
 from dsptoolbox._general_helpers import (
     _get_fractional_octave_bandwidth, _find_nearest, _pad_trim)
-from ._beamforming import BasePoints
+from ._beamforming import BasePoints, _clean_sc_deconvolve
 from dsptoolbox.plots import general_matrix_plot
 
 set_style('whitegrid')
@@ -23,12 +23,12 @@ nxs = np.newaxis
 class Grid(BasePoints):
     """This class contains a grid to use for beamforming and all its metadata.
     This class is implemented only for right-hand systems with cartesian
-    coordinates.
+    coordinates (in meters).
 
     """
     def __init__(self, positions: dict):
         """Construct a grid for beamforming by passing positions for the point
-        coordinates. Additionally, there is a class method
+        coordinates in meters. Additionally, there is a class method
         (reconstruct_map_shape) that you can manually add to the object in
         order to obtain beamformer maps with an specific shape immediately
         instead of vector shape.
@@ -36,9 +36,9 @@ class Grid(BasePoints):
         Parameters
         ----------
         positions : dict, Pandas.DataFrame
-            Dictionary or pandas dataframe containing point positions.
-            Use `'x'`, `'y'` and `'z'` as keys to pass array-like objects with
-            the positions.
+            Dictionary or pandas dataframe containing point positions in
+            meters. Use `'x'`, `'y'` and `'z'` as keys to pass array-like
+            objects with the positions.
 
         Attributes and Methods
         ----------------------
@@ -59,7 +59,7 @@ class Grid(BasePoints):
 
     def reconstruct_map_shape(self, map: np.ndarray) -> np.ndarray:
         """Placeholder for a user-defined map reconstruction. Here, it returns
-        same given map. Use inheritance from the `Grid` class to overwrite
+        same given map. Use inheritance from the `Grid` class to overwrite this
         with an own implementation.
 
         Parameters
@@ -198,7 +198,7 @@ class Regular2DGrid(Grid):
             'Map shape does not match grid shape'
         # Get right extent
         ex = self.extent
-        map = 20*np.log10(np.abs(map))
+        map = 20*np.log10(np.clip(np.abs(map), a_min=1e-25, a_max=None))
         fig, ax = general_matrix_plot(
             map,
             # First dimension vertical and second dimension horizontal
@@ -215,22 +215,22 @@ class Regular3DGrid(Grid):
     """Class for 3D regular Grids.
 
     """
-    def __init__(self, linex, liney, linez):
+    def __init__(self, line_x, line_y, line_z):
         """Constructor for a regular 3D grid.
 
         Parameters
         ----------
-        linex : array-like
+        line_x : array-like
             Line to define points along the x coordinate.
-        liney : array-like
+        line_y : array-like
             Line to define points along the y coordinate.
-        linez : array-like
+        line_z : array-like
             Line to define points along the z coordinate.
 
         Attributes and Methods
         ----------------------
-        - `coordinates`: Coordinates of the grid points as numpy.ndarray with
-          shape (point, coordinate xyz).
+        - `coordinates`: Coordinates of the grid points in meters as
+          numpy.ndarray with shape (point, coordinate xyz).
         - `number_of_points`: Number of points contained in the array.
         - `ndim`: Number of dimensions of grid.
         - `dimensions`: Dimensions in which the points are extended.
@@ -245,16 +245,16 @@ class Regular3DGrid(Grid):
         - `plot_map()`: Plots a given map (reconstructed or flattened).
 
         """
-        linex = np.asarray(linex).squeeze()
-        liney = np.asarray(liney).squeeze()
-        linez = np.asarray(linez).squeeze()
-        self.lines = (linex, liney, linez)
+        line_x = np.asarray(line_x).squeeze()
+        line_y = np.asarray(line_y).squeeze()
+        line_z = np.asarray(line_z).squeeze()
+        self.lines = (line_x, line_y, line_z)
         assert all([n.ndim == 1 for n in self.lines]), \
             'Shape of lines is invalid'
 
         # For reconstructing the matrix later
-        self.original_lengths = (len(linex), len(liney), len(linez))
-        xx, yy, zz = np.meshgrid(linex, liney, linez, indexing='ij')
+        self.original_lengths = (len(line_x), len(line_y), len(line_z))
+        xx, yy, zz = np.meshgrid(line_x, line_y, line_z, indexing='ij')
         xx = xx.flatten()
         yy = yy.flatten()
         zz = zz.flatten()
@@ -340,7 +340,7 @@ class Regular3DGrid(Grid):
 
         # Get right extent
         ex = self.extent
-        map = 20*np.log10(np.abs(map))
+        map = 20*np.log10(np.clip(np.abs(map), a_min=1e-25, a_max=None))
         fig, ax = general_matrix_plot(
             map, range_x=ex[extent_dimensions[1]],
             range_y=ex[extent_dimensions[0]], range_z=range_db,
@@ -362,7 +362,8 @@ class LineGrid(Grid):
         Parameters
         ----------
         line : array-like
-            Position for the grid points along the extended dimension.
+            Position for the grid points (in meters) along the extended
+            dimension.
         dimension : str
             Dimension along which line is extended. Choose from `'x'`, `'y'`
             or `'z'`.
@@ -374,8 +375,8 @@ class LineGrid(Grid):
 
         Attributes and Methods
         ----------------------
-        - `coordinates`: Coordinates of the grid points as numpy.ndarray with
-          shape (point, coordinate xyz).
+        - `coordinates`: Coordinates of the grid points in meters as
+          numpy.ndarray with shape (point, coordinate xyz).
         - `number_of_points`: Number of points contained in the array.
         - `ndim`: Number of dimensions of grid.
         - `dimensions`: Dimensions in which the points are extended.
@@ -430,8 +431,8 @@ class MicArray(BasePoints):
 
         Attributes and Methods
         ----------------------
-        - `coordinates`: Coordinates of the grid points as numpy.ndarray with
-          shape (point, coordinate xyz).
+        - `coordinates`: Coordinates of the grid points in meters as
+          numpy.ndarray with shape (point, coordinate xyz).
         - `number_of_points`: Number of points contained in the array.
         - `ndim`: Number of dimensions of grid.
         - `dimensions`: Dimensions in which the points are extended.
@@ -578,9 +579,9 @@ class MicArray(BasePoints):
     # ======== Maximum frequency range ========================================
     def get_maximum_frequency_range(self, lowest_he: float = 4,
                                     c: float = 343) -> list:
-        """Computes maximum recommended frequency range for microphone array
-        based on lowest Helmholtz number and the criterion
-        `min_distance = wavelength/2`.
+        """Computes maximum recommended frequency range in Hz for this
+        microphone array based on lowest Helmholtz number and the criterion
+        `min_distance = wavelength/2` (to avoid spatial aliasing).
 
         Parameters
         ----------
@@ -616,7 +617,7 @@ class SteeringVector():
             For an own formulation, pass a callable with signature::
 
                 formulation(wave_number: numpy.ndarray, grid: Grid,
-                            mic_coordinates: MicArray) -> numpy.ndarray:
+                            microphone_array: MicArray) -> numpy.ndarray:
 
             The output array should have shape (frequency, mic, grid) and be
             complex-valued. Default: `'true location'`.
@@ -658,8 +659,7 @@ class BaseBeamformer():
 
     """
     def __init__(self, multi_channel_signal: Signal,
-                 mic_array: MicArray, grid: Grid,
-                 c: float = 343):
+                 mic_array: MicArray, c: float = 343):
         """Base constructor for Beamformer.
 
         Parameters
@@ -669,8 +669,6 @@ class BaseBeamformer():
             matches the order in the MicArray object.
         mic_array : `MicArray`
             Microphone array object containing microphone positions.
-        grid : `Grid`
-            Grid object with the information about the points to be sampled.
         c : float, optional
             Speed of sound in m/s. Default: 343.
 
@@ -685,18 +683,16 @@ class BaseBeamformer():
             'Multi-channel signal must be of type Signal'
         assert type(mic_array) == MicArray, \
             'mic_array should be of type MicArray'
-        assert issubclass(type(grid), Grid), \
-            'grid should be a Grid object'
         assert c > 0, \
             'Speed of sound should be bigger than 0'
         assert multi_channel_signal.number_of_channels == \
             mic_array.number_of_points, \
             'Number of channels in signal and microphone array do not match'
         self.signal = multi_channel_signal
-        self.grid = grid
         self.mics = mic_array
         self.c = c
         self.beamformer_type = 'Base'
+        self.set_csm_parameters = self.signal.set_csm_parameters
 
     # ======== Prints and plots ===============================================
     def plot_setting(self) -> tuple[Figure, Axes]:
@@ -715,9 +711,11 @@ class BaseBeamformer():
         ax.scatter(
             self.mics.coordinates[:, 0], self.mics.coordinates[:, 1],
             self.mics.coordinates[:, 2])
-        ax.scatter(
-            self.grid.coordinates[:, 0], self.grid.coordinates[:, 1],
-            self.grid.coordinates[:, 2])
+        if hasattr(self, 'grid'):
+            if self.grid is not None:
+                ax.scatter(
+                    self.grid.coordinates[:, 0], self.grid.coordinates[:, 1],
+                    self.grid.coordinates[:, 2])
         ax.scatter(
             self.mics.array_center_coordinates[0],
             self.mics.array_center_coordinates[1],
@@ -760,20 +758,22 @@ class BaseBeamformer():
         txt += f'''Recommended f range: {self.mics.
                                          get_maximum_frequency_range()}\n'''
         txt += f'''Number of mics: {self.mics.number_of_points}\n'''
-        txt += f'''Number of grid points: {self.grid.number_of_points}\n'''
+        if hasattr(self, 'grid'):
+            if self.grid is not None:
+                txt += f'''Number of grid points: {self.grid.
+                                                   number_of_points}\n'''
         print(txt)
 
 
-class BeamformerFrequencyDAS(BaseBeamformer):
-    """This is the base class for beamforming in frequency-domain.
+class BeamformerGridded(BaseBeamformer):
+    """Base class for beamformers that use a grid.
 
     """
-    # ======== Constructor ====================================================
     def __init__(self, multi_channel_signal: Signal,
                  mic_array: MicArray, grid: Grid,
                  steering_vector: SteeringVector,
                  c: float = 343):
-        """Classic delay-and-sum (DAS) beamforming in frequency domain.
+        """Constructor for beamformer with grid and steering vector.
 
         Parameters
         ----------
@@ -797,12 +797,20 @@ class BeamformerFrequencyDAS(BaseBeamformer):
         - `get_beamformer_map()`: computes a map using all passed parameters.
 
         """
-        super().__init__(multi_channel_signal, mic_array, grid, c)
+        super().__init__(multi_channel_signal, mic_array, c)
         assert type(steering_vector) == SteeringVector, \
             'steering_vector should be of type SteeringVector'
+        assert issubclass(type(grid), Grid), \
+            'grid should be a Grid object'
+        self.grid = grid
         self.st_vec = steering_vector
-        self.set_csm_parameters = self.signal.set_csm_parameters
-        self.beamformer_type = 'Delay-and-sum (Frequency)'
+
+
+class BeamformerDASFrequency(BeamformerGridded):
+    """This is the base class for beamforming in frequency-domain.
+
+    """
+    beamformer_type = 'Delay-and-sum (Frequency)'
 
     # ======== Get beamforming map ============================================
     def get_beamformer_map(self, center_frequency_hz: float,
@@ -838,6 +846,9 @@ class BeamformerFrequencyDAS(BaseBeamformer):
         print('...csm...')
         f, csm = self.signal.get_csm()
         if remove_csm_diagonal:
+            # Account for energy loss
+            csm *= self.signal.number_of_channels / \
+                (self.signal.number_of_channels - 1)
             for i in range(len(f)):
                 np.fill_diagonal(csm[i, :, :], 0)
 
@@ -855,26 +866,338 @@ class BeamformerFrequencyDAS(BaseBeamformer):
         h = self.st_vec.get_vector(
             wave_numbers, grid=self.grid, mic=self.mics)
         h_H = np.swapaxes(h, 1, 2).conjugate()
+        self.f_range_hz = np.array([f[0], f[-1]])
 
         print('...Apply...')
-        self.map = np.zeros((self.grid.number_of_points,
-                             number_frequency_bins), dtype='cfloat')
+        map = np.zeros((self.grid.number_of_points,
+                        number_frequency_bins))
         for gind in range(self.grid.number_of_points):
             for find in range(len(f)):
-                self.map[gind, find] = np.linalg.multi_dot(
-                    [h_H[find, gind, :], csm[find, :, :], h[find, :, gind]])
+                map[gind, find] = np.linalg.multi_dot(
+                    [h_H[find, gind, :], csm[find, :, :],
+                     h[find, :, gind]]).real
+
+        # Unphysical values for removed diagonal of CSM
+        if remove_csm_diagonal:
+            map[map < 0] = 0
 
         # Integrate over all frequencies
         if number_frequency_bins > 1:
-            self.map = simpson(self.map, dx=f[1]-f[0], axis=1)
+            map = simpson(map, dx=f[1]-f[0], axis=1)
         else:
-            self.map = self.map.squeeze()
-        self.map = self.grid.reconstruct_map_shape(self.map)
-        return self.map
+            map = map.squeeze()
+        self.map = self.grid.reconstruct_map_shape(map)
+        return self.map.copy()
 
 
-class BeamformerTime(BaseBeamformer):
-    """Base class for a beamformer in time-domain.
+class BeamformerCleanSC(BeamformerGridded):
+    """This class performs beamforming using the CLEAN-SC method presented in
+    [1].
+
+    References
+    ----------
+    - [1]: Sijtsma P. CLEAN Based on Spatial Source Coherence. International
+      Journal of Aeroacoustics. 2007;6(4):357-374.
+      doi: 10.1260/147547207783359459.
+
+    """
+    beamformer_type = 'CleanSC'
+
+    def get_beamformer_map(self, center_frequency_hz: float,
+                           octave_fraction: int = 3,
+                           maximum_iterations: int = None,
+                           safety_factor: float = 0.5,
+                           remove_diagonal_csm: bool = False) -> np.ndarray:
+        """Returns a deconvolved beaforming map.
+
+        Parameters
+        ----------
+        center_frequenc_hz : float
+            Center frequency for which to compute map.
+        octave_fraction : int, optional
+            Fractional octave bandwidth for computing the map. Default: 3.
+        maximum_iterations : int, optional
+            Set a maximum number of iterations for acquiring the degraded CSM.
+            If `None` is passed, the double of the number of microphones is
+            taken as the maximum iteration number. The stopping criterion
+            given in [1] is always checked. Default: `None`.
+        safety_factor : float, optional
+            Also called loop gain, the safety factor dampens the result from
+            each iteration during deconvolution. Should be between 0 and 1.
+            See [1] for more details. Default: 0.5.
+        remove_diagonal_csm : bool, optional
+            When `True`, the main diagonal of the CSM is removed for a cleaner
+            map (source powers might be wrongly estimated). Default: `False`.
+
+        Returns
+        -------
+        map : `np.ndarray`
+            Beamformer map.
+
+        References
+        ----------
+        - [1]: Sijtsma P. CLEAN Based on Spatial Source Coherence.
+          International Journal of Aeroacoustics. 2007;6(4):357-374.
+          doi: 10.1260/147547207783359459.
+
+        """
+        if maximum_iterations is None:
+            # Set maximum iterations to twice the number of channels
+            maximum_iterations = self.signal.number_of_channels*2
+        else:
+            assert maximum_iterations > 0, \
+                'Number of iterations must be positive'
+        assert safety_factor > 0 and safety_factor <= 1, \
+            f'{safety_factor} is not valid. The safety factor (loop gain) ' +\
+            'should be in ]0, 1]'
+
+        self.center_frequency_hz = center_frequency_hz
+        self.octave_fraction = octave_fraction
+        self.f_range_hz = _get_fractional_octave_bandwidth(
+            self.center_frequency_hz, self.octave_fraction)
+
+        txt = 'Beamformer computation has started successfully:'
+        print('\n'+txt)
+        print('-'*len(txt))
+        print('...csm...')
+        f, csm = self.signal.get_csm()
+
+        print('...Steering vector...')
+        # Frequency selection, wave numbers and steering vector
+        ids = _find_nearest(self.f_range_hz, f)
+        id1, id2 = ids[0], ids[1]
+        # In case of only one frequency bin
+        if id1 == id2:
+            id2 += 1
+        f = f[id1:id2]
+        csm = csm[id1:id2]
+        number_frequency_bins = id2 - id1
+
+        # Steering vector
+        wave_numbers = f * np.pi * 2 / self.c
+        h = self.st_vec.get_vector(
+            wave_numbers, grid=self.grid, mic=self.mics)
+        h_H = np.swapaxes(h, 1, 2).conjugate()
+        self.f_range_hz = np.array([f[0], f[-1]])
+
+        # Remove diagonal CSM
+        if remove_diagonal_csm:
+            for find in range(len(f)):
+                np.fill_diagonal(csm[find, :, :], 0)
+
+        print('...Create and deconvolve map...')
+        map = np.zeros((self.grid.number_of_points,
+                        number_frequency_bins))
+        for find in range(len(f)):
+            for gind in range(self.grid.number_of_points):
+                # Create initial map
+                map[gind, find] = np.linalg.multi_dot(
+                    [h_H[find, gind, :], csm[find, :, :],
+                     h[find, :, gind]]).real
+            map = _clean_sc_deconvolve(
+                map[:, find], csm[find, :, :], h[find, :, :], h_H[find, :, :],
+                maximum_iterations, remove_diagonal_csm, safety_factor).real
+
+        # Integrate over all frequencies
+        if number_frequency_bins > 1:
+            map = simpson(map, dx=f[1]-f[0], axis=1)
+        else:
+            map = map.squeeze()
+        self.map = self.grid.reconstruct_map_shape(map)
+        return self.map.copy()
+
+
+class BeamformerOrthogonal(BeamformerGridded):
+    """This class performs orthogonal beamforming using the method presented in
+    [1].
+
+    References
+    ----------
+    - [1]: Ennes Sarradj, A fast signal subspace approach for the determination
+      of absolute levels from phased microphone array measurements, Journal of
+      Sound and Vibration, Volume 329, Issue 9, 2010, Pages 1553-1569,
+      ISSN 0022-460X, https://doi.org/10.1016/j.jsv.2009.11.009.
+
+    """
+    beamformer_type = 'Orthogonal (Grid)'
+
+    def get_beamformer_map(self, center_frequency_hz: float,
+                           octave_fraction: int = 3,
+                           number_eigenvalues: int = None) -> np.ndarray:
+        """Returns a beaforming map created with orthogonal beamforming.
+
+        Parameters
+        ----------
+        number_eigenvalues : int, optional
+            Set a number of eigenvalues to be regarded. Pass `None` to use at
+            least half of what is possible (number of microphones).
+            Default: `None`.
+
+        Returns
+        -------
+        map : np.ndarray
+            Beamformer map.
+
+        References
+        ----------
+        - [1]: Ennes Sarradj, A fast signal subspace approach for the
+          determination of absolute levels from phased microphone array
+          measurements, Journal of Sound and Vibration, Volume 329, Issue 9,
+          2010, Pages 1553-1569, ISSN 0022-460X,
+          https://doi.org/10.1016/j.jsv.2009.11.009.
+
+        """
+        self.center_frequency_hz = center_frequency_hz
+        self.octave_fraction = octave_fraction
+        self.f_range_hz = _get_fractional_octave_bandwidth(
+            self.center_frequency_hz, self.octave_fraction)
+
+        if number_eigenvalues is None:
+            number_eigenvalues = self.signal.number_of_channels // 2
+        else:
+            assert number_eigenvalues <= self.signal.number_of_channels, \
+                'Number of eigenvalues cannot be more than number of ' +\
+                'microphones'
+            assert number_eigenvalues > 0, \
+                'At least one eigenvalue of the CSM must be regarded'
+
+        txt = 'Beamformer computation has started successfully:'
+        print('\n'+txt)
+        print('-'*len(txt))
+        print('...csm...')
+        f, csm = self.signal.get_csm()
+
+        print('...Steering vector...')
+        # Frequency selection, wave numbers and steering vector
+        ids = _find_nearest(self.f_range_hz, f)
+        id1, id2 = ids[0], ids[1]
+        # In case of only one frequency bin
+        if id1 == id2:
+            id2 += 1
+        f = f[id1:id2]
+        csm = csm[id1:id2]
+        number_frequency_bins = id2 - id1
+        wave_numbers = f * np.pi * 2 / self.c
+        h = self.st_vec.get_vector(
+            wave_numbers, grid=self.grid, mic=self.mics)
+        self.f_range_hz = np.array([f[0], f[-1]])
+
+        print('...Apply...')
+        eig_map = np.zeros((number_eigenvalues, self.grid.number_of_points,
+                            number_frequency_bins))
+        map = np.zeros((self.grid.number_of_points,
+                        number_frequency_bins))
+
+        for find in range(len(f)):
+            # Spectral decomposition – eigenvalues are given in ascending order
+            w, v = np.linalg.eigh(csm[find, :, :])
+            for eig in range(number_eigenvalues):
+                for gind in range(self.grid.number_of_points):
+                    # Generate whole map
+                    product = h[find, :, gind].conjugate() @ v[:, -eig-1]
+                    eig_map[eig, gind, find] = product * product.conjugate()
+                # Find largest value
+                source_ind = np.argmax(eig_map[eig, :, find])
+                # Scale by eigenvalue and pass to final map
+                map[source_ind, find] = \
+                    eig_map[eig, source_ind, find].real * w[-eig-1]
+
+        # Integrate over all frequencies
+        if number_frequency_bins > 1:
+            map = simpson(map, dx=f[1]-f[0], axis=1)
+        else:
+            map = map.squeeze()
+        self.map = self.grid.reconstruct_map_shape(map)
+        return self.map.copy()
+
+
+class BeamformerFunctional(BeamformerGridded):
+    """This class performs functional beamforming using the method presented in
+    [1].
+
+    References
+    ----------
+    - [1]: Dougherty, Robert. (2014). Functional Beamforming.
+
+    """
+    beamformer_type = 'Functional'
+
+    def get_beamformer_map(self, center_frequency_hz: float,
+                           octave_fraction: int = 3,
+                           gamma: float = 10) -> np.ndarray:
+        """Returns a beaforming map created with functional beamforming.
+
+        Parameters
+        ----------
+        gamma : float, optional
+            Set a gamma value as the power of the CSM. Default: 10.
+
+        Returns
+        -------
+        map : np.ndarray
+            Beamformer map.
+
+        References
+        ----------
+        - [1]: Dougherty, Robert. (2014). Functional Beamforming.
+
+        """
+        self.center_frequency_hz = center_frequency_hz
+        self.octave_fraction = octave_fraction
+        self.f_range_hz = _get_fractional_octave_bandwidth(
+            self.center_frequency_hz, self.octave_fraction)
+
+        txt = 'Beamformer computation has started successfully:'
+        print('\n'+txt)
+        print('-'*len(txt))
+        print('...csm...')
+        f, csm = self.signal.get_csm()
+
+        print('...Steering vector...')
+        # Frequency selection, wave numbers and steering vector
+        ids = _find_nearest(self.f_range_hz, f)
+        id1, id2 = ids[0], ids[1]
+        # In case of only one frequency bin
+        if id1 == id2:
+            id2 += 1
+        f = f[id1:id2]
+        csm = csm[id1:id2]
+        number_frequency_bins = id2 - id1
+        wave_numbers = f * np.pi * 2 / self.c
+
+        # Generate steering vectors
+        h = self.st_vec.get_vector(
+            wave_numbers, grid=self.grid, mic=self.mics)
+        h_H = np.swapaxes(h, 1, 2).conjugate()
+        self.f_range_hz = np.array([f[0], f[-1]])
+
+        print('...Apply...')
+        map = np.zeros((self.grid.number_of_points,
+                        number_frequency_bins))
+
+        for find in range(len(f)):
+            # SVD
+            u, s, vh = np.linalg.svd(csm[find, :, :])
+            s = np.diag(s**(1/gamma))
+            # New CSM
+            csm_ = np.linalg.multi_dot([u, s, vh])
+            for gind in range(self.grid.number_of_points):
+                map[gind, find] = np.linalg.multi_dot(
+                    [h_H[find, gind, :], csm_, h[find, :, gind]]).real
+
+        map **= gamma
+
+        # Integrate over all frequencies
+        if number_frequency_bins > 1:
+            map = simpson(map, dx=f[1]-f[0], axis=1)
+        else:
+            map = map.squeeze()
+        self.map = self.grid.reconstruct_map_shape(map)
+        return self.map.copy()
+
+
+class BeamformerDASTime(BaseBeamformer):
+    """Conventional delay-and-sum beamformer in time-domain.
 
     """
     def __init__(self, multi_channel_signal: Signal,
@@ -895,7 +1218,10 @@ class BeamformerTime(BaseBeamformer):
             Speed of sound in m/s. Default: 343.
 
         """
-        super().__init__(multi_channel_signal, mic_array, grid, c)
+        super().__init__(multi_channel_signal, mic_array, c)
+        assert issubclass(type(grid), Grid), \
+            'grid should be a Grid object'
+        self.grid = grid
         self.beamformer_type = 'Delay-and-sum (Time)'
 
     def get_beamformer_output(self) -> Signal:
@@ -956,17 +1282,17 @@ class MonopoleSource():
 
     """
     def __init__(self, signal: Signal, coordinates):
-        """Constructor for Source object. It is defined by an emitted signal
-        and spatial coordinates. Its emission characteristic is omnidirectional
-        by default.
+        """Constructor for a monopole source. It is defined by an emitted
+        signal and spatial coordinates. Its emission characteristic is
+        omnidirectional.
 
         Parameters
         ----------
         signal : `Signal`
             Emitted signal by the source. It is restricted to one channel.
         coordinates : array-like
-            Array with room coordinates defining source's position with shape
-            (x, y, z).
+            Array with room coordinates (in meters) defining source's position
+            with shape (x, y, z).
 
         """
         assert signal.number_of_channels == 1, \
@@ -1001,24 +1327,27 @@ class MonopoleSource():
             # Delay
             ns = fractional_delay(
                 self.emitted_signal, delays[i], keep_length=True)
-            # Amplitude
-            ns.time_data /= distances[i]
+            # Amplitude scaling – 1 on point and decays with distance
+            ns.time_data = ns.time_data/(1+distances[i])
             # Append to final signal
             multi_channel_signal = merge_signals(
                 multi_channel_signal, ns, padding_trimming=True)
+        # Remove original signal
         multi_channel_signal.remove_channel(0)
         return multi_channel_signal
 
 
-def mix_sources_on_array(source_list: list, mics: MicArray, c: float = 343) ->\
+def mix_sources_on_array(sources: list | MonopoleSource, mics: MicArray,
+                         c: float = 343) ->\
         Signal:
     """This function takes in a list containing multiple sources and gives back
     the multi-channel signal on the array of the combined sources.
 
     Parameters
     ----------
-    source_list : list
-        List containing sources of object type `Source`.
+    sources : list or `MonopoleSource`
+        List containing sources of object type `MonopoleSource`. It is also
+        possible to pass a Source directly.
     mics : `MicArray`
         Microphone array on which to mixed the sources.
     c : float, optional
@@ -1030,17 +1359,20 @@ def mix_sources_on_array(source_list: list, mics: MicArray, c: float = 343) ->\
         Multi-channel signal containing combined source's signals.
 
     """
-    assert len(source_list) > 1, \
-        'There must be at least two sources to combine'
-    assert all([type(i) == MonopoleSource for i in source_list]), \
+    # Convert to list if only Monopole source is passed
+    if type(sources) == MonopoleSource:
+        sources = [sources]
+    assert len(sources) > 0, \
+        'There must be at least one source to project on array'
+    assert all([type(i) == MonopoleSource for i in sources]), \
         'All sources in list should be of type Source'
     # Take first source
-    multi_channel_sig = source_list[0].get_signals_on_array(mics, c)
+    multi_channel_sig = sources[0].get_signals_on_array(mics, c)
     total_length_samples = multi_channel_sig.time_data.shape[0]
-    source_list.pop(0)
+    sources.pop(0)
 
     # Add all other sources progressively checking for shortest duration
-    for s in source_list:
+    for s in sources:
         # Warning if lengths do not match
         if total_length_samples != s.emitted_signal.time_data.shape[0]:
             warn('Emitted signals from sources differ in length. Trimming to '

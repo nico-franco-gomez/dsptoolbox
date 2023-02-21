@@ -1,4 +1,3 @@
-from os import sep
 from pickle import dump, HIGHEST_PROTOCOL
 from copy import deepcopy
 import numpy as np
@@ -12,7 +11,8 @@ from .filter_class import Filter
 from ._filter import _filterbank_on_signal
 from dsptoolbox.generators import dirac
 from dsptoolbox.plots import general_plot
-from dsptoolbox._general_helpers import _get_normalized_spectrum
+from dsptoolbox._general_helpers import (
+    _get_normalized_spectrum, _check_format_in_path)
 from dsptoolbox._standard import _group_delay_direct
 
 
@@ -129,6 +129,9 @@ class FilterBank():
 
     @property
     def number_of_filters(self) -> int:
+        return len(self.__filters)
+
+    def __len__(self):
         return len(self.__filters)
 
     @property
@@ -690,9 +693,7 @@ class FilterBank():
             (local folder, object named filterbank).
 
         """
-        if '.' in path.split(sep)[-1]:
-            raise ValueError('Please introduce the saving path without format')
-        path += '.pkl'
+        path = _check_format_in_path(path, 'pkl')
         with open(path, 'wb') as data_file:
             dump(self, data_file, HIGHEST_PROTOCOL)
 

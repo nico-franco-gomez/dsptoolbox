@@ -248,7 +248,9 @@ def _minimum_phase(magnitude: np.ndarray, unwrapped: bool = True):
     if np.iscomplexobj(magnitude):
         magnitude = np.abs(magnitude)
     minimum_phase = -np.imag(hilbert(np.log(np.clip(
-        magnitude, a_min=1e-25, a_max=None))))
+        magnitude, a_min=1e-25, a_max=None)), axis=0))
+    # Scale to pi
+    minimum_phase = minimum_phase / np.max(np.abs(minimum_phase)) * np.pi
     if not unwrapped:
         minimum_phase = np.angle(np.exp(1j*minimum_phase))
     return minimum_phase
@@ -403,7 +405,7 @@ def _csm(time_data: np.ndarray, sampling_rate_hz: int,
     number_of_channels = time_data.shape[1]
     csm = np.zeros((window_length_samples//2+1,
                     number_of_channels,
-                    number_of_channels), dtype=np.complex64)
+                    number_of_channels), dtype='cfloat')
     for ind1 in range(number_of_channels):
         for ind2 in range(ind1, number_of_channels):
             # Complex conjugate second signal and not first (like transposing
