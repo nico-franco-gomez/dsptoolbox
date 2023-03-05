@@ -17,6 +17,7 @@ Classes:
 - `BeamformerCleanSC()`
 - `BeamformerOrthogonal()`
 - `BeamformerFunctional()`
+- `BeamformerMVDR()`
 - `Source()`
 
 Functions:
@@ -41,6 +42,7 @@ from .beamforming import (
     BeamformerCleanSC,
     BeamformerOrthogonal,
     BeamformerFunctional,
+    BeamformerMVDR,
     BeamformerDASTime,
     MonopoleSource,
     mix_sources_on_array,
@@ -57,6 +59,7 @@ __all__ = [
     'BeamformerCleanSC',
     'BeamformerOrthogonal',
     'BeamformerFunctional',
+    'BeamformerMVDR',
     'BeamformerDASTime',
     'MonopoleSource',
     'mix_sources_on_array',

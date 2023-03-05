@@ -243,11 +243,11 @@ def dirac(length_samples: int = 512, delay_samples: int = 0,
     return imp
 
 
-def sinus(frequency_hz: float = 1000, length_seconds: float = 1,
-          sampling_rate_hz: int = None, peak_level_dbfs: float = -10,
-          number_of_channels: int = 1, uncorrelated: bool = False,
-          fade: str = 'log', padding_end_seconds: float = None) -> Signal:
-    """Creates a multi-channel sinus tone.
+def harmonic(frequency_hz: float = 1000, length_seconds: float = 1,
+             sampling_rate_hz: int = None, peak_level_dbfs: float = -10,
+             number_of_channels: int = 1, uncorrelated: bool = False,
+             fade: str = 'log', padding_end_seconds: float = None) -> Signal:
+    """Creates a multi-channel harmonic (sine) tone.
 
     Parameters
     ----------
@@ -260,12 +260,12 @@ def sinus(frequency_hz: float = 1000, length_seconds: float = 1,
     peak_level_dbfs : float, optional
         Peak level of the signal in dBFS. Default: -10.
     number_of_channels : int, optional
-        Number of channels (with the same chirp) to be created. Default: 1.
+        Number of channels to be created. Default: 1.
     uncorrelated : bool, optional
-        When `True`, each tone gets a random phase shift so that the signals
+        When `True`, each channel gets a random phase shift so that the signals
         are not perfectly correlated. Default: `False`.
     fade : str, optional
-        Type of fade done on the generated signal. By default, 10% of signal
+        Type of fade done on the generated signal. By default, 5% of signal
         length (without the padding in the end) is faded at the beginning and
         end. Options are `'exp'`, `'lin'`, `'log'`.
         Pass `None` for no fading. Default: `'log'`.
@@ -275,8 +275,8 @@ def sinus(frequency_hz: float = 1000, length_seconds: float = 1,
 
     Returns
     -------
-    sinus_sig : `Signal`
-        Sinus tone signal.
+    harmonic_sig : `Signal`
+        Harmonic tone signal.
 
     """
     assert sampling_rate_hz is not None, \
@@ -317,6 +317,6 @@ def sinus(frequency_hz: float = 1000, length_seconds: float = 1,
     td = _pad_trim(td, l_samples+p_samples)
 
     # Signal
-    sinus_sig = Signal(None, td, sampling_rate_hz,
-                       signal_type='general')
-    return sinus_sig
+    harmonic_sig = Signal(None, td, sampling_rate_hz,
+                          signal_type='general')
+    return harmonic_sig

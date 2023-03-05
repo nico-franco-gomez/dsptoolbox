@@ -782,3 +782,27 @@ def _indexes_above_threshold_dbfs(time_vec: np.ndarray, threshold_dbfs: float,
         if np.all(indexes_above_0[ind_attack:ind]):
             indexes_above[ind:ind+release_samples] = True
     return indexes_above
+
+
+def _detrend(time_data: np.ndarray, polynomial_order: int) -> np.ndarray:
+    """Compute and return detrended signal.
+
+    Parameters
+    ----------
+    time_data : np.ndarray
+        Time data of the signal with shape (time samples, channels).
+    polynomial_order : int
+        Polynomial order of the fitted polynomial that will be removed
+        from time data. 0 is equal to mean removal.
+
+    Returns
+    -------
+    new_time_data : np.ndarray
+        Detrended time data with shape (time samples, channels).
+
+    """
+    time_indexes = np.arange(len(time_data))
+    linear_trend = np.polyfit(time_indexes, time_data, deg=polynomial_order)
+    for n in range(time_data.shape[1]):
+        time_data[:, n] -= np.polyval(linear_trend[:, n], time_indexes)
+    return time_data

@@ -6,14 +6,14 @@ This module contains some utility signal generators. Choose from:
 - `chirp()` (sweep)
 - `noise()` (white, pink, red, blue, violet, grey)
 - `dirac()` (impulse)
-- `sinus()` (harmonic)
+- `harmonic()`
 
 """
-from .generators import chirp, noise, dirac, sinus
+from .generators import chirp, noise, dirac, harmonic
 
 __all__ = [
     'chirp',
     'noise',
     'dirac',
-    'sinus',
+    'harmonic',
 ]

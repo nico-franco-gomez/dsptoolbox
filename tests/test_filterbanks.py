@@ -55,3 +55,17 @@ class TestFilterbanksModule():
 
         # Reconstruction
         fb.reconstruct_signal(mb_, upsample=True)
+
+    def test_octave_filter_bank(self):
+        fs_hz = 10_000
+        dsp.filterbanks.fractional_octave_bands(
+            frequency_range_hz=[31, 2000], octave_fraction=1, filter_order=6,
+            sampling_rate_hz=fs_hz)
+        dsp.filterbanks.fractional_octave_bands(
+            frequency_range_hz=[31, 4500], octave_fraction=12, filter_order=6,
+            sampling_rate_hz=fs_hz)
+
+        with pytest.raises(AssertionError):
+            dsp.filterbanks.fractional_octave_bands(
+                frequency_range_hz=[31, 8000], octave_fraction=1,
+                filter_order=6, sampling_rate_hz=fs_hz)

@@ -111,10 +111,45 @@ def qmf_crossovers():
     dsp.plots.show()
 
 
+def fractional_octave_bands():
+    fs = 44100
+    length = 2**18
+    fb = dsp.filterbanks.fractional_octave_bands(
+        sampling_rate_hz=fs,
+        # filter_order=14,
+        frequency_range_hz=[32, 10e3]
+    )
+
+    fb.plot_magnitude(length_samples=length, test_zi=False)
+    dsp.plots.show()
+
+
+def test1():
+    import pyfar as pf
+    import numpy as np
+    import matplotlib.pyplot as plt
+    plt.figure()
+    # generate the data
+    x = pf.signals.impulse(2**17)
+    y = pf.dsp.filter.fractional_octave_bands(
+        x, 1, freq_range=(20, 8e3))
+    # frequency domain plot
+    y_sum = pf.FrequencyData(
+        np.sum(np.abs(y.freq)**2, 0), y.frequencies)
+    pf.plot.freq(y)
+    ax = pf.plot.freq(y_sum, color='k', log_prefix=10, linestyle='--')
+    ax.set_title(
+        "Filter bands and the sum of their squared magnitudes")
+    plt.tight_layout()
+    plt.show()
+
+
 if __name__ == '__main__':
     # linkwitz_riley()
     # perfect_reconstruction()
     # gamma_tone_reconstruction()
     # qmf_crossovers()
+    fractional_octave_bands()
+    # test1()
 
     print()

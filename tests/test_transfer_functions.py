@@ -73,7 +73,6 @@ class TestTransferFunctionsModule():
         h.plot_phase()
         h = dsp.transfer_functions.spectral_average(h)
         h.plot_phase()
-        dsp.plots.show()
 
     def test_min_phase_from_mag(self):
         # Only functionality is tested

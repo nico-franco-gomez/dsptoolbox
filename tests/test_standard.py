@@ -190,9 +190,31 @@ class TestStandardModule():
     def test_activity_detector(self):
         # Only functionality tested
         # Create harmonic signal and silence afterwards
-        s = dsp.generators.sinus(sampling_rate_hz=self.fs)
+        s = dsp.generators.harmonic(sampling_rate_hz=self.fs)
         s = dsp.pad_trim(s, s.time_data.shape[0]*2)
         dsp.activity_detector(s)
+
+    def test_detrend(self):
+        # Functionality
+        s = dsp.generators.harmonic(100, sampling_rate_hz=700,
+                                    peak_level_dbfs=-20,
+                                    number_of_channels=2, uncorrelated=True)
+        s.time_data += 0.2
+        dsp.detrend(s, polynomial_order=0)
+
+        # One channel
+        s = dsp.generators.harmonic(100, sampling_rate_hz=700,
+                                    peak_level_dbfs=-20,
+                                    number_of_channels=1, uncorrelated=True)
+        n = 0.3*np.arange(len(s))/len(s)
+        s.time_data += n[..., None]
+        dsp.detrend(s, polynomial_order=1)
+
+        # Large polynomial order
+        dsp.detrend(s, polynomial_order=10)
+
+        with pytest.raises(AssertionError):
+            dsp.detrend(s, polynomial_order=-10)
 
     def test_filter_to_ir(self):
         f = dsp.Filter(

@@ -128,6 +128,9 @@ class MultiBandSignal():
     def __len__(self):
         return len(self.bands)
 
+    def __iter__(self):
+        return iter(self.bands)
+
     def _generate_metadata(self):
         """Generates an information dictionary with metadata about the
         `MultiBandSignal`.
@@ -236,6 +239,8 @@ class MultiBandSignal():
                 initial += self.bands[n].time_data
                 initial += self.bands[n].time_data_imaginary * 1j
         new_sig = self.bands[0].copy()
+        if hasattr(new_sig, 'window'):
+            del new_sig.window
         new_sig.time_data = initial
         return new_sig
 

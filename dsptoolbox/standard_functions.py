@@ -20,7 +20,8 @@ from dsptoolbox._standard import (_latency,
                                   _center_frequencies_fractional_octaves_iec,
                                   _exact_center_frequencies_fractional_octaves,
                                   _kaiser_window_beta,
-                                  _indexes_above_threshold_dbfs)
+                                  _indexes_above_threshold_dbfs,
+                                  _detrend)
 from dsptoolbox._general_helpers import (
     _pad_trim, _normalize, _fade, _check_format_in_path)
 from dsptoolbox.transfer_functions import (
@@ -878,6 +879,9 @@ def activity_detector(signal: Signal, channel: int = 0,
     # Separate signals
     detected_sig = signal.copy()
     noise = signal.copy()
+    if hasattr(detected_sig, 'window'):
+        del detected_sig.window
+        del noise.window
     detected_sig.time_data = signal.time_data[signal_indexes, 0]
     noise.time_data = signal.time_data[noise_indexes, 0]
 
@@ -885,3 +889,39 @@ def activity_detector(signal: Signal, channel: int = 0,
         noise=noise, signal_indexes=signal_indexes,
         noise_indexes=noise_indexes)
     return detected_sig, others
+
+
+def detrend(sig: Signal | MultiBandSignal, polynomial_order: int = 0) \
+        -> Signal | MultiBandSignal:
+    """Returns the detrended signal.
+
+    Parameters
+    ----------
+    sig : Signal
+        Signal to detrend.
+    polynomial_order : int, optional
+        Polynomial order of the fitted polynomial that will be removed
+        from time data. 0 is equal to mean removal. Default: 0.
+
+    Returns
+    -------
+    detrended_sig : Signal
+        Detrended signal.
+
+    """
+    if type(sig) == Signal:
+        assert polynomial_order >= 0, \
+            'Polynomial order should be positive'
+        td = sig.time_data
+        new_td = _detrend(td, polynomial_order)
+        detrended_sig = sig.copy()
+        detrended_sig.time_data = new_td
+        return detrended_sig
+    elif type(sig) == MultiBandSignal:
+        detrended_sig = sig.copy()
+        for n in range(sig.number_of_bands):
+            detrended_sig.bands[n] = detrend(
+                sig.bands[n], polynomial_order)
+        return detrended_sig
+    else:
+        raise TypeError('Pass either a Signal or a MultiBandSignal')
