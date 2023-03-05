@@ -374,7 +374,7 @@ class ShoeboxRoom(Room):
         area = np.roll(dimensions_m, 1) @ dimensions_m * 2
         super().__init__(volume, area, t60_s, absorption_coefficient)
 
-    def check_if_in_room(self, coordinates_m):
+    def check_if_in_room(self, coordinates_m) -> bool:
         """Checks if a given point is inside the room.
 
         Parameters
@@ -443,7 +443,7 @@ class ShoeboxRoom(Room):
         self.mixing_time_s = mixing_time_s
         return self.mixing_time_s
 
-    def get_room_modes(self, max_order: int = 6, c: float = 343):
+    def get_room_modes(self, max_order: int = 6, c: float = 343) -> np.ndarray:
         """Computes and returns room modes for a shoebox room assuming
         hard reflecting walls.
 
@@ -484,7 +484,7 @@ class ShoeboxRoom(Room):
 
 
 def _add_reverberant_tail_noise(rir: np.ndarray, mixing_time_s: int,
-                                t60: float, sr: int):
+                                t60: float, sr: int) -> np.ndarray:
     """Adds a reverberant tail as noise to an IR.
 
     Parameters
