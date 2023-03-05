@@ -143,13 +143,15 @@ def _sum_magnitude_spectra(magnitudes: np.ndarray) -> np.ndarray:
     return summed
 
 
-def _generate_rir(dim, s_pos, r_pos, rt, sr) -> np.ndarray:
+def _generate_rir(room_dim, alpha, s_pos, r_pos, rt, sr) -> np.ndarray:
     """Generate RIR using image source model according to Brinkmann, et al.
 
     Parameters
     ----------
-    dim : `np.ndarray`
-        Room dimensions.
+    room_dim : `np.ndarray`
+        Room dimensions in meters.
+    alpha : float
+        Mean absorption coefficient of the room.
     s_pos : `np.ndarray`
         Source position.
     r_pos : `np.ndarray`
@@ -170,17 +172,6 @@ def _generate_rir(dim, s_pos, r_pos, rt, sr) -> np.ndarray:
       the closed form image source model for source directivity.
 
     """
-    # Room dimensions
-    surface = dim @ np.roll(dim, 1) * 2
-    volume = np.prod(dim)
-
-    # Desired T60 and corresponding alpha (absorption coefficient)
-    alpha = 0.16*volume/(surface*rt)
-    assert alpha < 1, \
-        'Selected room dimensions and reverberation time are not valid, ' +\
-        f'since needed absorption coefficient is larger than one ({alpha}).' +\
-        ' Try again changing these parameters'
-
     # Beta coefficient same for all walls – could be easily expanded to be
     # different for all walls
     beta = np.sqrt(1 - alpha)
@@ -189,7 +180,7 @@ def _generate_rir(dim, s_pos, r_pos, rt, sr) -> np.ndarray:
     c = 343
     # Estimated maximum order for computation based on reverberation time
     t_max = rt*1.1
-    l_max = c*t_max/2/dim
+    l_max = c*t_max/2/room_dim
     LIMIT = np.ceil(np.sqrt(l_max @ l_max)).astype(int)
 
     # Initialize empty vector
@@ -217,7 +208,7 @@ def _generate_rir(dim, s_pos, r_pos, rt, sr) -> np.ndarray:
     # Distance (according to Eq. 6)
     def get_distance(lvec):
         pos = (((1 - 2*u_vectors)*s_pos) +
-               (2*lvec*dim) - r_pos).flatten()**2
+               (2*lvec*room_dim) - r_pos).flatten()**2
         return (pos @ helper_matrix)**0.5
 
     # Damping term (Numerator in Eq. 8)
@@ -237,3 +228,318 @@ def _generate_rir(dim, s_pos, r_pos, rt, sr) -> np.ndarray:
                 rir_vec[seconds2samples(ds/c)] += \
                     get_damping(l0) / (4*np.pi*ds)
     return rir_vec
+
+
+class Room():
+    """This class contains a room with its parameters and metadata.
+
+    """
+    def __init__(self, volume_m3: float, area_m2: float,
+                 t60_s: float = None, absorption_coefficient: float = None):
+        """Constructor for a generic Room. The passed reverberation time
+        is checked for the volume and area.
+
+        Parameters
+        ----------
+        volume_m3 : float
+            Room volume in cubic meters.
+        area_m2 : float
+            Room area in square meters.
+        t60_s : float, optional
+            Reverberation time T60 in seconds. Pass `None` to define it from
+            a mean absorption coefficient. Default: `None`.
+        absorption_coefficient : float, optional
+            Mean absorption coefficient for the room. It should be between 0
+            and 1. Pass `None` to compute automatically from the reverberation
+            time. Default: `None`.
+
+        Attributes
+        ----------
+        - volume, area, t60_s (reverberation time in seconds),
+          schroeders_frequency (in Hz), critical_distance_m (in meters, for an
+          omnidirectional source).
+
+        """
+        assert area_m2 > 0, \
+            'Room surface area has to be positive'
+        self.volume = volume_m3
+        self.area = area_m2
+
+        assert (t60_s is None) ^ (absorption_coefficient is None), \
+            'Either reverberation time or absorption coefficient should ' +\
+            'not be None'
+        if t60_s is None:
+            assert absorption_coefficient > 0 and absorption_coefficient <= 1,\
+                'Absorption coefficient should be ]0, 1]'
+            self.absorption_coefficient = absorption_coefficient
+            self.t60_s = 0.161 * self.volume / self.area / \
+                self.absorption_coefficient
+        if absorption_coefficient is None:
+            absorption_coefficient = 0.161 * self.volume / self.area / t60_s
+            assert absorption_coefficient > 0 and absorption_coefficient <= 1,\
+                'Given reverberation time is not valid. Absorption ' +\
+                'coefficient should be ]0, 1] and not ' +\
+                f'{absorption_coefficient}'
+            self.t60_s = t60_s
+            self.absorption_coefficient = absorption_coefficient
+
+        # Derived values
+        self.schroeders_frequency = 2000 * np.sqrt(self.t60_s / self.volume)
+
+        # Critical distance
+        self.critical_distance_m = 0.057*np.sqrt(self.volume/self.t60_s)
+
+    # ============== Properties ===============================================
+    @property
+    def volume(self):
+        return self.__volume
+
+    @volume.setter
+    def volume(self, new_volume):
+        assert new_volume > 0, \
+            'Room volume has to be positive'
+        self.__volume = new_volume
+
+    @property
+    def area(self):
+        return self.__area
+
+    @area.setter
+    def area(self, new_area):
+        assert new_area > 0, \
+            'Room volume has to be positive'
+        self.__area = new_area
+
+    def modal_density(self, f_hz: float | np.ndarray, c: float = 343) -> \
+            float | np.ndarray:
+        """Compute and return the modal density for a given cut-off frequency
+        and speed of sound.
+
+        Parameters
+        ----------
+        f_hz : float or `np.ndarray`
+            Frequency or array of frequencies.
+        c : float, optional
+            Speed of sound in m/s. Default: 343.
+
+        Returns
+        -------
+        float or `np.ndarray`
+            Modal density.
+
+        """
+        return 4*np.pi*f_hz**2 * self.volume / c**3 +\
+            np.pi*f_hz*self.area / 2 / c**2
+
+
+class ShoeboxRoom(Room):
+    """Class for a shoebox room.
+
+    """
+    def __init__(self, dimensions_m, t60_s: float = None,
+                 absorption_coefficient: float = None):
+        """Constructor for a generic shoebox room.
+
+        Parameters
+        ----------
+        dimensions_m : array-like
+            Dimensions in meters. It should be a vector containing x, y and z
+            dimensions. It is assumed that the room starts at the origin
+            and a right-hand cartesian system is used.
+        t60_s : float, optional
+            Reverberation time T60 in seconds. Pass `None` to compute it
+            through the absorption coefficient using Sabine's formula.
+            Default: `None`.
+        absorption_coefficient : float, optional
+            Mean absorption coefficient for the room. Pass `None` to compute
+            it from the passed reverberation time using Sabine's formula. An
+            assertion error is raised if the computed value for the absorption
+            coefficient is larger than 1. Default: `None`.
+
+        Attributes
+        ----------
+        - volume, area, t60_s (reverberation time in seconds),
+          schroeders_frequency (in Hz), critical_distance_m (for an
+          omnidirectional source), mixing_time_s (mixing time in seconds),
+          modes_hz.
+
+        """
+        dimensions_m = np.atleast_1d(np.squeeze(dimensions_m))
+        assert len(dimensions_m) == 3, \
+            'Dimensions for a shoebox room should have length 3 (x, y, z)'
+        assert np.all(dimensions_m > 0), \
+            'Room dimensions must be positive'
+        self.dimensions_m = dimensions_m
+        volume = np.prod(dimensions_m)
+        area = np.roll(dimensions_m, 1) @ dimensions_m * 2
+        super().__init__(volume, area, t60_s, absorption_coefficient)
+
+    def check_if_in_room(self, coordinates_m):
+        """Checks if a given point is inside the room.
+
+        Parameters
+        ----------
+        coordinates_m : array-like
+            Coordinates of point in meters. It is assumed that the order is
+            x, y, z.
+
+        Returns
+        -------
+        bool
+            `True` if point is in the room, `False` otherwise.
+
+        """
+        coordinates_m = np.squeeze(coordinates_m)
+        return np.all(coordinates_m <= self.dimensions_m)
+
+    def get_mixing_time(self, mode: str = 'perceptual',
+                        n_reflections: int = 400,
+                        c: float = 343) -> float:
+        """Computes and returns mixing time defined as the time where early
+        reflections end and late reflections start. For this, two options are
+        implemented: either a perceptual estimation presented in [1]
+        (eq. 13) or a physical model that takes into account the reflections
+        density after which the late reverberant tail of the IR starts
+        (corresponds to eq.1 in [1]).
+
+        The result will be saved in the `mixing_time_s` object's property.
+
+        Parameters
+        ----------
+        mode : str, optional
+            Choose from `'perceptual'` or `'physical'`.
+            Default: `'perceptual'`.
+        n_reflections : int, optional
+            Necessary only when `mode='physical'`. This is the reflections
+            density that is reached when the late reverberation starts.
+            Default: 400.
+        c : float, optional
+            Necessary only when `mode='physical'`. Speed of sound.
+            Default: 343.
+
+        Returns
+        -------
+        mixing_time_s : float
+            Mixing time in seconds.
+
+        References
+        ----------
+        - [1]: Lindau A.; Kosanke, L.; Weinzierl S. (2012): "Perceptual
+          evaluation of model- and signalbased predictors of the mixing time
+          in binaural room impulse responses", In: J. Audio Eng. Soc. 60
+          (11), pp. 887-898.
+
+        """
+        mode = mode.lower()
+        assert mode in ('perceptual', 'physical'), \
+            f'{mode} is not supported. Use perceptual or physical'
+        mixing_time_s = 0
+        if mode == 'perceptual':
+            mixing_time_s = (np.sqrt(self.volume) * 0.58 + 21.2)*1e-3
+        else:
+            assert n_reflections > 0,\
+                'n_reflections must be positive'
+            mixing_time_s = np.sqrt(n_reflections*self.volume/(4*np.pi*c**3))
+        self.mixing_time_s = mixing_time_s
+        return self.mixing_time_s
+
+    def get_room_modes(self, max_order: int = 6, c: float = 343):
+        """Computes and returns room modes for a shoebox room assuming
+        hard reflecting walls.
+
+        The result is returned and saved in the `modes_hz` property of this
+        ShoeboxRoom.
+
+        Parameters
+        ----------
+        max_order : int, optional
+            Maximum mode order to compute. Default: 6.
+        c : float, optional
+            Speed of sound in meters/seconds. Default: 343.
+
+        Returns
+        -------
+        modes : np.ndarray
+            Array containing the frequencies of the room modes as well as
+            their characteristics (orders in each room dimension. This is
+            necessary to know if it is an axial, a tangential or oblique mode).
+            Its shape is (frequency, order x, order y, order z)
+
+        """
+        max_order += 1
+        modes = np.zeros((max_order**3, 4))
+        counter = 0
+        for nx in range(max_order):
+            for ny in range(max_order):
+                for nz in range(max_order):
+                    freq = c/2*np.sqrt(
+                        (nx/self.dimensions_m[0])**2 +
+                        (ny/self.dimensions_m[1])**2 +
+                        (nz/self.dimensions_m[2])**2)
+                    modes[counter, :] = np.array([freq, nx, ny, nz])
+                    counter += 1
+        modes = modes[1:]  # Prune first (trivial) entry
+        self.modes_hz = modes[modes[:, 0].argsort()]
+        return self.modes_hz
+
+
+def _add_reverberant_tail_noise(rir: np.ndarray, mixing_time_s: int,
+                                t60: float, sr: int):
+    """Adds a reverberant tail as noise to an IR.
+
+    Parameters
+    ----------
+    rir : `np.ndarray`
+        Impulse response as 1D-array.
+    mixing_time_s : int
+        Mixing time in samples.
+    t60 : float
+        Reverberation time in seconds.
+    sr : int
+        Sampling rate in Hz.
+
+    Returns
+    -------
+    rir_late : `np.ndarray`
+        RIR with added decaying noise as late reverberant tail.
+
+    """
+    # Find first sample
+    ind_direct = np.squeeze(np.where(rir != 0))[0]
+
+    # Define noise length
+    mixing_time_samples = int(mixing_time_s * sr)
+    noise_length = len(rir) - ind_direct - mixing_time_samples
+
+    # Generate decaying noise (normalized)
+    noise = np.abs(np.random.normal(0, 1, noise_length))
+    delta = 0.02*343/t60
+    noise *= np.exp(-delta*np.arange(noise_length)/sr)
+    noise /= np.max(noise)
+
+    # Find right amplitude by looking at a window around start of noise
+    window = 100
+    window = rir[-noise_length-window//2:-noise_length+window//2]
+    gain = np.median(window[window != 0])*0.5
+    noise *= gain
+
+    # Apply noise
+    indexes = rir[-noise_length:] == 0
+    rir[-noise_length:][indexes] += noise[indexes]
+    return rir
+
+
+if __name__ == '__main__':
+    print()
+    # r = Room(200, 100, 0.35, None)
+    # print(r.absorption_coefficient)
+    # print(r.modal_density(100, c=343))
+    # r = Room(200, 100, None, 0.1)
+    # print(r.t60_s)
+    r = ShoeboxRoom([3, 4, 5], absorption_coefficient=0.9)
+    bla = r.get_room_modes(8)
+    print(bla.shape)
+    print(r.critical_distance_m)
+    print(r.t60_s)
+    print(r.get_mixing_time())
+    # print(bla)

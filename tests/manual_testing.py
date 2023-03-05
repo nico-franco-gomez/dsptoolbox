@@ -428,8 +428,8 @@ def true_peak():
     print('difference: ', t - p, ' dB')
 
 
-def sinus_tone():
-    c = dsp.generators.sinus(
+def harmonic_tone():
+    c = dsp.generators.harmonic(
         frequency_hz=500, length_seconds=2, number_of_channels=3,
         uncorrelated=True, fade='log', sampling_rate_hz=4_000)
     # c.plot_time()
@@ -764,6 +764,74 @@ def beamforming_3d_grid():
     dsp.plots.show()
 
 
+def beamforming_frequency_formulations():
+    s = dsp.generators.noise(
+        type_of_noise='white', sampling_rate_hz=5_000, peak_level_dbfs=-6)
+    s2 = dsp.generators.noise(
+        type_of_noise='white', sampling_rate_hz=5_000, peak_level_dbfs=-6)
+
+    line = np.arange(0, 1, 0.2)
+    xx, yy = np.meshgrid(line, line, indexing='ij')
+    ma = dsp.beamforming.MicArray(
+        dict(x=xx.flatten(), y=yy.flatten(), z=np.zeros(len(xx.flatten()))))
+    ap = ma.aperture
+
+    ms = dsp.beamforming.MonopoleSource(s, coordinates=[0.4, 0.4, ap])
+    ms2 = dsp.beamforming.MonopoleSource(s2, coordinates=[0, 0, ap])
+    s_out = dsp.beamforming.mix_sources_on_array([ms, ms2], ma)
+    grid = dsp.beamforming.Regular2DGrid(line, line, ('x', 'y'), ap)
+    st = dsp.beamforming.SteeringVector('true power')
+
+    bf = dsp.beamforming.BeamformerCleanSC(s_out, ma, grid, st)
+    map = bf.get_beamformer_map(
+        center_frequency_hz=1500, octave_fraction=0, maximum_iterations=100,
+        safety_factor=0.5, remove_diagonal_csm=True)
+    grid.plot_map(map, range_db=60)
+    bf = dsp.beamforming.BeamformerDASFrequency(s_out, ma, grid, st)
+    map = bf.get_beamformer_map(center_frequency_hz=1500, octave_fraction=0)
+    grid.plot_map(map, range_db=60)
+    bf = dsp.beamforming.BeamformerOrthogonal(s_out, ma, grid, st)
+    map = bf.get_beamformer_map(center_frequency_hz=1500, octave_fraction=0)
+    grid.plot_map(map, range_db=60)
+    bf = dsp.beamforming.BeamformerFunctional(s_out, ma, grid, st)
+    map = bf.get_beamformer_map(
+        center_frequency_hz=1500, octave_fraction=0, gamma=20)
+    grid.plot_map(map, range_db=60)
+    try:
+        bf = dsp.beamforming.BeamformerMVDR(s_out, ma, grid, st)
+        map = bf.get_beamformer_map(
+            center_frequency_hz=1500, octave_fraction=0, gamma=5)
+        grid.plot_map(map, range_db=60)
+    except np.linalg.LinAlgError as e:
+        print(e)
+        pass
+    dsp.plots.show()
+
+
+def detrending():
+    s = dsp.generators.harmonic(
+        300, sampling_rate_hz=1500, peak_level_dbfs=-20,
+        number_of_channels=2, uncorrelated=True)
+    s.plot_time()
+    n = 0.3*np.arange(len(s))/len(s)
+    s.time_data += n[..., None]
+    s.plot_time()
+    s2 = dsp.detrend(s, polynomial_order=10)
+    s2.plot_time()
+    dsp.plots.show()
+
+
+def iterators():
+    s = dsp.generators.noise(sampling_rate_hz=10_000)
+    fb = dsp.filterbanks.auditory_filters_gammatone(
+        [500, 1000], sampling_rate_hz=10_000)
+    mb = fb.filter_signal(s, mode='parallel')
+    for n in mb:
+        print(type(n))
+    for n in fb:
+        print(type(n))
+
+
 if __name__ == '__main__':
     # transfer_function_test()
     # new_transfer_functions()
@@ -789,7 +857,7 @@ if __name__ == '__main__':
     # ir2filt()
     # fwsnrseg()
     # true_peak()
-    # sinus_tone()
+    # harmonic_tone()
     # band_swapping()
     # fractional_time_delay()
     # synthetic_rir()
@@ -799,7 +867,10 @@ if __name__ == '__main__':
     # beamforming_complete_test_2D()
     # beamforming_complete_test_time()
     # cepstrum()
-    beamforming_3d_grid()
+    # beamforming_3d_grid()
+    # beamforming_frequency_formulations()
+    # detrending()
+    # iterators()
 
     # Next
     print()

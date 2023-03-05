@@ -684,6 +684,19 @@ class TestFilterBankClass():
         fb.filter_multiband_signal(mb, activate_zi=True, zero_phase=False)
         fb.filter_multiband_signal(mb, activate_zi=False, zero_phase=True)
 
+    def test_iterator(self):
+        fb = dsp.FilterBank(same_sampling_rate=False)
+        config = dict(
+            order=5, freqs=[1500, 2000], type_of_pass='bandpass',
+            filter_design_method='bessel')
+        fb.add_filter(dsp.Filter(
+            'iir', config, sampling_rate_hz=self.fs))
+        config = dict(
+            order=150, freqs=[1500, 2000], type_of_pass='bandpass')
+        fb.add_filter(dsp.Filter('fir', config, self.fs//2))
+        for n in fb:
+            assert dsp.Filter == type(n)
+
 
 class TestMultiBandSignal():
     fs = 44100
@@ -778,3 +791,10 @@ class TestMultiBandSignal():
         assert np.all(mbs.sampling_rate_hz ==
                       [self.s.sampling_rate_hz, s2.sampling_rate_hz])
         mbs.show_info()
+
+    def test_iterator(self):
+        mbs = dsp.MultiBandSignal(
+                bands=[self.s, self.s], same_sampling_rate=True,
+                info=dict(information='test filter bank'))
+        for n in mbs:
+            assert dsp.Signal == type(n)

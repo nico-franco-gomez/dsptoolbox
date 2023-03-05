@@ -134,6 +134,9 @@ class FilterBank():
     def __len__(self):
         return len(self.__filters)
 
+    def __iter__(self):
+        return iter(self.filters)
+
     @property
     def same_sampling_rate(self) -> bool:
         return self.__same_sampling_rate
@@ -470,11 +473,11 @@ class FilterBank():
         if mode == 'parallel':
             bs = self.filter_signal(d, mode='parallel', activate_zi=test_zi)
             specs = []
-            f = bs.bands[0].get_spectrum()[0]
             for b in bs.bands:
                 b.set_spectrum_parameters(method='standard')
+                f, sp = b.get_spectrum()
                 f, sp = _get_normalized_spectrum(
-                    f, np.squeeze(b.get_spectrum()[1]),
+                    f, sp,
                     f_range_hz=range_hz,
                     normalize=None)
                 specs.append(np.squeeze(sp))

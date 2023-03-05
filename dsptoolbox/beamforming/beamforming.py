@@ -820,11 +820,11 @@ class BeamformerDASFrequency(BeamformerGridded):
 
         Parameters
         ----------
-        center_frequency_hz : float
-            Center frequency for band in which to compute the beamforming.
+        center_frequenc_hz : float
+            Center frequency for which to compute map.
         octave_fraction : int, optional
-            Bandwidth (1/octave_fraction)-octave for the map. Pass 0 to
-            get a single-frequency-bin map. Default: 3.
+            Fractional octave bandwidth for computing the map. For instance,
+            8 means 1/8-octave bandwidth. Default: 3.
         remove_csm_diagonal : bool, optional
             When `True`, the diagonal of the cross-spectral matrix is removed.
             Default: `True`.
@@ -915,7 +915,8 @@ class BeamformerCleanSC(BeamformerGridded):
         center_frequenc_hz : float
             Center frequency for which to compute map.
         octave_fraction : int, optional
-            Fractional octave bandwidth for computing the map. Default: 3.
+            Fractional octave bandwidth for computing the map. For instance,
+            8 means 1/8-octave bandwidth. Default: 3.
         maximum_iterations : int, optional
             Set a maximum number of iterations for acquiring the degraded CSM.
             If `None` is passed, the double of the number of microphones is
@@ -1028,6 +1029,11 @@ class BeamformerOrthogonal(BeamformerGridded):
 
         Parameters
         ----------
+        center_frequenc_hz : float
+            Center frequency for which to compute map.
+        octave_fraction : int, optional
+            Fractional octave bandwidth for computing the map. For instance,
+            8 means 1/8-octave bandwidth. Default: 3.
         number_eigenvalues : int, optional
             Set a number of eigenvalues to be regarded. Pass `None` to use at
             least half of what is possible (number of microphones).
@@ -1095,12 +1101,13 @@ class BeamformerOrthogonal(BeamformerGridded):
                 for gind in range(self.grid.number_of_points):
                     # Generate whole map
                     product = h[find, :, gind].conjugate() @ v[:, -eig-1]
-                    eig_map[eig, gind, find] = product * product.conjugate()
+                    eig_map[eig, gind, find] = \
+                        (product * product.conjugate()).real
                 # Find largest value
                 source_ind = np.argmax(eig_map[eig, :, find])
                 # Scale by eigenvalue and pass to final map
                 map[source_ind, find] = \
-                    eig_map[eig, source_ind, find].real * w[-eig-1]
+                    eig_map[eig, source_ind, find] * w[-eig-1]
 
         # Integrate over all frequencies
         if number_frequency_bins > 1:
@@ -1129,6 +1136,11 @@ class BeamformerFunctional(BeamformerGridded):
 
         Parameters
         ----------
+        center_frequenc_hz : float
+            Center frequency for which to compute map.
+        octave_fraction : int, optional
+            Fractional octave bandwidth for computing the map. For instance,
+            8 means 1/8-octave bandwidth. Default: 3.
         gamma : float, optional
             Set a gamma value as the power of the CSM. Default: 10.
 
@@ -1184,8 +1196,98 @@ class BeamformerFunctional(BeamformerGridded):
             for gind in range(self.grid.number_of_points):
                 map[gind, find] = np.linalg.multi_dot(
                     [h_H[find, gind, :], csm_, h[find, :, gind]]).real
+                steering_normalization = (
+                    h_H[find, gind, :] @ h[find, :, gind]).real
+                map[gind, find] = (
+                    map[gind, find]/steering_normalization)**gamma * \
+                    steering_normalization
 
-        map **= gamma
+        # Integrate over all frequencies
+        if number_frequency_bins > 1:
+            map = simpson(map, dx=f[1]-f[0], axis=1)
+        else:
+            map = map.squeeze()
+        self.map = self.grid.reconstruct_map_shape(map)
+        return self.map.copy()
+
+
+class BeamformerMVDR(BeamformerGridded):
+    """This class performs minimum variance distortionless response (MVDR)
+    beamforming using the method presented in [1]. This formulation is
+    also referred to as Capon beamformer.
+
+    References
+    ----------
+    - [1]: J. Capon, "High-resolution frequency-wavenumber spectrum analysis,"
+      in Proceedings of the IEEE, vol. 57, no. 8, pp. 1408-1418, Aug. 1969,
+      doi: 10.1109/PROC.1969.7278.
+
+    """
+    beamformer_type = 'MVDR'
+
+    def get_beamformer_map(self, center_frequency_hz: float,
+                           octave_fraction: int = 3,
+                           gamma: float = 10) -> np.ndarray:
+        """Returns a beaforming map created with MVDR beamforming.
+
+        Parameters
+        ----------
+        center_frequenc_hz : float
+            Center frequency for which to compute map.
+        octave_fraction : int, optional
+            Fractional octave bandwidth for computing the map. For instance,
+            8 means 1/8-octave bandwidth. Default: 3.
+
+        Returns
+        -------
+        map : np.ndarray
+            Beamformer map.
+
+        References
+        ----------
+        - [1]: J. Capon, "High-resolution frequency-wavenumber spectrum
+          analysis," in Proceedings of the IEEE, vol. 57, no. 8,
+          pp. 1408-1418, Aug. 1969, doi: 10.1109/PROC.1969.7278.
+
+        """
+        self.center_frequency_hz = center_frequency_hz
+        self.octave_fraction = octave_fraction
+        self.f_range_hz = _get_fractional_octave_bandwidth(
+            self.center_frequency_hz, self.octave_fraction)
+
+        txt = 'Beamformer computation has started successfully:'
+        print('\n'+txt)
+        print('-'*len(txt))
+        print('...csm...')
+        f, csm = self.signal.get_csm()
+
+        print('...Steering vector...')
+        # Frequency selection, wave numbers and steering vector
+        ids = _find_nearest(self.f_range_hz, f)
+        id1, id2 = ids[0], ids[1]
+        # In case of only one frequency bin
+        if id1 == id2:
+            id2 += 1
+        f = f[id1:id2]
+        csm = csm[id1:id2]
+        number_frequency_bins = id2 - id1
+        wave_numbers = f * np.pi * 2 / self.c
+
+        # Generate steering vectors
+        h = self.st_vec.get_vector(
+            wave_numbers, grid=self.grid, mic=self.mics)
+        h_H = np.swapaxes(h, 1, 2).conjugate()
+        self.f_range_hz = np.array([f[0], f[-1]])
+
+        print('...Apply...')
+        map = np.zeros((self.grid.number_of_points,
+                        number_frequency_bins))
+
+        for find in range(len(f)):
+            csm_1 = np.linalg.inv(csm[find, :, :])
+            for gind in range(self.grid.number_of_points):
+                map[gind, find] = 1/np.linalg.multi_dot(
+                    [h_H[find, gind, :], csm_1, h[find, :, gind]]).real
 
         # Integrate over all frequencies
         if number_frequency_bins > 1:

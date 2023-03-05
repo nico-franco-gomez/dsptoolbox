@@ -150,6 +150,18 @@ class TestBeamformingModule():
         # Get and show map
         bf.get_beamformer_map(2000, 0, gamma=10)
 
+        try:
+            # Create beamformer and plot setting
+            bf = dsp.beamforming.BeamformerMVDR(s, ma, g, st)
+            # Get and show map
+            bf.get_beamformer_map(2000, 0, gamma=10)
+        except np.linalg.LinAlgError as e:
+            print(e)
+            pass
+        except Exception as e:
+            print(e)
+            assert False
+
         # Create beamformer and plot setting
         bf = dsp.beamforming.BeamformerCleanSC(s, ma, g, st)
         # Get and show map

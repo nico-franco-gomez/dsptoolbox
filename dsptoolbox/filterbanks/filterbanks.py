@@ -278,6 +278,72 @@ def qmf_crossover(lowpass: Filter) -> QMFCrossover:
     return QMFCrossover(lowpass)
 
 
+def fractional_octave_bands(frequency_range_hz=[31.5, 16e3],
+                            octave_fraction: int = 1, filter_order: int = 6,
+                            sampling_rate_hz: int = None):
+    """Create and return a filter bank containing a set of of fractional
+    octave filters that are compliant with the specifications presented in [1].
+    These are butterworth filters with at least order 3. For offline
+    applications where phase or time information is also needed, filtering
+    with `zero_phase=True` is recommended (the filter order will be doubled).
+
+    For even filter orders, this filter bank is energy preserving.
+
+    Parameters
+    ----------
+    frequency_range_hz : array-like, optional
+        Frequency range in Hz for which to compute the filter bank.
+        Default: [31.5, 16000].
+    octave_fraction : int, optional
+        Octave fraction to use. Default: 1.
+    filter_order : int, optional
+        Filter order to be used. Less than 4 is not recommended. Default: 4.
+    sampling_rate_hz : int
+        Sampling rate in Hz.
+
+    Returns
+    -------
+    octave_filter_bank : `FilterBank`
+        Filter bank containing fractional octave band filters.
+
+    References
+    ----------
+    - [1]: ANSI S1.11:2004.
+
+    """
+    assert sampling_rate_hz is not None, \
+        'A sampling rate must be passed for the filter bank'
+    frequency_range_hz = np.atleast_1d(np.squeeze(frequency_range_hz))
+    frequency_range_hz.sort()
+    assert len(frequency_range_hz) == 2, \
+        'Frequency range must contain exactly two entries'
+    assert frequency_range_hz[-1] < sampling_rate_hz//2, \
+        'The highest frequency in the range is higher than the nyquist ' +\
+        'frequency'
+
+    # fractional octave frequencies
+    lower, upper = fractional_octave_frequencies(
+        octave_fraction, frequency_range_hz, return_cutoff=True)[2]
+
+    octave_filter_bank = FilterBank()
+
+    for ind in range(len(lower)):
+        top = 'bandpass'
+        freqs = [lower[ind], upper[ind]]
+        if upper[ind] > sampling_rate_hz//2:
+            top = 'highpass'
+            freqs = lower[ind]
+
+        f = Filter('iir', dict(type_of_pass=top,
+                               filter_design_method='butter',
+                               order=filter_order,
+                               freqs=freqs),
+                   sampling_rate_hz=sampling_rate_hz)
+        octave_filter_bank.add_filter(f)
+
+    return octave_filter_bank
+
+
 # Not yet working
 # def cqf_crossover(lowpass: Filter) -> CQFCrossover:
 #     """This creates conjugate quadrature filters that work as a two band,

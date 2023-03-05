@@ -322,6 +322,8 @@ def spectral_average(signal: Signal) -> Signal:
     new_time_data = np.fft.irfft(new_sp[..., None], n=l_samples, axis=0)
     avg_sig = signal.copy()
     avg_sig.time_data = new_time_data
+    if hasattr(avg_sig, 'window'):
+        del avg_sig.window
     return avg_sig
 
 
@@ -451,8 +453,7 @@ def lin_phase_from_mag(spectrum: np.ndarray, sampling_rate_hz: int,
 
 
 def min_phase_ir(sig: Signal, equiripple: bool = False) -> Signal:
-    """Returns same signal with minimum phase. A `Filter` can also be passed
-    if it is an FIR filter. If the IR is symmetric,
+    """Returns same signal with minimum phase. If the IR is symmetric,
     `scipy.signal.minimum_phase` is used. Otherwise, a direct hilbert transform
     of the log magnitude spectrum is applied. The output is always padded to
     keep the length of the original IR.
@@ -482,6 +483,8 @@ def min_phase_ir(sig: Signal, equiripple: bool = False) -> Signal:
     new_time_data = np.fft.irfft(np.abs(sp)*np.exp(1j*min_phases), axis=0)
     min_phase_sig = sig.copy()
     min_phase_sig.time_data = new_time_data
+    if hasattr(min_phase_sig, 'window'):
+        del min_phase_sig.window
     return min_phase_sig
 
 
