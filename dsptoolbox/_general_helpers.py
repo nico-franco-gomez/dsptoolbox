@@ -135,8 +135,10 @@ def _get_normalized_spectrum(f, spectra: np.ndarray, mode='standard',
             f'{normalize} is not a valid normalization mode. Please use ' +\
             '1k or max'
     # Shaping
+    one_dimensional = False
     if spectra.ndim < 2:
         spectra = spectra[..., None]
+        one_dimensional = True
     # Check for complex spectrum if phase is required
     if phase:
         assert np.iscomplexobj(spectra), 'Phase computation is not ' +\
@@ -167,7 +169,7 @@ def _get_normalized_spectrum(f, spectra: np.ndarray, mode='standard',
         if smoothe != 0:
             sp = _fractional_octave_smoothing(sp, smoothe)
         epsilon = 10**(-300/20)
-        sp_db = factor*np.log10(sp + epsilon)
+        sp_db = factor*np.log10(np.clip(sp, a_min=epsilon, a_max=None))
         if normalize is not None:
             if normalize == '1k':
                 id1k = _find_nearest(1e3, f)
@@ -177,6 +179,9 @@ def _get_normalized_spectrum(f, spectra: np.ndarray, mode='standard',
         if phase:
             phase_spectra[:, n] = np.angle(sp[id1:id2])
         mag_spectra[:, n] = sp_db[id1:id2]
+
+    if one_dimensional:
+        mag_spectra = np.squeeze(mag_spectra)
     if phase:
         return f[id1:id2], mag_spectra, phase_spectra
     return f[id1:id2], mag_spectra

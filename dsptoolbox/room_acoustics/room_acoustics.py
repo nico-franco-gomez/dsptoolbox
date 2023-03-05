@@ -3,7 +3,7 @@ High-level methods for room acoustics functions
 """
 import numpy as np
 from scipy.signal import find_peaks, convolve
-from warnings import warn
+# from warnings import warn
 
 from dsptoolbox.classes import Signal, MultiBandSignal, Filter
 from dsptoolbox.transfer_functions import group_delay
@@ -11,7 +11,9 @@ from ._room_acoustics import (_reverb,
                               _complex_mode_identification,
                               _sum_magnitude_spectra,
                               _find_ir_start,
-                              _generate_rir)
+                              _generate_rir,
+                              ShoeboxRoom,
+                              _add_reverberant_tail_noise)
 from dsptoolbox._general_helpers import _find_nearest, _normalize, _pad_trim
 
 
@@ -293,12 +295,12 @@ def find_ir_start(signal: Signal, threshold_dbfs: float = -20) -> np.ndarray:
     return start_index.squeeze()
 
 
-def generate_synthetic_rir(room_dimensions_meters, source_position,
+def generate_synthetic_rir(room: ShoeboxRoom, source_position,
                            receiver_position,
                            sampling_rate_hz: int,
                            total_length_seconds: float = 0.5,
-                           desired_reverb_time_seconds: float = None,
-                           apply_bandpass: bool = True) \
+                           add_noise_reverberant_tail: bool = False,
+                           apply_bandpass: bool = False) \
         -> Signal:
     """This function returns a synthetized RIR in a shoebox-room using the
     image source model. The implementation is based on Brinkmann,
@@ -311,9 +313,8 @@ def generate_synthetic_rir(room_dimensions_meters, source_position,
 
     Parameters
     ----------
-    room_dimensions_meters : array-like
-        Vector with length 3 representing room dimensions in x, y and z
-        coordinates in meters, respectively.
+    room : `ShoeboxRoom`
+        Room object with the information about the room properties.
     source_position : array-like
         Vector with length 3 corresponding to the source's position (x, y, z)
         in meters.
@@ -324,13 +325,12 @@ def generate_synthetic_rir(room_dimensions_meters, source_position,
         Total length of the output RIR in seconds. Default: 0.5.
     sampling_rate_hz : int
         Sampling rate of the generated impulse (in Hz). Default: `None`.
-    desired_reverb_time_seconds : float, optional
-        Desired reverberation time in seconds for the RIR to have
-        (approximately). When `None`, reverberation time is set to be 75% of
-        the total time.
+    add_noise_reverberant_tail : bool, optional
+        When `True`, decaying noise is added to the IR in order to model
+        the late reflections of the room. Default: `True`.
     apply_bandpass : bool, optional
         When `True`, a bandpass filter is applied to signal in order to obtain
-        a more realistic audio representation of the RIR. Default: `True`.
+        a realistic audio representation of the RIR. Default: `True`.
 
     Returns
     -------
@@ -346,36 +346,35 @@ def generate_synthetic_rir(room_dimensions_meters, source_position,
     """
     assert sampling_rate_hz is not None, \
         'Sampling rate can not be None'
-    room_dimensions_meters = np.asarray(room_dimensions_meters)
-    assert room_dimensions_meters.ndim == 1 and \
-        len(room_dimensions_meters) == 3 and \
-        np.all(room_dimensions_meters > 0), \
-        'The dimensions for the room are not correct'
+    assert type(room) == ShoeboxRoom, \
+        'Room must be of type ShoeboxRoom'
     source_position = np.asarray(source_position)
-    assert source_position.shape == room_dimensions_meters.shape, \
-        'Invalid shape for source position vector'
-    assert np.all(source_position < room_dimensions_meters), \
-        'Source positions have values bigger than the room'
     receiver_position = np.asarray(receiver_position)
-    assert receiver_position.shape == room_dimensions_meters.shape, \
-        'Invalid shape for receiver position vector'
-    assert np.all(receiver_position < room_dimensions_meters), \
-        'Receiver positions have values bigger than the room'
-
-    if desired_reverb_time_seconds is None:
-        desired_reverb_time_seconds = 0.75 * total_length_seconds
-    if desired_reverb_time_seconds > total_length_seconds:
-        warn('Total length of RIR is smaller than the desired reverberation ' +
-             'time')
+    assert room.check_if_in_room(source_position), \
+        'Source is not located inside the room'
+    assert room.check_if_in_room(receiver_position), \
+        'Receiver is not located inside the room'
 
     total_length_samples = int(total_length_seconds*sampling_rate_hz)
+    room.dimensions_m
     rir = _generate_rir(
-        dim=room_dimensions_meters, s_pos=source_position,
-        r_pos=receiver_position, rt=desired_reverb_time_seconds,
+        room_dim=room.dimensions_m, alpha=room.absorption_coefficient,
+        s_pos=source_position, r_pos=receiver_position, rt=room.t60_s,
         sr=sampling_rate_hz)
     rir = _pad_trim(rir, total_length_samples)
+
     # Prune possible nan values
     np.nan_to_num(rir, copy=False, nan=0)
+
+    # Add decaying noise as reverberant tail
+    if add_noise_reverberant_tail:
+        if not hasattr(room, 'mixing_time_s'):
+            room.get_mixing_time('physical', n_reflections=1000)
+        if room.mixing_time_s is None:
+            room.get_mixing_time('physical', n_reflections=1000)
+        rir = _add_reverberant_tail_noise(
+            rir, room.mixing_time_s, room.t60_s, sr=sampling_rate_hz)
+
     rir = Signal(
         None, rir, sampling_rate_hz, signal_type='rir',
         signal_id='Synthetized RIR using the image source method')
@@ -383,9 +382,10 @@ def generate_synthetic_rir(room_dimensions_meters, source_position,
     # Bandpass signal in order to have a realistic audio signal representation
     if apply_bandpass:
         f = Filter(
-            'iir', dict(order=12, filter_design_method='bessel',
+            'iir', dict(order=12, filter_design_method='butter',
                         type_of_pass='bandpass',
                         freqs=[30, (sampling_rate_hz//2)*0.9]),
             sampling_rate_hz=sampling_rate_hz)
         rir = f.filter_signal(rir)
+
     return rir

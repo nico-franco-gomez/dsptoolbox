@@ -63,14 +63,25 @@ class TestRoomAcousticsModule():
             dsp.room_acoustics.find_ir_start(self.rir, 20)
 
     def test_generate_synthetic_rir(self):
+        r = dsp.room_acoustics.ShoeboxRoom([3, 4, 5], None, 0.8)
         # Only functionality
         dsp.room_acoustics.generate_synthetic_rir(
-            room_dimensions_meters=[5, 4, 3], source_position=[2, 2, 2],
-            receiver_position=[1, 1, 1], total_length_seconds=0.4,
-            sampling_rate_hz=44100, desired_reverb_time_seconds=0.15,
-            apply_bandpass=False)
+            room=r, source_position=[2, 2, 2],
+            receiver_position=[1, 1, 1], total_length_seconds=0.3,
+            sampling_rate_hz=44100, apply_bandpass=False,
+            add_noise_reverberant_tail=True)
         dsp.room_acoustics.generate_synthetic_rir(
-            room_dimensions_meters=[5, 4, 3], source_position=[2, 2, 2],
-            receiver_position=[1, 1, 1], total_length_seconds=0.4,
-            sampling_rate_hz=44100, desired_reverb_time_seconds=0.15,
-            apply_bandpass=True)
+            room=r, source_position=[2, 2, 2],
+            receiver_position=[1, 1, 1], total_length_seconds=0.3,
+            sampling_rate_hz=44100, apply_bandpass=True,
+            add_noise_reverberant_tail=False)
+
+    def test_shoebox_room(self):
+        r = dsp.room_acoustics.ShoeboxRoom([3, 4, 5], t60_s=0.6)
+        r.get_mixing_time(mode='perceptual')
+        r.get_mixing_time(mode='physical', n_reflections=1000)
+        r.get_room_modes(3)
+        assert r.check_if_in_room([1, 1, 1])
+        assert not r.check_if_in_room([7, 7, 7])
+        with pytest.raises(AssertionError):
+            dsp.room_acoustics.ShoeboxRoom([10, 10, 10], t60_s=0.01)

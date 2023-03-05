@@ -14,6 +14,28 @@ adheres to `Semantic Versioning <http://semver.org/spec/v2.0.0.html>`_.
 - Validation for results from tests in every module (so far many tests are
   only regarding functionality)
 
+`0.2.3 <https://pypi.org/project/dsptoolbox/0.2.3>`_ - 
+---------------------
+
+Added
+~~~~~~
+- ``detrend`` function
+- ``fractional_octave_bands`` filter bank in ``filterbanks`` module
+- ``ShoeboxRoom`` class in ``room_acoustics``. Some basic room acoustics
+  parameters can be computed. Used also for ``generate_synthetic_rir``
+
+Bugfix
+~~~~~~~
+- corrected scaling in ``BeamformerFunctional`` so that the source power is
+  not underestimated
+- corrected ``plot_magnitude`` in ``FilterBank`` class where the second and
+  subsequent bands were plotted with an offset
+
+Misc
+~~~~~
+- docstrings corrected and extended
+- renamed ``sinus`` to ``harmonic`` in ``generators`` module
+
 `0.2.2 <https://pypi.org/project/dsptoolbox/0.2.2>`_ - 2023-02-21
 ---------------------
 

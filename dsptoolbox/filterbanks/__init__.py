@@ -24,11 +24,13 @@ Other:
 from .filterbanks import (linkwitz_riley_crossovers,
                           reconstructing_fractional_octave_bands,
                           auditory_filters_gammatone,
+                          fractional_octave_bands,
                           qmf_crossover)
 
 __all__ = [
     'linkwitz_riley_crossovers',
     'reconstructing_fractional_octave_bands',
+    'fractional_octave_bands',
     'auditory_filters_gammatone',
     'qmf_crossover',
 ]

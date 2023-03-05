@@ -78,23 +78,23 @@ class TestGeneratorsModule():
             1024, delay_samples=100, number_of_channels=2,
             sampling_rate_hz=5_000)
 
-    def test_sinus(self):
+    def test_harmonic(self):
         # Only functionality
-        dsp.generators.sinus(
+        dsp.generators.harmonic(
             frequency_hz=1000, length_seconds=2, sampling_rate_hz=5_000,
             peak_level_dbfs=-5, number_of_channels=3, uncorrelated=False,
             fade='log', padding_end_seconds=1)
-        dsp.generators.sinus(
+        dsp.generators.harmonic(
             frequency_hz=1000, length_seconds=2, sampling_rate_hz=5_000,
             peak_level_dbfs=-5, number_of_channels=1, uncorrelated=False,
             fade='lin', padding_end_seconds=None)
-        dsp.generators.sinus(
+        dsp.generators.harmonic(
             frequency_hz=1000, length_seconds=1, sampling_rate_hz=5_000,
             peak_level_dbfs=-5, number_of_channels=3, uncorrelated=True,
             fade=None, padding_end_seconds=None)
 
         with pytest.raises(AssertionError):
-            dsp.generators.sinus(
+            dsp.generators.harmonic(
                 frequency_hz=4000, length_seconds=1, sampling_rate_hz=5_000,
                 peak_level_dbfs=-5, number_of_channels=3, uncorrelated=True,
                 fade=None, padding_end_seconds=None)

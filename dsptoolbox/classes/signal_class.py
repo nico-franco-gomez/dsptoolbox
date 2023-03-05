@@ -602,6 +602,8 @@ class Signal():
             f'of channels {self.number_of_channels}'
         new_sig = self.copy()
         new_sig.time_data = self.time_data[:, channels]
+        if hasattr(new_sig, 'window'):
+            new_sig.window = new_sig.window[:, channels]
         return new_sig
 
     # ======== Getters ========================================================

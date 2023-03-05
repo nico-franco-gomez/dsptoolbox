@@ -58,6 +58,7 @@ class Filter():
         -----
         For `iir`:
             Keys: order, freqs, type_of_pass, filter_design_method (optional),
+            bandpass ripple (optional), stopband ripple (optional),
             filter_id (optional).
 
             - order (int): Filter order
@@ -67,6 +68,10 @@ class Filter():
               'bandstop'.
             - filter_design_method (str): Default: 'butter'. Supported methods
               are: 'butter', 'bessel', 'ellip', 'cheby1', 'cheby2'.
+            - bandpass ripple (float): maximum bandpass ripple in dB for
+              'ellip' and 'cheby1'.
+            - stopband ripple (float): maximum stopband ripple in dB for
+              'ellip' and 'cheby2'.
 
         For `fir`:
             Keys: order, freqs, type_of_pass, filter_design_method (optional),
@@ -89,14 +94,14 @@ class Filter():
             Keys: eq_type, freqs, gain, q, filter_id (optional).
 
             - eq_type (int or str): 0 = Peaking, 1 = Lowpass, 2 = Highpass,
-              3 = Bandpass skirt, 4 = Bandpass peak, 5 = Notch, 6 = Allpass,
+              3 = Bandpass_skirt, 4 = Bandpass_peak, 5 = Notch, 6 = Allpass,
               7 = Lowshelf, 8 = Highshelf.
             - freqs: float or array-like with length 2 (depending on eq_type).
             - gain (float): in dB.
             - q (float): Q-factor.
 
         For `other` or `general`:
-            ba or sos or zpk, filter_id (optional), freqs (optional).
+            Keys: ba or sos or zpk, filter_id (optional), freqs (optional).
 
         Methods
         -------
@@ -202,6 +207,9 @@ class Filter():
             New Signal object.
 
         """
+        # Check sampling rates
+        assert self.sampling_rate_hz == signal.sampling_rate_hz, \
+            'Sampling rates do not match'
         # Zero phase and zi
         assert not (activate_zi and zero_phase), \
             'Filter initial and final values cannot be updated when ' +\
@@ -325,6 +333,8 @@ class Filter():
                 polyphase=polyphase)
 
         new_sig = signal.copy()
+        if hasattr(new_sig, 'window'):
+            del new_sig.window
         new_sig.sampling_rate_hz = new_sampling_rate_hz
         new_sig.time_data = new_time_data
         return new_sig
@@ -335,6 +345,10 @@ class Filter():
         if filter_type == 'iir':
             if 'filter_design_method' not in filter_configuration:
                 filter_configuration['filter_design_method'] = 'butter'
+            if 'bandpass_ripple' not in filter_configuration:
+                filter_configuration['bandpass_ripple'] = None
+            if 'stopband_ripple' not in filter_configuration:
+                filter_configuration['stopband_ripple'] = None
             self.sos = sig.iirfilter(
                 N=filter_configuration['order'],
                 Wn=filter_configuration['freqs'],
@@ -342,6 +356,8 @@ class Filter():
                 analog=False,
                 fs=self.sampling_rate_hz,
                 ftype=filter_configuration['filter_design_method'],
+                rp=filter_configuration['bandpass_ripple'],
+                rs=filter_configuration['stopband_ripple'],
                 output='sos')
             self.filter_type = filter_type
         elif filter_type == 'fir':
