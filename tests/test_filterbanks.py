@@ -69,3 +69,8 @@ class TestFilterbanksModule():
             dsp.filterbanks.fractional_octave_bands(
                 frequency_range_hz=[31, 8000], octave_fraction=1,
                 filter_order=6, sampling_rate_hz=fs_hz)
+
+    def test_weightning_filter(self):
+        fs_hz = 5_000
+        dsp.filterbanks.weightning_filter('a', fs_hz)
+        dsp.filterbanks.weightning_filter('c', fs_hz)

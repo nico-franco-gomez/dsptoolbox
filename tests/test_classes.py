@@ -203,8 +203,13 @@ class TestSignal():
         # Use parameters just like librosa for validation
         s.set_spectrogram_parameters(
             channel_number=0, window_length_samples=1024,
-            window_type='hann', overlap_percent=50, detrend=False,
-            padding=False, scaling=False)
+            window_type='hann', overlap_percent=50, fft_length_samples=None,
+            detrend=False, padding=False, scaling=False)
+        t, f, stft = s.get_spectrogram()
+        s.set_spectrogram_parameters(
+            channel_number=0, window_length_samples=1024,
+            window_type='hann', overlap_percent=50, fft_length_samples=4096,
+            detrend=False, padding=False, scaling=False)
         t, f, stft = s.get_spectrogram()
 
         # Validate result with librosa library if installed
@@ -229,6 +234,7 @@ class TestSignal():
     def test_show_info(self):
         s = dsp.Signal(time_data=self.time_vec, sampling_rate_hz=self.fs)
         s.show_info()
+        print(s)
 
     def test_time_vec(self):
         s = dsp.Signal(time_data=self.time_vec, sampling_rate_hz=self.fs)
@@ -240,6 +246,15 @@ class TestSignal():
     def test_length_signal(self):
         s = dsp.Signal(time_data=self.time_vec, sampling_rate_hz=self.fs)
         assert len(s) == s.time_data.shape[0]
+
+    def test_constrain_amplitude(self):
+        t = np.random.normal(0, 1, 200)
+        s = dsp.Signal(None, t, sampling_rate_hz=100, constrain_amplitude=True)
+        assert np.all(s.time_data <= 1)
+
+        s = dsp.Signal(None, t, sampling_rate_hz=100,
+                       constrain_amplitude=False)
+        assert np.all(t == s.time_data.squeeze())
 
 
 class TestFilterClass():
@@ -358,6 +373,7 @@ class TestFilterClass():
         f.get_filter_metadata()
         f._get_metadata_string()
         f.show_info()
+        print(f)
         f.copy()
         f.initialize_zi(1)
         with pytest.raises(AssertionError):
@@ -513,8 +529,8 @@ class TestFilterBankClass():
         # Others
         fb.get_ir()
         fb.copy()
-        fb.show_info(True)
-        fb.show_info(False)
+        fb.show_info()
+        print(fb)
 
     def test_filtering(self):
         # Create
@@ -723,6 +739,7 @@ class TestMultiBandSignal():
         assert mbs.number_of_channels == self.s.number_of_channels
         mbs.swap_bands([1, 0])
         mbs.show_info()
+        print(mbs)
         mbs.copy()
 
         with pytest.raises(IndexError):

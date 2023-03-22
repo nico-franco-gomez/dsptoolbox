@@ -2,6 +2,10 @@
 Low-level methods for room acoustics
 """
 import numpy as np
+from dsptoolbox.plots import (
+    general_plot,
+    # show
+)
 
 
 def _reverb(h, fs_hz, mode, ir_start: int = None,
@@ -72,8 +76,21 @@ def _reverb(h, fs_hz, mode, ir_start: int = None,
     return (60 / np.abs(reg[0]))
 
 
-def _find_ir_start(ir, threshold_dbfs=-20):
+def _find_ir_start(ir, threshold_dbfs: float = -20) -> int:
     """Find start of an IR using a threshold. Done for 1D-arrays.
+
+    Parameters
+    ----------
+    ir : `np.ndarray`
+        IR as a 1D-array.
+    threshold_dbfs : float, optional
+        Threshold that should be surpassed at the start of the IR in dBFS.
+        The signal is normalized. Default: -20.
+
+    Returns
+    -------
+    ind : int
+        Index of the start of the IR.
 
     """
     energy_curve = ir**2
@@ -111,13 +128,18 @@ def _complex_mode_identification(spectra: np.ndarray, n_functions: int = 1) ->\
         f'functions for spectra of shape {spectra.shape}'
 
     n_rir = spectra.shape[1]
+
+    # If only one RIR is provided, then there is no need to compute the SVD
+    if n_rir == 1:
+        return np.abs(spectra.squeeze())
+
     H = np.zeros((n_rir, n_rir, spectra.shape[0]), dtype='cfloat')
     for n in range(n_rir):
         H[0, n, :] = spectra[:, n]
         H[n, 0, :] = spectra[:, n]  # Conjugate?!
     cmif = np.empty((spectra.shape[0], n_functions))
     for ind in range(cmif.shape[0]):
-        v, s, u = np.linalg.svd(H[:, :, ind])
+        s = np.linalg.svd(H[:, :, ind], compute_uv=False)
         for nf in range(n_functions):
             cmif[ind, nf] = s[nf]
     return cmif
@@ -143,21 +165,25 @@ def _sum_magnitude_spectra(magnitudes: np.ndarray) -> np.ndarray:
     return summed
 
 
-def _generate_rir(room_dim, alpha, s_pos, r_pos, rt, sr) -> np.ndarray:
+def _generate_rir(room_dim, alpha, s_pos, r_pos, rt, mo, sr) -> np.ndarray:
     """Generate RIR using image source model according to Brinkmann, et al.
 
     Parameters
     ----------
     room_dim : `np.ndarray`
         Room dimensions in meters.
-    alpha : float
-        Mean absorption coefficient of the room.
+    alpha : float or `np.ndarray`
+        Mean absorption coefficient of the room or array with the absorption
+        coefficient for each wall (length 6. Ordered as north, south, east,
+        west, floor, ceiling).
     s_pos : `np.ndarray`
         Source position.
     r_pos : `np.ndarray`
         Receiver position.
     rt : float
         Desired reverberation time to achieve in RIR.
+    mo : int
+        Maximum order of reflections.
     sr : int
         Sampling rate in Hz.
 
@@ -172,9 +198,24 @@ def _generate_rir(room_dim, alpha, s_pos, r_pos, rt, sr) -> np.ndarray:
       the closed form image source model for source directivity.
 
     """
-    # Beta coefficient same for all walls – could be easily expanded to be
-    # different for all walls
-    beta = np.sqrt(1 - alpha)
+    # Beta coefficient for all walls
+    beta = np.atleast_1d(np.sqrt(1 - alpha))
+    if len(beta) == 1:
+        beta_1 = np.ones(3) * beta
+        beta_2 = np.ones(3) * beta
+    elif len(beta) == 6:
+        beta_1 = np.array([
+            beta[1],  # South
+            beta[3],  # West
+            beta[4]   # Floor
+        ])
+        beta_2 = np.array([
+            beta[0],  # North
+            beta[2],  # East
+            beta[5]   # Ceiling
+        ])
+    else:
+        raise ValueError('Wrong length for absorption coefficients')
 
     # Speed of sound
     c = 343
@@ -182,6 +223,8 @@ def _generate_rir(room_dim, alpha, s_pos, r_pos, rt, sr) -> np.ndarray:
     t_max = rt*1.1
     l_max = c*t_max/2/room_dim
     LIMIT = np.ceil(np.sqrt(l_max @ l_max)).astype(int)
+    if mo is not None:
+        LIMIT = LIMIT if mo > LIMIT else mo
 
     # Initialize empty vector
     rir_vec = np.zeros(int(t_max*5 * sr))
@@ -195,7 +238,8 @@ def _generate_rir(room_dim, alpha, s_pos, r_pos, rt, sr) -> np.ndarray:
         [0, 0, 1], [0, 1, 0], [1, 0, 0],
         [0, 1, 1], [1, 0, 1], [1, 1, 0],
         [1, 1, 1]
-    ])
+    ])  # Shape (8, 3)
+
     # Helper matrix for vectorized computation
     helper_matrix = np.zeros((u_vectors.shape[0]*u_vectors.shape[1], 1))
     helper_matrix[:u_vectors.shape[1], 0] = 1
@@ -206,6 +250,7 @@ def _generate_rir(room_dim, alpha, s_pos, r_pos, rt, sr) -> np.ndarray:
             axis=-1)
 
     # Distance (according to Eq. 6)
+    # Using scipy's norm (scipy.linalg.norm) was somewhat slower...
     def get_distance(lvec):
         pos = (((1 - 2*u_vectors)*s_pos) +
                (2*lvec*room_dim) - r_pos).flatten()**2
@@ -214,13 +259,14 @@ def _generate_rir(room_dim, alpha, s_pos, r_pos, rt, sr) -> np.ndarray:
     # Damping term (Numerator in Eq. 8)
     def get_damping(lvec):
         diff = np.abs(lvec - u_vectors)
-        return np.prod(beta**diff, axis=1)*np.prod(beta**np.abs(lvec))
+        return np.prod(beta_1**diff, axis=1)*np.prod(beta_2**np.abs(lvec))
 
     # Core computation (Eq. 1) – could be further optimized by vectorizing
     # the outer loops
-    for lind in np.arange(-LIMIT, LIMIT+1):
-        for mind in np.arange(-LIMIT, LIMIT+1):
-            for nind in np.arange(-LIMIT, LIMIT+1):
+    limit_loop = np.arange(-LIMIT, LIMIT+1)
+    for lind in limit_loop:
+        for mind in limit_loop:
+            for nind in limit_loop:
                 l0 = np.array([lind, mind, nind])
                 # Distances
                 ds = get_distance(l0)
@@ -338,7 +384,7 @@ class ShoeboxRoom(Room):
     """
     def __init__(self, dimensions_m, t60_s: float = None,
                  absorption_coefficient: float = None):
-        """Constructor for a generic shoebox room.
+        """Constructor for a shoebox-type room.
 
         Parameters
         ----------
@@ -351,17 +397,25 @@ class ShoeboxRoom(Room):
             through the absorption coefficient using Sabine's formula.
             Default: `None`.
         absorption_coefficient : float, optional
-            Mean absorption coefficient for the room. Pass `None` to compute
-            it from the passed reverberation time using Sabine's formula. An
-            assertion error is raised if the computed value for the absorption
-            coefficient is larger than 1. Default: `None`.
+            Mean absorption coefficient for the room. Here it is frequency-
+            and wall-independent. Pass `None` to compute it from the passed
+            reverberation time using Sabine's formula. An assertion error is
+            raised if the computed value for the absorption coefficient is
+            larger than 1. Default: `None`.
 
         Attributes
         ----------
-        - volume, area, t60_s (reverberation time in seconds),
-          schroeders_frequency (in Hz), critical_distance_m (for an
-          omnidirectional source), mixing_time_s (mixing time in seconds),
-          modes_hz.
+        - General: volume, area.
+        - Acoustics: t60_s (reverberation time in seconds),
+          absorption_coefficient (mean absorption, frequency- and
+          wall-independent), schroeders_frequency (in Hz), critical_distance_m
+          (for an omnidirectional source), mixing_time_s
+          (mixing time in seconds), modes_hz.
+
+        Methods
+        -------
+        - check_if_in_room, get_mixing_time, get_room_modes,
+          get_analytical_transfer_function.
 
         """
         dimensions_m = np.atleast_1d(np.squeeze(dimensions_m))
@@ -469,9 +523,11 @@ class ShoeboxRoom(Room):
         max_order += 1
         modes = np.zeros((max_order**3, 4))
         counter = 0
-        for nx in range(max_order):
-            for ny in range(max_order):
-                for nz in range(max_order):
+
+        max_order_loop = np.arange(max_order)
+        for nx in max_order_loop:
+            for ny in max_order_loop:
+                for nz in max_order_loop:
                     freq = c/2*np.sqrt(
                         (nx/self.dimensions_m[0])**2 +
                         (ny/self.dimensions_m[1])**2 +
@@ -481,6 +537,262 @@ class ShoeboxRoom(Room):
         modes = modes[1:]  # Prune first (trivial) entry
         self.modes_hz = modes[modes[:, 0].argsort()]
         return self.modes_hz
+
+    def get_analytical_transfer_function(self, source_pos, receiver_pos, freqs,
+                                         max_mode_order: int = 10,
+                                         generate_plot: bool = True,
+                                         c: float = 343):
+        """Compute and return the analytical transfer function for the room.
+
+        Parameters
+        ----------
+        source_pos : array-like
+            Source position in meters. It must be inside the room, otherwise
+            an assertion error is raised.
+        receiver_pos : array-like
+            Receiver position in meters. It must be inside the room, otherwise
+            an assertion error is raised.
+        freqs : `np.ndarray`
+            Frequency vector for which to compute the transfer function.
+        max_mode_order : int, optional
+            Maximum mode order to be regarded. It should be high enough to
+            represent the frequency response at the relevant frequencies.
+            Default: 10.
+        generate_plot : bool, optional
+            Generates and returns a plot showing the transfer function
+            (normalized by peak value). Default: `True`.
+        c : float, optional
+            Speed of sound in meters/seconds. Default: 343.
+
+        Returns
+        -------
+        p : `np.ndarray`
+            Complex transfer function, non-normalized.
+        modes : `np.ndarray`
+            Modes for which the transfer function was computed. It has shape
+            (frequency_hz, order x, order y, order z) and it is sorted by
+            frequency.
+        plot : tuple
+            When `generate_plot=True`, this is a tuple containing two entries:
+            `(matplotlib.figure.Figure, matplotlib.axes.Axes)`. When `False`,
+            `None` is returned as the content of the tuple
+
+        """
+        source_pos = np.asarray(source_pos).squeeze()
+        receiver_pos = np.asarray(receiver_pos).squeeze()
+        assert self.check_if_in_room(source_pos), \
+            'Given source position is not in the room'
+        assert self.check_if_in_room(receiver_pos), \
+            'Given receiver position is not in the room'
+
+        if hasattr(self, 'detailed_absorption'):
+            # Absorption for each mode taken from the respective octave band
+            mode_damping = np.log(1e3) / \
+                self.detailed_absorption['t60_s_per_frequency']
+            alpha_freq_dep = True
+            octave_bands = self.detailed_absorption['center_frequencies']
+        else:
+            # Damping for all modes is assumed to be equal
+            alpha_freq_dep = False
+            mode_damping = np.log(1e3)/self.t60_s
+
+        # Frequency vectors
+        f = np.asarray(freqs).squeeze()
+        omega = 2*np.pi*f
+        omega_2 = omega**2
+
+        # Lookup table for some values
+        cn_vals = np.array([4, 2, 1])
+
+        # Maximum order
+        max_mode_order += 1
+
+        p = np.zeros(len(omega), dtype='cfloat')
+        counter = 0
+        modes = np.zeros((max_mode_order**3, 4))
+
+        # Compute response
+        max_order_loop = np.arange(max_mode_order)
+        for nx in max_order_loop:
+            for ny in max_order_loop:
+                for nz in max_order_loop:
+                    if counter == 0:
+                        counter += 1
+                        continue
+                    ks = np.array([nx/self.dimensions_m[0]*np.pi,
+                                   ny/self.dimensions_m[1]*np.pi,
+                                   nz/self.dimensions_m[2]*np.pi])
+                    # Frequency of mode
+                    omega_n = c * np.sqrt(ks @ ks)
+                    mode_freq = omega_n/2/np.pi
+
+                    # Mode damping
+                    if alpha_freq_dep:
+                        temp_ind = np.argmin(np.abs(mode_freq - octave_bands))
+                        eta = mode_damping[temp_ind]
+                    else:
+                        eta = mode_damping
+
+                    # Coefficient based on type of mode
+                    tom = np.sum(np.array([nx, ny, nz]).astype(bool)) - 1
+                    cn = cn_vals[tom]
+
+                    # Compute
+                    p += np.prod(np.cos(ks * source_pos) *
+                                 np.cos(ks * receiver_pos)) / \
+                        (cn*(omega_n**2 + 2j*eta*omega_n - omega_2))
+
+                    # Save mode
+                    modes[counter] = np.array([mode_freq, nx, ny, nz])
+                    counter += 1
+        # Factor
+        p *= (8*c**2/np.prod(self.dimensions_m))
+
+        # Modes
+        modes = modes[1:]
+        modes = modes[modes[:, 0].argsort()]
+
+        if generate_plot:
+            ind_norm = np.argmax(np.abs(p))
+            plot = general_plot(
+                f, 20*np.log10(np.abs(p)) - 20*np.log10(np.abs(p[ind_norm])),
+                range_x=[f[0], f[-1]], tight_layout=True,
+                returns=True)
+            plot[1].set_ylabel('Magnitude / dBFS (norm @ Peak)')
+        else:
+            plot = (None)
+        return p, modes, plot
+
+    def add_detailed_absorption(self, detailed_absorption: dict):
+        """This method allows for the room to take in a more complex
+        description of the absorption in each wall. This updates the
+        attributes `t60_s` and `absorption_coefficient`.
+
+        The dictionary `detailed_absorption` must have keys `'north'`,
+        `'south'`, `'east'`, `'west'`, `'floor'`, `'ceiling'`. These represent
+        the six walls of the room (south, west and floor start at origin).
+        For each key, absorption coefficients for up to 8 octave bands
+        (with center frequencies 125, 250, 500, 1000, 2000, 4000, 8000, 16000)
+        must be passed as an array. The total number of bands is derived from
+        the longest coefficients array passed. Alternatively, only one
+        absorption coefficient can be passed and it is then regarded as a
+        frequency-independent absorption for that particular wall. If one wall
+        has more than one value but less than another band, its last value is
+        used for the rest of the frequency bands.
+
+        The method `get_analytical_transfer_function` uses the updated
+        coefficients and `generate_synthetic_rir` can also use them.
+
+        Parameters
+        ----------
+        detailed_absorption : dict
+            Dictionary containing the absorption coefficients for 8 octave
+            bands of each wall of the room. A valid dictionary would be::
+
+                detailed_absorption = {
+                    'north': [0.5, 0.2, 0.3, 0.4],
+                    'south': 0.47,
+                    'east': [0.3, 0.1],  # This wall would be completed as
+                                         # [0.3, 0.1, 0.1, 0.1]
+                    'west': ... ,}
+
+            and so forth for the remaining bands.
+
+        Notes
+        -----
+        All computed parameters get saved in the detailed_absorption dictionary
+        of the `ShoeboxRoom`. This dictionary also has a 'README' key with
+        an information string about all other keys.
+
+        """
+        # Assertions of input
+        assert len(detailed_absorption) == 6, \
+            'The detailed absorption dictionary must have 6 entries (for ' +\
+            'each wall)'
+        walls = set(['north', 'south', 'east', 'west', 'floor', 'ceiling'])
+        assert walls == set(detailed_absorption.keys()), \
+            f'Keys of dictionary: {set(detailed_absorption.keys())}\ndo not' +\
+            f' match with the necessary keys: {walls}'
+
+        # Check absorption values and derive number of bands
+        number_of_bands = 1
+        for i in detailed_absorption:
+            ab = np.atleast_1d(detailed_absorption[i])
+            if len(ab) == 1:
+                detailed_absorption[i] = ab*np.ones(8)
+            elif len(ab) <= 8:
+                detailed_absorption[i] = ab
+                number_of_bands = number_of_bands \
+                    if len(ab) < number_of_bands else len(ab)
+            else:
+                raise ValueError('The absorption coefficient must be passed '
+                                 'with either 1 or less than 8 coefficients')
+            assert np.all(ab < 1) and np.all(ab > 0), \
+                'Absorption must be between 0 and 1 (exclusively)'
+        # Trim or pad for every wall
+        for i in detailed_absorption:
+            if len(detailed_absorption[i]) >= number_of_bands:
+                detailed_absorption[i] = \
+                    detailed_absorption[i][:number_of_bands]
+            else:
+                detailed_absorption[i] = np.pad(
+                    detailed_absorption[i],
+                    (0, number_of_bands - len(detailed_absorption[i])),
+                    'edge')
+
+        # Get coefficients and generate mean absorption etc.
+        walls_dict = {'north': 0, 'south': 1, 'east': 2, 'west': 3,
+                      'floor': 4, 'ceiling': 5}
+        # Matrix with shape (wall, absorption)
+        absorption_matrix = np.zeros((6, number_of_bands))
+        for wall in detailed_absorption:
+            absorption_matrix[walls_dict[wall], :] = detailed_absorption[wall]
+
+        # Equivalent absorption area (per frequency band)
+        absorption_area = np.zeros(number_of_bands)
+        xy = self.dimensions_m[0]*self.dimensions_m[1]
+        absorption_area += xy*(absorption_matrix[walls_dict['ceiling'], :] +
+                               absorption_matrix[walls_dict['floor'], :])
+        xz = self.dimensions_m[0]*self.dimensions_m[2]
+        absorption_area += xz*(absorption_matrix[walls_dict['south'], :] +
+                               absorption_matrix[walls_dict['north'], :])
+        yz = self.dimensions_m[1]*self.dimensions_m[2]
+        absorption_area += yz*(absorption_matrix[walls_dict['east'], :] +
+                               absorption_matrix[walls_dict['west'], :])
+
+        # Get all parameters into one dictionary
+        self.detailed_absorption = detailed_absorption
+        self.detailed_absorption['absorption_matrix'] = absorption_matrix
+        self.detailed_absorption['absorption_area'] = absorption_area
+        self.detailed_absorption['mean_absorption_coefficients_per_frequency']\
+            = acpf = absorption_area / self.area
+        self.detailed_absorption['center_frequencies'] = \
+            125*2**np.arange(number_of_bands)
+        self.detailed_absorption['t60_s_per_frequency'] = \
+            0.161 * self.volume / absorption_area
+        self.detailed_absorption['index_wall_dictionary'] = walls_dict
+        self.detailed_absorption['README'] = \
+            """This dictionary contains all information about the room's
+absorption properties. Its keys are:
+
+- absorption_matrix : array containing absorption with shape
+(wall, frequency band) = (6, number of bands). Frequencies are in increasing
+order and walls indices can be retrieved with the
+index_wall_dictionary.
+- index_wall_dictionary : dictionary with indices for each wall.
+- center_frequencies : band center frequencies.
+- mean_absorption_coefficients_per_frequency.
+- t60_s_per_frequency.
+"""
+
+        # Get mean absorption coefficient by a weighted average with
+        # logarithmic weights
+        weights = 2.0**np.arange(number_of_bands)
+        weights /= np.sum(weights)
+        self.absorption_coefficient = np.sum(acpf*weights)
+        # Get new T60
+        self.t60_s = 0.161*self.volume / \
+            (self.absorption_coefficient*self.area)
 
 
 def _add_reverberant_tail_noise(rir: np.ndarray, mixing_time_s: int,
@@ -529,6 +841,81 @@ def _add_reverberant_tail_noise(rir: np.ndarray, mixing_time_s: int,
     return rir
 
 
+def _d50_from_rir(td: np.ndarray, fs: int) -> float:
+    """Compute definition D50 from a given RIR (1D-Array).
+
+    Parameters
+    ----------
+    td : `np.ndarray`
+        IR.
+    fs : int
+        Sampling rate in Hz.
+
+    Returns
+    -------
+    float
+        Definition D50 (no unit).
+
+    """
+    assert td.ndim == 1, \
+        'Only supported for 1D-Arrays'
+    ind = _find_ir_start(td)
+    td = td[ind:]**2
+    window = int(50e-3 * fs)
+    return np.sum(td[:window]) / np.sum(td)
+
+
+def _c80_from_rir(td: np.ndarray, fs: int) -> float:
+    """Compute clarity C80 from a given RIR (1D-Array).
+
+    Parameters
+    ----------
+    td : `np.ndarray`
+        IR.
+    fs : int
+        Sampling rate in Hz.
+
+    Returns
+    -------
+    float
+        Clarity C80 in dB.
+
+    """
+    assert td.ndim == 1, \
+        'Only supported for 1D-Arrays'
+    # Trim IR
+    ind = _find_ir_start(td)
+    td = td[ind:]**2
+    # Time window
+    window = int(80e-3 * fs)
+    return 10*np.log10(np.sum(td[:window]) / np.sum(td[window:]))
+
+
+def _ts_from_rir(td: np.ndarray, fs: int) -> float:
+    """Compute center time from a given RIR (1D-Array).
+
+    Parameters
+    ----------
+    td : `np.ndarray`
+        IR.
+    fs : int
+        Sampling rate in Hz.
+
+    Returns
+    -------
+    float
+        Center time (in seconds).
+
+    """
+    assert td.ndim == 1, \
+        'Only supported for 1D-Arrays'
+    # Trim IR
+    ind = _find_ir_start(td)
+    td = td[ind:]**2
+    time_vec = np.linspace(0, len(td)/fs, len(td))
+    return np.sum(td*time_vec) / np.sum(td)
+
+
 if __name__ == '__main__':
     print()
     # r = Room(200, 100, 0.35, None)
@@ -537,9 +924,28 @@ if __name__ == '__main__':
     # r = Room(200, 100, None, 0.1)
     # print(r.t60_s)
     r = ShoeboxRoom([3, 4, 5], absorption_coefficient=0.9)
-    bla = r.get_room_modes(8)
-    print(bla.shape)
-    print(r.critical_distance_m)
-    print(r.t60_s)
-    print(r.get_mixing_time())
-    # print(bla)
+
+    f = np.linspace(50, 1000, 2000)
+    p1 = r.get_analytical_transfer_function(
+        [1, 1, 1], [2, 2, 2], freqs=f, max_mode_order=15, generate_plot=False
+    )[0]
+
+    # Detailed absorption
+    d = {}
+    for i in ['north', 'south', 'east', 'west', 'floor', 'ceiling']:
+        # d[i] = 0.1
+        # d[i] = np.random.normal(0.5, 0.01, size=6)
+        d[i] = np.random.uniform(0.1, 0.9, size=3)
+    d['north'] = 0.6
+    d['south'] = [0.1, 0.1, 0.1, 0.1, 0.1]
+    r.add_detailed_absorption(d)
+    print(r.detailed_absorption['center_frequencies'])
+    p2 = r.get_analytical_transfer_function(
+        [1, 1, 1], [2, 2, 2], freqs=f, max_mode_order=15, generate_plot=False
+    )[0]
+    import matplotlib.pyplot as plt
+
+    plt.semilogx(f, 20*np.log10(np.abs(p1)), label='mean alpha')
+    plt.semilogx(f, 20*np.log10(np.abs(p2)), label='detailed alpha')
+    plt.legend()
+    plt.show()

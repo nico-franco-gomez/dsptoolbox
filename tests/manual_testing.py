@@ -783,6 +783,7 @@ def beamforming_frequency_formulations():
     st = dsp.beamforming.SteeringVector('true power')
 
     bf = dsp.beamforming.BeamformerCleanSC(s_out, ma, grid, st)
+    bf.plot_setting()
     map = bf.get_beamformer_map(
         center_frequency_hz=1500, octave_fraction=0, maximum_iterations=100,
         safety_factor=0.5, remove_diagonal_csm=True)

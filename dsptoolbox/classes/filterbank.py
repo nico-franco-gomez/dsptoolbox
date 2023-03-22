@@ -137,6 +137,9 @@ class FilterBank():
     def __iter__(self):
         return iter(self.filters)
 
+    def __str__(self):
+        return self._get_metadata_str()
+
     @property
     def same_sampling_rate(self) -> bool:
         return self.__same_sampling_rate
@@ -387,38 +390,31 @@ class FilterBank():
         return ir
 
     # ======== Prints and plots ===============================================
-    def show_info(self, show_filter_info: bool = True):
+    def show_info(self):
         """Show information about the filter bank.
 
-        Parameters
-        ----------
-        show_filters_info : bool, optional
-            When `True`, a longer message is printed with all available
-            information regarding each filter in the filter bank.
-            Default: `True`.
-
         """
-        print()
+        print(self._get_metadata_str())
+
+    def _get_metadata_str(self):
         txt = ''
         for k in self.info:
             txt += \
                 f""" | {str(k).replace('_', ' ').
                         capitalize()}: {self.info[k]}"""
         txt = 'Filter Bank:' + txt
-        print(txt)
-        if show_filter_info:
-            print('-'*len(txt), end='')
-            for ind, f1 in enumerate(self.filters):
-                print()
-                txt = f'Filter {ind}:'
-                for kf in f1.info:
-                    if kf == 'ba':
-                        continue
-                    txt += \
-                        f""" | {str(kf).replace('_', ' ').
-                                capitalize()}: {f1.info[kf]}"""
-                print(txt)
-        print()
+        txt += '\n'
+        txt += '–'*len(txt)
+        for ind, f1 in enumerate(self.filters):
+            txt += '\n'
+            txt += f'Filter {ind}:'
+            for kf in f1.info:
+                if kf == 'ba':
+                    continue
+                txt += \
+                    f""" | {str(kf).replace('_', ' ').
+                            capitalize()}: {f1.info[kf]}"""
+        return txt
 
     def plot_magnitude(self, mode: str = 'parallel', range_hz=[20, 20e3],
                        length_samples: int = 2048, test_zi: bool = False) ->\

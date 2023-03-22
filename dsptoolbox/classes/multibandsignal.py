@@ -131,6 +131,9 @@ class MultiBandSignal():
     def __iter__(self):
         return iter(self.bands)
 
+    def __str__(self):
+        return self._get_metadata_str()
+
     def _generate_metadata(self):
         """Generates an information dictionary with metadata about the
         `MultiBandSignal`.
@@ -244,36 +247,29 @@ class MultiBandSignal():
         new_sig.time_data = initial
         return new_sig
 
-    def show_info(self, show_band_info: bool = False):
+    def show_info(self):
         """Show information about the `MultiBandSignal`.
 
-        Parameters
-        ----------
-        show_band_info : bool, optional
-            When `True`, a longer message is printed with all available
-            information regarding each `Signal` in the `MultiBandSignal`.
-            Default: `True`.
-
         """
-        print()
+        print(self._get_metadata_str())
+
+    def _get_metadata_str(self):
         txt = ''
         for k in self.info:
             txt += \
                 f""" | {str(k).replace('_', ' ').
                         capitalize()}: {self.info[k]}"""
         txt = 'Multiband signal:' + txt
-        print(txt)
-        if show_band_info:
-            print('-'*len(txt), end='')
-            for ind, f1 in enumerate(self.bands):
-                print()
-                txt = f'Signal {ind}:'
-                for kf in f1.info:
-                    txt += \
-                        f""" | {str(kf).replace('_', ' ').
-                                capitalize()}: {f1.info[kf]}"""
-                print(txt)
-        print()
+        txt += '\n'
+        txt += '–'*len(txt)
+        for ind, f1 in enumerate(self.bands):
+            txt += '\n'
+            txt += f'Signal {ind}:'
+            for kf in f1.info:
+                txt += \
+                    f""" | {str(kf).replace('_', ' ').
+                            capitalize()}: {f1.info[kf]}"""
+        return txt
 
     # ======== Getters ========================================================
     def get_all_bands(self, channel: int = 0) -> Signal | tuple[list, list]:

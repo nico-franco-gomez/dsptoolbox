@@ -87,8 +87,7 @@ def log_spectral(insig1: Signal, insig2: Signal, method: str = 'welch',
         if energy_normalization:
             x /= np.sum(x)
             y /= np.sum(y)
-        distances[n] = \
-            _log_spectral_distance(x, y, f)
+        distances[n] = _log_spectral_distance(x, y, f)
     return distances
 
 
@@ -167,8 +166,7 @@ def itakura_saito(insig1: Signal, insig2: Signal, method: str = 'welch',
         if energy_normalization:
             x /= np.sum(x)
             y /= np.sum(y)
-        distances[n] = \
-            _itakura_saito_measure(x, y, f)
+        distances[n] = _itakura_saito_measure(x, y, f)
     return distances
 
 
@@ -198,23 +196,11 @@ def snr(signal: Signal, noise: Signal) -> np.ndarray:
     if noise.number_of_channels != 1:
         assert signal.number_of_channels == noise.number_of_channels,\
             'Signals have different channel numbers'
-        multichannel = False
-    else:
-        multichannel = True
-
-    snr_per_channel = np.empty(signal.number_of_channels)
-    for n in range(signal.number_of_channels):
-        if multichannel:
-            n_noise = 0
-        else:
-            n_noise = n
-        snr_per_channel[n] = _snr(
-            signal.time_data[:, n], noise.time_data[:, n_noise])
-    return snr_per_channel
+    return _snr(signal.time_data, noise.time_data)
 
 
 def si_sdr(target_signal: Signal, modified_signal: Signal) -> np.ndarray:
-    """Computes scale-invariant signal to distortion ratio from an original
+    """Computes scale-invariant signal to distortion ratio from a target
     and a modified signal. If target signal only has one channel, it is
     assumed to be the target for all the channels in the modified signal.
     See reference for details.
@@ -255,8 +241,8 @@ def si_sdr(target_signal: Signal, modified_signal: Signal) -> np.ndarray:
             n_1 = 0
         else:
             n_1 = n
-        sdr[n] = _sisdr(
-            target_signal.time_data[:, n_1], modified_signal.time_data[:, n])
+        sdr[n] = _sisdr(target_signal.time_data[:, n_1],
+                        modified_signal.time_data[:, n])
     return sdr
 
 

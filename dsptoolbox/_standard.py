@@ -258,7 +258,8 @@ def _minimum_phase(magnitude: np.ndarray, unwrapped: bool = True):
 
 def _stft(x: np.ndarray, fs_hz: int, window_length_samples: int = 2048,
           window_type: str = 'hann', overlap_percent=50,
-          detrend: bool = True, padding: bool = True, scaling: bool = False):
+          fft_length_samples: int = None, detrend: bool = True,
+          padding: bool = True, scaling: bool = False):
     """Computes the STFT of a signal. Output matrix has (freqs_hz, seconds_s).
 
     Parameters
@@ -275,6 +276,10 @@ def _stft(x: np.ndarray, fs_hz: int, window_length_samples: int = 2048,
         ones. Default: `'hann'`
     overlap_percent : int, optional
         Overlap in percentage. Default: 50.
+    fft_length_samples : int, optional
+        Length of the FFT window for each time window. This affects
+        the frequency resolution and can also crop the time window. Pass
+        `None` to use the window length. Default: `None`.
     detrend : bool, optional
         Detrending from each time segment (removing mean). Default: True.
     padding : bool, optional
@@ -341,7 +346,7 @@ def _stft(x: np.ndarray, fs_hz: int, window_length_samples: int = 2048,
     if detrend:
         time_x -= np.mean(time_x, axis=0)
     # Spectra
-    stft = np.fft.rfft(time_x, axis=0)
+    stft = np.fft.rfft(time_x, axis=0, n=fft_length_samples)
     # Scaling
     if scaling:
         factor = np.sqrt(2 / np.sum(window)**2)
@@ -806,3 +811,27 @@ def _detrend(time_data: np.ndarray, polynomial_order: int) -> np.ndarray:
     for n in range(time_data.shape[1]):
         time_data[:, n] -= np.polyval(linear_trend[:, n], time_indexes)
     return time_data
+
+
+def _rms(x: np.ndarray) -> float:
+    """Root mean squared value of a discrete time series
+
+    Parameters
+    ----------
+    x : `np.ndarray`
+        Time series
+
+    Returns
+    -------
+    rms : float
+        Root mean squared value
+
+    """
+    if x.ndim < 2:
+        x = x[..., None]
+    elif x.ndim == 2:
+        pass
+    else:
+        raise ValueError('Shape of array is not valid. Only 2D-Arrays ' +
+                         'are valid')
+    return np.sqrt(np.mean(x**2, axis=0))
