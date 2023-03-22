@@ -179,6 +179,9 @@ class Filter():
     def __len__(self):
         return self.info['order']+1
 
+    def __str__(self):
+        return self._get_metadata_string()
+
     # ======== Filtering ======================================================
     def filter_signal(self, signal: Signal, channels=None,
                       activate_zi: bool = False, zero_phase: bool = False) \
@@ -406,7 +409,7 @@ class Filter():
                     max(len(self.ba[0]), len(self.ba[1])) - 1
             if ('zpk' in filter_configuration):
                 z, p, k = filter_configuration['zpk']
-                self.sos = sig.zpk2sos(z, p, k)
+                self.sos = sig.zpk2sos(z, p, k, analog=False)
                 filter_configuration['order'] = len(self.sos)*2 - 1
             if ('sos' in filter_configuration):
                 self.sos = filter_configuration['sos']
@@ -491,7 +494,8 @@ class Filter():
 
         """
         ir_filt = _impulse(length_samples)
-        ir_filt = Signal(None, ir_filt, self.sampling_rate_hz, 'ir')
+        ir_filt = Signal(None, ir_filt, self.sampling_rate_hz, 'ir',
+                         constrain_amplitude=False)
         return self.filter_signal(ir_filt, zero_phase=zero_phase)
 
     def get_coefficients(self, mode: str = 'sos') -> list | np.ndarray | \

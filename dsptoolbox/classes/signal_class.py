@@ -21,34 +21,41 @@ from dsptoolbox._standard import (_welch, _group_delay_direct, _stft, _csm)
 class Signal():
     """Class for general signals (time series). Most of the methods and
     supported computations are focused on audio signals, but some features
-    might be generalizable to all kinds of time series.
+    might be generalizable to all kinds of time series. It is assumed that
+    audio is always represented in floating point type.
 
     """
     # ======== Constructor and State handler ==================================
     def __init__(self, path: str = None, time_data=None,
                  sampling_rate_hz: int = None, signal_type: str = 'general',
-                 signal_id: str = ''):
+                 signal_id: str = '', constrain_amplitude: bool = True):
         """Signal class that saves time data, channel and sampling rate
         information as well as spectrum, cross-spectral matrix and more.
 
         Parameters
         ----------
         path : str, optional
-            A path to audio files. Reading is done with soundfile. Wave and
-            Flac audio files are accepted.
-            Default: `None`.
+            A path to audio files. Reading is done with the package soundfile.
+            Wave and Flac audio files are accepted. Default: `None`.
         time_data : array-like, `np.ndarray`, optional
             Time data of the signal. It is saved as a matrix with the form
             (time samples, channel number). Default: `None`.
         sampling_rate_hz : int, optional
-            Sampling rate of the signal in Hz. Default: 48000.
+            Sampling rate of the signal in Hz. Default: `None`.
         signal_type : str, optional
             A generic signal type. Some functionalities are only unlocked for
-            impulse responses with `'ir'`, `'h1'`, `'h2'`, `'h3'`, `'rir'`,
-            `'chirp'`, `'noise'` or `'dirac'`. Default: `'general'`.
+            signal types `'ir'`, `'h1'`, `'h2'`, `'h3'`, `'rir'`, `'chirp'`,
+            `'noise'` or `'dirac'`. Default: `'general'`.
         signal_id : str, optional
             An even more generic signal id that can be set by the user.
             Default: `''`.
+        constrain_amplitude : bool, optional
+            When `True`, audio is normalized to 0 dBFS peak level in case that
+            there are amplitude values greater than 1. Otherwise, there is no
+            normalization and the audio data is not constrained to [-1, 1].
+            A warning is always shown when audio gets normalized and the used
+            normalization factor is saved as `amplitude_scale_factor`.
+            Default: `True`.
 
         Methods
         -------
@@ -70,6 +77,10 @@ class Signal():
         """
         self.signal_id = signal_id
         self.signal_type = signal_type
+        # Handling amplitude
+        self.constrain_amplitude = constrain_amplitude
+        self.scale_factor = None
+        self.calibrated_signal = False
         # State tracker
         self.__spectrum_state_update = True
         self.__csm_state_update = True
@@ -91,8 +102,7 @@ class Signal():
                 'A sampling rate should be passed!'
         self.sampling_rate_hz = sampling_rate_hz
         self.time_data = time_data
-        if signal_type in ('rir', 'ir', 'h1', 'h2', 'h3', 'chirp',
-                           'noise', 'dirac'):
+        if signal_type in ('rir', 'ir', 'h1', 'h2', 'h3', 'chirp', 'dirac'):
             self.set_spectrum_parameters(method='standard')
         else:
             self.set_spectrum_parameters()
@@ -165,14 +175,18 @@ class Signal():
             new_time_data_imag = None
 
         # Normalization for real time data
-        time_data_max = np.max(np.abs(new_time_data))
-        if time_data_max > 1:
-            new_time_data /= time_data_max
-            warn('Signal was over 0 dBFS, normalizing to 0 dBFS ' +
-                 'peak level was triggered')
-            # Imaginary part is also scaled by same factor as real part
-            if new_time_data_imag is not None:
-                new_time_data_imag /= time_data_max
+        if self.constrain_amplitude:
+            time_data_max = np.max(np.abs(new_time_data))
+            if time_data_max > 1:
+                new_time_data /= time_data_max
+                warn('Signal was over 0 dBFS, normalizing to 0 dBFS ' +
+                     'peak level was triggered')
+                # Imaginary part is also scaled by same factor as real part
+                if new_time_data_imag is not None:
+                    new_time_data_imag /= time_data_max
+                self.amplitude_scale_factor = 1/time_data_max
+            else:
+                self.amplitude_scale_factor = 1
 
         # Set time data (real and imaginary)
         self.__time_data = new_time_data
@@ -207,7 +221,7 @@ class Signal():
         return self.__signal_id
 
     @signal_id.setter
-    def signal_id(self, new_signal_id):
+    def signal_id(self, new_signal_id: str):
         assert type(new_signal_id) == str, \
             'Signal ID must be a string'
         self.__signal_id = new_signal_id.lower()
@@ -247,8 +261,35 @@ class Signal():
                 'Shape of imaginary part time data does not match'
         self.__time_data_imaginary = new_imag
 
+    @property
+    def constrain_amplitude(self) -> bool | None:
+        return self.__constrain_amplitude
+
+    @constrain_amplitude.setter
+    def constrain_amplitude(self, nca):
+        assert type(nca) == bool, \
+            'constrain_amplitude must be of type boolean'
+        self.__constrain_amplitude = nca
+        # Restart time data setter for triggering normalization if needed
+        if hasattr(self, 'time_data'):
+            ntd = self.time_data
+            self.time_data = ntd
+
+    @property
+    def calibrated_signal(self) -> bool:
+        return self.__calibrated_signal
+
+    @calibrated_signal.setter
+    def calibrated_signal(self, ncs):
+        assert type(ncs) == bool, \
+            'calibrated_signal must be of type boolean'
+        self.__calibrated_signal = ncs
+
     def __len__(self):
         return self.time_data.shape[0]
+
+    def __str__(self):
+        return self._get_metadata_string()
 
     def set_spectrum_parameters(self, method='welch', smoothe: int = 0,
                                 window_length_samples: int = 1024,
@@ -260,7 +301,8 @@ class Signal():
         Parameters
         ----------
         method : str, optional
-            `'welch'` or `'standard'`. Default: `'welch'`.
+            `'welch'` (Welch's method for stochastic signals) or
+            `'standard'` (Direct FFT from signal). Default: `'welch'`.
         smoothe : int, optional
             Smoothing across (1/smoothe) octave bands using a hamming
             window. Smoothes magnitude AND phase. For accesing the smoothing
@@ -273,8 +315,8 @@ class Signal():
             Window size. Default: 1024.
         window_type : str, optional
             Choose type of window. `scipy.signal.windows.get_window()` is used.
-            Pass a tuple if the window needs extra parameters.
-            Default: `'hann'`.
+            Pass a tuple if the window needs extra parameters, e.g.,
+            ('chebwin', 50). Default: `'hann'`.
         overlap_percent : float, optional
             Overlap in percent. Default: 50.
         detrend : bool, optional
@@ -420,6 +462,7 @@ class Signal():
                                    window_length_samples: int = 1024,
                                    window_type: str = 'hann',
                                    overlap_percent=50,
+                                   fft_length_samples: int = None,
                                    detrend: bool = True, padding: bool = True,
                                    scaling: bool = False):
         """Sets all necessary parameters for the computation of the
@@ -435,6 +478,10 @@ class Signal():
             Type of window to use. Default: `'hann'`.
         overlap_percent : float, optional
             Overlap in percent. Default: 50.
+        fft_length_samples : int, optional
+            Length of the FFT window for each time window. This affects
+            the frequency resolution and can also crop the time window. Pass
+            `None` to use the window length. Default: `None`.
         detrend : bool, optional
             Detrending (subtracting mean). Default: `True`.
         padding : bool, optional
@@ -459,6 +506,7 @@ class Signal():
                 window_length_samples=window_length_samples,
                 window_type=window_type,
                 overlap_percent=overlap_percent,
+                fft_length_samples=fft_length_samples,
                 detrend=detrend,
                 padding=padding,
                 scaling=scaling)
@@ -578,8 +626,8 @@ class Signal():
         self.time_data = self.time_data[:, new_order]
 
     def get_channels(self, channels):
-        """Returns a signal object with the selected channels.
-        Note: first channel index is 0!
+        """Returns a signal object with the selected channels. Beware that
+        first channel index is 0!
 
         Parameters
         ----------
@@ -732,6 +780,7 @@ class Signal():
                 self._spectrogram_parameters['window_length_samples'],
                 self._spectrogram_parameters['window_type'],
                 self._spectrogram_parameters['overlap_percent'],
+                self._spectrogram_parameters['fft_length_samples'],
                 self._spectrogram_parameters['detrend'],
                 self._spectrogram_parameters['padding'],
                 self._spectrogram_parameters['scaling'])
@@ -762,7 +811,6 @@ class Signal():
                        show_info_box: bool = False) -> tuple[Figure, Axes]:
         """Plots magnitude spectrum.
         Change parameters of spectrum with set_spectrum_parameters.
-        NOTE: Smoothing is only applied on the plot data.
 
         Parameters
         ----------
@@ -793,6 +841,13 @@ class Signal():
         ax : `matplotlib.axes.Axes`
             Axes.
 
+        Notes
+        -----
+        - Smoothing is only applied on the plot data.
+        - In case the signal has been calibrated and the time data is given in
+          Pascal, the plotted values in dB will be scaled by p0=(20e-6 Pa)**2
+          when no normalization is active.
+
         """
         f, sp = self.get_spectrum()
         if self._spectrum_parameters['method'] == 'standard' \
@@ -804,7 +859,8 @@ class Signal():
             mode=self._spectrum_parameters['method'],
             f_range_hz=range_hz,
             normalize=normalize,
-            smoothe=smoothe)
+            smoothe=smoothe,
+            calibrated_data=self.calibrated_signal)
         if show_info_box:
             txt = 'Info'
             txt += f"""\nMode: {self._spectrum_parameters['method']}"""
@@ -819,7 +875,7 @@ class Signal():
             elif normalize == 'max':
                 y_extra = ' (normalized @ peak)'
         else:
-            y_extra = 'FS'
+            y_extra = '' if self.calibrated_signal else 'FS'
         fig, ax = general_plot(f, mag_db, range_hz,
                                ylabel='Magnitude / dB'+y_extra,
                                info_box=txt, returns=True,

@@ -18,14 +18,18 @@ Psychoacoustics:
 
 Other:
 
-- `qmf_crossover()`
+- `qmf_crossover()`: Quadrature mirror filters crossover.
+- `fractional_octave_bands()`: Butterworth bandpass filter bank with signal
+  energy conservation.
+- `weightning_filter()`: A- or C-Weightning filter.
 
 """
 from .filterbanks import (linkwitz_riley_crossovers,
                           reconstructing_fractional_octave_bands,
                           auditory_filters_gammatone,
                           fractional_octave_bands,
-                          qmf_crossover)
+                          qmf_crossover,
+                          weightning_filter)
 
 __all__ = [
     'linkwitz_riley_crossovers',
@@ -33,4 +37,5 @@ __all__ = [
     'fractional_octave_bands',
     'auditory_filters_gammatone',
     'qmf_crossover',
+    'weightning_filter'
 ]

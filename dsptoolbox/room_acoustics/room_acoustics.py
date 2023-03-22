@@ -6,6 +6,8 @@ from scipy.signal import find_peaks, convolve
 # from warnings import warn
 
 from dsptoolbox.classes import Signal, MultiBandSignal, Filter
+from dsptoolbox.filterbanks import (fractional_octave_bands,
+                                    linkwitz_riley_crossovers)
 from dsptoolbox.transfer_functions import group_delay
 from ._room_acoustics import (_reverb,
                               _complex_mode_identification,
@@ -13,7 +15,10 @@ from ._room_acoustics import (_reverb,
                               _find_ir_start,
                               _generate_rir,
                               ShoeboxRoom,
-                              _add_reverberant_tail_noise)
+                              _add_reverberant_tail_noise,
+                              _d50_from_rir,
+                              _c80_from_rir,
+                              _ts_from_rir)
 from dsptoolbox._general_helpers import _find_nearest, _normalize, _pad_trim
 
 
@@ -70,7 +75,8 @@ def reverb_time(signal: Signal | MultiBandSignal, mode: str = 'T20',
     else:
         raise TypeError(
             'Passed signal should be of type Signal or MultiBandSignal')
-    return reverberation_times.squeeze()
+    return reverberation_times
+    # return reverberation_times.squeeze()
 
 
 def find_modes(signal: Signal, f_range_hz=[50, 200],
@@ -108,8 +114,7 @@ def find_modes(signal: Signal, f_range_hz=[50, 200],
     prune_antimodes : bool, optional
         See if the detected modes are dips in the frequency response of the
         first RIR. This is only needed for the group delay method, which
-        is essential when proximity_effect is set to `True`.
-        Default: `False`.
+        is essential when proximity_effect is set to `True`. Default: `False`.
 
     Returns
     -------
@@ -144,12 +149,15 @@ def find_modes(signal: Signal, f_range_hz=[50, 200],
     group_ms = group_ms[ids[0]:ids[1]]*1e3
 
     # Find peaks
-    width = int(np.ceil(dist_hz / df))
-    id_sum, _ = find_peaks(sum_sp, width=width)
-    id_cmif, _ = find_peaks(cmif, width=width)
+    dist_samp = int(np.ceil(dist_hz / df))
+    dist_samp = 1 if dist_samp < 1 else dist_samp
+
+    id_sum, _ = find_peaks(sum_sp, distance=dist_samp, width=dist_samp)
+    id_cmif, _ = find_peaks(cmif, distance=dist_samp, width=dist_samp)
     id_group = []
     for n in range(signal.number_of_channels):
-        id_, _ = find_peaks(group_ms[:, n], width=width)
+        id_, _ = find_peaks(group_ms[:, n], distance=dist_samp,
+                            width=dist_samp)
         id_group.append(id_)
 
     # When proximity effect is activated, only group delays will be used up
@@ -176,7 +184,8 @@ def find_modes(signal: Signal, f_range_hz=[50, 200],
         # of the magnitude response (first RIR)
         if prune_antimodes:
             antimodes, _ = \
-                find_peaks(1/np.abs(sp[ids[0]:ids[1], 0]), width=width)
+                find_peaks(1/np.abs(sp[ids[0]:ids[1], 0]), distance=dist_samp,
+                           width=dist_samp)
             f_antimodes = f[antimodes]
     else:
         f_modes = set()
@@ -200,7 +209,7 @@ def find_modes(signal: Signal, f_range_hz=[50, 200],
     if proximity_effect and prune_antimodes:
         anti = np.intersect1d(f_antimodes, f_modes)
         f_modes = np.setdiff1d(f_modes, anti)
-    return f_modes.astype(int)
+    return f_modes
 
 
 def convolve_rir_on_signal(signal: Signal, rir: Signal,
@@ -256,10 +265,9 @@ def convolve_rir_on_signal(signal: Signal, rir: Signal,
             new_time_data[:, n] = _normalize(
                 new_time_data[:, n], old_peak, mode='peak')
 
-    new_sig = Signal(
-        None, new_time_data, signal.sampling_rate_hz,
-        signal_type=signal.signal_type,
-        signal_id=signal.signal_id+' (convolved with RIR)')
+    new_sig = signal.copy()
+    new_sig.time_data = new_time_data
+    new_sig.signal_id += ' (convolved with RIR)'
     return new_sig
 
 
@@ -300,16 +308,13 @@ def generate_synthetic_rir(room: ShoeboxRoom, source_position,
                            sampling_rate_hz: int,
                            total_length_seconds: float = 0.5,
                            add_noise_reverberant_tail: bool = False,
-                           apply_bandpass: bool = False) \
+                           apply_bandpass: bool = False,
+                           use_detailed_absorption: bool = False,
+                           max_order: int = None) \
         -> Signal:
     """This function returns a synthetized RIR in a shoebox-room using the
     image source model. The implementation is based on Brinkmann,
     et al. See References for limitations and advantages of this method.
-
-    NOTE: Depending on the computer and the given reverberation time, this
-          function can take a relatively long runtime. If a faster or
-          more flexible implementation is needed, please refer to the
-          pyroomacoustics package (see references).
 
     Parameters
     ----------
@@ -331,6 +336,16 @@ def generate_synthetic_rir(room: ShoeboxRoom, source_position,
     apply_bandpass : bool, optional
         When `True`, a bandpass filter is applied to signal in order to obtain
         a realistic audio representation of the RIR. Default: `True`.
+    use_detailed_absorption : bool, optional
+        When `True`, The detailed absorption data of the room is used to
+        generate the impulse response. This allows a more realistic RIR but at
+        the expense of a much higher computational cost. Default: `False`.
+    max_order : int, optional
+        This gives the option to limit the order of reflections computed for
+        the method. This is specially useful when detailed absorption is used
+        and the room has a long reverberation time, since this kind of setting
+        will take a specially long time to run. Pass `None` to use an automatic
+        estimation for the maximum order. Default: `None`.
 
     Returns
     -------
@@ -342,6 +357,13 @@ def generate_synthetic_rir(room: ShoeboxRoom, source_position,
     - Brinkmann, Fabian & Erbes, Vera & Weinzierl, Stefan. (2018). Extending
       the closed form image source model for source directivity.
     - pyroomacoustics: https://github.com/LCAV/pyroomacoustics
+
+    Notes
+    -----
+    Depending on the computer and the given reverberation time, this function
+    can take a relatively long runtime. If a faster or more flexible
+    implementation is needed, please refer to the pyroomacoustics package
+    (see references).
 
     """
     assert sampling_rate_hz is not None, \
@@ -356,15 +378,43 @@ def generate_synthetic_rir(room: ShoeboxRoom, source_position,
         'Receiver is not located inside the room'
 
     total_length_samples = int(total_length_seconds*sampling_rate_hz)
-    room.dimensions_m
-    rir = _generate_rir(
-        room_dim=room.dimensions_m, alpha=room.absorption_coefficient,
-        s_pos=source_position, r_pos=receiver_position, rt=room.t60_s,
-        sr=sampling_rate_hz)
-    rir = _pad_trim(rir, total_length_samples)
 
-    # Prune possible nan values
-    np.nan_to_num(rir, copy=False, nan=0)
+    if not use_detailed_absorption:
+        # ====== Frequency independent
+        rir = _generate_rir(
+            room_dim=room.dimensions_m, alpha=room.absorption_coefficient,
+            s_pos=source_position, r_pos=receiver_position, rt=room.t60_s,
+            mo=max_order, sr=sampling_rate_hz)
+        rir = _pad_trim(rir, total_length_samples)
+        # Prune possible nan values
+        np.nan_to_num(rir, copy=False, nan=0)
+    else:
+        # ====== Frequency dependent
+        assert hasattr(room, 'detailed_absorption'), \
+            'Given room has no detailed absorption dictionary'
+        # Create filter bank
+        freqs = room.detailed_absorption['center_frequencies'][:-1]*np.sqrt(2)
+        fb = linkwitz_riley_crossovers(
+            crossover_frequencies_hz=freqs, order=10,
+            sampling_rate_hz=sampling_rate_hz)
+
+        # Accumulator
+        rir = np.zeros(total_length_samples)
+
+        print('\nRIR Generator\n')
+        for ind in range(fb.number_of_bands):
+            print(f'Band {ind+1} of {fb.number_of_bands} is being computed...')
+            alphas = room.detailed_absorption['absorption_matrix'][:, ind]
+            rir_band = _generate_rir(
+                room_dim=room.dimensions_m, alpha=alphas,
+                s_pos=source_position, r_pos=receiver_position, rt=room.t60_s,
+                mo=max_order, sr=sampling_rate_hz)
+            rir_band = _pad_trim(rir_band, total_length_samples)
+            # Prune possible nan values
+            np.nan_to_num(rir_band, copy=False, nan=0)
+            rir0 = Signal(None, rir_band, sampling_rate_hz)
+            rir_multi = fb.filter_signal(rir0, zero_phase=True)
+            rir += rir_multi.bands[ind].time_data[:, 0]
 
     # Add decaying noise as reverberant tail
     if add_noise_reverberant_tail:
@@ -389,3 +439,83 @@ def generate_synthetic_rir(room: ShoeboxRoom, source_position,
         rir = f.filter_signal(rir)
 
     return rir
+
+
+def descriptors(rir: Signal | MultiBandSignal, mode: str = 'd50'):
+    """Returns a desired room acoustics descriptor from an RIR.
+
+    Parameters
+    ----------
+    rir : `Signal` or `MultiBandSignal`
+        Room impulse response. If it is a multi-channel signal, the descriptor
+        given back has the shape (channel). If it is a `MultiBandSignal`,
+        the descriptor has shape (band, channel).
+    mode : {'d50', 'c80', 'br', 'ts', 'g'} str, optional
+        This defines the descriptor to be computed. Options are:
+        - `'d50'`: Definition. It takes values between [0, 1] and should
+          correlate (positively) with speech inteligibility.
+        - `'c80'`: Clarity. It is a value in dB. The higher, the more energy
+          arrives in the early part of the RIR compared to the later part.
+        - `'br'`: Bass-ratio. It exposes the ratio of reverberation times
+          of the lower-frequency octave bands (125, 250) to the higher ones
+          (500, 1000). T20 is always used.
+        - `'ts'`: Center time. It is the central time computed of the RIR.
+
+    Returns
+    -------
+    output_descriptor : `np.ndarray`
+        Array containing the output descriptor. If RIR is a `Signal`,
+        it has shape (channel). If RIR is a `MultiBandSignal`, the array has
+        shape (band, channel).
+
+    """
+    mode = mode.lower()
+    assert mode in ('d50', 'c80', 'br', 'ts'), \
+        'Given mode is not in the available descriptors'
+    if type(rir) == Signal:
+        if mode == 'd50':
+            func = _d50_from_rir
+        elif mode == 'c80':
+            func = _c80_from_rir
+        elif mode == 'ts':
+            func = _ts_from_rir
+        else:
+            # Bass ratio
+            return _bass_ratio(rir)
+        desc = np.zeros(rir.number_of_channels)
+        for ch in range(rir.number_of_channels):
+            desc[ch] = func(rir.time_data[:, ch], rir.sampling_rate_hz)
+    elif type(rir) == MultiBandSignal:
+        assert mode != 'br', \
+            'Bass-ratio is not a valid descriptor to be used on a ' +\
+            'MultiBandSignal. Pass a RIR as Signal to compute it'
+        desc = np.zeros((rir.number_of_bands, rir.number_of_channels))
+        for ind, b in enumerate(rir):
+            desc[ind, :] = descriptors(b, mode=mode)
+    else:
+        raise TypeError('RIR must be of type Signal or MultiBandSignal')
+    return desc
+
+
+def _bass_ratio(rir: Signal) -> np.ndarray:
+    """Core computation of bass ratio.
+
+    Parameters
+    ----------
+    rir : `Signal`
+        RIR.
+
+    Returns
+    -------
+    br : `np.ndarray`
+        Bass ratio per channel.
+
+    """
+    fb = fractional_octave_bands(
+        [125, 1000], filter_order=10, sampling_rate_hz=rir.sampling_rate_hz)
+    rir_multi = fb.filter_signal(rir, zero_phase=True)
+    rt = reverb_time(rir_multi)
+    br = np.zeros(rir.number_of_channels)
+    for ch in range(rir.number_of_channels):
+        br[ch] = (rt[0, ch]+rt[1, ch]) / (rt[2, ch]+rt[3, ch])
+    return br
