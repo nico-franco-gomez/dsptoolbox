@@ -4,6 +4,7 @@ Backend for distance measures
 import numpy as np
 from scipy.integrate import simpson
 from dsptoolbox._general_helpers import _compute_number_frames, _pad_trim
+from dsptoolbox._standard import _rms
 
 
 def _log_spectral_distance(x: np.ndarray, y: np.ndarray, f: np.ndarray) \
@@ -73,24 +74,7 @@ def _snr(s: np.ndarray, n: np.ndarray) -> float:
         SNR between signals.
 
     """
-    return 20*np.log10(rms(s)/rms(n))
-
-
-def rms(x: np.ndarray) -> float:
-    """Root mean squared value of a discrete time series
-
-    Parameters
-    ----------
-    x : `np.ndarray`
-        Time series
-
-    Returns
-    -------
-    rms : float
-        Root mean squared value
-
-    """
-    return np.sqrt(np.sum(x**2)/len(x))
+    return 20*np.log10(_rms(s)/_rms(n))
 
 
 def _sisdr(s: np.ndarray, shat: np.ndarray) -> float:

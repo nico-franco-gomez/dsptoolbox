@@ -188,8 +188,8 @@ def record(duration_seconds: float = 5, sampling_rate_hz: int = 48000,
 
 def play(signal: Signal, duration_seconds: float = None,
          normalized_dbfs: float = -6, device: str = None, play_channels=None):
-    """Play some available device. Note that the channel numbers
-    start here with 1.
+    """Playback of signal using some available device. Note that the channel
+    numbers start here with 1.
 
     Parameters
     ----------

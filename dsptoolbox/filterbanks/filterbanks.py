@@ -3,7 +3,7 @@ General use filter banks to be created and given back as a filter bank
 object
 """
 import numpy as np
-from scipy.signal import windows
+from scipy.signal import windows, bilinear_zpk
 import warnings
 from dsptoolbox import (Filter, FilterBank, fractional_octave_frequencies,
                         erb_frequencies)
@@ -342,6 +342,45 @@ def fractional_octave_bands(frequency_range_hz=[31.5, 16e3],
         octave_filter_bank.add_filter(f)
 
     return octave_filter_bank
+
+
+def weightning_filter(weightning: str = 'a', sampling_rate_hz: int = None):
+    """Returns a digital IIR weightning filter according to [1]. The
+    approximation is based on the coefficients given in [2].
+
+    Parameters
+    ----------
+    weightning : {'a', 'c'} str, optional
+        Type of weightning. Choose between `'a'` or `'c'`. Default: `'a'`.
+    sampling_rate_hz : int
+        Sampling rate for the digital filter.
+
+    Returns
+    -------
+    weightning_filter : `Filter`
+        Weightning filter.
+
+    References
+    ----------
+    - [1]: IEC 61672:2003.
+    - [2]: https://en.wikipedia.org/wiki/A-weighting
+
+    """
+    weightning = weightning.lower()
+    assert weightning in ('a', 'c'), \
+        'Invalid type of weightning. Use either a or c'
+    if weightning == 'a':
+        z = [0, 0, 0, 0]
+        k = 7.39705e9
+        p = [-129.4, -129.4, -676.7, -4636, -76655, -76655]
+    else:
+        z = [0, 0]
+        k = 5.91797e9
+        p = [-129.4, -129.4, -76655, -76655]
+    coeff = bilinear_zpk(z, p, k, sampling_rate_hz)
+    weightning_filter = Filter('other', dict(zpk=coeff),
+                               sampling_rate_hz=sampling_rate_hz)
+    return weightning_filter
 
 
 # Not yet working

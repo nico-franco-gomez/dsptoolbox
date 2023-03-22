@@ -14,6 +14,33 @@ adheres to `Semantic Versioning <http://semver.org/spec/v2.0.0.html>`_.
 - Validation for results from tests in every module (so far many tests are
   only regarding functionality)
 
+`0.2.4 <https://pypi.org/project/dsptoolbox/0.2.4>`_ - 
+---------------------
+
+Added
+~~~~~~
+- ``rms`` function
+- ``constrain_amplitude`` property to signal class is now used to enable
+  or disable normalizing audio data that has higher amplitudes than 1. Also
+  the factor by which the data is multiplied is now saved as the attribute
+  ``amplitude_scale_factor``
+- ``get_analytical_transfer_function`` in the ``ShoeboxRoom`` class
+- ``ShoeboxRoom`` now can take additional information about absorption through
+  the method ``add_detailed_absorption``. This is automatically used by both
+  ``get_analytical_transfer_function`` and ``generate_synthetic_rir``
+- ``generate_synthetic_rir`` can now limit the order of reflections to take
+  into account and make use of the detailed absorption information stored
+  in ``ShoeboxRoom``
+
+Bugfix
+~~~~~~~
+- corrected a bug that caused saving an object to crash if the path contained
+  a point that was not the format of the file
+
+Misc
+~~~~~
+- docstrings corrected and extended
+
 `0.2.3 <https://pypi.org/project/dsptoolbox/0.2.3>`_ - 2023-03-05
 ---------------------
 

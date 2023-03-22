@@ -237,3 +237,39 @@ class TestStandardModule():
         dsp.load_pkl_object(os.path.join('tests', 'f'))
         dsp.load_pkl_object(os.path.join('tests', 'f.pkl'))
         os.remove(os.path.join('tests', 'f.pkl'))
+
+    def test_rms(self):
+        td = self.audio_multi.time_data[:, 0]
+        rms_vals = dsp.rms(self.audio_multi, in_dbfs=False)
+        assert np.isclose(np.sqrt(np.mean(td**2)), rms_vals[0])
+
+    def test_calibration_data(self):
+        # Calibration for one channel
+        sine = dsp.generators.harmonic(
+            sampling_rate_hz=self.audio_multi.sampling_rate_hz,
+            peak_level_dbfs=-20)
+        calib = dsp.CalibrationData(sine)
+        calib.calibrate_signal(self.audio_multi)
+
+        # Wrong number of channels
+        with pytest.raises(AssertionError):
+            sine = dsp.generators.harmonic(
+                sampling_rate_hz=self.audio_multi.sampling_rate_hz,
+                peak_level_dbfs=-20,
+                number_of_channels=self.audio_multi.number_of_channels-1)
+            calib = dsp.CalibrationData(sine)
+            calib.calibrate_signal(self.audio_multi)
+
+        # Calibration for all channels
+        sine = dsp.generators.harmonic(
+            sampling_rate_hz=self.audio_multi.sampling_rate_hz,
+            peak_level_dbfs=-20,
+            number_of_channels=self.audio_multi.number_of_channels)
+        calib = dsp.CalibrationData(sine)
+        calib.calibrate_signal(self.audio_multi)
+
+        # Multiband
+        fb = dsp.filterbanks.fractional_octave_bands(
+            [125, 1000], sampling_rate_hz=self.audio_multi.sampling_rate_hz)
+        new_sig = fb.filter_signal(self.audio_multi)
+        calib.calibrate_signal(new_sig)

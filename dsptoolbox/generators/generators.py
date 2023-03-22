@@ -121,7 +121,7 @@ def chirp(type_of_chirp: str = 'log', range_hz=None, length_seconds: float = 1,
         Default: `'log'`.
     range_hz : array-like with length 2
         Define range of chirp in Hz. When `None`, all frequencies between
-        1 and nyquist are taken. Default: `None`.
+        15 Hz and nyquist are taken. Default: `None`.
     length_seconds : float, optional
         Length of the generated signal in seconds. Default: 1.
     sampling_rate_hz : int
@@ -164,7 +164,7 @@ def chirp(type_of_chirp: str = 'log', range_hz=None, length_seconds: float = 1,
             'Upper limit for frequency range cannot be bigger than the ' +\
             'nyquist frequency'
     else:
-        range_hz = [1, sampling_rate_hz//2]
+        range_hz = [15, sampling_rate_hz//2]
     if padding_end_seconds not in (None, 0):
         assert padding_end_seconds > 0, 'Padding has to be a positive time'
         p_samples = int(padding_end_seconds * sampling_rate_hz)
@@ -194,8 +194,7 @@ def chirp(type_of_chirp: str = 'log', range_hz=None, length_seconds: float = 1,
 
     chirp_n = chirp_td[..., None]
     if number_of_channels != 1:
-        for n in range(1, number_of_channels):
-            chirp_n = np.append(chirp_n, chirp_td[..., None], axis=1)
+        chirp_n = np.repeat(chirp_n, repeats=number_of_channels, axis=1)
     # Signal
     chirp_sig = Signal(None, chirp_n, sampling_rate_hz,
                        signal_type='chirp', signal_id=type_of_chirp)

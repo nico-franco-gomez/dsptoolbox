@@ -5,6 +5,7 @@ import numpy as np
 from scipy.signal import windows
 from scipy.interpolate import interp1d
 from scipy.linalg import toeplitz as toeplitz_scipy
+from os import sep
 
 
 def _find_nearest(points, vector) -> np.ndarray:
@@ -90,7 +91,8 @@ def _calculate_window(points, window_length: int,
 
 def _get_normalized_spectrum(f, spectra: np.ndarray, mode='standard',
                              f_range_hz=[20, 20000], normalize: str = None,
-                             smoothe: int = 0, phase=False) \
+                             smoothe: int = 0, phase=False,
+                             calibrated_data: bool = False) \
         -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """This function gives a normalized magnitude spectrum with frequency
     vector for a given range. It is also smoothed. Use `None` for the
@@ -118,6 +120,9 @@ def _get_normalized_spectrum(f, spectra: np.ndarray, mode='standard',
         Default: 0.
     phase : bool, optional
         When `True`, phase spectra are also returned. Default: `False`.
+    calibrated_data : bool, optional
+        When `True`, it is assumed that the time data has been calibrated
+        to be in Pascal so that it is scaled by p0=20e-6 Pa. Default: `False`.
 
     Returns
     -------
@@ -146,7 +151,9 @@ def _get_normalized_spectrum(f, spectra: np.ndarray, mode='standard',
     # Factor
     if mode == 'standard':
         factor = 20
+        scale_factor = 20e-6 if calibrated_data and normalize is None else 1
     elif mode == 'welch':
+        scale_factor = 4e-10 if calibrated_data and normalize is None else 1
         factor = 10
     else:
         raise ValueError(f'{mode} is not supported. Please select standard '
@@ -168,8 +175,9 @@ def _get_normalized_spectrum(f, spectra: np.ndarray, mode='standard',
         sp = np.abs(spectra[:, n])
         if smoothe != 0:
             sp = _fractional_octave_smoothing(sp, smoothe)
-        epsilon = 10**(-300/20)
-        sp_db = factor*np.log10(np.clip(sp, a_min=epsilon, a_max=None))
+        epsilon = 10**(-400/10)
+        sp_db = factor*np.log10(
+            np.clip(sp, a_min=epsilon, a_max=None)/scale_factor)
         if normalize is not None:
             if normalize == '1k':
                 id1k = _find_nearest(1e3, f)
@@ -689,7 +697,8 @@ def _check_format_in_path(path: str, desired_format: str) -> str:
         Path with the desired format.
 
     """
-    format = path.split('.')
+    format = path.split(sep)[-1]
+    format = format.split('.')
     if len(format) != 1:
         assert format[-1] == desired_format, \
             f'{format[-1]} is not the desired format'

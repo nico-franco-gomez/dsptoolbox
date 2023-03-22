@@ -21,7 +21,7 @@ from dsptoolbox._standard import (_latency,
                                   _exact_center_frequencies_fractional_octaves,
                                   _kaiser_window_beta,
                                   _indexes_above_threshold_dbfs,
-                                  _detrend)
+                                  _detrend, _rms)
 from dsptoolbox._general_helpers import (
     _pad_trim, _normalize, _fade, _check_format_in_path)
 from dsptoolbox.transfer_functions import (
@@ -65,8 +65,8 @@ def latency(in1: Signal, in2: Signal = None) -> np.ndarray:
 
 def pad_trim(signal: Signal | MultiBandSignal, desired_length_samples: int,
              in_the_end: bool = True) -> Signal | MultiBandSignal:
-    """Returns a copy of the signal with padded or trimmed time data. Only
-    valid for same sampling rate MultiBandSignal.
+    """Returns a copy of the signal with padded or trimmed time data. If signal
+    is `MultiBandSignal`, only `same_sampling_rate=True` is valid.
 
     Parameters
     ----------
@@ -383,7 +383,7 @@ def fade(sig: Signal, type_fade: str = 'lin',
     ----------
     sig : `Signal`
         Signal to apply fade to.
-    type_fade : str, optional
+    type_fade : {'exp', 'lin', 'log'} str, optional
         Type of fading to be applied. Choose from `'exp'` (exponential),
         `'lin'` (linear) or `'log'` (logarithmic). Default: `'lin'`.
     length_fade_seconds : float, optional
@@ -509,7 +509,7 @@ def ir_to_filter(signal: Signal, channel: int = 0,
         Signal to be converted into a filter.
     channel : int, optional
         Channel of the signal to be used. Default: 0.
-    phase_mode : str, optional
+    phase_mode : {'direct', 'min', 'lin'} str, optional
         Phase of the FIR filter. Choose from `'direct'` (no changes to phase),
         `'min'` (minimum phase) or `'lin'` (minimum linear phase).
         Default: `'direct'`.
@@ -925,3 +925,198 @@ def detrend(sig: Signal | MultiBandSignal, polynomial_order: int = 0) \
         return detrended_sig
     else:
         raise TypeError('Pass either a Signal or a MultiBandSignal')
+
+
+def rms(sig: Signal | MultiBandSignal, in_dbfs: bool = True) -> np.ndarray:
+    """Returns Root Mean Squared (RMS) value for each channel.
+
+    Parameters
+    ----------
+    sig : `Signal` or `MultiBandSignal`
+        Signal for which to compute the RMS values. It can be a
+        `MultiBandSignal` as well.
+    in_dbfs : bool, optional
+        When `True`, RMS values are returned in dBFS. Default: `True`.
+
+    Returns
+    -------
+    rms_values : `np.ndarray`
+        Array with RMS values. If a `Signal` is passed, it has shape
+        (channel). If a `MultiBandSignal` is passed, its shape is
+        (bands, channel).
+
+    """
+    if type(sig) == Signal:
+        rms = _rms(sig.time_data)
+    elif type(sig) == MultiBandSignal:
+        rms = np.zeros((sig.number_of_bands, sig.number_of_channels))
+        for ind, b in enumerate(sig):
+            rms[ind, :] = _rms(b.time_data)
+    else:
+        raise TypeError('Passed signal should be either a Signal or ' +
+                        'MultiBandSignal type')
+    if in_dbfs:
+        rms = 20*np.log10(rms)
+    return rms
+
+
+class CalibrationData():
+    """This is a class that takes in a calibration recording and can be used
+    to calibrate other signals.
+
+    """
+    def __init__(self, calibration_data, type_of_calibration: str = '94db',
+                 high_snr: bool = True):
+        """Load a calibration sound file. It is expected that it contains
+        a recorded harmonic tone of 1 kHz with either 94 dB or 114 dB SPL
+        according to [1]. This class can later be used to calibrate a signal.
+
+        Parameters
+        ----------
+        calibration_data : str, tuple or `Signal`
+            Calibration recording. It can be a path (str), a tuple with entries
+            (time_data, sampling_rate) or a `Signal` object.
+        type_of_calibration : {'94db', '114db'} str, optional
+            Type of calibration data. It must be either `'94db'` or `'114db'`.
+            Default: `'94db'`.
+        high_snr : bool, optional
+            If the calibration is expected to have a high Signal-to-noise
+            ratio, RMS value is computed directly through the time signal. This
+            is done when set to `True`. If not, it might be more precise to
+            take the spectrum of the signal and evaluate it at 1 kHz.
+            This is recommended for systems where the SNR drops below 10 dB.
+            Default: `True`.
+
+        References
+        ----------
+        - [1]: DIN EN IEC 60942:2018-07.
+
+        """
+        if type(calibration_data) == str:
+            calibration_data = Signal(calibration_data, None, None)
+        elif type(calibration_data) == tuple:
+            assert len(calibration_data) == 2, \
+                'Tuple must have length 2'
+            calibration_data = Signal(None, calibration_data[0],
+                                      calibration_data[1])
+        elif type(calibration_data) == Signal:
+            pass
+        else:
+            raise TypeError(
+                f'{type(calibration_data)} is not a valid type. Use '
+                'either str, tuple or Signal')
+        self.calibration_signal = calibration_data
+
+        type_of_calibration = type_of_calibration.lower()
+        assert type_of_calibration in ('94db', '114db'), \
+            f'{type_of_calibration} is not valid. Use 94db or 114db'
+        self.calibration_type = type_of_calibration
+
+        self.high_snr = high_snr
+        # State tracker
+        self.__update = True
+
+    def add_calibration_channel(self, new_channel):
+        """Adds a new calibration channel to the calibration signal.
+
+        Parameters
+        ----------
+        new_channel : str, tuple or `Signal`
+            New calibration channel. It can be either a path (str), a tuple
+            with entries (time_data, sampling_rate) or a `Signal` object.
+            If the lengths are different, padding or trimming is done
+            at the end of the new channel. This is supported, but not
+            recommended since zero-padding might distort the real RMS value
+            of the recorded signal.
+
+        """
+        if type(new_channel) == str:
+            new_channel = Signal(new_channel, None, None)
+        elif type(new_channel) == tuple:
+            assert len(new_channel) == 2, \
+                'Tuple must have length 2'
+            new_channel = Signal(None, new_channel[0], new_channel[1])
+        elif type(new_channel) == Signal:
+            pass
+        else:
+            raise TypeError(f'{type(new_channel)} is not a valid type. Use '
+                            'either str, tuple or Signal')
+        self.calibration_signal = merge_signals(self.calibration_signal,
+                                                new_channel)
+        self.__update = True
+
+    def _compute_calibration_factors(self):
+        """Computes the calibration factors for each channel.
+
+        """
+        if self.__update:
+            if self.high_snr:
+                rms_channels = rms(self.calibration_signal, in_dbfs=False)
+            else:
+                rms_channels = self._get_rms_from_spectrum()
+            factor = 94 if self.calibration_type == '94db' else 114
+            p0 = 20e-6
+            p_analytical = 10**(factor/20)*p0
+            self.calibration_factors = p_analytical / rms_channels
+            self.__update = False
+
+    def _get_rms_from_spectrum(self):
+        self.calibration_signal.set_spectrum_parameters(
+            method='welch', scaling='power spectrum')
+        f, sp = self.calibration_signal.get_spectrum()
+        ind1k = np.argmin(np.abs(f - 1e3))
+        return sp[ind1k, :]**0.5
+
+    def calibrate_signal(self, signal: Signal | MultiBandSignal,
+                         force_update: bool = False) \
+            -> Signal | MultiBandSignal:
+        """Calibrates the time data of a signal and returns it as a new object.
+        It can also be a `MultiBandSignal`. If the calibration data only
+        contains one channel, this factor is used for all channels of the
+        signal. Otherwise, the number of channels must coincide.
+
+        Parameters
+        ----------
+        signal : `Signal` or `MultiBandSignal`
+            Signal to be calibrationrated.
+        force_update : bool, optional
+            When `True`, an update of the calibration data is forced. This
+            might be necessary if the calibration signal or the parameters
+            of the object have been manually changed. Default: `False`.
+
+        Returns
+        -------
+        calibrated_signal : `Signal` or `MultiBandSignal`
+            Calibrated signal with time data in Pascal. These values
+            are no longer constrained to the range [-1, 1].
+
+        """
+        if force_update:
+            self.__update = True
+        self._compute_calibration_factors()
+        if len(self.calibration_factors) > 1:
+            assert signal.number_of_channels == \
+                len(self.calibration_factors), \
+                'Number of channels does not match'
+            calibration_factors = self.calibration_factors
+        else:
+            calibration_factors = np.ones(signal.number_of_channels) * \
+                self.calibration_factors
+
+        if type(signal) == Signal:
+            calibrated_signal = signal.copy()
+            calibrated_signal.signal_id += ' – Calibrated (time data in Pa)'
+            calibrated_signal.constrain_amplitude = False
+            calibrated_signal.time_data *= calibration_factors
+            calibrated_signal.calibrated_signal = True
+        elif type(signal) == MultiBandSignal:
+            calibrated_signal = signal.copy()
+            for b in calibrated_signal:
+                b.constrain_amplitude = False
+                b.time_data *= calibration_factors
+                b.signal_id += ' – Calibrated (time data in Pa)'
+                b.calibrated_signal = True
+        else:
+            raise TypeError('signal has not a valid type. Use Signal or ' +
+                            'MultiBandSignal')
+        return calibrated_signal
