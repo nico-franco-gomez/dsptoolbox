@@ -331,6 +331,6 @@ def mfcc(signal: Signal, channel: int = 0,
         fig, ax = general_matrix_plot(
             mfcc, range_x=[time_s[0], time_s[-1]],
             range_y=[f_mel[0], f_mel[-1]],
-            xlabel='Time / s', ylabel='Cepstral coefficients', returns=True)
+            xlabel='Time / s', ylabel='Frequency / mel', returns=True)
         return time_s, f_mel, mfcc, fig, ax
     return time_s, f_mel, mfcc
