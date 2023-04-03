@@ -450,7 +450,7 @@ def descriptors(rir: Signal | MultiBandSignal, mode: str = 'd50'):
         Room impulse response. If it is a multi-channel signal, the descriptor
         given back has the shape (channel). If it is a `MultiBandSignal`,
         the descriptor has shape (band, channel).
-    mode : {'d50', 'c80', 'br', 'ts', 'g'} str, optional
+    mode : {'d50', 'c80', 'br', 'ts'} str, optional
         This defines the descriptor to be computed. Options are:
         - `'d50'`: Definition. It takes values between [0, 1] and should
           correlate (positively) with speech inteligibility.

@@ -705,3 +705,37 @@ def _check_format_in_path(path: str, desired_format: str) -> str:
     else:
         path += f'.{desired_format}'
     return path
+
+
+def _get_next_power_2(number, mode: str = 'closest') -> int:
+    """This function returns the power of 2 closest to the given number.
+
+    Parameters
+    ----------
+    number : int, float
+        Number for which to find the closest power of 2.
+    mode : str {'closest', 'floor', 'ceil'}, optional
+        `'closest'` gives the closest value. `'floor'` returns the next smaller
+        power of 2 and `'ceil'` the next larger. Default: `'closest'`.
+
+    Returns
+    -------
+    number_2 : int
+        Next power of 2 according to the selected mode.
+
+    """
+    assert number > 0, 'Only positive numbers are valid'
+    mode = mode.lower()
+    assert mode in ('closest', 'floor', 'ceil'), \
+        'Mode must be either closest, floor or ceil'
+
+    p = np.log2(number)
+    if mode == 'closest':
+        remainder = p - int(p)
+        mode == 'floor' if remainder < 0.5 else 'ceil'
+
+    if mode == 'floor':
+        p = np.floor(p).astype(int)
+    elif mode == 'ceil':
+        p = np.ceil(p).astype(int)
+    return int(2**p)
