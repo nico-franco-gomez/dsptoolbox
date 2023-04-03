@@ -857,3 +857,53 @@ def _get_framed_signal(td: np.ndarray, window_length_samples: int,
     if not keep_last_frame:
         td_framed = td_framed[:, :-1, :]
     return td_framed
+
+
+def _reconstruct_framed_signal(td_framed: np.ndarray, step_size: int,
+                               window: str | np.ndarray = None,
+                               original_signal_length: int = None) \
+        -> np.ndarray:
+    """Gets and returns a framed signal into its vector representation.
+
+    Parameters
+    ----------
+    td_framed : `np.ndarray`
+        Framed signal with shape (time samples, frame, channel).
+    step_size : int
+        Step size in samples between frames (also known as hop length).
+    window : str, `np.ndarray`, optional
+        Window (if applies). Pass `None` to avoid using a window during
+        reconstruction. Default: `None`.
+    original_signal_length : int, optional
+        When different than `None`, the output is padded or trimmed to this
+        length. Default: `None`.
+
+    Returns
+    -------
+    td : `np.ndarray`
+        Reconstructed signal.
+
+    """
+    assert td_framed.ndim == 3, \
+        'Framed signal must contain exactly three dimensions'
+    if window is not None:
+        if type(window) == str:
+            window = windows.get_window(window, td_framed.shape[0])
+        elif type(window) == np.ndarray:
+            assert window.ndim == 1, \
+                'Window must be a 1D-array'
+            assert window.shape[0] == td_framed.shape[0], \
+                'Window length does not match signal length'
+        td_framed /= window[:, np.newaxis, np.newaxis]
+
+    total_length = int(step_size * td_framed.shape[1] +
+                       td_framed.shape[0]*(1 - step_size/td_framed.shape[0]))
+    td = np.zeros((total_length, td_framed.shape[-1]))
+
+    start = 0
+    for i in range(td_framed.shape[1]):
+        td[start:start+td_framed.shape[0], :] = td_framed[:, i, :]
+        start += step_size
+    if original_signal_length is not None:
+        td = _pad_trim(td, original_signal_length)
+    return td
