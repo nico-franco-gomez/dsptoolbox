@@ -497,19 +497,11 @@ class MicArray(BasePoints):
         minimum distance between microphones.
 
         """
-        # Initialize values
-        min_value = 1e20
-        max_value = -1
-        for i1 in range(self.coordinates.shape[0]):
-            # Get distances from point i1 to all other points
-            distances = self.get_distances_to_point(self.coordinates[i1, :])
-            # Prune 0 value (distance for point with itself)
-            distances = distances[distances != 0]
-            # Get min and max values
-            max_value = max(max_value, np.max(distances))
-            min_value = min(min_value, np.min(distances))
-        self.__min_distance = min_value
-        self.__aperture = max_value
+        distances = self.get_distances_to_point(self.coordinates)
+        np.fill_diagonal(distances, np.inf)
+        self.__min_distance = np.min(distances)
+        np.fill_diagonal(distances, -np.inf)
+        self.__aperture = np.max(distances)
 
     def __compute_array_center(self):
         """Returns array center mic's coordinates and number.
@@ -907,7 +899,7 @@ class BeamformerCleanSC(BeamformerGridded):
                            octave_fraction: int = 3,
                            maximum_iterations: int = None,
                            safety_factor: float = 0.5,
-                           remove_diagonal_csm: bool = False) -> np.ndarray:
+                           remove_csm_diagonal: bool = False) -> np.ndarray:
         """Returns a deconvolved beaforming map.
 
         Parameters
@@ -926,7 +918,7 @@ class BeamformerCleanSC(BeamformerGridded):
             Also called loop gain, the safety factor dampens the result from
             each iteration during deconvolution. Should be between 0 and 1.
             See [1] for more details. Default: 0.5.
-        remove_diagonal_csm : bool, optional
+        remove_csm_diagonal : bool, optional
             When `True`, the main diagonal of the CSM is removed for a cleaner
             map (source powers might be wrongly estimated). Default: `False`.
 
@@ -982,7 +974,7 @@ class BeamformerCleanSC(BeamformerGridded):
         self.f_range_hz = np.array([f[0], f[-1]])
 
         # Remove diagonal CSM
-        if remove_diagonal_csm:
+        if remove_csm_diagonal:
             for find in range(len(f)):
                 np.fill_diagonal(csm[find, :, :], 0)
 
@@ -995,9 +987,9 @@ class BeamformerCleanSC(BeamformerGridded):
                 map[gind, find] = np.linalg.multi_dot(
                     [h_H[find, gind, :], csm[find, :, :],
                      h[find, :, gind]]).real
-            map = _clean_sc_deconvolve(
+            map[:, find] = _clean_sc_deconvolve(
                 map[:, find], csm[find, :, :], h[find, :, :], h_H[find, :, :],
-                maximum_iterations, remove_diagonal_csm, safety_factor).real
+                maximum_iterations, remove_csm_diagonal, safety_factor).real
 
         # Integrate over all frequencies
         if number_frequency_bins > 1:
@@ -1343,12 +1335,9 @@ class BeamformerDASTime(BaseBeamformer):
         out_sig = self.signal.get_channels(0)
 
         # Get maximal distance in order to delay all signals to that
-        r0 = -1
-        min_distance = 1e20
-        for gp in self.grid.coordinates:
-            ds = self.mics.get_distances_to_point(gp)
-            r0 = max(r0, np.max(ds))
-            min_distance = min(min_distance, np.min(ds))
+        ds = self.mics.get_distances_to_point(self.grid.coordinates)
+        min_distance = np.min(ds)
+        r0 = np.max(ds)
 
         # Get longest delay in order to pad all signals accordingly
         longest_delay_samples = \
@@ -1363,14 +1352,13 @@ class BeamformerDASTime(BaseBeamformer):
         for ig in range(self.grid.number_of_points):
             if ig == self.grid.number_of_points//2:
                 print(r'...50% grid done...')
-            ds = self.mics.get_distances_to_point(self.grid.coordinates[ig, :])
-            delays = (r0 - ds)/self.c
+            delays = (r0 - ds[:, ig])/self.c
             # Accumulator
             new_time_data = np.zeros((total_length_samples, 1))
             for im in range(self.mics.number_of_points):
                 ntd = fractional_delay(
                     self.signal.get_channels(im), delays[im]).time_data *\
-                        ds[im]
+                        ds[im, ig]
                 new_time_data += _pad_trim(ntd, total_length_samples)
             new_time_data *= (4*np.pi/self.mics.number_of_points)
             out_sig.add_channel(None, new_time_data, out_sig.sampling_rate_hz)
@@ -1522,15 +1510,13 @@ def classic_steering(wave_number: np.ndarray, grid: Grid,
         'Wave number should be a 1D-array'
     # Number of mics and grid points
     N = mic.number_of_points
-    NGrid = grid.number_of_points
 
     # rt0 with shape (ngrid)
     rt0 = grid.get_distances_to_point(mic.array_center_coordinates)
 
     # rti matrix with shape (nmic, ngrid)
-    rti = np.zeros((N, NGrid))
-    for i in range(N):
-        rti[i, :] = grid.get_distances_to_point(mic.coordinates[i, :])
+    rti = grid.get_distances_to_point(mic.coordinates).T
+    # Transpose because output is always (grid, other points)
 
     return 1/N * np.exp(
         -1j*wave_number[:, nxs, nxs] * (rti[nxs, :, :] - rt0[nxs, nxs, :]))
@@ -1567,15 +1553,12 @@ def inverse_steering(wave_number: np.ndarray, grid: Grid,
         'Wave number should be a 1D-array'
     # Number of mics and grid points
     N = mic.number_of_points
-    NGrid = grid.number_of_points
 
     # rt0 with shape (ngrid)
     rt0 = grid.get_distances_to_point(mic.array_center_coordinates)
 
     # rti matrix with shape (nmic, ngrid)
-    rti = np.zeros((N, NGrid))
-    for i in range(N):
-        rti[i, :] = grid.get_distances_to_point(mic.coordinates[i, :])
+    rti = grid.get_distances_to_point(mic.coordinates).T
 
     # Formulate vector
     return rti[nxs, :, :] / N / rt0[nxs, nxs, :] * \
@@ -1612,23 +1595,15 @@ def true_power_steering(wave_number: np.ndarray, grid: Grid,
     wave_number = np.atleast_1d(wave_number)
     assert wave_number.ndim == 1, \
         'Wave number should be a 1D-array'
-    # Number of mics and grid points
-    N = mic.number_of_points
-    NGrid = grid.number_of_points
 
     # rt0 with shape (ngrid)
     rt0 = grid.get_distances_to_point(mic.array_center_coordinates)
 
     # rti matrix with shape (nmic, ngrid)
-    rti = np.zeros((N, NGrid))
-    for i in range(N):
-        rti[i, :] = grid.get_distances_to_point(mic.coordinates[i, :])
+    rti = grid.get_distances_to_point(mic.coordinates).T
 
     # rtj vector with shape (ngrid)
-    rtj = np.zeros((NGrid))
-    for i in range(NGrid):
-        all_distances = mic.get_distances_to_point(grid.coordinates[i, :])
-        rtj[i] = np.sum(1/all_distances**2)
+    rtj = np.sum(1/mic.get_distances_to_point(grid.coordinates)**2, axis=0)
 
     # Formulate vector
     return 1 / rt0[nxs, nxs, :] / rti[nxs, :, :] / rtj[nxs, nxs, :] * \
@@ -1667,21 +1642,15 @@ def true_location_steering(wave_number: np.ndarray, grid: Grid,
         'Wave number should be a 1D-array'
     # Number of mics and grid points
     N = mic.number_of_points
-    NGrid = grid.number_of_points
 
     # rt0 with shape (ngrid)
     rt0 = grid.get_distances_to_point(mic.array_center_coordinates)
 
     # rti matrix with shape (nmic, ngrid)
-    rti = np.zeros((N, NGrid))
-    for i in range(N):
-        rti[i, :] = grid.get_distances_to_point(mic.coordinates[i, :])
+    rti = grid.get_distances_to_point(mic.coordinates).T
 
     # rtj vector with shape (ngrid)
-    rtj = np.zeros((NGrid))
-    for i in range(NGrid):
-        all_distances = mic.get_distances_to_point(grid.coordinates[i, :])
-        rtj[i] = N * np.sum(1/all_distances**2)
+    rtj = N * np.sum(1/mic.get_distances_to_point(grid.coordinates)**2, axis=0)
 
     return 1 / rti[nxs, :, :] / np.sqrt(rtj[nxs, nxs, :]) * \
         np.exp(-1j * wave_number[:, nxs, nxs] *

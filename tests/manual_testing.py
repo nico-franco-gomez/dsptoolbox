@@ -522,12 +522,12 @@ def beamforming_basics():
     k = np.linspace(800, 1000, 10) * 2 * np.pi / 343
     h = st.get_vector(k, g, ma)
     print(h.shape)
-    st = dsp.beamforming.SteeringVector(formulation='inverse')
+    st = dsp.beamforming.SteeringVector(formulation='true power')
     h = st.get_vector(k, g, ma)
     print(h.shape)
-    # print('Grid: ', g.coordinates.shape)
-    # print('Mics: ', ma.coordinates.shape)
-    # print('k: ', k.shape)
+    print('Grid: ', g.coordinates.shape)
+    print('Mics: ', ma.coordinates.shape)
+    print('k: ', k.shape)
 
     # Beamformer
     noise = dsp.generators.noise(
@@ -786,7 +786,7 @@ def beamforming_frequency_formulations():
     bf.plot_setting()
     map = bf.get_beamformer_map(
         center_frequency_hz=1500, octave_fraction=0, maximum_iterations=100,
-        safety_factor=0.5, remove_diagonal_csm=True)
+        safety_factor=0.5, remove_csm_diagonal=True)
     grid.plot_map(map, range_db=60)
     bf = dsp.beamforming.BeamformerDASFrequency(s_out, ma, grid, st)
     map = bf.get_beamformer_map(center_frequency_hz=1500, octave_fraction=0)
@@ -833,6 +833,16 @@ def iterators():
         print(type(n))
 
 
+def mfcc():
+    sp = dsp.Signal(join('examples', 'data', 'speech.flac'))
+    t, f, s = sp.get_spectrogram()
+
+    mels, _ = dsp.special.mel_filterbank(f, [20, 10e3], n_bands=40)
+    t, mel, mf, fig, ax = dsp.special.mfcc(sp, mel_filters=mels)
+
+    dsp.plots.show()
+
+
 if __name__ == '__main__':
     # transfer_function_test()
     # new_transfer_functions()
@@ -872,6 +882,7 @@ if __name__ == '__main__':
     # beamforming_frequency_formulations()
     # detrending()
     # iterators()
+    # mfcc()
 
     # Next
     print()

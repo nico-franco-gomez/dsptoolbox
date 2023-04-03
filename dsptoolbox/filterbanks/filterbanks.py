@@ -36,7 +36,7 @@ def linkwitz_riley_crossovers(crossover_frequencies_hz, order,
 
 
 def reconstructing_fractional_octave_bands(
-        octave_fraction: int = 1, frequency_range_hz=[63, 16000],
+        frequency_range_hz=[63, 16000], octave_fraction: int = 1,
         overlap: float = 1, slope: int = 0, n_samples: int = 2**11,
         sampling_rate_hz: int = None) -> FilterBank:
     """Create a perfect reconstruction filter bank with linear-phase
@@ -45,10 +45,10 @@ def reconstructing_fractional_octave_bands(
 
     Parameters
     ----------
-    octave_fraction : int, optional
-        Octave fraction used to define bandwidth. Default: 1.
     frequency_range_hz : tuple, optional
         Frequency range in Hz. Default:[ 63, 16e3].
+    octave_fraction : int, optional
+        Octave fraction used to define bandwidth. Default: 1.
     overlap : float, optional
         Band overlap of the filter slopes between 0 and 1. Smaller values yield
         wider pass-bands and steeper filter slopes. Default: 1.
@@ -267,7 +267,7 @@ def qmf_crossover(lowpass: Filter) -> QMFCrossover:
 
     Returns
     -------
-    fb : `QMFilterBank`
+    fb : `QMFCrossover`
         Quadrature mirror filters crossover.
 
     References

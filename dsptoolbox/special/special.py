@@ -6,6 +6,7 @@ from dsptoolbox.plots import general_matrix_plot
 from dsptoolbox._general_helpers import _hz2mel, _mel2hz
 
 import numpy as np
+from scipy.fft import dct
 import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
 from matplotlib.axes import Axes
@@ -143,8 +144,8 @@ def mel_filterbank(f_hz: np.ndarray, range_hz=None, n_bands: int = 40,
     -------
     mel_filters : `np.ndarray`
         Mel filters matrix with shape (bands, frequency).
-    bands_mel : `np.ndarray`
-        Vector containing mel bands that correspond to the filters.
+    mel_center_freqs : `np.ndarray`
+        Vector containing mel center frequencies.
 
     """
     f_hz = np.squeeze(f_hz)
@@ -168,11 +169,11 @@ def mel_filterbank(f_hz: np.ndarray, range_hz=None, n_bands: int = 40,
 
     # Compute band center frequencies in mel
     range_mel = _hz2mel(range_hz)
-    bands_mel = np.linspace(
+    mel_center_freqs = np.linspace(
         range_mel[0], range_mel[1], n_bands+2, endpoint=True)
 
     # Center frequencies in Hz
-    bands_hz = _mel2hz(bands_mel)
+    bands_hz = _mel2hz(mel_center_freqs)
 
     # Find indexes for frequencies
     inds = np.empty_like(bands_hz, dtype=int)
@@ -189,7 +190,7 @@ def mel_filterbank(f_hz: np.ndarray, range_hz=None, n_bands: int = 40,
             np.linspace(1, 0, inds[ni+1] - inds[ni], endpoint=False)
         if normalize:
             mel_filters[n, :] /= np.sum(mel_filters[n, :])
-    return mel_filters, bands_mel
+    return mel_filters, mel_center_freqs[1:-1]
 
 
 def plot_waterfall(sig: Signal, channel: int = 0,
@@ -244,3 +245,92 @@ def plot_waterfall(sig: Signal, channel: int = 0,
     fig.tight_layout()
     # fig.colorbar(surface, ax=ax, shrink=0.4, aspect=10)
     return fig, ax
+
+
+def mfcc(signal: Signal, channel: int = 0,
+         mel_filters: np.ndarray = None, generate_plot: bool = True,
+         stft_parameters: dict = None):
+    """Mel-frequency cepstral coefficients for a windowed signal are computed
+    and returned using the discrete cosine transform of type 2 (see
+    `scipy.fft.dct` for more details).
+
+    Parameters
+    ----------
+    signal : `Signal`
+        The signal for which to compute the mel-frequency cepstral
+        coefficients.
+    channel : int, optional
+        Channel of the signal for which to compute the MFCC. Default: 0.
+    mel_filters : `np.ndarray`, optional
+        Hz-to-Mel transformation matrix with shape (mel band, frequency Hz).
+        It can be created using `mel_filterbank`. If `None` is passed, the
+        filters are automatically computed regarding the whole
+        available spectrum and dividing it in 40 bands (with normalized
+        amplitudes for energy preserving filters, see `mel_filterbank` for
+        details). Default: `None`.
+    generate_plot : bool, optional
+        When `True`, a plot of the MFCC is generated and returned.
+        Default: `True`.
+    stft_parameters : dict, optional
+        Pass arguments to define computation of STFT. If `None` is passed, the
+        parameters already set in the signal will be used. Refer to
+        `Signal.set_spectrogram_parameters()` for details. Default: `None`.
+
+    Returns
+    -------
+    time_s : `np.ndarray`
+        Time vector.
+    f_mel : `np.ndarray`
+        Frequency vector in mel. If `mel_filters` is passed, this is only a
+        list with entries [0, n_mel_filters].
+    mfcc : `np.ndarray`
+        Mel-frequency cepstral coefficients
+
+    When `generate_plot=True`:
+
+    time_s : `np.ndarray`
+        Time vector.
+    f_mel : `np.ndarray`
+        Frequency vector in mel. If `mel_filters` is passed, this is only a
+        list with entries [0, n_mel_filters].
+    log_mel_sp : `np.ndarray`
+        Log mel spectrogram.
+    fig : `matplotlib.figure.Figure`
+        Figure.
+    ax : `matplotlib.axes.Axes`
+        Axes.
+
+    """
+    if stft_parameters is not None:
+        signal.set_spectrogram_parameters(**stft_parameters)
+    time_s, f, sp = signal.get_spectrogram(channel_number=channel)
+
+    # Get Log power spectrum
+    log_sp = 2*np.log(np.abs(sp))
+
+    # Mel filters
+    if mel_filters is None:
+        mel_filters, f_mel = mel_filterbank(f, None, n_bands=40)
+    else:
+        assert mel_filters.shape[1] == log_sp.shape[0], \
+            f'Shape of the mel filter matrix {mel_filters.shape} does ' +\
+            f'not match the STFT {log_sp.shape}'
+        f_mel = [0, mel_filters.shape[0]]
+
+    # Convert from Hz to Mel
+    log_sp = mel_filters @ log_sp
+
+    # Discrete cosine transform
+    mfcc = np.abs(dct(log_sp, type=2, axis=0))
+
+    # Prune nans
+    np.nan_to_num(mfcc, copy=False, nan=0)
+
+    # Plot and return
+    if generate_plot:
+        fig, ax = general_matrix_plot(
+            mfcc, range_x=[time_s[0], time_s[-1]],
+            range_y=[f_mel[0], f_mel[-1]],
+            xlabel='Time / s', ylabel='Frequency / mel', returns=True)
+        return time_s, f_mel, mfcc, fig, ax
+    return time_s, f_mel, mfcc

@@ -125,7 +125,7 @@ def play_and_record(signal: Signal, duration_seconds: float = None,
     if device is not None:
         sd.default.device = device
 
-    print('\nReproduction and recording have started ' +
+    print('Playback and recording have started ' +
           f'({duration_seconds:.1f} s)...')
     rec_time_data = \
         sd.playrec(
@@ -134,14 +134,14 @@ def play_and_record(signal: Signal, duration_seconds: float = None,
             input_mapping=rec_channels,
             output_mapping=play_channels)
     sd.wait()
-    print('Reproduction and recording have ended\n')
+    print('Playback and recording have ended\n')
 
     rec_sig = Signal(None, rec_time_data, signal.sampling_rate_hz)
     return rec_sig
 
 
 def record(duration_seconds: float = 5, sampling_rate_hz: int = 48000,
-           device: str = None, rec_channels=[1]) -> Signal:
+           device: str | int = None, rec_channels=[1]) -> Signal:
     """Record using some available device. Note that the channel numbers
     start here with 1.
 
@@ -233,13 +233,13 @@ def play(signal: Signal, duration_seconds: float = None,
     if device is not None:
         sd.default.device = device
 
-    print(f'\nReproduction started ({duration_seconds:.1f} s)...')
+    print(f'Playback started ({duration_seconds:.1f} s)...')
     sd.play(
         data=play_data,
         samplerate=signal.sampling_rate_hz,
         mapping=play_channels)
     sd.wait()
-    print('Reproduction has ended\n')
+    print('Playback has ended\n')
 
 
 def play_through_stream(signal: Signal, blocksize: int = 2048,
