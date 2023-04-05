@@ -732,7 +732,7 @@ def _get_next_power_2(number, mode: str = 'closest') -> int:
     p = np.log2(number)
     if mode == 'closest':
         remainder = p - int(p)
-        mode == 'floor' if remainder < 0.5 else 'ceil'
+        mode = 'floor' if remainder < 0.5 else 'ceil'
 
     if mode == 'floor':
         p = np.floor(p).astype(int)

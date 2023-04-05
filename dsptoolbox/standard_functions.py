@@ -852,6 +852,8 @@ def activity_detector(signal: Signal, channel: int = 0,
         'Threshold must be below zero'
     assert release_time_ms >= 0, \
         'Release time must be positive'
+    assert attack_time_ms >= 0, \
+        'Attack time must be positive'
 
     # Get relevant channel
     signal = signal.get_channels(channel)
@@ -883,8 +885,17 @@ def activity_detector(signal: Signal, channel: int = 0,
     if hasattr(detected_sig, 'window'):
         del detected_sig.window
         del noise.window
+
+    # Get different signals
     detected_sig.time_data = signal.time_data[signal_indexes, 0]
-    noise.time_data = signal.time_data[noise_indexes, 0]
+
+    try:
+        noise.time_data = signal.time_data[noise_indexes, 0]
+    except ValueError as e:
+        warn('No detected noise, threshold might be too low. Noise will be ' +
+             'a vector filled with zeroes')
+        print('Numpy error: ', e)
+        noise.time_data = np.zeros(500)
 
     others = dict(
         noise=noise, signal_indexes=signal_indexes,

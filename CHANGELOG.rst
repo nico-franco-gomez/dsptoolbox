@@ -19,18 +19,22 @@ adheres to `Semantic Versioning <http://semver.org/spec/v2.0.0.html>`_.
 
 Added
 ~~~~~~
-- mel-frequency cepstral coefficients ``mfcc`` in ``special`` module.
+- mel-frequency cepstral coefficients ``mfcc`` in ``special`` module
 - spectrogram of a signal can now be plotted with a selected dynamic range
+- The inverse STFT was added in the ``special`` module
 
 Bugfix
 ~~~~~~~
 - plotting for the ``qmf`` Crossover is now possible without downsampling
 - Linkwitz-Riley crossovers plotting functions have been updated and corrected
+- scaling of spectrum in signal was not working properly when `None` was passed
 
 Misc
 ~~~~~
 - docstrings corrected and extended
 - computation of steering vectors in ``beamforming`` has been optimized
+- spectrogram computation has been changed to be performed as multi-channel
+  operation and the output array has now the extra channel dimension
 
 `0.2.4 <https://pypi.org/project/dsptoolbox/0.2.4>`_ - 
 ---------------------

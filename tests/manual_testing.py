@@ -107,6 +107,7 @@ def stft():
         window_length_samples=2048, scaling=False, overlap_percent=75,
         padding=False)
     t, f, stft = raw.get_spectrogram()
+    stft = stft[..., 0]
     D = librosa.stft(raw.time_data.squeeze(), center=False)
     print(np.all(np.isclose(stft[1:, :-4], D[1:])))
     # exit()
@@ -843,6 +844,81 @@ def mfcc():
     dsp.plots.show()
 
 
+def activity_detector():
+    speech = dsp.Signal('/Users/neumanndev/Documents/Others/dsptoolbox/' +
+                        'dsptoolbox/examples/data/speech.flac')
+    n = dsp.generators.noise('blue', len(speech)/speech.sampling_rate_hz,
+                             speech.sampling_rate_hz, peak_level_dbfs=-20)
+    speech.time_data += n.time_data
+    act, rest = dsp.activity_detector(
+        speech, channel=0,
+        threshold_dbfs=-30,
+        attack_time_ms=0.2,
+        release_time_ms=40)
+
+    # Original
+    speech.plot_time()
+
+    # Detected activity
+    act.plot_time()
+
+    # Noise
+    rest['noise'].plot_time()
+
+    # Listen to the example
+    # dsp.audio_io.set_device()
+    dsp.audio_io.play(act)
+    dsp.audio_io.play(rest['noise'])
+
+    # Signal power in dBFS
+    data = 20*np.log10(np.abs(speech.time_data))
+    data -= data.max()
+    dsp.plots.general_plot(
+        speech.time_vector_s, data,
+        log=False, xlabel='Time / s', ylabel='Power / dBFS')
+    dsp.plots.show()
+
+
+def istft():
+    sp = dsp.Signal(join('examples', 'data', 'speech.flac'))
+    sp = dsp.merge_signals(sp, sp)
+    sp.set_spectrogram_parameters(padding=False)
+    t, f, s = sp.get_spectrogram()
+    rec = dsp.special.istft(s, original_signal=sp)
+    sp.plot_time()
+    rec.plot_time()
+    # plt.plot(np.abs(rec.time_data - sp.time_data))
+    print(np.all(np.isclose(rec.time_data, sp.time_data)))
+    plt.show()
+    dsp.audio_io.set_device(1)
+    dsp.audio_io.play(sp)
+    dsp.audio_io.play(rec)
+
+
+def spectral_subtractor():
+    speech = dsp.Signal('/Users/neumanndev/Documents/Others/dsptoolbox/' +
+                        'dsptoolbox/examples/data/speech.flac')
+    n = dsp.generators.noise('blue', len(speech)/speech.sampling_rate_hz,
+                             speech.sampling_rate_hz, peak_level_dbfs=-20)
+    speech.time_data += n.time_data
+    n.set_spectrum_parameters(scaling=None)
+    f, sp = n.get_spectrum()
+
+    speech = dsp.normalize(speech)
+
+    sub = dsp.effects.SpectralSubtractor(threshold_rms_dbfs=-30,
+                                         adaptive_mode=False,
+                                         spectrum_to_subtract=sp)
+    sub.set_advanced_parameters(noise_forgetting_factor=0.8)
+    speech_den = sub.apply(speech)
+
+    td = speech.time_data - speech_den.time_data
+    speech_den.plot_time()
+    plt.figure()
+    plt.plot(td)
+    plt.show()
+
+
 if __name__ == '__main__':
     # transfer_function_test()
     # new_transfer_functions()
@@ -883,6 +959,9 @@ if __name__ == '__main__':
     # detrending()
     # iterators()
     # mfcc()
+    istft()
+    # spectral_subtractor()
+    # activity_detector()
 
     # Next
     print()

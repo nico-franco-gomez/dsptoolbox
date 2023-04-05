@@ -202,13 +202,15 @@ class TestSignal():
         s = dsp.Signal(time_data=self.time_vec, sampling_rate_hz=self.fs)
         # Use parameters just like librosa for validation
         s.set_spectrogram_parameters(
-            channel_number=0, window_length_samples=1024,
-            window_type='hann', overlap_percent=50, fft_length_samples=None,
+            window_length_samples=1024,
+            window_type='hann', overlap_percent=50,
+            fft_length_samples=4096,
             detrend=False, padding=False, scaling=False)
         t, f, stft = s.get_spectrogram()
         s.set_spectrogram_parameters(
-            channel_number=0, window_length_samples=1024,
-            window_type='hann', overlap_percent=50, fft_length_samples=4096,
+            window_length_samples=1024,
+            window_type='hann', overlap_percent=50,
+            fft_length_samples=None,
             detrend=False, padding=False, scaling=False)
         t, f, stft = s.get_spectrogram()
 
@@ -219,7 +221,7 @@ class TestSignal():
                 self.time_vec[:, 0], n_fft=1024, hop_length=1024//2,
                 window='hann', center=False)
             # There are some extra frames in the dsptoolbox version...
-            assert np.all(np.isclose(stft[:, :y.shape[1]], y))
+            assert np.all(np.isclose(stft[:, :y.shape[1], 0], y))
         except ModuleNotFoundError as e:
             print(e)
             pass
