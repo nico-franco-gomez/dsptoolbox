@@ -22,12 +22,16 @@ Added
 - mel-frequency cepstral coefficients ``mfcc`` in ``special`` module
 - spectrogram of a signal can now be plotted with a selected dynamic range
 - The inverse STFT was added in the ``special`` module
+- ``effects`` module with some effects such as ``SpectralSubtractor``,
+  ``Distortion``, ``Compressor`` and more
 
 Bugfix
 ~~~~~~~
 - plotting for the ``qmf`` Crossover is now possible without downsampling
 - Linkwitz-Riley crossovers plotting functions have been updated and corrected
 - scaling of spectrum in signal was not working properly when `None` was passed
+- conceptual errors were fixed in ``activity_detector``
+- ``true_peak_level`` was changing the gain of the incoming signal
 
 Misc
 ~~~~~

@@ -5,34 +5,21 @@ import matplotlib.pyplot as plt
 from matplotlib.ticker import ScalarFormatter
 from matplotlib import cm
 from numpy import array, max, min, arange
-
-try:
-    from seaborn import set_style
-
-    set_style("whitegrid")
-except ModuleNotFoundError as e:
-    print("Seaborn will not be used for plotting: ", e)
-    pass
+from seaborn import set_style
+set_style('whitegrid')
 
 
 def show():
-    """Show created plots by using this wrapper around matplotlib's show."""
+    """Show created plots by using this wrapper around matplotlib's show.
+
+    """
     plt.show()
 
 
-def general_plot(
-    x,
-    matrix,
-    range_x=None,
-    range_y=None,
-    log: bool = True,
-    labels=None,
-    xlabel: str = "Frequency / Hz",
-    ylabel: str | None = None,
-    info_box: str | None = None,
-    tight_layout: bool = True,
-    returns: bool = False,
-):
+def general_plot(x, matrix, range_x=None, range_y=None, log: bool = True,
+                 labels=None, xlabel: str = 'Frequency / Hz',
+                 ylabel: str = None, info_box: str = None,
+                 tight_layout: bool = True, returns: bool = False):
     """Generic plot template.
 
     Parameters
@@ -71,12 +58,13 @@ def general_plot(
     if matrix.ndim == 1:
         matrix = matrix[..., None]
     elif matrix.ndim > 2:
-        raise ValueError("Only 1D and 2D-arrays are supported")
+        raise ValueError('Only 1D and 2D-arrays are supported')
     if x is None:
         x = arange(matrix.shape[0])
     if labels is not None:
         if type(labels) not in (list, tuple):
-            assert type(labels) is str, "labels should be a list or a string"
+            assert type(labels) == str, \
+                'labels should be a list or a string'
             labels = [labels]
     for n in range(matrix.shape[1]):
         if labels is not None:
@@ -84,13 +72,14 @@ def general_plot(
         else:
             ax.plot(x, matrix[:, n])
     if log:
-        ax.set_xscale("log")
-        ticks = array([20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000])
+        ax.set_xscale('log')
+        ticks = \
+            array([20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000])
         if range_x is not None:
             ticks = ticks[(ticks > range_x[0]) & (ticks < range_x[-1])]
         ax.set_xticks(ticks)
         ax.get_xaxis().set_major_formatter(ScalarFormatter())
-    ax.xaxis.grid(True, which="minor")
+    ax.xaxis.grid(True, which='minor')
     if range_x is not None:
         ax.set_xlim(range_x)
     if range_y is not None:
@@ -102,33 +91,20 @@ def general_plot(
     if xlabel is not None:
         ax.set_xlabel(xlabel)
     if info_box is not None:
-        ax.text(
-            0.1,
-            0.5,
-            info_box,
-            transform=ax.transAxes,
-            verticalalignment="top",
-            bbox=dict(boxstyle="round", facecolor="grey", alpha=0.75),
-        )
+        ax.text(0.1, 0.5, info_box, transform=ax.transAxes,
+                verticalalignment='top',
+                bbox=dict(boxstyle='round', facecolor='grey', alpha=0.75))
     if tight_layout:
         fig.tight_layout()
     if returns:
         return fig, ax
 
 
-def general_subplots_line(
-    x,
-    matrix,
-    column: bool = True,
-    sharex: bool = True,
-    sharey: bool = False,
-    log: bool = False,
-    xlabels=None,
-    ylabels=None,
-    range_x=None,
-    range_y=None,
-    returns: bool = False,
-):
+def general_subplots_line(x, matrix, column: bool = True,
+                          sharex: bool = True, sharey: bool = False,
+                          log: bool = False, xlabels=None, ylabels=None,
+                          range_x=None, range_y=None,
+                          returns: bool = False):
     """Generic plot template with subplots in one column or row.
 
     Parameters
@@ -167,33 +143,25 @@ def general_subplots_line(
     if matrix.ndim == 1:
         matrix = matrix[..., None]
     elif matrix.ndim > 2:
-        raise ValueError("Unsupported dimension. Matrix must be a 2D-array")
+        raise ValueError('Unsupported dimension. Matrix must be a 2D-array')
     number_of_channels = matrix.shape[1]
     if column:
-        fig, ax = plt.subplots(
-            number_of_channels,
-            1,
-            sharex=sharex,
-            figsize=(8, 2 * number_of_channels),
-            sharey=sharey,
-        )
+        fig, ax = plt.subplots(number_of_channels, 1, sharex=sharex,
+                               figsize=(8, 2*number_of_channels),
+                               sharey=sharey)
     else:
-        fig, ax = plt.subplots(
-            1,
-            number_of_channels,
-            sharex=sharex,
-            figsize=(2 * number_of_channels, 8),
-            sharey=sharey,
-        )
+        fig, ax = plt.subplots(1, number_of_channels, sharex=sharex,
+                               figsize=(2*number_of_channels, 8),
+                               sharey=sharey)
     if number_of_channels == 1:
         ax = [ax]
     for n in range(number_of_channels):
         ax[n].plot(x, matrix[:, n])
         if log:
-            ax[n].set_xscale("log")
-            ticks = array(
-                [20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000]
-            )
+            ax[n].set_xscale('log')
+            ticks = \
+                array([20, 50, 100, 200, 500, 1000,
+                       2000, 5000, 10000, 20000])
             if range_x is not None:
                 ticks = ticks[(ticks > range_x[0]) & (ticks < range_x[-1])]
             ax[n].set_xticks(ticks)
@@ -201,34 +169,26 @@ def general_subplots_line(
         if ylabels is not None:
             ax[n].set_ylabel(ylabels[n])
         if xlabels is not None:
-            if not type(xlabels) is str and len(xlabels) > 1:
+            if not type(xlabels) == str and len(xlabels) > 1:
                 ax[n].set_xlabel(xlabels[n])
         if range_x is not None:
             ax[n].set_xlim(range_x)
         if range_y is not None:
             ax[n].set_ylim(range_y)
-    if type(xlabels) is str or len(xlabels) == 1:
+    if type(xlabels) == str or len(xlabels) == 1:
         ax[-1].set_xlabel(xlabels)
     fig.tight_layout()
     if returns:
         return fig, ax
 
 
-def general_matrix_plot(
-    matrix,
-    range_x=None,
-    range_y=None,
-    range_z: float | None = None,
-    xlabel: str | None = None,
-    ylabel: str | None = None,
-    zlabel: str | None = None,
-    xlog: bool = False,
-    ylog: bool = False,
-    colorbar: bool = True,
-    cmap: str = "magma",
-    lower_origin: bool = True,
-    returns: bool = False,
-):
+def general_matrix_plot(matrix, range_x=None, range_y=None,
+                        range_z: float = None,
+                        xlabel: str = None, ylabel: str = None,
+                        zlabel: str = None, xlog: bool = False,
+                        ylog: bool = False, colorbar: bool = True,
+                        cmap: str = 'magma', lower_origin: bool = True,
+                        returns: bool = False):
     """Generic plot template for a matrix's heatmap.
 
     Parameters
@@ -269,16 +229,15 @@ def general_matrix_plot(
         Returned only when `returns=True`.
 
     """
-    assert matrix.ndim == 2, "Only 2D-arrays are supported for this plot type"
+    assert matrix.ndim == 2, \
+        'Only 2D-arrays are supported for this plot type'
     extent = None
     if range_x is not None:
-        assert range_y is not None, (
-            "When x range is given, y range is " + "also necessary"
-        )
-        assert len(range_x) == 2 and len(range_y) == 2, (
-            "xrange and or yrange are invalid. Please give a list "
-            + "containing (min, max) values"
-        )
+        assert range_y is not None, 'When x range is given, y range is ' +\
+            'also necessary'
+        assert len(range_x) == 2 and len(range_y) == 2, \
+            'xrange and or yrange are invalid. Please give a list ' +\
+            'containing (min, max) values'
         extent = (range_x[0], range_x[1], range_y[0], range_y[1])
 
     fig, ax = plt.subplots(1, 1, figsize=(7, 5))
@@ -293,31 +252,20 @@ def general_matrix_plot(
         min_val = min(matrix)
 
     if lower_origin:
-        origin = "lower"
+        origin = 'lower'
     else:
-        origin = "upper"
+        origin = 'upper'
 
     if extent is None:
         col = ax.imshow(
             matrix,
-            alpha=0.95,
-            cmap=cmap,
-            vmin=min_val,
-            vmax=max_val,
-            origin=origin,
-            aspect="auto",
-        )
+            alpha=0.95, cmap=cmap, vmin=min_val, vmax=max_val, origin=origin,
+            aspect='auto')
     else:
         col = ax.imshow(
-            matrix,
-            extent=extent,
-            alpha=0.95,
-            cmap=cmap,
-            vmin=min_val,
-            vmax=max_val,
-            origin=origin,
-            aspect="auto",
-        )
+            matrix, extent=extent,
+            alpha=0.95, cmap=cmap, vmin=min_val, vmax=max_val, origin=origin,
+            aspect='auto')
     if colorbar:
         if zlabel is not None:
             fig.colorbar(col, ax=ax, label=zlabel)
@@ -328,10 +276,11 @@ def general_matrix_plot(
     if ylabel is not None:
         ax.set_ylabel(ylabel)
     if xlog:
-        ax.set_xscale("log")
+        ax.set_xscale('log')
     if ylog:
-        ax.set_yscale("log")
-        ticks = array([20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000])
+        ax.set_yscale('log')
+        ticks = \
+            array([20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000])
         if range_y is not None:
             ticks = ticks[(ticks > range_y[0]) & (ticks < range_y[-1])]
         ax.set_yticks(ticks)
