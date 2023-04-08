@@ -694,7 +694,7 @@ def beamforming_complete_test_time():
     s = dsp.beamforming.mix_sources_on_array([sp, ns], ma)
 
     s_trial = s.get_channels(5)
-    s_trial.save_signal('/Users/neumanndev/Downloads/direct')
+    s_trial.save_signal('direct_sound')
 
     # Grid
     xval = np.arange(-0.5, 0.5, 0.1)
@@ -706,7 +706,7 @@ def beamforming_complete_test_time():
     ax.scatter(sp.coordinates[0], sp.coordinates[1], sp.coordinates[2])
 
     out_sig = bf.get_beamformer_output()
-    out_sig.save_signal('/Users/neumanndev/Downloads/beamformer_time')
+    out_sig.save_signal('beamformer_time')
     dsp.plots.show()
 
 
@@ -845,15 +845,14 @@ def mfcc():
 
 
 def activity_detector():
-    speech = dsp.Signal('/Users/neumanndev/Documents/Others/dsptoolbox/' +
-                        'dsptoolbox/examples/data/speech.flac')
+    speech = dsp.Signal(join('examples', 'data', 'speech.flac'))
     n = dsp.generators.noise('blue', len(speech)/speech.sampling_rate_hz,
                              speech.sampling_rate_hz, peak_level_dbfs=-20)
     speech.time_data += n.time_data
     act, rest = dsp.activity_detector(
         speech, channel=0,
         threshold_dbfs=-30,
-        attack_time_ms=0.2,
+        hold_time_ms=0.2,
         release_time_ms=40)
 
     # Original
@@ -896,8 +895,7 @@ def istft():
 
 
 def spectral_subtractor():
-    speech = dsp.Signal('/Users/neumanndev/Documents/Others/dsptoolbox/' +
-                        'dsptoolbox/examples/data/speech.flac')
+    speech = dsp.Signal(join('examples', 'data', 'speech.flac'))
     n = dsp.generators.noise('blue', len(speech)/speech.sampling_rate_hz,
                              speech.sampling_rate_hz, peak_level_dbfs=-20)
     speech.time_data += n.time_data
@@ -951,7 +949,7 @@ if __name__ == '__main__':
     # beamforming_basics()
     # beamforming_steering_test()
     # beamforming_virtual_source()
-    # beamforming_complete_test_2D()
+    beamforming_complete_test_2D()
     # beamforming_complete_test_time()
     # cepstrum()
     # beamforming_3d_grid()
@@ -959,7 +957,7 @@ if __name__ == '__main__':
     # detrending()
     # iterators()
     # mfcc()
-    istft()
+    # istft()
     # spectral_subtractor()
     # activity_detector()
 

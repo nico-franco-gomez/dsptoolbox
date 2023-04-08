@@ -32,9 +32,9 @@ def _welch(x, y, fs_hz: int, window_type: str = 'hann',
     Parameters
     ----------
     x : `np.ndarray`
-        First signal
+        First signal with shape (time samples, channel).
     y : `np.ndarray`
-        Second signal
+        Second signal with shape (time samples, channel).
     fs_hz : int
         Sampling rate in Hz.
     window_type : str, optional
@@ -62,6 +62,8 @@ def _welch(x, y, fs_hz: int, window_type: str = 'hann',
         Complex cross spectral density vector if x and y are different.
         Alternatively, the (real) autocorrelation power spectral density when
         x and y are the same. If density or spectrum depends on scaling.
+        Depending on the input, the output shape is (time samples) or
+        (time samples, channel).
 
     References
     ----------
@@ -74,19 +76,28 @@ def _welch(x, y, fs_hz: int, window_type: str = 'hann',
       See http://arxiv.org/abs/gr-qc/0509116.
 
     """
-    # from time import time
     if type(x) != np.ndarray:
-        x = np.array(x).squeeze()
+        x = np.asarray(x).squeeze()
     if type(y) != np.ndarray:
-        y = np.array(y).squeeze()
+        y = np.asarray(y).squeeze()
     assert x.shape == y.shape, \
         'Shapes of data do not match'
-    assert len(x.shape) < 2, f'{x.shape} are too many dimensions. Use flat' +\
-        ' arrays instead'
-    valid_window_sizes = np.array([int(2**x) for x in range(4, 17)])
+    # NOTE: Computing the spectrum in a vectorized manner for all channels
+    # simultaneously does not seem to be faster than doing it sequentally
+    # for each channel. Maybe parallelizing with something like numba could
+    # be advantageous...
+    if x.ndim == 2:
+        multi_channel = True
+    else:
+        multi_channel = False
+
+    assert len(x.shape) <= 2, f'{x.shape} are too many dimensions. Use flat' +\
+        ' arrays or 2D-Arrays instead'
+
+    valid_window_sizes = np.array([int(2**x) for x in range(3, 19)])
     assert window_length_samples in valid_window_sizes, \
-        'Window length should be a power of 2 between [16, 65536] or ' +\
-        '[2**4, 2**16]'
+        'Window length should be a power of 2 between [8, 262_144] or ' +\
+        '[2**3, 2**18]'
     assert overlap_percent >= 0 and overlap_percent < 100, \
         'overlap_percent should be between 0 and 100'
     valid_average = ['mean', 'median']
@@ -111,24 +122,20 @@ def _welch(x, y, fs_hz: int, window_type: str = 'hann',
         warn('Selected window type and overlap do not meet the constant ' +
              'overlap and add constraint! Results might be distorted')
 
-    # Start Parameters
-    n_frames, padding_samp = \
-        _compute_number_frames(window_length_samples, step, len(x))
-    x = _pad_trim(x, len(x) + padding_samp)
-    y = _pad_trim(y, len(y) + padding_samp)
-    x_frames = np.zeros((window_length_samples, n_frames), dtype='float')
-    y_frames = np.zeros_like(x_frames)
+    if not multi_channel:
+        x = x[..., None]
+        y = y[..., None]
 
-    # Create time frames
-    start = 0
-    for n in range(n_frames):
-        x_frames[:, n] = x[start:start+window_length_samples].copy()
-        y_frames[:, n] = y[start:start+window_length_samples].copy()
-        start += step
+    x_frames = _get_framed_signal(x, window_length_samples, step)
+    y_frames = _get_framed_signal(y, window_length_samples, step)
 
     # Window
-    x_frames *= window[..., None]
-    y_frames *= window[..., None]
+    x_frames *= window[:, np.newaxis, np.newaxis]
+    y_frames *= window[:, np.newaxis, np.newaxis]
+
+    if not multi_channel:
+        x_frames = np.squeeze(x_frames)
+        y_frames = np.squeeze(y_frames)
 
     # Detrend
     if detrend:
@@ -141,10 +148,10 @@ def _welch(x, y, fs_hz: int, window_type: str = 'hann',
 
     # Direct averaging much faster
     if average == 'mean':
-        csd = np.mean(sp_frames, axis=-1)
+        csd = np.mean(sp_frames, axis=1)
     else:
-        csd = np.median(sp_frames.real, axis=-1) + 1j * \
-            np.median(sp_frames.imag, axis=-1)
+        csd = np.median(sp_frames.real, axis=1) + 1j * \
+            np.median(sp_frames.imag, axis=1)
         # Bias according to reference
         n = sp_frames.shape[1] if sp_frames.shape[1] % 2 == 1 else \
             sp_frames.shape[1] - 1
@@ -163,11 +170,11 @@ def _welch(x, y, fs_hz: int, window_type: str = 'hann',
 
     # Zero frequency fix when detrending (especially useful for dB plotting)
     if detrend:
-        csd[0] = csd[1]
+        csd[0, ...] = csd[1, ...]
 
     csd *= factor
-    csd[0] /= 2
-    csd[-1] /= 2
+    csd[0, ...] /= 2
+    csd[-1, ...] /= 2
 
     if 'amplitude' in scaling:
         csd = np.sqrt(csd)
@@ -175,7 +182,6 @@ def _welch(x, y, fs_hz: int, window_type: str = 'hann',
     # Cast to real output if there is no imaginary part
     if np.all(csd.imag == 0):
         csd = csd.real
-
     return csd
 
 
@@ -372,6 +378,14 @@ def _csm(time_data: np.ndarray, sampling_rate_hz: int,
       comprehensive list of window functions and some new at-top windows.
 
     """
+    # ===== Remarks on speed =============
+    # It has been tried to vectorize the whole computation of the CSM by using
+    # a multi-channel approach in the _welch() function or with a class. This
+    # leads to a dramatic drop in performance and an elevated memory cost.
+    # Maybe using some parallel computing framework like numba would make it
+    # faster, but less readable and it would be a new dependency of the
+    # package... So far the double loop has been best solution
+    # =====================================
     number_of_channels = time_data.shape[1]
     csm = np.zeros((window_length_samples//2+1,
                     number_of_channels,
@@ -528,28 +542,36 @@ def _kaiser_window_beta(A):
     return beta
 
 
-def _indexes_above_threshold_dbfs(time_vec: np.ndarray, threshold_dbfs: float,
-                                  attack_samples: int, release_samples: int):
-    """Returns indexes with power above a passed threshold (in dBFS) in a time
-    series. time_vec is normalized to peak value prior to computation.
+def _indices_above_threshold_dbfs(time_vec: np.ndarray, threshold_dbfs: float,
+                                  attack_samples: int, release_samples: int,
+                                  hold_samples: int = 1,
+                                  normalize: bool = True):
+    """Returns indices with power above a given power threshold (in dBFS) in a
+    time series. time_vec can be normalized to peak value prior to computation.
 
     Parameters
     ----------
     time_vec : `np.ndarray`
-        Time series for which to find indexes above power threshold.
+        Time series for which to find indices above power threshold. Can only
+        take one channel.
     threshold_dbfs : float
-        Threshold to be used.
+        Threshold in dBFS to be regarded for activation.
     attack_samples : int
-        Number of samples representing attack time signal has surpassed
-        power threshold.
+        Attack time in samples.
     release_samples : int
         Number of samples representing release time after signal has decayed
-        below power threshold.
+        below power threshold. It must be at least one.
+    hold_samples : int, optional
+        Number of samples that must be above the power threshold in order to
+        trigger activation. It must be at least one. Default: 1.
+    normalize : bool, optional
+        When `True`, signal is normalized such that the threshold is relative
+        to peak level and not absolute. Default: `True`.
 
     Returns
     -------
-    indexes_above : `np.ndarray`
-        Array of type boolean with length of time_vec indicating indexes
+    indices_above : `np.ndarray`
+        Array of type boolean with length of time_vec indicating indices
         above threshold with `True` and below with `False`.
 
     """
@@ -557,26 +579,37 @@ def _indexes_above_threshold_dbfs(time_vec: np.ndarray, threshold_dbfs: float,
     assert time_vec.ndim == 1, \
         'Function is implemented for 1D-arrays only'
 
-    # Find peak value index
-    max_ind = np.argmax(np.abs(time_vec))
+    assert hold_samples >= 1, \
+        'Hold samples must be at least one.'
+
+    # Release samples must be at least one
+    if release_samples < 1:
+        release_samples = 1
 
     # Power in dB
-    time_power = 20*np.log10(np.abs(time_vec))
+    time_power = 20*np.log10(np.clip(np.abs(time_vec), a_min=1e-25,
+                                     a_max=None))
 
     # Normalization
-    time_power -= time_power[max_ind]
+    if normalize:
+        time_power -= time_power.max()
 
-    # All indexes above threshold
-    indexes_above_0 = time_power > threshold_dbfs
-    indexes_above = np.zeros_like(indexes_above_0).astype(bool)
+    # All indices above threshold
+    indices_above_0 = time_power > threshold_dbfs
+    indices_above = np.zeros_like(indices_above_0).astype(bool)
+    total_length = len(indices_above)
 
     # Apply release and attack
-    for ind in np.arange(len(indexes_above)):
+    for ind in np.arange(1, total_length):
         # Attack after certain amount of samples surpass threshold
-        ind_attack = 0 if ind-attack_samples < 0 else ind-attack_samples
-        if np.all(indexes_above_0[ind_attack:ind]):
-            indexes_above[ind:ind+release_samples] = True
-    return indexes_above
+        ind_hold = max(0, ind-hold_samples)
+        if np.all(indices_above_0[ind_hold:ind]):
+            # Clip to maximum length
+            start = min(ind+attack_samples, total_length)
+            end = min(ind+attack_samples+release_samples, total_length+1)
+            # Activate
+            indices_above[start:end] = True
+    return indices_above
 
 
 def _detrend(time_data: np.ndarray, polynomial_order: int) -> np.ndarray:
@@ -603,28 +636,33 @@ def _detrend(time_data: np.ndarray, polynomial_order: int) -> np.ndarray:
     return time_data
 
 
-def _rms(x: np.ndarray) -> float:
-    """Root mean squared value of a discrete time series
+def _rms(x: np.ndarray) -> float | np.ndarray:
+    """Root mean squared value of a discrete time series.
 
     Parameters
     ----------
     x : `np.ndarray`
-        Time series
+        Time series.
 
     Returns
     -------
-    rms : float
-        Root mean squared value
+    rms : float or `np.ndarray`
+        Root mean squared of a signal. Float or np.ndarray depending on input.
 
     """
+    single_dim = False
     if x.ndim < 2:
+        single_dim = True
         x = x[..., None]
     elif x.ndim == 2:
         pass
     else:
         raise ValueError('Shape of array is not valid. Only 2D-Arrays ' +
                          'are valid')
-    return np.sqrt(np.mean(x**2, axis=0))
+    rms_vals = np.sqrt(np.mean(x**2, axis=0))
+    if single_dim:
+        rms_vals = np.squeeze(rms_vals)
+    return rms_vals
 
 
 def _get_framed_signal(td: np.ndarray, window_length_samples: int,
