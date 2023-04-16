@@ -6,10 +6,15 @@ processing. The effects can be applied to the signal as a whole (with possibly
 anti-causal operations) or in a block-processing manner.
 
 """
-from .effects import SpectralSubtractor, Distortion, Compressor
+from .effects import (SpectralSubtractor, Distortion, Compressor, LFO, Tremolo,
+                      Chorus, DigitalDelay)
 
 __all__ = [
     'SpectralSubtractor',
     'Distortion',
     'Compressor',
+    'LFO',
+    'Tremolo',
+    'Chorus',
+    'DigitalDelay',
 ]

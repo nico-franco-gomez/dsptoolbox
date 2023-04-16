@@ -293,18 +293,20 @@ class Signal():
 
     def set_spectrum_parameters(self, method='welch', smoothe: int = 0,
                                 window_length_samples: int = 1024,
-                                window_type='hann', overlap_percent=50,
-                                detrend=True, average='mean',
+                                window_type='hann',
+                                overlap_percent: float = 50, detrend=True,
+                                average='mean',
                                 scaling='power spectral density'):
         """Sets all necessary parameters for the computation of the spectrum.
 
         Parameters
         ----------
         method : str, optional
-            `'welch'` (Welch's method for stochastic signals) or
-            `'standard'` (Direct FFT from signal). Default: `'welch'`.
+            `'welch'` (Welch's method for stochastic signals, returns a
+            periodogramm) or `'standard'` (Direct FFT from signal).
+            Default: `'welch'`.
         smoothe : int, optional
-            Smoothing across (1/smoothe) octave bands using a hamming
+            Smoothing across (`1/smoothe`) octave bands using a hamming
             window. It only applies when `method='standard'`. Smoothes
             magnitude AND phase. For accesing the smoothing algorithm, refer to
             `dsptoolbox._general_helpers._fractional_octave_smoothing()`.
@@ -802,8 +804,8 @@ class Signal():
     def plot_magnitude(self, range_hz=[20, 20e3], normalize: str = '1k',
                        range_db=None, smoothe: int = 0,
                        show_info_box: bool = False) -> tuple[Figure, Axes]:
-        """Plots magnitude spectrum.
-        Change parameters of spectrum with set_spectrum_parameters.
+        """Plots magnitude spectrum. Change parameters of spectrum with
+        `set_spectrum_parameters`.
 
         Parameters
         ----------

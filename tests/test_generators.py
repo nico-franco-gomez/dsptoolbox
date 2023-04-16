@@ -98,3 +98,19 @@ class TestGeneratorsModule():
                 frequency_hz=4000, length_seconds=1, sampling_rate_hz=5_000,
                 peak_level_dbfs=-5, number_of_channels=3, uncorrelated=True,
                 fade=None, padding_end_seconds=None)
+
+    def test_oscillator(self):
+        # Only functionality
+        dsp.generators.oscillator(frequency_hz=150,
+                                  sampling_rate_hz=5_000,
+                                  mode='triangle',
+                                  number_of_channels=2, uncorrelated=False)
+        dsp.generators.oscillator(frequency_hz=150,
+                                  sampling_rate_hz=3_000,
+                                  harmonic_cutoff_hz=1_000,
+                                  mode='sawtooth',
+                                  number_of_channels=2, uncorrelated=True)
+        dsp.generators.oscillator(frequency_hz=1000,
+                                  sampling_rate_hz=10_000,
+                                  mode='square',
+                                  number_of_channels=1, uncorrelated=False)

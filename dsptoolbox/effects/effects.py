@@ -1,4 +1,4 @@
-from dsptoolbox.classes import Signal, MultiBandSignal
+from dsptoolbox.classes import Signal, MultiBandSignal, Filter, FilterBank
 from dsptoolbox import activity_detector
 from dsptoolbox._standard import (_get_framed_signal,
                                   _reconstruct_framed_signal,
@@ -7,10 +7,11 @@ from dsptoolbox._standard import (_get_framed_signal,
 from dsptoolbox._general_helpers import _get_next_power_2
 from ._effects import (
     _arctan_distortion, _clean_signal, _hard_clip_distortion,
-    _soft_clip_distortion, _compressor, _get_knee_func)
+    _soft_clip_distortion, _compressor, _get_knee_func, LFO)
 from dsptoolbox.plots import general_plot
 
 from scipy.signal.windows import get_window
+from scipy.signal import convolve as scipy_convolve
 import numpy as np
 from warnings import warn
 
@@ -815,7 +816,8 @@ class Compressor(AudioEffect):
                                 post_gain_db: float = 0,
                                 mix_percent: float = 100,
                                 automatic_make_up_gain: bool = True,
-                                side_chain_vector: np.ndarray = None):
+                                side_chain_vector: np.ndarray = None,
+                                downward_compression: bool = True):
         """The advanced parameters of the compressor.
 
         Parameters
@@ -825,8 +827,8 @@ class Compressor(AudioEffect):
             A value of 0 is a hard knee while increasing it produces a smoother
             knee. Default: 0.
         hold_time_ms : float, optional
-            Time to hold compression after signal level is again below
-            threshold. Default: 0.
+            Time to hold compression after compression has been triggered.
+            Default: 0.
         pre_gain_db : float, optional
             Pre-compression gain in dB. Default: 0.
         post_gain_db : float, optional
@@ -847,11 +849,16 @@ class Compressor(AudioEffect):
             different to that of the signal, it is padded or trimmed in the
             end to match the signal length. Attack and release time are always
             additioned to the vector. Default: `None`.
+        downward_compression : bool, optional
+            When `True`, the compressor acts as a downward compressor where
+            signal above the threshold level gets attenuated. If `False`,
+            it acts as an upward compressor where the signal below the
+            threshold gets amplified. Default: `True`.
 
         Notes
         -----
         - The compression function with its threshold, ratio and knee can be
-          plotted with the method `plot_knee()`.
+          plotted with the method `show_compression()`.
 
         """
         assert knee_factor_db >= 0, \
@@ -877,7 +884,9 @@ class Compressor(AudioEffect):
                 'Side chain can only be a 1D-Array'
         self.side_chain = side_chain_vector
 
-    def plot_knee(self):
+        self.downward_compression = downward_compression
+
+    def show_compression(self):
         """Plot the compressor with the actual settings.
 
         Returns
@@ -890,7 +899,7 @@ class Compressor(AudioEffect):
         """
         gains_db = np.linspace(self.threshold_dbfs-20, 0, 2_000)
         func = _get_knee_func(self.threshold_dbfs, self.ratio,
-                              self.knee_factor_db)
+                              self.knee_factor_db, self.downward_compression)
         gains_db_after = func(gains_db)
         gains_mixed = 10**(gains_db_after/20) * self.mix + \
             10**(gains_db/20) * (1 - self.mix)
@@ -934,7 +943,7 @@ class Compressor(AudioEffect):
         td = _compressor(td, self.threshold_dbfs, self.ratio,
                          self.knee_factor_db, attack_time_samples,
                          hold_time_samples, release_time_samples, self.mix,
-                         self.side_chain)
+                         self.side_chain, self.downward_compression)
 
         # Restore original signal level
         if self.relative_to_peak_level:
@@ -950,3 +959,459 @@ class Compressor(AudioEffect):
         compressed_sig = signal.copy()
         compressed_sig.time_data = td
         return compressed_sig
+
+
+class Tremolo(AudioEffect):
+    """Tremolo effect that varies the amplitude of a signal according to a
+    low-frequency oscillator or another modulation signal.
+
+    """
+    def __init__(self, depth: float = 0.5, modulator: LFO | np.ndarray = None):
+        """Constructor for a tremolo effect.
+
+        Parameters
+        ----------
+        depth : float, optional
+            Depth of the amplitude variation. This must be a positive value.
+            Default: 0.5.
+        modulator : `LFO` or `np.ndarray`
+            This is the modulator signal that modifies the amplitude of the
+            carrier signal. It can either be a LFO or a numpy array. If the
+            length of the numpy array is different to that of the carrier
+            signal, it is zero-padded or trimmed in the end to match the
+            length. Passing `None` in the constructor generates a harmonic
+            LFO with frequency 1 Hz. Default: `None`.
+
+        """
+        super().__init__('Modulation effect: Tremolo')
+        if modulator is None:
+            modulator = LFO(1, 'harmonic')
+        self.__set_parameters(depth, modulator)
+
+    def __set_parameters(self, depth: float, modulator: LFO | np.ndarray):
+        """Internal method to change parameters.
+
+        """
+        if modulator is not None:
+            assert type(modulator) in (LFO, np.ndarray), \
+                'Unsupported modulator type. Use LFO or numpy.ndarray'
+            if type(modulator) == np.ndarray:
+                modulator = modulator.squeeze()
+                assert modulator.ndim == 1, \
+                    'Modulator signal can have only one channel'
+            self.modulator = modulator
+
+        if depth is not None:
+            if type(self.modulator) == LFO:
+                assert depth > 0 and depth <= 1, \
+                    'Depth must be in ]0, 1]'
+            self.depth = depth
+
+    def set_parameters(self, depth: float = None,
+                       modulator: LFO | np.ndarray = None):
+        """Set the parameters for the tremolo effect. Passing `None` in this
+        function leaves them unchanged.
+
+        Parameters
+        ----------
+        depth : float, optional
+            Depth of the amplitude variation. This must be a positive value.
+            Default: `None`.
+        modulator : `LFO` or `np.ndarray`, optional
+            This is the modulator signal that modifies the amplitude of the
+            carrier signal. It can either be a LFO or a numpy array. If the
+            length of the numpy array is different to that of the carrier
+            signal, it is zero-padded or trimmed in the end to match the
+            length. Default: `None`.
+
+        """
+        self.__set_parameters(depth, modulator)
+        assert self.depth is not None
+        assert self.modulator is not None
+
+    def _apply_this_effect(self, signal: Signal) -> Signal:
+        """Apply tremolo effect.
+
+        """
+        if type(self.modulator) == LFO:
+            modulation_signal = self.modulator.get_waveform(
+                signal.sampling_rate_hz, len(signal))
+        else:
+            modulation_signal = _pad_trim(self.modulator.copy(), len(signal))
+        modulation_signal = np.abs(modulation_signal * self.depth + 1)
+
+        modulated_signal = signal.copy()
+        modulated_signal.time_data *= modulation_signal[..., None]
+        return modulated_signal
+
+
+class Chorus(AudioEffect):
+    """Basic chorus effect.
+
+    """
+    def __init__(self, depths_ms: float | np.ndarray = 5,
+                 base_delays_ms: float | np.ndarray = 15,
+                 modulators: LFO | list | tuple | np.ndarray = None,
+                 mix_percent: float = 100):
+        """Constructor for a chorus effect. Multiple voices with modulated
+        delays are generated. The number of voices is inferred by the length
+        of largest parameter.
+
+        Parameters
+        ----------
+        depths_ms : float or array-like, optional
+            This represents the amplitude of the delay variation in ms
+            around the base delay. The bigger, the more dramatic the effect.
+            Each voice can have a different depth. If a single value
+            is passed, it is used for all voices. Default: 5.
+        base_delays_ms : `np.ndarray`, optional
+            Base delays for each voice. By default, 15 ms are used for all
+            voices but different values can be passed per voice.
+            Default: 15.
+        modulators : `LFO` or list or tuple or `np.ndarray`, optional
+            This is the modulators signal that modifies the delay of the
+            carrier signal. It can either be an LFO, a list or tuple of LFOs or
+            a numpy array with delay values in milliseconds. If the length of
+            the numpy array is different to that of the carrier signal, it is
+            zero-padded or trimmed in the end to match the length.
+            Passing `None` in the constructor generates a harmonic LFO with
+            frequency 2 Hz which uses a random phase for each voice to be
+            delayed with. Frequency values between 0.1 Hz and 4 Hz are
+            recommended. Default: `None`.
+        mix_percent : float, optional
+            Amount of signal (in percent) with effect in the final mix.
+            Default: 100.
+
+        Notes
+        -----
+        - The effect is equally applied to all channels.
+        - The duration of the signal is always maintained.
+        - Signal's peak values are always kept.
+        - Setting a low base delay and low depth results in a flanger sound.
+
+        """
+        super().__init__('Modulation effect: Chorus/Flanger')
+        if modulators is None:
+            modulators = LFO(2, 'harmonic', random_phase=True)
+        self.__set_parameters(depths_ms, base_delays_ms, modulators,
+                              mix_percent)
+
+    def __set_parameters(self, depths_ms: float | np.ndarray,
+                         base_delays_ms: float | np.ndarray,
+                         modulators: LFO | list | tuple | np.ndarray,
+                         mix_percent: float):
+        """Internal method to change parameters.
+
+        """
+        # Check lengths
+        nv_base = nv_depths = nv_mod = 0
+
+        if base_delays_ms is not None:
+            base_delays_ms = np.atleast_1d(base_delays_ms)
+            nv_base = len(base_delays_ms)
+        else:
+            nv_base = len(self.base_delays_ms)
+
+        if depths_ms is not None:
+            depths_ms = np.atleast_1d(depths_ms)
+            nv_depths = len(depths_ms)
+        else:
+            nv_depths = len(self.depths_ms)
+
+        if modulators is not None:
+            if type(modulators) in (list, tuple):
+                nv_mod = len(modulators)
+            elif type(modulators) == np.ndarray:
+                modulators = np.atleast_2d(modulators)
+                nv_mod = modulators.shape[1]
+            else:
+                nv_mod = 1
+        else:
+            nv_mod = len(self.modulators)
+
+        # Extract number of voices
+        self.number_of_voices = max(nv_base, nv_depths, nv_mod)
+
+        # Asserts for base delays
+        if base_delays_ms is not None:
+            assert np.all(base_delays_ms > 0), \
+                'Base delays must be above 0'
+            assert len(base_delays_ms) in (1, self.number_of_voices), \
+                'Base delays can only be length 1 or number of voices'
+            self.base_delays_ms = base_delays_ms
+            if len(self.base_delays_ms) == 1:
+                self.base_delays_ms = np.repeat(
+                    self.base_delays_ms, self.number_of_voices)
+
+        if modulators is not None:
+            assert type(modulators) in (LFO, list, tuple, np.ndarray), \
+                'Unsupported modulators type. Use LFO or numpy.ndarray'
+            if type(modulators) == np.ndarray:
+                modulators = np.atleast_2d(modulators)
+                modulators.shape[1] == self.number_of_voices, \
+                    'The modulators signal must have the same number of ' +\
+                    f'channels as there are voices {self.number_of_voices}'
+                self.modulators = modulators
+            elif type(modulators) == LFO:
+                self.modulators = [modulators] * self.number_of_voices
+            else:
+                assert len(modulators) in (1, self.number_of_voices), \
+                    'The number of modulators signals does not match the ' +\
+                    f'number of voices {self.number_of_voices}'
+                assert all([type(i) == LFO for i in modulators]), \
+                    'All modulators signals have to be of type LFO'
+                self.modulators = modulators
+                if len(self.modulators) == 1:
+                    self.modulators = [self.modulators[0]] \
+                        * self.number_of_voices
+
+        if depths_ms is not None:
+            if type(self.modulators) == LFO:
+                assert depths_ms >= 0, \
+                    'Depth must be above 0'
+            self.depths_ms = np.atleast_1d(depths_ms)
+            assert len(self.depths_ms) in (1, self.number_of_voices), \
+                'Depth must be of length 1 or number of ' +\
+                f'voices {self.number_of_voices}'
+            if len(self.depths_ms) == 1:
+                self.depths_ms = np.repeat(
+                    self.depths_ms, self.number_of_voices)
+
+        if mix_percent is not None:
+            mix_percent /= 100
+            assert mix_percent <= 1 and mix_percent > 0, \
+                'Mix percent must be below 100 and above 0'
+            self.mix = mix_percent
+
+    def set_parameters(self, depths_ms: float | np.ndarray = None,
+                       base_delays_ms: float | np.ndarray = None,
+                       modulators: LFO | list | tuple | np.ndarray = None,
+                       mix_percent: float = None):
+        """Sets the advanced parameters for the chorus effect. By passing
+        multiple base delays, depths and LFOs, the effect can be fine-tuned.
+        The number of voices is always extracted from the maximal length of
+        the arrays. Pass `None` to leave a parameter unchanged.
+
+        Parameters
+        ----------
+        depths_ms : float, optional
+            Depth of the delay variation in ms. This must be a positive value.
+            Default: `None`.
+        modulators : LFO or list or tuple or `np.ndarray`, optional
+            This defines the modulators signal. It can be a single LFO object
+            or a list containing an LFO for each voice. Alternatively, a
+            numpy.ndarray with shape (time samples, voice) can be passed. If
+            the length in the time axis does not match, it is zero-padded or
+            trimmed in the end. Default: `None`.
+        number_of_voices : int, optional
+            Number of voices to use in the chorus effect. Default: `None`.
+
+        """
+        self.__set_parameters(depths_ms, base_delays_ms, modulators,
+                              mix_percent)
+        assert self.depths_ms is not None
+        assert self.modulators is not None
+        assert self.number_of_voices is not None
+        assert self.base_delays_ms is not None, 'Base delay cannot be None'
+
+    def _apply_this_effect(self, signal: Signal) -> Signal:
+        """Apply chorus effect.
+
+        """
+        fs = signal.sampling_rate_hz
+        le = len(signal)
+
+        # Get valid modulation signals
+        if type(self.modulators) != np.ndarray:
+            modulation = np.zeros((le, self.number_of_voices))
+            for ind, m in enumerate(self.modulators):
+                modulation[:, ind] = m.get_waveform(fs, le) \
+                    * self.depths_ms[ind] + self.base_delays_ms[ind]
+        else:
+            modulation = _pad_trim(self.modulators.copy(), len(signal))
+
+        # Delays in samples
+        modulation = np.round(modulation*1e-3*fs).astype(int)
+        max_delay_samples = np.abs(modulation).max()
+
+        # Original time data
+        td = _pad_trim(signal.time_data, le+max_delay_samples)
+        self._save_peak_values(td)
+        new_td = np.zeros_like(td)
+
+        # Add modulated voices. Could be improved...
+        for ind in np.arange(td.shape[0]-max_delay_samples):
+            new_td[ind, :] = td[ind, :]
+            for v in range(self.number_of_voices):
+                new_td[ind, :] += td[ind+modulation[ind, v], :]
+
+        # Mix with clean signal
+        new_td = new_td * self.mix + td * (1 - self.mix)
+
+        new_td = self._restore_peak_values(_pad_trim(new_td, le))
+
+        modulated_signal = signal.copy()
+        modulated_signal.time_data = new_td
+        return modulated_signal
+
+
+class DigitalDelay(AudioEffect):
+    """This applies a basic digital delay to a signal.
+
+    """
+    def __init__(self, delay_time_ms: float = 150, feedback: int = 10):
+        """Constructor for a digital delay effect.
+
+        Parameters
+        ----------
+        delay_time_ms : float, optional
+            Delay time in milliseconds.
+        feedback : int, optional
+            Amount of repetitions to be generated. The bigger the feedback,
+            the more extreme the effect.
+
+        Notes
+        -----
+        - Peak levels of each channel are always kept after applying the
+          effect.
+        - The resulting signal is always longer than the input.
+
+        """
+        super().__init__('Digital Delay')
+        self.__set_parameters(delay_time_ms, feedback)
+        self.set_advanced_parameters()
+
+    def __set_parameters(self, delay_time_ms: float, feedback: int):
+        """Internal method to change parameters.
+
+        """
+        assert delay_time_ms > 0, \
+            'Delay time must be larger than 0'
+        self.delay_ms = delay_time_ms
+
+        assert feedback > 0, \
+            'Feedback must be larger than one'
+        self.feedback = feedback
+
+    def set_parameters(self, delay_time_ms: float = None,
+                       feedback: int = None):
+        """Set the parameters for the tremolo effect. Passing `None` in this
+        function leaves them unchanged.
+
+        Parameters
+        ----------
+        delay_time_ms : float, optional
+            Delay time in milliseconds.
+        feedback : int, optional
+            Amount of repetitions to be generated. The bigger the feedback,
+            the more extreme the effect.
+
+        """
+        self.__set_parameters(delay_time_ms, feedback)
+        assert self.delay_ms is not None
+        assert self.feedback is not None
+
+    def set_advanced_parameters(self, type_of_decay: str = 'exp',
+                                decay_parameter: float = 0.5,
+                                prefilters: Filter | FilterBank = None):
+        """This function sets the advanced parameters for the delay effect.
+
+        Parameters
+        ----------
+        type_of_decay : str, optional
+            This defines the type of decay in amplitude that each repetition
+            has. Choose from `'exp'` (exponential), `'lin'` (linear) or `'log'`
+            (logarithmic). Default: `'exp'`.
+        decay_parameter : float, optional
+            This additional decay parameter allows for fine-tuning the decay
+            amplitudes. The larger it is, the faster the signal repetitions
+            go to 0. Low values can lead to strong effect. Default: 0.5.
+        prefilters : `Filter` or `FilterBank`, optional
+            This applies a filter or a filter bank (sequentially) to the
+            delayed part of the signal. Pass `None` to ignore. Default: `None`.
+
+        """
+        type_of_decay = type_of_decay.lower()
+        assert type_of_decay in ('exp', 'lin', 'log'), \
+            'Type of decay is not supported. Use exp, lin or log.'
+        assert decay_parameter > 0, \
+            'Decay parameter should be above zero'
+        if type_of_decay == 'exp':
+            def func(x):
+                return 1/np.exp(np.arange(x)*decay_parameter)
+        elif type_of_decay == 'lin':
+            def func(x):
+                return 1/(np.arange(x)*decay_parameter+1)
+        else:
+            def func(x):
+                return 1/(np.log10(np.arange(x)*decay_parameter+1)+1)
+        self.decay_function = func
+
+        if prefilters is not None:
+            assert type(prefilters) in (Filter, FilterBank), \
+                'Prefilters can only be of type Filter or FilterBank'
+        self.prefilter = prefilters
+
+    def plot_delay(self):
+        """Plots the delay decay with the selected parameters.
+
+        Returns
+        -------
+        fig : `matplotlib.figure.Figure`
+            Figure.
+        ax : `matplotlib.axes.Axes`
+            Axes.
+
+        """
+        fs = 2_000
+        delay_samples = np.round(
+            self.delay_ms*1e-3*fs).astype(int)
+
+        inds = np.arange(self.feedback) * delay_samples
+        coefficients = np.zeros((inds[-1]+1, 1))
+        coefficients[inds] = self.decay_function(self.feedback)[..., None]
+
+        x = np.arange(len(coefficients))/fs * 1e3
+        fig, ax = general_plot(
+            x, coefficients, log=False, xlabel='Time / ms', ylabel='Amplitude',
+            returns=True)
+        ax.set_title('Delay – Repetitions decay')
+        fig.tight_layout()
+        return fig, ax
+
+    def _apply_this_effect(self, signal: Signal) -> Signal:
+        """Apply delay effect.
+
+        """
+        delay_samples = np.round(
+            self.delay_ms*1e-3*signal.sampling_rate_hz).astype(int)
+
+        inds = np.arange(self.feedback) * delay_samples
+        coefficients = np.zeros((inds[-1]+1, 1))
+        coefficients[inds] = self.decay_function(self.feedback)[..., None]
+
+        td = signal.time_data
+        self._save_peak_values(td)
+
+        if self.prefilter is None:
+            new_td = scipy_convolve(td, coefficients)
+        else:
+            # Apply direct signal sepparately
+            coefficients[0] = 0
+
+            if type(self.prefilter) == Filter:
+                signal2 = self.prefilter.filter_signal(signal)
+            else:
+                signal2 = self.prefilter.filter_signal(
+                    signal, mode='sequential')
+
+            # Delayed signal
+            new_td = scipy_convolve(signal2.time_data, coefficients)
+            # Direct signal
+            new_td[:len(td), :] += td
+
+        new_td = self._restore_peak_values(new_td)
+
+        delayed_signal = signal.copy()
+        delayed_signal.time_data = new_td
+        return delayed_signal
