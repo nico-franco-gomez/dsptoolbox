@@ -22,8 +22,8 @@ Added
 - mel-frequency cepstral coefficients ``mfcc`` in ``special`` module
 - spectrogram of a signal can now be plotted with a selected dynamic range
 - The inverse STFT was added in the ``special`` module
-- ``effects`` module with some effects such as ``SpectralSubtractor``,
-  ``Distortion``, ``Compressor`` and more
+- ``effects`` module with some effects: ``SpectralSubtractor``,
+  ``Distortion``, ``Compressor``, ``Tremolo``, ``Chorus/Flanger``, ``DigitalDelay``
 
 Bugfix
 ~~~~~~~
