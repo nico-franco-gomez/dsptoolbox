@@ -739,3 +739,28 @@ def _get_next_power_2(number, mode: str = 'closest') -> int:
     elif mode == 'ceil':
         p = np.ceil(p).astype(int)
     return int(2**p)
+
+
+def _euclidean_distance_matrix(x: np.ndarray, y: np.ndarray):
+    """Compute the euclidean distance matrix between two vectors efficiently.
+
+    Parameters
+    ----------
+    x : `np.ndarray`
+        First vector or matrix with shape (Point x, Dimensions).
+    y : `np.ndarray`
+        Second vector or matrix with shape (Point y, Dimensions).
+
+    Returns
+    -------
+    dist : `np.ndarray`
+        Euclidean distance matrix with shape (Point x, Point y).
+
+    """
+    assert x.ndim == 2 and y.ndim == 2, \
+        'Inputs must have exactly two dimensions'
+    assert x.shape[1] == y.shape[1], \
+        'Dimensions do not match'
+    return np.sqrt(np.sum(x**2, axis=1, keepdims=True) +
+                   np.sum(y.T**2, axis=0, keepdims=True) -
+                   2 * x @ y.T)

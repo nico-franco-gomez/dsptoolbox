@@ -1275,6 +1275,8 @@ class DigitalDelay(AudioEffect):
         - Peak levels of each channel are always kept after applying the
           effect.
         - The resulting signal is always longer than the input.
+        - This is a naive implementation with a long filter. A feedback delay
+          network implementation could be done in the future.
 
         """
         super().__init__('Digital Delay')
@@ -1325,7 +1327,9 @@ class DigitalDelay(AudioEffect):
         decay_parameter : float, optional
             This additional decay parameter allows for fine-tuning the decay
             amplitudes. The larger it is, the faster the signal repetitions
-            go to 0. Low values can lead to strong effect. Default: 0.5.
+            go to 0. Low values can lead to strong effect. When using
+            logarithmic decay type, it is advisable to pass large values, e.g.
+            1000 as the decay parameter. Default: 0.5.
         prefilters : `Filter` or `FilterBank`, optional
             This applies a filter or a filter bank (sequentially) to the
             delayed part of the signal. Pass `None` to ignore. Default: `None`.
@@ -1338,13 +1342,15 @@ class DigitalDelay(AudioEffect):
             'Decay parameter should be above zero'
         if type_of_decay == 'exp':
             def func(x):
-                return 1/np.exp(np.arange(x)*decay_parameter)
+                return 1*np.exp(-np.arange(x)*decay_parameter)
         elif type_of_decay == 'lin':
             def func(x):
-                return 1/(np.arange(x)*decay_parameter+1)
+                return np.clip(1 - np.arange(x)*decay_parameter/x, 0, None)
         else:
             def func(x):
-                return 1/(np.log10(np.arange(x)*decay_parameter+1)+1)
+                t = (np.log10(np.arange(x)*decay_parameter/x+1)+1)[::-1]
+                t /= t[0]
+                return t
         self.decay_function = func
 
         if prefilters is not None:
