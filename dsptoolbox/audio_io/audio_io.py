@@ -33,29 +33,45 @@ def print_device_info(device_number: int = None):
         return d
 
 
-def set_device(device_number: int = None):
-    """Takes in a device number to set it as the default. If `None` is passed,
-    the available devices are first shown and then the user is asked for
-    input to set the device.
+def set_device(device_numbers: list = None):
+    """Takes in a device number to set it as the default for the input and the
+    output. If `None` is passed, the available devices are first shown and
+    then the user is asked for input to set the device two values separated by
+    a comma "input_int, output_int".
 
     Parameters
     ----------
-    device_number : int, optional
-        Sets the device as default. Use `None` to be prompted with the
-        options. Default: `None`.
+    device_number : list with length 2, optional
+        Sets the input and output devices from two integers, e.g. [1, 2].
+        Use `None` to be prompted with the options and pass only two values
+        separated by a comma, e.g., `1, 2`. Default: `None`.
 
     """
-    if device_number is None:
+    if device_numbers is None:
         txt = 'List of available devices'
         print(txt+'\n'+'-'*len(txt))
         print(sd.query_devices())
         print('-'*len(txt))
-        device_number = int(input(
+        device_numbers = input(
             'Which device should be set as default? Between ' +
-            f'0 and {len(sd.query_devices())-1}: '))
-    d = sd.query_devices(device_number)['name']
-    print(f"""{d} will be used!""")
-    sd.default.device = d
+            f'0 and {len(sd.query_devices())-1}: ')
+        device_numbers = \
+            [int(d) for d in device_numbers.split(',')]
+    if type(device_numbers) == int:
+        d = sd.query_devices(device_numbers)['name']
+        print(f"""{d} will be used for input and output!""")
+        sd.default.device = d
+    elif type(device_numbers) == list:
+        assert len(device_numbers) == 2, \
+            'List with device numbers must be exactly 2'
+        d = sd.query_devices(device_numbers[0])['name']
+        print(f"""{d} will be used for input!""")
+
+        d = sd.query_devices(device_numbers[1])['name']
+        print(f"""{d} will be used for output!""")
+        sd.default.device = d
+    else:
+        raise TypeError('device_number must be either a list or an int')
 
 
 def play_and_record(signal: Signal, duration_seconds: float = None,
