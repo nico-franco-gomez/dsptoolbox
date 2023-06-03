@@ -5,8 +5,13 @@ import matplotlib.pyplot as plt
 from matplotlib.ticker import ScalarFormatter
 from matplotlib import cm
 from numpy import array, max, min, arange
-from seaborn import set_style
-set_style('whitegrid')
+
+try:
+    from seaborn import set_style
+    set_style('whitegrid')
+except ModuleNotFoundError as e:
+    print('Seaborn will not be used for plotting: ', e)
+    pass
 
 
 def show():

@@ -12,8 +12,13 @@ from scipy.fft import dct
 import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
 from matplotlib.axes import Axes
-from seaborn import set_style
-set_style('whitegrid')
+
+try:
+    from seaborn import set_style
+    set_style('whitegrid')
+except ModuleNotFoundError as e:
+    print('Seaborn will not be used for plotting: ', e)
+    pass
 
 
 def cepstrum(signal: Signal, mode='power') -> np.ndarray:
