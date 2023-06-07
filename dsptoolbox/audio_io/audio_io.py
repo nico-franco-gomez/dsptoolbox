@@ -7,6 +7,8 @@ from dsptoolbox import Signal
 from dsptoolbox._general_helpers import _normalize
 from ._audio_io import standard_callback
 
+default_config = sd.default
+
 
 def print_device_info(device_number: int = None):
     """Prints available audio devices or information about a certain device
@@ -21,19 +23,22 @@ def print_device_info(device_number: int = None):
 
     Returns
     -------
-    d : dict
-        Only when `device_number is not None`.
+    d : dict or `sounddevice.DeviceList`
+        dict of a device when device number is passed or DeviceList when `None`
+        is passed.
 
     """
     if device_number is None:
-        print(sd.query_devices())
+        d = sd.query_devices()
+        print(d)
+        return d
     else:
         d = sd.query_devices(device_number)
         print(d)
         return d
 
 
-def set_device(device_numbers: list = None):
+def set_device(device_numbers: list = None, sampling_rate_hz: int = None):
     """Takes in a device number to set it as the default for the input and the
     output. If `None` is passed, the available devices are first shown and
     then the user is asked for input to set the device two values separated by
@@ -45,6 +50,15 @@ def set_device(device_numbers: list = None):
         Sets the input and output devices from two integers, e.g. [1, 2].
         Use `None` to be prompted with the options and pass only two values
         separated by a comma, e.g., `1, 2`. Default: `None`.
+    sampling_rate_hz : int, optional
+        Pass a default sampling rate to the devices. Pass `None` to ignore.
+        Default: `None`.
+
+    Returns
+    -------
+    device_list : `sounddevice.DeviceList`
+        Device List with dictionaries containing information about each
+        available device.
 
     """
     if device_numbers is None:
@@ -57,21 +71,29 @@ def set_device(device_numbers: list = None):
             f'0 and {len(sd.query_devices())-1}: ')
         device_numbers = \
             [int(d) for d in device_numbers.split(',')]
+        if len(device_numbers) == 1:
+            device_numbers = device_numbers[0]
+    device_list = sd.query_devices()
     if type(device_numbers) == int:
-        d = sd.query_devices(device_numbers)['name']
+        d = device_list[device_numbers]['name']
         print(f"""{d} will be used for input and output!""")
-        sd.default.device = d
+        sd.default.device = device_numbers
     elif type(device_numbers) == list:
         assert len(device_numbers) == 2, \
             'List with device numbers must be exactly 2'
-        d = sd.query_devices(device_numbers[0])['name']
+        d = device_list[device_numbers[0]]['name']
         print(f"""{d} will be used for input!""")
 
-        d = sd.query_devices(device_numbers[1])['name']
+        d = device_list[device_numbers[1]]['name']
         print(f"""{d} will be used for output!""")
-        sd.default.device = d
+        sd.default.device = device_numbers
     else:
         raise TypeError('device_number must be either a list or an int')
+
+    # Sampling rate
+    if sampling_rate_hz is not None:
+        sd.default.samplerate = sampling_rate_hz
+    return sd.query_devices()
 
 
 def play_and_record(signal: Signal, duration_seconds: float = None,
