@@ -19,8 +19,9 @@ adheres to `Semantic Versioning <http://semver.org/spec/v2.0.0.html>`_.
 
 Added
 ~~~~~~
-- mel-frequency cepstral coefficients ``mfcc`` in ``special`` module.
+- mel-frequency cepstral coefficients ``mfcc`` in ``special`` module
 - spectrogram of a signal can now be plotted with a selected dynamic range
+- ``audio_io`` has now more port functionalities to ``sounddevice``
 
 Bugfix
 ~~~~~~~
