@@ -949,7 +949,8 @@ class Signal():
         return fig, ax
 
     def plot_spectrogram(self, channel_number: int = 0,
-                         logfreqs: bool = True) -> tuple[Figure, Axes]:
+                         logfreqs: bool = True,
+                         dynamic_range_db: float = 50) -> tuple[Figure, Axes]:
         """Plots STFT matrix of the given channel. The levels in the plot can
         go down until -400 dB.
 
@@ -960,6 +961,12 @@ class Signal():
         logfreqs : bool, optional
             When `True`, frequency axis is plotted logarithmically.
             Default: `True`.
+        dynamic_range_db : float, optional
+            This sets the dynamic range to show for the spectrogram. The
+            plotted colormap goes from the maximum down to maximum minus
+            dynamic range. For example, dynamic_range_db=50 plots for a peak
+            value of 30 dB the colormap of the spectrogram between
+            [30, -20] dB. Default: 50.
 
         Returns
         -------
@@ -983,7 +990,7 @@ class Signal():
             zlabel = 'dB (No Scaling)'
         fig, ax = general_matrix_plot(
             matrix=stft_db, range_x=(t[0], t[-1]),
-            range_y=(f[0], f[-1]), range_z=50,
+            range_y=(f[0], f[-1]), range_z=np.abs(dynamic_range_db),
             xlabel='Time / s', ylabel='Frequency / Hz',
             zlabel=zlabel,
             xlog=False, ylog=logfreqs,

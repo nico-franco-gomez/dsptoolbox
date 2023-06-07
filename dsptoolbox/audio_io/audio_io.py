@@ -7,6 +7,8 @@ from dsptoolbox import Signal
 from dsptoolbox._general_helpers import _normalize
 from ._audio_io import standard_callback
 
+default_config = sd.default
+
 
 def print_device_info(device_number: int = None):
     """Prints available audio devices or information about a certain device
@@ -21,41 +23,77 @@ def print_device_info(device_number: int = None):
 
     Returns
     -------
-    d : dict
-        Only when `device_number is not None`.
+    d : dict or `sounddevice.DeviceList`
+        dict of a device when device number is passed or DeviceList when `None`
+        is passed.
 
     """
     if device_number is None:
-        print(sd.query_devices())
+        d = sd.query_devices()
+        print(d)
+        return d
     else:
         d = sd.query_devices(device_number)
         print(d)
         return d
 
 
-def set_device(device_number: int = None):
-    """Takes in a device number to set it as the default. If `None` is passed,
-    the available devices are first shown and then the user is asked for
-    input to set the device.
+def set_device(device_numbers: list = None, sampling_rate_hz: int = None):
+    """Takes in a device number to set it as the default for the input and the
+    output. If `None` is passed, the available devices are first shown and
+    then the user is asked for input to set the device two values separated by
+    a comma "input_int, output_int".
 
     Parameters
     ----------
-    device_number : int, optional
-        Sets the device as default. Use `None` to be prompted with the
-        options. Default: `None`.
+    device_number : list with length 2, optional
+        Sets the input and output devices from two integers, e.g. [1, 2].
+        Use `None` to be prompted with the options and pass only two values
+        separated by a comma, e.g., `1, 2`. Default: `None`.
+    sampling_rate_hz : int, optional
+        Pass a default sampling rate to the devices. Pass `None` to ignore.
+        Default: `None`.
+
+    Returns
+    -------
+    device_list : `sounddevice.DeviceList`
+        Device List with dictionaries containing information about each
+        available device.
 
     """
-    if device_number is None:
+    if device_numbers is None:
         txt = 'List of available devices'
         print(txt+'\n'+'-'*len(txt))
         print(sd.query_devices())
         print('-'*len(txt))
-        device_number = int(input(
+        device_numbers = input(
             'Which device should be set as default? Between ' +
-            f'0 and {len(sd.query_devices())-1}: '))
-    d = sd.query_devices(device_number)['name']
-    print(f"""{d} will be used!""")
-    sd.default.device = d
+            f'0 and {len(sd.query_devices())-1}: ')
+        device_numbers = \
+            [int(d) for d in device_numbers.split(',')]
+        if len(device_numbers) == 1:
+            device_numbers = device_numbers[0]
+    device_list = sd.query_devices()
+    if type(device_numbers) == int:
+        d = device_list[device_numbers]['name']
+        print(f"""{d} will be used for input and output!""")
+        sd.default.device = device_numbers
+    elif type(device_numbers) == list:
+        assert len(device_numbers) == 2, \
+            'List with device numbers must be exactly 2'
+        d = device_list[device_numbers[0]]['name']
+        print(f"""{d} will be used for input!""")
+
+        d = device_list[device_numbers[1]]['name']
+        print(f"""{d} will be used for output!""")
+        sd.default.device = device_numbers
+    else:
+        raise TypeError('device_number must be either a list or an int')
+
+    # Sampling rate
+    if sampling_rate_hz is not None:
+        sd.default.samplerate = sampling_rate_hz
+    return sd.query_devices()
 
 
 def play_and_record(signal: Signal, duration_seconds: float = None,
@@ -125,7 +163,7 @@ def play_and_record(signal: Signal, duration_seconds: float = None,
     if device is not None:
         sd.default.device = device
 
-    print('\nReproduction and recording have started ' +
+    print('Playback and recording have started ' +
           f'({duration_seconds:.1f} s)...')
     rec_time_data = \
         sd.playrec(
@@ -134,14 +172,14 @@ def play_and_record(signal: Signal, duration_seconds: float = None,
             input_mapping=rec_channels,
             output_mapping=play_channels)
     sd.wait()
-    print('Reproduction and recording have ended\n')
+    print('Playback and recording have ended\n')
 
     rec_sig = Signal(None, rec_time_data, signal.sampling_rate_hz)
     return rec_sig
 
 
 def record(duration_seconds: float = 5, sampling_rate_hz: int = 48000,
-           device: str = None, rec_channels=[1]) -> Signal:
+           device: str | int = None, rec_channels=[1]) -> Signal:
     """Record using some available device. Note that the channel numbers
     start here with 1.
 
@@ -233,13 +271,13 @@ def play(signal: Signal, duration_seconds: float = None,
     if device is not None:
         sd.default.device = device
 
-    print(f'\nReproduction started ({duration_seconds:.1f} s)...')
+    print(f'Playback started ({duration_seconds:.1f} s)...')
     sd.play(
         data=play_data,
         samplerate=signal.sampling_rate_hz,
         mapping=play_channels)
     sd.wait()
-    print('Reproduction has ended\n')
+    print('Playback has ended\n')
 
 
 def play_through_stream(signal: Signal, blocksize: int = 2048,

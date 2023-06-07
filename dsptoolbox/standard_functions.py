@@ -329,6 +329,7 @@ def normalize(sig: Signal | MultiBandSignal, peak_dbfs: float = -6,
     Returns
     -------
     new_sig : `Signal` or `MultiBandSignal`
+        Normalized signal.
 
     """
     if type(sig) == Signal:

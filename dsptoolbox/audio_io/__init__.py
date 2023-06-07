@@ -34,7 +34,7 @@ References
 """
 from .audio_io import (play, play_and_record, set_device, record,
                        print_device_info, play_through_stream, CallbackStop,
-                       standard_callback, sleep, output_stream)
+                       standard_callback, sleep, output_stream, default_config)
 
 __all__ = [
     'play',
@@ -47,4 +47,5 @@ __all__ = [
     'standard_callback',
     'sleep',
     'output_stream',
+    'default_config',
 ]

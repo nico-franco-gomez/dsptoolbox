@@ -517,7 +517,7 @@ class ShoeboxRoom(Room):
             Array containing the frequencies of the room modes as well as
             their characteristics (orders in each room dimension. This is
             necessary to know if it is an axial, a tangential or oblique mode).
-            Its shape is (frequency, order x, order y, order z)
+            Its shape is (mode, frequency and order xyz).
 
         """
         max_order += 1
@@ -570,7 +570,7 @@ class ShoeboxRoom(Room):
             Complex transfer function, non-normalized.
         modes : `np.ndarray`
             Modes for which the transfer function was computed. It has shape
-            (frequency_hz, order x, order y, order z) and it is sorted by
+            (mode, frequency and order xyz) and it is sorted by
             frequency.
         plot : tuple
             When `generate_plot=True`, this is a tuple containing two entries:

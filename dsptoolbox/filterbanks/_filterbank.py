@@ -288,16 +288,16 @@ class LRFilterBank():
             return s_l + s_h
 
     # ======== IR =============================================================
-    def get_ir(self, test_zi: bool = False):
+    def get_ir(self, length_samples: int = 1024, test_zi: bool = False):
         """Returns impulse response from the filter bank. For this filter
         bank only `mode='parallel'` is valid and there is no zero phase
         filtering.
 
         Parameters
         ----------
-        mode : str, optional
-            Way to apply filter bank to the signal. Supported modes are:
-            `'parallel'`, `'summed'`. Default: `'parallel'`.
+        length_samples : int, optional
+            Impulse length in samples. This defines the resolution of the
+            plot. Default: 2048.
         test_zi : bool, optional
             When `True`, filtering is done while updating filters' initial
             values. Default: `False`.
@@ -308,17 +308,14 @@ class LRFilterBank():
             Impulse response of the filter bank.
 
         """
-        d = dirac(
-            length_samples=1024,
-            number_of_channels=1)
-        ir = self.filter_signal(
-            d, activate_zi=test_zi)
+        d = dirac(length_samples=length_samples, number_of_channels=1)
+        ir = self.filter_signal(d, activate_zi=test_zi)
         return ir
 
     # ======== Prints and plots ===============================================
     def plot_magnitude(self, range_hz=[20, 20e3], mode: str = 'parallel',
-                       test_zi: bool = False, zero_phase: bool = False,
-                       returns: bool = False):
+                       length_samples: int = 2048, test_zi: bool = False,
+                       zero_phase: bool = False):
         """Plots the magnitude response of each filter. Only `'parallel'`
         mode is supported, thus no mode parameter can be set.
 
@@ -329,18 +326,19 @@ class LRFilterBank():
         mode : str, optional
             Way to apply filter bank to the signal. Supported modes are:
             `'parallel'`. Default: `'parallel'`.
+        length_samples : int, optional
+            Impulse length in samples. This defines the resolution of the
+            plot. Default: 2048.
         zero_phase : bool, optional
             Activates zero phase filtering. Default: `False`.
         test_zi : bool, optional
             Uses the zi's of each filter to test the FilterBank's output.
             Default: `False`.
-        returns : bool, optional
-            When `True`, the figure and axis are returned. Default: `False`.
 
         Returns
         -------
         fig, ax
-            Returned only when `returns=True`.
+            Figure and axes of the plot
 
         """
         mode = mode.lower()
@@ -348,8 +346,8 @@ class LRFilterBank():
             warn('Plotting for LRFilterBank is only supported with parallel ' +
                  'mode. Setting to parallel')
         d = dirac(
-            length_samples=1024, number_of_channels=1,
-            sampling_rate_hz=48000)
+            length_samples=length_samples, number_of_channels=1,
+            sampling_rate_hz=self.sampling_rate_hz)
         bs = self.filter_signal(d, mode='parallel', activate_zi=test_zi,
                                 zero_phase=zero_phase)
         specs = []
@@ -381,21 +379,24 @@ class LRFilterBank():
         ax.plot(f_s, sp_summed, alpha=0.7, linestyle='dashed',
                 label='Summed signal')
         ax.legend()
-        if returns:
-            return fig, ax
+        return fig, ax
 
     def plot_phase(self, range_hz=[20, 20e3], mode: str = 'parallel',
+                   length_samples: int = 2048,
                    test_zi: bool = False, zero_phase: bool = True,
-                   unwrap: bool = False, returns: bool = False):
+                   unwrap: bool = False):
         """Plots the phase response of each filter.
 
         Parameters
         ----------
+        range_hz : array-like, optional
+            Range of Hz to plot. Default: [20, 20e3].
         mode : str, optional
             Way to apply filter bank to the signal. Supported modes are:
             `'parallel'`. Default: `'parallel'`.
-        range_hz : array-like, optional
-            Range of Hz to plot. Default: [20, 20e3].
+        length_samples : int, optional
+            Impulse length in samples. This defines the resolution of the
+            plot. Default: 2048.
         test_zi : bool, optional
             Uses the zi's of each filter to test the FilterBank's output.
             Default: `False`.
@@ -403,22 +404,19 @@ class LRFilterBank():
             Activates zero phase filtering. Default: `False`.
         unwrap : bool, optional
             When `True`, unwrapped phase is plotted. Default: `False`.
-        returns : bool, optional
-            When `True`, the figure and axis are returned. Default: `False`.
 
         Returns
         -------
         fig, ax
-            Returned only when `returns=True`.
+            Figure and axes of the plot
 
         """
         mode = mode.lower()
         assert mode in ('parallel', 'summed'), \
             f'{mode} is not supported. Use either parallel or summed'
-        length_samples = 1024
         d = dirac(
             length_samples=length_samples,
-            number_of_channels=1, sampling_rate_hz=48000)
+            number_of_channels=1, sampling_rate_hz=self.sampling_rate_hz)
 
         if mode == 'parallel':
             bs = self.filter_signal(d, mode='parallel', activate_zi=test_zi,
@@ -441,21 +439,24 @@ class LRFilterBank():
         fig, ax = general_plot(f, phase, range_hz, ylabel='Phase / rad',
                                returns=True,
                                labels=labels)
-        if returns:
-            return fig, ax
+        return fig, ax
 
     def plot_group_delay(self, range_hz=[20, 20e3], mode: str = 'parallel',
+                         length_samples: int = 2048,
                          test_zi: bool = False, zero_phase: bool = False,
                          returns: bool = False):
         """Plots the phase response of each filter.
 
         Parameters
         ----------
+        range_hz : array-like, optional
+            Range of Hz to plot. Default: [20, 20e3].
         mode : str, optional
             Way to apply filter bank to the signal. Supported modes are:
             `'parallel'`. Default: `'parallel'`.
-        range_hz : array-like, optional
-            Range of Hz to plot. Default: [20, 20e3].
+        length_samples : int, optional
+            Impulse length in samples. This defines the resolution of the
+            plot. Default: 2048.
         test_zi : bool, optional
             Uses the zi's of each filter to test the FilterBank's output.
             Default: `False`.
@@ -473,10 +474,9 @@ class LRFilterBank():
         mode = mode.lower()
         assert mode in ('parallel', 'summed'), \
             f'{mode} is not supported. Use either parallel or summed'
-        length_samples = 1024
         d = dirac(
             length_samples=length_samples,
-            number_of_channels=1, sampling_rate_hz=48000)
+            number_of_channels=1, sampling_rate_hz=self.sampling_rate_hz)
         if mode == 'parallel':
             bs = self.filter_signal(d, mode='parallel', activate_zi=test_zi,
                                     zero_phase=zero_phase)
@@ -748,7 +748,7 @@ class BaseCrossover(FilterBank):
 
     # ======== Filtering ======================================================
     def filter_signal(self, signal: Signal, mode: str = 'parallel',
-                      activate_zi: bool = False, downsample: bool = True) \
+                      activate_zi: bool = False, downsample: bool = False) \
             -> Signal | MultiBandSignal:
         if not downsample:
             return super().filter_signal(
@@ -768,7 +768,7 @@ class BaseCrossover(FilterBank):
 
     # ======== Reconstructing =================================================
     def reconstruct_signal(self, signal: MultiBandSignal,
-                           upsample: bool = True):
+                           upsample: bool = False):
         """Reconstructs a two band signal using the synthesis filters of the
         crossover.
 
@@ -780,7 +780,7 @@ class BaseCrossover(FilterBank):
             low-frequency content.
         upsample : bool, optional
             When `True`, the signal's sampling rate is doubled.
-            Default: `True`.
+            Default: `False`.
 
         Returns
         -------
