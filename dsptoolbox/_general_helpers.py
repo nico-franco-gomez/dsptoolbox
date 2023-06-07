@@ -94,7 +94,7 @@ def _get_normalized_spectrum(f, spectra: np.ndarray, mode='standard',
                              smoothe: int = 0, phase=False,
                              calibrated_data: bool = False) \
         -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-    """This function gives a normalized magnitude spectrum with frequency
+    """This function gives a normalized magnitude spectrum in dB with frequency
     vector for a given range. It is also smoothed. Use `None` for the
     spectrum without f_range_hz.
 
