@@ -14,79 +14,6 @@ adheres to `Semantic Versioning <http://semver.org/spec/v2.0.0.html>`_.
 - Validation for results from tests in every module (so far many tests are
   only regarding functionality)
 
-`0.2.8 <https://pypi.org/project/dsptoolbox/0.2.8>`_ - 
----------------------
-Added
-~~~~~~
-- ``warp_ir`` in the `transfer_functions` module
-- ``LatticeLadderFilter`` in classes and standard module
-
-Bugfix
-~~~~~~~
-- general bugfixes
-- flake8 new standards applied, black formatter
-
-Misc
-~~~~~
-- corrected and updated doc
-- support for python 3.12 added
-
-`0.2.7 <https://pypi.org/project/dsptoolbox/0.2.7>`_ - 
----------------------
-
-Added
-~~~~~~
-- ``envelope`` function in standard module
-- ``latency`` can now also compute subsample latency and handle multiband
-  signals
-- ``window_centered_ir``, ``spectrum_with_cycles`` and
-  ``combine_ir_with_dirac`` in `transfer_functions`
-- continuous wavelet transform with complex morlet wavelet and synchrosqueezing
-  ``cwt``, ``MorletWavelet`` in `transforms`
-- ``chroma_stft``, ``vqt``, ``hilbert`` and ``stereo_mid_side`` transforms in
-  `transforms` module
-
-Bugfix
-~~~~~~~
-- general bugfixes
-- only local paths within package
-- solved a bug where lfilter was not working properly for filtering IIR filters
-  in ba mode
-- biquads now only use ba and not sos
-- ``reverb_time`` now can handle different options for the start of the IR
-- now linkwitz-riley crossovers can also be done for odd orders since
-  zero-phase filtering still gives perfect magnitude reconstruction. A warning
-  is shown
-
-Misc
-~~~~~
-- ``fractional_octave_smoothing`` is now done more efficiently and uses a
-  hann window instead of hamming
-- ``min_phase_ir``` uses now a real cepstrum method for obtaining the minimum
-  phase. API has been modified
-- ``window_ir`` now returns the start sample of the IR as well
-- renamed `special` module into `transforms`
-- ``chirp`` function now accepts a phase offset
-- from now on, python 3.10 is no longer actively supported
-- corrected and updated documentation
-- dependencies have been updated
-
-`0.2.6 <https://pypi.org/project/dsptoolbox/0.2.6>`_ - 
----------------------
-
-Added
-~~~~~~
-- effects module with basic implementations for standard audio effects
-- extra functionalities in the audio io module
-
-Bugfix
-~~~~~~~
-- general bug fixes
-
-Misc
-~~~~~
-- made seaborn optional
-
 `0.2.5 <https://pypi.org/project/dsptoolbox/0.2.5>`_ - 
 ---------------------
 
@@ -95,25 +22,16 @@ Added
 - mel-frequency cepstral coefficients ``mfcc`` in ``special`` module
 - spectrogram of a signal can now be plotted with a selected dynamic range
 - ``audio_io`` has now more port functionalities to ``sounddevice``
-- The inverse STFT was added in the ``special`` module
-- ``effects`` module with some effects: ``SpectralSubtractor``,
-  ``Distortion``, ``Compressor``, ``Tremolo``, ``Chorus/Flanger``, ``DigitalDelay``
 
 Bugfix
 ~~~~~~~
 - plotting for the ``qmf`` Crossover is now possible without downsampling
 - Linkwitz-Riley crossovers plotting functions have been updated and corrected
-- corrected some tests
-- scaling of spectrum in signal was not working properly when `None` was passed
-- conceptual errors were fixed in ``activity_detector``
-- ``true_peak_level`` was changing the gain of the incoming signal
 
 Misc
 ~~~~~
 - docstrings corrected and extended
 - computation of steering vectors in ``beamforming`` has been optimized
-- spectrogram computation has been changed to be performed as multi-channel
-  operation and the output array has now the extra channel dimension
 
 `0.2.4 <https://pypi.org/project/dsptoolbox/0.2.4>`_ - 
 ---------------------

@@ -4,27 +4,19 @@ Beamforming classes and functions
 from warnings import warn
 import numpy as np
 import matplotlib.pyplot as plt
+from seaborn import set_style
 from scipy.integrate import simpson
 from matplotlib.figure import Figure
 from matplotlib.axes import Axes
 
-from ..classes import Signal
-from .. import fractional_delay, merge_signals, pad_trim
-from .._general_helpers import (
-    _get_fractional_octave_bandwidth,
-    _find_nearest,
-    _pad_trim,
-)
+from dsptoolbox.classes import Signal
+from dsptoolbox import fractional_delay, merge_signals, pad_trim
+from dsptoolbox._general_helpers import (
+    _get_fractional_octave_bandwidth, _find_nearest, _pad_trim)
 from ._beamforming import BasePoints, _clean_sc_deconvolve
-from ..plots import general_matrix_plot
+from dsptoolbox.plots import general_matrix_plot
 
-try:
-    from seaborn import set_style
-
-    set_style("whitegrid")
-except ModuleNotFoundError as e:
-    print("Seaborn will not be used for plotting: ", e)
-
+set_style('whitegrid')
 nxs = np.newaxis
 
 
@@ -34,7 +26,6 @@ class Grid(BasePoints):
     coordinates (in meters).
 
     """
-
     def __init__(self, positions: dict):
         """Construct a grid for beamforming by passing positions for the point
         coordinates in meters. Additionally, there is a class method
@@ -86,8 +77,9 @@ class Grid(BasePoints):
 
 
 class Regular2DGrid(Grid):
-    """This class creates a Grid object with a 2D, rectangular shape."""
+    """This class creates a Grid object with a 2D, rectangular shape.
 
+    """
     def __init__(self, line1, line2, dimensions, value3):
         """Creates a rectangular 2d grid on a coincident plane with coordinate
         system. If you wish to create a non-coincident grid do it manually and
@@ -125,41 +117,39 @@ class Regular2DGrid(Grid):
         - `plot_map()`: Plots a given map (reconstructed or flattened).
 
         """
-        assert len(dimensions) == 2, (
-            "dimensions must contain exactly two strings specifying to "
-            + "which directions line1 and line2 correspond"
-        )
-        assert len(np.unique(dimensions)) == len(
-            dimensions
-        ), "There are repeated dimensions"
+        assert len(dimensions) == 2, \
+            'dimensions must contain exactly two strings specifying to ' +\
+            'which directions line1 and line2 correspond'
+        assert len(np.unique(dimensions)) == len(dimensions), \
+            'There are repeated dimensions'
         dimensions = [n.lower() for n in dimensions]
         self.extent_dimensions = dimensions
         value3 = np.asarray(value3).squeeze()
-        assert value3.ndim == 0, "value3 can only be a single value"
+        assert value3.ndim == 0, \
+            'value3 can only be a single value'
 
         line1 = np.asarray(line1).squeeze()
         line2 = np.asarray(line2).squeeze()
 
         # For reconstructing the matrix later
         self.original_lengths = (len(line1), len(line2))
-        dim1, dim2 = np.meshgrid(line1, line2, indexing="ij")
+        dim1, dim2 = np.meshgrid(line1, line2, indexing='ij')
 
         dim1 = dim1.flatten()
         dim2 = dim2.flatten()
         positions = np.append(dim1[..., None], dim2[..., None], axis=1)
         positions = np.append(
-            positions, np.ones((len(dim1), 1)) * value3, axis=1
-        )
+            positions, np.ones((len(dim1), 1))*value3, axis=1)
 
         # Convert to the positions dictionary
-        base_dimensions = ["x", "y", "z"]
+        base_dimensions = ['x', 'y', 'z']
         base_dimensions.remove(dimensions[0])
         base_dimensions.remove(dimensions[1])
         positions = {
-            f"{dimensions[0]}": positions[:, 0],
-            f"{dimensions[1]}": positions[:, 1],
-            f"{base_dimensions[0]}": positions[:, 2],
-        }
+            f'{dimensions[0]}': positions[:, 0],
+            f'{dimensions[1]}': positions[:, 1],
+            f'{base_dimensions[0]}': positions[:, 2],
+            }
         super().__init__(positions)
 
     def reconstruct_map_shape(self, map_vector: np.ndarray) -> np.ndarray:
@@ -176,17 +166,14 @@ class Regular2DGrid(Grid):
             Reshaped map.
 
         """
-        assert (
-            map_vector.ndim == 1
-        ), "The passed map should be a vector (flattened)"
-        assert (
-            len(map_vector) == self.number_of_points
-        ), "Length of passed vector does not match the number of points"
+        assert map_vector.ndim == 1, \
+            'The passed map should be a vector (flattened)'
+        assert len(map_vector) == self.number_of_points, \
+            'Length of passed vector does not match the number of points'
         return map_vector.reshape(self.original_lengths)
 
-    def plot_map(
-        self, map: np.ndarray, range_db: float = 20
-    ) -> tuple[Figure, Axes]:
+    def plot_map(self, map: np.ndarray, range_db: float = 20) ->\
+            tuple[Figure, Axes]:
         """Plot a map done with this type of grid.
 
         Parameters
@@ -207,31 +194,27 @@ class Regular2DGrid(Grid):
         # If map has not been reshaped by now...
         if len(map) == self.number_of_points:
             map = self.reconstruct_map_shape(map)
-        assert (
-            map.shape == self.original_lengths
-        ), "Map shape does not match grid shape"
+        assert map.shape == self.original_lengths, \
+            'Map shape does not match grid shape'
         # Get right extent
         ex = self.extent
-        map = 20 * np.log10(np.clip(np.abs(map), a_min=1e-25, a_max=None))
+        map = 20*np.log10(np.clip(np.abs(map), a_min=1e-25, a_max=None))
         fig, ax = general_matrix_plot(
             map,
             # First dimension vertical and second dimension horizontal
             range_x=ex[self.extent_dimensions[1]],
             range_y=ex[self.extent_dimensions[0]],
             range_z=range_db,
-            xlabel=self.extent_dimensions[1] + " / m",
-            ylabel=self.extent_dimensions[0] + " / m",
-            zlabel="dBFS",
-            colorbar=True,
-            lower_origin=True,
-            returns=True,
-        )
+            xlabel=self.extent_dimensions[1]+' / m',
+            ylabel=self.extent_dimensions[0]+' / m',
+            zlabel='dBFS', colorbar=True, lower_origin=True, returns=True)
         return fig, ax
 
 
 class Regular3DGrid(Grid):
-    """Class for 3D regular Grids."""
+    """Class for 3D regular Grids.
 
+    """
     def __init__(self, line_x, line_y, line_z):
         """Constructor for a regular 3D grid.
 
@@ -266,13 +249,12 @@ class Regular3DGrid(Grid):
         line_y = np.asarray(line_y).squeeze()
         line_z = np.asarray(line_z).squeeze()
         self.lines = (line_x, line_y, line_z)
-        assert all(
-            [n.ndim == 1 for n in self.lines]
-        ), "Shape of lines is invalid"
+        assert all([n.ndim == 1 for n in self.lines]), \
+            'Shape of lines is invalid'
 
         # For reconstructing the matrix later
         self.original_lengths = (len(line_x), len(line_y), len(line_z))
-        xx, yy, zz = np.meshgrid(line_x, line_y, line_z, indexing="ij")
+        xx, yy, zz = np.meshgrid(line_x, line_y, line_z, indexing='ij')
         xx = xx.flatten()
         yy = yy.flatten()
         zz = zz.flatten()
@@ -281,11 +263,8 @@ class Regular3DGrid(Grid):
         positions = np.append(positions, zz[..., None], axis=1)
 
         # Convert to the positions dictionary
-        positions = {
-            "x": positions[:, 0],
-            "y": positions[:, 1],
-            "z": positions[:, 2],
-        }
+        positions = {'x': positions[:, 0], 'y': positions[:, 1],
+                     'z': positions[:, 2]}
         super().__init__(positions)
 
     def reconstruct_map_shape(self, map_vector: np.ndarray) -> np.ndarray:
@@ -302,21 +281,15 @@ class Regular3DGrid(Grid):
             Reshaped map.
 
         """
-        assert (
-            map_vector.ndim == 1
-        ), "The passed map should be a vector (flattened)"
-        assert (
-            len(map_vector) == self.number_of_points
-        ), "Length of passed vector does not match the number of points"
+        assert map_vector.ndim == 1, \
+            'The passed map should be a vector (flattened)'
+        assert len(map_vector) == self.number_of_points, \
+            'Length of passed vector does not match the number of points'
         return map_vector.reshape(self.original_lengths)
 
-    def plot_map(
-        self,
-        map: np.ndarray,
-        third_dimension: str,
-        value_third_dimension: float,
-        range_db: float = 20,
-    ) -> tuple[Figure, Axes]:
+    def plot_map(self, map: np.ndarray, third_dimension: str,
+                 value_third_dimension: float, range_db: float = 20) ->\
+            tuple[Figure, Axes]:
         """Plot a map done with this type of grid.
 
         Parameters
@@ -343,53 +316,44 @@ class Regular3DGrid(Grid):
         # If map has not been reshaped by now...
         if len(map) == self.number_of_points:
             map = self.reconstruct_map_shape(map)
-        assert (
-            map.shape == self.original_lengths
-        ), "Map shape does not match grid shape"
+        assert map.shape == self.original_lengths, \
+            'Map shape does not match grid shape'
 
         # Normal dimension to plane
-        if third_dimension == "x":
-            ind_plane = np.argmin(
-                np.abs(value_third_dimension - self.lines[0])
-            )
+        if third_dimension == 'x':
+            ind_plane = np.argmin(np.abs(
+                value_third_dimension - self.lines[0]))
             map = map[ind_plane, :, :]
-            extent_dimensions = ["y", "z"]
-        elif third_dimension == "y":
-            ind_plane = np.argmin(
-                np.abs(value_third_dimension - self.lines[1])
-            )
+            extent_dimensions = ['y', 'z']
+        elif third_dimension == 'y':
+            ind_plane = np.argmin(np.abs(
+                value_third_dimension - self.lines[1]))
             map = map[:, ind_plane, :]
-            extent_dimensions = ["x", "z"]
-        elif third_dimension == "z":
-            ind_plane = np.argmin(
-                np.abs(value_third_dimension - self.lines[2])
-            )
+            extent_dimensions = ['x', 'z']
+        elif third_dimension == 'z':
+            ind_plane = np.argmin(np.abs(
+                value_third_dimension - self.lines[2]))
             map = map[:, :, ind_plane]
-            extent_dimensions = ["x", "y"]
+            extent_dimensions = ['x', 'y']
         else:
-            raise ValueError(f"{third_dimension} is not a valid dimension")
+            raise ValueError(f'{third_dimension} is not a valid dimension')
 
         # Get right extent
         ex = self.extent
-        map = 20 * np.log10(np.clip(np.abs(map), a_min=1e-25, a_max=None))
+        map = 20*np.log10(np.clip(np.abs(map), a_min=1e-25, a_max=None))
         fig, ax = general_matrix_plot(
-            map,
-            range_x=ex[extent_dimensions[1]],
-            range_y=ex[extent_dimensions[0]],
-            range_z=range_db,
-            xlabel=extent_dimensions[1] + " / m",
-            ylabel=extent_dimensions[0] + " / m",
-            zlabel="dBFS",
-            colorbar=True,
-            lower_origin=True,
-            returns=True,
-        )
+            map, range_x=ex[extent_dimensions[1]],
+            range_y=ex[extent_dimensions[0]], range_z=range_db,
+            xlabel=extent_dimensions[1]+' / m',
+            ylabel=extent_dimensions[0]+' / m',
+            zlabel='dBFS', colorbar=True, lower_origin=True, returns=True)
         return fig, ax
 
 
 class LineGrid(Grid):
-    """Class for a line grid."""
+    """Class for a line grid.
 
+    """
     def __init__(self, line, dimension: str, value2: float, value3: float):
         """Constructor for a line grid. It is a line that goes in the
         direction of one of the coordinates. For a non-coincident line, create
@@ -425,30 +389,31 @@ class LineGrid(Grid):
 
         """
         line = np.atleast_1d(np.squeeze(line))
-        assert line.ndim == 1, "Line has an invalid shape"
+        assert line.ndim == 1,\
+            'Line has an invalid shape'
         dimension = dimension.lower()
         # Initialize with 4 values to later find second
-        base_dimensions = ["x", "y", "z", "x"]
-        assert dimension in base_dimensions, "Dimension should be x, y or z"
+        base_dimensions = ['x', 'y', 'z', 'x']
+        assert dimension in base_dimensions, \
+            'Dimension should be x, y or z'
         # Get dimensions
         ind = base_dimensions.index(dimension)
         base_dimensions.pop(ind)
         dim2 = base_dimensions[ind]
-        dim3 = list(set(["x", "y", "z"]) - set([dimension, dim2]))[0]
+        dim3 = list(set(['x', 'y', 'z']) - set([dimension, dim2]))[0]
 
         self.extent_dimension = dimension
         # Initialize positions
-        pos = {
-            dimension: line,
-            dim2: np.ones(len(line)) * value2,
-            dim3: np.ones(len(line)) * value3,
-        }
+        pos = {dimension: line,
+               dim2: np.ones(len(line))*value2,
+               dim3: np.ones(len(line))*value3}
         super().__init__(pos)
 
 
 class MicArray(BasePoints):
-    """This class contains a microphone array with all its metadata."""
+    """This class contains a microphone array with all its metadata.
 
+    """
     # ======== Constructor ====================================================
     def __init__(self, positions: dict):
         """Initiate a MicArray based on the positions dictionary that contains
@@ -582,7 +547,7 @@ class MicArray(BasePoints):
             Frequency in Hz that corresponds to the passed Helmholtz number.
 
         """
-        return he * c / self.aperture
+        return he*c / self.aperture
 
     def hz_to_he(self, f_hz: float, c: float = 343) -> float:
         """This method returns the Helmholtz number corresponds to a given
@@ -604,9 +569,8 @@ class MicArray(BasePoints):
         return f_hz * self.aperture / c
 
     # ======== Maximum frequency range ========================================
-    def get_maximum_frequency_range(
-        self, lowest_he: float = 4, c: float = 343
-    ) -> list:
+    def get_maximum_frequency_range(self, lowest_he: float = 4,
+                                    c: float = 343) -> list:
         """Computes maximum recommended frequency range in Hz for this
         microphone array based on lowest Helmholtz number and the criterion
         `min_distance = wavelength/2` (to avoid spatial aliasing).
@@ -628,14 +592,12 @@ class MicArray(BasePoints):
         return f_range_hz
 
 
-class SteeringVector:
-    """This class hosts the main equation to be used for the steering
-    vector.
+class SteeringVector():
+    """This class hosts the main equation to be used for the steering vector.
 
     """
-
     # ======== Constructor ====================================================
-    def __init__(self, formulation="true location"):
+    def __init__(self, formulation='true location'):
         """Initializes the SteeringVector using the passed formulation.
 
         Parameters
@@ -664,34 +626,32 @@ class SteeringVector:
           Acoustics and Vibration. 2012. 10.1155/2012/292695.
 
         """
-        if type(formulation) is str:
+        if type(formulation) == str:
             formulation = formulation.lower()
-            if formulation == "classic":
+            if formulation == 'classic':
                 self.get_vector = classic_steering
-            elif formulation == "inverse":
+            elif formulation == 'inverse':
                 self.get_vector = inverse_steering
-            elif formulation == "true power":
+            elif formulation == 'true power':
                 self.get_vector = true_power_steering
-            elif formulation == "true location":
+            elif formulation == 'true location':
                 self.get_vector = true_location_steering
             else:
                 raise ValueError(
-                    "Incorrect formulation. Use either classic, inverse, "
-                    + "true power or true location"
-                )
+                    'Incorrect formulation. Use either classic, inverse, ' +
+                    'true power or true location')
         else:
-            assert (
-                type(formulation) is callable
-            ), "Formulation should be a callable or a string"
+            assert type(formulation) == callable, \
+                'Formulation should be a callable or a string'
             self.get_vector = formulation
 
 
-class BaseBeamformer:
-    """Base class for a beamformer."""
+class BaseBeamformer():
+    """Base class for a beamformer.
 
-    def __init__(
-        self, multi_channel_signal: Signal, mic_array: MicArray, c: float = 343
-    ):
+    """
+    def __init__(self, multi_channel_signal: Signal,
+                 mic_array: MicArray, c: float = 343):
         """Base constructor for Beamformer.
 
         Parameters
@@ -711,21 +671,19 @@ class BaseBeamformer:
           object.
 
         """
-        assert (
-            type(multi_channel_signal) is Signal
-        ), "Multi-channel signal must be of type Signal"
-        assert (
-            type(mic_array) is MicArray
-        ), "mic_array should be of type MicArray"
-        assert c > 0, "Speed of sound should be bigger than 0"
-        assert (
-            multi_channel_signal.number_of_channels
-            == mic_array.number_of_points
-        ), "Number of channels in signal and microphone array do not match"
+        assert type(multi_channel_signal) == Signal, \
+            'Multi-channel signal must be of type Signal'
+        assert type(mic_array) == MicArray, \
+            'mic_array should be of type MicArray'
+        assert c > 0, \
+            'Speed of sound should be bigger than 0'
+        assert multi_channel_signal.number_of_channels == \
+            mic_array.number_of_points, \
+            'Number of channels in signal and microphone array do not match'
         self.signal = multi_channel_signal
         self.mics = mic_array
         self.c = c
-        self.beamformer_type = "Base"
+        self.beamformer_type = 'Base'
         self.set_csm_parameters = self.signal.set_csm_parameters
 
     # ======== Prints and plots ===============================================
@@ -740,31 +698,24 @@ class BaseBeamformer:
             Axes.
 
         """
-        fig, ax = plt.subplots(
-            1, 1, figsize=(8, 5), subplot_kw={"projection": "3d"}
-        )
+        fig, ax = plt.subplots(1, 1, figsize=(8, 5),
+                               subplot_kw={'projection': '3d'})
         ax.scatter(
-            self.mics.coordinates[:, 0],
-            self.mics.coordinates[:, 1],
-            self.mics.coordinates[:, 2],
-        )
-        if hasattr(self, "grid"):
+            self.mics.coordinates[:, 0], self.mics.coordinates[:, 1],
+            self.mics.coordinates[:, 2])
+        if hasattr(self, 'grid'):
             if self.grid is not None:
                 ax.scatter(
-                    self.grid.coordinates[:, 0],
-                    self.grid.coordinates[:, 1],
-                    self.grid.coordinates[:, 2],
-                )
+                    self.grid.coordinates[:, 0], self.grid.coordinates[:, 1],
+                    self.grid.coordinates[:, 2])
         ax.scatter(
             self.mics.array_center_coordinates[0],
             self.mics.array_center_coordinates[1],
-            self.mics.array_center_coordinates[2],
-            c="xkcd:dark green",
-        )
-        ax.set_xlabel("$x$ / m")
-        ax.set_ylabel("$y$ / m")
-        ax.set_zlabel("$z$ / m")
-        ax.legend(["Mic Array", "Grid", "Center Mic"])
+            self.mics.array_center_coordinates[2], c='xkcd:dark green')
+        ax.set_xlabel('$x$ / m')
+        ax.set_ylabel('$y$ / m')
+        ax.set_zlabel('$z$ / m')
+        ax.legend(['Mic Array', 'Grid', 'Center Mic'])
         return fig, ax
 
     # ======== Helpers ========================================================
@@ -784,36 +735,36 @@ class BaseBeamformer:
             Frequency range in Hz.
 
         """
-        assert len(range_he) == 2, "Range in He should have length two"
+        assert len(range_he) == 2, \
+            'Range in He should have length two'
         return [self.mics.he_to_hz(i, self.c) for i in range_he]
 
     def show_info(self):
-        """Helper for creating a string containing metadata."""
+        """Helper for creating a string containing metadata.
+
+        """
         txt = f"""Beamformer: {self.beamformer_type}"""
-        txt = "\n" + txt + "\n" + "-" * len(txt) + "\n"
-        txt += f"""Aperture: {self.mics.aperture}\n"""
-        txt += f"""Min mic distance: {self.mics.min_distance}\n"""
-        txt += f"""Recommended f range: {self.mics.
-                                         get_maximum_frequency_range()}\n"""
-        txt += f"""Number of mics: {self.mics.number_of_points}\n"""
-        if hasattr(self, "grid"):
+        txt = '\n'+txt+'\n'+'-'*len(txt)+'\n'
+        txt += f'''Aperture: {self.mics.aperture}\n'''
+        txt += f'''Min mic distance: {self.mics.min_distance}\n'''
+        txt += f'''Recommended f range: {self.mics.
+                                         get_maximum_frequency_range()}\n'''
+        txt += f'''Number of mics: {self.mics.number_of_points}\n'''
+        if hasattr(self, 'grid'):
             if self.grid is not None:
-                txt += f"""Number of grid points: {self.grid.
-                                                   number_of_points}\n"""
+                txt += f'''Number of grid points: {self.grid.
+                                                   number_of_points}\n'''
         print(txt)
 
 
 class BeamformerGridded(BaseBeamformer):
-    """Base class for beamformers that use a grid."""
+    """Base class for beamformers that use a grid.
 
-    def __init__(
-        self,
-        multi_channel_signal: Signal,
-        mic_array: MicArray,
-        grid: Grid,
-        steering_vector: SteeringVector,
-        c: float = 343,
-    ):
+    """
+    def __init__(self, multi_channel_signal: Signal,
+                 mic_array: MicArray, grid: Grid,
+                 steering_vector: SteeringVector,
+                 c: float = 343):
         """Constructor for beamformer with grid and steering vector.
 
         Parameters
@@ -839,26 +790,24 @@ class BeamformerGridded(BaseBeamformer):
 
         """
         super().__init__(multi_channel_signal, mic_array, c)
-        assert (
-            type(steering_vector) is SteeringVector
-        ), "steering_vector should be of type SteeringVector"
-        assert issubclass(type(grid), Grid), "grid should be a Grid object"
+        assert type(steering_vector) == SteeringVector, \
+            'steering_vector should be of type SteeringVector'
+        assert issubclass(type(grid), Grid), \
+            'grid should be a Grid object'
         self.grid = grid
         self.st_vec = steering_vector
 
 
 class BeamformerDASFrequency(BeamformerGridded):
-    """This is the base class for beamforming in frequency-domain."""
+    """This is the base class for beamforming in frequency-domain.
 
-    beamformer_type = "Delay-and-sum (Frequency)"
+    """
+    beamformer_type = 'Delay-and-sum (Frequency)'
 
     # ======== Get beamforming map ============================================
-    def get_beamformer_map(
-        self,
-        center_frequency_hz: float,
-        octave_fraction: int = 3,
-        remove_csm_diagonal: bool = True,
-    ) -> np.ndarray:
+    def get_beamformer_map(self, center_frequency_hz: float,
+                           octave_fraction: int = 3,
+                           remove_csm_diagonal: bool = True) -> np.ndarray:
         """Run delay-and-sum beamforming in the given frequency range.
 
         Parameters
@@ -881,23 +830,21 @@ class BeamformerDASFrequency(BeamformerGridded):
         self.center_frequency_hz = center_frequency_hz
         self.octave_fraction = octave_fraction
         self.f_range_hz = _get_fractional_octave_bandwidth(
-            self.center_frequency_hz, self.octave_fraction
-        )
+            self.center_frequency_hz, self.octave_fraction)
 
-        txt = "Beamformer computation has started successfully:"
-        print("\n" + txt)
-        print("-" * len(txt))
-        print("...csm...")
+        txt = 'Beamformer computation has started successfully:'
+        print('\n'+txt)
+        print('-'*len(txt))
+        print('...csm...')
         f, csm = self.signal.get_csm()
         if remove_csm_diagonal:
             # Account for energy loss
-            csm *= self.signal.number_of_channels / (
-                self.signal.number_of_channels - 1
-            )
+            csm *= self.signal.number_of_channels / \
+                (self.signal.number_of_channels - 1)
             for i in range(len(f)):
                 np.fill_diagonal(csm[i, :, :], 0)
 
-        print("...Steering vector...")
+        print('...Steering vector...')
         # Frequency selection, wave numbers and steering vector
         ids = _find_nearest(self.f_range_hz, f)
         id1, id2 = ids[0], ids[1]
@@ -908,17 +855,19 @@ class BeamformerDASFrequency(BeamformerGridded):
         csm = csm[id1:id2]
         number_frequency_bins = id2 - id1
         wave_numbers = f * np.pi * 2 / self.c
-        h = self.st_vec.get_vector(wave_numbers, grid=self.grid, mic=self.mics)
+        h = self.st_vec.get_vector(
+            wave_numbers, grid=self.grid, mic=self.mics)
         h_H = np.swapaxes(h, 1, 2).conjugate()
         self.f_range_hz = np.array([f[0], f[-1]])
 
-        print("...Apply...")
-        map = np.zeros((self.grid.number_of_points, number_frequency_bins))
+        print('...Apply...')
+        map = np.zeros((self.grid.number_of_points,
+                        number_frequency_bins))
         for gind in range(self.grid.number_of_points):
             for find in range(len(f)):
                 map[gind, find] = np.linalg.multi_dot(
-                    [h_H[find, gind, :], csm[find, :, :], h[find, :, gind]]
-                ).real
+                    [h_H[find, gind, :], csm[find, :, :],
+                     h[find, :, gind]]).real
 
         # Unphysical values for removed diagonal of CSM
         if remove_csm_diagonal:
@@ -926,7 +875,7 @@ class BeamformerDASFrequency(BeamformerGridded):
 
         # Integrate over all frequencies
         if number_frequency_bins > 1:
-            map = simpson(map, dx=f[1] - f[0], axis=1)
+            map = simpson(map, dx=f[1]-f[0], axis=1)
         else:
             map = map.squeeze()
         self.map = self.grid.reconstruct_map_shape(map)
@@ -944,17 +893,13 @@ class BeamformerCleanSC(BeamformerGridded):
       doi: 10.1260/147547207783359459.
 
     """
+    beamformer_type = 'CleanSC'
 
-    beamformer_type = "CleanSC"
-
-    def get_beamformer_map(
-        self,
-        center_frequency_hz: float,
-        octave_fraction: int = 3,
-        maximum_iterations: int | None = None,
-        safety_factor: float = 0.5,
-        remove_csm_diagonal: bool = False,
-    ) -> np.ndarray:
+    def get_beamformer_map(self, center_frequency_hz: float,
+                           octave_fraction: int = 3,
+                           maximum_iterations: int = None,
+                           safety_factor: float = 0.5,
+                           remove_csm_diagonal: bool = False) -> np.ndarray:
         """Returns a deconvolved beaforming map.
 
         Parameters
@@ -991,29 +936,26 @@ class BeamformerCleanSC(BeamformerGridded):
         """
         if maximum_iterations is None:
             # Set maximum iterations to twice the number of channels
-            maximum_iterations = self.signal.number_of_channels * 2
+            maximum_iterations = self.signal.number_of_channels*2
         else:
-            assert (
-                maximum_iterations > 0
-            ), "Number of iterations must be positive"
-        assert safety_factor > 0 and safety_factor <= 1, (
-            f"{safety_factor} is not valid. The safety factor (loop gain) "
-            + "should be in ]0, 1]"
-        )
+            assert maximum_iterations > 0, \
+                'Number of iterations must be positive'
+        assert safety_factor > 0 and safety_factor <= 1, \
+            f'{safety_factor} is not valid. The safety factor (loop gain) ' +\
+            'should be in ]0, 1]'
 
         self.center_frequency_hz = center_frequency_hz
         self.octave_fraction = octave_fraction
         self.f_range_hz = _get_fractional_octave_bandwidth(
-            self.center_frequency_hz, self.octave_fraction
-        )
+            self.center_frequency_hz, self.octave_fraction)
 
-        txt = "Beamformer computation has started successfully:"
-        print("\n" + txt)
-        print("-" * len(txt))
-        print("...csm...")
+        txt = 'Beamformer computation has started successfully:'
+        print('\n'+txt)
+        print('-'*len(txt))
+        print('...csm...')
         f, csm = self.signal.get_csm()
 
-        print("...Steering vector...")
+        print('...Steering vector...')
         # Frequency selection, wave numbers and steering vector
         ids = _find_nearest(self.f_range_hz, f)
         id1, id2 = ids[0], ids[1]
@@ -1026,7 +968,8 @@ class BeamformerCleanSC(BeamformerGridded):
 
         # Steering vector
         wave_numbers = f * np.pi * 2 / self.c
-        h = self.st_vec.get_vector(wave_numbers, grid=self.grid, mic=self.mics)
+        h = self.st_vec.get_vector(
+            wave_numbers, grid=self.grid, mic=self.mics)
         h_H = np.swapaxes(h, 1, 2).conjugate()
         self.f_range_hz = np.array([f[0], f[-1]])
 
@@ -1035,27 +978,22 @@ class BeamformerCleanSC(BeamformerGridded):
             for find in range(len(f)):
                 np.fill_diagonal(csm[find, :, :], 0)
 
-        print("...Create and deconvolve map...")
-        map = np.zeros((self.grid.number_of_points, number_frequency_bins))
+        print('...Create and deconvolve map...')
+        map = np.zeros((self.grid.number_of_points,
+                        number_frequency_bins))
         for find in range(len(f)):
             for gind in range(self.grid.number_of_points):
                 # Create initial map
                 map[gind, find] = np.linalg.multi_dot(
-                    [h_H[find, gind, :], csm[find, :, :], h[find, :, gind]]
-                ).real
+                    [h_H[find, gind, :], csm[find, :, :],
+                     h[find, :, gind]]).real
             map[:, find] = _clean_sc_deconvolve(
-                map[:, find],
-                csm[find, :, :],
-                h[find, :, :],
-                h_H[find, :, :],
-                maximum_iterations,
-                remove_csm_diagonal,
-                safety_factor,
-            ).real
+                map[:, find], csm[find, :, :], h[find, :, :], h_H[find, :, :],
+                maximum_iterations, remove_csm_diagonal, safety_factor).real
 
         # Integrate over all frequencies
         if number_frequency_bins > 1:
-            map = simpson(map, dx=f[1] - f[0], axis=1)
+            map = simpson(map, dx=f[1]-f[0], axis=1)
         else:
             map = map.squeeze()
         self.map = self.grid.reconstruct_map_shape(map)
@@ -1074,15 +1012,11 @@ class BeamformerOrthogonal(BeamformerGridded):
       ISSN 0022-460X, https://doi.org/10.1016/j.jsv.2009.11.009.
 
     """
+    beamformer_type = 'Orthogonal (Grid)'
 
-    beamformer_type = "Orthogonal (Grid)"
-
-    def get_beamformer_map(
-        self,
-        center_frequency_hz: float,
-        octave_fraction: int = 3,
-        number_eigenvalues: int | None = None,
-    ) -> np.ndarray:
+    def get_beamformer_map(self, center_frequency_hz: float,
+                           octave_fraction: int = 3,
+                           number_eigenvalues: int = None) -> np.ndarray:
         """Returns a beaforming map created with orthogonal beamforming.
 
         Parameters
@@ -1114,27 +1048,24 @@ class BeamformerOrthogonal(BeamformerGridded):
         self.center_frequency_hz = center_frequency_hz
         self.octave_fraction = octave_fraction
         self.f_range_hz = _get_fractional_octave_bandwidth(
-            self.center_frequency_hz, self.octave_fraction
-        )
+            self.center_frequency_hz, self.octave_fraction)
 
         if number_eigenvalues is None:
             number_eigenvalues = self.signal.number_of_channels // 2
         else:
-            assert number_eigenvalues <= self.signal.number_of_channels, (
-                "Number of eigenvalues cannot be more than number of "
-                + "microphones"
-            )
-            assert (
-                number_eigenvalues > 0
-            ), "At least one eigenvalue of the CSM must be regarded"
+            assert number_eigenvalues <= self.signal.number_of_channels, \
+                'Number of eigenvalues cannot be more than number of ' +\
+                'microphones'
+            assert number_eigenvalues > 0, \
+                'At least one eigenvalue of the CSM must be regarded'
 
-        txt = "Beamformer computation has started successfully:"
-        print("\n" + txt)
-        print("-" * len(txt))
-        print("...csm...")
+        txt = 'Beamformer computation has started successfully:'
+        print('\n'+txt)
+        print('-'*len(txt))
+        print('...csm...')
         f, csm = self.signal.get_csm()
 
-        print("...Steering vector...")
+        print('...Steering vector...')
         # Frequency selection, wave numbers and steering vector
         ids = _find_nearest(self.f_range_hz, f)
         id1, id2 = ids[0], ids[1]
@@ -1145,18 +1076,15 @@ class BeamformerOrthogonal(BeamformerGridded):
         csm = csm[id1:id2]
         number_frequency_bins = id2 - id1
         wave_numbers = f * np.pi * 2 / self.c
-        h = self.st_vec.get_vector(wave_numbers, grid=self.grid, mic=self.mics)
+        h = self.st_vec.get_vector(
+            wave_numbers, grid=self.grid, mic=self.mics)
         self.f_range_hz = np.array([f[0], f[-1]])
 
-        print("...Apply...")
-        eig_map = np.zeros(
-            (
-                number_eigenvalues,
-                self.grid.number_of_points,
-                number_frequency_bins,
-            )
-        )
-        map = np.zeros((self.grid.number_of_points, number_frequency_bins))
+        print('...Apply...')
+        eig_map = np.zeros((number_eigenvalues, self.grid.number_of_points,
+                            number_frequency_bins))
+        map = np.zeros((self.grid.number_of_points,
+                        number_frequency_bins))
 
         for find in range(len(f)):
             # Spectral decomposition – eigenvalues are given in ascending order
@@ -1164,20 +1092,18 @@ class BeamformerOrthogonal(BeamformerGridded):
             for eig in range(number_eigenvalues):
                 for gind in range(self.grid.number_of_points):
                     # Generate whole map
-                    product = h[find, :, gind].conjugate() @ v[:, -eig - 1]
-                    eig_map[eig, gind, find] = (
-                        product * product.conjugate()
-                    ).real
+                    product = h[find, :, gind].conjugate() @ v[:, -eig-1]
+                    eig_map[eig, gind, find] = \
+                        (product * product.conjugate()).real
                 # Find largest value
                 source_ind = np.argmax(eig_map[eig, :, find])
                 # Scale by eigenvalue and pass to final map
-                map[source_ind, find] = (
-                    eig_map[eig, source_ind, find] * w[-eig - 1]
-                )
+                map[source_ind, find] = \
+                    eig_map[eig, source_ind, find] * w[-eig-1]
 
         # Integrate over all frequencies
         if number_frequency_bins > 1:
-            map = simpson(map, dx=f[1] - f[0], axis=1)
+            map = simpson(map, dx=f[1]-f[0], axis=1)
         else:
             map = map.squeeze()
         self.map = self.grid.reconstruct_map_shape(map)
@@ -1193,15 +1119,11 @@ class BeamformerFunctional(BeamformerGridded):
     - [1]: Dougherty, Robert. (2014). Functional Beamforming.
 
     """
+    beamformer_type = 'Functional'
 
-    beamformer_type = "Functional"
-
-    def get_beamformer_map(
-        self,
-        center_frequency_hz: float,
-        octave_fraction: int = 3,
-        gamma: float = 10,
-    ) -> np.ndarray:
+    def get_beamformer_map(self, center_frequency_hz: float,
+                           octave_fraction: int = 3,
+                           gamma: float = 10) -> np.ndarray:
         """Returns a beaforming map created with functional beamforming.
 
         Parameters
@@ -1227,16 +1149,15 @@ class BeamformerFunctional(BeamformerGridded):
         self.center_frequency_hz = center_frequency_hz
         self.octave_fraction = octave_fraction
         self.f_range_hz = _get_fractional_octave_bandwidth(
-            self.center_frequency_hz, self.octave_fraction
-        )
+            self.center_frequency_hz, self.octave_fraction)
 
-        txt = "Beamformer computation has started successfully:"
-        print("\n" + txt)
-        print("-" * len(txt))
-        print("...csm...")
+        txt = 'Beamformer computation has started successfully:'
+        print('\n'+txt)
+        print('-'*len(txt))
+        print('...csm...')
         f, csm = self.signal.get_csm()
 
-        print("...Steering vector...")
+        print('...Steering vector...')
         # Frequency selection, wave numbers and steering vector
         ids = _find_nearest(self.f_range_hz, f)
         id1, id2 = ids[0], ids[1]
@@ -1249,33 +1170,33 @@ class BeamformerFunctional(BeamformerGridded):
         wave_numbers = f * np.pi * 2 / self.c
 
         # Generate steering vectors
-        h = self.st_vec.get_vector(wave_numbers, grid=self.grid, mic=self.mics)
+        h = self.st_vec.get_vector(
+            wave_numbers, grid=self.grid, mic=self.mics)
         h_H = np.swapaxes(h, 1, 2).conjugate()
         self.f_range_hz = np.array([f[0], f[-1]])
 
-        print("...Apply...")
-        map = np.zeros((self.grid.number_of_points, number_frequency_bins))
+        print('...Apply...')
+        map = np.zeros((self.grid.number_of_points,
+                        number_frequency_bins))
 
         for find in range(len(f)):
             # SVD
             u, s, vh = np.linalg.svd(csm[find, :, :])
-            s = np.diag(s ** (1 / gamma))
+            s = np.diag(s**(1/gamma))
             # New CSM
             csm_ = np.linalg.multi_dot([u, s, vh])
             for gind in range(self.grid.number_of_points):
                 map[gind, find] = np.linalg.multi_dot(
-                    [h_H[find, gind, :], csm_, h[find, :, gind]]
-                ).real
+                    [h_H[find, gind, :], csm_, h[find, :, gind]]).real
                 steering_normalization = (
-                    h_H[find, gind, :] @ h[find, :, gind]
-                ).real
+                    h_H[find, gind, :] @ h[find, :, gind]).real
                 map[gind, find] = (
-                    map[gind, find] / steering_normalization
-                ) ** gamma * steering_normalization
+                    map[gind, find]/steering_normalization)**gamma * \
+                    steering_normalization
 
         # Integrate over all frequencies
         if number_frequency_bins > 1:
-            map = simpson(map, dx=f[1] - f[0], axis=1)
+            map = simpson(map, dx=f[1]-f[0], axis=1)
         else:
             map = map.squeeze()
         self.map = self.grid.reconstruct_map_shape(map)
@@ -1294,15 +1215,11 @@ class BeamformerMVDR(BeamformerGridded):
       doi: 10.1109/PROC.1969.7278.
 
     """
+    beamformer_type = 'MVDR'
 
-    beamformer_type = "MVDR"
-
-    def get_beamformer_map(
-        self,
-        center_frequency_hz: float,
-        octave_fraction: int = 3,
-        gamma: float = 10,
-    ) -> np.ndarray:
+    def get_beamformer_map(self, center_frequency_hz: float,
+                           octave_fraction: int = 3,
+                           gamma: float = 10) -> np.ndarray:
         """Returns a beaforming map created with MVDR beamforming.
 
         Parameters
@@ -1328,16 +1245,15 @@ class BeamformerMVDR(BeamformerGridded):
         self.center_frequency_hz = center_frequency_hz
         self.octave_fraction = octave_fraction
         self.f_range_hz = _get_fractional_octave_bandwidth(
-            self.center_frequency_hz, self.octave_fraction
-        )
+            self.center_frequency_hz, self.octave_fraction)
 
-        txt = "Beamformer computation has started successfully:"
-        print("\n" + txt)
-        print("-" * len(txt))
-        print("...csm...")
+        txt = 'Beamformer computation has started successfully:'
+        print('\n'+txt)
+        print('-'*len(txt))
+        print('...csm...')
         f, csm = self.signal.get_csm()
 
-        print("...Steering vector...")
+        print('...Steering vector...')
         # Frequency selection, wave numbers and steering vector
         ids = _find_nearest(self.f_range_hz, f)
         id1, id2 = ids[0], ids[1]
@@ -1350,26 +1266,24 @@ class BeamformerMVDR(BeamformerGridded):
         wave_numbers = f * np.pi * 2 / self.c
 
         # Generate steering vectors
-        h = self.st_vec.get_vector(wave_numbers, grid=self.grid, mic=self.mics)
+        h = self.st_vec.get_vector(
+            wave_numbers, grid=self.grid, mic=self.mics)
         h_H = np.swapaxes(h, 1, 2).conjugate()
         self.f_range_hz = np.array([f[0], f[-1]])
 
-        print("...Apply...")
-        map = np.zeros((self.grid.number_of_points, number_frequency_bins))
+        print('...Apply...')
+        map = np.zeros((self.grid.number_of_points,
+                        number_frequency_bins))
 
         for find in range(len(f)):
             csm_1 = np.linalg.inv(csm[find, :, :])
             for gind in range(self.grid.number_of_points):
-                map[gind, find] = (
-                    1
-                    / np.linalg.multi_dot(
-                        [h_H[find, gind, :], csm_1, h[find, :, gind]]
-                    ).real
-                )
+                map[gind, find] = 1/np.linalg.multi_dot(
+                    [h_H[find, gind, :], csm_1, h[find, :, gind]]).real
 
         # Integrate over all frequencies
         if number_frequency_bins > 1:
-            map = simpson(map, dx=f[1] - f[0], axis=1)
+            map = simpson(map, dx=f[1]-f[0], axis=1)
         else:
             map = map.squeeze()
         self.map = self.grid.reconstruct_map_shape(map)
@@ -1377,15 +1291,11 @@ class BeamformerMVDR(BeamformerGridded):
 
 
 class BeamformerDASTime(BaseBeamformer):
-    """Conventional delay-and-sum beamformer in time-domain."""
+    """Conventional delay-and-sum beamformer in time-domain.
 
-    def __init__(
-        self,
-        multi_channel_signal: Signal,
-        mic_array: MicArray,
-        grid: Grid,
-        c: float = 343,
-    ):
+    """
+    def __init__(self, multi_channel_signal: Signal,
+                 mic_array: MicArray, grid: Grid, c: float = 343):
         """Constructor for the traditional Delay-and-sum beamforming approach
         in time domain.
 
@@ -1403,9 +1313,10 @@ class BeamformerDASTime(BaseBeamformer):
 
         """
         super().__init__(multi_channel_signal, mic_array, c)
-        assert issubclass(type(grid), Grid), "grid should be a Grid object"
+        assert issubclass(type(grid), Grid), \
+            'grid should be a Grid object'
         self.grid = grid
-        self.beamformer_type = "Delay-and-sum (Time)"
+        self.beamformer_type = 'Delay-and-sum (Time)'
 
     def get_beamformer_output(self) -> Signal:
         """Triggers the computation for beamforming in time domain.
@@ -1416,10 +1327,10 @@ class BeamformerDASTime(BaseBeamformer):
             Output signal focused to the points of the grid.
 
         """
-        txt = "Beamformer computation has started successfully:"
-        print("\n" + txt)
-        print("-" * len(txt))
-        print("...get delays...")
+        txt = 'Beamformer computation has started successfully:'
+        print('\n'+txt)
+        print('-'*len(txt))
+        print('...get delays...')
         # Start Signal from one channel
         out_sig = self.signal.get_channels(0)
 
@@ -1429,43 +1340,37 @@ class BeamformerDASTime(BaseBeamformer):
         r0 = np.max(ds)
 
         # Get longest delay in order to pad all signals accordingly
-        longest_delay_samples = (
-            (r0 - min_distance) / self.c * self.signal.sampling_rate_hz
-        )
+        longest_delay_samples = \
+            (r0 - min_distance)/self.c * self.signal.sampling_rate_hz
         longest_delay_samples = int(longest_delay_samples + 2)
-        total_length_samples = (
+        total_length_samples = \
             out_sig.time_data.shape[0] + longest_delay_samples
-        )
         out_sig = pad_trim(out_sig, total_length_samples)
 
         # Start computation for each grid point
-        print("...grid focusing...")
+        print('...grid focusing...')
         for ig in range(self.grid.number_of_points):
-            if ig == self.grid.number_of_points // 2:
-                print(r"...50% grid done...")
-            delays = (r0 - ds[:, ig]) / self.c
+            if ig == self.grid.number_of_points//2:
+                print(r'...50% grid done...')
+            delays = (r0 - ds[:, ig])/self.c
             # Accumulator
             new_time_data = np.zeros((total_length_samples, 1))
             for im in range(self.mics.number_of_points):
-                ntd = (
-                    fractional_delay(
-                        self.signal.get_channels(im), delays[im]
-                    ).time_data
-                    * ds[im, ig]
-                )
+                ntd = fractional_delay(
+                    self.signal.get_channels(im), delays[im]).time_data *\
+                        ds[im, ig]
                 new_time_data += _pad_trim(ntd, total_length_samples)
-            new_time_data *= 4 * np.pi / self.mics.number_of_points
+            new_time_data *= (4*np.pi/self.mics.number_of_points)
             out_sig.add_channel(None, new_time_data, out_sig.sampling_rate_hz)
         out_sig.remove_channel(0)
         return out_sig
 
 
-class MonopoleSource:
+class MonopoleSource():
     """Base class for all sources. It has a monopole characteristic by
     default.
 
     """
-
     def __init__(self, signal: Signal, coordinates):
         """Constructor for a monopole source. It is defined by an emitted
         signal and spatial coordinates. Its emission characteristic is
@@ -1480,13 +1385,11 @@ class MonopoleSource:
             with shape (x, y, z).
 
         """
-        assert (
-            signal.number_of_channels == 1
-        ), "Only signals with a single channel are supported"
+        assert signal.number_of_channels == 1, \
+            'Only signals with a single channel are supported'
         coordinates = np.squeeze(coordinates)
-        assert (
-            len(coordinates) == 3 and coordinates.ndim == 1
-        ), "Coordinates should have exactly three values"
+        assert len(coordinates) == 3 and coordinates.ndim == 1, \
+            'Coordinates should have exactly three values'
         self.emitted_signal = signal
         self.coordinates = coordinates
 
@@ -1507,28 +1410,26 @@ class MonopoleSource:
 
         """
         distances = mics.get_distances_to_point(self.coordinates)
-        delays = distances / c
+        delays = distances/c
 
         multi_channel_signal = self.emitted_signal.copy()
         for i in range(len(distances)):
             # Delay
             ns = fractional_delay(
-                self.emitted_signal, delays[i], keep_length=True
-            )
+                self.emitted_signal, delays[i], keep_length=True)
             # Amplitude scaling – 1 on point and decays with distance
-            ns.time_data = ns.time_data / (1 + distances[i])
+            ns.time_data = ns.time_data/(1+distances[i])
             # Append to final signal
             multi_channel_signal = merge_signals(
-                multi_channel_signal, ns, padding_trimming=True
-            )
+                multi_channel_signal, ns, padding_trimming=True)
         # Remove original signal
         multi_channel_signal.remove_channel(0)
         return multi_channel_signal
 
 
-def mix_sources_on_array(
-    sources: list | MonopoleSource, mics: MicArray, c: float = 343
-) -> Signal:
+def mix_sources_on_array(sources: list | MonopoleSource, mics: MicArray,
+                         c: float = 343) ->\
+        Signal:
     """This function takes in a list containing multiple sources and gives back
     the multi-channel signal on the array of the combined sources.
 
@@ -1549,14 +1450,12 @@ def mix_sources_on_array(
 
     """
     # Convert to list if only Monopole source is passed
-    if type(sources) is MonopoleSource:
+    if type(sources) == MonopoleSource:
         sources = [sources]
-    assert (
-        len(sources) > 0
-    ), "There must be at least one source to project on array"
-    assert all(
-        [type(i) is MonopoleSource for i in sources]
-    ), "All sources in list should be of type Source"
+    assert len(sources) > 0, \
+        'There must be at least one source to project on array'
+    assert all([type(i) == MonopoleSource for i in sources]), \
+        'All sources in list should be of type Source'
     # Take first source
     multi_channel_sig = sources[0].get_signals_on_array(mics, c)
     total_length_samples = multi_channel_sig.time_data.shape[0]
@@ -1566,16 +1465,12 @@ def mix_sources_on_array(
     for s in sources:
         # Warning if lengths do not match
         if total_length_samples != s.emitted_signal.time_data.shape[0]:
-            warn(
-                "Emitted signals from sources differ in length. Trimming to "
-                "shortest will be done"
-            )
+            warn('Emitted signals from sources differ in length. Trimming to '
+                 'shortest will be done')
             total_length_samples = min(
-                total_length_samples, s.emitted_signal.time_data.shape[0]
-            )
+                total_length_samples, s.emitted_signal.time_data.shape[0])
             multi_channel_sig = pad_trim(
-                multi_channel_sig, total_length_samples
-            )
+                multi_channel_sig, total_length_samples)
             s.emitted_signal = pad_trim(s.emitted_signal, total_length_samples)
         # Add to multi-channel data
         ns = s.get_signals_on_array(mics, c)
@@ -1584,9 +1479,8 @@ def mix_sources_on_array(
 
 
 # ========== Steering vector formulations =====================================
-def classic_steering(
-    wave_number: np.ndarray, grid: Grid, mic: MicArray
-) -> np.ndarray:
+def classic_steering(wave_number: np.ndarray, grid: Grid,
+                     mic: MicArray) -> np.ndarray:
     """Classic formulation for steering vector (formulation 1 in reference
     paper).
 
@@ -1612,7 +1506,8 @@ def classic_steering(
 
     """
     wave_number = np.atleast_1d(wave_number)
-    assert wave_number.ndim == 1, "Wave number should be a 1D-array"
+    assert wave_number.ndim == 1, \
+        'Wave number should be a 1D-array'
     # Number of mics and grid points
     N = mic.number_of_points
 
@@ -1623,20 +1518,12 @@ def classic_steering(
     rti = grid.get_distances_to_point(mic.coordinates).T
     # Transpose because output is always (grid, other points)
 
-    return (
-        1
-        / N
-        * np.exp(
-            -1j
-            * wave_number[:, nxs, nxs]
-            * (rti[nxs, :, :] - rt0[nxs, nxs, :])
-        )
-    )
+    return 1/N * np.exp(
+        -1j*wave_number[:, nxs, nxs] * (rti[nxs, :, :] - rt0[nxs, nxs, :]))
 
 
-def inverse_steering(
-    wave_number: np.ndarray, grid: Grid, mic: MicArray
-) -> np.ndarray:
+def inverse_steering(wave_number: np.ndarray, grid: Grid,
+                     mic: MicArray) -> np.ndarray:
     """Inverse formulation for steering vector (formulation 2 in reference
     paper).
 
@@ -1662,7 +1549,8 @@ def inverse_steering(
 
     """
     wave_number = np.atleast_1d(wave_number)
-    assert wave_number.ndim == 1, "Wave number should be a 1D-array"
+    assert wave_number.ndim == 1, \
+        'Wave number should be a 1D-array'
     # Number of mics and grid points
     N = mic.number_of_points
 
@@ -1673,21 +1561,13 @@ def inverse_steering(
     rti = grid.get_distances_to_point(mic.coordinates).T
 
     # Formulate vector
-    return (
-        rti[nxs, :, :]
-        / N
-        / rt0[nxs, nxs, :]
-        * np.exp(
-            -1j
-            * wave_number[:, nxs, nxs]
-            * (rti[nxs, :, :] - rt0[nxs, nxs, :])
-        )
-    )
+    return rti[nxs, :, :] / N / rt0[nxs, nxs, :] * \
+        np.exp(-1j * wave_number[:, nxs, nxs] *
+               (rti[nxs, :, :] - rt0[nxs, nxs, :]))
 
 
-def true_power_steering(
-    wave_number: np.ndarray, grid: Grid, mic: MicArray
-) -> np.ndarray:
+def true_power_steering(wave_number: np.ndarray, grid: Grid,
+                        mic: MicArray) -> np.ndarray:
     """Formulation for true power steering vector (formulation 3 in reference
     paper).
 
@@ -1713,7 +1593,8 @@ def true_power_steering(
 
     """
     wave_number = np.atleast_1d(wave_number)
-    assert wave_number.ndim == 1, "Wave number should be a 1D-array"
+    assert wave_number.ndim == 1, \
+        'Wave number should be a 1D-array'
 
     # rt0 with shape (ngrid)
     rt0 = grid.get_distances_to_point(mic.array_center_coordinates)
@@ -1722,25 +1603,16 @@ def true_power_steering(
     rti = grid.get_distances_to_point(mic.coordinates).T
 
     # rtj vector with shape (ngrid)
-    rtj = np.sum(1 / mic.get_distances_to_point(grid.coordinates) ** 2, axis=0)
+    rtj = np.sum(1/mic.get_distances_to_point(grid.coordinates)**2, axis=0)
 
     # Formulate vector
-    return (
-        1
-        / rt0[nxs, nxs, :]
-        / rti[nxs, :, :]
-        / rtj[nxs, nxs, :]
-        * np.exp(
-            -1j
-            * wave_number[:, nxs, nxs]
-            * (rti[nxs, :, :] - rt0[nxs, nxs, :])
-        )
-    )
+    return 1 / rt0[nxs, nxs, :] / rti[nxs, :, :] / rtj[nxs, nxs, :] * \
+        np.exp(-1j * wave_number[:, nxs, nxs] *
+               (rti[nxs, :, :] - rt0[nxs, nxs, :]))
 
 
-def true_location_steering(
-    wave_number: np.ndarray, grid: Grid, mic: MicArray
-) -> np.ndarray:
+def true_location_steering(wave_number: np.ndarray, grid: Grid,
+                           mic: MicArray) -> np.ndarray:
     """Formulation for true location steering vector (formulation 4 in
     reference paper).
 
@@ -1766,7 +1638,8 @@ def true_location_steering(
 
     """
     wave_number = np.atleast_1d(wave_number)
-    assert wave_number.ndim == 1, "Wave number should be a 1D-array"
+    assert wave_number.ndim == 1, \
+        'Wave number should be a 1D-array'
     # Number of mics and grid points
     N = mic.number_of_points
 
@@ -1777,17 +1650,8 @@ def true_location_steering(
     rti = grid.get_distances_to_point(mic.coordinates).T
 
     # rtj vector with shape (ngrid)
-    rtj = N * np.sum(
-        1 / mic.get_distances_to_point(grid.coordinates) ** 2, axis=0
-    )
+    rtj = N * np.sum(1/mic.get_distances_to_point(grid.coordinates)**2, axis=0)
 
-    return (
-        1
-        / rti[nxs, :, :]
-        / np.sqrt(rtj[nxs, nxs, :])
-        * np.exp(
-            -1j
-            * wave_number[:, nxs, nxs]
-            * (rti[nxs, :, :] - rt0[nxs, nxs, :])
-        )
-    )
+    return 1 / rti[nxs, :, :] / np.sqrt(rtj[nxs, nxs, :]) * \
+        np.exp(-1j * wave_number[:, nxs, nxs] *
+               (rti[nxs, :, :] - rt0[nxs, nxs, :]))
