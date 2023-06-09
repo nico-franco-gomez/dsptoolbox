@@ -180,7 +180,7 @@ def window_ir(signal: Signal, constant_percentage=0.75, exp2_trim: int = 13,
 def compute_transfer_function(output: Signal, input: Signal, mode='h2',
                               window_length_samples: int = 1024,
                               spectrum_parameters: dict = None) -> \
-        Signal:
+        tuple[Signal, np.ndarray]:
     """Gets transfer function H1, H2 or H3 (for stochastic signals).
     H1: for noise in the output signal. `Gxy/Gxx`.
     H2: for noise in the input signal. `Gyy/Gyx`.
