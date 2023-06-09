@@ -28,7 +28,7 @@ __all__ = [
 
     # Modules
     'transfer_functions', 'distances', 'room_acoustics', 'plots', 'generators',
-    'filterbanks', 'special', 'audio_io', 'beamforming',
+    'filterbanks', 'special', 'audio_io', 'beamforming'
 ]
 
-__version__ = '0.2.4'
+__version__ = '0.2.5'

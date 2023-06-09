@@ -167,7 +167,7 @@ class TestBeamformingModule():
         # Get and show map
         bf.get_beamformer_map(
             2000, 0, maximum_iterations=10, safety_factor=0.5,
-            remove_diagonal_csm=True)
+            remove_csm_diagonal=True)
 
     def test_beamformer_time(self):
         # Only functionality

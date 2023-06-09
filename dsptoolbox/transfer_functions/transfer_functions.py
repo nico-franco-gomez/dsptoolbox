@@ -121,7 +121,9 @@ def spectral_deconvolve(num: Signal, denum: Signal,
 
 def window_ir(signal: Signal, constant_percentage=0.75, exp2_trim: int = 13,
               window_type='hann', at_start: bool = True) -> Signal:
-    """Windows an IR with trimming and selection of constant valued length.
+    """Windows an IR in time while trimming or padding it to an expected
+    length. One half of the window is used for the start and the other for
+    the end.
 
     Parameters
     ----------
@@ -140,8 +142,8 @@ def window_ir(signal: Signal, constant_percentage=0.75, exp2_trim: int = 13,
         others. Pass a tuple with window type and extra parameters if needed.
         Default: `hann`.
     at_start: bool, optional
-        Windows the start with a rising window as well as the end.
-        Default: `True`.
+        When `True`, the start is windowed as well as the end. When `False`,
+        only the end is windowed. Default: `True`.
 
     Returns
     -------
@@ -178,7 +180,7 @@ def window_ir(signal: Signal, constant_percentage=0.75, exp2_trim: int = 13,
 def compute_transfer_function(output: Signal, input: Signal, mode='h2',
                               window_length_samples: int = 1024,
                               spectrum_parameters: dict = None) -> \
-        Signal:
+        tuple[Signal, np.ndarray]:
     """Gets transfer function H1, H2 or H3 (for stochastic signals).
     H1: for noise in the output signal. `Gxy/Gxx`.
     H2: for noise in the input signal. `Gyy/Gyx`.
@@ -205,9 +207,11 @@ def compute_transfer_function(output: Signal, input: Signal, mode='h2',
 
     Returns
     -------
-    tf : `Signal`
+    tf_sig : `Signal`
         Transfer functions as `Signal` object. Coherences are also computed
         and saved in the `Signal` object.
+    tf : `np.ndarray`
+        Complex transfer function as type `np.ndarray`.
 
     """
     mode = mode.casefold()
@@ -229,9 +233,10 @@ def compute_transfer_function(output: Signal, input: Signal, mode='h2',
     assert type(spectrum_parameters) == dict, \
         'Spectrum parameters should be passed as a dictionary'
 
-    H_time = np.zeros((window_length_samples, output.number_of_channels))
     coherence = np.zeros((window_length_samples//2 + 1,
                           output.number_of_channels))
+    tf = np.zeros((window_length_samples//2 + 1,
+                   output.number_of_channels), dtype='cfloat')
     if multichannel:
         G_xx = _welch(
             input.time_data[:, 0],
@@ -271,17 +276,16 @@ def compute_transfer_function(output: Signal, input: Signal, mode='h2',
             **spectrum_parameters)
 
         if mode == 'h1'.casefold():
-            H_time[:, n] = np.fft.irfft(G_xy / G_xx)
+            tf[:, n] = G_xy / G_xx
         elif mode == 'h2'.casefold():
-            H_time[:, n] = np.fft.irfft(G_yy / G_yx)
+            tf[:, n] = G_yy / G_yx
         elif mode == 'h3'.casefold():
-            H_time[:, n] = np.fft.irfft(
-                G_xy / np.abs(G_xy) * (G_yy/G_xx)**0.5)
+            tf[:, n] = G_xy / np.abs(G_xy) * (G_yy/G_xx)**0.5
         coherence[:, n] = np.abs(G_xy)**2 / G_xx / G_yy
-    tf = Signal(None, H_time, output.sampling_rate_hz,
-                signal_type=mode.lower())
-    tf.set_coherence(coherence)
-    return tf
+    tf_sig = Signal(None, np.fft.irfft(tf, axis=0), output.sampling_rate_hz,
+                    signal_type=mode.lower())
+    tf_sig.set_coherence(coherence)
+    return tf_sig, tf
 
 
 def spectral_average(signal: Signal) -> Signal:

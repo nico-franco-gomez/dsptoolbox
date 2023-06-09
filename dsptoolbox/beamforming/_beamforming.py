@@ -2,6 +2,7 @@
 Backend for beamforming module
 """
 import numpy as np
+from scipy.spatial import distance_matrix
 import matplotlib.pyplot as plt
 from seaborn import set_style
 set_style('whitegrid')
@@ -88,40 +89,22 @@ class BasePoints():
         Parameters
         ----------
         point : `np.ndarray`
-            Point to which to compute the distances from all points saved in.
+            Point or points to which to compute the distances from all other
+            points. Its shape should be (point, coordinate).
 
         Returns
         -------
         distances : `np.ndarray`
-            Distances with shape (points).
+            Distances with shape (points, new_points).
 
         """
-        assert len(point) == self.coordinates.shape[1], \
+        if type(point) != np.ndarray:
+            point = np.asarray(point)
+        if point.ndim == 1:
+            point = point[None, ...]
+        assert point.shape[1] == self.coordinates.shape[1], \
             f'Invalid shapes: {point.shape}, {self.coordinates.shape}'
-        # Make helper matrix if needed
-        if not hasattr(self, 'distance_helper_matrix'):
-            self._compute_distance_helper_matrix()
-        if self._distance_helper_matrix is None:
-            self._compute_distance_helper_matrix()
-        distances = self.coordinates - point
-        return (distances.flatten()**2 @ self._distance_helper_matrix)**0.5
-
-    # Helper matrix for vectorized computation
-    def _compute_distance_helper_matrix(self):
-        """Compute helper matrix for euclidean distances. Only intended as an
-        internal method.
-
-        """
-        helper_matrix = \
-            np.zeros((self.coordinates.shape[0]*self.coordinates.shape[1], 1))
-        helper_matrix[:self.coordinates.shape[1], 0] = 1
-        for _ in range(1, self.coordinates.shape[0]):
-            helper_matrix = np.append(
-                helper_matrix,
-                np.roll(helper_matrix[:, -1],
-                        self.coordinates.shape[1])[..., None],
-                axis=-1)
-        self._distance_helper_matrix = helper_matrix
+        return distance_matrix(self.coordinates, point, p=2).squeeze()
 
     # ======== Plotting =======================================================
     def plot_points(self, projection: str = None):
@@ -291,7 +274,7 @@ def _clean_sc_deconvolve(map: np.ndarray, csm: np.ndarray, h: np.ndarray,
         for gind in range(len(map)):
             # Clean map
             map[gind] -= np.linalg.multi_dot([
-                h_H[gind, :], G, h[:, gind]]) * safety_factor
+                h_H[gind, :], G, h[:, gind]]).real * safety_factor
 
         # Swap degraded CSM
         temp = D[1, :, :].copy()

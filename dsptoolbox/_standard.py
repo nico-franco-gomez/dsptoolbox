@@ -137,22 +137,6 @@ def _welch(x, y, fs_hz: int, window_type: str = 'hann',
     sp_frames = np.fft.rfft(x_frames, axis=0).conjugate() * \
         np.fft.rfft(y_frames, axis=0)
 
-    # ==== Averaging of magnitude and unwrapped phase much slower...
-    # # Get magnitude and phase
-    # magnitude = np.abs(sp_frames)
-    # phase = np.unwrap(np.angle(sp_frames), axis=0)
-
-    # # mean without first and last arrays
-    # if average == 'mean':
-    #     magnitude = np.mean(magnitude[:, 1:-1], axis=-1)
-    #     phase = np.mean(phase[:, 1:-1], axis=-1)
-    # else:
-    #     magnitude = np.median(magnitude[:, 1:-1], axis=-1)
-    #     phase = np.median(phase[:, 1:-1], axis=-1)
-
-    # # Cross spectral density
-    # csd = magnitude * np.exp(1j*phase)
-
     # Direct averaging much faster
     if average == 'mean':
         csd = np.mean(sp_frames, axis=-1)
@@ -163,9 +147,6 @@ def _welch(x, y, fs_hz: int, window_type: str = 'hann',
         n = sp_frames.shape[1] if sp_frames.shape[1] % 2 == 1 else \
             sp_frames.shape[1] - 1
         bias = np.sum((-1)**(n+1)/n)
-        # This is taken from scipy, it is somewhat different to the paper
-        # ii_2 = 2 * np.arange(1., (n-1) // 2 + 1)
-        # bias = 1 + np.sum(1. / (ii_2 + 1) - 1. / ii_2)
         csd /= bias
 
     # Weightning (with 2 because one-sided)
@@ -175,15 +156,10 @@ def _welch(x, y, fs_hz: int, window_type: str = 'hann',
         factor = 2 / (window @ window) / fs_hz
         # With this factor, energy can be regained by integrating the psd
         # while taking into account the frequency step
-        # =====================================
-        # This is not consistent with scipy or the reference paper but does
-        # arrive at the right energy when summing over the psd (without taking
-        # frequency step into account)
-        # factor = 2 / (window @ window) / window_length_samples
     else:
         factor = 1
 
-    # Zero frequency fix when detrending
+    # Zero frequency fix when detrending (especially useful for dB plotting)
     if detrend:
         csd[0] = csd[1]
 
@@ -350,8 +326,6 @@ def _stft(x: np.ndarray, fs_hz: int, window_length_samples: int = 2048,
     # Scaling
     if scaling:
         factor = np.sqrt(2 / np.sum(window)**2)
-        # factor = 2 / np.sum(window**2) / window_length_samples
-        # factor = 2 / np.sum(window)**2 / fs_hz * window_length_samples
     else:
         factor = 1
     stft *= factor
@@ -781,7 +755,7 @@ def _indexes_above_threshold_dbfs(time_vec: np.ndarray, threshold_dbfs: float,
     indexes_above = np.zeros_like(indexes_above_0).astype(bool)
 
     # Apply release and attack
-    for ind in range(len(indexes_above)):
+    for ind in np.arange(len(indexes_above)):
         # Attack after certain amount of samples surpass threshold
         ind_attack = 0 if ind-attack_samples < 0 else ind-attack_samples
         if np.all(indexes_above_0[ind_attack:ind]):
@@ -835,3 +809,51 @@ def _rms(x: np.ndarray) -> float:
         raise ValueError('Shape of array is not valid. Only 2D-Arrays ' +
                          'are valid')
     return np.sqrt(np.mean(x**2, axis=0))
+
+
+def _get_framed_signal(td: np.ndarray, window_length_samples: int,
+                       step_size: int, keep_last_frame: bool = True) \
+        -> np.ndarray:
+    """This method computes a framed version of a signal and returns it.
+
+    Parameters
+    ----------
+    td : `np.ndarray`
+        Signal with shape (time samples, channels).
+    window_length_samples : int
+        Window length in samples.
+    step_size : int
+        Step size (also called hop length) in samples.
+    keep_last_frame : bool, optional
+        When `True`, the last frame (probably with padded zeroes) is kept.
+        Otherwise, it is not returned and hence the signal is cropped.
+        Default: `True`.
+
+    Returns
+    -------
+    td_framed : `np.ndarray`
+        Framed signal with shape (time samples, frames, channels).
+
+    """
+    # Force casting to integers
+    if type(window_length_samples) != int:
+        window_length_samples = int(window_length_samples)
+    if type(step_size) != int:
+        step_size = int(step_size)
+
+    # Start Parameters
+    n_frames, padding_samp = \
+        _compute_number_frames(window_length_samples, step_size, td.shape[0])
+    td = _pad_trim(td, td.shape[0] + padding_samp)
+    td_framed = np.zeros((window_length_samples, n_frames, td.shape[1]),
+                         dtype='float')
+
+    # Create time frames
+    start = 0
+    for n in range(n_frames):
+        td_framed[:, n, :] = td[start:start+window_length_samples, :].copy()
+        start += step_size
+
+    if not keep_last_frame:
+        td_framed = td_framed[:, :-1, :]
+    return td_framed

@@ -12,11 +12,12 @@ This module contains functions that might be regarded as not very common use.
 
 """
 from .special import (cepstrum, log_mel_spectrogram, mel_filterbank,
-                      plot_waterfall)
+                      plot_waterfall, mfcc)
 
 __all__ = [
     'cepstrum',
     'log_mel_spectrogram',
     'mel_filterbank',
     'plot_waterfall',
+    'mfcc',
 ]

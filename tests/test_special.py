@@ -52,3 +52,11 @@ class TestSpecialModule():
             dsp.special.plot_waterfall(self.speech, dynamic_range_db=-10)
         dsp.special.plot_waterfall(
             self.speech, stft_parameters=dict(window_type=('chebwin', 40)))
+
+    def test_mfcc(self):
+        # Only functionality
+        t, f, s = self.speech.get_spectrogram()
+
+        mels, _ = dsp.special.mel_filterbank(f, [20, 10e3], n_bands=4)
+        t, mel, mf, fig, ax = dsp.special.mfcc(self.speech, mel_filters=mels)
+        t, mel, mf = dsp.special.mfcc(self.speech, generate_plot=False)
