@@ -203,12 +203,12 @@ class TestSignal():
         # Use parameters just like librosa for validation
         s.set_spectrogram_parameters(
             channel_number=0, window_length_samples=1024,
-            window_type='hann', overlap_percent=50, fft_length_samples=None,
+            window_type='hann', overlap_percent=50, fft_length_samples=4096,
             detrend=False, padding=False, scaling=False)
         t, f, stft = s.get_spectrogram()
         s.set_spectrogram_parameters(
             channel_number=0, window_length_samples=1024,
-            window_type='hann', overlap_percent=50, fft_length_samples=4096,
+            window_type='hann', overlap_percent=50, fft_length_samples=None,
             detrend=False, padding=False, scaling=False)
         t, f, stft = s.get_spectrogram()
 

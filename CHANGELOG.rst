@@ -27,6 +27,7 @@ Bugfix
 ~~~~~~~
 - plotting for the ``qmf`` Crossover is now possible without downsampling
 - Linkwitz-Riley crossovers plotting functions have been updated and corrected
+- corrected some tests
 
 Misc
 ~~~~~
