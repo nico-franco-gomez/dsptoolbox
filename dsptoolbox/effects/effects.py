@@ -1,4 +1,4 @@
-from dsptoolbox.classes import Signal, MultiBandSignal, Filter, FilterBank
+from dsptoolbox.classes import Signal, MultiBandSignal
 from dsptoolbox import activity_detector
 from dsptoolbox._standard import (_get_framed_signal,
                                   _reconstruct_framed_signal,
@@ -11,7 +11,6 @@ from ._effects import (
 from dsptoolbox.plots import general_plot
 
 from scipy.signal.windows import get_window
-from scipy.signal import convolve as scipy_convolve
 import numpy as np
 from warnings import warn
 
@@ -811,7 +810,6 @@ class Compressor(AudioEffect):
             'None is not a valid value'
 
     def set_advanced_parameters(self, knee_factor_db: float = 0,
-                                hold_time_ms: float = 0,
                                 pre_gain_db: float = 0,
                                 post_gain_db: float = 0,
                                 mix_percent: float = 100,
@@ -826,9 +824,6 @@ class Compressor(AudioEffect):
             The knee factor in dB changes the triggering of the compressor.
             A value of 0 is a hard knee while increasing it produces a smoother
             knee. Default: 0.
-        hold_time_ms : float, optional
-            Time to hold compression after compression has been triggered.
-            Default: 0.
         pre_gain_db : float, optional
             Pre-compression gain in dB. Default: 0.
         post_gain_db : float, optional
@@ -846,14 +841,14 @@ class Compressor(AudioEffect):
             the compressor when its values are `True`. It can only be a
             1D-array. It can be retrieved from another signal by using
             `dsptoolbox.activity_detector`, for instance. If its length is
-            different to that of the signal, it is padded or trimmed in the
-            end to match the signal length. Attack and release time are always
-            additioned to the vector. Default: `None`.
+            different to that of the signal, it is zero-padded or trimmed in
+            the end to match the signal length. Attack and release time are
+            always additioned to the vector. Default: `None`.
         downward_compression : bool, optional
             When `True`, the compressor acts as a downward compressor where
             signal above the threshold level gets attenuated. If `False`,
-            it acts as an upward compressor where the signal below the
-            threshold gets amplified. Default: `True`.
+            it acts as an upward compressor (expander) where the signal below
+            the threshold gets amplified. Default: `True`.
 
         Notes
         -----
@@ -868,10 +863,6 @@ class Compressor(AudioEffect):
         assert mix_percent > 0 and mix_percent <= 100, \
             'Mix percent must be in ]0, 100]'
         self.mix = mix_percent / 100
-
-        assert hold_time_ms >= 0, \
-            'Hold time must be 0 or above'
-        self.hold_time_ms = hold_time_ms
 
         self.pre_gain_db = pre_gain_db
         self.post_gain_db = post_gain_db
@@ -938,11 +929,10 @@ class Compressor(AudioEffect):
 
         attack_time_samples = int(self.attack_time_ms*1e-3 * fs_hz)
         release_time_samples = int(self.release_time_ms*1e-3 * fs_hz)
-        hold_time_samples = int(self.hold_time_ms*1e-3 * fs_hz)
 
         td = _compressor(td, self.threshold_dbfs, self.ratio,
                          self.knee_factor_db, attack_time_samples,
-                         hold_time_samples, release_time_samples, self.mix,
+                         release_time_samples, self.mix,
                          self.side_chain, self.downward_compression)
 
         # Restore original signal level
@@ -1259,24 +1249,23 @@ class DigitalDelay(AudioEffect):
     """This applies a basic digital delay to a signal.
 
     """
-    def __init__(self, delay_time_ms: float = 150, feedback: int = 10):
+    def __init__(self, delay_time_ms: float = 300, feedback: float = 0.1):
         """Constructor for a digital delay effect.
 
         Parameters
         ----------
         delay_time_ms : float, optional
             Delay time in milliseconds.
-        feedback : int, optional
-            Amount of repetitions to be generated. The bigger the feedback,
-            the more extreme the effect.
+        feedback : float, optional
+            This controls the amount of repetitions to be generated.
+            The bigger the feedback, the more extreme the effect. It is
+            constrained to the range [0, 1[. Default: 0.1.
 
         Notes
         -----
         - Peak levels of each channel are always kept after applying the
           effect.
         - The resulting signal is always longer than the input.
-        - This is a naive implementation with a long filter. A feedback delay
-          network implementation could be done in the future.
 
         """
         super().__init__('Digital Delay')
@@ -1296,7 +1285,7 @@ class DigitalDelay(AudioEffect):
         self.feedback = feedback
 
     def set_parameters(self, delay_time_ms: float = None,
-                       feedback: int = None):
+                       feedback: float = None):
         """Set the parameters for the tremolo effect. Passing `None` in this
         function leaves them unchanged.
 
@@ -1304,59 +1293,42 @@ class DigitalDelay(AudioEffect):
         ----------
         delay_time_ms : float, optional
             Delay time in milliseconds.
-        feedback : int, optional
-            Amount of repetitions to be generated. The bigger the feedback,
-            the more extreme the effect.
+        feedback : float, optional
+            This controls the amount of repetitions to be generated.
+            The bigger the feedback, the more extreme the effect. It is
+            constrained to the range [0, 1[. Default: 0.1.
 
         """
         self.__set_parameters(delay_time_ms, feedback)
         assert self.delay_ms is not None
         assert self.feedback is not None
 
-    def set_advanced_parameters(self, type_of_decay: str = 'exp',
-                                decay_parameter: float = 0.5,
-                                prefilters: Filter | FilterBank = None):
+    def set_advanced_parameters(self, saturation: str = None):
         """This function sets the advanced parameters for the delay effect.
 
         Parameters
         ----------
-        type_of_decay : str, optional
-            This defines the type of decay in amplitude that each repetition
-            has. Choose from `'exp'` (exponential), `'lin'` (linear) or `'log'`
-            (logarithmic). Default: `'exp'`.
-        decay_parameter : float, optional
-            This additional decay parameter allows for fine-tuning the decay
-            amplitudes. The larger it is, the faster the signal repetitions
-            go to 0. Low values can lead to strong effect. When using
-            logarithmic decay type, it is advisable to pass large values, e.g.
-            1000 as the decay parameter. Default: 0.5.
-        prefilters : `Filter` or `FilterBank`, optional
-            This applies a filter or a filter bank (sequentially) to the
-            delayed part of the signal. Pass `None` to ignore. Default: `None`.
+        saturation : str, optional
+            If `None`, a linear digital delay line is applied. If `'tape'`,
+            some arctan saturation is added to the delayed signal. Pass
+            a callable if a custom saturation should be applied. It must
+            take in 1 float and return 1 float in order to be valid.
+            Default: `None`.
 
         """
-        type_of_decay = type_of_decay.lower()
-        assert type_of_decay in ('exp', 'lin', 'log'), \
-            'Type of decay is not supported. Use exp, lin or log.'
-        assert decay_parameter > 0, \
-            'Decay parameter should be above zero'
-        if type_of_decay == 'exp':
+        if saturation is None:
+            saturation = 'digital'
+        saturation = saturation.lower()
+        if saturation == 'digital':
             def func(x):
-                return 1*np.exp(-np.arange(x)*decay_parameter)
-        elif type_of_decay == 'lin':
+                return x
+        elif saturation == 'tape':
             def func(x):
-                return np.clip(1 - np.arange(x)*decay_parameter/x, 0, None)
+                return 0.5*np.arctan(2*x)
         else:
             def func(x):
-                t = (np.log10(np.arange(x)*decay_parameter/x+1)+1)[::-1]
-                t /= t[0]
-                return t
-        self.decay_function = func
-
-        if prefilters is not None:
-            assert type(prefilters) in (Filter, FilterBank), \
-                'Prefilters can only be of type Filter or FilterBank'
-        self.prefilter = prefilters
+                return saturation(x)
+        self.saturation_func = func
 
     def plot_delay(self):
         """Plots the delay decay with the selected parameters.
@@ -1392,32 +1364,19 @@ class DigitalDelay(AudioEffect):
         delay_samples = np.round(
             self.delay_ms*1e-3*signal.sampling_rate_hz).astype(int)
 
-        inds = np.arange(self.feedback) * delay_samples
-        coefficients = np.zeros((inds[-1]+1, 1))
-        coefficients[inds] = self.decay_function(self.feedback)[..., None]
-
         td = signal.time_data
         self._save_peak_values(td)
 
-        if self.prefilter is None:
-            new_td = scipy_convolve(td, coefficients)
-        else:
-            # Apply direct signal sepparately
-            coefficients[0] = 0
+        # Pad signal in the end so that some repetitions are added
+        padding = int(delay_samples*(1+self.feedback*15))
+        td = np.append(td, np.zeros((padding, td.shape[1])), axis=0)
 
-            if type(self.prefilter) == Filter:
-                signal2 = self.prefilter.filter_signal(signal)
-            else:
-                signal2 = self.prefilter.filter_signal(
-                    signal, mode='sequential')
+        for i in np.arange(delay_samples, len(td)):
+            td[i, :] = td[i, :] + \
+                self.feedback * self.saturation_func(td[i-delay_samples, :])
 
-            # Delayed signal
-            new_td = scipy_convolve(signal2.time_data, coefficients)
-            # Direct signal
-            new_td[:len(td), :] += td
-
-        new_td = self._restore_peak_values(new_td)
+        td = self._restore_peak_values(td)
 
         delayed_signal = signal.copy()
-        delayed_signal.time_data = new_td
+        delayed_signal.time_data = td
         return delayed_signal

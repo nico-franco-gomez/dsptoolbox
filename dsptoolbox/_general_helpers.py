@@ -764,3 +764,33 @@ def _euclidean_distance_matrix(x: np.ndarray, y: np.ndarray):
     return np.sqrt(np.sum(x**2, axis=1, keepdims=True) +
                    np.sum(y.T**2, axis=0, keepdims=True) -
                    2 * x @ y.T)
+
+
+def _get_smoothing_factor_ema(relaxation_time_s: float, sampling_rate_hz: int):
+    """This computes the smoothing factor needed for a single-pole IIR,
+    or exponential moving averager. The returned value (alpha) should be used::
+    for as follows
+
+        y[n] = alpha * x[n] + (1-alpha)*y[n-1]
+
+    Parameters
+    ----------
+    relaxation_time_s : float
+        Time for the step response to stabilize around the given value
+        (with 99% accuracy).
+    sampling_rate_hz : int
+        Sampling rate to be used.
+
+    Returns
+    -------
+    alpha : float
+        Smoothing value for the
+
+    Notes
+    -----
+    - The formula coincides with the one presented in
+      https://en.wikipedia.org/wiki/Exponential_smoothing, but it uses a factor
+      5.
+
+    """
+    return 1 - np.exp(-5/relaxation_time_s/sampling_rate_hz)

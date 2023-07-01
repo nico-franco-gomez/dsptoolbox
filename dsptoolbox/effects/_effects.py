@@ -1,7 +1,7 @@
 """
 Backend for the effects module
 """
-from dsptoolbox._general_helpers import _pad_trim
+from dsptoolbox._general_helpers import _pad_trim, _get_smoothing_factor_ema
 from dsptoolbox.plots import general_plot
 import numpy as np
 # import matplotlib.pyplot as plt
@@ -63,7 +63,7 @@ def _clean_signal(inp: np.ndarray,
 
 # ========= Compressor ========================================================
 def _compressor(x: np.ndarray, threshold_db: float, ratio: float,
-                knee_factor_db: float, attack_samples: int, hold_samples: int,
+                knee_factor_db: float, attack_samples: int,
                 release_samples: int, mix_compressed: float,
                 side_chain: np.ndarray, downward_compression: bool) \
         -> np.ndarray:
@@ -81,8 +81,6 @@ def _compressor(x: np.ndarray, threshold_db: float, ratio: float,
         Knee width in dB.
     attack_samples : int
         Time of attack in samples.
-    hold_samples : int
-        Time of hold in samples.
     release_samples : int
         Time of release in samples.
     mix_compressed : float
@@ -108,16 +106,6 @@ def _compressor(x: np.ndarray, threshold_db: float, ratio: float,
         x_ = x_[..., None]
         single_channel = True
 
-    # Save signs
-    signs = np.sign(x_)
-
-    # Absolute values
-    x_abs = np.abs(x_)
-
-    # Save tiny values
-    tiny_number = 1e-60
-    tiny_values = x_abs < tiny_number
-
     # Get function
     compression_func = _get_knee_func(threshold_db, ratio, knee_factor_db,
                                       downward_compression)
@@ -127,35 +115,40 @@ def _compressor(x: np.ndarray, threshold_db: float, ratio: float,
         if len(side_chain) != len(x):
             side_chain = _pad_trim(side_chain.astype(int), len(x)).astype(bool)
 
+    # RMS detector
+    attack_coeff = _get_smoothing_factor_ema(attack_samples, 1)
+    release_coeff = _get_smoothing_factor_ema(release_samples, 1)
+
     # Iterate process over channels
     for n in range(x_.shape[1]):
-        # Convert to logarithmic space
-        x_db = 20*np.log10(np.clip(x_abs[:, n], tiny_number, None))
-        # Get samples
-        attack, hold, release = _find_attack_hold_release(
-            x_db, threshold_db, attack_samples, hold_samples, release_samples,
-            side_chain, downward_compression)
-        # Compress in logarithmic space
-        x_db_compressed = x_db.copy()
-        x_db_compressed = compression_func(x_db)
-        # Back to linear representation
-        x_output = 10**(x_db/20)
-        x_compressed = 10**(x_db_compressed/20)
-        # Replace hold samples for compressed version
-        x_output[hold] = x_compressed[hold]
-        # Cross-fade during attack and release times
-        _cross_fade_samples(x_output, x_compressed, x_output,
-                            attack, attack_samples, type_of_cross='log')
-        _cross_fade_samples(x_output, x_output, x_compressed,
-                            release, release_samples, type_of_cross='log')
-        x_[:, n] = x_output * mix_compressed + \
-            x_[:, n] * (1 - mix_compressed)
+        momentary_rms = 0
+        momentary_gain = 1
+        for i in np.arange(len(x)):
+            # RMS Detection – if peaks, directly take rms
+            samp = x[i]**2
+            if samp < momentary_rms:
+                coeff = attack_coeff
+            else:
+                coeff = 1
+            coeff = 0.01
+            momentary_rms = coeff*samp + (1-coeff)*momentary_rms
 
-    # Restore signs
-    x_ *= signs
+            # Amount of required compression
+            samp_db = 10*np.log10(samp)
+            samp_db_comp = compression_func(samp_db)
+            np.nan_to_num(samp_db, False, 0)
+            np.nan_to_num(samp_db_comp, False, 0)
+            gain_factor = 10**((samp_db_comp-samp_db)/20)
 
-    # Restore tiny values
-    x_[tiny_values] = x[tiny_values]
+            # Gain depending on attack and release
+            if gain_factor > momentary_gain:
+                coeff = attack_coeff
+            else:
+                coeff = release_coeff
+            momentary_gain = coeff*gain_factor + (1-coeff)*momentary_gain
+
+            # Apply gain
+            x_[i, n] *= momentary_gain
 
     if single_channel:
         x_ = x_.squeeze()
@@ -175,7 +168,15 @@ def _get_knee_func(threshold_db: float, ratio: float, knee_factor_db: float,
     W = knee_factor_db
 
     if downward_compression:
-        def compress_in_db(x: np.ndarray):
+        def compress_in_db(x: np.ndarray | float):
+            if type(x) == float:
+                if (x - T < - W / 2):
+                    return x
+                elif (np.abs(x - T) <= W / 2):
+                    return x - (1/R - 1)*(x-T-W/2)**2 / 2 / W
+                elif (x - T > W / 2):
+                    return T + (x - T) / R
+
             y = np.zeros_like(x)
             first_section = x - T < -W/2
             y[first_section] = x[first_section]
@@ -188,7 +189,15 @@ def _get_knee_func(threshold_db: float, ratio: float, knee_factor_db: float,
             y[third_section] = T + (x[third_section] - T) / R
             return y
     else:
-        def compress_in_db(x: np.ndarray):
+        def compress_in_db(x: np.ndarray | float):
+            if type(x) == float:
+                if (x - T < - W / 2):
+                    return T + (x - T) / R
+                elif (np.abs(x - T) <= W / 2):
+                    return x - (1/R - 1)*(x-T-W/2)**2 / 2 / W
+                elif (x - T > W / 2):
+                    return x
+
             y = np.zeros_like(x)
             first_section = x - T < - W / 2
             y[first_section] = T + (x[first_section] - T) / R
