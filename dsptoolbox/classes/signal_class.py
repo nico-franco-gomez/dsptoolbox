@@ -808,7 +808,8 @@ class Signal():
     # ======== Plots ==========================================================
     def plot_magnitude(self, range_hz=[20, 20e3], normalize: str = '1k',
                        range_db=None, smoothe: int = 0,
-                       show_info_box: bool = False) -> tuple[Figure, Axes]:
+                       show_info_box: bool = False, scale: bool = True) \
+            -> tuple[Figure, Axes]:
         """Plots magnitude spectrum.
         Change parameters of spectrum with set_spectrum_parameters.
 
@@ -833,6 +834,12 @@ class Signal():
             Plots a info box regarding spectrum parameters and plot parameters.
             If it is str, it overwrites the standard message.
             Default: `False`.
+        scale : bool, optional
+            When `True`, spectrum gets scaled (divided) by double the length
+            of the time signal. This ensures that the energy of the time signal
+            is distributed in the whole spectrum. This only applies when
+            `method = 'standard'` and no normalization is applied.
+            Default: `True`.
 
         Returns
         -------
@@ -851,7 +858,7 @@ class Signal():
         """
         f, sp = self.get_spectrum()
         if self._spectrum_parameters['method'] == 'standard' \
-                and normalize is None:
+                and normalize is None and scale:
             sp = sp/self.time_data.shape[0]*2
         f, mag_db = _get_normalized_spectrum(
             f=f,
