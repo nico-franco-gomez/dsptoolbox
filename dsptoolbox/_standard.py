@@ -543,8 +543,8 @@ def _kaiser_window_beta(A):
 
 
 def _indices_above_threshold_dbfs(time_vec: np.ndarray, threshold_dbfs: float,
-                                  attack_samples: int, release_samples: int,
-                                  hold_samples: int = 1,
+                                  attack_smoothing_coeff: int,
+                                  release_smoothing_coeff: int,
                                   normalize: bool = True):
     """Returns indices with power above a given power threshold (in dBFS) in a
     time series. time_vec can be normalized to peak value prior to computation.
@@ -556,14 +556,10 @@ def _indices_above_threshold_dbfs(time_vec: np.ndarray, threshold_dbfs: float,
         take one channel.
     threshold_dbfs : float
         Threshold in dBFS to be regarded for activation.
-    attack_samples : int
-        Attack time in samples.
-    release_samples : int
-        Number of samples representing release time after signal has decayed
-        below power threshold. It must be at least one.
-    hold_samples : int, optional
-        Number of samples that must be above the power threshold in order to
-        trigger activation. It must be at least one. Default: 1.
+    attack_smoothing_coeff : int
+        Coefficient for attack smoothing for level computation.
+    release_smoothing_coeff : int
+        Coefficient for release smoothing for level computation.
     normalize : bool, optional
         When `True`, signal is normalized such that the threshold is relative
         to peak level and not absolute. Default: `True`.
@@ -579,36 +575,26 @@ def _indices_above_threshold_dbfs(time_vec: np.ndarray, threshold_dbfs: float,
     assert time_vec.ndim == 1, \
         'Function is implemented for 1D-arrays only'
 
-    assert hold_samples >= 1, \
-        'Hold samples must be at least one.'
-
-    # Release samples must be at least one
-    if release_samples < 1:
-        release_samples = 1
-
-    # Power in dB
-    time_power = 20*np.log10(np.clip(np.abs(time_vec), a_min=1e-25,
-                                     a_max=None))
-
     # Normalization
     if normalize:
-        time_power -= time_power.max()
+        time_vec /= np.abs(time_vec).max()
 
-    # All indices above threshold
-    indices_above_0 = time_power > threshold_dbfs
-    indices_above = np.zeros_like(indices_above_0).astype(bool)
-    total_length = len(indices_above)
+    # Power in dB
+    time_power = time_vec.squeeze()**2
 
-    # Apply release and attack
-    for ind in np.arange(1, total_length):
-        # Attack after certain amount of samples surpass threshold
-        ind_hold = max(0, ind-hold_samples)
-        if np.all(indices_above_0[ind_hold:ind]):
-            # Clip to maximum length
-            start = min(ind+attack_samples, total_length)
-            end = min(ind+attack_samples+release_samples, total_length+1)
-            # Activate
-            indices_above[start:end] = True
+    momentary_gain = np.zeros(len(time_power))
+    for i in np.arange(1, len(time_power)):
+        if momentary_gain[i] > time_power[i-1]:
+            coeff = attack_smoothing_coeff
+        elif momentary_gain[i] < time_power[i-1]:
+            coeff = release_smoothing_coeff
+        else:
+            coeff = 0
+        momentary_gain[i] = coeff*time_power[i] + (1-coeff)*momentary_gain[i-1]
+    momentary_gain = 10*np.log10(momentary_gain)
+
+    # Get Indices above threshold
+    indices_above = momentary_gain > threshold_dbfs
     return indices_above
 
 

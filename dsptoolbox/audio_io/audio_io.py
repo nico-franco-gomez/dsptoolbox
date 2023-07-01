@@ -221,7 +221,7 @@ def play(signal: Signal, duration_seconds: float = None,
         'Play channel has to be 1 or more'
     if duration_seconds is not None:
         assert duration_seconds > 0, 'Duration must be positive'
-        duration_samples = duration_seconds * signal.sampling_rate_hz
+        duration_samples = int(duration_seconds * signal.sampling_rate_hz)
     else:
         duration_seconds = signal.time_data.shape[0] / signal.sampling_rate_hz
         duration_samples = signal.time_data.shape[0]

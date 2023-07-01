@@ -23,7 +23,8 @@ from dsptoolbox._standard import (_latency,
                                   _indices_above_threshold_dbfs,
                                   _detrend, _rms)
 from dsptoolbox._general_helpers import (
-    _pad_trim, _normalize, _fade, _check_format_in_path)
+    _pad_trim, _normalize, _fade, _check_format_in_path,
+    _get_smoothing_factor_ema)
 from dsptoolbox.transfer_functions import (
     min_phase_from_mag, lin_phase_from_mag)
 
@@ -790,8 +791,8 @@ def fractional_delay(sig: Signal | MultiBandSignal, delay_seconds: float,
 
 def activity_detector(signal: Signal, threshold_dbfs: float = -20,
                       channel: int = 0, relative_to_peak: bool = True,
-                      pre_filter: Filter = None, attack_time_ms: float = 0,
-                      hold_time_ms: float = 0.1, release_time_ms: float = 25) \
+                      pre_filter: Filter = None, attack_time_ms: float = 1,
+                      release_time_ms: float = 25) \
         -> tuple[Signal, dict]:
     """This is a simple signal activity detector that uses a power threshold.
     It can be used relative to the signal's peak value or absolute. It is only
@@ -824,13 +825,7 @@ def activity_detector(signal: Signal, threshold_dbfs: float = -20,
         Default: `None`.
     attack_time_ms : float, optional
         Attack time (in ms). It corresponds to a lag time for detecting
-        activity after surpassing the threshold. Pass 0 to trigger immediately.
-        Default: 0.
-    hold_time_ms : float, optional
-        Hold time (in ms). It corresponds to the time that the signal has
-        to surpass the power threshold in order to be regarded as valid
-        activity. Setting it to 0 might cause spurious peaks to be regarded as
-        activity. Default: 0.1.
+        activity after surpassing the threshold. Default: 1.
     release_time_ms : float, optional
         Release time (in ms) for activity detector after signal has fallen
         below power threshold. Pass 0 to release immediately. Default: 25.
@@ -858,8 +853,6 @@ def activity_detector(signal: Signal, threshold_dbfs: float = -20,
         'Release time must be positive'
     assert attack_time_ms >= 0, \
         'Attack time must be positive'
-    assert hold_time_ms >= 0, \
-        'Hold time must be positive'
 
     # Get channel
     signal = signal.get_channels(channel)
@@ -873,17 +866,16 @@ def activity_detector(signal: Signal, threshold_dbfs: float = -20,
         signal_filtered = signal
 
     # Release samples
-    release_time_samples = int(release_time_ms*signal.sampling_rate_hz*1e-3)
-    hold_time_samples = int(hold_time_ms*signal.sampling_rate_hz*1e-3)
-    attack_time_samples = int(attack_time_ms*signal.sampling_rate_hz*1e-3)
-    hold_time_samples = max(1, hold_time_samples)
+    attack_coeff = _get_smoothing_factor_ema(
+        attack_time_ms/1e3, signal.sampling_rate_hz)
+    release_coeff = _get_smoothing_factor_ema(
+        release_time_ms/1e3, signal.sampling_rate_hz)
 
     # Get indices
     signal_indices = _indices_above_threshold_dbfs(
         signal_filtered.time_data, threshold_dbfs=threshold_dbfs,
-        attack_samples=attack_time_samples,
-        release_samples=release_time_samples,
-        hold_samples=hold_time_samples, normalize=relative_to_peak)
+        attack_smoothing_coeff=attack_coeff,
+        release_smoothing_coeff=release_coeff, normalize=relative_to_peak)
     noise_indices = ~signal_indices
 
     # Separate signals
