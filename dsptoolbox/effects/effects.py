@@ -1326,6 +1326,9 @@ class DigitalDelay(AudioEffect):
             def func(x):
                 return 0.5*np.arctan(2*x)
         else:
+            assert type(saturation(1.)) == float, \
+                'Saturation function might not be valid'
+
             def func(x):
                 return saturation(x)
         self.saturation_func = func
@@ -1345,14 +1348,21 @@ class DigitalDelay(AudioEffect):
         delay_samples = np.round(
             self.delay_ms*1e-3*fs).astype(int)
 
-        inds = np.arange(self.feedback) * delay_samples
-        coefficients = np.zeros((inds[-1]+1, 1))
-        coefficients[inds] = self.decay_function(self.feedback)[..., None]
+        imp = np.zeros(delay_samples*10)
+        imp[0] = 1
 
-        x = np.arange(len(coefficients))/fs * 1e3
+        for i in np.arange(delay_samples, len(imp)):
+            imp[i] = imp[i] + \
+                self.feedback * self.saturation_func(imp[i-delay_samples])
+
+        imp = 20*np.log10(np.clip(np.abs(imp), a_min=1e-15, a_max=None))
+
+        x = np.arange(len(imp))/fs * 1e3
         fig, ax = general_plot(
-            x, coefficients, log=False, xlabel='Time / ms', ylabel='Amplitude',
+            x, imp[..., None], log=False, xlabel='Time / ms',
+            ylabel='Amplitude [dB]',
             returns=True)
+        ax.set_ylim([-100, 1])
         ax.set_title('Delay – Repetitions decay')
         fig.tight_layout()
         return fig, ax
