@@ -739,3 +739,21 @@ def _get_next_power_2(number, mode: str = 'closest') -> int:
     elif mode == 'ceil':
         p = np.ceil(p).astype(int)
     return int(2**p)
+
+
+def _wrap_phase(phase_vector: np.ndarray) -> np.ndarray:
+    """Wraps phase between [-np.pi, np.pi[ after it has been unwrapped.
+    This works for 1D and 2D arrays, more dimensions have not been tested.
+
+    Parameters
+    ----------
+    phase_vector : `np.ndarray`
+        Phase vector for which to wrap the phase.
+
+    Returns
+    -------
+    `np.ndarray`
+        Wrapped phase vector.
+
+    """
+    return (phase_vector + np.pi) % (2 * np.pi) - np.pi
