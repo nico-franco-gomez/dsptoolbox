@@ -227,6 +227,8 @@ def resample(sig: Signal, desired_sampling_rate_hz: int) -> Signal:
         Resampled signal.
 
     """
+    if sig.sampling_rate_hz == desired_sampling_rate_hz:
+        return sig.copy()
     ratio = Fraction(
         numerator=desired_sampling_rate_hz, denominator=sig.sampling_rate_hz)
     u, d = ratio.as_integer_ratio()

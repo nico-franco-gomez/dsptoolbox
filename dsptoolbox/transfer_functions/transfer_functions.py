@@ -120,10 +120,9 @@ def spectral_deconvolve(num: Signal, denum: Signal,
 
 
 def window_ir(signal: Signal, constant_percentage=0.75, exp2_trim: int = 13,
-              window_type='hann', at_start: bool = True) -> Signal:
-    """Windows an IR in time while trimming or padding it to an expected
-    length. One half of the window is used for the start and the other for
-    the end.
+              window_type='hann', at_start: bool = True) \
+        -> tuple[Signal, np.ndarray]:
+    """Windows an IR with trimming and selection of constant valued length.
 
     Parameters
     ----------
@@ -142,13 +141,16 @@ def window_ir(signal: Signal, constant_percentage=0.75, exp2_trim: int = 13,
         others. Pass a tuple with window type and extra parameters if needed.
         Default: `hann`.
     at_start: bool, optional
-        When `True`, the start is windowed as well as the end. When `False`,
-        only the end is windowed. Default: `True`.
+        Windows the start with a rising window as well as the end.
+        Default: `True`.
 
     Returns
     -------
     new_sig : `Signal`
         Windowed signal. The used window is also saved under `new_sig.window`.
+    start_positions_samples : `np.ndarray`
+        This array contains the position index of the start of the IR in
+        each channel of the original IR.
 
     """
     assert signal.signal_type in ('rir', 'ir'), \
@@ -158,10 +160,11 @@ def window_ir(signal: Signal, constant_percentage=0.75, exp2_trim: int = 13,
     else:
         total_length = len(signal.time_data)
     new_time_data = np.zeros((total_length, signal.number_of_channels))
+    start_positions_samples = np.zeros(signal.number_of_channels, dtype=int)
 
     window = np.zeros((total_length, signal.number_of_channels))
     for n in range(signal.number_of_channels):
-        new_time_data[:, n], window[:, n] = \
+        new_time_data[:, n], window[:, n], start_positions_samples[n] = \
             _window_this_ir(
                 signal.time_data[:, n],
                 total_length,
@@ -174,13 +177,13 @@ def window_ir(signal: Signal, constant_percentage=0.75, exp2_trim: int = 13,
         None, new_time_data, signal.sampling_rate_hz,
         signal_type=signal.signal_type)
     new_sig.set_window(window)
-    return new_sig
+    return new_sig, start_positions_samples
 
 
 def compute_transfer_function(output: Signal, input: Signal, mode='h2',
                               window_length_samples: int = 1024,
                               spectrum_parameters: dict = None) -> \
-        Signal:
+        tuple[Signal, np.ndarray]:
     """Gets transfer function H1, H2 or H3 (for stochastic signals).
     H1: for noise in the output signal. `Gxy/Gxx`.
     H2: for noise in the input signal. `Gyy/Gyx`.
