@@ -1309,7 +1309,7 @@ class DigitalDelay(AudioEffect):
         Parameters
         ----------
         saturation : str, optional
-            If `None`, a linear digital delay line is applied. If `'tape'`,
+            If `None`, a linear digital delay line is applied. If `'arctan'`,
             some arctan saturation is added to the delayed signal. Pass
             a callable if a custom saturation should be applied. It must
             take in 1 float and return 1 float in order to be valid.
@@ -1322,7 +1322,7 @@ class DigitalDelay(AudioEffect):
         if saturation == 'digital':
             def func(x):
                 return x
-        elif saturation == 'tape':
+        elif saturation == 'arctan':
             def func(x):
                 return 0.5*np.arctan(2*x)
         else:
