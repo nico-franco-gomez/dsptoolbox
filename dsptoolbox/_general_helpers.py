@@ -793,3 +793,21 @@ def _get_smoothing_factor_ema(relaxation_time_s: float, sampling_rate_hz: int):
 
     """
     return 1 - np.exp(-5/relaxation_time_s/sampling_rate_hz)
+
+
+def _wrap_phase(phase_vector: np.ndarray) -> np.ndarray:
+    """Wraps phase between [-np.pi, np.pi[ after it has been unwrapped.
+    This works for 1D and 2D arrays, more dimensions have not been tested.
+
+    Parameters
+    ----------
+    phase_vector : `np.ndarray`
+        Phase vector for which to wrap the phase.
+
+    Returns
+    -------
+    `np.ndarray`
+        Wrapped phase vector.
+
+    """
+    return (phase_vector + np.pi) % (2 * np.pi) - np.pi

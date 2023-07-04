@@ -14,6 +14,21 @@ adheres to `Semantic Versioning <http://semver.org/spec/v2.0.0.html>`_.
 - Validation for results from tests in every module (so far many tests are
   only regarding functionality)
 
+`0.2.6 <https://pypi.org/project/dsptoolbox/0.2.6>`_ - 
+---------------------
+
+Added
+~~~~~~
+- 
+
+Bugfix
+~~~~~~~
+- 
+
+Misc
+~~~~~
+-
+
 `0.2.5 <https://pypi.org/project/dsptoolbox/0.2.5>`_ - 
 ---------------------
 

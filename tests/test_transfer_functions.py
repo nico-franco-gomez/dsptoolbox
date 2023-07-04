@@ -92,7 +92,7 @@ class TestTransferFunctionsModule():
         ir = dsp.transfer_functions.spectral_deconvolve(
             self.y_st, self.x, mode='regularized', start_stop_hz=None,
             threshold_db=-30, padding=False, keep_original_length=False)
-        ir = dsp.transfer_functions.window_ir(
+        ir, _ = dsp.transfer_functions.window_ir(
             ir, window_type='hann', exp2_trim=12, at_start=True)
         # Check only that some result is produced, validity should be checked
         # somewhere else
@@ -106,7 +106,7 @@ class TestTransferFunctionsModule():
         ir = dsp.transfer_functions.spectral_deconvolve(
             self.y_st, self.x, mode='regularized', start_stop_hz=None,
             threshold_db=-30, padding=False, keep_original_length=False)
-        ir = dsp.transfer_functions.window_ir(
+        ir, _ = dsp.transfer_functions.window_ir(
             ir, window_type='hann', exp2_trim=12, at_start=True)
         # Check only that some result is produced, validity should be checked
         # somewhere else
@@ -122,7 +122,7 @@ class TestTransferFunctionsModule():
         ir = dsp.transfer_functions.spectral_deconvolve(
             self.y_st, self.x, mode='regularized', start_stop_hz=None,
             threshold_db=-30, padding=False, keep_original_length=False)
-        ir = dsp.transfer_functions.window_ir(
+        ir, _ = dsp.transfer_functions.window_ir(
             ir, window_type='hann', exp2_trim=12, at_start=True)
         # Check only that some result is produced, validity should be checked
         # somewhere else
@@ -138,7 +138,7 @@ class TestTransferFunctionsModule():
         ir = dsp.transfer_functions.spectral_deconvolve(
             self.y_st, self.x, mode='regularized', start_stop_hz=None,
             threshold_db=-30, padding=False, keep_original_length=False)
-        ir = dsp.transfer_functions.window_ir(
+        ir, _ = dsp.transfer_functions.window_ir(
             ir, window_type='hann', exp2_trim=12, at_start=True)
         # Check only that some result is produced, validity should be checked
         # somewhere else

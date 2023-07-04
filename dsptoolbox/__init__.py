@@ -14,7 +14,6 @@ from . import filterbanks
 from . import special
 from . import audio_io
 from . import beamforming
-from . import effects
 
 __all__ = [
     # Basic classes
@@ -29,7 +28,7 @@ __all__ = [
 
     # Modules
     'transfer_functions', 'distances', 'room_acoustics', 'plots', 'generators',
-    'filterbanks', 'special', 'audio_io', 'beamforming', 'effects',
+    'filterbanks', 'special', 'audio_io', 'beamforming'
 ]
 
-__version__ = '0.2.5'
+__version__ = '0.2.6'
