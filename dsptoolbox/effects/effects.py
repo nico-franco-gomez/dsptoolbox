@@ -131,7 +131,7 @@ class SpectralSubtractor(AudioEffect):
     def __init__(self, adaptive_mode: bool = True,
                  threshold_rms_dbfs: float = -40,
                  block_length_s: float = 0.1,
-                 spectrum_to_subtract: np.ndarray = False):
+                 spectrum_to_subtract: np.ndarray | bool = False):
         """Constructor for a spectral subtractor denoising effect. More
         parameters can be passed using the method `set_advanced_parameters`.
 
@@ -154,12 +154,13 @@ class SpectralSubtractor(AudioEffect):
             blocks of the signal. The real block length in samples is always
             clipped to the closest power of 2 for efficiency of the FFT.
             Default: 0.1.
-        spectrum_to_subtract : np.ndarray, optional
+        spectrum_to_subtract : np.ndarray or `False`, optional
             If a spectrum is passed, it is used as the one to subtract and
             all other parameters are ignored. This should be the result of the
             squared magnitude of the FFT without any scaling in order to avoid
             scaling discrepancies. It should be only the spectrum corresponding
-            to the positive frequencies (including 0). Default: `False`.
+            to the positive frequencies (including 0). Pass `False` to ignore.
+            Default: `False`.
 
         Methods
         -------
@@ -217,7 +218,7 @@ class SpectralSubtractor(AudioEffect):
             noise_forgetting_factor: float = 0.9,
             subtraction_factor: float = 2,
             subtraction_exponent: float = 2,
-            ad_hold_time_ms: float = 0.5,
+            ad_attack_time_ms: float = 0.5,
             ad_release_time_ms: float = 30):
         """This allows for setting up the advanced parameters of the spectral
         subtraction.
@@ -243,7 +244,7 @@ class SpectralSubtractor(AudioEffect):
             are scaled during the subtraction. 2 means it is a power
             subtraction and 1 is an amplitude subtraction. Other values are
             also possible. Default: 2.
-        ad_hold_time_ms : float, optional
+        ad_attack_time_ms : float, optional
             Attack time in ms for the activity detector (static mode).
             Default: 0.9.
         ad_release_time_ms : float, optional
@@ -278,7 +279,7 @@ class SpectralSubtractor(AudioEffect):
                 - subtraction_factor
                 - subtraction_exponent
                 - maximum_amplification_db
-                - ad_hold_time_ms
+                - ad_attack_time_ms
                 - ad_release_time_ms
 
         """
@@ -302,9 +303,9 @@ class SpectralSubtractor(AudioEffect):
         self.subtraction_exponent = subtraction_exponent
 
         # === Static Mode
-        assert ad_hold_time_ms >= 0, \
+        assert ad_attack_time_ms >= 0, \
             'Hold time for activity detector must be 0 or above'
-        self.ad_hold_time_ms = ad_hold_time_ms
+        self.ad_attack_time_ms = ad_attack_time_ms
 
         assert ad_release_time_ms >= 0, \
             'Release time for activity detector must be 0 or above'
@@ -313,7 +314,7 @@ class SpectralSubtractor(AudioEffect):
     def set_parameters(self, adaptive_mode: bool = None,
                        threshold_rms_dbfs: float = None,
                        block_length_s: float = None,
-                       spectrum_to_subtract: np.ndarray = None):
+                       spectrum_to_subtract: np.ndarray = False):
         """Sets the audio effects parameters. Pass `None` to leave the
         previously selected value for each parameter unchanged.
 
@@ -341,7 +342,8 @@ class SpectralSubtractor(AudioEffect):
             all other parameters are ignored. This should be the result of the
             squared magnitude of the FFT without any scaling in order to avoid
             scaling discrepancies. It should be only the spectrum corresponding
-            to the positive frequencies (including 0). Default: `None`.
+            to the positive frequencies (including 0). Pass `False` to ignore.
+            Default: `False`.
 
         """
         self.__set_parameters(
@@ -357,7 +359,7 @@ class SpectralSubtractor(AudioEffect):
         """Internal method to compute the window and step size in samples.
 
         """
-        if self.spectrum_to_subtract is None:
+        if not self.spectrum_to_subtract:
             self.window_length = _get_next_power_2(
                 self.block_length_s*sampling_rate_hz)
         else:
@@ -371,10 +373,13 @@ class SpectralSubtractor(AudioEffect):
         """Internal method to trigger the effect on a given signal.
 
         """
+        self._save_peak_values(signal.time_data)
         if self.adaptive_mode:
-            return self._apply_adaptive_mode(signal)
+            out = self._apply_adaptive_mode(signal)
         else:
-            return self._apply_offline(signal)
+            out = self._apply_offline(signal)
+        out.time_data = self._restore_peak_values(out.time_data)
+        return out
 
     def _apply_offline(self, signal: Signal) -> Signal:
         """Spectral Subtraction in static mode (offline).
@@ -401,11 +406,11 @@ class SpectralSubtractor(AudioEffect):
         td_spec_power = np.abs(td_spec) ** self.subtraction_exponent
 
         for n in range(signal.number_of_channels):
-            if self.spectrum_to_subtract is None:
+            if not self.spectrum_to_subtract:
                 # Obtain noise psd
                 _, noise = activity_detector(
                     signal, channel=n, threshold_dbfs=self.threshold_rms_dbfs,
-                    hold_time_ms=self.ad_hold_time_ms,
+                    attack_time_ms=self.ad_attack_time_ms,
                     release_time_ms=self.ad_release_time_ms)
                 noise['noise'].set_spectrum_parameters(
                     method='welch',
