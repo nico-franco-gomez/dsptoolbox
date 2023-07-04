@@ -7,7 +7,9 @@ anti-causal operations) or in a block-processing manner.
 
 """
 from .effects import (SpectralSubtractor, Distortion, Compressor, LFO, Tremolo,
-                      Chorus, DigitalDelay)
+                      Chorus, DigitalDelay,
+                      get_time_period_from_musical_rhythm,
+                      get_frequency_from_musical_rhythm)
 
 __all__ = [
     'SpectralSubtractor',
@@ -17,4 +19,6 @@ __all__ = [
     'Tremolo',
     'Chorus',
     'DigitalDelay',
+    'get_frequency_from_musical_rhythm',
+    'get_time_period_from_musical_rhythm',
 ]

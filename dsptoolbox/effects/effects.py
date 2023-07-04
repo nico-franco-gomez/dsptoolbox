@@ -7,12 +7,18 @@ from dsptoolbox._standard import (_get_framed_signal,
 from dsptoolbox._general_helpers import _get_next_power_2
 from ._effects import (
     _arctan_distortion, _clean_signal, _hard_clip_distortion,
-    _soft_clip_distortion, _compressor, _get_knee_func, LFO)
+    _soft_clip_distortion, _compressor, _get_knee_func, LFO,
+    get_frequency_from_musical_rhythm, get_time_period_from_musical_rhythm)
 from dsptoolbox.plots import general_plot
 
 from scipy.signal.windows import get_window
 import numpy as np
 from warnings import warn
+
+__all__ = [
+    'get_frequency_from_musical_rhythm',
+    'get_time_period_from_musical_rhythm'
+]
 
 
 class AudioEffect():
@@ -198,7 +204,7 @@ class SpectralSubtractor(AudioEffect):
             self.block_length_s = block_length_s
 
         if spectrum_to_subtract is not None:
-            if spectrum_to_subtract:
+            if np.any(spectrum_to_subtract):
                 assert type(spectrum_to_subtract) == np.ndarray, \
                     'Spectrum to subtract must be of type numpy.ndarray'
                 spectrum_to_subtract = np.squeeze(spectrum_to_subtract)
@@ -304,7 +310,7 @@ class SpectralSubtractor(AudioEffect):
 
         # === Static Mode
         assert ad_attack_time_ms >= 0, \
-            'Hold time for activity detector must be 0 or above'
+            'Attack time for activity detector must be 0 or above'
         self.ad_attack_time_ms = ad_attack_time_ms
 
         assert ad_release_time_ms >= 0, \
@@ -359,7 +365,7 @@ class SpectralSubtractor(AudioEffect):
         """Internal method to compute the window and step size in samples.
 
         """
-        if not self.spectrum_to_subtract:
+        if not np.any(self.spectrum_to_subtract):
             self.window_length = _get_next_power_2(
                 self.block_length_s*sampling_rate_hz)
         else:
@@ -406,7 +412,7 @@ class SpectralSubtractor(AudioEffect):
         td_spec_power = np.abs(td_spec) ** self.subtraction_exponent
 
         for n in range(signal.number_of_channels):
-            if not self.spectrum_to_subtract:
+            if not np.any(self.spectrum_to_subtract):
                 # Obtain noise psd
                 _, noise = activity_detector(
                     signal, channel=n, threshold_dbfs=self.threshold_rms_dbfs,
@@ -819,7 +825,6 @@ class Compressor(AudioEffect):
                                 post_gain_db: float = 0,
                                 mix_percent: float = 100,
                                 automatic_make_up_gain: bool = True,
-                                side_chain_vector: np.ndarray = None,
                                 downward_compression: bool = True):
         """The advanced parameters of the compressor.
 
@@ -841,14 +846,6 @@ class Compressor(AudioEffect):
         automatic_make_up_gain : bool, optional
             When `True`, the RMS value of the signal is kept after compression.
             Default: `True`.
-        side_chain_vector : `np.ndarray`, optional
-            The side chain vector should be an array of boolean that triggers
-            the compressor when its values are `True`. It can only be a
-            1D-array. It can be retrieved from another signal by using
-            `dsptoolbox.activity_detector`, for instance. If its length is
-            different to that of the signal, it is zero-padded or trimmed in
-            the end to match the signal length. Attack and release time are
-            always additioned to the vector. Default: `None`.
         downward_compression : bool, optional
             When `True`, the compressor acts as a downward compressor where
             signal above the threshold level gets attenuated. If `False`,
@@ -872,13 +869,6 @@ class Compressor(AudioEffect):
         self.pre_gain_db = pre_gain_db
         self.post_gain_db = post_gain_db
         self.automatic_make_up_gain = automatic_make_up_gain
-
-        if side_chain_vector is not None:
-            assert type(side_chain_vector) == np.ndarray, \
-                'Side chain must be of type np.ndarray'
-            assert side_chain_vector.ndim == 1, \
-                'Side chain can only be a 1D-Array'
-        self.side_chain = side_chain_vector
 
         self.downward_compression = downward_compression
 
@@ -938,7 +928,7 @@ class Compressor(AudioEffect):
         td = _compressor(td, self.threshold_dbfs, self.ratio,
                          self.knee_factor_db, attack_time_samples,
                          release_time_samples, self.mix,
-                         self.side_chain, self.downward_compression)
+                         self.downward_compression)
 
         # Restore original signal level
         if self.relative_to_peak_level:
