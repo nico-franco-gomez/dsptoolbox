@@ -19,15 +19,16 @@ adheres to `Semantic Versioning <http://semver.org/spec/v2.0.0.html>`_.
 
 Added
 ~~~~~~
-- 
+- effects module with basic implementations for standard audio effects
+- extra functionalities in the audio io module
 
 Bugfix
 ~~~~~~~
-- 
+- general bug fixes
 
 Misc
 ~~~~~
--
+- made seaborn optional
 
 `0.2.5 <https://pypi.org/project/dsptoolbox/0.2.5>`_ - 
 ---------------------
