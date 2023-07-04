@@ -4,9 +4,14 @@ Includes some basic plotting templates
 import matplotlib.pyplot as plt
 from matplotlib.ticker import ScalarFormatter
 from matplotlib import cm
-from numpy import array, max, min
-from seaborn import set_style
-set_style('whitegrid')
+from numpy import array, max, min, arange
+
+try:
+    from seaborn import set_style
+    set_style('whitegrid')
+except ModuleNotFoundError as e:
+    print('Seaborn will not be used for plotting: ', e)
+    pass
 
 
 def show():
@@ -25,7 +30,7 @@ def general_plot(x, matrix, range_x=None, range_y=None, log: bool = True,
     Parameters
     ----------
     x : array-like
-        Vector for x axis.
+        Vector for x axis. Pass `None` to ignore.
     matrix : `np.ndarray`
         Matrix with data to plot.
     range_x : array-like, optional
@@ -58,7 +63,9 @@ def general_plot(x, matrix, range_x=None, range_y=None, log: bool = True,
     if matrix.ndim == 1:
         matrix = matrix[..., None]
     elif matrix.ndim > 2:
-        raise ValueError('Only 2D-arrays are supported')
+        raise ValueError('Only 1D and 2D-arrays are supported')
+    if x is None:
+        x = arange(matrix.shape[0])
     if labels is not None:
         if type(labels) not in (list, tuple):
             assert type(labels) == str, \

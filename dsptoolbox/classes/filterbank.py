@@ -278,6 +278,8 @@ class FilterBank():
                 'Zero-phase filtering and zi cannot be used at ' +\
                 'the same time'
         if activate_zi:
+            if not hasattr(self.filters[0], 'zi'):
+                self.initialize_zi(signal.number_of_channels)
             if len(self.filters[0].zi) != signal.number_of_channels:
                 self.initialize_zi(signal.number_of_channels)
 
@@ -323,6 +325,8 @@ class FilterBank():
                 'Zero-phase filtering and zi cannot be used at ' +\
                 'the same time'
         if activate_zi:
+            if not hasattr(self.filters[0], 'zi'):
+                self.initialize_zi(mbsignal.number_of_channels)
             if len(self.filters[0].zi) != mbsignal.number_of_channels:
                 self.initialize_zi(mbsignal.number_of_channels)
 

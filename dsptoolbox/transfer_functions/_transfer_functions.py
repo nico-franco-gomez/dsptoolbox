@@ -41,7 +41,13 @@ def _spectral_deconvolve(num_fft: np.ndarray, denum_fft: np.ndarray, freqs_hz,
 
 def _window_this_ir(vec, total_length: int, window_type: str = 'hann',
                     exp2_trim: int = 13, constant_percentage: float = 0.75,
-                    at_start: bool = True) -> tuple[np.ndarray, np.ndarray]:
+                    at_start: bool = True) -> \
+        tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """This function finds the index of the impulse and trims or windows it
+    accordingly. Window used and the start sample are returned.
+
+    """
+    start_sample = 0
     # Trimming
     if exp2_trim is not None:
         # Padding
@@ -57,10 +63,11 @@ def _window_this_ir(vec, total_length: int, window_type: str = 'hann',
             ind_max = np.argmax(abs(vec))
             if ind_max - length < 0:
                 length = ind_max
-            vec = vec[ind_max-length:ind_max-length+2**exp2_trim]
+            start_sample = ind_max-length
+            vec = vec[start_sample:start_sample+2**exp2_trim]
     else:
         length = np.argmax(abs(vec))
     points = [0, length, total_length-length, total_length]
     window = _calculate_window(points, total_length, window_type,
                                at_start=at_start)
-    return vec*window, window
+    return vec*window, window, start_sample

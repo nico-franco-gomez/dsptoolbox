@@ -121,7 +121,6 @@ class Filter():
                 {'eq_type': 0, 'freqs': 1000, 'gain': 0, 'q': 1,
                  'filter_id': 'dummy'}
         self.set_filter_parameters(filter_type.lower(), filter_configuration)
-        self.initialize_zi()
 
     def initialize_zi(self, number_of_channels: int = 1):
         """Initializes zi for steady-state filtering. The number of parallel
@@ -232,6 +231,8 @@ class Filter():
         # Zi – create always for all channels and selected channels will get
         # updated while filtering
         if activate_zi:
+            if not hasattr(self, 'zi'):
+                self.initialize_zi(signal.number_of_channels)
             if len(self.zi) != signal.number_of_channels:
                 warn('zi values of the filter have not been correctly ' +
                      'intialized for the number of channels. They have now' +
@@ -607,7 +608,7 @@ class Filter():
                  'automatically extended.')
         ir = self.get_ir(length_samples=length_samples, zero_phase=zero_phase)
         fig, ax = ir.plot_magnitude(
-            range_hz, normalize, show_info_box=False)
+            range_hz, normalize, show_info_box=False, scale=False)
         if show_info_box:
             txt = self._get_metadata_string()
             ax.text(0.1, 0.5, txt, transform=ax.transAxes,

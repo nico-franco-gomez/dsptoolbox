@@ -20,10 +20,11 @@ from dsptoolbox._standard import (_latency,
                                   _center_frequencies_fractional_octaves_iec,
                                   _exact_center_frequencies_fractional_octaves,
                                   _kaiser_window_beta,
-                                  _indexes_above_threshold_dbfs,
+                                  _indices_above_threshold_dbfs,
                                   _detrend, _rms)
 from dsptoolbox._general_helpers import (
-    _pad_trim, _normalize, _fade, _check_format_in_path)
+    _pad_trim, _normalize, _fade, _check_format_in_path,
+    _get_smoothing_factor_ema)
 from dsptoolbox.transfer_functions import (
     min_phase_from_mag, lin_phase_from_mag)
 
@@ -227,6 +228,8 @@ def resample(sig: Signal, desired_sampling_rate_hz: int) -> Signal:
         Resampled signal.
 
     """
+    if sig.sampling_rate_hz == desired_sampling_rate_hz:
+        return sig.copy()
     ratio = Fraction(
         numerator=desired_sampling_rate_hz, denominator=sig.sampling_rate_hz)
     u, d = ratio.as_integer_ratio()
@@ -571,14 +574,14 @@ def filter_to_ir(fir: Filter) -> Signal:
     return new_sig
 
 
-def true_peak_level(sig: Signal | MultiBandSignal) \
+def true_peak_level(signal: Signal | MultiBandSignal) \
         -> tuple[np.ndarray, np.ndarray]:
     """Computes true-peak level of a signal using the standardized method
     by the Rec. ITU-R BS.1770-4. See references.
 
     Parameters
     ----------
-    sig : `Signal` or `MultiBandSignal`
+    signal : `Signal` or `MultiBandSignal`
         Signal for which to compute the true-peak level.
 
     Returns
@@ -595,28 +598,23 @@ def true_peak_level(sig: Signal | MultiBandSignal) \
     - https://www.itu.int/rec/R-REC-BS.1770
 
     """
-    if type(sig) == Signal:
+    if type(signal) == Signal:
+        sig = signal.copy()
         # Reduce gain by 12.04 dB
         down_factor = 10**(-12.04/20)
         up_factor = 1/down_factor
         sig.time_data *= down_factor
         # Resample by 4
         sig_over = resample(sig, sig.sampling_rate_hz*4)
-        true_peak_levels = np.empty(sig.number_of_channels)
-        peak_levels = np.empty_like(true_peak_levels)
-        # Find new peak value and add back 12.04 dB of gain
-        for n in range(sig.number_of_channels):
-            true_peak_levels[n] = \
-                20*np.log10(
-                    np.max(np.abs(sig_over.time_data[:, n])) * up_factor)
-            peak_levels[n] = \
-                20*np.log10(
-                    np.max(np.abs(sig.time_data[:, n])) * up_factor)
-    elif type(sig) == MultiBandSignal:
+        true_peak_levels = 20*np.log10(np.max(
+            np.abs(sig_over.time_data), axis=0) * up_factor)
+        peak_levels = 20*np.log10(np.max(
+            np.abs(sig.time_data), axis=0) * up_factor)
+    elif type(signal) == MultiBandSignal:
         true_peak_levels = \
-            np.empty((sig.number_of_bands, sig.number_of_channels))
+            np.empty((signal.number_of_bands, signal.number_of_channels))
         peak_levels = np.empty_like(true_peak_levels)
-        for ind, b in enumerate(sig.bands):
+        for ind, b in enumerate(signal.bands):
             true_peak_levels[ind, :], peak_levels[ind, :] = true_peak_level(b)
     else:
         raise TypeError(
@@ -793,15 +791,16 @@ def fractional_delay(sig: Signal | MultiBandSignal, delay_seconds: float,
     return out_sig
 
 
-def activity_detector(signal: Signal, channel: int = 0,
-                      threshold_dbfs: float = -20, pre_filter: Filter = None,
-                      attack_time_ms: float = 0.5,
+def activity_detector(signal: Signal, threshold_dbfs: float = -20,
+                      channel: int = 0, relative_to_peak: bool = True,
+                      pre_filter: Filter = None, attack_time_ms: float = 1,
                       release_time_ms: float = 25) \
         -> tuple[Signal, dict]:
-    """This is a simple signal activity detector that uses a power threshold
-    relative to maximum peak level in a given signal (for one channel).
-    It returns the signal and a dictionary containing noise (as a signal) and
-    the time indexes corresponding to the bins that were found to surpass
+    """This is a simple signal activity detector that uses a power threshold.
+    It can be used relative to the signal's peak value or absolute. It is only
+    applicable to one channel of the signal. This function returns the signal
+    and a dictionary containing noise (as a signal) and
+    the time indices corresponding to the bins that were found to surpass
     the threshold according to attack and release times.
 
     Prefiltering (for example with a bandpass filter) is possible when a
@@ -813,20 +812,22 @@ def activity_detector(signal: Signal, channel: int = 0,
     ----------
     signal : `Signal`
         Signal in which to detect activity.
+    threshold_dbfs : float
+        Threshold in dBFS to separate noise from activity.
     channel : int, optional
         Channel in which to perform the detection. Default: 0.
-    threshold_dbfs : float, optional
-        Threshold in dBFS (relative to the signal's maximum peak level) to
-        separate noise from activity. Default: -20.
+    relative_to_peak : bool, optional
+        When `True`, the threshold value is relative to the signal's peak
+        value. Otherwise, it is regarded as an absolute threshold.
+        Default: `True`.
     pre_filter : `Filter`, optional
         Filter used for prefiltering the signal. It can be for instance a
         bandpass filter selecting the relevant frequencies in which the
         activity might be. Pass `None` to avoid any pre filtering.
         Default: `None`.
     attack_time_ms : float, optional
-        Attack time (in ms). It corresponds to the time that the signal has
-        to surpass the power threshold in order to be regarded as valid
-        acitivity. Pass 0 to attack immediately. Default: 0.5.
+        Attack time (in ms). It corresponds to a lag time for detecting
+        activity after surpassing the threshold. Default: 1.
     release_time_ms : float, optional
         Release time (in ms) for activity detector after signal has fallen
         below power threshold. Pass 0 to release immediately. Default: 25.
@@ -839,10 +840,10 @@ def activity_detector(signal: Signal, channel: int = 0,
         Dictionary containing following keys:
         - `'noise'`: left-out noise in original signal (below threshold) as
           `Signal` object.
-        - `'signal_indexes'`: array of boolean that describes which indexes
+        - `'signal_indices'`: array of boolean that describes which indices
           of the original time series belong to signal and which to noise.
           `True` at index n means index n was passed to signal.
-        - `'noise_indexes'`: the inverse array to `'signal_indexes'`.
+        - `'noise_indices'`: the inverse array to `'signal_indices'`.
 
     """
     assert type(channel) == int, \
@@ -852,30 +853,32 @@ def activity_detector(signal: Signal, channel: int = 0,
         'Threshold must be below zero'
     assert release_time_ms >= 0, \
         'Release time must be positive'
+    assert attack_time_ms >= 0, \
+        'Attack time must be positive'
 
-    # Get relevant channel
+    # Get channel
     signal = signal.get_channels(channel)
 
     # Pre-filtering
     if pre_filter is not None:
         assert type(pre_filter) == Filter, \
             'pre_filter must be of type Filter'
-        assert signal.sampling_rate_hz == pre_filter.sampling_rate_hz, \
-            'Sampling rates for signal and pre filter do not match'
         signal_filtered = pre_filter.filter_signal(signal)
     else:
         signal_filtered = signal
 
     # Release samples
-    release_time_samples = int(release_time_ms*signal.sampling_rate_hz*1e-3)
-    attack_time_samples = int(attack_time_ms*signal.sampling_rate_hz*1e-3)
+    attack_coeff = _get_smoothing_factor_ema(
+        attack_time_ms/1e3, signal.sampling_rate_hz)
+    release_coeff = _get_smoothing_factor_ema(
+        release_time_ms/1e3, signal.sampling_rate_hz)
 
-    # Get indexes
-    signal_indexes = _indexes_above_threshold_dbfs(
+    # Get indices
+    signal_indices = _indices_above_threshold_dbfs(
         signal_filtered.time_data, threshold_dbfs=threshold_dbfs,
-        attack_samples=attack_time_samples,
-        release_samples=release_time_samples)
-    noise_indexes = ~signal_indexes
+        attack_smoothing_coeff=attack_coeff,
+        release_smoothing_coeff=release_coeff, normalize=relative_to_peak)
+    noise_indices = ~signal_indices
 
     # Separate signals
     detected_sig = signal.copy()
@@ -883,12 +886,26 @@ def activity_detector(signal: Signal, channel: int = 0,
     if hasattr(detected_sig, 'window'):
         del detected_sig.window
         del noise.window
-    detected_sig.time_data = signal.time_data[signal_indexes, 0]
-    noise.time_data = signal.time_data[noise_indexes, 0]
+
+    try:
+        detected_sig.time_data = signal.time_data[signal_indices, 0]
+    except ValueError as e:
+        warn('No detected activity, threshold might be too high. Detected ' +
+             'signal will be a vector filled with zeroes')
+        print('Numpy error: ', e)
+        detected_sig.time_data = np.zeros(500)
+
+    try:
+        noise.time_data = signal.time_data[noise_indices, 0]
+    except ValueError as e:
+        warn('No detected noise, threshold might be too low. Noise will be ' +
+             'a vector filled with zeroes')
+        print('Numpy error: ', e)
+        noise.time_data = np.zeros(500)
 
     others = dict(
-        noise=noise, signal_indexes=signal_indexes,
-        noise_indexes=noise_indexes)
+        noise=noise, signal_indices=signal_indices,
+        noise_indices=noise_indices)
     return detected_sig, others
 
 

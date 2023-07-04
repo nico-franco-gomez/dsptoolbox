@@ -14,6 +14,22 @@ adheres to `Semantic Versioning <http://semver.org/spec/v2.0.0.html>`_.
 - Validation for results from tests in every module (so far many tests are
   only regarding functionality)
 
+`0.2.6 <https://pypi.org/project/dsptoolbox/0.2.6>`_ - 
+---------------------
+
+Added
+~~~~~~
+- effects module with basic implementations for standard audio effects
+- extra functionalities in the audio io module
+
+Bugfix
+~~~~~~~
+- general bug fixes
+
+Misc
+~~~~~
+- made seaborn optional
+
 `0.2.5 <https://pypi.org/project/dsptoolbox/0.2.5>`_ - 
 ---------------------
 
@@ -22,17 +38,25 @@ Added
 - mel-frequency cepstral coefficients ``mfcc`` in ``special`` module
 - spectrogram of a signal can now be plotted with a selected dynamic range
 - ``audio_io`` has now more port functionalities to ``sounddevice``
+- The inverse STFT was added in the ``special`` module
+- ``effects`` module with some effects: ``SpectralSubtractor``,
+  ``Distortion``, ``Compressor``, ``Tremolo``, ``Chorus/Flanger``, ``DigitalDelay``
 
 Bugfix
 ~~~~~~~
 - plotting for the ``qmf`` Crossover is now possible without downsampling
 - Linkwitz-Riley crossovers plotting functions have been updated and corrected
 - corrected some tests
+- scaling of spectrum in signal was not working properly when `None` was passed
+- conceptual errors were fixed in ``activity_detector``
+- ``true_peak_level`` was changing the gain of the incoming signal
 
 Misc
 ~~~~~
 - docstrings corrected and extended
 - computation of steering vectors in ``beamforming`` has been optimized
+- spectrogram computation has been changed to be performed as multi-channel
+  operation and the output array has now the extra channel dimension
 
 `0.2.4 <https://pypi.org/project/dsptoolbox/0.2.4>`_ - 
 ---------------------

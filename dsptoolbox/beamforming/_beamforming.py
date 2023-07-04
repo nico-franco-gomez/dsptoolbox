@@ -2,7 +2,7 @@
 Backend for beamforming module
 """
 import numpy as np
-from scipy.spatial import distance_matrix
+from dsptoolbox._general_helpers import _euclidean_distance_matrix
 import matplotlib.pyplot as plt
 from seaborn import set_style
 set_style('whitegrid')
@@ -104,7 +104,7 @@ class BasePoints():
             point = point[None, ...]
         assert point.shape[1] == self.coordinates.shape[1], \
             f'Invalid shapes: {point.shape}, {self.coordinates.shape}'
-        return distance_matrix(self.coordinates, point, p=2).squeeze()
+        return _euclidean_distance_matrix(self.coordinates, point).squeeze()
 
     # ======== Plotting =======================================================
     def plot_points(self, projection: str = None):
