@@ -16,3 +16,4 @@ The modules and functions of dsptoolbox are listed down below.
    modules/dsptoolbox.special
    modules/dsptoolbox.standard_functions
    modules/dsptoolbox.transfer_functions
+   modules/dsptoolbox.effects
