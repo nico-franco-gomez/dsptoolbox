@@ -1,7 +1,7 @@
 """
 Backend for the effects module
 """
-from dsptoolbox._general_helpers import _pad_trim, _get_smoothing_factor_ema
+from dsptoolbox._general_helpers import _get_smoothing_factor_ema
 from dsptoolbox.plots import general_plot
 import numpy as np
 # import matplotlib.pyplot as plt
@@ -65,7 +65,7 @@ def _clean_signal(inp: np.ndarray,
 def _compressor(x: np.ndarray, threshold_db: float, ratio: float,
                 knee_factor_db: float, attack_samples: int,
                 release_samples: int, mix_compressed: float,
-                side_chain: np.ndarray, downward_compression: bool) \
+                downward_compression: bool) \
         -> np.ndarray:
     """Compresses the dynamic range of a signal.
 
@@ -86,8 +86,6 @@ def _compressor(x: np.ndarray, threshold_db: float, ratio: float,
     mix_compressed : float
         Amount of compressed signal in the output. Must be between 0 and 1
         where 1 means there is only compressed signal in the output.
-    side_chain : `np.ndarray`
-        Boolean vector used as external triggering of the compressor.
     downward_compression : bool
         When `True`, downward compression is applied. Otherwise, upward
         compression is applied.
@@ -109,11 +107,6 @@ def _compressor(x: np.ndarray, threshold_db: float, ratio: float,
     # Get function
     compression_func = _get_knee_func(threshold_db, ratio, knee_factor_db,
                                       downward_compression)
-
-    # Side-chain handling
-    if side_chain is not None:
-        if len(side_chain) != len(x):
-            side_chain = _pad_trim(side_chain.astype(int), len(x)).astype(bool)
 
     # RMS detector
     attack_coeff = _get_smoothing_factor_ema(attack_samples, 1)
@@ -347,7 +340,8 @@ class LFO():
             elif type(frequency_hz) in (tuple, list):
                 assert len(frequency_hz) == 2, \
                     'frequency_hz as tuple must have length 2'
-                self.frequency_hz = self.__get_frequency_from_musical_rhythm()
+                self.frequency_hz = get_frequency_from_musical_rhythm(
+                    frequency_hz[0], frequency_hz[1])
             else:
                 raise TypeError('frequency_hz does not have a valid type')
 
@@ -371,39 +365,12 @@ class LFO():
             self.random_phase = random_phase
 
     def set_parameters(self, frequency_hz: float | tuple = None,
-                       waveform: str = None, smooth: float = None):
+                       waveform: str = None, random_phase: bool = None,
+                       smooth: float = None):
         """Set the parameters of the LFO.
 
         """
-        self.__set_parameters(frequency_hz, waveform, smooth)
-
-    def __get_frequency_from_musical_rhythm(self, frequency):
-        """Internal method to compute frequency from a musical rhythm notation.
-
-        """
-        assert len(frequency) == 2, \
-            'Wrong length for frequency'
-        assert type(frequency[0]) == str and \
-            type(frequency[1]) in (float, int), \
-            'Wrong data types for note duration and bpm'
-        factor = 0
-        if 'quarter' in frequency[0]:
-            factor = 1
-        if 'half' in frequency[0]:
-            factor = 2
-        if 'whole' in frequency[0]:
-            factor = 4
-        if 'eighth' in frequency[0]:
-            factor = 1/2
-        if 'sixteenth' in frequency[0]:
-            factor = 1/4
-        if '3' in frequency[0]:
-            factor *= 2/3
-        if 'dotted' in frequency[0]:
-            factor *= 1.5
-        if factor == 0:
-            raise ValueError('No valid note description was passed')
-        return 60/frequency[1]/factor
+        self.__set_parameters(frequency_hz, waveform, random_phase, smooth)
 
     def get_waveform(self, sampling_rate_hz: int, length_samples: int = None):
         """Get the waveform of the oscillator for a sampling frequency and a
@@ -427,7 +394,7 @@ class LFO():
             Axes.
 
         """
-        osc = self.oscillator(2, 1000, 1000, self.smooth)
+        osc = self.oscillator(2, 1000, 1000, self.random_phase, self.smooth)
         fig, ax = general_plot(None, osc, log=False, returns=True, xlabel=None)
         ax.set_xticks([])
         ax.set_yticks([])
@@ -492,6 +459,84 @@ def _triangle_oscillator(freq, fs, length, random_phase, smooth):
         waveform = 1 - 2/np.pi * np.arccos((1 - smooth)*x)
     waveform /= np.max(np.abs(waveform))
     return waveform
+
+
+def get_frequency_from_musical_rhythm(note, bpm):
+    """Method to compute frequency from a musical rhythm notation. The time
+    signature is always assumed to be 4/4. Choose from:
+
+    - `'quarter'`, `'half'`, `'whole'`, `'eighth'`, `'sixteenth'`,
+        `'32th'`, `'quintuplet'`.
+    - `'eighth 3'` means eight note triplets. It can be used for getting
+        triplets of any other duration.
+    - `'half dotted'` refers to a dotted duration. It can be added to a
+        string of any duration.
+
+    Parameters
+    ----------
+    note : str
+        String
+    bpm : float
+        Beats per minute to define rhythm.
+
+    Returns
+    -------
+    float
+        Frequency in Hz corresponding to the musical rhythm.
+
+    """
+    assert type(note) == str and \
+        type(bpm) in (float, int), \
+        'Wrong data types for note duration and bpm'
+    factor = 0
+    if 'quarter' in note:
+        factor = 1
+    if 'half' in note:
+        factor = 2
+    if 'whole' in note:
+        factor = 4
+    if 'eighth' in note:
+        factor = 1/2
+    if 'sixteenth' in note:
+        factor = 1/4
+    if '32th' in note:
+        factor = 1/8
+    if 'quintuplet' in note:
+        factor = 1/5
+    if '3' in note:
+        factor *= 2/3
+    if 'dotted' in note:
+        factor *= 1.5
+    if factor == 0:
+        raise ValueError('No valid note description was passed')
+    return 60/bpm/factor
+
+
+def get_time_period_from_musical_rhythm(note, bpm):
+    """Method to compute time period from a musical rhythm notation. The time
+    signature is always assumed to be 4/4. Choose from:
+
+    - `'quarter'`, `'half'`, `'whole'`, `'eighth'`, `'sixteenth'`,
+        `'32th'`, `'quintuplet'`.
+    - `'eighth 3'` means eight note triplets. It can be used for getting
+        triplets of any other duration.
+    - `'half dotted'` refers to a dotted duration. It can be added to a
+        string of any duration.
+
+    Parameters
+    ----------
+    note : str
+        String
+    bpm : float
+        Beats per minute to define rhythm.
+
+    Returns
+    -------
+    float
+        Time period in s corresponding to the musical rhythm.
+
+    """
+    return 1/get_frequency_from_musical_rhythm(note, bpm)
 
 
 if __name__ == '__main__':
