@@ -4,7 +4,6 @@ Beamforming classes and functions
 from warnings import warn
 import numpy as np
 import matplotlib.pyplot as plt
-from seaborn import set_style
 from scipy.integrate import simpson
 from matplotlib.figure import Figure
 from matplotlib.axes import Axes
@@ -16,7 +15,12 @@ from dsptoolbox._general_helpers import (
 from ._beamforming import BasePoints, _clean_sc_deconvolve
 from dsptoolbox.plots import general_matrix_plot
 
-set_style('whitegrid')
+try:
+    from seaborn import set_style
+    set_style('whitegrid')
+except ModuleNotFoundError as e:
+    print('Seaborn will not be used for plotting: ', e)
+
 nxs = np.newaxis
 
 

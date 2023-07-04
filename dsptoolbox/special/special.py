@@ -3,15 +3,22 @@ Here are methods considered as somewhat special or less common.
 """
 from dsptoolbox.classes.signal_class import Signal
 from dsptoolbox.plots import general_matrix_plot
-from dsptoolbox._general_helpers import _hz2mel, _mel2hz
+from dsptoolbox._standard import _reconstruct_framed_signal
+from dsptoolbox._general_helpers import _hz2mel, _mel2hz, _pad_trim
 
 import numpy as np
+from scipy.signal.windows import get_window
 from scipy.fft import dct
 import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
 from matplotlib.axes import Axes
-from seaborn import set_style
-set_style('whitegrid')
+
+try:
+    from seaborn import set_style
+    set_style('whitegrid')
+except ModuleNotFoundError as e:
+    print('Seaborn will not be used for plotting: ', e)
+    pass
 
 
 def cepstrum(signal: Signal, mode='power') -> np.ndarray:
@@ -39,19 +46,16 @@ def cepstrum(signal: Signal, mode='power') -> np.ndarray:
     assert mode in ('power', 'complex', 'real'), \
         f'{mode} is not a supported mode'
 
-    ceps = np.zeros_like(signal.time_data)
     signal.set_spectrum_parameters(method='standard')
     _, sp = signal.get_spectrum()
 
-    for n in range(signal.number_of_channels):
-        if mode in ('power', 'real'):
-            cp = np.abs(np.fft.irfft((2*np.log(np.abs(sp[:, n])))))**2
-        else:
-            phase = np.unwrap(np.angle(sp[:, n]))
-            cp = np.fft.irfft(np.log(np.abs(sp[:, n])) + 1j*phase).real
-        if mode == 'real':
-            cp = (cp**0.5)/2
-        ceps[:, n] = cp
+    if mode in ('power', 'real'):
+        ceps = np.abs(np.fft.irfft((2*np.log(np.abs(sp))), axis=0))**2
+    else:
+        phase = np.unwrap(np.angle(sp), axis=0)
+        ceps = np.fft.irfft(np.log(np.abs(sp)) + 1j*phase, axis=0).real
+    if mode == 'real':
+        ceps = (ceps**0.5)/2
     return ceps
 
 
@@ -65,7 +69,8 @@ def log_mel_spectrogram(s: Signal, channel: int = 0, range_hz=None,
     s : `Signal`
         Signal to generate the spectrogram.
     channel : int, optional
-        Channel of the signal to be used. Default: 0.
+        Channel of the signal to be used for the plot generation. Only one
+        channel can be passed. Default: 0.
     range_hz : array-like with length 2, optional
         Range of frequencies to use. Pass `None` to analyze the whole spectrum.
         Default: `None`.
@@ -86,7 +91,7 @@ def log_mel_spectrogram(s: Signal, channel: int = 0, range_hz=None,
     f_mel : `np.ndarray`
         Frequency vector in Mel.
     log_mel_sp : `np.ndarray`
-        Log mel spectrogram.
+        Log mel spectrogram with shape (frequency, time frame, channel).
 
     When `generate_plot=True`:
 
@@ -95,7 +100,7 @@ def log_mel_spectrogram(s: Signal, channel: int = 0, range_hz=None,
     f_mel : `np.ndarray`
         Frequency vector in Mel.
     log_mel_sp : `np.ndarray`
-        Log mel spectrogram.
+        Log mel spectrogram with shape (frequency, time frame, channel).
     fig : `matplotlib.figure.Figure`
         Figure.
     ax : `matplotlib.axes.Axes`
@@ -104,13 +109,13 @@ def log_mel_spectrogram(s: Signal, channel: int = 0, range_hz=None,
     """
     if stft_parameters is not None:
         s.set_spectrogram_parameters(**stft_parameters)
-    time_s, f_hz, sp = s.get_spectrogram(channel)
+    time_s, f_hz, sp = s.get_spectrogram()
     mfilt, f_mel = mel_filterbank(f_hz, range_hz, n_bands, normalize=True)
-    log_mel_sp = mfilt @ np.abs(sp)
+    log_mel_sp = np.tensordot(mfilt, np.abs(sp), axes=[-1, 0])
     log_mel_sp = 20*np.log10(np.clip(log_mel_sp, a_min=1e-20, a_max=None))
     if generate_plot:
         fig, ax = general_matrix_plot(
-            log_mel_sp, range_x=[time_s[0], time_s[-1]],
+            log_mel_sp[..., channel], range_x=[time_s[0], time_s[-1]],
             range_y=[f_mel[0], f_mel[-1]], range_z=50,
             ylabel='Frequency / Mel', xlabel='Time / s',
             ylog=False, returns=True)
@@ -224,11 +229,12 @@ def plot_waterfall(sig: Signal, channel: int = 0,
     """
     assert dynamic_range_db > 0, \
         'Dynamic range has to be more than 0'
+    sig = sig.get_channels(channel)
     if stft_parameters is not None:
         sig.set_spectrogram_parameters(**stft_parameters)
-    t, f, stft = sig.get_spectrogram(channel_number=channel)
+    t, f, stft = sig.get_spectrogram()
 
-    stft = np.abs(stft)
+    stft = np.abs(stft[..., 0])
     z_label_extra = ''
     if dynamic_range_db is not None:
         stft /= np.max(stft)
@@ -260,7 +266,8 @@ def mfcc(signal: Signal, channel: int = 0,
         The signal for which to compute the mel-frequency cepstral
         coefficients.
     channel : int, optional
-        Channel of the signal for which to compute the MFCC. Default: 0.
+        Channel of the signal for which to plot the MFCC when
+        `generate_plot=True`. Default: 0.
     mel_filters : `np.ndarray`, optional
         Hz-to-Mel transformation matrix with shape (mel band, frequency Hz).
         It can be created using `mel_filterbank`. If `None` is passed, the
@@ -284,7 +291,8 @@ def mfcc(signal: Signal, channel: int = 0,
         Frequency vector in mel. If `mel_filters` is passed, this is only a
         list with entries [0, n_mel_filters].
     mfcc : `np.ndarray`
-        Mel-frequency cepstral coefficients
+        Mel-frequency cepstral coefficients with shape (cepstral coefficients,
+        time frame, channel).
 
     When `generate_plot=True`:
 
@@ -293,8 +301,9 @@ def mfcc(signal: Signal, channel: int = 0,
     f_mel : `np.ndarray`
         Frequency vector in mel. If `mel_filters` is passed, this is only a
         list with entries [0, n_mel_filters].
-    log_mel_sp : `np.ndarray`
-        Log mel spectrogram.
+    mfcc : `np.ndarray`
+        Mel-frequency cepstral coefficients with shape (cepstral coefficients,
+        time frame, channel).
     fig : `matplotlib.figure.Figure`
         Figure.
     ax : `matplotlib.axes.Axes`
@@ -303,7 +312,7 @@ def mfcc(signal: Signal, channel: int = 0,
     """
     if stft_parameters is not None:
         signal.set_spectrogram_parameters(**stft_parameters)
-    time_s, f, sp = signal.get_spectrogram(channel_number=channel)
+    time_s, f, sp = signal.get_spectrogram()
 
     # Get Log power spectrum
     log_sp = 2*np.log(np.abs(sp))
@@ -318,7 +327,7 @@ def mfcc(signal: Signal, channel: int = 0,
         f_mel = [0, mel_filters.shape[0]]
 
     # Convert from Hz to Mel
-    log_sp = mel_filters @ log_sp
+    log_sp = np.tensordot(mel_filters, log_sp, axes=[-1, 0])
 
     # Discrete cosine transform
     mfcc = np.abs(dct(log_sp, type=2, axis=0))
@@ -329,8 +338,131 @@ def mfcc(signal: Signal, channel: int = 0,
     # Plot and return
     if generate_plot:
         fig, ax = general_matrix_plot(
-            mfcc, range_x=[time_s[0], time_s[-1]],
+            mfcc[..., channel], range_x=[time_s[0], time_s[-1]],
             range_y=[f_mel[0], f_mel[-1]],
             xlabel='Time / s', ylabel='Cepstral coefficients', returns=True)
         return time_s, f_mel, mfcc, fig, ax
     return time_s, f_mel, mfcc
+
+
+def istft(stft: np.ndarray, original_signal: Signal = None,
+          parameters: dict = None, sampling_rate_hz: int = None,
+          window_length_samples: int = None, window_type: str = None,
+          overlap_percent: int = None, fft_length_samples: int = None,
+          padding: bool = None, scaling: bool = None) -> Signal:
+    """This function transforms a complex STFT back into its respective time
+    signal using the method presented in [1]. For this to be possible, it is
+    necessary to know the parameters that were used while converting the signal
+    into its STFT representation. A dictionary containing the parameters
+    corresponding can be passed, as well as the original `Signal` in which
+    these parameters are saved. Alternatively, it is possible to pass them
+    explicitely.
+
+    Parameters
+    ----------
+    stft : `np.ndarray`
+        Complex STFT with shape (frequency, time frame, channel). It is assumed
+        that only positive frequencies (including 0) are present.
+    original_signal : `Signal`, optional
+        Initial signal from which the STFT matrix was generated.
+        Default: `None`.
+    parameters : dict, optional
+        Dictionary containing the parameters used to compute the STFT matrix.
+        Default: `None`.
+    sampling_rate_hz : int, optional
+        Sampling rate of the original signal.
+    window_length_samples : int, optional
+        Window length in samples. Default: `None`.
+    window_type : str, optional
+        Window type. It must be supported by `scipy.signal.windows.get_window`.
+        Default: `None`.
+    overlap_percent : int, optional
+        Window overlap in percent (between 0 and 100). Default: `None`.
+    fft_length_samples : int, optional
+        Length of the FFT applied to the time frames. Default: `None`.
+    padding : bool, optional
+        `True` means that the original signal was zero-padded in the beginning
+        and end in order to avoid losing energy due to window effects.
+        Default: `None`.
+    scaling : bool, optional
+        When `True`, it is assumed that the STFT matrix was scaled as an
+        amplitude spectrum. Default: `None`.
+
+    Returns
+    -------
+    reconstructed_signal : `Signal`
+        Reconstructed signal from the complex STFT.
+
+    Notes
+    -----
+    - In order to get the STFT (framed signal representation), it is probable
+      that the original signal was zero-padded in the end. If the original
+      signal is passed, the output will have the same length. If not, it might
+      be longer by an amount of samples smaller than a window size.
+    - It is important to notice that if the original signal was detrended,
+      this can not be recovered and might lead to small distortions in the
+      reconstructed one.
+    - Instabilities when the original STFT was not zero-padded are avoided by
+      padding during reconstruction at the expense of small amplitude
+      distortion at the edges.
+
+    References
+    ----------
+    - [1]: D. Griffin and Jae Lim, "Signal estimation from modified short-time
+      Fourier transform," in IEEE Transactions on Acoustics, Speech, and Signal
+      Processing, vol. 32, no. 2, pp. 236-243, April 1984,
+      doi: 10.1109/TASSP.1984.1164317.
+
+    """
+    assert stft.ndim == 3, \
+        f'{stft.ndim} is not a valid number of dimensions. It must be 3'
+
+    if original_signal is not None:
+        assert parameters is None, \
+            'A signal was passed. No parameters dictionary should be passed'
+        parameters = original_signal._spectrogram_parameters.copy()
+    elif parameters is not None:
+        pass
+    else:
+        assert (window_length_samples is not None) and \
+            (window_type is not None) and (overlap_percent is not None) and \
+            (padding is not None) and (scaling is not None), \
+            'At least one of the needed parameters needed was passed as None'
+        parameters = {'window_length_samples': window_length_samples,
+                      'window_type': window_type,
+                      'overlap_percent': overlap_percent,
+                      'fft_length_samples': fft_length_samples,
+                      'padding': padding, 'scaling': scaling}
+
+    window = get_window(parameters['window_type'],
+                        parameters['window_length_samples'])
+
+    if parameters['scaling']:
+        stft /= np.sqrt(2 / np.sum(window)**2)
+
+    td_framed = np.fft.irfft(stft, axis=0, n=parameters['fft_length_samples'])
+
+    # Reconstruct from framed representation to continuous
+    step = int((1 - parameters['overlap_percent']/100) * len(window))
+
+    if parameters['padding']:
+        td = _reconstruct_framed_signal(td_framed, step_size=step,
+                                        window=window)
+        overlap = int(parameters['overlap_percent']/100 * len(window))
+        td = td[overlap:-overlap, :]
+    else:
+        extra_window = np.zeros_like(td_framed[:, 0, :])[:, np.newaxis, :]
+        td_framed = np.append(extra_window, td_framed, axis=1)
+        td_framed = np.append(td_framed, extra_window, axis=1)
+        td = _reconstruct_framed_signal(td_framed, step_size=step,
+                                        window=window)
+        td = td[step:-step, :]
+
+    if original_signal is not None:
+        td = _pad_trim(td, original_signal.time_data.shape[0])
+        reconstructed_signal = original_signal.copy()
+        reconstructed_signal.time_data = td
+    else:
+        reconstructed_signal = Signal(None, time_data=td,
+                                      sampling_rate_hz=sampling_rate_hz)
+    return reconstructed_signal

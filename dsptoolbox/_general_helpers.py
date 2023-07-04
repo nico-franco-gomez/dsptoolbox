@@ -732,10 +732,64 @@ def _get_next_power_2(number, mode: str = 'closest') -> int:
     p = np.log2(number)
     if mode == 'closest':
         remainder = p - int(p)
-        mode == 'floor' if remainder < 0.5 else 'ceil'
-
+        mode = 'floor' if remainder < 0.5 else 'ceil'
     if mode == 'floor':
         p = np.floor(p).astype(int)
     elif mode == 'ceil':
         p = np.ceil(p).astype(int)
     return int(2**p)
+
+
+def _euclidean_distance_matrix(x: np.ndarray, y: np.ndarray):
+    """Compute the euclidean distance matrix between two vectors efficiently.
+
+    Parameters
+    ----------
+    x : `np.ndarray`
+        First vector or matrix with shape (Point x, Dimensions).
+    y : `np.ndarray`
+        Second vector or matrix with shape (Point y, Dimensions).
+
+    Returns
+    -------
+    dist : `np.ndarray`
+        Euclidean distance matrix with shape (Point x, Point y).
+
+    """
+    assert x.ndim == 2 and y.ndim == 2, \
+        'Inputs must have exactly two dimensions'
+    assert x.shape[1] == y.shape[1], \
+        'Dimensions do not match'
+    return np.sqrt(np.sum(x**2, axis=1, keepdims=True) +
+                   np.sum(y.T**2, axis=0, keepdims=True) -
+                   2 * x @ y.T)
+
+
+def _get_smoothing_factor_ema(relaxation_time_s: float, sampling_rate_hz: int):
+    """This computes the smoothing factor needed for a single-pole IIR,
+    or exponential moving averager. The returned value (alpha) should be used::
+    for as follows
+
+        y[n] = alpha * x[n] + (1-alpha)*y[n-1]
+
+    Parameters
+    ----------
+    relaxation_time_s : float
+        Time for the step response to stabilize around the given value
+        (with 99% accuracy).
+    sampling_rate_hz : int
+        Sampling rate to be used.
+
+    Returns
+    -------
+    alpha : float
+        Smoothing value for the
+
+    Notes
+    -----
+    - The formula coincides with the one presented in
+      https://en.wikipedia.org/wiki/Exponential_smoothing, but it uses a factor
+      5.
+
+    """
+    return 1 - np.exp(-5/relaxation_time_s/sampling_rate_hz)

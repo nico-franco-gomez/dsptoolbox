@@ -293,20 +293,22 @@ class Signal():
 
     def set_spectrum_parameters(self, method='welch', smoothe: int = 0,
                                 window_length_samples: int = 1024,
-                                window_type='hann', overlap_percent=50,
-                                detrend=True, average='mean',
+                                window_type='hann',
+                                overlap_percent: float = 50, detrend=True,
+                                average='mean',
                                 scaling='power spectral density'):
         """Sets all necessary parameters for the computation of the spectrum.
 
         Parameters
         ----------
         method : str, optional
-            `'welch'` (Welch's method for stochastic signals) or
-            `'standard'` (Direct FFT from signal). Default: `'welch'`.
+            `'welch'` (Welch's method for stochastic signals, returns a
+            periodogramm) or `'standard'` (Direct FFT from signal).
+            Default: `'welch'`.
         smoothe : int, optional
-            Smoothing across (1/smoothe) octave bands using a hamming
-            window. Smoothes magnitude AND phase. For accesing the smoothing
-            algorithm, refer to
+            Smoothing across (`1/smoothe`) octave bands using a hamming
+            window. It only applies when `method='standard'`. Smoothes
+            magnitude AND phase. For accesing the smoothing algorithm, refer to
             `dsptoolbox._general_helpers._fractional_octave_smoothing()`.
             If smoothing is applied here, `Signal.get_spectrum()` returns
             the smoothed spectrum as well and `Signal.plot_magnitude()` plots
@@ -412,7 +414,8 @@ class Signal():
                            window_type='hann', overlap_percent=75,
                            detrend=True, average='mean',
                            scaling='power spectral density'):
-        """Sets all necessary parameters for the computation of the CSM.
+        """Sets all necessary parameters for the computation of the
+        cross-spectral matrix.
 
         Parameters
         ----------
@@ -458,20 +461,18 @@ class Signal():
                 self._csm_parameters = _new_csm_parameters
                 self.__csm_state_update = True
 
-    def set_spectrogram_parameters(self, channel_number: int = 0,
+    def set_spectrogram_parameters(self,
                                    window_length_samples: int = 1024,
                                    window_type: str = 'hann',
                                    overlap_percent=50,
                                    fft_length_samples: int = None,
-                                   detrend: bool = True, padding: bool = True,
+                                   detrend: bool = False, padding: bool = True,
                                    scaling: bool = False):
         """Sets all necessary parameters for the computation of the
         spectrogram.
 
         Parameters
         ----------
-        channel_number : int, optional
-            Channel for which to compute the spectrogram. Default: 0.
         window_length_samples : int, optional
             Window size. Default: 1024.
         window_type : str, optional
@@ -483,10 +484,11 @@ class Signal():
             the frequency resolution and can also crop the time window. Pass
             `None` to use the window length. Default: `None`.
         detrend : bool, optional
-            Detrending (subtracting mean). Default: `True`.
+            Detrending (subtracting mean) for each time frame.
+            Default: `False`.
         padding : bool, optional
-            Padding signal in the beginning and end to center it.
-            Default: True.
+            Padding signal in the beginning and end to center it in order
+            to avoid losing energy because of windowing. Default: `True`.
         scaling : bool, optional
             When `True`, the output is scaled as an amplitude spectrum,
             otherwise no scaling is applied. See references for details.
@@ -502,7 +504,6 @@ class Signal():
         """
         _new_spectrogram_parameters = \
             dict(
-                channel_number=channel_number,
                 window_length_samples=window_length_samples,
                 window_type=window_type,
                 overlap_percent=overlap_percent,
@@ -745,15 +746,12 @@ class Signal():
             self.__csm_state_update = False
         return self.csm[0].copy(), self.csm[1].copy()
 
-    def get_spectrogram(self, channel_number: int = 0,
-                        force_computation: bool = False) -> \
+    def get_spectrogram(self, force_computation: bool = False) -> \
             tuple[np.ndarray, np.ndarray, np.ndarray]:
         """Returns a matrix containing the STFT of a specific channel.
 
         Parameters
         ----------
-        channel_number : int, optional
-            Channel number for which to compute the STFT. Default: 0.
         force_computation : bool, optional
             Forces new computation of the STFT. Default: False.
 
@@ -764,18 +762,15 @@ class Signal():
         f_hz : `np.ndarray`
             Frequency vector.
         spectrogram : `np.ndarray`
-            Complex spectrogram with shape (frequency, time).
+            Complex spectrogram with shape (frequency, time, channel).
 
         """
         condition = not hasattr(self, 'spectrogram') or force_computation or \
-            self.__spectrogram_state_update or \
-            not channel_number == \
-            self._spectrogram_parameters['channel_number']
+            self.__spectrogram_state_update
 
         if condition:
-            self._spectrogram_parameters['channel_number'] = channel_number
             self.spectrogram = _stft(
-                self.time_data[:, channel_number],
+                self.time_data,
                 self.sampling_rate_hz,
                 self._spectrogram_parameters['window_length_samples'],
                 self._spectrogram_parameters['window_type'],
@@ -809,8 +804,8 @@ class Signal():
     def plot_magnitude(self, range_hz=[20, 20e3], normalize: str = '1k',
                        range_db=None, smoothe: int = 0,
                        show_info_box: bool = False) -> tuple[Figure, Axes]:
-        """Plots magnitude spectrum.
-        Change parameters of spectrum with set_spectrum_parameters.
+        """Plots magnitude spectrum. Change parameters of spectrum with
+        `set_spectrum_parameters`.
 
         Parameters
         ----------
@@ -976,7 +971,12 @@ class Signal():
             Axes.
 
         """
-        t, f, stft = self.get_spectrogram(channel_number)
+        # Get whole spectrogram
+        t, f, stft = self.get_spectrogram()
+
+        # Select channel
+        stft = stft[:, :, channel_number]
+
         ids = _find_nearest([20, 20000], f)
         if ids[0] == 0:
             ids[0] += 1

@@ -1,7 +1,7 @@
 import dsptoolbox as dsp
 import pytest
 from os.path import join
-from numpy import linspace
+import numpy as np
 
 
 class TestSpecialModule():
@@ -37,7 +37,7 @@ class TestSpecialModule():
 
     def test_mel_filters(self):
         # Only functionality
-        f = linspace(0, 24000, 2048)
+        f = np.linspace(0, 24000, 2048)
         dsp.special.mel_filterbank(
             f_hz=f, range_hz=None, n_bands=30, normalize=False)
         dsp.special.mel_filterbank(
@@ -60,3 +60,16 @@ class TestSpecialModule():
         mels, _ = dsp.special.mel_filterbank(f, [20, 10e3], n_bands=4)
         t, mel, mf, fig, ax = dsp.special.mfcc(self.speech, mel_filters=mels)
         t, mel, mf = dsp.special.mfcc(self.speech, generate_plot=False)
+
+    def test_istft(self):
+        # Test reconstruction fidelity
+        # This would most likely fail if padding=False or detrend=True
+        t, f, sp = self.speech.get_spectrogram()
+        speech_rec = dsp.special.istft(sp, original_signal=self.speech)
+        assert np.all(np.isclose(self.speech.time_data, speech_rec.time_data))
+
+        speech_rec = dsp.special.istft(
+            sp, parameters=self.speech._spectrogram_parameters,
+            sampling_rate_hz=self.speech.sampling_rate_hz)
+        assert np.all(np.isclose(self.speech.time_data,
+                                 speech_rec.time_data[:len(self.speech)]))
