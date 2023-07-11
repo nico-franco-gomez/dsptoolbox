@@ -38,6 +38,17 @@ class TestStandardModule():
         value = dsp.latency(s)
         assert np.all(np.abs(value) == delay_samples)
 
+        # ===== Fractional delays
+        delay = 0.003301
+        noi = dsp.generators.noise('white', length_seconds=1,
+                                   sampling_rate_hz=10_000)
+        noi_del = dsp.fractional_delay(noi, delay)
+        assert np.abs(dsp.latency(noi_del, noi, 2)[0] - delay*10_000) < 0.9
+
+        noi = dsp.merge_signals(noi_del, noi)
+        assert np.abs(
+            dsp.latency(noi, polynomial_points=3)[0] - delay*10_000) < 0.9
+
     def test_pad_trim(self):
         # Check for signal: Trim at the end
         trim_length = 40_000
@@ -291,3 +302,8 @@ class TestStandardModule():
         assert env.shape == s.time_data.shape
         env = dsp.envelope(s, 'analytic', None)
         assert env.shape == s.time_data.shape
+
+        fb = dsp.filterbanks.auditory_filters_gammatone([500, 1000], 1,
+                                                        s.sampling_rate_hz)
+        ss = fb.filter_signal(s)
+        dsp.envelope(ss)

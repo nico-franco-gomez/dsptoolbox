@@ -123,6 +123,8 @@ def window_ir(signal: Signal, constant_percentage=0.75, exp2_trim: int = 13,
               window_type='hann', at_start: bool = True) \
         -> tuple[Signal, np.ndarray]:
     """Windows an IR with trimming and selection of constant valued length.
+    This is equivalent to a tukey window whose flanks can be selected to be
+    any type.
 
     Parameters
     ----------
@@ -476,7 +478,7 @@ def min_phase_ir(sig: Signal, equiripple: bool = False) -> Signal:
     Returns
     -------
     min_phase_sig : `Signal`
-        Minimum-phase IR as time signal or filter (depending on input).
+        Minimum-phase IR as time signal.
 
     """
     # Computation
