@@ -32,4 +32,4 @@ __all__ = [
     'filterbanks', 'special', 'audio_io', 'beamforming', 'effects'
 ]
 
-__version__ = '0.2.6'
+__version__ = '0.2.7'
