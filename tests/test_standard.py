@@ -273,3 +273,21 @@ class TestStandardModule():
             [125, 1000], sampling_rate_hz=self.audio_multi.sampling_rate_hz)
         new_sig = fb.filter_signal(self.audio_multi)
         calib.calibrate_signal(new_sig)
+
+    def test_envelope(self):
+        # Only functionality with multi-channel and single-channel data
+        s = dsp.generators.oscillator(
+            frequency_hz=500, mode='triangle', sampling_rate_hz=5_000,
+            number_of_channels=3, uncorrelated=True)
+        env = dsp.envelope(s, 'rms', 512)
+        assert env.shape == s.time_data.shape
+        env = dsp.envelope(s, 'analytic', None)
+        assert env.shape == s.time_data.shape
+
+        s = dsp.generators.oscillator(
+            frequency_hz=500, mode='sawtooth', sampling_rate_hz=5_000,
+            number_of_channels=1)
+        env = dsp.envelope(s, 'rms', 512)
+        assert env.shape == s.time_data.shape
+        env = dsp.envelope(s, 'analytic', None)
+        assert env.shape == s.time_data.shape

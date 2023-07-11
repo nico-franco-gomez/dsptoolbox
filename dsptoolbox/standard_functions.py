@@ -7,7 +7,7 @@ under a same category.
 """
 import numpy as np
 import pickle
-from scipy.signal import resample_poly, convolve
+from scipy.signal import resample_poly, convolve, hilbert
 from scipy.special import iv as bessel_first_mod
 from fractions import Fraction
 from warnings import warn
@@ -1138,3 +1138,48 @@ class CalibrationData():
             raise TypeError('signal has not a valid type. Use Signal or ' +
                             'MultiBandSignal')
         return calibrated_signal
+
+
+def envelope(signal: Signal, mode: str = 'analytic',
+             window_length_samples: int = None):
+    """This function computes the envelope of a given signal by means of its
+    hilbert transformation. It can also compute the RMS value over a certain
+    window length (boxcar). The time signal is always detrended with a linear
+    polynomial.
+
+    Parameters
+    ----------
+    signal : `Signal`
+        Time series for which to find the envelope.
+    mode : str {'analytic', 'rms'}, optional
+        Type of envelope. It either uses the hilbert transform to obtain the
+        analytic signal or RMS values. Default: `'analytic'`.
+    window_length_samples : int, optional
+        Window length (boxcar) to average the RMS values. Cannot be `None`
+        if `mode = 'rms'`. Default: `None`.
+
+    Returns
+    -------
+    `np.ndarray`
+        Signal envelope. It has the shape (time sample, channel).
+
+    """
+    mode = mode.lower()
+    assert mode in ('analytic', 'rms'), \
+        'Invalid mode. Use either analytic or rms.'
+
+    signal = detrend(signal, 1)
+    if mode == 'analytic':
+        env = signal.time_data
+        env = np.abs(hilbert(env, axis=0))
+        return env
+    else:
+        assert window_length_samples > 0,\
+            'Window length must be more than 1 sample'
+        rms_vec = signal.time_data
+        rms_vec = convolve(
+            rms_vec**2,
+            np.ones(window_length_samples)[..., None]/window_length_samples,
+            mode='full')[:len(rms_vec), ...]
+        rms_vec **= 0.5
+        return rms_vec
