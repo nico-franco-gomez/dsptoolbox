@@ -86,3 +86,13 @@ class TestTransformsModule():
         morlet = dsp.transforms.MorletWavelet(b=None, h=3, step=1e-3)
         dsp.transforms.cwt(self.speech, query_f, morlet, False)
         dsp.transforms.cwt(self.speech, query_f, morlet, True)
+
+    def test_hilbert(self):
+        # Results compared with scipy hilbert
+        s = dsp.transforms.hilbert(self.speech)
+        s = s.time_data + s.time_data_imaginary*1j
+        s2 = self.speech.time_data
+
+        from scipy.signal import hilbert
+        s2 = hilbert(s2, axis=0)
+        assert np.all(np.isclose(s, s2))

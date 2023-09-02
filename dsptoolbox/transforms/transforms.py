@@ -615,3 +615,45 @@ def cwt(signal: Signal, frequencies: np.ndarray,
             scalogram, frequencies, signal.sampling_rate_hz)
 
     return scalogram
+
+
+def hilbert(signal: Signal):
+    """Compute the analytic signal using the hilbert transform of the real
+    signal.
+
+    Parameters
+    ----------
+    signal : `Signal`
+        Signal to convert.
+
+    Returns
+    -------
+    analytic : `Signal`
+        Analytical signal.
+
+    Notes
+    -----
+    - Since it is not causal, the whole time series must be passed
+      through an FFT. This could take long or be too memory intensive depending
+      on the size of the original signal and the computer.
+    - The new `Signal` has the real part saved in `self.time_data` and the
+      imaginary in `self.time_data_imaginary`. Complex time series can
+      therefore be constructed with::
+
+        complex_ts = Signal.time_data + Signal.time_data_imaginary*1j
+
+    """
+    td = signal.time_data
+
+    sp = np.fft.fft(td, axis=0)
+    if len(td) % 2 == 0:
+        nyquist = len(td) // 2
+        sp[1:nyquist, :] *= 2
+        sp[nyquist+1:, :] = 0
+    else:
+        sp[1:(len(td) + 1)//2, :] *= 2
+        sp[(len(td) + 1)//2:, :] = 0
+
+    analytic = signal.copy()
+    analytic.time_data = np.fft.ifft(sp, axis=0)
+    return analytic
