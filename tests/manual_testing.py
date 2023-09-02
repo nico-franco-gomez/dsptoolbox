@@ -265,7 +265,7 @@ def convolve_rir_signal():
 
 def cepstrum():
     speech = dsp.Signal(join('examples', 'data', 'speech.flac'))
-    c = dsp.special.cepstrum(speech, mode='real')
+    c = dsp.transforms.cepstrum(speech, mode='real')
     # import matplotlib.pyplot as plt
     # plt.plot(c)
     dsp.plots.general_plot(speech.time_vector_s, c, log=False)
@@ -838,8 +838,8 @@ def mfcc():
     sp = dsp.Signal(join('examples', 'data', 'speech.flac'))
     t, f, s = sp.get_spectrogram()
 
-    mels, _ = dsp.special.mel_filterbank(f, [20, 10e3], n_bands=40)
-    t, mel, mf, fig, ax = dsp.special.mfcc(sp, mel_filters=mels)
+    mels, _ = dsp.transforms.mel_filterbank(f, [20, 10e3], n_bands=40)
+    t, mel, mf, fig, ax = dsp.transforms.mfcc(sp, mel_filters=mels)
 
     dsp.plots.show()
 
@@ -883,7 +883,7 @@ def istft():
     sp = dsp.merge_signals(sp, sp)
     sp.set_spectrogram_parameters(padding=False)
     t, f, s = sp.get_spectrogram()
-    rec = dsp.special.istft(s, original_signal=sp)
+    rec = dsp.transforms.istft(s, original_signal=sp)
     sp.plot_time()
     rec.plot_time()
     # plt.plot(np.abs(rec.time_data - sp.time_data))

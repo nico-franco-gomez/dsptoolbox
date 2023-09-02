@@ -8,13 +8,12 @@ Acquire TF/IR from signals:
 
 - `spectral_deconvolve()` (direct deconvolution)
 - `compute_transfer_function()` (using welch's method for estimating auto- and
-  cross correlation spectra from measurements of stochastic signals)
+  cross correlation spectra from measurements)
 
 Modify TF/IR:
 
 - `window_ir()` (Windows a TF in time domain)
 - `min_phase_ir()` (returns a minimum-phase version of the IR)
-- `combine_ir_with_dirac()` (combines an IR with a time-aligned dirac impulse)
 
 Generate TF/IR from magnitude spectrum:
 
@@ -30,46 +29,29 @@ Analyze TF/IR:
 - `excess_group_delay()`
 - `minimum_phase()`
 - `find_ir_delay()`
-- `window_frequency_dependent()` (obtain a spectrum with a frequency-dependent
-  window)
 
 """
-from .transfer_functions import (
-    spectral_deconvolve,
-    window_ir,
-    window_frequency_dependent,
-    window_centered_ir,
-    compute_transfer_function,
-    spectral_average,
-    min_phase_from_mag,
-    lin_phase_from_mag,
-    min_phase_ir,
-    group_delay,
-    minimum_group_delay,
-    excess_group_delay,
-    minimum_phase,
-    ir_to_filter,
-    filter_to_ir,
-    combine_ir_with_dirac,
-    warp_ir,
-)
+from .transfer_functions import (spectral_deconvolve, window_ir,
+                                 compute_transfer_function,
+                                 spectral_average,
+                                 min_phase_from_mag,
+                                 lin_phase_from_mag,
+                                 min_phase_ir,
+                                 group_delay,
+                                 minimum_group_delay,
+                                 excess_group_delay,
+                                 minimum_phase,)
 
 __all__ = [
-    "spectral_deconvolve",
-    "window_ir",
-    "compute_transfer_function",
-    "spectral_average",
-    "min_phase_from_mag",
-    "lin_phase_from_mag",
-    "min_phase_ir",
-    "group_delay",
-    "minimum_group_delay",
-    "excess_group_delay",
-    "minimum_phase",
-    "window_frequency_dependent",
-    "ir_to_filter",
-    "filter_to_ir",
-    "combine_ir_with_dirac",
-    "window_centered_ir",
-    "warp_ir",
+    'spectral_deconvolve',
+    'window_ir',
+    'compute_transfer_function',
+    'spectral_average',
+    'min_phase_from_mag',
+    'lin_phase_from_mag',
+    'min_phase_ir',
+    'group_delay',
+    'minimum_group_delay',
+    'excess_group_delay',
+    'minimum_phase',
 ]

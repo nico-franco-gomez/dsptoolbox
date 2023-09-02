@@ -7,7 +7,7 @@ under a same category.
 """
 import numpy as np
 import pickle
-from scipy.signal import resample_poly, convolve
+from scipy.signal import resample_poly, convolve, hilbert
 from scipy.special import iv as bessel_first_mod
 from fractions import Fraction
 from warnings import warn
@@ -21,7 +21,7 @@ from dsptoolbox._standard import (_latency,
                                   _exact_center_frequencies_fractional_octaves,
                                   _kaiser_window_beta,
                                   _indices_above_threshold_dbfs,
-                                  _detrend, _rms)
+                                  _detrend, _rms, _fractional_latency)
 from dsptoolbox._general_helpers import (
     _pad_trim, _normalize, _fade, _check_format_in_path,
     _get_smoothing_factor_ema)
@@ -29,39 +29,104 @@ from dsptoolbox.transfer_functions import (
     min_phase_from_mag, lin_phase_from_mag)
 
 
-def latency(in1: Signal, in2: Signal = None) -> np.ndarray:
+def latency(in1: Signal | MultiBandSignal,
+            in2: Signal | MultiBandSignal = None,
+            polynomial_points: int = 0) -> np.ndarray:
     """Computes latency between two signals using the correlation method.
     If there is no second signal, the latency between the first and the other
-    channels is computed. `in1` is to be understood as a the delayed version
+    channels is computed. `in1` is to be understood as a delayed version
     of `in2` for the latency to be positive. The other way around will give
     the same result but negative.
 
+    This function can compute the sub-sample latency between two signals using
+    Zero-Crossing of the analytic (hilbert transformed) correlation function.
+    See [1] for more details. The number of polynomial points taken around the
+    correlation maximum can be arbitrarily set, although some polynomial orders
+    might fail to compute the root. In that case, integer latency will be
+    returned for the respective channel. To avoid fractional latency, use
+    `polynomial_points = 0`.
+
     Parameters
     ----------
-    in1 : Signal
+    in1 : `Signal` or `MultiBandSignal`
         First signal.
-    in2 : Signal, optional
+    in2 : `Signal` or `MultiBandSignal`, optional
         Second signal. Default: `None`.
+    polynomial_points : int, optional
+        This corresponds to the number of points taken around the root in order
+        to fit a polynomial for the fractional latency. Accuracy might improve
+        with higher orders but it could also lead to ill-conditioned
+        polynomials. In case root finding is not successful, integer latency
+        values are returned. Default: 0.
 
     Returns
     -------
-    latency_per_channel_samples : `np.ndarray`
-        Array with latency between two signals in samples per channel.
+    lags : `np.ndarray`
+        Delays. For `Signal`, the output shape is (channel).
+        In case in2 is `None`, the length is channels-1. In the case of
+        `MultiBandSignal`, output shape is (band, channel).
+
+    References
+    ----------
+    - [1]: N. S. M. Tamim and F. Ghani, "Hilbert transform of FFT pruned cross
+      correlation function for optimization in time delay estimation," 2009
+      IEEE 9th Malaysia International Conference on Communications (MICC),
+      Kuala Lumpur, Malaysia, 2009, pp. 809-814,
+      doi: 10.1109/MICC.2009.5431382.
 
     """
-    if in2 is not None:
-        assert in1.number_of_channels == in2.number_of_channels, \
-            'Channel number does not match'
-        latency_per_channel_samples = _latency(in1.time_data, in2.time_data)
+    assert polynomial_points >= 0, \
+        'Polynomial points has to be at least 0'
+    if polynomial_points == 0:
+        latency_func = _latency
+        data_type = int
     else:
-        assert in1.number_of_channels > 1, \
-            'Signal should have at least two channels'
-        latency_per_channel_samples = \
-            np.zeros(in1.number_of_channels-1, dtype=int)
-        for n in range(in1.number_of_channels-1):
-            latency_per_channel_samples[n] = \
-                _latency(in1.time_data[:, 0], in1.time_data[:, n+1])
-    return latency_per_channel_samples
+        latency_func = _fractional_latency
+        data_type = float
+
+    if type(in1) == Signal:
+        if in2 is not None:
+            assert in1.sampling_rate_hz == in2.sampling_rate_hz, \
+                'Sampling rates must match'
+            assert in1.number_of_channels == in2.number_of_channels, \
+                'Number of channels between the two signals must match'
+            assert type(in2) == Signal, \
+                'Both signals must be of type Signal'
+            td2 = in2.time_data
+        else:
+            assert in1.number_of_channels > 1, \
+                'Signal must have at least 2 channels to compare'
+            td2 = None
+        return latency_func(
+            in1.time_data, td2, polynomial_points=polynomial_points)
+    elif type(in1) == MultiBandSignal:
+        if in2 is not None:
+            assert type(in2) == MultiBandSignal, \
+                'Both signals must be of type Signal'
+            assert in1.sampling_rate_hz == in2.sampling_rate_hz, \
+                'Sampling rates must match'
+            pass_in2 = True
+        else:
+            pass_in2 = False
+
+        if pass_in2:
+            lags = np.zeros(
+                (in1.number_of_bands, in1.number_of_channels), dtype=data_type)
+            for band in range(in1.number_of_bands):
+                lags[band, :] = latency(
+                    in1[band], pass_in2[band],
+                    polynomial_points=polynomial_points)
+        else:
+            lags = np.zeros((in1.number_of_bands, in1.number_of_channels-1),
+                            dtype=data_type)
+            for band in range(in1.number_of_bands):
+                lags[band, :] = latency(
+                    in1[band], None,
+                    polynomial_points=polynomial_points)
+        return lags
+    else:
+        raise TypeError(
+            'Signals must either be type Signal or MultiBandSignal')
 
 
 def pad_trim(signal: Signal | MultiBandSignal, desired_length_samples: int,
@@ -1138,3 +1203,65 @@ class CalibrationData():
             raise TypeError('signal has not a valid type. Use Signal or ' +
                             'MultiBandSignal')
         return calibrated_signal
+
+
+def envelope(signal: Signal | MultiBandSignal, mode: str = 'analytic',
+             window_length_samples: int = None):
+    """This function computes the envelope of a given signal by means of its
+    hilbert transformation. It can also compute the RMS value over a certain
+    window length (boxcar). The time signal is always detrended with a linear
+    polynomial.
+
+    Parameters
+    ----------
+    signal : `Signal` or `MultiBandSignal`
+        Time series for which to find the envelope. If it is a
+        `MultiBandSignal`, it must have the same sampling rate for all bands.
+    mode : str {'analytic', 'rms'}, optional
+        Type of envelope. It either uses the hilbert transform to obtain the
+        analytic signal or RMS values. Default: `'analytic'`.
+    window_length_samples : int, optional
+        Window length (boxcar) to average the RMS values. Cannot be `None`
+        if `mode = 'rms'`. Default: `None`.
+
+    Returns
+    -------
+    `np.ndarray`
+        Signal envelope. It has the shape (time sample, channel) or
+        (time sample, band, channel) in case of `MultiBandSignal`.
+
+    """
+    mode = mode.lower()
+    assert mode in ('analytic', 'rms'), \
+        'Invalid mode. Use either analytic or rms.'
+
+    if type(signal) == Signal:
+        signal = detrend(signal, 1)
+        if mode == 'analytic':
+            env = signal.time_data
+            env = np.abs(hilbert(env, axis=0))
+            return env
+        else:
+            assert window_length_samples > 0,\
+                'Window length must be more than 1 sample'
+            rms_vec = signal.time_data
+            rms_vec = convolve(
+                rms_vec**2,
+                np.ones(window_length_samples)[..., None]
+                / window_length_samples,
+                mode='full')[:len(rms_vec), ...]
+            rms_vec **= 0.5
+            return rms_vec
+    elif type(signal) == MultiBandSignal:
+        assert signal.same_sampling_rate, \
+            'This is only available for constant sampling rate bands'
+        rms_vec = np.zeros(
+            (len(signal.bands[0]), signal.number_of_bands,
+             signal.number_of_channels),
+            float)
+        for ind, b in enumerate(signal.bands):
+            rms_vec[:, ind, :] = envelope(
+                b, mode=mode, window_length_samples=window_length_samples)
+        return rms_vec
+    else:
+        raise TypeError('Signal must be type Signal or MultiBandSignal')

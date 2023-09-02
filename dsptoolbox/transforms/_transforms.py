@@ -2,7 +2,6 @@
 Backend for special module
 """
 import numpy as np
-from scipy.signal import get_window
 
 
 def _pitch2frequency(tuning_a_hz: float = 440):
@@ -21,12 +20,13 @@ def _pitch2frequency(tuning_a_hz: float = 440):
 
     """
     N = 128
-    return tuning_a_hz * 2 ** ((np.arange(N) - 69) / 12)
+    return tuning_a_hz * 2**((np.arange(N)-69)/12)
 
 
-class Wavelet:
-    """Base class for a wavelet function."""
+class Wavelet():
+    """Base class for a wavelet function.
 
+    """
     def __init__(self):
         """Constructor for the base wavelet class. It's not supposed to be
         used directly.
@@ -39,7 +39,7 @@ class Wavelet:
         in each Wavelet class.
 
         """
-        raise NotImplementedError("Wavelet function has not been implemented")
+        raise NotImplementedError('Wavelet function has not been implemented')
 
     def get_center_frequency(self):
         """Returns the center frequency of the wavelet (normalized,
@@ -74,17 +74,11 @@ class Wavelet:
 
 
 class MorletWavelet(Wavelet):
-    """Complex morlet wavelet."""
+    """Complex morlet wavelet.
 
-    def __init__(
-        self,
-        b: float | None = None,
-        h: float | None = None,
-        scale: float = 1.0,
-        precision_bounds: float = 1e-5,
-        step: float = 5e-3,
-        interpolation: bool = True,
-    ):
+    """
+    def __init__(self, b: float = None, h: float = None, scale: float = 1.,
+                 precision_bounds: float = 1e-5, step: float = 5e-3):
         """Instantiate a complex morlet wavelet based on the given parameters.
         Bandwidth can be defined through `b` or `h` (see Notes for the
         difference).
@@ -106,10 +100,6 @@ class MorletWavelet(Wavelet):
         step : float, optional
             Step x for the mother wavelet. Small values are recommended
             if there are no memory constraints. Default: 5e-3.
-        interpolation : bool, optional
-            When `True`, linear interpolation is activated when sampling
-            scales from the motherwavelet. This improves the result but also
-            increases the computational load. Default: `True`.
 
         Notes
         -----
@@ -122,34 +112,39 @@ class MorletWavelet(Wavelet):
           wavelets for time-frequency analysis.
 
         """
-        assert b is not None or h is not None, "Either b or h must be passed"
+        assert b is not None or h is not None, 'Either b or h must be passed'
         if h is not None:
             b = h**2 / np.log(2) / 4
         self.b = b
         self.scale = scale
 
-        t = np.sqrt(b * np.log(1 / precision_bounds))
+        t = np.sqrt(b*np.log(1/precision_bounds))
         self.bounds = [-t, t]
 
         self.step = step
-        self.interpolation = interpolation
 
     def _get_x(self) -> np.ndarray:
-        """Returns x vector for the mother wavelet."""
-        return np.arange(self.bounds[0], self.bounds[1] + self.step, self.step)
+        """Returns x vector for the mother wavelet.
+
+        """
+        return np.arange(self.bounds[0], self.bounds[1]+self.step, self.step)
 
     def get_base_wavelet(self) -> tuple[np.ndarray, np.ndarray]:
-        """Return complex morlet wavelet."""
+        """Return complex morlet wavelet.
+
+        """
         x = self._get_x()
-        return x, 1 / np.sqrt(np.pi * self.b) * np.exp(
-            2j * np.pi / self.scale * x
-        ) * np.exp(-(x**2) / self.b)
+        return x, 1/np.sqrt(np.pi*self.b) * \
+            np.exp(2j*np.pi/self.scale*x)*np.exp(-x**2/self.b)
 
     def get_center_frequency(self) -> float:
-        """Return center frequency for the complex morlet wavelet."""
-        return 1 / self.scale
+        """Return center frequency for the complex morlet wavelet.
 
-    def get_wavelet(self, f: float | np.ndarray, fs: int) -> np.ndarray | list:
+        """
+        return 1/self.scale
+
+    def get_wavelet(self, f: float | np.ndarray, fs: int,
+                    interpolation: bool = False) -> np.ndarray | list:
         """Return wavelet scaled for a specific frequency and sampling rate.
         The wavelet values can also be linearly interpolated for a higher
         accuracy at the expense of computation time.
@@ -160,6 +155,11 @@ class MorletWavelet(Wavelet):
             Queried frequency or array of frequencies.
         fs : int
             Sampling rate in Hz.
+        interpolation : bool, optional
+            When `True`, the wavelet function values are linearly interpolated
+            based on the mother wavelet. This increases accuracy but it's more
+            computationally intense. Otherwise, floor is used on the indices
+            to get the values. Default: `False`.
 
         Returns
         -------
@@ -174,7 +174,7 @@ class MorletWavelet(Wavelet):
 
         for scale in scales:
             inds = np.arange(scale * (x[-1] - x[0]) + 1) / (scale * self.step)
-            if self.interpolation:
+            if interpolation:
                 wavef = self._get_interpolated_wave(base, inds)
             else:
                 # 0-th interpolation
@@ -198,19 +198,18 @@ class MorletWavelet(Wavelet):
         trunc = inds.astype(int)
         trunc = trunc[trunc < len(base)]
 
-        accumulator = np.zeros(len(trunc), dtype="cfloat")
+        accumulator = np.zeros(len(trunc), dtype='cfloat')
 
-        for i in range(len(trunc) - 1):
-            accumulator[i] = base[trunc[i]] + (
-                base[trunc[i] + 1] - base[trunc[i]]
-            ) * (inds[i] - trunc[i])
+        for i in range(len(trunc)-1):
+            accumulator[i] = base[trunc[i]] + \
+                (base[trunc[i]+1] - base[trunc[i]])*(inds[i] - trunc[i])
         accumulator[-1] = base[trunc[-1]]
         return accumulator
 
 
-def _squeeze_scalogram(
-    scalogram: np.ndarray, freqs: np.ndarray, fs: int, delta_w: float = 0.05
-) -> np.ndarray:
+def _squeeze_scalogram(scalogram: np.ndarray, freqs: np.ndarray, fs: int,
+                       delta_w: float = 0.05) \
+        -> np.ndarray:
     """Synchrosqueeze a scalogram.
 
     Parameters
@@ -238,7 +237,7 @@ def _squeeze_scalogram(
       -transform-explanation
 
     """
-    scalpow = np.abs(scalogram) ** 2
+    scalpow = np.abs(scalogram)**2
     inds = scalpow > 1e-40
 
     # Phase Transform
@@ -252,7 +251,7 @@ def _squeeze_scalogram(
 
     # Normalization factor
     normalizations = 1 / (freqs / fs)  # Scales
-    normalizations **= -3 / 2
+    normalizations **= (-3/2)
 
     # Thresholds
     delta_f = delta_w * freqs
@@ -269,9 +268,8 @@ def _squeeze_scalogram(
     return sync
 
 
-def _get_length_longest_wavelet(
-    wave: Wavelet | MorletWavelet, f: np.ndarray, fs: float
-):
+def _get_length_longest_wavelet(wave: Wavelet | MorletWavelet, f: np.ndarray,
+                                fs: float):
     """Get longest wavelet for a frequency vector. This is useful information
     for zero-padding to avoid boundary effects.
 
@@ -291,66 +289,3 @@ def _get_length_longest_wavelet(
 
     """
     return len(wave.get_wavelet(np.min(f), fs, False))
-
-
-def _get_kernels_vqt(
-    q: float,
-    highest_f: float,
-    bins_per_octave: int,
-    sampling_rate_hz: int,
-    window_type: str | tuple,
-    gamma: float,
-):
-    """Compute the complex kernels for the VQT from the highest frequency
-    and the sampling rate.
-
-    Parameters
-    ----------
-    q : float
-        Q factor.
-    highest_f : float
-        Highest frequency for which to compute the kernel.
-    bins_per_octave : int
-        Number of bins contained in each octave.
-    sampling_rate_hz : int
-        Sampling rate in Hz.
-    window_type : str or tuple
-        Window specification to pass to `scipy.signal.get_window()`.
-    gamma : float
-        Factor for variable Q.
-
-    Returns
-    -------
-    kernels : list
-        List containing the complex kernels arranged from high frequency to
-        lower frequency.
-
-    """
-    freqs = highest_f * 2 ** (
-        -1 / bins_per_octave * np.arange(bins_per_octave)
-    )
-    factor = 2 ** (1 / bins_per_octave) - 1
-    lengths = np.round(
-        q * sampling_rate_hz / ((freqs * factor) + gamma)
-    ).astype(int)
-
-    kernels = []
-
-    for ind in range(len(lengths)):
-        w = get_window(window_type, lengths[ind], fftbins=False)
-        # Normalize window
-        w /= w.sum()
-        # Generate kernel centered in window
-        kernels.append(
-            w
-            * np.exp(
-                1j
-                * freqs[ind]
-                * 2
-                * np.pi
-                / sampling_rate_hz
-                * np.arange(-lengths[ind] // 2, lengths[ind] // 2)
-            )
-        )
-
-    return kernels
