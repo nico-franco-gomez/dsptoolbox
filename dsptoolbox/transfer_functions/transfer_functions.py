@@ -547,7 +547,7 @@ def minimum_phase(signal: Signal, equiripple: bool = False)\
     """Gives back a matrix containing the minimum phase signal for each
     channel. If it is symmetric, `scipy.signal.minimum_phase` is used.
     Otherwise, the minimum phase is won through the direct hilbert transform of
-    the log magnitude spectrum. The original length is of the input is
+    the log magnitude spectrum. The original length of the input is
     always kept.
 
     Parameters

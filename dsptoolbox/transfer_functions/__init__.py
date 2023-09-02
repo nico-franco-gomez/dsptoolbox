@@ -28,6 +28,7 @@ Analyze TF/IR:
 - `minimum_group_delay()`
 - `excess_group_delay()`
 - `minimum_phase()`
+- `find_ir_delay()`
 
 """
 from .transfer_functions import (spectral_deconvolve, window_ir,
@@ -39,7 +40,7 @@ from .transfer_functions import (spectral_deconvolve, window_ir,
                                  group_delay,
                                  minimum_group_delay,
                                  excess_group_delay,
-                                 minimum_phase)
+                                 minimum_phase,)
 
 __all__ = [
     'spectral_deconvolve',

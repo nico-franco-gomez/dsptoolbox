@@ -13,7 +13,7 @@ The modules and functions of dsptoolbox are listed down below.
    modules/dsptoolbox.audio_io
    modules/dsptoolbox.plots
    modules/dsptoolbox.room_acoustics
-   modules/dsptoolbox.special
+   modules/dsptoolbox.transforms
    modules/dsptoolbox.standard_functions
    modules/dsptoolbox.transfer_functions
    modules/dsptoolbox.effects
