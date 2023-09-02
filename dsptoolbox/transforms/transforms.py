@@ -5,6 +5,8 @@ from dsptoolbox.classes.signal_class import Signal
 from dsptoolbox.plots import general_matrix_plot
 from dsptoolbox._standard import _reconstruct_framed_signal
 from dsptoolbox._general_helpers import _hz2mel, _mel2hz, _pad_trim
+from dsptoolbox.transforms._transforms import (
+    _pitch2frequency, Wavelet, MorletWavelet, _squeeze_scalogram)
 
 import numpy as np
 from scipy.signal.windows import get_window
@@ -466,3 +468,150 @@ def istft(stft: np.ndarray, original_signal: Signal = None,
         reconstructed_signal = Signal(None, time_data=td,
                                       sampling_rate_hz=sampling_rate_hz)
     return reconstructed_signal
+
+
+def chroma_stft(signal: Signal, tuning_a_hz: float = 440,
+                compression: float = 0.5, plot_channel: int = -1):
+    """This computes the Chroma Features and Pitch STFT. See [1] for details.
+
+    Parameters
+    ----------
+    signal : `Signal`
+        Signal for which to compute the chroma features. The saved parameters
+        for the spectrogram are used to compute the STFT.
+    tuning_a_hz : float, optional
+        Tuning in Hz for the A4. Default: 440.
+    compression : float, optional
+        Compression factor as explained in [1]. Default: 0.5.
+    plot_channel : int, optional
+        When different than -1, a chroma plot for the corresponding channel is
+        generated and returned. Default: -1.
+
+    Returns
+    -------
+    t : `np.ndarray`
+        Time vector corresponding to each time frame.
+    chroma_stft : `np.ndarray`
+        Chroma Features with shape (note, time frame, channel). First index
+        is C, second C#, etc. (Until B).
+    pitch_stft : `np.ndarray`
+        Pitch log-STFT with shape (pitch, time frame, channel). First index
+        is note 0 (MIDI), i.e., C0.
+    When `plot_channel != -1`:
+        Figure and Axes.
+
+    References
+    ----------
+    - [1]: Short-Time Fourier Transform and Chroma Features. Müller.
+
+    """
+    assert tuning_a_hz > 0, \
+        'Tuning A4 must be greater than zero'
+    assert compression > 0, \
+        'Compression factor must be greater than zero'
+
+    t, f, stft = signal.get_spectrogram()
+
+    # Energy
+    stft = np.abs(stft)**2
+
+    # Get frequencies
+    pitch_frequencies = _pitch2frequency(tuning_a_hz)
+
+    pitch_transformation = np.zeros((len(pitch_frequencies), len(f)))
+    # This is the pitch representation
+    for ind, fn in enumerate(pitch_frequencies):
+        inds = (f >= fn*2**(-1/24)) & (f < fn*2**(1/24))
+        pitch_transformation[ind, inds] = 1
+
+    # Chroma sums over all octaves
+    n_notes = 12
+    chroma_transformation = np.zeros((n_notes, len(pitch_frequencies)))
+    for i in range(n_notes):
+        chroma_transformation[i, i::n_notes] = 1
+
+    # Get Pitch STFT Frequency Scaling
+    pitch_stft = np.tensordot(pitch_transformation, stft, (1, 0))
+    # Sum over all octaves for chroma
+    chroma_stft = np.tensordot(chroma_transformation, pitch_stft, (1, 0))
+
+    pitch_stft = np.log(1 + compression*pitch_stft)
+    chroma_stft = np.log(1 + compression*chroma_stft)
+
+    if plot_channel != -1:
+        fig, ax = plt.subplots(1, 1)
+        image = ax.imshow(chroma_stft[..., plot_channel],
+                          aspect='auto', origin='lower')
+        ax.set_yticks(np.arange(12),
+                      ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#',
+                       'A', 'A#', 'B'])
+        time_step = int(1 / t[1])
+        ax.set_xticks(np.arange(0, chroma_stft.shape[1], time_step),
+                      np.round(t[::time_step]))
+        ax.set_xlabel('Time / s')
+        ax.set_ylabel('Note')
+        fig.colorbar(image)
+        return t, chroma_stft, pitch_stft, fig, ax
+    return t, chroma_stft, pitch_stft
+
+
+def cwt(signal: Signal, frequencies: np.ndarray,
+        wavelet: Wavelet | MorletWavelet, channel: np.ndarray = None,
+        synchrosqueezed: bool = False) \
+            -> np.ndarray:
+    """Returns a scalogram by means of the continuous wavelet transform.
+
+    Parameters
+    ----------
+    signal : `Signal`
+        Signal for which to compute the cwt.
+    frequencies : `np.ndarray`
+        Frequencies to query with the wavelet.
+    wavelet : `Wavelet` or `MorletWavelet`
+        Type of wavelet to use. It must be a class inherited from the
+        `Wavelet` class.
+    channel : `np.ndarray`, optional
+        Channel for which to compute the cwt. If `None`, all channels are
+        computed. Default: `None`.
+    synchrosqueezed : bool, optional
+        When `True`, the scalogram is synchrosqueezed using the phase
+        transform. Default: `False`.
+
+    Returns
+    -------
+    scalogram : `np.ndarray`
+        Complex scalogram scalogram with shape (frequency, time sample,
+        channel).
+
+    Notes
+    -----
+    - Zero-padding in the beginning is done for reducing boundary effects.
+
+    """
+    if channel is None:
+        channel = np.arange(signal.number_of_channels)
+    channel = np.atleast_1d(channel)
+    td = signal.time_data[:, channel]
+
+    scalogram = np.zeros((len(frequencies), td.shape[0], td.shape[1]),
+                         dtype='cfloat')
+
+    for ind_f, f in enumerate(frequencies):
+        wv = wavelet.get_wavelet(f, signal.sampling_rate_hz, False)
+        wv = wv[::-1]
+
+        # Length of FFT
+        linear_length = td.shape[0] + len(wv) - 1
+        l_fft = int(2**np.ceil(np.log2(linear_length)))
+
+        # Correlate between wavelet and signal
+        s_td = np.fft.fft(td, axis=0, n=l_fft)
+        s_wv = np.fft.fft(wv, axis=0, n=l_fft)[..., None]
+        output = np.fft.ifft(s_td * s_wv, axis=0, n=l_fft)
+        scalogram[ind_f, ...] = output[:td.shape[0], :]
+
+    if synchrosqueezed:
+        scalogram = _squeeze_scalogram(
+            scalogram, frequencies, signal.sampling_rate_hz)
+
+    return scalogram

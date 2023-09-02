@@ -102,7 +102,8 @@ def _find_ir_start(ir, threshold_dbfs: float = -20) -> int:
     return ind
 
 
-def _complex_mode_identification(spectra: np.ndarray, n_functions: int = 1) ->\
+def _complex_mode_identification(spectra: np.ndarray,
+                                 maximum_singular_value: bool = True) ->\
         np.ndarray:
     """Complex transfer matrix and CMIF from:
     http://papers.vibetech.com/Paper17-CMIF.pdf
@@ -111,8 +112,9 @@ def _complex_mode_identification(spectra: np.ndarray, n_functions: int = 1) ->\
     ----------
     spectra : `np.ndarray`
         Matrix containing spectra of the necessary IR.
-    n_functions : int, optional
-        Number of singular value vectors to be returned. Default: 1.
+    maximum_singular_value : bool, optional
+        When `True`, the maximum singular value at each frequency line is
+        returned instead of the first. Default: `True`.
 
     Returns
     -------
@@ -124,9 +126,6 @@ def _complex_mode_identification(spectra: np.ndarray, n_functions: int = 1) ->\
     http://papers.vibetech.com/Paper17-CMIF.pdf
 
     """
-    assert n_functions <= spectra.shape[1], f'{n_functions} is too many ' +\
-        f'functions for spectra of shape {spectra.shape}'
-
     n_rir = spectra.shape[1]
 
     # If only one RIR is provided, then there is no need to compute the SVD
@@ -137,11 +136,13 @@ def _complex_mode_identification(spectra: np.ndarray, n_functions: int = 1) ->\
     for n in range(n_rir):
         H[0, n, :] = spectra[:, n]
         H[n, 0, :] = spectra[:, n]  # Conjugate?!
-    cmif = np.empty((spectra.shape[0], n_functions))
+    cmif = np.zeros(spectra.shape[0])
     for ind in range(cmif.shape[0]):
-        s = np.linalg.svd(H[:, :, ind], compute_uv=False)
-        for nf in range(n_functions):
-            cmif[ind, nf] = s[nf]
+        s = np.linalg.svd(H[:, :, ind], compute_uv=False, hermitian=True)
+        if maximum_singular_value:
+            cmif[ind] = s.max()
+        else:
+            cmif[ind] = s[0]
     return cmif
 
 

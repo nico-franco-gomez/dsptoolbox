@@ -765,10 +765,11 @@ def _euclidean_distance_matrix(x: np.ndarray, y: np.ndarray):
                    2 * x @ y.T)
 
 
-def _get_smoothing_factor_ema(relaxation_time_s: float, sampling_rate_hz: int):
+def _get_smoothing_factor_ema(relaxation_time_s: float, sampling_rate_hz: int,
+                              accuracy: float = 0.95):
     """This computes the smoothing factor needed for a single-pole IIR,
-    or exponential moving averager. The returned value (alpha) should be used::
-    for as follows
+    or exponential moving averager. The returned value (alpha) should be used
+    as follows::
 
         y[n] = alpha * x[n] + (1-alpha)*y[n-1]
 
@@ -776,23 +777,28 @@ def _get_smoothing_factor_ema(relaxation_time_s: float, sampling_rate_hz: int):
     ----------
     relaxation_time_s : float
         Time for the step response to stabilize around the given value
-        (with 99% accuracy).
+        (with the given accuracy).
     sampling_rate_hz : int
         Sampling rate to be used.
+    accuracy : float, optional
+        Accuracy with which the value of the step response can differ from
+        1 after the relaxation time. This must be between ]0, 1[.
+        Default: 0.95.
 
     Returns
     -------
     alpha : float
-        Smoothing value for the
+        Smoothing value for the exponential smoothing.
 
     Notes
     -----
     - The formula coincides with the one presented in
-      https://en.wikipedia.org/wiki/Exponential_smoothing, but it uses a factor
-      5.
+      https://en.wikipedia.org/wiki/Exponential_smoothing, but it uses an
+      extra factor for accuracy.
 
     """
-    return 1 - np.exp(-5/relaxation_time_s/sampling_rate_hz)
+    factor = np.log(1 - accuracy)
+    return 1 - np.exp(factor/relaxation_time_s/sampling_rate_hz)
 
 
 def _wrap_phase(phase_vector: np.ndarray) -> np.ndarray:

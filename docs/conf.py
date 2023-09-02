@@ -13,7 +13,7 @@ from dsptoolbox import __version__
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
 project = 'dsptoolbox'
-copyright = '2022, Nicolas Franco-Gomez'
+copyright = '2023, Nicolas Franco-Gomez'
 author = 'Nicolas Franco-Gomez'
 
 release = __version__
