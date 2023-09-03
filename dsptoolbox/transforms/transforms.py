@@ -6,12 +6,13 @@ from dsptoolbox.plots import general_matrix_plot
 from dsptoolbox._standard import _reconstruct_framed_signal
 from dsptoolbox._general_helpers import _hz2mel, _mel2hz, _pad_trim
 from dsptoolbox.transforms._transforms import (
-    _pitch2frequency, Wavelet, MorletWavelet, _squeeze_scalogram)
+    _pitch2frequency, Wavelet, MorletWavelet, _squeeze_scalogram,
+    _get_kernels_vqt)
 
 import numpy as np
 from scipy.signal.windows import get_window
 from scipy.fft import dct
-from scipy.signal import oaconvolve, convolve
+from scipy.signal import oaconvolve, resample_poly
 import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
 from matplotlib.axes import Axes
@@ -600,12 +601,12 @@ def cwt(signal: Signal, frequencies: np.ndarray,
     for ind_f, f in enumerate(frequencies):
         wv = wavelet.get_wavelet(f, signal.sampling_rate_hz)
         # Decide if convolve, fftconvolve or oaconvolve
-        if len(wv) > td.shape[0]*0.2:
-            scalogram[ind_f, ...] = convolve(
-                td, wv[..., None], axes=0, mode='same')
-        else:
-            scalogram[ind_f, ...] = oaconvolve(
-                td, wv[..., None], axes=0, mode='same')
+        # if len(wv) > td.shape[0]*0.2:
+        #     scalogram[ind_f, ...] = convolve(
+        #         td, wv[..., None], axes=0, mode='same')
+        # else:
+        scalogram[ind_f, ...] = oaconvolve(
+            td, wv[..., None], axes=0, mode='same')
 
     if synchrosqueezed:
         scalogram = _squeeze_scalogram(
@@ -654,3 +655,97 @@ def hilbert(signal: Signal):
     analytic = signal.copy()
     analytic.time_data = np.fft.ifft(sp, axis=0)
     return analytic
+
+
+def vqt(signal: Signal, channel: np.ndarray = None, q: float = 100,
+        gamma: float = 0.05, octaves: list = [1, 5], bins_per_octave: int = 24,
+        a4_tuning: int = 440, window: str | tuple = 'hann'):
+    """Variable-Q Transform. This is a special case of the continuous wavelet
+    transform with complex morlet wavelets for the time-frequency analysis.
+    Constant-Q Transform can be achieved by setting `gamma = 0`.
+
+    Parameters
+    ----------
+    signal : `Signal`
+        Signal for which to compute the cqt coefficients.
+    channel : `np.ndarray` or int, optional
+        Channel(s) for which to compute the cqt coefficients. If `None`,
+        all channels are computed. Default: `None`.
+    q : float, optional
+        Q-factor. It is the number of cycles for each kernel. Default: 100.
+    gamma : float, optional
+        This is the factor for the bandwidth adaptation. It is scaled by
+        the nyquist frequency. Set to 0 for obtaining the Constant-Q Transform.
+        Default: 0.05.
+    octaves : list with length 2, optional
+        Range of musical octaves for which to compute the cqt coefficients.
+        [1, 4] computes all corresponding frequencies from C1 up until B4.
+        Exact frequencies are adapted from the a4-tuning parameter.
+        Default: [1, 5].
+    bins_per_octave : int, optional
+        Number of frequency bins to divide an octave. Default: 24.
+    a4_tuning : int, optional
+        Frequency for A4 in Hz. Default: 440.
+    window : str or tuple, optional
+        Type of window to use for the kernels. This is directly passed
+        to `scipy.signal.get_window()`, so that a tuple containing a window
+        type and an additional parameter can be used. Default: `'hann'`.
+
+    Returns
+    -------
+    f : `np.ndarray`
+        Frequency vector.
+    cqt : `np.ndarray`
+        CQT coefficients with shape (frequency, time samples, channel).
+
+    """
+    if channel is None:
+        channel = np.arange(signal.number_of_channels)
+    channel = np.atleast_1d(channel)
+
+    td = signal.time_data[:, channel]
+
+    # Highest frequency corresponds to the B of the last octave
+    highest_f = a4_tuning * 2**(octaves[1]-4 + 2/12)
+
+    # Find necessary sampling rate, i.e., one with nyquist just above
+    # highest frequency. This delivers the necessary decimation factor.
+    decimation = int((signal.sampling_rate_hz//2) / (highest_f*1.1))
+    mid_fs = signal.sampling_rate_hz // decimation
+    td = resample_poly(td, up=1, down=decimation, axis=0)
+
+    kernels = _get_kernels_vqt(q, highest_f, bins_per_octave,
+                               mid_fs, window, gamma)
+
+    octs = octaves[1]-octaves[0]+1
+    cqt = np.zeros((0, signal.time_data.shape[0], signal.number_of_channels),
+                   dtype='cfloat')
+
+    for oc in np.arange(octs):
+        # Accumulator for octave
+        acc = np.zeros((0, td.shape[0], td.shape[1]),
+                       dtype='cfloat')
+
+        for k in kernels:
+            out = oaconvolve(td, k[..., None], mode='same', axes=0)
+            acc = np.append(acc, out[None, ...], axis=0)
+
+        # Resample back to original sampling rate and save
+        if oc != 0:
+            acc = resample_poly(acc, up=2*oc, down=1, axis=1)
+        acc = resample_poly(acc, up=decimation, down=1, axis=1)
+
+        length_diff = acc.shape[1] - cqt.shape[1]
+        if length_diff > 0:
+            acc = acc[:, :cqt.shape[1], :]
+        elif length_diff < 0:
+            acc = np.pad(acc, ((0, 0), (0, -length_diff), (0, 0)))
+        cqt = np.append(cqt, acc, axis=0)
+        # Decimate for further computation
+        td = resample_poly(td, up=1, down=2, axis=0)
+
+    # Invert frequency axis
+    cqt = np.flip(cqt, axis=0)
+    f = a4_tuning * 2**(
+        np.arange(octaves[0]-4 - 9/12, octaves[1]-4 + 2/12, 1/12))
+    return f, cqt

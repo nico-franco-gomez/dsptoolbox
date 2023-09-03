@@ -2,6 +2,7 @@
 Backend for special module
 """
 import numpy as np
+from scipy.signal import get_window
 
 
 def _pitch2frequency(tuning_a_hz: float = 440):
@@ -290,3 +291,49 @@ def _get_length_longest_wavelet(wave: Wavelet | MorletWavelet, f: np.ndarray,
 
     """
     return len(wave.get_wavelet(np.min(f), fs, False))
+
+
+def _get_kernels_vqt(q: float, highest_f: float, bins_per_octave: int,
+                     sampling_rate_hz: int, window_type: str | tuple,
+                     gamma: float):
+    """Compute the complex kernels for the VQT from the highest frequency
+    and the sampling rate.
+
+    Parameters
+    ----------
+    q : float
+        Q factor.
+    highest_f : float
+        Highest frequency for which to compute the kernel.
+    bins_per_octave : int
+        Number of bins contained in each octave.
+    sampling_rate_hz : int
+        Sampling rate in Hz.
+    window_type : str or tuple
+        Window specification to pass to `scipy.signal.get_window()`.
+    gamma : float
+        Factor for variable Q.
+
+    Returns
+    -------
+    kernels : list
+        List containing the complex kernels arranged from high frequency to
+        lower frequency.
+
+    """
+    gamma *= (sampling_rate_hz//2)
+    freqs = highest_f*2**(-1/bins_per_octave*np.arange(bins_per_octave))
+    lengths = np.round(sampling_rate_hz / (freqs + gamma) * q).astype(int)
+
+    kernels = []
+
+    for ind in range(len(lengths)):
+        w = get_window(window_type, lengths[ind], fftbins=False)
+        # Normalize window
+        w /= w.sum()
+        # Generate kernel centered in window
+        kernels.append(
+            w * np.exp(1j * freqs[ind]*2*np.pi/sampling_rate_hz *
+                       np.arange(-lengths[ind]//2, lengths[ind]//2)))
+
+    return kernels
