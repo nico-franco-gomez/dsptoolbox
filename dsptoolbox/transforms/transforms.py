@@ -11,7 +11,7 @@ from dsptoolbox.transforms._transforms import (
 import numpy as np
 from scipy.signal.windows import get_window
 from scipy.fft import dct
-from scipy.signal import oaconvolve
+from scipy.signal import oaconvolve, convolve
 import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
 from matplotlib.axes import Axes
@@ -598,9 +598,14 @@ def cwt(signal: Signal, frequencies: np.ndarray,
                          dtype='cfloat')
 
     for ind_f, f in enumerate(frequencies):
-        wv = wavelet.get_wavelet(f, signal.sampling_rate_hz, False)
-        scalogram[ind_f, ...] = oaconvolve(
-            td, wv[..., None], axes=0, mode='same')
+        wv = wavelet.get_wavelet(f, signal.sampling_rate_hz)
+        # Decide if convolve, fftconvolve or oaconvolve
+        if len(wv) > td.shape[0]*0.2:
+            scalogram[ind_f, ...] = convolve(
+                td, wv[..., None], axes=0, mode='same')
+        else:
+            scalogram[ind_f, ...] = oaconvolve(
+                td, wv[..., None], axes=0, mode='same')
 
     if synchrosqueezed:
         scalogram = _squeeze_scalogram(

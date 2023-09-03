@@ -78,7 +78,8 @@ class MorletWavelet(Wavelet):
 
     """
     def __init__(self, b: float = None, h: float = None, scale: float = 1.,
-                 precision_bounds: float = 1e-5, step: float = 5e-3):
+                 precision_bounds: float = 1e-5, step: float = 5e-3,
+                 interpolation: bool = True):
         """Instantiate a complex morlet wavelet based on the given parameters.
         Bandwidth can be defined through `b` or `h` (see Notes for the
         difference).
@@ -100,6 +101,10 @@ class MorletWavelet(Wavelet):
         step : float, optional
             Step x for the mother wavelet. Small values are recommended
             if there are no memory constraints. Default: 5e-3.
+        interpolation : bool, optional
+            When `True`, linear interpolation is activated when sampling
+            scales from the motherwavelet. This improves the result but also
+            increases the computational load. Default: `True`.
 
         Notes
         -----
@@ -122,6 +127,7 @@ class MorletWavelet(Wavelet):
         self.bounds = [-t, t]
 
         self.step = step
+        self.interpolation = interpolation
 
     def _get_x(self) -> np.ndarray:
         """Returns x vector for the mother wavelet.
@@ -143,8 +149,8 @@ class MorletWavelet(Wavelet):
         """
         return 1/self.scale
 
-    def get_wavelet(self, f: float | np.ndarray, fs: int,
-                    interpolation: bool = False) -> np.ndarray | list:
+    def get_wavelet(self, f: float | np.ndarray, fs: int) \
+            -> np.ndarray | list:
         """Return wavelet scaled for a specific frequency and sampling rate.
         The wavelet values can also be linearly interpolated for a higher
         accuracy at the expense of computation time.
@@ -155,11 +161,6 @@ class MorletWavelet(Wavelet):
             Queried frequency or array of frequencies.
         fs : int
             Sampling rate in Hz.
-        interpolation : bool, optional
-            When `True`, the wavelet function values are linearly interpolated
-            based on the mother wavelet. This increases accuracy but it's more
-            computationally intense. Otherwise, floor is used on the indices
-            to get the values. Default: `False`.
 
         Returns
         -------
@@ -174,7 +175,7 @@ class MorletWavelet(Wavelet):
 
         for scale in scales:
             inds = np.arange(scale * (x[-1] - x[0]) + 1) / (scale * self.step)
-            if interpolation:
+            if self.interpolation:
                 wavef = self._get_interpolated_wave(base, inds)
             else:
                 # 0-th interpolation
