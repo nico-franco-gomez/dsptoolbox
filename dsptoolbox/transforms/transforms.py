@@ -657,12 +657,12 @@ def hilbert(signal: Signal):
     return analytic
 
 
-def vqt(signal: Signal, channel: np.ndarray = None, q: float = 100,
-        gamma: float = 0.05, octaves: list = [1, 5], bins_per_octave: int = 24,
+def vqt(signal: Signal, channel: np.ndarray = None, q: float = 1,
+        gamma: float = 50, octaves: list = [1, 5], bins_per_octave: int = 24,
         a4_tuning: int = 440, window: str | tuple = 'hann'):
     """Variable-Q Transform. This is a special case of the continuous wavelet
     transform with complex morlet wavelets for the time-frequency analysis.
-    Constant-Q Transform can be achieved by setting `gamma = 0`.
+    Constant-Q Transform can be obtained by setting `gamma = 0`.
 
     Parameters
     ----------
@@ -672,11 +672,13 @@ def vqt(signal: Signal, channel: np.ndarray = None, q: float = 100,
         Channel(s) for which to compute the cqt coefficients. If `None`,
         all channels are computed. Default: `None`.
     q : float, optional
-        Q-factor. It is the number of cycles for each kernel. Default: 100.
+        Q-factor. 1 would be the optimal value but setting it to something
+        lower might increase temporal resolution at the expense of frequency
+        resolution. Default: 1.
     gamma : float, optional
-        This is the factor for the bandwidth adaptation. It is scaled by
-        the nyquist frequency. Set to 0 for obtaining the Constant-Q Transform.
-        Default: 0.05.
+        This is the factor for the bandwidth adaptation (in Hz). This extends
+        the bandwidth of each kernel. Set to 0 for obtaining the Constant-Q
+        Transform. Default: 50.
     octaves : list with length 2, optional
         Range of musical octaves for which to compute the cqt coefficients.
         [1, 4] computes all corresponding frequencies from C1 up until B4.
@@ -698,6 +700,13 @@ def vqt(signal: Signal, channel: np.ndarray = None, q: float = 100,
     cqt : `np.ndarray`
         CQT coefficients with shape (frequency, time samples, channel).
 
+    References
+    ----------
+    - Schörkhuber and Klapuri: CONSTANT-Q TRANSFORM TOOLBOX FOR MUSIC
+      PROCESSING.
+    - Schörkhuber et. al.: A Matlab Toolbox for Efficient Perfect
+      Reconstruction Time-Frequency Transforms with Log-Frequency Resolution.
+
     """
     if channel is None:
         channel = np.arange(signal.number_of_channels)
@@ -713,6 +722,9 @@ def vqt(signal: Signal, channel: np.ndarray = None, q: float = 100,
     decimation = int((signal.sampling_rate_hz//2) / (highest_f*1.1))
     mid_fs = signal.sampling_rate_hz // decimation
     td = resample_poly(td, up=1, down=decimation, axis=0)
+
+    # Gamma adaptation
+    gamma = gamma/signal.sampling_rate_hz * mid_fs
 
     kernels = _get_kernels_vqt(q, highest_f, bins_per_octave,
                                mid_fs, window, gamma)
@@ -732,7 +744,7 @@ def vqt(signal: Signal, channel: np.ndarray = None, q: float = 100,
 
         # Resample back to original sampling rate and save
         if oc != 0:
-            acc = resample_poly(acc, up=2*oc, down=1, axis=1)
+            acc = resample_poly(acc, up=2**oc, down=1, axis=1)
         acc = resample_poly(acc, up=decimation, down=1, axis=1)
 
         length_diff = acc.shape[1] - cqt.shape[1]

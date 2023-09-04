@@ -321,9 +321,10 @@ def _get_kernels_vqt(q: float, highest_f: float, bins_per_octave: int,
         lower frequency.
 
     """
-    gamma *= (sampling_rate_hz//2)
     freqs = highest_f*2**(-1/bins_per_octave*np.arange(bins_per_octave))
-    lengths = np.round(sampling_rate_hz / (freqs + gamma) * q).astype(int)
+    factor = 2**(1/bins_per_octave)-1
+    lengths = np.round(
+        q*sampling_rate_hz / ((freqs * factor)+gamma)).astype(int)
 
     kernels = []
 
