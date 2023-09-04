@@ -444,6 +444,7 @@ def _fractional_octave_smoothing(vector: np.ndarray, num_fractions: int = 3,
         vector = vector[..., None]
 
     vec_final = np.zeros_like(vector)
+    window /= window.sum()
     for n in range(vector.shape[1]):
         # Interpolate to logarithmic scale
         vec_int = interp1d(
@@ -451,7 +452,8 @@ def _fractional_octave_smoothing(vector: np.ndarray, num_fractions: int = 3,
             copy=False, assume_sorted=True)
         vec_log = vec_int(k_log)
         # Smoothe by convolving with window
-        smoothed = np.convolve(vec_log, window/np.sum(window), mode='same')
+        smoothed = np.convolve(vec_log, window, mode='full')
+        smoothed = smoothed[len(window)//2:len(window)//2+N]
         # Interpolate back to linear scale
         smoothed = interp1d(
             k_log, smoothed, kind='cubic',
