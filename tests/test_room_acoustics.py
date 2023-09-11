@@ -86,6 +86,9 @@ class TestRoomAcousticsModule():
             add_noise_reverberant_tail=False,
             use_detailed_absorption=False,
             max_order=None)
+        # rir.plot_magnitude(smoothe=0)
+        # dsp.plots.show()
+        # exit()
         # Detailed absorption
         d = {}
         for i in ['north', 'south', 'east', 'west', 'floor', 'ceiling']:

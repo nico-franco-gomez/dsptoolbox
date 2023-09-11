@@ -14,11 +14,13 @@ This module contains signal transforms.
 - `MorletWavelet` (class for a complex morlet wavelet)
 - `cwt()` (continuous wavelet transform)
 - `chroma_stft()` (STFT adapted to the chroma scale)
+- `hilbert()` (Hilbert Transform)
+- `vqt()` (Variable-Q Transform)
 
 """
 from .transforms import (cepstrum, log_mel_spectrogram, mel_filterbank,
                          plot_waterfall, mfcc, istft, MorletWavelet, cwt,
-                         chroma_stft)
+                         chroma_stft, hilbert, vqt)
 
 __all__ = [
     'cepstrum',
@@ -30,4 +32,6 @@ __all__ = [
     'MorletWavelet',
     'cwt',
     'chroma_stft',
+    'hilbert',
+    'vqt',
 ]

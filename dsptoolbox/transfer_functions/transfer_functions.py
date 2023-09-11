@@ -3,14 +3,20 @@ Methods used for acquiring and windowing transfer functions
 """
 import numpy as np
 from scipy.signal import minimum_phase as min_phase_scipy
+from scipy.signal import hilbert
+# from scipy.linalg import dft
 
-from dsptoolbox.classes import Signal
+from dsptoolbox.classes import Signal, Filter
 from dsptoolbox._general_helpers import (_find_frequencies_above_threshold)
 from ._transfer_functions import (_spectral_deconvolve,
                                   _window_this_ir)
 from dsptoolbox._standard import (
     _welch, _minimum_phase, _group_delay_direct, _pad_trim)
 from dsptoolbox.classes._filter import _group_delay_filter
+from dsptoolbox.standard_functions import (
+    fractional_delay, merge_signals, normalize)
+from dsptoolbox.generators import dirac
+from dsptoolbox.filterbanks import linkwitz_riley_crossovers
 
 
 def spectral_deconvolve(num: Signal, denum: Signal,
@@ -124,7 +130,8 @@ def window_ir(signal: Signal, constant_percentage=0.75, exp2_trim: int = 13,
         -> tuple[Signal, np.ndarray]:
     """Windows an IR with trimming and selection of constant valued length.
     This is equivalent to a tukey window whose flanks can be selected to be
-    any type.
+    any type. The peak of the impulse response is aligned to correspond to
+    the first value with amplitude 1 of the window.
 
     Parameters
     ----------
@@ -153,6 +160,12 @@ def window_ir(signal: Signal, constant_percentage=0.75, exp2_trim: int = 13,
     start_positions_samples : `np.ndarray`
         This array contains the position index of the start of the IR in
         each channel of the original IR.
+
+    Notes
+    -----
+    - The window flanks are adapted in case that the distance between impulse
+      and start is not enough for the selected flank lengths (flank lengths
+      depend on `constant_percentage` and `exp2_trim`).
 
     """
     assert signal.signal_type in ('rir', 'ir'), \
@@ -645,3 +658,255 @@ def excess_group_delay(signal: Signal) -> tuple[np.ndarray, np.ndarray]:
     f, gd = group_delay(signal)
     ex_gd = gd - min_gd
     return f, ex_gd
+
+
+def combine_ir_with_dirac(ir: Signal,
+                          crossover_frequency: float,
+                          take_lower_band: bool,
+                          order: int = 8, normalization: str = None) \
+        -> Signal:
+    """Combine an IR with a perfect impulse at a given crossover frequency
+    using a linkwitz-riley crossover. Forward-Backward filtering is done so
+    that no phase distortion occurs and the given filter order is doubled.
+    They can optionally be energy matched using RMS or peak value.
+
+    Parameters
+    ----------
+    ir : `dsp.Signal`
+        Impulse Response.
+    crossover_frequency : float
+        Frequency at which to combine the impulse response with the perfect
+        impulse.
+    take_lower_band : bool
+        When `True`, the part below the crossover frequency corresponds to the
+        passed impulse response and above corresponds to the perfect impulse.
+        `False` delivers the opposite result.
+    order : int, optional
+        Crossover order. This is doubled due to forward-backward filtering.
+        It should be an even number. Default: 8.
+    normalization : str, optional
+        `'energy'` means that the band of the perfect dirac impulse is
+        normalized so that it matches the energy contained in the band of the
+        impulse response. `'peak'` means that peak value is matched for both
+        bands. `None` avoids any normalization (Impulse response is always
+        normalized prior to computation). Default: `None`.
+
+    Returns
+    -------
+    combined_ir : `dsp.Signal`
+        New IR.
+
+    """
+    if normalization is not None:
+        normalization = normalization.lower()
+    assert normalization in ('energy', 'peak', None), \
+        'Invalid normalization parameter'
+    ir = normalize(ir)
+    # Get maximum with fractional precision by finding the root of the complex
+    # part of the analytical signal
+    delay_samples = np.argmax(ir.time_data, axis=0).astype(int)
+    h = hilbert(ir.time_data, axis=0)
+    point_around = 1
+    x = np.arange(-point_around, point_around)
+
+    # Make impulse
+    imp = dirac(
+        len(ir.time_data),
+        delay_samples=0,
+        number_of_channels=1,
+        sampling_rate_hz=ir.sampling_rate_hz
+    )
+
+    for ch in range(ir.number_of_channels):
+        pol = np.polyfit(x, np.imag(h[delay_samples[ch]-point_around:
+                                      delay_samples[ch]+point_around, ch]), 1)
+        fractional_delay_samples = np.roots(pol).squeeze()
+        delay_seconds = (delay_samples[ch] + fractional_delay_samples) / \
+            ir.sampling_rate_hz
+        imp_ch = imp.get_channels(ch)
+        imp_ch = fractional_delay(
+            imp_ch, delay_seconds=delay_seconds,
+            keep_length=True)
+        imp = merge_signals(imp, imp_ch)
+    imp.remove_channel(0)
+
+    # Filter crossover for both
+    fb = linkwitz_riley_crossovers([crossover_frequency], order,
+                                   ir.sampling_rate_hz)
+    ir_multi = fb.filter_signal(ir, zero_phase=True)
+    imp_multi = fb.filter_signal(imp, zero_phase=True)
+    if take_lower_band:
+        band_ir = 0
+        band_imp = 1
+    else:
+        band_ir = 1
+        band_imp = 0
+    td_ir = ir_multi.bands[band_ir].time_data
+    td_imp = imp_multi.bands[band_imp].time_data
+
+    if normalization == 'energy':
+        ir_rms = np.sqrt(np.mean(td_ir**2, axis=0))
+        imp_rms = np.sqrt(np.mean(td_imp**2, axis=0))
+        td_imp *= (ir_rms/imp_rms)
+    elif normalization == 'peak':
+        ir_peak = np.max(np.abs(td_ir), axis=0)
+        imp_peak = np.max(np.abs(td_imp), axis=0)
+        td_imp *= (ir_peak/imp_peak)
+
+    # Combine
+    combined_ir = ir.copy()
+    combined_ir.time_data = td_ir + td_imp
+    combined_ir = normalize(combined_ir)
+    return combined_ir
+
+
+def ir_to_filter(signal: Signal, channel: int = 0,
+                 phase_mode: str = 'direct') -> Filter:
+    """This function takes in a signal with type `'ir'` or `'rir'` and turns
+    the selected channel into an FIR filter. With `phase_mode` it is possible
+    to use minimum phase or minimum linear phase.
+
+    Parameters
+    ----------
+    signal : `Signal`
+        Signal to be converted into a filter.
+    channel : int, optional
+        Channel of the signal to be used. Default: 0.
+    phase_mode : {'direct', 'min', 'lin'} str, optional
+        Phase of the FIR filter. Choose from `'direct'` (no changes to phase),
+        `'min'` (minimum phase) or `'lin'` (minimum linear phase).
+        Default: `'direct'`.
+
+    Returns
+    -------
+    filt : `Filter`
+        FIR filter object.
+
+    """
+    assert signal.signal_type in ('ir', 'rir', 'h1', 'h2', 'h3'), \
+        f'{signal.signal_type} is not valid. Use one of ' +\
+        '''('ir', 'rir', 'h1', 'h2', 'h3')'''
+    assert channel < signal.number_of_channels, \
+        f'Signal does not have a channel {channel}'
+    phase_mode = phase_mode.lower()
+    assert phase_mode in ('direct', 'min', 'lin'), \
+        f'''{phase_mode} is not valid. Choose from ('direct', 'min', 'lin')'''
+
+    # Choose channel
+    signal = signal.get_channels(channel)
+
+    # Change phase
+    if phase_mode == 'min':
+        f, sp = signal.get_spectrum()
+        signal = min_phase_from_mag(np.abs(sp), signal.sampling_rate_hz)
+    elif phase_mode == 'lin':
+        f, sp = signal.get_spectrum()
+        signal = lin_phase_from_mag(np.abs(sp), signal.sampling_rate_hz)
+    b = signal.time_data[:, 0]
+    a = [1]
+    filt = Filter(
+        'other', {'ba': [b, a]}, sampling_rate_hz=signal.sampling_rate_hz)
+    return filt
+
+
+def filter_to_ir(fir: Filter) -> Signal:
+    """Takes in an FIR filter and converts it into an IR by taking its
+    b coefficients.
+
+    Parameters
+    ----------
+    fir : `Filter`
+        Filter containing an FIR filter.
+
+    Returns
+    -------
+    new_sig : `Signal`
+        New IR signal.
+
+    """
+    assert fir.filter_type == 'fir', \
+        'This is only valid is only available for FIR filters'
+    b, _ = fir.get_coefficients(mode='ba')
+    new_sig = Signal(
+        None, b, sampling_rate_hz=fir.sampling_rate_hz, signal_type='ir',
+        signal_id='IR from FIR filter')
+    return new_sig
+
+
+def spectrum_with_cycles(ir: Signal, cycles: int, channel: int = None,
+                         frequency_range_hz: list = None):
+    """A spectrum with frequency-dependent windowing defined by cycles is
+    returned. It is recommended that the impulse response has been already
+    left- and right-windowed (using, for instance, a tukey window).
+
+    A width of 5 cycles means that there are 5 periods of each frequency
+    before the window values hit 0.5, i.e., -3 dB.
+
+    This is computed only for real-valued signals (positive frequencies). No
+    scaling is applied to the spectrum.
+
+    Parameters
+    ----------
+    ir : `Signal`
+        Impulse response from which to extract the spectrum.
+    cycles : int
+        Number of cycles to include for each frequency bin. It defines
+        the window length.
+    channel : int, optional
+        Selected channel to compute the spectrum. Pass `None` to take all
+        channels. Default: `None`.
+    frequency_range_hz : list of length 2, optional
+        Frequency range to extract spectrum. Use `None` to compute the whole
+        spectrum. Default: `None`.
+
+    Returns
+    -------
+    f : `np.ndarray`
+        Frequency vector.
+    spec : `np.ndarray`
+        Spectrum with shape (frequency, channel).
+
+    """
+    fs = ir.sampling_rate_hz
+    if frequency_range_hz is not None:
+        assert len(frequency_range_hz) == 2
+        frequency_range_hz = np.sort(frequency_range_hz)
+    else:
+        frequency_range_hz = [0, fs//2]
+
+    if channel is None:
+        channel = np.arange(ir.number_of_channels)
+    else:
+        channel = np.atleast_1d(channel)
+
+    td = ir.time_data[:, channel]
+
+    f = np.fft.fftfreq(td.shape[0], 1/fs)
+    inds = (f > frequency_range_hz[0]) & (f < frequency_range_hz[1])
+    inds_f = np.arange(len(f))[inds]
+    f = f[inds]
+
+    # Samples for each frequency according to number of cycles
+    cycles_per_freq_samples = np.round(fs/f*cycles).astype(int)
+
+    # Pad if necessary for lowest frequency
+    if td.shape[0] < cycles_per_freq_samples[0]:
+        td = _pad_trim(td, cycles_per_freq_samples[0])
+
+    spec = np.zeros((len(f), td.shape[1]), dtype='cfloat')
+
+    half = (td.shape[0]-1)/2
+    alpha_factor = np.log(4)**0.5 * half
+    for ind, ind_f in enumerate(inds_f):
+        for ch in range(td.shape[1]):
+            # Construct window centered around impulse
+            ind_max = np.argmax(np.abs(td[:, ch]))
+            n = np.arange(-ind_max, td.shape[0]-ind_max)
+
+            # Alpha such that window is exactly 0.5 after the number of
+            # required samples for each frequency
+            alpha = alpha_factor / cycles_per_freq_samples[ind]
+
+            w = np.exp(-0.5 * (alpha * n / half)**2)
+            spec[ind, ch] = np.fft.rfft(w * td[:, ch])[ind_f]
+    return f, spec

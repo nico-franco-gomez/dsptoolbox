@@ -112,8 +112,9 @@ def _get_normalized_spectrum(f, spectra: np.ndarray, mode='standard',
         Default: [20, 20e3].
     normalize : str, optional
         Normalize spectrum (per channel). Choose from `'1k'` (for 1 kHz),
-        `'max'` (maximum value) or `None` for no normalization.
-        Default: `None`.
+        `'max'` (maximum value) or `None` for no normalization. The
+        normalization for 1 kHz uses a linear interpolation for getting the
+        value at 1 kHz regardless of the frequency resolution. Default: `None`.
     smoothe : int, optional
         1/smoothe-fractional octave band smoothing for magnitude spectra.
         Pass `0` for no smoothing.
@@ -180,8 +181,8 @@ def _get_normalized_spectrum(f, spectra: np.ndarray, mode='standard',
             np.clip(sp, a_min=epsilon, a_max=None)/scale_factor)
         if normalize is not None:
             if normalize == '1k':
-                id1k = _find_nearest(1e3, f)
-                sp_db -= sp_db[id1k]
+                gain = _get_exact_gain_1khz(f, sp_db)
+                sp_db -= gain
             else:
                 sp_db -= np.max(sp_db)
         if phase:
@@ -444,6 +445,7 @@ def _fractional_octave_smoothing(vector: np.ndarray, num_fractions: int = 3,
         vector = vector[..., None]
 
     vec_final = np.zeros_like(vector)
+    window /= window.sum()
     for n in range(vector.shape[1]):
         # Interpolate to logarithmic scale
         vec_int = interp1d(
@@ -451,7 +453,8 @@ def _fractional_octave_smoothing(vector: np.ndarray, num_fractions: int = 3,
             copy=False, assume_sorted=True)
         vec_log = vec_int(k_log)
         # Smoothe by convolving with window
-        smoothed = np.convolve(vec_log, window/np.sum(window), mode='same')
+        smoothed = np.convolve(vec_log, window, mode='full')
+        smoothed = smoothed[len(window)//2:len(window)//2+N]
         # Interpolate back to linear scale
         smoothed = interp1d(
             k_log, smoothed, kind='cubic',
@@ -817,3 +820,58 @@ def _wrap_phase(phase_vector: np.ndarray) -> np.ndarray:
 
     """
     return (phase_vector + np.pi) % (2 * np.pi) - np.pi
+
+
+def _get_exact_gain_1khz(f: np.ndarray, sp_db: np.ndarray) -> float:
+    """Uses linear interpolation to get the exact gain value at 1 kHz.
+
+    Parameters
+    ----------
+    f : `np.ndarray`
+        Frequency vector.
+    sp : `np.ndarray`
+        Spectrum. It can be in dB or not.
+
+    Returns
+    -------
+    float
+        Interpolated value.
+
+    """
+    # Get nearest value just before
+    ind = _find_nearest(1e3, f)
+    if f[ind] > 1e3:
+        ind -= 1
+    return (sp_db[ind+1]-sp_db[ind])/(f[ind+1]-f[ind])*(1e3 - f[ind]) +\
+        sp_db[ind]
+
+
+def gaussian_window(length: int, alpha: float, symmetric: bool):
+    """Produces a gaussian window as defined in [1] and [2].
+
+    Parameters
+    ----------
+    length : int
+        Length for the window.
+    alpha : float
+        Parameter to define window width. It is inversely proportional to the
+        standard deviation.
+    symmetric : bool
+        Define if the window should be symmetric or not.
+
+    Returns
+    -------
+    w : `np.ndarray`
+        Gaussian window.
+
+    """
+    if not symmetric:
+        length += 1
+
+    n = np.arange(length)
+    half = (length-1)/2
+    w = np.exp(-0.5*(alpha*(n-half)/half)**2)
+
+    if not symmetric:
+        return w[:-1]
+    return w
