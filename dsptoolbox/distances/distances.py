@@ -8,23 +8,14 @@ from scipy.signal import windows
 from .. import Signal
 from ..filterbanks import auditory_filters_gammatone
 from .._general_helpers import _find_nearest
-from ._distances import (
-    _log_spectral_distance,
-    _itakura_saito_measure,
-    _snr,
-    _sisdr,
-    _fw_snr_seg_per_channel,
-)
+from ._distances import (_log_spectral_distance,
+                         _itakura_saito_measure,
+                         _snr, _sisdr, _fw_snr_seg_per_channel)
 
 
-def log_spectral(
-    insig1: Signal,
-    insig2: Signal,
-    method: str = "welch",
-    f_range_hz=[20, 20000],
-    energy_normalization: bool = True,
-    spectrum_parameters: dict | None = None,
-) -> np.ndarray:
+def log_spectral(insig1: Signal, insig2: Signal, method: str = 'welch',
+                 f_range_hz=[20, 20000], energy_normalization: bool = True,
+                 spectrum_parameters: dict = None) -> np.ndarray:
     """Computes log spectral distance between two signals.
 
     Parameters
@@ -57,30 +48,24 @@ def log_spectral(
     - https://en.wikipedia.org/wiki/Log-spectral_distance
 
     """
-    assert (
-        insig1.sampling_rate_hz == insig2.sampling_rate_hz
-    ), "Sampling rates do not match"
-    assert (
-        insig1.number_of_channels == insig2.number_of_channels
-    ), "Signals have different channel numbers"
+    assert insig1.sampling_rate_hz == insig2.sampling_rate_hz,\
+        'Sampling rates do not match'
+    assert insig1.number_of_channels == insig2.number_of_channels,\
+        'Signals have different channel numbers'
     if spectrum_parameters is None:
         spectrum_parameters = {}
 
     fs_hz = insig1.sampling_rate_hz
     if f_range_hz is None:
-        f_range_hz = [0, fs_hz // 2]
+        f_range_hz = [0, fs_hz//2]
     else:
-        assert len(f_range_hz) == 2, (
-            "f_range_hz must only have a lower" + " and an upper limit"
-        )
+        assert len(f_range_hz) == 2, 'f_range_hz must only have a lower' +\
+            ' and an upper limit'
         f_range_hz = np.sort(f_range_hz)
-        assert f_range_hz[1] <= fs_hz // 2, (
-            "Upper bound for "
-            + "frequency must be smaller than the nyquist frequency"
-        )
-        assert not any(f_range_hz < 0), (
-            "Frequencies in range must be " + "positive"
-        )
+        assert f_range_hz[1] <= fs_hz//2, 'Upper bound for ' +\
+            'frequency must be smaller than the nyquist frequency'
+        assert not any(f_range_hz < 0), 'Frequencies in range must be ' +\
+            'positive'
     insig1.set_spectrum_parameters(method=method, **spectrum_parameters)
     insig2.set_spectrum_parameters(method=method, **spectrum_parameters)
     f, spec1 = insig1.get_spectrum()
@@ -88,17 +73,17 @@ def log_spectral(
 
     psd1 = np.abs(spec1)
     psd2 = np.abs(spec2)
-    if method == "standard":
+    if method == 'standard':
         psd1 = psd1**2
         psd2 = psd2**2
 
     ids = _find_nearest(f_range_hz, f)
-    f = f[ids[0] : ids[1]]
+    f = f[ids[0]:ids[1]]
 
     distances = np.zeros(insig1.number_of_channels)
     for n in range(insig1.number_of_channels):
-        x = psd1[ids[0] : ids[1], n]
-        y = psd2[ids[0] : ids[1], n]
+        x = psd1[ids[0]:ids[1], n]
+        y = psd2[ids[0]:ids[1], n]
         if energy_normalization:
             x /= np.sum(x)
             y /= np.sum(y)
@@ -106,14 +91,9 @@ def log_spectral(
     return distances
 
 
-def itakura_saito(
-    insig1: Signal,
-    insig2: Signal,
-    method: str = "welch",
-    f_range_hz=[20, 20000],
-    energy_normalization: bool = True,
-    spectrum_parameters: dict | None = None,
-) -> np.ndarray:
+def itakura_saito(insig1: Signal, insig2: Signal, method: str = 'welch',
+                  f_range_hz=[20, 20000], energy_normalization: bool = True,
+                  spectrum_parameters: dict = None) -> np.ndarray:
     """Computes itakura-saito measure between two signals. Beware that this
     measure is not symmetric (x, y) != (y, x).
 
@@ -147,30 +127,24 @@ def itakura_saito(
     - https://en.wikipedia.org/wiki/Itakura–Saito_distance
 
     """
-    assert (
-        insig1.sampling_rate_hz == insig2.sampling_rate_hz
-    ), "Sampling rates do not match"
-    assert (
-        insig1.number_of_channels == insig2.number_of_channels
-    ), "Signals have different channel numbers"
+    assert insig1.sampling_rate_hz == insig2.sampling_rate_hz,\
+        'Sampling rates do not match'
+    assert insig1.number_of_channels == insig2.number_of_channels,\
+        'Signals have different channel numbers'
     if spectrum_parameters is None:
         spectrum_parameters = {}
 
     fs_hz = insig1.sampling_rate_hz
     if f_range_hz is None:
-        f_range_hz = [0, fs_hz // 2]
+        f_range_hz = [0, fs_hz//2]
     else:
-        assert len(f_range_hz) == 2, (
-            "f_range_hz must only have a lower" + " and an upper limit"
-        )
+        assert len(f_range_hz) == 2, 'f_range_hz must only have a lower' +\
+            ' and an upper limit'
         f_range_hz = np.sort(f_range_hz)
-        assert f_range_hz[1] <= fs_hz // 2, (
-            "Upper bound for "
-            + "frequency must be smaller than the nyquist frequency"
-        )
-        assert not any(f_range_hz < 0), (
-            "Frequencies in range must be " + "positive"
-        )
+        assert f_range_hz[1] <= fs_hz//2, 'Upper bound for ' +\
+            'frequency must be smaller than the nyquist frequency'
+        assert not any(f_range_hz < 0), 'Frequencies in range must be ' +\
+            'positive'
     insig1.set_spectrum_parameters(method=method, **spectrum_parameters)
     insig2.set_spectrum_parameters(method=method, **spectrum_parameters)
     f, spec1 = insig1.get_spectrum()
@@ -178,17 +152,17 @@ def itakura_saito(
 
     psd1 = np.abs(spec1)
     psd2 = np.abs(spec2)
-    if method == "standard":
+    if method == 'standard':
         psd1 = psd1**2
         psd2 = psd2**2
 
     ids = _find_nearest(f_range_hz, f)
-    f = f[ids[0] : ids[1]]
+    f = f[ids[0]:ids[1]]
 
     distances = np.zeros(insig1.number_of_channels)
     for n in range(insig1.number_of_channels):
-        x = psd1[ids[0] : ids[1], n]
-        y = psd2[ids[0] : ids[1], n]
+        x = psd1[ids[0]:ids[1], n]
+        y = psd2[ids[0]:ids[1], n]
         if energy_normalization:
             x /= np.sum(x)
             y /= np.sum(y)
@@ -217,13 +191,11 @@ def snr(signal: Signal, noise: Signal) -> np.ndarray:
     - https://en.wikipedia.org/wiki/Signal-to-noise_ratio
 
     """
-    assert (
-        signal.sampling_rate_hz == noise.sampling_rate_hz
-    ), "Sampling rates do not match"
+    assert signal.sampling_rate_hz == noise.sampling_rate_hz,\
+        'Sampling rates do not match'
     if noise.number_of_channels != 1:
-        assert (
-            signal.number_of_channels == noise.number_of_channels
-        ), "Signals have different channel numbers"
+        assert signal.number_of_channels == noise.number_of_channels,\
+            'Signals have different channel numbers'
     return _snr(signal.time_data, noise.time_data)
 
 
@@ -251,20 +223,17 @@ def si_sdr(target_signal: Signal, modified_signal: Signal) -> np.ndarray:
     - https://arxiv.org/abs/1811.02508
 
     """
-    assert (
-        modified_signal.sampling_rate_hz == target_signal.sampling_rate_hz
-    ), "Sampling rates do not match"
+    assert modified_signal.sampling_rate_hz == target_signal.sampling_rate_hz,\
+        'Sampling rates do not match'
     if target_signal.number_of_channels != 1:
-        assert (
-            modified_signal.number_of_channels
-            == target_signal.number_of_channels
-        ), "Signals have different channel numbers"
+        assert modified_signal.number_of_channels == \
+            target_signal.number_of_channels, \
+            'Signals have different channel numbers'
         multichannel = False
     else:
         multichannel = True
-    assert (
-        modified_signal.time_data.shape[0] == target_signal.time_data.shape[0]
-    ), "Length of signals do not match"
+    assert modified_signal.time_data.shape[0] == \
+        target_signal.time_data.shape[0], 'Length of signals do not match'
 
     sdr = np.empty(modified_signal.number_of_channels)
     for n in range(modified_signal.number_of_channels):
@@ -272,19 +241,13 @@ def si_sdr(target_signal: Signal, modified_signal: Signal) -> np.ndarray:
             n_1 = 0
         else:
             n_1 = n
-        sdr[n] = _sisdr(
-            target_signal.time_data[:, n_1], modified_signal.time_data[:, n]
-        )
+        sdr[n] = _sisdr(target_signal.time_data[:, n_1],
+                        modified_signal.time_data[:, n])
     return sdr
 
 
-def fw_snr_seg(
-    x: Signal,
-    xhat: Signal,
-    f_range_hz=[20, 10e3],
-    snr_range_db=[-10, 35],
-    gamma: float = 0.2,
-) -> np.ndarray:
+def fw_snr_seg(x: Signal, xhat: Signal, f_range_hz=[20, 10e3],
+               snr_range_db=[-10, 35], gamma: float = 0.2) -> np.ndarray:
     """Frequency-weighted segmental SNR (fwSNRseg) computation between two
     signals.
 
@@ -331,52 +294,47 @@ def fw_snr_seg(
 
     """
     # Sampling rates
-    assert (
-        x.sampling_rate_hz == xhat.sampling_rate_hz
-    ), "Sampling rates do not match"
+    assert x.sampling_rate_hz == xhat.sampling_rate_hz, \
+        'Sampling rates do not match'
     fs_hz = x.sampling_rate_hz
     # Lengths
-    assert (
-        x.time_data.shape[0] == xhat.time_data.shape[0]
-    ), "Signal lengths do not match"
+    assert x.time_data.shape[0] == xhat.time_data.shape[0], \
+        'Signal lengths do not match'
     # Number of channels
     multichannel = False
     if x.number_of_channels != xhat.number_of_channels:
-        assert (
-            x.number_of_channels == 1
-        ), "Invalid number of channels for this measurement"
+        assert x.number_of_channels == 1, \
+            'Invalid number of channels for this measurement'
         multichannel = True
     # Frequency range
-    assert (
-        len(f_range_hz) == 2
-    ), "Frequency range must have lower and upper bounds"
+    assert len(f_range_hz) == 2, \
+        'Frequency range must have lower and upper bounds'
     f_range = np.asarray(f_range_hz)
     f_range.sort()
-    assert f_range[1] < fs_hz // 2, (
-        f"Upper frequency range {f_range[1]} must be smaller than nyquist "
-        + f"frequency {fs_hz // 2}"
-    )
-    assert f_range[0] > 0, "Frequency range must be positive"
+    assert f_range[1] < fs_hz//2, \
+        f'Upper frequency range {f_range[1]} must be smaller than nyquist ' +\
+        f'frequency {fs_hz//2}'
+    assert f_range[0] > 0, \
+        'Frequency range must be positive'
     # SNR range
-    assert len(snr_range_db) == 2, "SNR range must have lower and upper bounds"
+    assert len(snr_range_db) == 2, \
+        'SNR range must have lower and upper bounds'
     snr_range_db = np.asarray(snr_range_db)
     snr_range_db.sort()
     # Time window
-    length_samp = int(75e-3 * fs_hz)
+    length_samp = int(75e-3*fs_hz)
     if length_samp % 2 == 1:
         length_samp += 1
     window = windows.hamming(length_samp, sym=False)
-    step = len(window) // 2  # 50% overlap
+    step = len(window)//2  # 50% overlap
     # Gamma
-    assert (
-        gamma >= 0.1 and gamma <= 2
-    ), f"{gamma} is not in the valid range for gamma [0.1, 5]"
+    assert gamma >= 0.1 and gamma <= 2, \
+        f'{gamma} is not in the valid range for gamma [0.1, 5]'
     # Generate filter bank
     aud_fb = auditory_filters_gammatone(
-        frequency_range_hz=f_range, resolution=1, sampling_rate_hz=fs_hz
-    )
-    x = aud_fb.filter_signal(x, mode="parallel")
-    xhat = aud_fb.filter_signal(xhat, mode="parallel")
+        frequency_range_hz=f_range, resolution=1, sampling_rate_hz=fs_hz)
+    x = aud_fb.filter_signal(x, mode='parallel')
+    xhat = aud_fb.filter_signal(xhat, mode='parallel')
     # SNR time-segmented with weighting function
     snr_per_channel = np.empty(xhat.number_of_channels)
     for n in range(xhat.number_of_channels):
@@ -387,11 +345,6 @@ def fw_snr_seg(
             n_original = n
         x_ = x.get_all_bands(n_original).time_data
         snr_per_channel[n] = _fw_snr_seg_per_channel(
-            x_,
-            xhat_,
-            snr_range_db,
-            gamma,
-            time_window=window,
-            step_samples=step,
-        )
+            x_, xhat_, snr_range_db, gamma,
+            time_window=window, step_samples=step)
     return snr_per_channel

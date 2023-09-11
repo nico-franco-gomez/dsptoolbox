@@ -9,13 +9,12 @@ from soundfile import read, write
 from matplotlib.figure import Figure
 from matplotlib.axes import Axes
 
-from dsptoolbox.plots import (general_plot,
-                              general_subplots_line, general_matrix_plot)
+from ..plots import (general_plot, general_subplots_line, general_matrix_plot)
 from ._plots import _csm_plot
-from dsptoolbox._general_helpers import \
+from .._general_helpers import \
     (_get_normalized_spectrum, _pad_trim, _find_nearest,
      _fractional_octave_smoothing, _check_format_in_path)
-from dsptoolbox._standard import (_welch, _group_delay_direct, _stft, _csm)
+from .._standard import (_welch, _group_delay_direct, _stft, _csm)
 
 
 class Signal():

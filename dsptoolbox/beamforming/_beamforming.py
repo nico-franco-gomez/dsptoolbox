@@ -2,7 +2,7 @@
 Backend for beamforming module
 """
 import numpy as np
-from dsptoolbox._general_helpers import _euclidean_distance_matrix
+from .._general_helpers import _euclidean_distance_matrix
 import matplotlib.pyplot as plt
 from seaborn import set_style
 set_style('whitegrid')

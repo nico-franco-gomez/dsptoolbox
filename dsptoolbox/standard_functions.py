@@ -12,17 +12,17 @@ from scipy.special import iv as bessel_first_mod
 from fractions import Fraction
 from warnings import warn
 
-from dsptoolbox.classes.signal_class import Signal
-from dsptoolbox.classes.multibandsignal import MultiBandSignal
-from dsptoolbox.classes.filterbank import FilterBank
-from dsptoolbox.classes.filter_class import Filter
-from dsptoolbox._standard import (_latency,
-                                  _center_frequencies_fractional_octaves_iec,
-                                  _exact_center_frequencies_fractional_octaves,
-                                  _kaiser_window_beta,
-                                  _indices_above_threshold_dbfs,
-                                  _detrend, _rms, _fractional_latency)
-from dsptoolbox._general_helpers import (
+from .classes.signal_class import Signal
+from .classes.multibandsignal import MultiBandSignal
+from .classes.filterbank import FilterBank
+from .classes.filter_class import Filter
+from ._standard import (_latency,
+                        _center_frequencies_fractional_octaves_iec,
+                        _exact_center_frequencies_fractional_octaves,
+                        _kaiser_window_beta,
+                        _indices_above_threshold_dbfs,
+                        _detrend, _rms, _fractional_latency)
+from ._general_helpers import (
     _pad_trim, _normalize, _fade, _check_format_in_path,
     _get_smoothing_factor_ema)
 

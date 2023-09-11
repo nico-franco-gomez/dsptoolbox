@@ -1,8 +1,8 @@
 """
 Backend for the effects module
 """
-from dsptoolbox._general_helpers import _get_smoothing_factor_ema
-from dsptoolbox.plots import general_plot
+from .._general_helpers import _get_smoothing_factor_ema
+from ..plots import general_plot
 import numpy as np
 # import matplotlib.pyplot as plt
 
