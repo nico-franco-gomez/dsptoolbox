@@ -4,19 +4,18 @@ Methods used for acquiring and windowing transfer functions
 import numpy as np
 from scipy.signal import minimum_phase as min_phase_scipy
 from scipy.signal import hilbert
-# from scipy.linalg import dft
 
-from dsptoolbox.classes import Signal, Filter
-from dsptoolbox._general_helpers import (_find_frequencies_above_threshold)
 from ._transfer_functions import (_spectral_deconvolve,
                                   _window_this_ir)
-from dsptoolbox._standard import (
+from ..classes import Signal, Filter
+from ..classes._filter import _group_delay_filter
+from .._general_helpers import (_find_frequencies_above_threshold)
+from .._standard import (
     _welch, _minimum_phase, _group_delay_direct, _pad_trim)
-from dsptoolbox.classes._filter import _group_delay_filter
-from dsptoolbox.standard_functions import (
+from ..standard_functions import (
     fractional_delay, merge_signals, normalize)
-from dsptoolbox.generators import dirac
-from dsptoolbox.filterbanks import linkwitz_riley_crossovers
+from ..generators import dirac
+from ..filterbanks import linkwitz_riley_crossovers
 
 
 def spectral_deconvolve(num: Signal, denum: Signal,

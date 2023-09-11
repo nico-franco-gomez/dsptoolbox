@@ -7,7 +7,7 @@ from enum import Enum
 import scipy.signal as sig
 from .signal_class import Signal
 from .multibandsignal import MultiBandSignal
-from dsptoolbox._general_helpers import _polyphase_decomposition
+from .._general_helpers import _polyphase_decomposition
 
 
 def _get_biquad_type(number: int = None, name: str = None):

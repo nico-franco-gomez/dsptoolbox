@@ -1,15 +1,15 @@
-from dsptoolbox.classes import Signal, MultiBandSignal
-from dsptoolbox import activity_detector
-from dsptoolbox._standard import (_get_framed_signal,
-                                  _reconstruct_framed_signal,
-                                  _pad_trim,
-                                  _rms)
-from dsptoolbox._general_helpers import _get_next_power_2
+from ..classes import Signal, MultiBandSignal
+from .. import activity_detector
+from .._standard import (_get_framed_signal,
+                         _reconstruct_framed_signal,
+                         _pad_trim,
+                         _rms)
+from .._general_helpers import _get_next_power_2
 from ._effects import (
     _arctan_distortion, _clean_signal, _hard_clip_distortion,
     _soft_clip_distortion, _compressor, _get_knee_func, LFO,
     get_frequency_from_musical_rhythm, get_time_period_from_musical_rhythm)
-from dsptoolbox.plots import general_plot
+from ..plots import general_plot
 
 from scipy.signal.windows import get_window
 import numpy as np

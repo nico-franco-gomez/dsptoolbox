@@ -3,8 +3,8 @@ Here are wrappers for streams with sounddevice. This is useful for
 measurements and testing audio streams
 """
 import sounddevice as sd
-from dsptoolbox import Signal
-from dsptoolbox._general_helpers import _normalize
+from .. import Signal
+from .._general_helpers import _normalize
 from ._audio_io import standard_callback
 
 default_config = sd.default

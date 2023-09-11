@@ -4,7 +4,7 @@ from pickle import dump, HIGHEST_PROTOCOL
 from warnings import warn
 
 from .signal_class import Signal
-from dsptoolbox._general_helpers import _check_format_in_path
+from .._general_helpers import _check_format_in_path
 
 
 class MultiBandSignal():

@@ -3,12 +3,10 @@ High-level methods for room acoustics functions
 """
 import numpy as np
 from scipy.signal import find_peaks, convolve
-# from warnings import warn
 
-from dsptoolbox.classes import Signal, MultiBandSignal, Filter
-from dsptoolbox.filterbanks import (fractional_octave_bands,
-                                    linkwitz_riley_crossovers)
-from dsptoolbox.transfer_functions import group_delay
+from ..classes import Signal, MultiBandSignal, Filter
+from ..filterbanks import (fractional_octave_bands, linkwitz_riley_crossovers)
+from ..transfer_functions import group_delay
 from ._room_acoustics import (_reverb,
                               _complex_mode_identification,
                               _sum_magnitude_spectra,
@@ -19,7 +17,7 @@ from ._room_acoustics import (_reverb,
                               _d50_from_rir,
                               _c80_from_rir,
                               _ts_from_rir)
-from dsptoolbox._general_helpers import _find_nearest, _normalize, _pad_trim
+from .._general_helpers import _find_nearest, _normalize, _pad_trim
 
 
 def reverb_time(signal: Signal | MultiBandSignal, mode: str = 'T20',

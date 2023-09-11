@@ -2,7 +2,7 @@
 Backend for audio io module
 """
 from sounddevice import CallbackStop
-from dsptoolbox import Signal, normalize, fade
+from .. import Signal, normalize, fade
 from numpy import ndarray
 
 
