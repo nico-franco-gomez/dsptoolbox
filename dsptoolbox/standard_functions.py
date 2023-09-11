@@ -25,8 +25,6 @@ from dsptoolbox._standard import (_latency,
 from dsptoolbox._general_helpers import (
     _pad_trim, _normalize, _fade, _check_format_in_path,
     _get_smoothing_factor_ema)
-from dsptoolbox.transfer_functions import (
-    min_phase_from_mag, lin_phase_from_mag)
 
 
 def latency(in1: Signal | MultiBandSignal,
@@ -564,79 +562,6 @@ def erb_frequencies(freq_range_hz=[20, 20000], resolution: float = 1,
         np.exp(np.abs(erb_points) / 9.2645) - 1)
 
     return frequencies
-
-
-def ir_to_filter(signal: Signal, channel: int = 0,
-                 phase_mode: str = 'direct') -> Filter:
-    """This function takes in a signal with type `'ir'` or `'rir'` and turns
-    the selected channel into an FIR filter. With `phase_mode` it is possible
-    to use minimum phase or minimum linear phase.
-
-    Parameters
-    ----------
-    signal : `Signal`
-        Signal to be converted into a filter.
-    channel : int, optional
-        Channel of the signal to be used. Default: 0.
-    phase_mode : {'direct', 'min', 'lin'} str, optional
-        Phase of the FIR filter. Choose from `'direct'` (no changes to phase),
-        `'min'` (minimum phase) or `'lin'` (minimum linear phase).
-        Default: `'direct'`.
-
-    Returns
-    -------
-    filt : `Filter`
-        FIR filter object.
-
-    """
-    assert signal.signal_type in ('ir', 'rir', 'h1', 'h2', 'h3'), \
-        f'{signal.signal_type} is not valid. Use one of ' +\
-        '''('ir', 'rir', 'h1', 'h2', 'h3')'''
-    assert channel < signal.number_of_channels, \
-        f'Signal does not have a channel {channel}'
-    phase_mode = phase_mode.lower()
-    assert phase_mode in ('direct', 'min', 'lin'), \
-        f'''{phase_mode} is not valid. Choose from ('direct', 'min', 'lin')'''
-
-    # Choose channel
-    signal = signal.get_channels(channel)
-
-    # Change phase
-    if phase_mode == 'min':
-        f, sp = signal.get_spectrum()
-        signal = min_phase_from_mag(np.abs(sp), signal.sampling_rate_hz)
-    elif phase_mode == 'lin':
-        f, sp = signal.get_spectrum()
-        signal = lin_phase_from_mag(np.abs(sp), signal.sampling_rate_hz)
-    b = signal.time_data[:, 0]
-    a = [1]
-    filt = Filter(
-        'other', {'ba': [b, a]}, sampling_rate_hz=signal.sampling_rate_hz)
-    return filt
-
-
-def filter_to_ir(fir: Filter) -> Signal:
-    """Takes in an FIR filter and converts it into an IR by taking its
-    b coefficients.
-
-    Parameters
-    ----------
-    fir : `Filter`
-        Filter containing an FIR filter.
-
-    Returns
-    -------
-    new_sig : `Signal`
-        New IR signal.
-
-    """
-    assert fir.filter_type == 'fir', \
-        'This is only valid is only available for FIR filters'
-    b, _ = fir.get_coefficients(mode='ba')
-    new_sig = Signal(
-        None, b, sampling_rate_hz=fir.sampling_rate_hz, signal_type='ir',
-        signal_id='IR from FIR filter')
-    return new_sig
 
 
 def true_peak_level(signal: Signal | MultiBandSignal) \

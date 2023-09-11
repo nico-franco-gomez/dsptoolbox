@@ -1,8 +1,8 @@
 from .standard_functions import (
     latency, merge_signals, merge_filterbanks, pad_trim,
     fractional_delay, fractional_octave_frequencies, activity_detector, fade,
-    ir_to_filter, normalize, true_peak_level, resample, load_pkl_object,
-    erb_frequencies, filter_to_ir, detrend, rms, CalibrationData, envelope,
+    normalize, true_peak_level, resample, load_pkl_object,
+    erb_frequencies, detrend, rms, CalibrationData, envelope,
 )
 from .classes import Filter, FilterBank, Signal, MultiBandSignal
 from . import transfer_functions
