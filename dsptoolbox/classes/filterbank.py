@@ -9,11 +9,11 @@ from .signal_class import Signal
 from .multibandsignal import MultiBandSignal
 from .filter_class import Filter
 from ._filter import _filterbank_on_signal
-from dsptoolbox.generators import dirac
-from dsptoolbox.plots import general_plot
-from dsptoolbox._general_helpers import (
+from ..generators import dirac
+from ..plots import general_plot
+from .._general_helpers import (
     _get_normalized_spectrum, _check_format_in_path)
-from dsptoolbox._standard import _group_delay_direct
+from .._standard import _group_delay_direct
 
 
 class FilterBank():

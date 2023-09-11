@@ -1,11 +1,11 @@
 """
 Here are methods considered as somewhat special or less common.
 """
-from dsptoolbox.classes.signal_class import Signal
-from dsptoolbox.plots import general_matrix_plot
-from dsptoolbox._standard import _reconstruct_framed_signal
-from dsptoolbox._general_helpers import _hz2mel, _mel2hz, _pad_trim
-from dsptoolbox.transforms._transforms import (
+from ..classes.signal_class import Signal
+from ..plots import general_matrix_plot
+from .._standard import _reconstruct_framed_signal
+from .._general_helpers import _hz2mel, _mel2hz, _pad_trim
+from ..transforms._transforms import (
     _pitch2frequency, Wavelet, MorletWavelet, _squeeze_scalogram,
     _get_kernels_vqt)
 

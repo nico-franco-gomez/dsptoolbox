@@ -4,10 +4,10 @@ See measure.py for routines where the signals that are created here can be
 used
 """
 import numpy as np
-from dsptoolbox.classes.signal_class import Signal
-from dsptoolbox._general_helpers import (
+from ..classes.signal_class import Signal
+from .._general_helpers import (
     _normalize, _fade, _pad_trim, _frequency_weightning)
-from dsptoolbox.classes._filter import _impulse
+from ..classes._filter import _impulse
 
 
 def noise(type_of_noise: str = 'white', length_seconds: float = 1,

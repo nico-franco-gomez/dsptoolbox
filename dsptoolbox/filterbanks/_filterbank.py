@@ -8,12 +8,12 @@ from pickle import dump, HIGHEST_PROTOCOL
 from copy import deepcopy
 
 from scipy.signal import (sosfilt, sosfilt_zi, butter, sosfiltfilt)
-from dsptoolbox.classes import Signal, MultiBandSignal, FilterBank, Filter
+from ..classes import Signal, MultiBandSignal, FilterBank, Filter
 
-from dsptoolbox.generators import dirac
-from dsptoolbox.plots import general_plot
-from dsptoolbox._general_helpers import _get_normalized_spectrum
-from dsptoolbox._standard import _group_delay_direct
+from ..generators import dirac
+from ..plots import general_plot
+from .._general_helpers import _get_normalized_spectrum
+from .._standard import _group_delay_direct
 
 
 # ============== First implementation

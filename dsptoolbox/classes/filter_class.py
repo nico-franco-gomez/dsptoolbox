@@ -17,8 +17,8 @@ from ._filter import (_biquad_coefficients, _impulse,
                       _filter_and_downsample,
                       _filter_and_upsample)
 from ._plots import _zp_plot
-from dsptoolbox.plots import general_plot
-from dsptoolbox._general_helpers import _check_format_in_path
+from ..plots import general_plot
+from .._general_helpers import _check_format_in_path
 
 
 class Filter():

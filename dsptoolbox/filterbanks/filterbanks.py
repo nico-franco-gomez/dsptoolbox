@@ -5,8 +5,8 @@ object
 import numpy as np
 from scipy.signal import windows, bilinear_zpk
 import warnings
-from dsptoolbox import (Filter, FilterBank, fractional_octave_frequencies,
-                        erb_frequencies)
+from .. import (Filter, FilterBank, fractional_octave_frequencies,
+                erb_frequencies)
 from ._filterbank import (LRFilterBank, GammaToneFilterBank, QMFCrossover)
 
 

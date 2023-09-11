@@ -2,7 +2,7 @@
 Backend for transfer functions methods
 """
 import numpy as np
-from dsptoolbox._general_helpers import _find_nearest, _calculate_window
+from .._general_helpers import _find_nearest, _calculate_window
 
 
 def _spectral_deconvolve(num_fft: np.ndarray, denum_fft: np.ndarray, freqs_hz,

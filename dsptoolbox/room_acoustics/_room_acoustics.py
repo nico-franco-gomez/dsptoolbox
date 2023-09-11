@@ -2,10 +2,7 @@
 Low-level methods for room acoustics
 """
 import numpy as np
-from dsptoolbox.plots import (
-    general_plot,
-    # show
-)
+from ..plots import general_plot
 
 
 def _reverb(h, fs_hz, mode, ir_start: int = None,

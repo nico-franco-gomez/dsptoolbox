@@ -5,9 +5,9 @@ Beware that these distances have not been yet validated with other tools.
 import numpy as np
 from scipy.signal import windows
 
-from dsptoolbox import Signal
-from dsptoolbox.filterbanks import auditory_filters_gammatone
-from dsptoolbox._general_helpers import _find_nearest
+from .. import Signal
+from ..filterbanks import auditory_filters_gammatone
+from .._general_helpers import _find_nearest
 from ._distances import (_log_spectral_distance,
                          _itakura_saito_measure,
                          _snr, _sisdr, _fw_snr_seg_per_channel)
