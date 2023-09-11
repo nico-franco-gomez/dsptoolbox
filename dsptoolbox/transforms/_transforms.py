@@ -2,6 +2,7 @@
 Backend for special module
 """
 import numpy as np
+from scipy.signal import get_window
 
 
 def _pitch2frequency(tuning_a_hz: float = 440):
@@ -78,7 +79,8 @@ class MorletWavelet(Wavelet):
 
     """
     def __init__(self, b: float = None, h: float = None, scale: float = 1.,
-                 precision_bounds: float = 1e-5, step: float = 5e-3):
+                 precision_bounds: float = 1e-5, step: float = 5e-3,
+                 interpolation: bool = True):
         """Instantiate a complex morlet wavelet based on the given parameters.
         Bandwidth can be defined through `b` or `h` (see Notes for the
         difference).
@@ -100,6 +102,10 @@ class MorletWavelet(Wavelet):
         step : float, optional
             Step x for the mother wavelet. Small values are recommended
             if there are no memory constraints. Default: 5e-3.
+        interpolation : bool, optional
+            When `True`, linear interpolation is activated when sampling
+            scales from the motherwavelet. This improves the result but also
+            increases the computational load. Default: `True`.
 
         Notes
         -----
@@ -122,6 +128,7 @@ class MorletWavelet(Wavelet):
         self.bounds = [-t, t]
 
         self.step = step
+        self.interpolation = interpolation
 
     def _get_x(self) -> np.ndarray:
         """Returns x vector for the mother wavelet.
@@ -143,8 +150,8 @@ class MorletWavelet(Wavelet):
         """
         return 1/self.scale
 
-    def get_wavelet(self, f: float | np.ndarray, fs: int,
-                    interpolation: bool = False) -> np.ndarray | list:
+    def get_wavelet(self, f: float | np.ndarray, fs: int) \
+            -> np.ndarray | list:
         """Return wavelet scaled for a specific frequency and sampling rate.
         The wavelet values can also be linearly interpolated for a higher
         accuracy at the expense of computation time.
@@ -155,11 +162,6 @@ class MorletWavelet(Wavelet):
             Queried frequency or array of frequencies.
         fs : int
             Sampling rate in Hz.
-        interpolation : bool, optional
-            When `True`, the wavelet function values are linearly interpolated
-            based on the mother wavelet. This increases accuracy but it's more
-            computationally intense. Otherwise, floor is used on the indices
-            to get the values. Default: `False`.
 
         Returns
         -------
@@ -174,7 +176,7 @@ class MorletWavelet(Wavelet):
 
         for scale in scales:
             inds = np.arange(scale * (x[-1] - x[0]) + 1) / (scale * self.step)
-            if interpolation:
+            if self.interpolation:
                 wavef = self._get_interpolated_wave(base, inds)
             else:
                 # 0-th interpolation
@@ -289,3 +291,50 @@ def _get_length_longest_wavelet(wave: Wavelet | MorletWavelet, f: np.ndarray,
 
     """
     return len(wave.get_wavelet(np.min(f), fs, False))
+
+
+def _get_kernels_vqt(q: float, highest_f: float, bins_per_octave: int,
+                     sampling_rate_hz: int, window_type: str | tuple,
+                     gamma: float):
+    """Compute the complex kernels for the VQT from the highest frequency
+    and the sampling rate.
+
+    Parameters
+    ----------
+    q : float
+        Q factor.
+    highest_f : float
+        Highest frequency for which to compute the kernel.
+    bins_per_octave : int
+        Number of bins contained in each octave.
+    sampling_rate_hz : int
+        Sampling rate in Hz.
+    window_type : str or tuple
+        Window specification to pass to `scipy.signal.get_window()`.
+    gamma : float
+        Factor for variable Q.
+
+    Returns
+    -------
+    kernels : list
+        List containing the complex kernels arranged from high frequency to
+        lower frequency.
+
+    """
+    freqs = highest_f*2**(-1/bins_per_octave*np.arange(bins_per_octave))
+    factor = 2**(1/bins_per_octave)-1
+    lengths = np.round(
+        q*sampling_rate_hz / ((freqs * factor)+gamma)).astype(int)
+
+    kernels = []
+
+    for ind in range(len(lengths)):
+        w = get_window(window_type, lengths[ind], fftbins=False)
+        # Normalize window
+        w /= w.sum()
+        # Generate kernel centered in window
+        kernels.append(
+            w * np.exp(1j * freqs[ind]*2*np.pi/sampling_rate_hz *
+                       np.arange(-lengths[ind]//2, lengths[ind]//2)))
+
+    return kernels

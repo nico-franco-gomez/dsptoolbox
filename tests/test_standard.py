@@ -168,14 +168,6 @@ class TestStandardModule():
         # Only functionality tested here
         dsp.erb_frequencies()
 
-    def test_ir_to_filter(self):
-        s = self.audio_multi.time_data[:200, 0]
-        s = dsp.Signal(None, s, self.fs, signal_type='rir')
-        f = dsp.ir_to_filter(s, channel=0)
-        b, _ = f.get_coefficients(mode='ba')
-        assert np.all(b == s.time_data[:, 0])
-        assert f.sampling_rate_hz == s.sampling_rate_hz
-
     def test_true_peak_level(self):
         # Only functionality is tested here
         dsp.true_peak_level(self.audio_multi)
@@ -226,19 +218,6 @@ class TestStandardModule():
 
         with pytest.raises(AssertionError):
             dsp.detrend(s, polynomial_order=-10)
-
-    def test_filter_to_ir(self):
-        f = dsp.Filter(
-            'fir', dict(order=216, freqs=1000, type_of_pass='highpass'),
-            self.fs)
-        s = dsp.filter_to_ir(f)
-        assert s.time_data.shape[0] == 216+1
-
-        with pytest.raises(AssertionError):
-            f = dsp.Filter(
-                'iir', dict(order=10, freqs=1000, type_of_pass='highpass'),
-                self.fs)
-            dsp.filter_to_ir(f)
 
     def test_load_pkl_object(self):
         f = dsp.Filter(

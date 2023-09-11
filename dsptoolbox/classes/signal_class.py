@@ -766,6 +766,10 @@ class Signal():
         spectrogram : `np.ndarray`
             Complex spectrogram with shape (frequency, time).
 
+        Notes
+        -----
+        - No scaling is performed while computing the DFT coefficients.
+
         """
         condition = not hasattr(self, 'spectrogram') or force_computation or \
             self.__spectrogram_state_update or \
