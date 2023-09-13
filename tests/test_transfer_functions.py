@@ -94,9 +94,11 @@ class TestTransferFunctionsModule():
     def test_spectral_average(self):
         # Only functionality is tested
         h = dsp.transfer_functions.spectral_deconvolve(self.y_st, self.x)
-        h.plot_phase()
-        h = dsp.transfer_functions.spectral_average(h)
-        h.plot_phase()
+        # h.plot_phase()
+        dsp.transfer_functions.spectral_average(h, True)
+        # h1.plot_magnitude()
+        dsp.transfer_functions.spectral_average(h, False)
+        # h2.plot_magnitude()
 
     def test_min_phase_from_mag(self):
         # Only functionality is tested

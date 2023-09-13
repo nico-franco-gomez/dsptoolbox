@@ -60,12 +60,12 @@ def noise(type_of_noise: str = 'white', length_seconds: float = 1,
     assert peak_level_dbfs <= 0, 'Peak level cannot surpass 0 dBFS'
     assert number_of_channels >= 1, 'At least one channel should be generated'
 
-    l_samples = int(length_seconds * sampling_rate_hz)
+    l_samples = int(length_seconds * sampling_rate_hz + 0.5)
     f = np.fft.rfftfreq(l_samples, 1/sampling_rate_hz)
 
     if padding_end_seconds not in (None, 0):
         assert padding_end_seconds > 0, 'Padding has to be a positive time'
-        p_samples = int(padding_end_seconds * sampling_rate_hz)
+        p_samples = int(padding_end_seconds * sampling_rate_hz + 0.5)
     else:
         p_samples = 0
     time_data = np.zeros((l_samples+p_samples, number_of_channels))
@@ -170,7 +170,7 @@ def chirp(type_of_chirp: str = 'log', range_hz=None, length_seconds: float = 1,
         p_samples = int(padding_end_seconds * sampling_rate_hz)
     else:
         p_samples = 0
-    l_samples = int(sampling_rate_hz * length_seconds)
+    l_samples = int(sampling_rate_hz * length_seconds + 0.5)
     t = np.linspace(0, length_seconds, l_samples)
 
     if type_of_chirp == 'lin':
@@ -290,7 +290,7 @@ def harmonic(frequency_hz: float = 1000, length_seconds: float = 1,
         p_samples = int(padding_end_seconds * sampling_rate_hz)
     else:
         p_samples = 0
-    l_samples = int(sampling_rate_hz * length_seconds)
+    l_samples = int(sampling_rate_hz * length_seconds + 0.5)
     n_vec = np.arange(l_samples)[..., None]
     n_vec = np.repeat(n_vec, number_of_channels, axis=-1)
 
@@ -381,7 +381,7 @@ def oscillator(frequency_hz: float = 1000, length_seconds: float = 1,
         p_samples = int(padding_end_seconds * sampling_rate_hz)
     else:
         p_samples = 0
-    l_samples = int(sampling_rate_hz * length_seconds)
+    l_samples = int(sampling_rate_hz * length_seconds + 0.5)
     n = np.arange(l_samples)[..., None]
     n = np.repeat(n, number_of_channels, axis=-1)
 
