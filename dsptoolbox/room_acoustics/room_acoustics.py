@@ -6,10 +6,8 @@ from scipy.signal import find_peaks, convolve
 
 from ..classes import Signal, MultiBandSignal, Filter
 from ..filterbanks import (fractional_octave_bands, linkwitz_riley_crossovers)
-from ..transfer_functions import group_delay
 from ._room_acoustics import (_reverb,
                               _complex_mode_identification,
-                              _sum_magnitude_spectra,
                               _find_ir_start,
                               _generate_rir,
                               ShoeboxRoom,
@@ -18,6 +16,7 @@ from ._room_acoustics import (_reverb,
                               _c80_from_rir,
                               _ts_from_rir)
 from .._general_helpers import _find_nearest, _normalize, _pad_trim
+from ..standard_functions import pad_trim
 
 
 def reverb_time(signal: Signal | MultiBandSignal, mode: str = 'T20',
@@ -78,23 +77,9 @@ def reverb_time(signal: Signal | MultiBandSignal, mode: str = 'T20',
 
 
 def find_modes(signal: Signal, f_range_hz=[50, 200],
-               proximity_effect: bool = False, dist_hz: float = 5,
-               prune_antimodes: bool = False) -> np.ndarray:
-    """This metod is NOT validated. It might not be sufficient to find all
-    modes in the given range.
-
-    Computes the room modes of a set of RIR using different criteria:
-    Complex mode indication function, sum of magnitude responses and group
-    delay peaks of RIRs. If modes are identified in at least two of the three
-    criteria, they are considered as such.
-
-    The parameter prune antimodes is used to avoid getting modes that are
-    dips (and not peaks) in the frequency responses. This is done after
-    mode identification and is therefore only needed when proximity effect is
-    set to `True` and mode identification is done using group delay criteria,
-    since, for modes to be identified as such, they would need
-    to exhibit peaks in at least the CMIF or sum of all magnitude spectra. If
-    they were dips, they would be ignored anyway.
+               dist_hz: float = 5) -> np.ndarray:
+    """Computes the room modes of a set of RIR using the peaks of the complex
+    mode indicator function (CMIF).
 
     Parameters
     ----------
@@ -102,17 +87,8 @@ def find_modes(signal: Signal, f_range_hz=[50, 200],
         Signal containing the RIR'S from which to find the modes.
     f_range_hz : array-like, optional
         Vector setting range for mode search. Default: [50, 200].
-    proximity_effect : bool, optional
-        When `True`, only group delay criteria is used for finding modes
-        up until 200 Hz. This is done since a gradient transducer will not
-        easily see peaks in its magnitude response in low frequencies
-        due to near-field effects. Default: `False`.
     dist_hz : float, optional
         Minimum distance (in Hz) between modes. Default: 5.
-    prune_antimodes : bool, optional
-        See if the detected modes are dips in the frequency response of the
-        first RIR. This is only needed for the group delay method, which
-        is essential when proximity_effect is set to `True`. Default: `False`.
 
     Returns
     -------
@@ -131,6 +107,9 @@ def find_modes(signal: Signal, f_range_hz=[50, 200],
         f'{signal.signal_type} is not a valid signal type. It should ' +\
         'be either rir or ir'
     signal.set_spectrum_parameters('standard')
+    # Pad signal to have a resolution of around 1 Hz
+    length = signal.sampling_rate_hz
+    signal = pad_trim(signal, length)
     f, sp = signal.get_spectrum()
 
     # Setting up frequency range
@@ -139,74 +118,15 @@ def find_modes(signal: Signal, f_range_hz=[50, 200],
     df = f[1]-f[0]
 
     # Compute CMIF and sum of all magnitude spectra
-    cmif = _complex_mode_identification(sp[ids[0]:ids[1], :]).squeeze()
-    sum_sp = _sum_magnitude_spectra(sp[ids[0]:ids[1], :])
-
-    # Group delay
-    _, group_ms = group_delay(signal)
-    group_ms = group_ms[ids[0]:ids[1]]*1e3
+    cmif = _complex_mode_identification(sp[ids[0]:ids[1], :], True).squeeze()
 
     # Find peaks
     dist_samp = int(np.ceil(dist_hz / df))
     dist_samp = 1 if dist_samp < 1 else dist_samp
 
-    id_sum, _ = find_peaks(sum_sp, distance=dist_samp, width=dist_samp)
     id_cmif, _ = find_peaks(cmif, distance=dist_samp, width=dist_samp)
-    id_group = []
-    for n in range(signal.number_of_channels):
-        id_, _ = find_peaks(group_ms[:, n], distance=dist_samp,
-                            width=dist_samp)
-        id_group.append(id_)
+    f_modes = f[id_cmif]
 
-    # When proximity effect is activated, only group delays will be used up
-    # until 200 Hz
-    if proximity_effect:
-        f_modes = np.array([])
-        for n in range(signal.number_of_channels):
-            f_modes = \
-                np.append(f_modes, f[id_group[n]][f[id_group[n]] < 199.9])
-        ind_200 = np.where(f >= 199.9)
-        if len(np.squeeze(ind_200)) < 1:
-            ind_200 = len(f)
-        else:
-            ind_200 = ind_200[0][0]
-        f_modes = f_modes.flatten()
-        f_modes = list(f_modes)
-        temp = []
-        for f_m in f_modes:
-            if f_modes.count(f_m) >= 2:
-                temp.append(f_m)
-        f_modes = set(temp)
-
-        # Assessment that lower modes are peaks (not dips)
-        # of the magnitude response (first RIR)
-        if prune_antimodes:
-            antimodes, _ = \
-                find_peaks(1/np.abs(sp[ids[0]:ids[1], 0]), distance=dist_samp,
-                           width=dist_samp)
-            f_antimodes = f[antimodes]
-    else:
-        f_modes = set()
-        ind_200 = 0
-
-    f_modes = set(f_modes)
-
-    # Same frequency appears in at least two of three peaks vectors
-    for n in range(ind_200, len(f)):
-        cond1 = f[n] in f[id_sum]
-        cond2 = f[n] in f[id_cmif]
-        cond3 = f[n] in f[id_group[0]]
-        cond_1 = cond1 and cond2
-        cond_2 = cond1 and cond3
-        cond_3 = cond2 and cond3
-        if cond_1 or cond_2 or cond_3:
-            f_modes.add(f[n])
-    f_modes = np.sort(list(f_modes))
-
-    # "Antimode" detection – only when proximity effect is True
-    if proximity_effect and prune_antimodes:
-        anti = np.intersect1d(f_antimodes, f_modes)
-        f_modes = np.setdiff1d(f_modes, anti)
     return f_modes
 
 
@@ -324,10 +244,10 @@ def generate_synthetic_rir(room: ShoeboxRoom, source_position,
     receiver_position : array-like
         Vector with length 3 corresponding to the receiver's position (x, y, z)
         in meters.
-    total_length_seconds : float, optional
-        Total length of the output RIR in seconds. Default: 0.5.
     sampling_rate_hz : int
         Sampling rate of the generated impulse (in Hz). Default: `None`.
+    total_length_seconds : float, optional
+        Total length of the output RIR in seconds. Default: 0.5.
     add_noise_reverberant_tail : bool, optional
         When `True`, decaying noise is added to the IR in order to model
         the late reflections of the room. Default: `True`.

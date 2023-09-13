@@ -116,7 +116,7 @@ def _complex_mode_identification(spectra: np.ndarray,
     Returns
     -------
     cmif : `np.ndarray`
-        Complex mode identificator function (matrix).
+        Complex mode identificator function.
 
     References
     ----------
@@ -127,40 +127,20 @@ def _complex_mode_identification(spectra: np.ndarray,
 
     # If only one RIR is provided, then there is no need to compute the SVD
     if n_rir == 1:
-        return np.abs(spectra.squeeze())
+        return np.abs(spectra.squeeze())**2
 
     H = np.zeros((n_rir, n_rir, spectra.shape[0]), dtype='cfloat')
     for n in range(n_rir):
         H[0, n, :] = spectra[:, n]
-        H[n, 0, :] = spectra[:, n]  # Conjugate?!
+        H[n, 0, :] = spectra[:, n]
     cmif = np.zeros(spectra.shape[0])
     for ind in range(cmif.shape[0]):
-        s = np.linalg.svd(H[:, :, ind], compute_uv=False, hermitian=True)
+        s = np.linalg.svd(H[:, :, ind], compute_uv=False, hermitian=False)
         if maximum_singular_value:
             cmif[ind] = s.max()
         else:
             cmif[ind] = s[0]
     return cmif
-
-
-def _sum_magnitude_spectra(magnitudes: np.ndarray) -> np.ndarray:
-    """np.sum of all magnitude spectra
-
-    Parameters
-    ----------
-    magnitudes : `np.ndarray`
-        The magnitude spectra. If complex, it is assumed to be the spectra.
-
-    Returns
-    -------
-    summed : `np.ndarray`
-        np.sum of magnitude spectra.
-
-    """
-    if np.iscomplexobj(magnitudes):
-        magnitudes = abs(magnitudes)
-    summed = np.sum(magnitudes, axis=1)
-    return summed
 
 
 def _generate_rir(room_dim, alpha, s_pos, r_pos, rt, mo, sr) -> np.ndarray:

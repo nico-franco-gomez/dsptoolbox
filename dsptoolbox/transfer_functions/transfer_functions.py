@@ -305,7 +305,7 @@ def compute_transfer_function(output: Signal, input: Signal, mode='h2',
     return tf_sig, tf
 
 
-def spectral_average(signal: Signal) -> Signal:
+def spectral_average(signal: Signal, normalize_energy: bool = True) -> Signal:
     """Averages all channels of a given IR using their magnitude and
     phase spectra and returns the averaged IR.
 
@@ -313,6 +313,9 @@ def spectral_average(signal: Signal) -> Signal:
     ----------
     signal : `Signal`
         Signal with channels to be averaged over.
+    normalize_energy : bool, optional
+        When `True`, the energy of all spectra is normalized to the first
+        channel's energy and then averaged. Default: `True`.
 
     Returns
     -------
@@ -335,6 +338,9 @@ def spectral_average(signal: Signal) -> Signal:
 
     # Build averages
     new_mag = np.mean(mag, axis=1)
+    if normalize_energy:
+        norm = np.sum(new_mag**2, axis=0, keepdims=True)
+        new_mag *= (norm[0]/norm)
     new_pha = np.mean(pha, axis=1)
     # New signal
     new_sp = new_mag * np.exp(1j*new_pha)
