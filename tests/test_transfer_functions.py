@@ -57,6 +57,73 @@ class TestTransferFunctionsModule():
         dsp.transfer_functions.window_ir(
             h, exp2_trim=None, window_type=('chebwin', 50), at_start=True)
 
+    def test_window_centered_ir(self):
+        # Only functionality
+        h = dsp.transfer_functions.spectral_deconvolve(self.y_m, self.x)
+
+        # ============ Even
+        # Shorter
+        h_, _ = dsp.transfer_functions.window_centered_ir(
+            h, len(h)-10, window_type='hann')
+        assert np.argmax(h_.time_data[:, 0]) == np.argmax(h_.window[:, 0])
+        # Longer
+        h_, _ = dsp.transfer_functions.window_centered_ir(
+            h, len(h)+10, window_type='hann')
+        assert np.argmax(h_.time_data[:, 0]) == np.argmax(h_.window[:, 0])
+
+        # Try window with extra parameters
+        h_, _ = dsp.transfer_functions.window_centered_ir(
+            h, len(h), window_type=('gauss', 8))
+        assert np.argmax(h_.time_data[:, 0]) == np.argmax(h_.window[:, 0])
+
+        # ============= Odd
+        # Shorter
+        h.time_data = h.time_data[:-1]
+        h_, _ = dsp.transfer_functions.window_centered_ir(
+            h, len(h)-10, window_type='hann')
+        assert np.argmax(h_.time_data[:, 0]) == np.argmax(h_.window[:, 0])
+        # Longer
+        h_, _ = dsp.transfer_functions.window_centered_ir(
+            h, len(h)+10, window_type='hann')
+        assert np.argmax(h_.time_data[:, 0]) == np.argmax(h_.window[:, 0])
+
+        # Try window with extra parameters
+        h_, _ = dsp.transfer_functions.window_centered_ir(
+            h, len(h), window_type=('gauss', 8))
+        assert np.argmax(h_.time_data[:, 0]) == np.argmax(h_.window[:, 0])
+
+        # ============= Impulse on the second half, odd
+        # Shorter
+        h.time_data = h.time_data[::-1]
+        h_, _ = dsp.transfer_functions.window_centered_ir(
+            h, len(h)-10, window_type='hann')
+        assert np.argmax(h_.time_data[:, 0]) == np.argmax(h_.window[:, 0])
+        # Longer
+        h_, _ = dsp.transfer_functions.window_centered_ir(
+            h, len(h)+10, window_type='hann')
+        assert np.argmax(h_.time_data[:, 0]) == np.argmax(h_.window[:, 0])
+
+        # Try window with extra parameters
+        h_, _ = dsp.transfer_functions.window_centered_ir(
+            h, len(h), window_type=('gauss', 8))
+        assert np.argmax(h_.time_data[:, 0]) == np.argmax(h_.window[:, 0])
+
+        # ============= Impulse on the second half, even
+        # Shorter
+        h.time_data = h.time_data[:-1]
+        h_, _ = dsp.transfer_functions.window_centered_ir(
+            h, len(h)-10, window_type='hann')
+        assert np.argmax(h_.time_data[:, 0]) == np.argmax(h_.window[:, 0])
+        # Longer
+        h_, _ = dsp.transfer_functions.window_centered_ir(
+            h, len(h)+10, window_type='hann')
+        assert np.argmax(h_.time_data[:, 0]) == np.argmax(h_.window[:, 0])
+
+        # Try window with extra parameters
+        h_, _ = dsp.transfer_functions.window_centered_ir(
+            h, len(h), window_type=('gauss', 8))
+        assert np.argmax(h_.time_data[:, 0]) == np.argmax(h_.window[:, 0])
+
     def test_ir_to_filter(self):
         s = self.audio_multi.time_data[:200, 0]
         s = dsp.Signal(None, s, self.fs, signal_type='rir')

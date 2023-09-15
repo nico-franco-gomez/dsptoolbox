@@ -45,7 +45,8 @@ from .transfer_functions import (spectral_deconvolve, window_ir,
                                  spectrum_with_cycles,
                                  ir_to_filter,
                                  filter_to_ir,
-                                 combine_ir_with_dirac)
+                                 combine_ir_with_dirac,
+                                 window_centered_ir)
 
 __all__ = [
     'spectral_deconvolve',
@@ -63,4 +64,5 @@ __all__ = [
     'ir_to_filter',
     'filter_to_ir',
     'combine_ir_with_dirac',
+    'window_centered_ir',
 ]
