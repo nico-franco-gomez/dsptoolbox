@@ -2,7 +2,8 @@
 Backend for transfer functions methods
 """
 import numpy as np
-from .._general_helpers import _find_nearest, _calculate_window
+from scipy.signal import get_window
+from .._general_helpers import _find_nearest, _calculate_window, _pad_trim
 
 
 def _spectral_deconvolve(num_fft: np.ndarray, denum_fft: np.ndarray, freqs_hz,
@@ -39,12 +40,16 @@ def _spectral_deconvolve(num_fft: np.ndarray, denum_fft: np.ndarray, freqs_hz,
     return new_time_data
 
 
-def _window_this_ir(vec, total_length: int, window_type: str = 'hann',
-                    exp2_trim: int = 13, constant_percentage: float = 0.75,
-                    at_start: bool = True) -> \
+def _window_this_ir_tukey(vec, total_length: int, window_type: str = 'hann',
+                          exp2_trim: int = 13,
+                          constant_percentage: float = 0.75,
+                          at_start: bool = True) -> \
         tuple[np.ndarray, np.ndarray, np.ndarray]:
     """This function finds the index of the impulse and trims or windows it
     accordingly. Window used and the start sample are returned.
+
+    It is defined to place the impulse at the start of the constant area
+    of the tukey window. However, flanks can be any type.
 
     """
     start_sample = 0
@@ -71,3 +76,53 @@ def _window_this_ir(vec, total_length: int, window_type: str = 'hann',
     window = _calculate_window(points, total_length, window_type,
                                at_start=at_start)
     return vec*window, window, start_sample
+
+
+def _window_this_ir(vec, total_length: int, window_type: str = 'hann',
+                    window_parameter=None) -> \
+        tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """This function windows an impulse response by placing the peak exactly
+    in the middle of the window. It trims or pads at the end if needed. The
+    windowed IR, window and the start sample are passed.
+
+    """
+    if window_parameter is not None and type(window_type) == str:
+        window_type = (window_type, window_parameter)
+    peak_ind = np.argmax(np.abs(vec))
+    half_length = total_length // 2
+
+    # If Peak is in the second half
+    flipping = False
+    if peak_ind > half_length:
+        vec = vec[::-1]
+        flipping = True
+        peak_ind = len(vec) - peak_ind - 1
+
+    w = get_window(window_type, half_length*2 + 1, False)
+
+    if peak_ind - half_length < 0:
+        ind_low_td = 0
+        ind_low_w = half_length - peak_ind
+    else:
+        ind_low_td = peak_ind - half_length
+        ind_low_w = 0
+
+    if peak_ind + half_length + 1 > len(vec):
+        ind_up_td = len(vec)
+        ind_up_w = peak_ind + half_length + 1 - len(vec)
+    else:
+        ind_up_td = peak_ind + half_length + 1
+        ind_up_w = len(w)
+
+    w = w[ind_low_w:ind_up_w]
+    td = vec[ind_low_td:ind_up_td] * w
+
+    if flipping:
+        td = td[::-1]
+        w = w[::-1]
+
+    # Length adaptation
+    if len(td) != total_length:
+        td = _pad_trim(td, total_length)
+        w = _pad_trim(w, total_length)
+    return td, w, ind_low_td

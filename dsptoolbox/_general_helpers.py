@@ -846,7 +846,8 @@ def _get_exact_gain_1khz(f: np.ndarray, sp_db: np.ndarray) -> float:
         sp_db[ind]
 
 
-def gaussian_window(length: int, alpha: float, symmetric: bool):
+def gaussian_window(length: int, alpha: float, symmetric: bool,
+                    offset: int = 0):
     """Produces a gaussian window as defined in [1] and [2].
 
     Parameters
@@ -858,11 +859,19 @@ def gaussian_window(length: int, alpha: float, symmetric: bool):
         standard deviation.
     symmetric : bool
         Define if the window should be symmetric or not.
+    offset : int, optional
+        The offset moves the middle point of the window to the passed value.
+        Default: 0.
 
     Returns
     -------
     w : `np.ndarray`
         Gaussian window.
+
+    References
+    ----------
+    - [1]: https://www.mathworks.com/help/signal/ref/gausswin.html.
+    - [2]: https://de.wikipedia.org/wiki/Fensterfunktion.
 
     """
     if not symmetric:
@@ -870,7 +879,7 @@ def gaussian_window(length: int, alpha: float, symmetric: bool):
 
     n = np.arange(length)
     half = (length-1)/2
-    w = np.exp(-0.5*(alpha*(n-half)/half)**2)
+    w = np.exp(-0.5*(alpha*((n-offset)-half)/half)**2)
 
     if not symmetric:
         return w[:-1]

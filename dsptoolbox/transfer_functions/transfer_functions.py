@@ -5,8 +5,11 @@ import numpy as np
 from scipy.signal import minimum_phase as min_phase_scipy
 from scipy.signal import hilbert
 
-from ._transfer_functions import (_spectral_deconvolve,
-                                  _window_this_ir)
+from ._transfer_functions import (
+    _spectral_deconvolve,
+    _window_this_ir_tukey,
+    _window_this_ir,
+)
 from ..classes import Signal, Filter
 from ..classes._filter import _group_delay_filter
 from .._general_helpers import (_find_frequencies_above_threshold)
@@ -179,13 +182,65 @@ def window_ir(signal: Signal, constant_percentage=0.75, exp2_trim: int = 13,
     window = np.zeros((total_length, signal.number_of_channels))
     for n in range(signal.number_of_channels):
         new_time_data[:, n], window[:, n], start_positions_samples[n] = \
-            _window_this_ir(
+            _window_this_ir_tukey(
                 signal.time_data[:, n],
                 total_length,
                 window_type,
                 exp2_trim,
                 constant_percentage,
                 at_start)
+
+    new_sig = Signal(
+        None, new_time_data, signal.sampling_rate_hz,
+        signal_type=signal.signal_type)
+    new_sig.set_window(window)
+    return new_sig, start_positions_samples
+
+
+def window_centered_ir(signal: Signal, total_length: int, window_type='hann') \
+        -> tuple[Signal, np.ndarray]:
+    """This function windows an IR placing its peak in the middle. It trims
+    it to the total length of the window or pads it to the desired length
+    (padding in the end, window has `total_length`).
+
+    Parameters
+    ----------
+    signal: `Signal`
+        Signal to window
+    total_length: int
+        Total window length.
+    window_type: str, optional
+        Window function to be used. Available selection from
+        scipy.signal.windows: `barthann`, `bartlett`, `blackman`,
+        `boxcar`, `cosine`, `hamming`, `hann`, `flattop`, `nuttall` and
+        others. Pass a tuple with window type and extra parameters if needed,
+        like `('gauss', 8)`. Default: `hann`.
+
+    Returns
+    -------
+    new_sig : `Signal`
+        Windowed signal. The used window is also saved under `new_sig.window`.
+    start_positions_samples : `np.ndarray`
+        This array contains the position index of the start of the IR in
+        each channel of the original IR.
+
+    Notes
+    -----
+    - If the window seems truncated, it is because the length and peak position
+      were longer than the IR, so that it had to be zero-padded to match the
+      given length.
+
+    """
+    assert signal.signal_type in ('rir', 'ir'), \
+        f'{signal.signal_type} is not a valid signal type. Use rir or ir.'
+
+    new_time_data = np.zeros((total_length, signal.number_of_channels))
+    start_positions_samples = np.zeros(signal.number_of_channels, dtype=int)
+    window = np.zeros((total_length, signal.number_of_channels))
+
+    for n in range(signal.number_of_channels):
+        new_time_data[:, n], window[:, n], start_positions_samples[n] = \
+            _window_this_ir(signal.time_data[:, n], total_length, window_type)
 
     new_sig = Signal(
         None, new_time_data, signal.sampling_rate_hz,
