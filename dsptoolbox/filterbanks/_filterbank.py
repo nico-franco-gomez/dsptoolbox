@@ -63,8 +63,9 @@ class LRFilterBank():
             'Number of frequencies and number of order of the crossovers ' +\
             'do not match'
         for o in order:
-            assert o % 2 == 0, 'Order of the crossovers has to be an ' +\
-                'even number'
+            if o % 2 != 0:
+                warn('Order of the crossovers has to be an even number for ' +
+                     'perfect magnitude reconstruction!')
         freqs_order = freqs.argsort()
         self.freqs = freqs[freqs_order]
         self.order = order[freqs_order]
@@ -72,14 +73,23 @@ class LRFilterBank():
         self.number_of_bands = self.number_of_cross + 1
         self.sampling_rate_hz = sampling_rate_hz
         # Center Frequencies
-        split_freqs = np.insert(self.freqs, 0, 0)
-        split_freqs = np.insert(self.freqs, -1, sampling_rate_hz//2)
-        self.center_frequencies = [(split_freqs[i+1]+split_freqs[i])/2
-                                   for i in range(len(split_freqs)-1)]
+        self._compute_center_frequencies()
         #
         self._create_filters_sos()
         self._generate_metadata()
         self.info = self.info | info
+
+    def _compute_center_frequencies(self):
+        """Compute center frequencies from crossover frequencies.
+
+        """
+        val = 0
+        center_frequencies = []
+        for cr in self.freqs:
+            center_frequencies.append((val+cr)/2)
+            val = cr
+        center_frequencies.append((val+self.sampling_rate_hz//2)/2)
+        self.center_frequencies = np.asarray(center_frequencies)
 
     def _generate_metadata(self):
         """Internal method to update metadata about the filter bank.
