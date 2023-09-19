@@ -761,3 +761,35 @@ def vqt(signal: Signal, channel: np.ndarray = None, q: float = 1,
     f = a4_tuning * 2**(
         np.arange(octaves[0]-4 - 9/12, octaves[1]-4 + 2/12, 1/12))
     return f, cqt
+
+
+def stereo_mid_side(signal: Signal, forward: bool):
+    """This function converts a left-right stereo signal to its mid-side
+    representation or the other way around. It is only available for
+    two-channels signals.
+
+    Parameters
+    ----------
+    signal : `Signal`
+        Signal with two channels, i.e., left and right (in that order) or
+        mid and side.
+    forward : bool
+        When `True`, left-right is converted to mid-side. When `False`,
+        mid-side is turned into left-right.
+
+    Returns
+    -------
+    new_sig : `Signal`
+        Converted signal. Left (or mid) are always the first channel.
+
+    """
+    assert signal.number_of_channels == 2, \
+        'Signal must have exactly two channels'
+    new_sig = signal.copy()
+    td = signal.time_data
+    td[:, 0] = signal.time_data[:, 0] + signal.time_data[:, 1]
+    td[:, 1] = signal.time_data[:, 0] - signal.time_data[:, 1]
+    if forward:
+        td /= 2
+    new_sig.time_data = td
+    return new_sig

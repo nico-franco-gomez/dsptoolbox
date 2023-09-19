@@ -20,7 +20,7 @@ from ..standard_functions import pad_trim
 
 
 def reverb_time(signal: Signal | MultiBandSignal, mode: str = 'T20',
-                ir_start: int = None) -> np.ndarray:
+                ir_start: int | np.ndarray = None) -> np.ndarray:
     """Computes reverberation time. T20, T30, T60 and EDT.
 
     Parameters
@@ -31,10 +31,14 @@ def reverb_time(signal: Signal | MultiBandSignal, mode: str = 'T20',
     mode : str, optional
         Reverberation time mode. Options are `'T20'`, `'T30'`, `'T60'` or
         `'EDT'`. Default: `'T20'`.
-    ir_start : int, optional
-        When not `None`, it is used as the index of the start of the impulse
-        response. Otherwise it is automatically computed as the first point
-        where the normalized IR arrives at -20 dBFS. Default: `None`.
+    ir_start : int or array-like, optional
+        If it is an integer, it is assumed as the start of the IR for all
+        channels (and all bands). For more specific cases, pass a 1d-array
+        containing the start indices for each channel or a 2d-array with
+        shape (band, channel) for a `MultiBandSignal`. When `None`, the starts
+        are automatically computed as the first point before the normalized IR
+        arrives at -20 dBFS. This is then done independently for each channel
+        and each band. Default: `None`.
 
     Returns
     -------
@@ -49,6 +53,7 @@ def reverb_time(signal: Signal | MultiBandSignal, mode: str = 'T20',
 
     """
     if type(signal) == Signal:
+        ir_start = _check_ir_start_reverb(signal, ir_start)
         assert signal.signal_type in ('ir', 'rir'), \
             f'{signal.signal_type} is not a valid signal type for ' +\
             'reverb_time. It should be ir or rir'
@@ -61,19 +66,20 @@ def reverb_time(signal: Signal | MultiBandSignal, mode: str = 'T20',
         for n in range(signal.number_of_channels):
             reverberation_times[n] = _reverb(
                 signal.time_data[:, n].copy(), signal.sampling_rate_hz,
-                mode, ir_start=ir_start, return_ir_start=False)
+                mode, ir_start=ir_start[n], return_ir_start=False)
     elif type(signal) == MultiBandSignal:
+        ir_start = _check_ir_start_reverb(signal, ir_start)
         reverberation_times = \
             np.zeros(
                 (signal.number_of_bands, signal.bands[0].number_of_channels))
         for ind in range(signal.number_of_bands):
+            band_ir_start = None if ir_start is None else ir_start[ind, :]
             reverberation_times[ind, :] = reverb_time(
-                signal.bands[ind], mode, ir_start=ir_start)
+                signal.bands[ind], mode, ir_start=band_ir_start)
     else:
         raise TypeError(
             'Passed signal should be of type Signal or MultiBandSignal')
     return reverberation_times
-    # return reverberation_times.squeeze()
 
 
 def find_modes(signal: Signal, f_range_hz=[50, 200],
@@ -191,7 +197,8 @@ def convolve_rir_on_signal(signal: Signal, rir: Signal,
 
 def find_ir_start(signal: Signal, threshold_dbfs: float = -20) -> np.ndarray:
     """This function finds the start of an IR defined as the first sample
-    where a certain threshold is surpassed.
+    before a certain threshold is surpassed. For room impulse responses, -20
+    dB relative to peak level is recommended according to [1].
 
     Parameters
     ----------
@@ -208,13 +215,13 @@ def find_ir_start(signal: Signal, threshold_dbfs: float = -20) -> np.ndarray:
 
     References
     ----------
-    - ISO 3382-1:2009-10, Acoustics - Measurement of the reverberation time of
-      rooms with reference to other acoustical parameters. pp. 22.
+    - [1]: ISO 3382-1:2009-10, Acoustics - Measurement of the reverberation
+      time of rooms with reference to other acoustical parameters. pp. 22.
 
     """
     assert threshold_dbfs <= 0, \
         'Threshold must be negative'
-    start_index = np.empty(signal.number_of_channels)
+    start_index = np.empty(signal.number_of_channels, dtype=np.intp)
     for n in range(signal.number_of_channels):
         start_index[n] = \
             _find_ir_start(signal.time_data[:, n], threshold_dbfs)
@@ -437,3 +444,50 @@ def _bass_ratio(rir: Signal) -> np.ndarray:
     for ch in range(rir.number_of_channels):
         br[ch] = (rt[0, ch]+rt[1, ch]) / (rt[2, ch]+rt[3, ch])
     return br
+
+
+def _check_ir_start_reverb(
+        sig: Signal | MultiBandSignal,
+        ir_start: int | np.ndarray | list | tuple) \
+            -> np.ndarray | list:
+    """This method checks `ir_start` and parses it into the necessary form
+    if relevant. For a `Signal`, it is a vector with the same number of
+    elements as channels of `sig`. For `MultiBandSignal`, it is a 2d-array
+    with shape (band, channel).
+
+    `ir_start` must always have elements of type `int` or `intp`.
+
+    For `None`, `None` is returned.
+
+    """
+    if ir_start is not None:
+        if type(ir_start) in (list, tuple):
+            ir_start = np.asarray(ir_start)
+        assert type(ir_start) in (int, np.ndarray, np.intp), \
+            'Unsupported type for ir_start'
+
+    if type(sig) == Signal:
+        if type(ir_start) in (int, np.intp):
+            ir_start = np.ones(sig.number_of_channels,
+                               dtype=np.intp) * ir_start
+        elif ir_start is None:
+            return [None]*sig.number_of_channels
+        assert ir_start.ndim == 1 and len(ir_start) == sig.number_of_channels,\
+            'Shape of ir_start is not valid'
+    else:
+        if type(ir_start) in (int, np.intp):
+            ir_start = np.ones((sig.number_of_bands,
+                                sig.number_of_channels),
+                               dtype=np.intp) * ir_start
+        if ir_start is None:
+            return None
+        if ir_start.ndim == 1:
+            ir_start = np.repeat(ir_start[None, ...],
+                                 sig.number_of_bands, axis=0)
+        else:
+            assert ir_start.shape == (sig.number_of_bands,
+                                      sig.number_of_channels), \
+                'Shape of ir_start is not valid for the passed signal'
+    if ir_start.dtype not in (int, np.intp):
+        ir_start = ir_start.astype(np.intp)
+    return ir_start

@@ -82,12 +82,13 @@ def _find_ir_start(ir, threshold_dbfs: float = -20) -> int:
         IR as a 1D-array.
     threshold_dbfs : float, optional
         Threshold that should be surpassed at the start of the IR in dBFS.
-        The signal is normalized. Default: -20.
+        The signal is always normalized. Default: -20.
 
     Returns
     -------
     ind : int
-        Index of the start of the IR.
+        Index of the start of the IR. It is the sample before the given
+        threshold is surpassed for the first time.
 
     """
     energy_curve = ir**2
