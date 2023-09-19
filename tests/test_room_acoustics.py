@@ -17,6 +17,9 @@ class TestRoomAcousticsModule():
         # Check Index
         ind = np.argmax(np.abs(self.rir.time_data))
         dsp.room_acoustics.reverb_time(self.rir, mode='edt', ir_start=ind)
+        combined = dsp.merge_signals(self.rir, self.rir)
+        dsp.room_acoustics.reverb_time(combined, mode='edt',
+                                       ir_start=[ind, ind-1])
 
         # Check MultiBandSignal
         fb = dsp.filterbanks.auditory_filters_gammatone(
@@ -24,6 +27,12 @@ class TestRoomAcousticsModule():
         mb = fb.filter_signal(self.rir)
         dsp.room_acoustics.reverb_time(mb, mode='t20', ir_start=None)
         dsp.room_acoustics.reverb_time(mb, mode='t20', ir_start=ind)
+
+        mb = fb.filter_signal(combined)
+        dsp.room_acoustics.reverb_time(mb, mode='t20', ir_start=[ind, ind-1])
+
+        starts = np.ones((mb.number_of_bands, mb.number_of_channels)) * ind
+        dsp.room_acoustics.reverb_time(mb, mode='t20', ir_start=starts)
 
     def test_room_modes(self):
         # Only functionality

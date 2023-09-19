@@ -385,7 +385,7 @@ class Filter():
                 filter_configuration['eq_type'] = \
                     _get_biquad_type(None, filter_configuration['eq_type'])
             # Filter creation
-            ba = _biquad_coefficients(
+            self.ba = _biquad_coefficients(
                 eq_type=filter_configuration['eq_type'],
                 fs_hz=self.sampling_rate_hz,
                 frequency_hz=filter_configuration['freqs'],
@@ -394,8 +394,8 @@ class Filter():
             # Setting back
             filter_configuration['eq_type'] = \
                 _get_biquad_type(filter_configuration['eq_type']).capitalize()
-            self.sos = sig.tf2sos(ba[0], ba[1])
-            filter_configuration['order'] = max(len(ba[0]), len(ba[1])) - 1
+            filter_configuration['order'] = max(len(self.ba[0]),
+                                                len(self.ba[1])) - 1
             self.filter_type = filter_type
         else:
             assert ('ba' in filter_configuration) ^ \
