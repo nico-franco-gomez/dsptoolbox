@@ -111,8 +111,9 @@ def noise(type_of_noise: str = 'white', length_seconds: float = 1,
 def chirp(type_of_chirp: str = 'log', range_hz=None, length_seconds: float = 1,
           sampling_rate_hz: int = None, peak_level_dbfs: float = -10,
           number_of_channels: int = 1, fade: str = 'log',
-          padding_end_seconds: float = None) -> Signal:
-    """Creates a sweep signal.
+          phase_offset: float = 0, padding_end_seconds: float = None)\
+        -> Signal:
+    """Creates a sine-sweep signal.
 
     Parameters
     ----------
@@ -135,6 +136,8 @@ def chirp(type_of_chirp: str = 'log', range_hz=None, length_seconds: float = 1,
         length (without the padding in the end) is faded at the beginning and
         end. Options are `'exp'`, `'lin'`, `'log'`.
         Pass `None` for no fading. Default: `'log'`.
+    phase_offset : float, optional
+        This is an offset in radians for the phase of the sine. Default: 0.
     padding_end_seconds : float, optional
         Padding at the end of signal. Use `None` to avoid any padding.
         Default: `None`.
@@ -176,11 +179,11 @@ def chirp(type_of_chirp: str = 'log', range_hz=None, length_seconds: float = 1,
     if type_of_chirp == 'lin':
         k = (range_hz[1]-range_hz[0])/length_seconds
         freqs = (range_hz[0] + k/2*t)*2*np.pi
-        chirp_td = np.sin(freqs*t)
+        chirp_td = np.sin(freqs*t + phase_offset)
     elif type_of_chirp == 'log':
         k = np.exp((np.log(range_hz[1])-np.log(range_hz[0]))/length_seconds)
         chirp_td = \
-            np.sin(2*np.pi*range_hz[0]/np.log(k)*(k**t-1))
+            np.sin(2*np.pi*range_hz[0]/np.log(k)*(k**t-1) + phase_offset)
     chirp_td = _normalize(chirp_td, peak_level_dbfs, mode='peak')
 
     if fade is not None:
