@@ -9,6 +9,7 @@ Setting audio device:
 
 - `set_device()`
 - `print_device_info()`
+- `default_config`
 
 Playing audio:
 
