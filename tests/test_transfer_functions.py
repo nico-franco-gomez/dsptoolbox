@@ -204,7 +204,12 @@ class TestTransferFunctionsModule():
         # Check only that some result is produced, validity should be checked
         # somewhere else
         # Only works for some signal types
-        dsp.transfer_functions.minimum_phase(ir)
+        f, min_phases = dsp.transfer_functions.minimum_phase(ir)
+        assert len(f) == len(min_phases)
+
+        f, min_phases = dsp.transfer_functions.minimum_phase(
+            dsp.pad_trim(ir, len(ir)+1))
+        assert len(f) == len(min_phases)
         with pytest.raises(AssertionError):
             s1 = dsp.Signal(None, ir.time_data, ir.sampling_rate_hz)
             dsp.transfer_functions.minimum_phase(s1)

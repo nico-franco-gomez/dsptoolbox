@@ -308,7 +308,8 @@ def _group_delay_direct(phase: np.ndarray, delta_f: float = 1):
     return gd
 
 
-def _minimum_phase(magnitude: np.ndarray, unwrapped: bool = True):
+def _minimum_phase(magnitude: np.ndarray, unwrapped: bool = True) \
+        -> np.ndarray:
     """Computes minimum phase system from magnitude spectrum.
 
     Parameters
@@ -328,9 +329,7 @@ def _minimum_phase(magnitude: np.ndarray, unwrapped: bool = True):
     if np.iscomplexobj(magnitude):
         magnitude = np.abs(magnitude)
     minimum_phase = -np.imag(hilbert(np.log(np.clip(
-        magnitude, a_min=1e-25, a_max=None)), axis=0))
-    # Scale to pi
-    minimum_phase = minimum_phase / np.max(np.abs(minimum_phase)) * np.pi
+        magnitude, a_min=1e-40, a_max=None)), axis=0))
     if not unwrapped:
         minimum_phase = np.angle(np.exp(1j*minimum_phase))
     return minimum_phase

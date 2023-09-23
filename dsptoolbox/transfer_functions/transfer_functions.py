@@ -9,6 +9,8 @@ from ._transfer_functions import (
     _spectral_deconvolve,
     _window_this_ir_tukey,
     _window_this_ir,
+    _min_phase_ir_from_real_cepstrum,
+    _get_minimum_phase_spectrum_from_real_cepstrum,
 )
 from ..classes import Signal, Filter
 from ..classes._filter import _group_delay_filter
@@ -534,19 +536,25 @@ def lin_phase_from_mag(spectrum: np.ndarray, sampling_rate_hz: int,
     return sig_lin_phase
 
 
-def min_phase_ir(sig: Signal, equiripple: bool = False) -> Signal:
-    """Returns same signal with minimum phase. If the IR is symmetric,
-    `scipy.signal.minimum_phase` is used. Otherwise, a direct hilbert transform
-    of the log magnitude spectrum is applied. The output is always padded to
-    keep the length of the original IR.
+def min_phase_ir(sig: Signal, method: str = 'real cepstrum') -> Signal:
+    """Returns same IR with minimum phase. Three methods are available for
+    computing the minimum phase version of the IR: `'real cepstrum'` (using
+    filtering the real-cepstral domain), `'log hilbert'` (obtaining the phase
+    from the hilbert transformed magnitude response) and `'equiripple'` (for
+    symmetric IR, uses `scipy.signal.minimum_phase`).
+
+    For general cases, `'real cepstrum'` and `'log hilbert'` deliver similar
+    results.
 
     Parameters
     ----------
     sig : `Signal`
         IR for which to compute minimum phase IR.
-    equiripple : bool, optional
-        When `True` a specialized method for turning an equiripple filter's IR
-        into a minimum-phase IR is used. Default: `False`.
+    method : str, optional
+        For general cases, `'real cepstrum'` and `'log hilbert'` can be used
+        and render similar results. If the IR is symmetric (like a
+        linear-phase filter), `'equiripple'` is recommended.
+        Default: `'real cepstrum'`.
 
     Returns
     -------
@@ -557,12 +565,19 @@ def min_phase_ir(sig: Signal, equiripple: bool = False) -> Signal:
     # Computation
     assert sig.signal_type in ('rir', 'ir'), \
         'Signal type must be either rir or ir'
+    method = method.lower()
+    assert method in ('real cepstrum', 'log hilbert', 'equiripple'), \
+        f'{method} is not valid. Use either real cepstrum, log hilbert or ' +\
+        'equiripple'
     new_time_data = np.zeros_like(sig.time_data)
 
-    _, min_phases = minimum_phase(sig, equiripple=equiripple)
-    _, sp = sig.get_spectrum()
+    if method == 'real cepstrum':
+        new_time_data = _min_phase_ir_from_real_cepstrum(sig.time_data)
+    else:
+        _, min_phases = minimum_phase(sig, method=method)
+        _, sp = sig.get_spectrum()
+        new_time_data = np.fft.irfft(np.abs(sp)*np.exp(1j*min_phases), axis=0)
 
-    new_time_data = np.fft.irfft(np.abs(sp)*np.exp(1j*min_phases), axis=0)
     min_phase_sig = sig.copy()
     min_phase_sig.time_data = new_time_data
     if hasattr(min_phase_sig, 'window'):
@@ -615,21 +630,22 @@ def group_delay(signal: Signal, method='matlab') \
     return f, group_delays
 
 
-def minimum_phase(signal: Signal, equiripple: bool = False)\
+def minimum_phase(signal: Signal, method: str = 'real cepstrum')\
         -> tuple[np.ndarray, np.ndarray]:
     """Gives back a matrix containing the minimum phase signal for each
-    channel. If it is symmetric, `scipy.signal.minimum_phase` is used.
-    Otherwise, the minimum phase is won through the direct hilbert transform of
-    the log magnitude spectrum. The original length of the input is
-    always kept.
+    channel. Three methods are available for computing the minimum phase of a
+    system: `'real cepstrum'` (windowing in the cepstral domain),
+    `'log hilbert'` (from the magnitude response of a system), `'equiripple'`
+    (for symmetric IR's, uses `scipy.signal.minimum_phase`).
 
     Parameters
     ----------
     signal : `Signal`
         IR for which to compute the minimum phase.
-    equiripple : bool, optional
-        When `True` a specialized method for turning an equiripple filter's IR
-        into a minimum-phase IR is used. Default: `False`.
+    method : str, optional
+        Selects the method to use. `'real cepstrum'` and `'log hilbert'` are
+        of general use and render similar results. `'equiripple'` is for
+        symmetric IR (e.g. linear-phase FIR filters).
 
     Returns
     -------
@@ -641,35 +657,47 @@ def minimum_phase(signal: Signal, equiripple: bool = False)\
     """
     assert signal.signal_type in ('rir', 'ir', 'h1', 'h2', 'h3'), \
         'Signal type must be rir or ir'
-    symmetrical = np.all(np.isclose(
-        signal.time_data, np.flip(signal.time_data, axis=0)))
+    method = method.lower()
+    assert method in ('real cepstrum', 'log hilbert', 'equiripple'), \
+        f'{method} is not valid. Use real cepstrum, log hilbert or equiripple'
 
-    if symmetrical or equiripple:
-        method = 'hilbert' if equiripple else 'homomorphic'
+    if method == 'equiripple':
         f = np.fft.rfftfreq(
             signal.time_data.shape[0], d=1/signal.sampling_rate_hz)
         min_phases = np.zeros(
             (len(f), signal.number_of_channels), dtype='float')
         for n in range(signal.number_of_channels):
             temp = min_phase_scipy(
-                signal.time_data[:, n], method=method, n_fft=None)
+                signal.time_data[:, n], method='hilbert', n_fft=None)
             min_phases[:, n] = np.angle(np.fft.rfft(
                 _pad_trim(temp, signal.time_data.shape[0])))
-    else:
+    elif method == 'log hilbert':
         signal.set_spectrum_parameters('standard')
         f, sp = signal.get_spectrum()
-        min_phases = np.zeros((sp.shape[0], sp.shape[1]), dtype='float')
         min_phases = _minimum_phase(np.abs(sp), unwrapped=False)
+    else:
+        sp = _get_minimum_phase_spectrum_from_real_cepstrum(signal.time_data)
+        f = np.fft.fftfreq(signal.time_data.shape[0],
+                           1/signal.sampling_rate_hz)
+        if sp.shape[0] % 2 == 0:
+            f[sp.shape[0]//2] *= -1
+        inds = f >= 0
+        f = f[inds]
+        min_phases = np.angle(sp[inds, ...])
     return f, min_phases
 
 
-def minimum_group_delay(signal: Signal) -> tuple[np.ndarray, np.ndarray]:
+def minimum_group_delay(signal: Signal, method: str = 'real cepstrum') \
+        -> tuple[np.ndarray, np.ndarray]:
     """Computes minimum group delay of given IR.
 
     Parameters
     ----------
     signal : `Signal`
         IR for which to compute minimal group delay.
+    method : str, optional
+        Select method for computing the minimum phase. It might be either
+        `'real cepstrum'` or `'log hilbert'`. Default: `'real cepstrum'`.
 
     Returns
     -------
@@ -685,20 +713,24 @@ def minimum_group_delay(signal: Signal) -> tuple[np.ndarray, np.ndarray]:
     """
     assert signal.signal_type in ('rir', 'ir'), \
         'Only valid for rir or ir'
-    f, min_phases = minimum_phase(signal)
+    f, min_phases = minimum_phase(signal, method=method)
     min_gd = np.zeros_like(min_phases)
     for n in range(signal.number_of_channels):
         min_gd[:, n] = _group_delay_direct(min_phases[:, n], f[1]-f[0])
     return f, min_gd
 
 
-def excess_group_delay(signal: Signal) -> tuple[np.ndarray, np.ndarray]:
+def excess_group_delay(signal: Signal, method: str = 'real cepstrum') \
+        -> tuple[np.ndarray, np.ndarray]:
     """Computes excess group delay of an IR.
 
     Parameters
     ----------
     signal : `Signal`
         IR for which to compute minimal group delay.
+    method : str, optional
+        Select method for computing the minimum phase. It might be either
+        `'real cepstrum'` or `'log hilbert'`. Default: `'real cepstrum'`.
 
     Returns
     -------
@@ -714,7 +746,7 @@ def excess_group_delay(signal: Signal) -> tuple[np.ndarray, np.ndarray]:
     """
     assert signal.signal_type in ('rir', 'ir'), \
         'Only valid for rir or ir'
-    f, min_gd = minimum_group_delay(signal)
+    f, min_gd = minimum_group_delay(signal, method)
     f, gd = group_delay(signal)
     ex_gd = gd - min_gd
     return f, ex_gd
@@ -757,6 +789,8 @@ def combine_ir_with_dirac(ir: Signal,
         New IR.
 
     """
+    assert ir.signal_type in ('rir', 'ir'), \
+        'Only valid for rir or ir'
     if normalization is not None:
         normalization = normalization.lower()
     assert normalization in ('energy', 'peak', None), \
@@ -896,11 +930,10 @@ def filter_to_ir(fir: Filter) -> Signal:
 def spectrum_with_cycles(ir: Signal, cycles: int, channel: int = None,
                          frequency_range_hz: list = None):
     """A spectrum with frequency-dependent windowing defined by cycles is
-    returned. It is recommended that the impulse response has been already
-    left- and right-windowed (using, for instance, a tukey window).
+    returned. To this end, a variable gaussian window is applied.
 
     A width of 5 cycles means that there are 5 periods of each frequency
-    before the window values hit 0.5, i.e., -3 dB.
+    before the window values hit 0.5, i.e., -6 dB.
 
     This is computed only for real-valued signals (positive frequencies). No
     scaling is applied to the spectrum.
@@ -911,7 +944,7 @@ def spectrum_with_cycles(ir: Signal, cycles: int, channel: int = None,
         Impulse response from which to extract the spectrum.
     cycles : int
         Number of cycles to include for each frequency bin. It defines
-        the window length.
+        the window lengths.
     channel : int, optional
         Selected channel to compute the spectrum. Pass `None` to take all
         channels. Default: `None`.
@@ -926,7 +959,20 @@ def spectrum_with_cycles(ir: Signal, cycles: int, channel: int = None,
     spec : `np.ndarray`
         Spectrum with shape (frequency, channel).
 
+    Notes
+    -----
+    - It is recommended that the impulse response has been already left- and
+      right-windowed using, for instance, a tukey window. However, its length
+      should be somewhat larger than the longest window (this depends on the
+      number of cycles and lowest frequency).
+    - The implemented method is a straight-forward windowing in the time domain
+      for each respective frequency bin. Warping the IR is a more flexible
+      approach but not necessarily faster for IR with short lengths
+      corresponding to powers of 2.
+
     """
+    assert ir.signal_type in ('rir', 'ir'), \
+        'Only valid for rir or ir'
     fs = ir.sampling_rate_hz
     if frequency_range_hz is not None:
         assert len(frequency_range_hz) == 2
@@ -941,17 +987,13 @@ def spectrum_with_cycles(ir: Signal, cycles: int, channel: int = None,
 
     td = ir.time_data[:, channel]
 
-    f = np.fft.fftfreq(td.shape[0], 1/fs)
+    f = np.fft.rfftfreq(td.shape[0], 1/fs)
     inds = (f > frequency_range_hz[0]) & (f < frequency_range_hz[1])
     inds_f = np.arange(len(f))[inds]
     f = f[inds]
 
     # Samples for each frequency according to number of cycles
     cycles_per_freq_samples = np.round(fs/f*cycles).astype(int)
-
-    # Pad if necessary for lowest frequency
-    if td.shape[0] < cycles_per_freq_samples[0]:
-        td = _pad_trim(td, cycles_per_freq_samples[0])
 
     spec = np.zeros((len(f), td.shape[1]), dtype='cfloat')
 
@@ -967,6 +1009,6 @@ def spectrum_with_cycles(ir: Signal, cycles: int, channel: int = None,
             # required samples for each frequency
             alpha = alpha_factor / cycles_per_freq_samples[ind]
 
-            w = np.exp(-0.5 * (alpha * n / half)**2)
+            w = np.exp(-0.5 * (alpha * n / half)**2)[:td.shape[0]]
             spec[ind, ch] = np.fft.rfft(w * td[:, ch])[ind_f]
     return f, spec

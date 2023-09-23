@@ -381,8 +381,29 @@ def _fade(s: np.ndarray, length_seconds: float = 0.1, mode: str = 'exp',
     return s
 
 
+def _gaussian_window_sigma(window_length: int, alpha: float = 2.5) -> float:
+    """Compute the standard deviation sigma for a gaussian window according to
+    its length and `alpha`.
+
+    Parameters
+    ----------
+    window_length : int
+        Total window length.
+    alpha : float, optional
+        Alpha parameter for defining how wide the shape of the gaussian. The
+        greater alpha is, the narrower the window becomes. Default: 2.5.
+
+    Returns
+    -------
+    float
+        Standard deviation.
+
+    """
+    return (window_length-1)/(2*alpha)
+
+
 def _fractional_octave_smoothing(vector: np.ndarray, num_fractions: int = 3,
-                                 window_type='hamming',
+                                 window_type='hann',
                                  window_vec: np.ndarray = None) -> np.ndarray:
     """Smoothes a vector using interpolation to a logarithmic scale. Usually
     done for smoothing of frequency data. This implementation is taken from
@@ -396,7 +417,8 @@ def _fractional_octave_smoothing(vector: np.ndarray, num_fractions: int = 3,
         Fraction of octave to be smoothed across. Default: 3 (third band).
     window_type : str, optional
         Type of window to be used. See `scipy.signal.windows.get_window` for
-        valid types. Default: `'hamming'`.
+        valid types. If the window is `'gaussian'`, the parameter passed will
+        be interpreted as alpha and not sigma. Default: `'hann'`.
     window_vec : `np.ndarray`, optional
         Window vector to be used as a window. `window_type` should be set to
         `None` if this direct window is going to be used. Default: `None`.
@@ -433,6 +455,9 @@ def _fractional_octave_smoothing(vector: np.ndarray, num_fractions: int = 3,
     if window_type is not None:
         assert window_vec is None, \
             'When window type is passed, no window vector should be added'
+        if 'gauss' in window_type[0]:
+            window_type = ('gaussian', _gaussian_window_sigma(
+                n_window, window_type[1]))
         window = windows.get_window(window_type, n_window, fftbins=False)
     else:
         assert window_type is None, \

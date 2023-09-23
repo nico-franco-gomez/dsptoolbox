@@ -78,6 +78,58 @@ def _window_this_ir_tukey(vec, total_length: int, window_type: str = 'hann',
     return vec*window, window, start_sample
 
 
+def _min_phase_ir_from_real_cepstrum(time_data: np.ndarray):
+    """Returns minimum-phase version of a time series using the real cepstrum
+    method.
+
+    Parameters
+    ----------
+    time_data : `np.ndarray`
+        Time series to compute the minimum phase version from. It is assumed
+        to have shape (time samples, channels).
+
+    Returns
+    -------
+    min_phase_time_data : `np.ndarray`
+        New time series.
+
+    """
+    return np.real(np.fft.ifft(
+        _get_minimum_phase_spectrum_from_real_cepstrum(time_data), axis=0))
+
+
+def _get_minimum_phase_spectrum_from_real_cepstrum(time_data: np.ndarray):
+    """Returns minimum-phase version of a time series using the real cepstrum
+    method.
+
+    Parameters
+    ----------
+    time_data : `np.ndarray`
+        Time series to compute the minimum phase version from. It is assumed
+        to have shape (time samples, channels).
+
+    Returns
+    -------
+    min_phase_time_data : `np.ndarray`
+        New time series.
+
+    """
+    # Real cepstrum
+    y = np.real(np.fft.ifft(np.log(np.abs(
+        np.fft.fft(time_data, axis=0))), axis=0))
+
+    # Window in the cepstral domain, like obtaining hilbert transform
+    w = np.zeros(y.shape[0])
+    w[0] = 1
+    w[:len(w)//2-1] = 2
+    # If length is even, nyquist is exactly in the middle
+    if len(w) % 2 == 0:
+        w[len(w)//2] = 1
+
+    # Windowing in cepstral domain and back to spectral domain
+    return np.exp(np.fft.fft(y*w[..., None], axis=0))
+
+
 def _window_this_ir(vec, total_length: int, window_type: str = 'hann',
                     window_parameter=None) -> \
         tuple[np.ndarray, np.ndarray, np.ndarray]:

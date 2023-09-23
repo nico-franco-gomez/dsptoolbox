@@ -698,10 +698,13 @@ class Signal():
 
                 # Smoothing
                 if self._spectrum_parameters['smoothe'] != 0:
+                    # Smoothing the power
                     temp_abs = _fractional_octave_smoothing(
-                        np.abs(spectrum), self._spectrum_parameters['smoothe'])
+                        np.abs(spectrum)**2,
+                        self._spectrum_parameters['smoothe'])**(0.5)
+                    # Smoothing the phase is not shift-invariant...
                     temp_phase = _fractional_octave_smoothing(
-                        np.angle(spectrum),
+                        np.unwrap(np.angle(spectrum), axis=0),
                         self._spectrum_parameters['smoothe'])
                     spectrum = temp_abs*np.exp(1j*temp_phase)
 
