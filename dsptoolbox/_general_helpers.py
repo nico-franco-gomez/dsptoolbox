@@ -2,7 +2,7 @@
 General functionality from helper methods
 """
 import numpy as np
-from scipy.signal import windows
+from scipy.signal import windows, convolve as scipy_convolve
 from scipy.interpolate import interp1d
 from scipy.linalg import toeplitz as toeplitz_scipy
 from os import sep
@@ -412,7 +412,8 @@ def _fractional_octave_smoothing(vector: np.ndarray, num_fractions: int = 3,
     Parameters
     ----------
     vector : `np.ndarray`
-        Vector to be smoothed.
+        Vector to be smoothed. It is assumed that the first axis is to
+        be smoothed.
     num_fractions : int, optional
         Fraction of octave to be smoothed across. Default: 3 (third band).
     window_type : str, optional
@@ -450,7 +451,10 @@ def _fractional_octave_smoothing(vector: np.ndarray, num_fractions: int = 3,
     l1 = np.arange(N)
     k_log = (N)**(l1/(N-1))
     beta = np.log2(k_log[1])
+
+    # Window length always odd, so that delay can be easily compensated
     n_window = int(2 * np.floor(1 / (num_fractions * beta * 2)) + 1)
+
     # Generate window
     if window_type is not None:
         assert window_vec is None, \
@@ -469,22 +473,25 @@ def _fractional_octave_smoothing(vector: np.ndarray, num_fractions: int = 3,
         one_dim = True
         vector = vector[..., None]
 
-    vec_final = np.zeros_like(vector)
+    # Normalize window
     window /= window.sum()
-    for n in range(vector.shape[1]):
-        # Interpolate to logarithmic scale
-        vec_int = interp1d(
-            np.arange(N)+1, vector[:, n], kind='cubic',
-            copy=False, assume_sorted=True)
-        vec_log = vec_int(k_log)
-        # Smoothe by convolving with window
-        smoothed = np.convolve(vec_log, window, mode='full')
-        smoothed = smoothed[len(window)//2:len(window)//2+N]
-        # Interpolate back to linear scale
-        smoothed = interp1d(
-            k_log, smoothed, kind='cubic',
-            copy=False, assume_sorted=True)
-        vec_final[:, n] = smoothed(np.arange(N)+1)
+
+    # Interpolate to logarithmic scale
+    vec_int = interp1d(
+        l1+1, vector, kind='cubic',
+        copy=False, assume_sorted=True, axis=0)
+    vec_log = vec_int(k_log)
+    # Smoothe by convolving with window
+    smoothed = scipy_convolve(vec_log, window[..., None],
+                              mode='full', method='auto')
+    # Take middle samples due to delay caused by the window
+    smoothed = smoothed[len(window)//2+1:len(window)//2+1+N]
+    # Interpolate back to linear scale
+    smoothed = interp1d(
+        k_log, smoothed, kind='cubic',
+        copy=False, assume_sorted=True, axis=0)
+
+    vec_final = smoothed(l1+1)
     if one_dim:
         vec_final = vec_final.squeeze()
     return vec_final

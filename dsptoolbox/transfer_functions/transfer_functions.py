@@ -1009,6 +1009,6 @@ def spectrum_with_cycles(ir: Signal, cycles: int, channel: int = None,
             # required samples for each frequency
             alpha = alpha_factor / cycles_per_freq_samples[ind]
 
-            w = np.exp(-0.5 * (alpha * n / half)**2)[:td.shape[0]]
+            w = np.exp(-0.5 * (alpha * n[:td.shape[0]] / half)**2)
             spec[ind, ch] = np.fft.rfft(w * td[:, ch])[ind_f]
     return f, spec
