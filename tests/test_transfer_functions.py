@@ -156,7 +156,7 @@ class TestTransferFunctionsModule():
             self.y_m, self.x, mode='H2', window_length_samples=1024,
             spectrum_parameters=dict(window_type=('chebwin', 40)))
         # Check that coherence is saved
-        h.get_coherence()
+        h[0].get_coherence()
 
     def test_spectral_average(self):
         # Only functionality is tested
