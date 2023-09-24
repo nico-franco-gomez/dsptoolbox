@@ -19,15 +19,40 @@ adheres to `Semantic Versioning <http://semver.org/spec/v2.0.0.html>`_.
 
 Added
 ~~~~~~
-- envelope function in standard module
+- ``envelope`` function in standard module
+- ``latency`` can now also compute subsample latency and handle multiband
+  signals
+- ``window_centered_ir``, ``spectrum_with_cycles`` and
+  ``combine_ir_with_dirac`` in `transfer_functions`
+- continuous wavelet transform with complex morlet wavelet and synchrosqueezing
+  ``cwt``, ``MorletWavelet`` in `transforms`
+- ``chroma_stft``, ``vqt``, ``hilbert`` and ``stereo_mid_side`` transforms in
+  `transforms` module
 
 Bugfix
 ~~~~~~~
--
+- general bugfixes
+- only local paths within package
+- solved a bug where lfilter was not working properly for filtering IIR filters
+  in ba mode
+- biquads now only use ba and not sos
+- ``reverb_time`` now can handle different options for the start of the IR
+- now linkwitz-riley crossovers can also be done for odd orders since
+  zero-phase filtering still gives perfect magnitude reconstruction. A warning
+  is shown
 
 Misc
 ~~~~~
--
+- ``fractional_octave_smoothing`` is now done more efficiently and uses a
+  hann window instead of hamming
+- ``min_phase_ir``` uses now a real cepstrum method for obtaining the minimum
+  phase. API has been modified
+- ``window_ir`` now returns the start sample of the IR as well
+- renamed `special` module into `transforms`
+- ``chirp`` function now accepts a phase offset
+- from now on, python 3.10 is no longer actively supported
+- corrected and updated documentation
+- dependencies have been updated
 
 `0.2.6 <https://pypi.org/project/dsptoolbox/0.2.6>`_ - 
 ---------------------
