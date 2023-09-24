@@ -23,8 +23,8 @@ __all__ = [
     # Functions in standard module
     'latency', 'pad_trim', 'fade', 'merge_signals', 'merge_filterbanks',
     'resample', 'activity_detector', 'normalize',
-    'fractional_delay', 'true_peak_level', 'erb_frequencies',
-    'load_pkl_object', 'fractional_octave_frequencies',
+    'fractional_delay', 'true_peak_level', 'ir_to_filter', 'erb_frequencies',
+    'load_pkl_object', 'fractional_octave_frequencies', 'filter_to_ir',
     'detrend', 'rms', 'CalibrationData', 'envelope',
 
     # Modules
