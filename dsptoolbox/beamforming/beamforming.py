@@ -8,12 +8,12 @@ from scipy.integrate import simpson
 from matplotlib.figure import Figure
 from matplotlib.axes import Axes
 
-from dsptoolbox.classes import Signal
-from dsptoolbox import fractional_delay, merge_signals, pad_trim
-from dsptoolbox._general_helpers import (
+from ..classes import Signal
+from .. import fractional_delay, merge_signals, pad_trim
+from .._general_helpers import (
     _get_fractional_octave_bandwidth, _find_nearest, _pad_trim)
 from ._beamforming import BasePoints, _clean_sc_deconvolve
-from dsptoolbox.plots import general_matrix_plot
+from ..plots import general_matrix_plot
 
 try:
     from seaborn import set_style

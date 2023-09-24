@@ -38,6 +38,17 @@ class TestStandardModule():
         value = dsp.latency(s)
         assert np.all(np.abs(value) == delay_samples)
 
+        # ===== Fractional delays
+        delay = 0.003301
+        noi = dsp.generators.noise('white', length_seconds=1,
+                                   sampling_rate_hz=10_000)
+        noi_del = dsp.fractional_delay(noi, delay)
+        assert np.abs(dsp.latency(noi_del, noi, 2)[0] - delay*10_000) < 0.9
+
+        noi = dsp.merge_signals(noi_del, noi)
+        assert np.abs(
+            dsp.latency(noi, polynomial_points=3)[0] - delay*10_000) < 0.9
+
     def test_pad_trim(self):
         # Check for signal: Trim at the end
         trim_length = 40_000
@@ -157,14 +168,6 @@ class TestStandardModule():
         # Only functionality tested here
         dsp.erb_frequencies()
 
-    def test_ir_to_filter(self):
-        s = self.audio_multi.time_data[:200, 0]
-        s = dsp.Signal(None, s, self.fs, signal_type='rir')
-        f = dsp.ir_to_filter(s, channel=0)
-        b, _ = f.get_coefficients(mode='ba')
-        assert np.all(b == s.time_data[:, 0])
-        assert f.sampling_rate_hz == s.sampling_rate_hz
-
     def test_true_peak_level(self):
         # Only functionality is tested here
         dsp.true_peak_level(self.audio_multi)
@@ -216,19 +219,6 @@ class TestStandardModule():
         with pytest.raises(AssertionError):
             dsp.detrend(s, polynomial_order=-10)
 
-    def test_filter_to_ir(self):
-        f = dsp.Filter(
-            'fir', dict(order=216, freqs=1000, type_of_pass='highpass'),
-            self.fs)
-        s = dsp.filter_to_ir(f)
-        assert s.time_data.shape[0] == 216+1
-
-        with pytest.raises(AssertionError):
-            f = dsp.Filter(
-                'iir', dict(order=10, freqs=1000, type_of_pass='highpass'),
-                self.fs)
-            dsp.filter_to_ir(f)
-
     def test_load_pkl_object(self):
         f = dsp.Filter(
             'fir', dict(order=216, freqs=1000, type_of_pass='highpass'),
@@ -273,3 +263,26 @@ class TestStandardModule():
             [125, 1000], sampling_rate_hz=self.audio_multi.sampling_rate_hz)
         new_sig = fb.filter_signal(self.audio_multi)
         calib.calibrate_signal(new_sig)
+
+    def test_envelope(self):
+        # Only functionality with multi-channel and single-channel data
+        s = dsp.generators.oscillator(
+            frequency_hz=500, mode='triangle', sampling_rate_hz=5_000,
+            number_of_channels=3, uncorrelated=True)
+        env = dsp.envelope(s, 'rms', 512)
+        assert env.shape == s.time_data.shape
+        env = dsp.envelope(s, 'analytic', None)
+        assert env.shape == s.time_data.shape
+
+        s = dsp.generators.oscillator(
+            frequency_hz=500, mode='sawtooth', sampling_rate_hz=5_000,
+            number_of_channels=1)
+        env = dsp.envelope(s, 'rms', 512)
+        assert env.shape == s.time_data.shape
+        env = dsp.envelope(s, 'analytic', None)
+        assert env.shape == s.time_data.shape
+
+        fb = dsp.filterbanks.auditory_filters_gammatone([500, 1000], 1,
+                                                        s.sampling_rate_hz)
+        ss = fb.filter_signal(s)
+        dsp.envelope(ss)

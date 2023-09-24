@@ -8,12 +8,13 @@ Acquire TF/IR from signals:
 
 - `spectral_deconvolve()` (direct deconvolution)
 - `compute_transfer_function()` (using welch's method for estimating auto- and
-  cross correlation spectra from measurements)
+  cross correlation spectra from measurements of stochastic signals)
 
 Modify TF/IR:
 
 - `window_ir()` (Windows a TF in time domain)
 - `min_phase_ir()` (returns a minimum-phase version of the IR)
+- `combine_ir_with_dirac()` (combines an IR with a time-aligned dirac impulse)
 
 Generate TF/IR from magnitude spectrum:
 
@@ -28,6 +29,8 @@ Analyze TF/IR:
 - `minimum_group_delay()`
 - `excess_group_delay()`
 - `minimum_phase()`
+- `find_ir_delay()`
+- `spectrum_with_cycles()`
 
 """
 from .transfer_functions import (spectral_deconvolve, window_ir,
@@ -39,7 +42,12 @@ from .transfer_functions import (spectral_deconvolve, window_ir,
                                  group_delay,
                                  minimum_group_delay,
                                  excess_group_delay,
-                                 minimum_phase)
+                                 minimum_phase,
+                                 spectrum_with_cycles,
+                                 ir_to_filter,
+                                 filter_to_ir,
+                                 combine_ir_with_dirac,
+                                 window_centered_ir)
 
 __all__ = [
     'spectral_deconvolve',
@@ -53,4 +61,9 @@ __all__ = [
     'minimum_group_delay',
     'excess_group_delay',
     'minimum_phase',
+    'spectrum_with_cycles',
+    'ir_to_filter',
+    'filter_to_ir',
+    'combine_ir_with_dirac',
+    'window_centered_ir',
 ]

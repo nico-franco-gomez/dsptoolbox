@@ -4,10 +4,10 @@ See measure.py for routines where the signals that are created here can be
 used
 """
 import numpy as np
-from dsptoolbox.classes.signal_class import Signal
-from dsptoolbox._general_helpers import (
+from ..classes.signal_class import Signal
+from .._general_helpers import (
     _normalize, _fade, _pad_trim, _frequency_weightning)
-from dsptoolbox.classes._filter import _impulse
+from ..classes._filter import _impulse
 
 
 def noise(type_of_noise: str = 'white', length_seconds: float = 1,
@@ -60,12 +60,12 @@ def noise(type_of_noise: str = 'white', length_seconds: float = 1,
     assert peak_level_dbfs <= 0, 'Peak level cannot surpass 0 dBFS'
     assert number_of_channels >= 1, 'At least one channel should be generated'
 
-    l_samples = int(length_seconds * sampling_rate_hz)
+    l_samples = int(length_seconds * sampling_rate_hz + 0.5)
     f = np.fft.rfftfreq(l_samples, 1/sampling_rate_hz)
 
     if padding_end_seconds not in (None, 0):
         assert padding_end_seconds > 0, 'Padding has to be a positive time'
-        p_samples = int(padding_end_seconds * sampling_rate_hz)
+        p_samples = int(padding_end_seconds * sampling_rate_hz + 0.5)
     else:
         p_samples = 0
     time_data = np.zeros((l_samples+p_samples, number_of_channels))
@@ -111,8 +111,9 @@ def noise(type_of_noise: str = 'white', length_seconds: float = 1,
 def chirp(type_of_chirp: str = 'log', range_hz=None, length_seconds: float = 1,
           sampling_rate_hz: int = None, peak_level_dbfs: float = -10,
           number_of_channels: int = 1, fade: str = 'log',
-          padding_end_seconds: float = None) -> Signal:
-    """Creates a sweep signal.
+          phase_offset: float = 0, padding_end_seconds: float = None)\
+        -> Signal:
+    """Creates a sine-sweep signal.
 
     Parameters
     ----------
@@ -135,6 +136,8 @@ def chirp(type_of_chirp: str = 'log', range_hz=None, length_seconds: float = 1,
         length (without the padding in the end) is faded at the beginning and
         end. Options are `'exp'`, `'lin'`, `'log'`.
         Pass `None` for no fading. Default: `'log'`.
+    phase_offset : float, optional
+        This is an offset in radians for the phase of the sine. Default: 0.
     padding_end_seconds : float, optional
         Padding at the end of signal. Use `None` to avoid any padding.
         Default: `None`.
@@ -170,17 +173,17 @@ def chirp(type_of_chirp: str = 'log', range_hz=None, length_seconds: float = 1,
         p_samples = int(padding_end_seconds * sampling_rate_hz)
     else:
         p_samples = 0
-    l_samples = int(sampling_rate_hz * length_seconds)
+    l_samples = int(sampling_rate_hz * length_seconds + 0.5)
     t = np.linspace(0, length_seconds, l_samples)
 
     if type_of_chirp == 'lin':
         k = (range_hz[1]-range_hz[0])/length_seconds
         freqs = (range_hz[0] + k/2*t)*2*np.pi
-        chirp_td = np.sin(freqs*t)
+        chirp_td = np.sin(freqs*t + phase_offset)
     elif type_of_chirp == 'log':
         k = np.exp((np.log(range_hz[1])-np.log(range_hz[0]))/length_seconds)
         chirp_td = \
-            np.sin(2*np.pi*range_hz[0]/np.log(k)*(k**t-1))
+            np.sin(2*np.pi*range_hz[0]/np.log(k)*(k**t-1) + phase_offset)
     chirp_td = _normalize(chirp_td, peak_level_dbfs, mode='peak')
 
     if fade is not None:
@@ -290,7 +293,7 @@ def harmonic(frequency_hz: float = 1000, length_seconds: float = 1,
         p_samples = int(padding_end_seconds * sampling_rate_hz)
     else:
         p_samples = 0
-    l_samples = int(sampling_rate_hz * length_seconds)
+    l_samples = int(sampling_rate_hz * length_seconds + 0.5)
     n_vec = np.arange(l_samples)[..., None]
     n_vec = np.repeat(n_vec, number_of_channels, axis=-1)
 
@@ -381,7 +384,7 @@ def oscillator(frequency_hz: float = 1000, length_seconds: float = 1,
         p_samples = int(padding_end_seconds * sampling_rate_hz)
     else:
         p_samples = 0
-    l_samples = int(sampling_rate_hz * length_seconds)
+    l_samples = int(sampling_rate_hz * length_seconds + 0.5)
     n = np.arange(l_samples)[..., None]
     n = np.repeat(n, number_of_channels, axis=-1)
 

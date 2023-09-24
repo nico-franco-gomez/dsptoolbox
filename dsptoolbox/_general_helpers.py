@@ -2,7 +2,7 @@
 General functionality from helper methods
 """
 import numpy as np
-from scipy.signal import windows
+from scipy.signal import windows, convolve as scipy_convolve
 from scipy.interpolate import interp1d
 from scipy.linalg import toeplitz as toeplitz_scipy
 from os import sep
@@ -112,8 +112,9 @@ def _get_normalized_spectrum(f, spectra: np.ndarray, mode='standard',
         Default: [20, 20e3].
     normalize : str, optional
         Normalize spectrum (per channel). Choose from `'1k'` (for 1 kHz),
-        `'max'` (maximum value) or `None` for no normalization.
-        Default: `None`.
+        `'max'` (maximum value) or `None` for no normalization. The
+        normalization for 1 kHz uses a linear interpolation for getting the
+        value at 1 kHz regardless of the frequency resolution. Default: `None`.
     smoothe : int, optional
         1/smoothe-fractional octave band smoothing for magnitude spectra.
         Pass `0` for no smoothing.
@@ -180,8 +181,8 @@ def _get_normalized_spectrum(f, spectra: np.ndarray, mode='standard',
             np.clip(sp, a_min=epsilon, a_max=None)/scale_factor)
         if normalize is not None:
             if normalize == '1k':
-                id1k = _find_nearest(1e3, f)
-                sp_db -= sp_db[id1k]
+                gain = _get_exact_gain_1khz(f, sp_db)
+                sp_db -= gain
             else:
                 sp_db -= np.max(sp_db)
         if phase:
@@ -380,8 +381,29 @@ def _fade(s: np.ndarray, length_seconds: float = 0.1, mode: str = 'exp',
     return s
 
 
+def _gaussian_window_sigma(window_length: int, alpha: float = 2.5) -> float:
+    """Compute the standard deviation sigma for a gaussian window according to
+    its length and `alpha`.
+
+    Parameters
+    ----------
+    window_length : int
+        Total window length.
+    alpha : float, optional
+        Alpha parameter for defining how wide the shape of the gaussian. The
+        greater alpha is, the narrower the window becomes. Default: 2.5.
+
+    Returns
+    -------
+    float
+        Standard deviation.
+
+    """
+    return (window_length-1)/(2*alpha)
+
+
 def _fractional_octave_smoothing(vector: np.ndarray, num_fractions: int = 3,
-                                 window_type='hamming',
+                                 window_type='hann',
                                  window_vec: np.ndarray = None) -> np.ndarray:
     """Smoothes a vector using interpolation to a logarithmic scale. Usually
     done for smoothing of frequency data. This implementation is taken from
@@ -390,12 +412,14 @@ def _fractional_octave_smoothing(vector: np.ndarray, num_fractions: int = 3,
     Parameters
     ----------
     vector : `np.ndarray`
-        Vector to be smoothed.
+        Vector to be smoothed. It is assumed that the first axis is to
+        be smoothed.
     num_fractions : int, optional
         Fraction of octave to be smoothed across. Default: 3 (third band).
     window_type : str, optional
         Type of window to be used. See `scipy.signal.windows.get_window` for
-        valid types. Default: `'hamming'`.
+        valid types. If the window is `'gaussian'`, the parameter passed will
+        be interpreted as alpha and not sigma. Default: `'hann'`.
     window_vec : `np.ndarray`, optional
         Window vector to be used as a window. `window_type` should be set to
         `None` if this direct window is going to be used. Default: `None`.
@@ -427,11 +451,18 @@ def _fractional_octave_smoothing(vector: np.ndarray, num_fractions: int = 3,
     l1 = np.arange(N)
     k_log = (N)**(l1/(N-1))
     beta = np.log2(k_log[1])
-    n_window = int(2 * np.floor(1 / (num_fractions * beta * 2)) + 1)
+
+    # Window length always odd, so that delay can be easily compensated
+    n_window = int(1 / (num_fractions * beta) + 0.5)    # Round
+    n_window += (1 - n_window % 2)                      # Ensure odd length
+
     # Generate window
     if window_type is not None:
         assert window_vec is None, \
             'When window type is passed, no window vector should be added'
+        if 'gauss' in window_type[0]:
+            window_type = ('gaussian', _gaussian_window_sigma(
+                n_window, window_type[1]))
         window = windows.get_window(window_type, n_window, fftbins=False)
     else:
         assert window_type is None, \
@@ -443,20 +474,25 @@ def _fractional_octave_smoothing(vector: np.ndarray, num_fractions: int = 3,
         one_dim = True
         vector = vector[..., None]
 
-    vec_final = np.zeros_like(vector)
-    for n in range(vector.shape[1]):
-        # Interpolate to logarithmic scale
-        vec_int = interp1d(
-            np.arange(N)+1, vector[:, n], kind='cubic',
-            copy=False, assume_sorted=True)
-        vec_log = vec_int(k_log)
-        # Smoothe by convolving with window
-        smoothed = np.convolve(vec_log, window/np.sum(window), mode='same')
-        # Interpolate back to linear scale
-        smoothed = interp1d(
-            k_log, smoothed, kind='cubic',
-            copy=False, assume_sorted=True)
-        vec_final[:, n] = smoothed(np.arange(N)+1)
+    # Normalize window
+    window /= window.sum()
+
+    # Interpolate to logarithmic scale
+    vec_int = interp1d(
+        l1+1, vector, kind='cubic',
+        copy=False, assume_sorted=True, axis=0)
+    vec_log = vec_int(k_log)
+    # Smoothe by convolving with window
+    smoothed = scipy_convolve(vec_log, window[..., None],
+                              mode='full', method='auto')
+    # Take middle samples due to delay caused by the window
+    smoothed = smoothed[len(window)//2+1:len(window)//2+1+N]
+    # Interpolate back to linear scale
+    smoothed = interp1d(
+        k_log, smoothed, kind='cubic',
+        copy=False, assume_sorted=True, axis=0)
+
+    vec_final = smoothed(l1+1)
     if one_dim:
         vec_final = vec_final.squeeze()
     return vec_final
@@ -765,10 +801,11 @@ def _euclidean_distance_matrix(x: np.ndarray, y: np.ndarray):
                    2 * x @ y.T)
 
 
-def _get_smoothing_factor_ema(relaxation_time_s: float, sampling_rate_hz: int):
+def _get_smoothing_factor_ema(relaxation_time_s: float, sampling_rate_hz: int,
+                              accuracy: float = 0.95):
     """This computes the smoothing factor needed for a single-pole IIR,
-    or exponential moving averager. The returned value (alpha) should be used::
-    for as follows
+    or exponential moving averager. The returned value (alpha) should be used
+    as follows::
 
         y[n] = alpha * x[n] + (1-alpha)*y[n-1]
 
@@ -776,23 +813,28 @@ def _get_smoothing_factor_ema(relaxation_time_s: float, sampling_rate_hz: int):
     ----------
     relaxation_time_s : float
         Time for the step response to stabilize around the given value
-        (with 99% accuracy).
+        (with the given accuracy).
     sampling_rate_hz : int
         Sampling rate to be used.
+    accuracy : float, optional
+        Accuracy with which the value of the step response can differ from
+        1 after the relaxation time. This must be between ]0, 1[.
+        Default: 0.95.
 
     Returns
     -------
     alpha : float
-        Smoothing value for the
+        Smoothing value for the exponential smoothing.
 
     Notes
     -----
     - The formula coincides with the one presented in
-      https://en.wikipedia.org/wiki/Exponential_smoothing, but it uses a factor
-      5.
+      https://en.wikipedia.org/wiki/Exponential_smoothing, but it uses an
+      extra factor for accuracy.
 
     """
-    return 1 - np.exp(-5/relaxation_time_s/sampling_rate_hz)
+    factor = np.log(1 - accuracy)
+    return 1 - np.exp(factor/relaxation_time_s/sampling_rate_hz)
 
 
 def _wrap_phase(phase_vector: np.ndarray) -> np.ndarray:
@@ -811,3 +853,67 @@ def _wrap_phase(phase_vector: np.ndarray) -> np.ndarray:
 
     """
     return (phase_vector + np.pi) % (2 * np.pi) - np.pi
+
+
+def _get_exact_gain_1khz(f: np.ndarray, sp_db: np.ndarray) -> float:
+    """Uses linear interpolation to get the exact gain value at 1 kHz.
+
+    Parameters
+    ----------
+    f : `np.ndarray`
+        Frequency vector.
+    sp : `np.ndarray`
+        Spectrum. It can be in dB or not.
+
+    Returns
+    -------
+    float
+        Interpolated value.
+
+    """
+    # Get nearest value just before
+    ind = _find_nearest(1e3, f)
+    if f[ind] > 1e3:
+        ind -= 1
+    return (sp_db[ind+1]-sp_db[ind])/(f[ind+1]-f[ind])*(1e3 - f[ind]) +\
+        sp_db[ind]
+
+
+def gaussian_window(length: int, alpha: float, symmetric: bool,
+                    offset: int = 0):
+    """Produces a gaussian window as defined in [1] and [2].
+
+    Parameters
+    ----------
+    length : int
+        Length for the window.
+    alpha : float
+        Parameter to define window width. It is inversely proportional to the
+        standard deviation.
+    symmetric : bool
+        Define if the window should be symmetric or not.
+    offset : int, optional
+        The offset moves the middle point of the window to the passed value.
+        Default: 0.
+
+    Returns
+    -------
+    w : `np.ndarray`
+        Gaussian window.
+
+    References
+    ----------
+    - [1]: https://www.mathworks.com/help/signal/ref/gausswin.html.
+    - [2]: https://de.wikipedia.org/wiki/Fensterfunktion.
+
+    """
+    if not symmetric:
+        length += 1
+
+    n = np.arange(length)
+    half = (length-1)/2
+    w = np.exp(-0.5*(alpha*((n-offset)-half)/half)**2)
+
+    if not symmetric:
+        return w[:-1]
+    return w

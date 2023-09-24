@@ -9,13 +9,12 @@ from soundfile import read, write
 from matplotlib.figure import Figure
 from matplotlib.axes import Axes
 
-from dsptoolbox.plots import (general_plot,
-                              general_subplots_line, general_matrix_plot)
+from ..plots import (general_plot, general_subplots_line, general_matrix_plot)
 from ._plots import _csm_plot
-from dsptoolbox._general_helpers import \
+from .._general_helpers import \
     (_get_normalized_spectrum, _pad_trim, _find_nearest,
      _fractional_octave_smoothing, _check_format_in_path)
-from dsptoolbox._standard import (_welch, _group_delay_direct, _stft, _csm)
+from .._standard import (_welch, _group_delay_direct, _stft, _csm)
 
 
 class Signal():
@@ -699,10 +698,13 @@ class Signal():
 
                 # Smoothing
                 if self._spectrum_parameters['smoothe'] != 0:
+                    # Smoothing the power
                     temp_abs = _fractional_octave_smoothing(
-                        np.abs(spectrum), self._spectrum_parameters['smoothe'])
+                        np.abs(spectrum)**2,
+                        self._spectrum_parameters['smoothe'])**(0.5)
+                    # Smoothing the phase is not shift-invariant...
                     temp_phase = _fractional_octave_smoothing(
-                        np.angle(spectrum),
+                        np.unwrap(np.angle(spectrum), axis=0),
                         self._spectrum_parameters['smoothe'])
                     spectrum = temp_abs*np.exp(1j*temp_phase)
 
@@ -763,6 +765,10 @@ class Signal():
             Frequency vector.
         spectrogram : `np.ndarray`
             Complex spectrogram with shape (frequency, time, channel).
+
+        Notes
+        -----
+        - No scaling is performed while computing the DFT coefficients.
 
         """
         condition = not hasattr(self, 'spectrogram') or force_computation or \

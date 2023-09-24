@@ -2,10 +2,7 @@
 Low-level methods for room acoustics
 """
 import numpy as np
-from dsptoolbox.plots import (
-    general_plot,
-    # show
-)
+from ..plots import general_plot
 
 
 def _reverb(h, fs_hz, mode, ir_start: int = None,
@@ -85,12 +82,13 @@ def _find_ir_start(ir, threshold_dbfs: float = -20) -> int:
         IR as a 1D-array.
     threshold_dbfs : float, optional
         Threshold that should be surpassed at the start of the IR in dBFS.
-        The signal is normalized. Default: -20.
+        The signal is always normalized. Default: -20.
 
     Returns
     -------
     ind : int
-        Index of the start of the IR.
+        Index of the start of the IR. It is the sample before the given
+        threshold is surpassed for the first time.
 
     """
     energy_curve = ir**2
@@ -102,7 +100,8 @@ def _find_ir_start(ir, threshold_dbfs: float = -20) -> int:
     return ind
 
 
-def _complex_mode_identification(spectra: np.ndarray, n_functions: int = 1) ->\
+def _complex_mode_identification(spectra: np.ndarray,
+                                 maximum_singular_value: bool = True) ->\
         np.ndarray:
     """Complex transfer matrix and CMIF from:
     http://papers.vibetech.com/Paper17-CMIF.pdf
@@ -111,58 +110,38 @@ def _complex_mode_identification(spectra: np.ndarray, n_functions: int = 1) ->\
     ----------
     spectra : `np.ndarray`
         Matrix containing spectra of the necessary IR.
-    n_functions : int, optional
-        Number of singular value vectors to be returned. Default: 1.
+    maximum_singular_value : bool, optional
+        When `True`, the maximum singular value at each frequency line is
+        returned instead of the first. Default: `True`.
 
     Returns
     -------
     cmif : `np.ndarray`
-        Complex mode identificator function (matrix).
+        Complex mode identificator function.
 
     References
     ----------
     http://papers.vibetech.com/Paper17-CMIF.pdf
 
     """
-    assert n_functions <= spectra.shape[1], f'{n_functions} is too many ' +\
-        f'functions for spectra of shape {spectra.shape}'
-
     n_rir = spectra.shape[1]
 
     # If only one RIR is provided, then there is no need to compute the SVD
     if n_rir == 1:
-        return np.abs(spectra.squeeze())
+        return np.abs(spectra.squeeze())**2
 
     H = np.zeros((n_rir, n_rir, spectra.shape[0]), dtype='cfloat')
     for n in range(n_rir):
         H[0, n, :] = spectra[:, n]
-        H[n, 0, :] = spectra[:, n]  # Conjugate?!
-    cmif = np.empty((spectra.shape[0], n_functions))
+        H[n, 0, :] = spectra[:, n]
+    cmif = np.zeros(spectra.shape[0])
     for ind in range(cmif.shape[0]):
-        s = np.linalg.svd(H[:, :, ind], compute_uv=False)
-        for nf in range(n_functions):
-            cmif[ind, nf] = s[nf]
+        s = np.linalg.svd(H[:, :, ind], compute_uv=False, hermitian=False)
+        if maximum_singular_value:
+            cmif[ind] = s.max()
+        else:
+            cmif[ind] = s[0]
     return cmif
-
-
-def _sum_magnitude_spectra(magnitudes: np.ndarray) -> np.ndarray:
-    """np.sum of all magnitude spectra
-
-    Parameters
-    ----------
-    magnitudes : `np.ndarray`
-        The magnitude spectra. If complex, it is assumed to be the spectra.
-
-    Returns
-    -------
-    summed : `np.ndarray`
-        np.sum of magnitude spectra.
-
-    """
-    if np.iscomplexobj(magnitudes):
-        magnitudes = abs(magnitudes)
-    summed = np.sum(magnitudes, axis=1)
-    return summed
 
 
 def _generate_rir(room_dim, alpha, s_pos, r_pos, rt, mo, sr) -> np.ndarray:

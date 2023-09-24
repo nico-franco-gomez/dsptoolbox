@@ -1,11 +1,11 @@
 # use:
-scipy>=1.9
-numpy>=1.23
-soundfile>=0.11
+scipy>=1.11
+numpy>=1.25
+soundfile>=0.12
 sounddevice>=0.4
 
 # plotting:
-matplotlib>=3.6
+matplotlib>=3.8
 seaborn>=0.12
 
 # dev:
@@ -14,7 +14,7 @@ wheel # build
 twine # upload build
 flake8  # linter
 pytest # tests
-# librosa  # validation, does not work on python 3.11 since numba is not supported yet
+# librosa  # validation
 # pyfar  # validation
 # pyroomacoustics # validation
 

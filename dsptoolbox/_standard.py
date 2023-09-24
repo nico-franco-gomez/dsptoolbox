@@ -7,20 +7,116 @@ from ._general_helpers import _pad_trim, _compute_number_frames
 from warnings import warn
 
 
-def _latency(in1: np.ndarray, in2: np.ndarray):
+def _latency(in1: np.ndarray, in2: np.ndarray = None,
+             polynomial_points: int = 0):
     """Computes the latency between two functions using the correlation method.
+    The variable polynomial_points is only a dummy to share the same API as
+    the _fractional_latency function.
 
     """
-    if len(in1.shape) < 2:
-        in1 = in1[..., None]
-    if len(in2.shape) < 2:
-        in2 = in2[..., None]
+    if in2 is None:
+        in2 = in1.copy()
+        in2 = in2[:, 1:]
+        if in2.ndim < 2:
+            in2 = in2[..., None]
+        in1 = np.repeat(in1[:, 0][..., None], in2.shape[1], axis=1)
+
     latency_per_channel_samples = np.zeros(in1.shape[1], dtype=int)
     for i in range(in1.shape[1]):
         xcorr = correlate(in2[:, i].flatten(), in1[:, i].flatten())
         latency_per_channel_samples[i] = \
             int(in1.shape[0] - np.argmax(abs(xcorr)) - 1)
     return latency_per_channel_samples
+
+
+def _fractional_latency(td1: np.ndarray, td2: np.ndarray = None,
+                        polynomial_points: int = 1):
+    """This function computes the sub-sample latency between two signals using
+    Zero-Crossing of the analytic (hilbert transformed) correlation function.
+    The number of polynomial points taken around the correlation maximum can be
+    set, although some polynomial orders might fail to compute the root. In
+    that case, integer latency will be returned for the respective channel.
+
+    Parameters
+    ----------
+    td1 : `np.ndaray`
+        Delayed version of the signal.
+    td2 : `np.ndarray`, optional
+        Original version of the signal. If `None` is passed, the latencies
+        are computed between the first channel of td1 and every other.
+        Default: `None`.
+    polynomial_points : int, optional
+        This corresponds to the number of points taken around the root in order
+        to fit a polynomial. Accuracy might improve with higher orders but
+        it could also lead to ill-conditioned polynomials. In case root finding
+        is not successful, integer latency values are returned. Default: 1.
+
+    Returns
+    -------
+    lags : `np.ndarray`
+        Fractional delays. It has shape (channel). In case td2 was `None`, its
+        length is channels-1.
+
+    References
+    ----------
+    - N. S. M. Tamim and F. Ghani, "Hilbert transform of FFT pruned cross
+      correlation function for optimization in time delay estimation," 2009
+      IEEE 9th Malaysia International Conference on Communications (MICC),
+      Kuala Lumpur, Malaysia, 2009, pp. 809-814,
+      doi: 10.1109/MICC.2009.5431382.
+
+    """
+    if td2 is None:
+        td2 = td1.copy()
+        td2 = td2[:, 1:]
+        if td2.ndim < 2:
+            td2 = td2[..., None]
+        td1 = np.repeat(td1[:, 0][..., None], td2.shape[1], axis=1)
+
+    lags = np.zeros(td1.shape[1], dtype=float)
+
+    for ch in range(td1.shape[1]):
+        # td2 is original, td1 is delayed
+        xcor = correlate(td2[:, ch], td1[:, ch])
+        ind_max = np.argmax(xcor)
+        analytical_xcor = np.imag(hilbert(xcor))
+
+        # Find exact index before maximum
+        index_prior_max = 0
+        if analytical_xcor[ind_max-1]*analytical_xcor[ind_max] < 0:
+            index_prior_max = ind_max-1
+        elif analytical_xcor[ind_max]*analytical_xcor[ind_max+1] < 0:
+            index_prior_max = ind_max
+        else:
+            print('There was an error while finding maximum of ' +
+                  f'correlation for channel {ch}. Integer latency is returned')
+            lags[ch] = td1.shape[0] - ind_max - 1
+
+        if index_prior_max != 0:
+            # Polynomial fit around root
+            polynomial = np.polyfit(
+                np.arange(-polynomial_points, polynomial_points)+1,
+                analytical_xcor[index_prior_max-polynomial_points+1:
+                                index_prior_max+polynomial_points+1],
+                deg=2*polynomial_points-1)
+            roots = np.roots(polynomial)
+            epsilon = 1e-10
+            # Get only root between 0 and 1
+            roots = roots[
+                (roots == roots.real)               # Real roots
+                & (roots <= 1 + epsilon)            # Range
+                & (roots >= 0)
+            ].real
+            try:
+                roots = roots[0]
+                lags[ch] = td1.shape[0] - (index_prior_max + roots) - 1
+            except IndexError as e:
+                print(e)
+                print('There was an error with the polynomial fitting. ' +
+                      'Try a different number for the polynomial points. ' +
+                      'Integer latencies will be returned.')
+                lags[ch] = td1.shape[0] - ind_max - 1
+    return lags
 
 
 def _welch(x, y, fs_hz: int, window_type: str = 'hann',
@@ -212,7 +308,8 @@ def _group_delay_direct(phase: np.ndarray, delta_f: float = 1):
     return gd
 
 
-def _minimum_phase(magnitude: np.ndarray, unwrapped: bool = True):
+def _minimum_phase(magnitude: np.ndarray, unwrapped: bool = True) \
+        -> np.ndarray:
     """Computes minimum phase system from magnitude spectrum.
 
     Parameters
@@ -232,9 +329,7 @@ def _minimum_phase(magnitude: np.ndarray, unwrapped: bool = True):
     if np.iscomplexobj(magnitude):
         magnitude = np.abs(magnitude)
     minimum_phase = -np.imag(hilbert(np.log(np.clip(
-        magnitude, a_min=1e-25, a_max=None)), axis=0))
-    # Scale to pi
-    minimum_phase = minimum_phase / np.max(np.abs(minimum_phase)) * np.pi
+        magnitude, a_min=1e-40, a_max=None)), axis=0))
     if not unwrapped:
         minimum_phase = np.angle(np.exp(1j*minimum_phase))
     return minimum_phase

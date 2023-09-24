@@ -3,15 +3,11 @@ High-level methods for room acoustics functions
 """
 import numpy as np
 from scipy.signal import find_peaks, convolve
-# from warnings import warn
 
-from dsptoolbox.classes import Signal, MultiBandSignal, Filter
-from dsptoolbox.filterbanks import (fractional_octave_bands,
-                                    linkwitz_riley_crossovers)
-from dsptoolbox.transfer_functions import group_delay
+from ..classes import Signal, MultiBandSignal, Filter
+from ..filterbanks import (fractional_octave_bands, linkwitz_riley_crossovers)
 from ._room_acoustics import (_reverb,
                               _complex_mode_identification,
-                              _sum_magnitude_spectra,
                               _find_ir_start,
                               _generate_rir,
                               ShoeboxRoom,
@@ -19,11 +15,12 @@ from ._room_acoustics import (_reverb,
                               _d50_from_rir,
                               _c80_from_rir,
                               _ts_from_rir)
-from dsptoolbox._general_helpers import _find_nearest, _normalize, _pad_trim
+from .._general_helpers import _find_nearest, _normalize, _pad_trim
+from ..standard_functions import pad_trim
 
 
 def reverb_time(signal: Signal | MultiBandSignal, mode: str = 'T20',
-                ir_start: int = None) -> np.ndarray:
+                ir_start: int | np.ndarray = None) -> np.ndarray:
     """Computes reverberation time. T20, T30, T60 and EDT.
 
     Parameters
@@ -34,10 +31,14 @@ def reverb_time(signal: Signal | MultiBandSignal, mode: str = 'T20',
     mode : str, optional
         Reverberation time mode. Options are `'T20'`, `'T30'`, `'T60'` or
         `'EDT'`. Default: `'T20'`.
-    ir_start : int, optional
-        When not `None`, it is used as the index of the start of the impulse
-        response. Otherwise it is automatically computed as the first point
-        where the normalized IR arrives at -20 dBFS. Default: `None`.
+    ir_start : int or array-like, optional
+        If it is an integer, it is assumed as the start of the IR for all
+        channels (and all bands). For more specific cases, pass a 1d-array
+        containing the start indices for each channel or a 2d-array with
+        shape (band, channel) for a `MultiBandSignal`. When `None`, the starts
+        are automatically computed as the first point before the normalized IR
+        arrives at -20 dBFS. This is then done independently for each channel
+        and each band. Default: `None`.
 
     Returns
     -------
@@ -52,6 +53,7 @@ def reverb_time(signal: Signal | MultiBandSignal, mode: str = 'T20',
 
     """
     if type(signal) == Signal:
+        ir_start = _check_ir_start_reverb(signal, ir_start)
         assert signal.signal_type in ('ir', 'rir'), \
             f'{signal.signal_type} is not a valid signal type for ' +\
             'reverb_time. It should be ir or rir'
@@ -64,39 +66,26 @@ def reverb_time(signal: Signal | MultiBandSignal, mode: str = 'T20',
         for n in range(signal.number_of_channels):
             reverberation_times[n] = _reverb(
                 signal.time_data[:, n].copy(), signal.sampling_rate_hz,
-                mode, ir_start=ir_start, return_ir_start=False)
+                mode, ir_start=ir_start[n], return_ir_start=False)
     elif type(signal) == MultiBandSignal:
+        ir_start = _check_ir_start_reverb(signal, ir_start)
         reverberation_times = \
             np.zeros(
                 (signal.number_of_bands, signal.bands[0].number_of_channels))
         for ind in range(signal.number_of_bands):
+            band_ir_start = None if ir_start is None else ir_start[ind, :]
             reverberation_times[ind, :] = reverb_time(
-                signal.bands[ind], mode, ir_start=ir_start)
+                signal.bands[ind], mode, ir_start=band_ir_start)
     else:
         raise TypeError(
             'Passed signal should be of type Signal or MultiBandSignal')
     return reverberation_times
-    # return reverberation_times.squeeze()
 
 
 def find_modes(signal: Signal, f_range_hz=[50, 200],
-               proximity_effect: bool = False, dist_hz: float = 5,
-               prune_antimodes: bool = False) -> np.ndarray:
-    """This metod is NOT validated. It might not be sufficient to find all
-    modes in the given range.
-
-    Computes the room modes of a set of RIR using different criteria:
-    Complex mode indication function, sum of magnitude responses and group
-    delay peaks of RIRs. If modes are identified in at least two of the three
-    criteria, they are considered as such.
-
-    The parameter prune antimodes is used to avoid getting modes that are
-    dips (and not peaks) in the frequency responses. This is done after
-    mode identification and is therefore only needed when proximity effect is
-    set to `True` and mode identification is done using group delay criteria,
-    since, for modes to be identified as such, they would need
-    to exhibit peaks in at least the CMIF or sum of all magnitude spectra. If
-    they were dips, they would be ignored anyway.
+               dist_hz: float = 5) -> np.ndarray:
+    """Computes the room modes of a set of RIR using the peaks of the complex
+    mode indicator function (CMIF).
 
     Parameters
     ----------
@@ -104,17 +93,8 @@ def find_modes(signal: Signal, f_range_hz=[50, 200],
         Signal containing the RIR'S from which to find the modes.
     f_range_hz : array-like, optional
         Vector setting range for mode search. Default: [50, 200].
-    proximity_effect : bool, optional
-        When `True`, only group delay criteria is used for finding modes
-        up until 200 Hz. This is done since a gradient transducer will not
-        easily see peaks in its magnitude response in low frequencies
-        due to near-field effects. Default: `False`.
     dist_hz : float, optional
         Minimum distance (in Hz) between modes. Default: 5.
-    prune_antimodes : bool, optional
-        See if the detected modes are dips in the frequency response of the
-        first RIR. This is only needed for the group delay method, which
-        is essential when proximity_effect is set to `True`. Default: `False`.
 
     Returns
     -------
@@ -133,6 +113,9 @@ def find_modes(signal: Signal, f_range_hz=[50, 200],
         f'{signal.signal_type} is not a valid signal type. It should ' +\
         'be either rir or ir'
     signal.set_spectrum_parameters('standard')
+    # Pad signal to have a resolution of around 1 Hz
+    length = signal.sampling_rate_hz
+    signal = pad_trim(signal, length)
     f, sp = signal.get_spectrum()
 
     # Setting up frequency range
@@ -141,74 +124,15 @@ def find_modes(signal: Signal, f_range_hz=[50, 200],
     df = f[1]-f[0]
 
     # Compute CMIF and sum of all magnitude spectra
-    cmif = _complex_mode_identification(sp[ids[0]:ids[1], :]).squeeze()
-    sum_sp = _sum_magnitude_spectra(sp[ids[0]:ids[1], :])
-
-    # Group delay
-    _, group_ms = group_delay(signal)
-    group_ms = group_ms[ids[0]:ids[1]]*1e3
+    cmif = _complex_mode_identification(sp[ids[0]:ids[1], :], True).squeeze()
 
     # Find peaks
     dist_samp = int(np.ceil(dist_hz / df))
     dist_samp = 1 if dist_samp < 1 else dist_samp
 
-    id_sum, _ = find_peaks(sum_sp, distance=dist_samp, width=dist_samp)
     id_cmif, _ = find_peaks(cmif, distance=dist_samp, width=dist_samp)
-    id_group = []
-    for n in range(signal.number_of_channels):
-        id_, _ = find_peaks(group_ms[:, n], distance=dist_samp,
-                            width=dist_samp)
-        id_group.append(id_)
+    f_modes = f[id_cmif]
 
-    # When proximity effect is activated, only group delays will be used up
-    # until 200 Hz
-    if proximity_effect:
-        f_modes = np.array([])
-        for n in range(signal.number_of_channels):
-            f_modes = \
-                np.append(f_modes, f[id_group[n]][f[id_group[n]] < 199.9])
-        ind_200 = np.where(f >= 199.9)
-        if len(np.squeeze(ind_200)) < 1:
-            ind_200 = len(f)
-        else:
-            ind_200 = ind_200[0][0]
-        f_modes = f_modes.flatten()
-        f_modes = list(f_modes)
-        temp = []
-        for f_m in f_modes:
-            if f_modes.count(f_m) >= 2:
-                temp.append(f_m)
-        f_modes = set(temp)
-
-        # Assessment that lower modes are peaks (not dips)
-        # of the magnitude response (first RIR)
-        if prune_antimodes:
-            antimodes, _ = \
-                find_peaks(1/np.abs(sp[ids[0]:ids[1], 0]), distance=dist_samp,
-                           width=dist_samp)
-            f_antimodes = f[antimodes]
-    else:
-        f_modes = set()
-        ind_200 = 0
-
-    f_modes = set(f_modes)
-
-    # Same frequency appears in at least two of three peaks vectors
-    for n in range(ind_200, len(f)):
-        cond1 = f[n] in f[id_sum]
-        cond2 = f[n] in f[id_cmif]
-        cond3 = f[n] in f[id_group[0]]
-        cond_1 = cond1 and cond2
-        cond_2 = cond1 and cond3
-        cond_3 = cond2 and cond3
-        if cond_1 or cond_2 or cond_3:
-            f_modes.add(f[n])
-    f_modes = np.sort(list(f_modes))
-
-    # "Antimode" detection – only when proximity effect is True
-    if proximity_effect and prune_antimodes:
-        anti = np.intersect1d(f_antimodes, f_modes)
-        f_modes = np.setdiff1d(f_modes, anti)
     return f_modes
 
 
@@ -273,7 +197,8 @@ def convolve_rir_on_signal(signal: Signal, rir: Signal,
 
 def find_ir_start(signal: Signal, threshold_dbfs: float = -20) -> np.ndarray:
     """This function finds the start of an IR defined as the first sample
-    where a certain threshold is surpassed.
+    before a certain threshold is surpassed. For room impulse responses, -20
+    dB relative to peak level is recommended according to [1].
 
     Parameters
     ----------
@@ -290,13 +215,13 @@ def find_ir_start(signal: Signal, threshold_dbfs: float = -20) -> np.ndarray:
 
     References
     ----------
-    - ISO 3382-1:2009-10, Acoustics - Measurement of the reverberation time of
-      rooms with reference to other acoustical parameters. pp. 22.
+    - [1]: ISO 3382-1:2009-10, Acoustics - Measurement of the reverberation
+      time of rooms with reference to other acoustical parameters. pp. 22.
 
     """
     assert threshold_dbfs <= 0, \
         'Threshold must be negative'
-    start_index = np.empty(signal.number_of_channels)
+    start_index = np.empty(signal.number_of_channels, dtype=np.intp)
     for n in range(signal.number_of_channels):
         start_index[n] = \
             _find_ir_start(signal.time_data[:, n], threshold_dbfs)
@@ -326,10 +251,10 @@ def generate_synthetic_rir(room: ShoeboxRoom, source_position,
     receiver_position : array-like
         Vector with length 3 corresponding to the receiver's position (x, y, z)
         in meters.
-    total_length_seconds : float, optional
-        Total length of the output RIR in seconds. Default: 0.5.
     sampling_rate_hz : int
         Sampling rate of the generated impulse (in Hz). Default: `None`.
+    total_length_seconds : float, optional
+        Total length of the output RIR in seconds. Default: 0.5.
     add_noise_reverberant_tail : bool, optional
         When `True`, decaying noise is added to the IR in order to model
         the late reflections of the room. Default: `True`.
@@ -519,3 +444,50 @@ def _bass_ratio(rir: Signal) -> np.ndarray:
     for ch in range(rir.number_of_channels):
         br[ch] = (rt[0, ch]+rt[1, ch]) / (rt[2, ch]+rt[3, ch])
     return br
+
+
+def _check_ir_start_reverb(
+        sig: Signal | MultiBandSignal,
+        ir_start: int | np.ndarray | list | tuple) \
+            -> np.ndarray | list:
+    """This method checks `ir_start` and parses it into the necessary form
+    if relevant. For a `Signal`, it is a vector with the same number of
+    elements as channels of `sig`. For `MultiBandSignal`, it is a 2d-array
+    with shape (band, channel).
+
+    `ir_start` must always have elements of type `int` or `intp`.
+
+    For `None`, `None` is returned.
+
+    """
+    if ir_start is not None:
+        if type(ir_start) in (list, tuple):
+            ir_start = np.asarray(ir_start)
+        assert type(ir_start) in (int, np.ndarray, np.intp), \
+            'Unsupported type for ir_start'
+
+    if type(sig) == Signal:
+        if type(ir_start) in (int, np.intp):
+            ir_start = np.ones(sig.number_of_channels,
+                               dtype=np.intp) * ir_start
+        elif ir_start is None:
+            return [None]*sig.number_of_channels
+        assert ir_start.ndim == 1 and len(ir_start) == sig.number_of_channels,\
+            'Shape of ir_start is not valid'
+    else:
+        if type(ir_start) in (int, np.intp):
+            ir_start = np.ones((sig.number_of_bands,
+                                sig.number_of_channels),
+                               dtype=np.intp) * ir_start
+        if ir_start is None:
+            return None
+        if ir_start.ndim == 1:
+            ir_start = np.repeat(ir_start[None, ...],
+                                 sig.number_of_bands, axis=0)
+        else:
+            assert ir_start.shape == (sig.number_of_bands,
+                                      sig.number_of_channels), \
+                'Shape of ir_start is not valid for the passed signal'
+    if ir_start.dtype not in (int, np.intp):
+        ir_start = ir_start.astype(np.intp)
+    return ir_start

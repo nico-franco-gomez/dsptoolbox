@@ -1,14 +1,18 @@
 """
 Here are methods considered as somewhat special or less common.
 """
-from dsptoolbox.classes.signal_class import Signal
-from dsptoolbox.plots import general_matrix_plot
-from dsptoolbox._standard import _reconstruct_framed_signal
-from dsptoolbox._general_helpers import _hz2mel, _mel2hz, _pad_trim
+from ..classes.signal_class import Signal
+from ..plots import general_matrix_plot
+from .._standard import _reconstruct_framed_signal
+from .._general_helpers import _hz2mel, _mel2hz, _pad_trim
+from ..transforms._transforms import (
+    _pitch2frequency, Wavelet, MorletWavelet, _squeeze_scalogram,
+    _get_kernels_vqt)
 
 import numpy as np
 from scipy.signal.windows import get_window
 from scipy.fft import dct
+from scipy.signal import oaconvolve, resample_poly
 import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
 from matplotlib.axes import Axes
@@ -466,3 +470,326 @@ def istft(stft: np.ndarray, original_signal: Signal = None,
         reconstructed_signal = Signal(None, time_data=td,
                                       sampling_rate_hz=sampling_rate_hz)
     return reconstructed_signal
+
+
+def chroma_stft(signal: Signal, tuning_a_hz: float = 440,
+                compression: float = 0.5, plot_channel: int = -1):
+    """This computes the Chroma Features and Pitch STFT. See [1] for details.
+
+    Parameters
+    ----------
+    signal : `Signal`
+        Signal for which to compute the chroma features. The saved parameters
+        for the spectrogram are used to compute the STFT.
+    tuning_a_hz : float, optional
+        Tuning in Hz for the A4. Default: 440.
+    compression : float, optional
+        Compression factor as explained in [1]. Default: 0.5.
+    plot_channel : int, optional
+        When different than -1, a chroma plot for the corresponding channel is
+        generated and returned. Default: -1.
+
+    Returns
+    -------
+    t : `np.ndarray`
+        Time vector corresponding to each time frame.
+    chroma_stft : `np.ndarray`
+        Chroma Features with shape (note, time frame, channel). First index
+        is C, second C#, etc. (Until B).
+    pitch_stft : `np.ndarray`
+        Pitch log-STFT with shape (pitch, time frame, channel). First index
+        is note 0 (MIDI), i.e., C0.
+    When `plot_channel != -1`:
+        Figure and Axes.
+
+    References
+    ----------
+    - [1]: Short-Time Fourier Transform and Chroma Features. Müller.
+
+    """
+    assert tuning_a_hz > 0, \
+        'Tuning A4 must be greater than zero'
+    assert compression > 0, \
+        'Compression factor must be greater than zero'
+
+    t, f, stft = signal.get_spectrogram()
+
+    # Energy
+    stft = np.abs(stft)**2
+
+    # Get frequencies
+    pitch_frequencies = _pitch2frequency(tuning_a_hz)
+
+    pitch_transformation = np.zeros((len(pitch_frequencies), len(f)))
+    # This is the pitch representation
+    for ind, fn in enumerate(pitch_frequencies):
+        inds = (f >= fn*2**(-1/24)) & (f < fn*2**(1/24))
+        pitch_transformation[ind, inds] = 1
+
+    # Chroma sums over all octaves
+    n_notes = 12
+    chroma_transformation = np.zeros((n_notes, len(pitch_frequencies)))
+    for i in range(n_notes):
+        chroma_transformation[i, i::n_notes] = 1
+
+    # Get Pitch STFT Frequency Scaling
+    pitch_stft = np.tensordot(pitch_transformation, stft, (1, 0))
+    # Sum over all octaves for chroma
+    chroma_stft = np.tensordot(chroma_transformation, pitch_stft, (1, 0))
+
+    pitch_stft = np.log(1 + compression*pitch_stft)
+    chroma_stft = np.log(1 + compression*chroma_stft)
+
+    if plot_channel != -1:
+        fig, ax = plt.subplots(1, 1)
+        image = ax.imshow(chroma_stft[..., plot_channel],
+                          aspect='auto', origin='lower')
+        ax.set_yticks(np.arange(12),
+                      ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#',
+                       'A', 'A#', 'B'])
+        time_step = int(1 / t[1])
+        ax.set_xticks(np.arange(0, chroma_stft.shape[1], time_step),
+                      np.round(t[::time_step]))
+        ax.set_xlabel('Time / s')
+        ax.set_ylabel('Note')
+        fig.colorbar(image)
+        return t, chroma_stft, pitch_stft, fig, ax
+    return t, chroma_stft, pitch_stft
+
+
+def cwt(signal: Signal, frequencies: np.ndarray,
+        wavelet: Wavelet | MorletWavelet, channel: np.ndarray = None,
+        synchrosqueezed: bool = False) \
+            -> np.ndarray:
+    """Returns a scalogram by means of the continuous wavelet transform.
+
+    Parameters
+    ----------
+    signal : `Signal`
+        Signal for which to compute the cwt.
+    frequencies : `np.ndarray`
+        Frequencies to query with the wavelet.
+    wavelet : `Wavelet` or `MorletWavelet`
+        Type of wavelet to use. It must be a class inherited from the
+        `Wavelet` class.
+    channel : `np.ndarray`, optional
+        Channel for which to compute the cwt. If `None`, all channels are
+        computed. Default: `None`.
+    synchrosqueezed : bool, optional
+        When `True`, the scalogram is synchrosqueezed using the phase
+        transform. Default: `False`.
+
+    Returns
+    -------
+    scalogram : `np.ndarray`
+        Complex scalogram scalogram with shape (frequency, time sample,
+        channel).
+
+    Notes
+    -----
+    - Zero-padding in the beginning is done for reducing boundary effects.
+
+    """
+    if channel is None:
+        channel = np.arange(signal.number_of_channels)
+    channel = np.atleast_1d(channel)
+    td = signal.time_data[:, channel]
+
+    scalogram = np.zeros((len(frequencies), td.shape[0], td.shape[1]),
+                         dtype='cfloat')
+
+    for ind_f, f in enumerate(frequencies):
+        wv = wavelet.get_wavelet(f, signal.sampling_rate_hz)
+        # Decide if convolve, fftconvolve or oaconvolve
+        # if len(wv) > td.shape[0]*0.2:
+        #     scalogram[ind_f, ...] = convolve(
+        #         td, wv[..., None], axes=0, mode='same')
+        # else:
+        scalogram[ind_f, ...] = oaconvolve(
+            td, wv[..., None], axes=0, mode='same')
+
+    if synchrosqueezed:
+        scalogram = _squeeze_scalogram(
+            scalogram, frequencies, signal.sampling_rate_hz)
+
+    return scalogram
+
+
+def hilbert(signal: Signal):
+    """Compute the analytic signal using the hilbert transform of the real
+    signal.
+
+    Parameters
+    ----------
+    signal : `Signal`
+        Signal to convert.
+
+    Returns
+    -------
+    analytic : `Signal`
+        Analytical signal.
+
+    Notes
+    -----
+    - Since it is not causal, the whole time series must be passed
+      through an FFT. This could take long or be too memory intensive depending
+      on the size of the original signal and the computer.
+    - The new `Signal` has the real part saved in `self.time_data` and the
+      imaginary in `self.time_data_imaginary`. Complex time series can
+      therefore be constructed with::
+
+        complex_ts = Signal.time_data + Signal.time_data_imaginary*1j
+
+    """
+    td = signal.time_data
+
+    sp = np.fft.fft(td, axis=0)
+    if len(td) % 2 == 0:
+        nyquist = len(td) // 2
+        sp[1:nyquist, :] *= 2
+        sp[nyquist+1:, :] = 0
+    else:
+        sp[1:(len(td) + 1)//2, :] *= 2
+        sp[(len(td) + 1)//2:, :] = 0
+
+    analytic = signal.copy()
+    analytic.time_data = np.fft.ifft(sp, axis=0)
+    return analytic
+
+
+def vqt(signal: Signal, channel: np.ndarray = None, q: float = 1,
+        gamma: float = 50, octaves: list = [1, 5], bins_per_octave: int = 24,
+        a4_tuning: int = 440, window: str | tuple = 'hann'):
+    """Variable-Q Transform. This is a special case of the continuous wavelet
+    transform with complex morlet wavelets for the time-frequency analysis.
+    Constant-Q Transform can be obtained by setting `gamma = 0`.
+
+    Parameters
+    ----------
+    signal : `Signal`
+        Signal for which to compute the cqt coefficients.
+    channel : `np.ndarray` or int, optional
+        Channel(s) for which to compute the cqt coefficients. If `None`,
+        all channels are computed. Default: `None`.
+    q : float, optional
+        Q-factor. 1 would be the optimal value but setting it to something
+        lower might increase temporal resolution at the expense of frequency
+        resolution. Default: 1.
+    gamma : float, optional
+        This is the factor for the bandwidth adaptation (in Hz). This extends
+        the bandwidth of each kernel. Set to 0 for obtaining the Constant-Q
+        Transform. Default: 50.
+    octaves : list with length 2, optional
+        Range of musical octaves for which to compute the cqt coefficients.
+        [1, 4] computes all corresponding frequencies from C1 up until B4.
+        Exact frequencies are adapted from the a4-tuning parameter.
+        Default: [1, 5].
+    bins_per_octave : int, optional
+        Number of frequency bins to divide an octave. Default: 24.
+    a4_tuning : int, optional
+        Frequency for A4 in Hz. Default: 440.
+    window : str or tuple, optional
+        Type of window to use for the kernels. This is directly passed
+        to `scipy.signal.get_window()`, so that a tuple containing a window
+        type and an additional parameter can be used. Default: `'hann'`.
+
+    Returns
+    -------
+    f : `np.ndarray`
+        Frequency vector.
+    cqt : `np.ndarray`
+        CQT coefficients with shape (frequency, time samples, channel).
+
+    References
+    ----------
+    - Schörkhuber and Klapuri: CONSTANT-Q TRANSFORM TOOLBOX FOR MUSIC
+      PROCESSING.
+    - Schörkhuber et. al.: A Matlab Toolbox for Efficient Perfect
+      Reconstruction Time-Frequency Transforms with Log-Frequency Resolution.
+
+    """
+    if channel is None:
+        channel = np.arange(signal.number_of_channels)
+    channel = np.atleast_1d(channel)
+
+    td = signal.time_data[:, channel]
+
+    # Highest frequency corresponds to the B of the last octave
+    highest_f = a4_tuning * 2**(octaves[1]-4 + 2/12)
+
+    # Find necessary sampling rate, i.e., one with nyquist just above
+    # highest frequency. This delivers the necessary decimation factor.
+    decimation = int((signal.sampling_rate_hz//2) / (highest_f*1.1))
+    mid_fs = signal.sampling_rate_hz // decimation
+    td = resample_poly(td, up=1, down=decimation, axis=0)
+
+    # Gamma adaptation
+    gamma = gamma/signal.sampling_rate_hz * mid_fs
+
+    kernels = _get_kernels_vqt(q, highest_f, bins_per_octave,
+                               mid_fs, window, gamma)
+
+    octs = octaves[1]-octaves[0]+1
+    cqt = np.zeros((0, signal.time_data.shape[0], signal.number_of_channels),
+                   dtype='cfloat')
+
+    for oc in np.arange(octs):
+        # Accumulator for octave
+        acc = np.zeros((0, td.shape[0], td.shape[1]),
+                       dtype='cfloat')
+
+        for k in kernels:
+            out = oaconvolve(td, k[..., None], mode='same', axes=0)
+            acc = np.append(acc, out[None, ...], axis=0)
+
+        # Resample back to original sampling rate and save
+        if oc != 0:
+            acc = resample_poly(acc, up=2**oc, down=1, axis=1)
+        acc = resample_poly(acc, up=decimation, down=1, axis=1)
+
+        length_diff = acc.shape[1] - cqt.shape[1]
+        if length_diff > 0:
+            acc = acc[:, :cqt.shape[1], :]
+        elif length_diff < 0:
+            acc = np.pad(acc, ((0, 0), (0, -length_diff), (0, 0)))
+        cqt = np.append(cqt, acc, axis=0)
+        # Decimate for further computation
+        td = resample_poly(td, up=1, down=2, axis=0)
+
+    # Invert frequency axis
+    cqt = np.flip(cqt, axis=0)
+    f = a4_tuning * 2**(
+        np.arange(octaves[0]-4 - 9/12, octaves[1]-4 + 2/12, 1/12))
+    return f, cqt
+
+
+def stereo_mid_side(signal: Signal, forward: bool):
+    """This function converts a left-right stereo signal to its mid-side
+    representation or the other way around. It is only available for
+    two-channels signals.
+
+    Parameters
+    ----------
+    signal : `Signal`
+        Signal with two channels, i.e., left and right (in that order) or
+        mid and side.
+    forward : bool
+        When `True`, left-right is converted to mid-side. When `False`,
+        mid-side is turned into left-right.
+
+    Returns
+    -------
+    new_sig : `Signal`
+        Converted signal. Left (or mid) are always the first channel.
+
+    """
+    assert signal.number_of_channels == 2, \
+        'Signal must have exactly two channels'
+    new_sig = signal.copy()
+    td = signal.time_data
+    td[:, 0] = signal.time_data[:, 0] + signal.time_data[:, 1]
+    td[:, 1] = signal.time_data[:, 0] - signal.time_data[:, 1]
+    if forward:
+        td /= 2
+    new_sig.time_data = td
+    return new_sig

@@ -4,7 +4,7 @@ Very specific plots which are harder to create from the general templates
 import matplotlib.pyplot as plt
 from matplotlib.ticker import ScalarFormatter
 import numpy as np
-from dsptoolbox._general_helpers import _find_nearest
+from .._general_helpers import _find_nearest
 
 
 def _zp_plot(z, p, returns: bool = False):

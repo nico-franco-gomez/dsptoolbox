@@ -7,7 +7,7 @@ from enum import Enum
 import scipy.signal as sig
 from .signal_class import Signal
 from .multibandsignal import MultiBandSignal
-from dsptoolbox._general_helpers import _polyphase_decomposition
+from .._general_helpers import _polyphase_decomposition
 
 
 def _get_biquad_type(number: int = None, name: str = None):
@@ -345,14 +345,14 @@ def _filter_on_signal_ba(signal: Signal, ba, channels=None,
     if zi is not None:
         y, zi[:, channels] = lfilter(
                 ba[0], a=ba[1], x=signal.time_data[:, channels],
-                zi=zi[:, channels])
+                zi=zi[:, channels], axis=0)
     else:
         if zero_phase:
             y = sig.filtfilt(
                 b=ba[0], a=ba[1], x=signal.time_data[:, channels], axis=0)
         else:
             y = lfilter(
-                ba[0], a=ba[1], x=signal.time_data[:, channels])
+                ba[0], a=ba[1], x=signal.time_data[:, channels], axis=0)
 
     # Check for complex output
     if np.iscomplexobj(y):
@@ -434,11 +434,14 @@ def _filterbank_on_signal(signal: Signal, filters, activate_zi: bool = False,
 
 
 def _lfilter_fir(b: np.ndarray, a: np.ndarray, x: np.ndarray,
-                 zi: np.ndarray = None):
+                 zi: np.ndarray = None, axis: int = 0):
     """Variant to the `scipy.signal.lfilter` that uses `scipy.signal.convolve`
     for filtering. The advantage of this is that the convolution will be
     automatically made using fft or direct, depending on the inputs' sizes.
     This is only used for FIR filters.
+
+    The `axis` parameter is only there for compatibility with
+    `scipy.signal.lfilter`, but the first axis is always used.
 
     """
     assert len(a) == 1, \

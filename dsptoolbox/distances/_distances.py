@@ -3,8 +3,8 @@ Backend for distance measures
 """
 import numpy as np
 from scipy.integrate import simpson
-from dsptoolbox._general_helpers import _compute_number_frames, _pad_trim
-from dsptoolbox._standard import _rms
+from .._general_helpers import _compute_number_frames, _pad_trim
+from .._standard import _rms
 
 
 def _log_spectral_distance(x: np.ndarray, y: np.ndarray, f: np.ndarray) \

@@ -17,6 +17,9 @@ class TestRoomAcousticsModule():
         # Check Index
         ind = np.argmax(np.abs(self.rir.time_data))
         dsp.room_acoustics.reverb_time(self.rir, mode='edt', ir_start=ind)
+        combined = dsp.merge_signals(self.rir, self.rir)
+        dsp.room_acoustics.reverb_time(combined, mode='edt',
+                                       ir_start=[ind, ind-1])
 
         # Check MultiBandSignal
         fb = dsp.filterbanks.auditory_filters_gammatone(
@@ -24,6 +27,12 @@ class TestRoomAcousticsModule():
         mb = fb.filter_signal(self.rir)
         dsp.room_acoustics.reverb_time(mb, mode='t20', ir_start=None)
         dsp.room_acoustics.reverb_time(mb, mode='t20', ir_start=ind)
+
+        mb = fb.filter_signal(combined)
+        dsp.room_acoustics.reverb_time(mb, mode='t20', ir_start=[ind, ind-1])
+
+        starts = np.ones((mb.number_of_bands, mb.number_of_channels)) * ind
+        dsp.room_acoustics.reverb_time(mb, mode='t20', ir_start=starts)
 
     def test_room_modes(self):
         # Only functionality
@@ -34,32 +43,10 @@ class TestRoomAcousticsModule():
             y, x, padding=True, keep_original_length=True)
         h, _ = dsp.transfer_functions.window_ir(h, exp2_trim=10)
 
-        dsp.room_acoustics.find_modes(
-            h, f_range_hz=[50, 150], proximity_effect=False, dist_hz=5,
-            prune_antimodes=False)
-        dsp.room_acoustics.find_modes(
-            h, f_range_hz=[50, 150], proximity_effect=True, dist_hz=5,
-            prune_antimodes=False)
-        dsp.room_acoustics.find_modes(
-            h, f_range_hz=[50, 150], proximity_effect=False, dist_hz=5,
-            prune_antimodes=True)
-        dsp.room_acoustics.find_modes(
-            h, f_range_hz=[50, 150], proximity_effect=False, dist_hz=0,
-            prune_antimodes=False)
+        dsp.room_acoustics.find_modes(h, f_range_hz=[50, 150], dist_hz=5)
 
         h = h.get_channels(0)
-        dsp.room_acoustics.find_modes(
-            h, f_range_hz=[50, 150], proximity_effect=False, dist_hz=5,
-            prune_antimodes=False)
-        dsp.room_acoustics.find_modes(
-            h, f_range_hz=[50, 150], proximity_effect=True, dist_hz=5,
-            prune_antimodes=False)
-        dsp.room_acoustics.find_modes(
-            h, f_range_hz=[50, 150], proximity_effect=False, dist_hz=5,
-            prune_antimodes=True)
-        dsp.room_acoustics.find_modes(
-            h, f_range_hz=[50, 150], proximity_effect=False, dist_hz=0,
-            prune_antimodes=False)
+        dsp.room_acoustics.find_modes(h, f_range_hz=[50, 150], dist_hz=5)
 
     def test_convolve_rir_on_signal(self):
         # Only functionality
@@ -86,6 +73,9 @@ class TestRoomAcousticsModule():
             add_noise_reverberant_tail=False,
             use_detailed_absorption=False,
             max_order=None)
+        # rir.plot_magnitude(smoothe=0)
+        # dsp.plots.show()
+        # exit()
         # Detailed absorption
         d = {}
         for i in ['north', 'south', 'east', 'west', 'floor', 'ceiling']:
