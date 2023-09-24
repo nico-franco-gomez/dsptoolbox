@@ -453,7 +453,8 @@ def _fractional_octave_smoothing(vector: np.ndarray, num_fractions: int = 3,
     beta = np.log2(k_log[1])
 
     # Window length always odd, so that delay can be easily compensated
-    n_window = int(2 * np.floor(1 / (num_fractions * beta * 2)) + 1)
+    n_window = int(1 / (num_fractions * beta) + 0.5)    # Round
+    n_window += (1 - n_window % 2)                      # Ensure odd length
 
     # Generate window
     if window_type is not None:

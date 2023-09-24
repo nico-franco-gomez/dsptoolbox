@@ -14,6 +14,7 @@ Modify TF/IR:
 
 - `window_ir()` (Windows a TF in time domain)
 - `min_phase_ir()` (returns a minimum-phase version of the IR)
+- `combine_ir_with_dirac()` (combines an IR with a time-aligned dirac impulse)
 
 Generate TF/IR from magnitude spectrum:
 
