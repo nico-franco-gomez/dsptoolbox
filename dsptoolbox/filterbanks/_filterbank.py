@@ -355,8 +355,10 @@ class LRFilterBank():
         if mode != 'parallel':
             warn('Plotting for LRFilterBank is only supported with parallel ' +
                  'mode. Setting to parallel')
+        delay_samples = int(0.5*length_samples) if zero_phase else 0
         d = dirac(
             length_samples=length_samples, number_of_channels=1,
+            delay_samples=delay_samples,
             sampling_rate_hz=self.sampling_rate_hz)
         bs = self.filter_signal(d, mode='parallel', activate_zi=test_zi,
                                 zero_phase=zero_phase)
