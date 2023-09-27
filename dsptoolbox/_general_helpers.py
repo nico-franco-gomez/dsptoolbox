@@ -482,11 +482,9 @@ def _fractional_octave_smoothing(vector: np.ndarray, num_fractions: int = 3,
         l1+1, vector, kind='cubic',
         copy=False, assume_sorted=True, axis=0)
     vec_log = vec_int(k_log)
-    # Smoothe by convolving with window
+    # Smoothe by convolving with window (output is centered)
     smoothed = scipy_convolve(vec_log, window[..., None],
-                              mode='full', method='auto')
-    # Take middle samples due to delay caused by the window
-    smoothed = smoothed[len(window)//2+1:len(window)//2+1+N]
+                              mode='same', method='auto')
     # Interpolate back to linear scale
     smoothed = interp1d(
         k_log, smoothed, kind='cubic',
