@@ -265,11 +265,17 @@ class TestTransferFunctionsModule():
             s, 1000, False,
             normalization='energy')
 
-    def test_spectrum_with_cycles(self):
+    def test_window_frequency_dependent(self):
         s = dsp.Signal(join('examples', 'data', 'rir.wav'), signal_type='rir')
-        f, sp = dsp.transfer_functions.spectrum_with_cycles(
-            s, 10, 0, [100, 2000])
+        f, sp = dsp.transfer_functions.window_frequency_dependent(
+            s, 10, 0, [100, 1000])
 
         fig, ax = s.plot_magnitude(normalize=None)
         ax.plot(f, 20*np.log10(np.abs(sp)))
         print()
+
+    def test_warp_ir(self):
+        # Only functionality
+        s = dsp.Signal(join('examples', 'data', 'rir.wav'), signal_type='rir')
+        dsp.transfer_functions.warp_ir(s, -0.6, True, 2**8)
+        dsp.transfer_functions.warp_ir(s, 0.6, False, 2**8)
