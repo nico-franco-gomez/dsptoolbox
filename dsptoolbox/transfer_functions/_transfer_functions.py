@@ -2,7 +2,7 @@
 Backend for transfer functions methods
 """
 import numpy as np
-from scipy.signal import get_window
+from scipy.signal import get_window, lfilter
 from .._general_helpers import _find_nearest, _calculate_window, _pad_trim
 
 
@@ -178,3 +178,35 @@ def _window_this_ir(vec, total_length: int, window_type: str = 'hann',
         td = _pad_trim(td, total_length)
         w = _pad_trim(w, total_length)
     return td, w, ind_low_td
+
+
+def _warp_time_series(td: np.ndarray, warping_factor: float):
+    """Warp or unwarp a time series.
+
+    Parameters
+    ----------
+    td : `np.ndarray`
+        Time series with shape (time samples, channels).
+    warping_factor : float
+        The warping factor to use.
+
+    Returns
+    -------
+    warped_td : `np.ndarray`
+        Time series in the (un)warped domain.
+
+    """
+    warped_td = np.zeros_like(td)
+
+    dirac = np.zeros(td.shape[0])
+    dirac[0] = 1
+
+    b = np.array([-warping_factor, 1])
+    a = np.array([1, -warping_factor])
+
+    warped_td = dirac[..., None] * td[0, :]
+
+    for n in np.arange(1, td.shape[0]):
+        dirac = lfilter(b, a, dirac)
+        warped_td += (dirac[..., None] * td[n, :])
+    return warped_td
