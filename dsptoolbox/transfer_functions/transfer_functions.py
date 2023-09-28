@@ -11,6 +11,7 @@ from ._transfer_functions import (
     _window_this_ir,
     _min_phase_ir_from_real_cepstrum,
     _get_minimum_phase_spectrum_from_real_cepstrum,
+    _warp_time_series
 )
 from ..classes import Signal, Filter
 from ..classes._filter import _group_delay_filter
@@ -21,6 +22,7 @@ from ..standard_functions import (
     fractional_delay, merge_signals, normalize)
 from ..generators import dirac
 from ..filterbanks import linkwitz_riley_crossovers
+from ..room_acoustics._room_acoustics import _find_ir_start
 
 
 def spectral_deconvolve(num: Signal, denum: Signal,
@@ -927,8 +929,8 @@ def filter_to_ir(fir: Filter) -> Signal:
     return new_sig
 
 
-def spectrum_with_cycles(ir: Signal, cycles: int, channel: int = None,
-                         frequency_range_hz: list = None):
+def window_frequency_dependent(ir: Signal, cycles: int, channel: int = None,
+                               frequency_range_hz: list = None):
     """A spectrum with frequency-dependent windowing defined by cycles is
     returned. To this end, a variable gaussian window is applied.
 
@@ -965,6 +967,8 @@ def spectrum_with_cycles(ir: Signal, cycles: int, channel: int = None,
       right-windowed using, for instance, a tukey window. However, its length
       should be somewhat larger than the longest window (this depends on the
       number of cycles and lowest frequency).
+    - The length of the IR should be a power of 2 and not very long in general
+      to speed up the computation.
     - The implemented method is a straight-forward windowing in the time domain
       for each respective frequency bin. Warping the IR is a more flexible
       approach but not necessarily faster for IR with short lengths
@@ -1012,3 +1016,73 @@ def spectrum_with_cycles(ir: Signal, cycles: int, channel: int = None,
             w = np.exp(-0.5 * (alpha * n[:td.shape[0]] / half)**2)
             spec[ind, ch] = np.fft.rfft(w * td[:, ch])[ind_f]
     return f, spec
+
+
+def warp_ir(ir: Signal, warping_factor: float, shift_ir: bool = True,
+            total_length: int = None):
+    """Compute the IR in the warped-domain as explained by [1].
+
+    To warp a signal, pass a negative `warping_factor`. To unwarp it, use a the
+    same positive `warping_factor`.
+
+    Parameters
+    ----------
+    ir : `Signal`
+        Impulse response to (un)warp.
+    warping_factor : float
+        Warping factor. It has to be in the range ]-1; 1[.
+    shift_ir : bool, optional
+        Since the warping of an IR is not shift-invariant (see [2]), it is
+        recommended to place the start of the IR at the first index. When
+        `True`, the first sample to surpass -20 dBFS (relative to peak) is
+        shifted to the beginning and the previous samples are sent to the
+        end of the signal. `False` avoids any manipulation. Default: `True`.
+    total_length : int, optional
+        Total length to use for the warped signal. If `None`, the original
+        length is maintained. Default: `None`.
+
+    Returns
+    -------
+    f_unwarped : float
+        Frequency that remained unwarped after transformation.
+    warped_ir : `Signal`
+        The same IR with warped or dewarped time vector.
+
+    Notes
+    -----
+    - Depending on the signal length, this might be a slow computation.
+    - Frequency-dependent windowing can be easily done in the warped domain.
+      This is not the approach used in `window_frequency_dependent()`, but
+      it can be achieved with this function. See [2] for more details.
+
+    References
+    ----------
+    - [1]: Härmä, Aki & Karjalainen, Matti & Avioja, Lauri & Välimäki, Vesa &
+      Laine, Unto & Huopaniemi, Jyri. (2000). Frequency-Warped Signal
+      Processing for Audio Applications. Journal of the Audio Engineering
+      Society. 48. 1011-1031.
+    - [2]: M. Karjalainen and T. Paatero, "Frequency-dependent signal
+      windowing," Proceedings of the 2001 IEEE Workshop on the Applications of
+      Signal Processing to Audio and Acoustics (Cat. No.01TH8575), New Platz,
+      NY, USA, 2001, pp. 35-38, doi: 10.1109/ASPAA.2001.969536.
+
+    """
+    assert ir.signal_type in ('rir', 'ir'), 'Signal has to be an IR or a RIR'
+    assert np.abs(warping_factor) < 1, 'Warping factor has to be in ]-1; 1['
+
+    td = ir.time_data
+    if shift_ir:
+        for ch in range(ir.number_of_channels):
+            start = _find_ir_start(td[:, ch], -20)
+            td[:, ch] = np.roll(td[:, ch], -start)
+
+    if total_length is None:
+        total_length = td.shape[0]
+
+    td = _warp_time_series(td[:total_length, ...], warping_factor)
+    warped_ir = ir.copy()
+    warped_ir.time_data = td
+
+    f_unwarped = ir.sampling_rate_hz/2/np.pi*np.arccos(warping_factor)
+
+    return f_unwarped, warped_ir
