@@ -2,6 +2,7 @@
 This file contains alternative filter implementations.
 """
 from .signal_class import Signal
+from warnings import warn
 import numpy as np
 
 
@@ -63,8 +64,19 @@ class LatticeLadderFilter():
             self.iir_filter = iir_filter
         self.k = k_coefficients
         self.c = c_coefficients
-        self.state = np.zeros(len(self.k))
+        self.state = None
         self.sampling_rate_hz = sampling_rate_hz
+
+    def initialize_zi(self, n_channels: int):
+        """Initialize the filter's state values for a number of channels.
+
+        Parameters
+        ----------
+        n_channels : int
+            Number of channels for which to initialize the filter's states.
+
+        """
+        self.state = np.zeros((len(self.k), n_channels))
 
     def filter_signal(self, signal: Signal, channels=None,
                       activate_zi: bool = False) -> Signal:
@@ -98,9 +110,27 @@ class LatticeLadderFilter():
 
         td = signal.time_data[:, channels]
 
+        if activate_zi:
+            if self.state.shape[1] != len(channels):
+                warn('''Number of channels did not match the filter's ''' +
+                     'state. The right number of channels are automatically' +
+                     'initiated')
+                self.initialize_zi(len(channels))
+
         if self.iir_filter and self.c is not None:
-            new_td, self.state = \
+            td, self.state = \
                 _lattice_ladder_filtering(self.k, self.c, td, self.state)
+        elif not self.iir_filter:
+            raise NotImplementedError('No implementation for FIR filtering')
+        elif self.iir_filter and self.c is None:
+            raise NotImplementedError(
+                'No implementation for all-pole IIR filtering')
+
+        filtered_signal = signal.copy()
+        new_td = filtered_signal.time_data
+        new_td[:, channels] = td
+        filtered_signal.time_data = new_td
+        return filtered_signal
 
 
 def _lattice_ladder_filtering(
@@ -117,17 +147,18 @@ def _lattice_ladder_filtering(
         Feedforward coefficients.
     td : `np.ndarray`
         Time data assumed to have shape (time samples, channel).
-    state : `np.ndarray`
+    state : `np.ndarray`, optional
         Initial state for each channel as a 2D-matrix with shape
-        (filter order, channel).
+        (filter order, channel). State of the filter in the beginning.
+        If `None`, it is initialized to zero. Default: `None`.
 
     Returns
     -------
     new_td : `np.ndarray`
         Filtered time data.
-    state : `np.ndarray`, optional
-        State of the filter in the beginning. If `None`, it is initialized to
-        zero. Default: `None`.
+    state : `np.ndarray`
+        Filter's state after filtering. It can be `None` if `None` was
+        originally passed for `state`.
 
     References
     ----------
@@ -135,7 +166,9 @@ def _lattice_ladder_filtering(
       Signal Processing. Prentice-hall Englewood Cliffs.
 
     """
+    passed_state = True
     if state is None:
+        passed_state = False
         state = np.zeros((len(k), td.shape[1]))
     order_iterations = len(k)-1
 
@@ -151,3 +184,87 @@ def _lattice_ladder_filtering(
                 x_low += s*c[i+1]
             state[0, ch] = x
             td[i_ch, ch] = x*c[0] + x_low
+
+    if not passed_state:
+        state = None
+    return td, state
+
+
+def _get_lattice_ladder_coefficients_iir(b: np.ndarray, a: np.ndarray) \
+        -> tuple[np.ndarray, np.ndarray]:
+    """Compute reflection coefficients `k` and ladder coefficients `c` from
+    feedforward `b` and feedbackward `a` coefficients according to the
+    equations presented in [1].
+
+    Parameters
+    ----------
+    b : `np.ndarray`
+        Feedforward coefficients of a filter.
+    a : `np.ndarray`
+        Feedbackward coefficients.
+
+    Returns
+    -------
+    k : `np.ndarray`
+        Reflection coefficients with the length of the order .
+    c : `np.ndarray`
+        Ladder coefficients.
+
+    References
+    ----------
+    - [1]: Oppenheim, A. V., Schafer, R. W.,, Buck, J. R. (1999). Discrete-Time
+      Signal Processing. Prentice-hall Englewood Cliffs.
+
+    """
+    N = len(a)-1
+    k = np.zeros(N)
+    a_s = np.zeros((N, N))
+
+    k[-1] = -a[-1]
+    a_s[-1, :] = -a[1:]
+    for i in range(N-2, -1, -1):
+        for m in range(i, -1, -1):
+            a_s[i, m] = (a_s[i+1, m]+k[i+1]*a_s[i+1, i-m])/(1-k[i+1]**2)
+        k[i] = a_s[i, i]
+
+    c = np.zeros(len(b))
+    for m in range(len(b)-1, -1, -1):
+        summed = 0
+        for i in range(m+1, len(b)):
+            summed += c[i]*a_s[i-1, i-1-m]
+        c[m] = b[m] + summed
+    return k, c
+
+
+def _get_lattice_coefficients_fir(b: np.ndarray) \
+        -> np.ndarray:
+    """Compute reflection coefficients `k` for an FIR filter according to the
+    equations presented in [1].
+
+    Parameters
+    ----------
+    b : `np.ndarray`
+        Feedforward coefficients of a filter.
+
+    Returns
+    -------
+    k : `np.ndarray`
+        Reflection coefficients.
+
+    References
+    ----------
+    - [1]: Oppenheim, A. V., Schafer, R. W.,, Buck, J. R. (1999). Discrete-Time
+      Signal Processing. Prentice-hall Englewood Cliffs.
+
+    """
+    N = len(b)-1
+    k = np.zeros(N)
+    a_s = np.zeros((N, N))
+
+    k[-1] = -b[-1]
+    a_s[-1, :] = -b[1:]
+    for i in range(N-2, -1, -1):
+        for m in range(i, -1, -1):
+            a_s[i, m] = (a_s[i+1, m]+k[i+1]*a_s[i+1, i-m])/(1-k[i+1]**2)
+        k[i] = a_s[i, i]
+    return k

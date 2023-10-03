@@ -12,10 +12,10 @@ from scipy.special import iv as bessel_first_mod
 from fractions import Fraction
 from warnings import warn
 
-from .classes.signal_class import Signal
-from .classes.multibandsignal import MultiBandSignal
-from .classes.filterbank import FilterBank
-from .classes.filter_class import Filter
+from .classes import (
+    Signal, MultiBandSignal, FilterBank, Filter, LatticeLadderFilter)
+from .classes._other_filters import (
+    _get_lattice_ladder_coefficients_iir, _get_lattice_coefficients_fir)
 from ._standard import (_latency,
                         _center_frequencies_fractional_octaves_iec,
                         _exact_center_frequencies_fractional_octaves,
@@ -1190,3 +1190,28 @@ def envelope(signal: Signal | MultiBandSignal, mode: str = 'analytic',
         return rms_vec
     else:
         raise TypeError('Signal must be type Signal or MultiBandSignal')
+
+
+def convert_into_lattice_filter(filt: Filter) -> LatticeLadderFilter:
+    """Convert an IIR or FIR filter into its lattice-ladder filter
+    representation. Filtering is then done using the lattice coefficients.
+
+    Parameters
+    ----------
+    filt: `Filter`
+        Filter to convert into its lattice filter representation.
+
+    Returns
+    -------
+    new_filt : `LatticeLadderFilter`
+        New filter representation.
+
+    """
+    if filt.filter_type in ('iir', 'biquad'):
+        b, a = filt.get_coefficients('ba')
+        k, c = _get_lattice_ladder_coefficients_iir(b, a)
+        new_filt = LatticeLadderFilter(k, c, True, filt.sampling_rate_hz)
+    elif filt.filter_type == 'fir':
+        k = _get_lattice_coefficients_fir(b)
+        new_filt = LatticeLadderFilter(k, None, False, filt.sampling_rate_hz)
+    return new_filt

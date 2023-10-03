@@ -286,3 +286,16 @@ class TestStandardModule():
                                                         s.sampling_rate_hz)
         ss = fb.filter_signal(s)
         dsp.envelope(ss)
+
+    def test_convert_lattice_filter(self):
+        fs = 44100
+        n = dsp.generators.noise(sampling_rate_hz=fs)
+        f = dsp.Filter('iir', {'filter_design_method': 'bessel',
+                               'order': 9, 'type_of_pass': 'lowpass',
+                               'freqs': 1000}, sampling_rate_hz=fs)
+        new_f = dsp.convert_into_lattice_filter(f)
+
+        n1 = f.filter_signal(n).time_data.squeeze()
+        n2 = new_f.filter_signal(n).time_data.squeeze()
+
+        assert np.all(np.isclose(n1, n2))
