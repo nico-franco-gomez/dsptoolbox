@@ -14,8 +14,9 @@ from warnings import warn
 
 from .classes import (
     Signal, MultiBandSignal, FilterBank, Filter, LatticeLadderFilter)
-from .classes._other_filters import (
-    _get_lattice_ladder_coefficients_iir, _get_lattice_coefficients_fir)
+from .classes._lattice_ladder_filter import (
+    _get_lattice_ladder_coefficients_iir, _get_lattice_coefficients_fir,
+    _get_lattice_ladder_coefficients_iir_sos)
 from ._standard import (_latency,
                         _center_frequencies_fractional_octaves_iec,
                         _exact_center_frequencies_fractional_octaves,
@@ -1195,6 +1196,8 @@ def envelope(signal: Signal | MultiBandSignal, mode: str = 'analytic',
 def convert_into_lattice_filter(filt: Filter) -> LatticeLadderFilter:
     """Convert an IIR or FIR filter into its lattice-ladder filter
     representation. Filtering is then done using the lattice coefficients.
+    If the filter uses second-order sections, the lattice-ladder coefficients
+    are also computed and used in second-order sections.
 
     Parameters
     ----------
@@ -1208,8 +1211,12 @@ def convert_into_lattice_filter(filt: Filter) -> LatticeLadderFilter:
 
     """
     if filt.filter_type in ('iir', 'biquad'):
-        b, a = filt.get_coefficients('ba')
-        k, c = _get_lattice_ladder_coefficients_iir(b, a)
+        if hasattr(filt, 'sos'):
+            sos = filt.get_coefficients('sos')
+            k, c = _get_lattice_ladder_coefficients_iir_sos(sos)
+        else:
+            b, a = filt.get_coefficients('ba')
+            k, c = _get_lattice_ladder_coefficients_iir(b, a)
         new_filt = LatticeLadderFilter(k, c, True, filt.sampling_rate_hz)
     elif filt.filter_type == 'fir':
         k = _get_lattice_coefficients_fir(b)

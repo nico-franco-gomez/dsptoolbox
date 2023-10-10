@@ -554,7 +554,7 @@ class TestFilterBankClass():
         filt2, _ = fb.filters[1].get_coefficients(mode='ba')
         # Parallel
         s_ = fb.filter_signal(s, mode='parallel', activate_zi=False)
-        assert type(s_) == dsp.MultiBandSignal
+        assert type(s_) is dsp.MultiBandSignal
         assert s_.number_of_bands == fb.number_of_filters
         assert np.all(np.isclose(s_.bands[0].time_data[:, 0],
                                  sig.sosfilt(filt1, t_vec[:, 0])))
@@ -563,7 +563,7 @@ class TestFilterBankClass():
 
         # Sequential mode
         s_ = fb.filter_signal(s, mode='sequential', activate_zi=False)
-        assert type(s_) == dsp.Signal
+        assert type(s_) is dsp.Signal
         # Change order (just because they're linear systems)
         temp = sig.lfilter(filt2, [1], s.time_data[:, 1])
         temp = sig.sosfilt(filt1, temp)
@@ -572,7 +572,7 @@ class TestFilterBankClass():
 
         # Summed mode
         s_ = fb.filter_signal(s, mode='summed', activate_zi=False)
-        assert type(s_) == dsp.Signal
+        assert type(s_) is dsp.Signal
         # Add together
         temp = sig.lfilter(filt2, [1], s.time_data[:, 1])
         temp += sig.sosfilt(filt1, s.time_data[:, 1])
@@ -753,7 +753,7 @@ class TestMultiBandSignal():
 
         # Create from filter bank
         mbs = self.fb.filter_signal(self.s)
-        assert type(mbs) == dsp.MultiBandSignal
+        assert type(mbs) is dsp.MultiBandSignal
 
     def test_collapse(self):
         mbs = dsp.MultiBandSignal(
@@ -769,7 +769,7 @@ class TestMultiBandSignal():
                 bands=[self.s, self.s], same_sampling_rate=True,
                 info=dict(information='test filter bank'))
         mbs_ = mbs.get_all_bands(0)
-        assert type(mbs_) == dsp.Signal
+        assert type(mbs_) is dsp.Signal
         # Number of channels has to match number of bands
         assert mbs_.number_of_channels == mbs.number_of_bands
 
@@ -828,7 +828,7 @@ class TestLatticeLadderFilter():
         # Example values taken from Oppenheim, A. V., Schafer, R. W.,,
         # Buck, J. R. (1999). Discrete-Time Signal Processing.
         # Prentice-hall Englewood Cliffs.
-        from dsptoolbox.classes._other_filters import \
+        from dsptoolbox.classes._lattice_ladder_filter import \
             _get_lattice_ladder_coefficients_iir
         k, c = _get_lattice_ladder_coefficients_iir(self.b, self.a)
 
@@ -842,7 +842,7 @@ class TestLatticeLadderFilter():
         n = dsp.generators.noise(sampling_rate_hz=200)
         expected = sig.lfilter(self.b/10, self.a, n.time_data.squeeze())
 
-        from dsptoolbox.classes._other_filters import \
+        from dsptoolbox.classes._lattice_ladder_filter import \
             _get_lattice_ladder_coefficients_iir
         k, c = _get_lattice_ladder_coefficients_iir(self.b/10, self.a)
 
