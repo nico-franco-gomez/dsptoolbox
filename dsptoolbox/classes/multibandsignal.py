@@ -19,8 +19,9 @@ class MultiBandSignal():
 
     """
     # ======== Constructor and initializers ===================================
-    def __init__(self, bands: list = None, same_sampling_rate: bool = True,
-                 info: dict = None):
+    def __init__(self, bands: list | None = None,
+                 same_sampling_rate: bool = True,
+                 info: dict | None = None):
         """`MultiBandSignal` contains a composite band list where each index
         is a Signal object with the same number of channels. For multirate
         systems, the parameter `same_sampling_rate` has to be set to `False`.
@@ -74,9 +75,9 @@ class MultiBandSignal():
     def bands(self, new_bands):
         if new_bands is None:
             new_bands = []
-        if type(new_bands) == tuple:
+        if type(new_bands) is tuple:
             new_bands = list(new_bands)
-        assert type(new_bands) == list, \
+        assert type(new_bands) is list, \
             'bands has to be a list'
         if new_bands:
             # Check length and number of channels
@@ -84,7 +85,7 @@ class MultiBandSignal():
             self.signal_type = new_bands[0].signal_type
             sr = []
             for s in new_bands:
-                assert type(s) == Signal, f'{type(s)} is not a valid ' +\
+                assert type(s) is Signal, f'{type(s)} is not a valid ' +\
                     'band type. Use Signal objects'
                 assert s.number_of_channels == self.number_of_channels, \
                     'Signals have different number of channels. This ' +\
@@ -104,7 +105,7 @@ class MultiBandSignal():
                         'Not all Signals have the same sampling rate. ' +\
                         'If you wish to create a multirate system, set ' +\
                         'same_sampling_rate to False'
-                    assert s.time_data.shape[0] == self.band_length_samples,\
+                    assert s.time_data.shape[0] == self.band_length_samples, \
                         'The length of the bands is not always the same. ' +\
                         'This behaviour is not supported if there is a ' +\
                         'constant sampling rate'
@@ -117,7 +118,7 @@ class MultiBandSignal():
 
     @same_sampling_rate.setter
     def same_sampling_rate(self, new_same):
-        assert type(new_same) == bool, \
+        assert type(new_same) is bool, \
             'Same sampling rate attribute must be a boolean'
         self.__same_sampling_rate = new_same
 

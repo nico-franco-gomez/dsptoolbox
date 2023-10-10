@@ -28,8 +28,8 @@ class Filter():
     """
     # ======== Constructor and initializers ===================================
     def __init__(self, filter_type: str = 'biquad',
-                 filter_configuration: dict = None,
-                 sampling_rate_hz: int = None):
+                 filter_configuration: dict | None = None,
+                 sampling_rate_hz: int | None = None):
         """The Filter class contains all parameters and metadata needed for
         using a digital filter.
 
@@ -151,7 +151,7 @@ class Filter():
     def sampling_rate_hz(self, new_sampling_rate_hz):
         assert new_sampling_rate_hz is not None, \
             'Sampling rate can not be None'
-        assert type(new_sampling_rate_hz) == int, \
+        assert type(new_sampling_rate_hz) is int, \
             'Sampling rate can only be an integer'
         self.__sampling_rate_hz = new_sampling_rate_hz
 
@@ -161,7 +161,7 @@ class Filter():
 
     @warning_if_complex.setter
     def warning_if_complex(self, new_warning):
-        assert type(new_warning) == bool, \
+        assert type(new_warning) is bool, \
             'This attribute must be of boolean type'
         self.__warning_if_complex = new_warning
 
@@ -171,7 +171,7 @@ class Filter():
 
     @filter_type.setter
     def filter_type(self, new_type: str):
-        assert type(new_type) == str, \
+        assert type(new_type) is str, \
             'Filter type must be a string'
         self.__filter_type = new_type.lower()
 
@@ -224,7 +224,7 @@ class Filter():
             channels = np.atleast_1d(channels)
             assert channels.ndim == 1, \
                 'channels can be only a 1D-array or an int'
-            assert all(channels < signal.number_of_channels),\
+            assert all(channels < signal.number_of_channels), \
                 f'Selected channels ({channels}) are not valid for the ' +\
                 f'signal with {signal.number_of_channels} channels'
 
@@ -381,7 +381,7 @@ class Filter():
             self.filter_type = filter_type
         elif filter_type == 'biquad':
             # Preparing parameters
-            if type(filter_configuration['eq_type']) == str:
+            if type(filter_configuration['eq_type']) is str:
                 filter_configuration['eq_type'] = \
                     _get_biquad_type(None, filter_configuration['eq_type'])
             # Filter creation
@@ -572,7 +572,8 @@ class Filter():
         print(self._get_metadata_string())
 
     def plot_magnitude(self, length_samples: int = 512, range_hz=[20, 20e3],
-                       normalize: str = None, show_info_box: bool = True,
+                       normalize: str | None = None,
+                       show_info_box: bool = True,
                        zero_phase: bool = False):
         """Plots magnitude spectrum.
         Change parameters of spectrum with set_spectrum_parameters.

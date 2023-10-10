@@ -57,7 +57,7 @@ class BasePoints():
 
     @coordinates.setter
     def coordinates(self, new_r):
-        assert type(new_r) == np.ndarray,\
+        assert type(new_r) is np.ndarray, \
             'R vectors array should be of type numpy.ndarray'
         # Check if grid is 1, 2 or 3D
         ndimensions = 3
@@ -98,7 +98,7 @@ class BasePoints():
             Distances with shape (points, new_points).
 
         """
-        if type(point) != np.ndarray:
+        if type(point) is not np.ndarray:
             point = np.asarray(point)
         if point.ndim == 1:
             point = point[None, ...]

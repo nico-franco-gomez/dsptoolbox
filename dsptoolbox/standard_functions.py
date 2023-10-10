@@ -28,7 +28,7 @@ from ._general_helpers import (
 
 
 def latency(in1: Signal | MultiBandSignal,
-            in2: Signal | MultiBandSignal = None,
+            in2: Signal | MultiBandSignal | None = None,
             polynomial_points: int = 0) -> np.ndarray:
     """Computes latency between two signals using the correlation method.
     If there is no second signal, the latency between the first and the other
@@ -82,13 +82,13 @@ def latency(in1: Signal | MultiBandSignal,
         latency_func = _fractional_latency
         data_type = float
 
-    if type(in1) == Signal:
+    if isinstance(in1, Signal):
         if in2 is not None:
             assert in1.sampling_rate_hz == in2.sampling_rate_hz, \
                 'Sampling rates must match'
             assert in1.number_of_channels == in2.number_of_channels, \
                 'Number of channels between the two signals must match'
-            assert type(in2) == Signal, \
+            assert isinstance(in2, Signal), \
                 'Both signals must be of type Signal'
             td2 = in2.time_data
         else:
@@ -97,9 +97,9 @@ def latency(in1: Signal | MultiBandSignal,
             td2 = None
         return latency_func(
             in1.time_data, td2, polynomial_points=polynomial_points)
-    elif type(in1) == MultiBandSignal:
+    elif isinstance(in1, MultiBandSignal):
         if in2 is not None:
-            assert type(in2) == MultiBandSignal, \
+            assert isinstance(in2, MultiBandSignal), \
                 'Both signals must be of type Signal'
             assert in1.sampling_rate_hz == in2.sampling_rate_hz, \
                 'Sampling rates must match'
@@ -148,7 +148,7 @@ def pad_trim(signal: Signal | MultiBandSignal, desired_length_samples: int,
         New padded signal.
 
     """
-    if type(signal) == Signal:
+    if isinstance(signal, Signal):
         new_time_data = \
             np.zeros((desired_length_samples, signal.number_of_channels))
         for n in range(signal.number_of_channels):
@@ -161,7 +161,7 @@ def pad_trim(signal: Signal | MultiBandSignal, desired_length_samples: int,
         if hasattr(new_sig, 'window'):
             del new_sig.window
         new_sig.time_data = new_time_data
-    elif type(signal) == MultiBandSignal:
+    elif isinstance(signal, MultiBandSignal):
         assert signal.same_sampling_rate, \
             'Padding or trimming is not supported for multirate signals'
         new_sig = signal.copy()
@@ -202,8 +202,8 @@ def merge_signals(in1: Signal | MultiBandSignal, in2: Signal | MultiBandSignal,
         New merged signal.
 
     """
-    if type(in1) == Signal:
-        assert type(in2) == Signal, \
+    if isinstance(in1, Signal):
+        assert isinstance(in2, Signal), \
             'Both signals have to be type Signal'
         assert in1.sampling_rate_hz == in2.sampling_rate_hz, \
             'Sampling rates do not match'
@@ -219,8 +219,8 @@ def merge_signals(in1: Signal | MultiBandSignal, in2: Signal | MultiBandSignal,
         if hasattr(new_sig, 'window'):
             del new_sig.window
         new_sig.time_data = new_time_data
-    elif type(in1) == MultiBandSignal:
-        assert type(in2) == MultiBandSignal, \
+    elif isinstance(in1, MultiBandSignal):
+        assert isinstance(in2, MultiBandSignal), \
             'Both signals should be multi band signals'
         assert in1.same_sampling_rate == in2.same_sampling_rate, \
             'Both Signals should have same settings regarding sampling rate'
@@ -398,7 +398,7 @@ def normalize(sig: Signal | MultiBandSignal, peak_dbfs: float = -6,
         Normalized signal.
 
     """
-    if type(sig) == Signal:
+    if isinstance(sig, Signal):
         new_sig = sig.copy()
         new_time_data = np.empty_like(sig.time_data)
         if each_channel:
@@ -408,7 +408,7 @@ def normalize(sig: Signal | MultiBandSignal, peak_dbfs: float = -6,
         else:
             new_time_data = _normalize(sig.time_data, peak_dbfs)
         new_sig.time_data = new_time_data
-    elif type(sig) == MultiBandSignal:
+    elif isinstance(sig, MultiBandSignal):
         new_sig = sig.copy()
         for ind in range(sig.number_of_bands):
             new_sig.bands[ind] = normalize(sig.bands[ind], peak_dbfs)
@@ -442,7 +442,7 @@ def load_pkl_object(path: str):
 
 
 def fade(sig: Signal, type_fade: str = 'lin',
-         length_fade_seconds: float = None, at_start: bool = True,
+         length_fade_seconds: float | None = None, at_start: bool = True,
          at_end: bool = True) -> Signal:
     """Applies fading to signal.
 
@@ -588,7 +588,7 @@ def true_peak_level(signal: Signal | MultiBandSignal) \
     - https://www.itu.int/rec/R-REC-BS.1770
 
     """
-    if type(signal) == Signal:
+    if isinstance(signal, Signal):
         sig = signal.copy()
         # Reduce gain by 12.04 dB
         down_factor = 10**(-12.04/20)
@@ -600,7 +600,7 @@ def true_peak_level(signal: Signal | MultiBandSignal) \
             np.abs(sig_over.time_data), axis=0) * up_factor)
         peak_levels = 20*np.log10(np.max(
             np.abs(sig.time_data), axis=0) * up_factor)
-    elif type(signal) == MultiBandSignal:
+    elif isinstance(signal, MultiBandSignal):
         true_peak_levels = \
             np.empty((signal.number_of_bands, signal.number_of_channels))
         peak_levels = np.empty_like(true_peak_levels)
@@ -656,7 +656,7 @@ def fractional_delay(sig: Signal | MultiBandSignal, delay_seconds: float,
     """
     assert delay_seconds >= 0, \
         'Delay must be positive'
-    if type(sig) == Signal:
+    if isinstance(sig, Signal):
         if delay_seconds == 0:
             return sig
         if sig.time_data_imaginary is not None:
@@ -768,7 +768,7 @@ def fractional_delay(sig: Signal | MultiBandSignal, delay_seconds: float,
             del out_sig.window
         out_sig.time_data = new_time_data
 
-    elif type(sig) == MultiBandSignal:
+    elif isinstance(sig, MultiBandSignal):
         new_bands = []
         out_sig = sig.copy()
         for b in sig.bands:
@@ -836,7 +836,7 @@ def activity_detector(signal: Signal, threshold_dbfs: float = -20,
         - `'noise_indices'`: the inverse array to `'signal_indices'`.
 
     """
-    assert type(channel) == int, \
+    assert isinstance(channel, int), \
         'Channel must be type integer. Function is not implemented for ' +\
         'multiple channels.'
     assert threshold_dbfs < 0, \
@@ -851,7 +851,7 @@ def activity_detector(signal: Signal, threshold_dbfs: float = -20,
 
     # Pre-filtering
     if pre_filter is not None:
-        assert type(pre_filter) == Filter, \
+        assert isinstance(pre_filter, Filter), \
             'pre_filter must be of type Filter'
         signal_filtered = pre_filter.filter_signal(signal)
     else:
@@ -917,7 +917,7 @@ def detrend(sig: Signal | MultiBandSignal, polynomial_order: int = 0) \
         Detrended signal.
 
     """
-    if type(sig) == Signal:
+    if isinstance(sig, Signal):
         assert polynomial_order >= 0, \
             'Polynomial order should be positive'
         td = sig.time_data
@@ -925,7 +925,7 @@ def detrend(sig: Signal | MultiBandSignal, polynomial_order: int = 0) \
         detrended_sig = sig.copy()
         detrended_sig.time_data = new_td
         return detrended_sig
-    elif type(sig) == MultiBandSignal:
+    elif isinstance(sig, MultiBandSignal):
         detrended_sig = sig.copy()
         for n in range(sig.number_of_bands):
             detrended_sig.bands[n] = detrend(
@@ -954,9 +954,9 @@ def rms(sig: Signal | MultiBandSignal, in_dbfs: bool = True) -> np.ndarray:
         (bands, channel).
 
     """
-    if type(sig) == Signal:
+    if isinstance(sig, Signal):
         rms = _rms(sig.time_data)
-    elif type(sig) == MultiBandSignal:
+    elif isinstance(sig, MultiBandSignal):
         rms = np.zeros((sig.number_of_bands, sig.number_of_channels))
         for ind, b in enumerate(sig):
             rms[ind, :] = _rms(b.time_data)
@@ -1000,14 +1000,14 @@ class CalibrationData():
         - [1]: DIN EN IEC 60942:2018-07.
 
         """
-        if type(calibration_data) == str:
+        if isinstance(calibration_data, str):
             calibration_data = Signal(calibration_data, None, None)
-        elif type(calibration_data) == tuple:
+        elif isinstance(calibration_data, tuple):
             assert len(calibration_data) == 2, \
                 'Tuple must have length 2'
             calibration_data = Signal(None, calibration_data[0],
                                       calibration_data[1])
-        elif type(calibration_data) == Signal:
+        elif isinstance(calibration_data, Signal):
             pass
         else:
             raise TypeError(
@@ -1038,13 +1038,13 @@ class CalibrationData():
             of the recorded signal.
 
         """
-        if type(new_channel) == str:
+        if isinstance(new_channel, str):
             new_channel = Signal(new_channel, None, None)
-        elif type(new_channel) == tuple:
+        elif isinstance(new_channel, tuple):
             assert len(new_channel) == 2, \
                 'Tuple must have length 2'
             new_channel = Signal(None, new_channel[0], new_channel[1])
-        elif type(new_channel) == Signal:
+        elif isinstance(new_channel, Signal):
             pass
         else:
             raise TypeError(f'{type(new_channel)} is not a valid type. Use '
@@ -1111,13 +1111,13 @@ class CalibrationData():
             calibration_factors = np.ones(signal.number_of_channels) * \
                 self.calibration_factors
 
-        if type(signal) == Signal:
+        if isinstance(signal, Signal):
             calibrated_signal = signal.copy()
             calibrated_signal.signal_id += ' – Calibrated (time data in Pa)'
             calibrated_signal.constrain_amplitude = False
             calibrated_signal.time_data *= calibration_factors
             calibrated_signal.calibrated_signal = True
-        elif type(signal) == MultiBandSignal:
+        elif isinstance(signal, MultiBandSignal):
             calibrated_signal = signal.copy()
             for b in calibrated_signal:
                 b.constrain_amplitude = False
@@ -1160,14 +1160,14 @@ def envelope(signal: Signal | MultiBandSignal, mode: str = 'analytic',
     assert mode in ('analytic', 'rms'), \
         'Invalid mode. Use either analytic or rms.'
 
-    if type(signal) == Signal:
+    if isinstance(signal, Signal):
         signal = detrend(signal, 1)
         if mode == 'analytic':
             env = signal.time_data
             env = np.abs(hilbert(env, axis=0))
             return env
         else:
-            assert window_length_samples > 0,\
+            assert window_length_samples > 0, \
                 'Window length must be more than 1 sample'
             rms_vec = signal.time_data
             rms_vec = convolve(
@@ -1177,7 +1177,7 @@ def envelope(signal: Signal | MultiBandSignal, mode: str = 'analytic',
                 mode='full')[:len(rms_vec), ...]
             rms_vec **= 0.5
             return rms_vec
-    elif type(signal) == MultiBandSignal:
+    elif isinstance(signal, MultiBandSignal):
         assert signal.same_sampling_rate, \
             'This is only available for constant sampling rate bands'
         rms_vec = np.zeros(

@@ -30,7 +30,7 @@ class LRFilterBank():
     """
     # ======== Constructor and initiliazers ===================================
     def __init__(self, freqs, order=4, sampling_rate_hz: int = 48000,
-                 info: dict = None):
+                 info: dict | None = None):
         """Constructor for a linkwitz-riley crossovers filter bank. This is a
         near perfect magnitude reconstruction filter bank.
 
@@ -52,7 +52,7 @@ class LRFilterBank():
         """
         if info is None:
             info = {}
-        if type(order) == int:
+        if type(order) is int:
             order = np.ones(len(freqs))*order
         freqs = np.atleast_1d(np.asarray(freqs).squeeze())
         order = np.atleast_1d(np.asarray(order).squeeze())
@@ -716,7 +716,7 @@ class BaseCrossover(FilterBank):
 
     """
     def __init__(self, analysis_filters: list, synthesis_filters: list,
-                 info: dict = None):
+                 info: dict | None = None):
         """Constructor for a crossover. Analysis and synthesis filters are
         needed for creating an instance.
 
@@ -754,7 +754,7 @@ class BaseCrossover(FilterBank):
     def filters_synthesis(self, new_filters):
         assert len(new_filters) == 2, \
             'Two synthesis filters are needed in a crossover'
-        assert all([type(n) == Filter for n in new_filters]), \
+        assert all([type(n) is Filter for n in new_filters]), \
             'Filters have to be of type Filter'
         self.__filters_synthesis = new_filters
 
