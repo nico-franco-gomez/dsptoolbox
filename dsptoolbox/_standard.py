@@ -7,7 +7,7 @@ from ._general_helpers import _pad_trim, _compute_number_frames
 from warnings import warn
 
 
-def _latency(in1: np.ndarray, in2: np.ndarray = None,
+def _latency(in1: np.ndarray, in2: np.ndarray | None = None,
              polynomial_points: int = 0):
     """Computes the latency between two functions using the correlation method.
     The variable polynomial_points is only a dummy to share the same API as
@@ -29,7 +29,7 @@ def _latency(in1: np.ndarray, in2: np.ndarray = None,
     return latency_per_channel_samples
 
 
-def _fractional_latency(td1: np.ndarray, td2: np.ndarray = None,
+def _fractional_latency(td1: np.ndarray, td2: np.ndarray | None = None,
                         polynomial_points: int = 1):
     """This function computes the sub-sample latency between two signals using
     Zero-Crossing of the analytic (hilbert transformed) correlation function.
@@ -172,9 +172,9 @@ def _welch(x, y, fs_hz: int, window_type: str = 'hann',
       See http://arxiv.org/abs/gr-qc/0509116.
 
     """
-    if type(x) != np.ndarray:
+    if type(x) is not np.ndarray:
         x = np.asarray(x).squeeze()
-    if type(y) != np.ndarray:
+    if type(y) is not np.ndarray:
         y = np.asarray(y).squeeze()
     assert x.shape == y.shape, \
         'Shapes of data do not match'
@@ -337,7 +337,7 @@ def _minimum_phase(magnitude: np.ndarray, unwrapped: bool = True) \
 
 def _stft(x: np.ndarray, fs_hz: int, window_length_samples: int = 2048,
           window_type: str = 'hann', overlap_percent=50,
-          fft_length_samples: int = None, detrend: bool = True,
+          fft_length_samples: int | None = None, detrend: bool = True,
           padding: bool = False, scaling: bool = False):
     """Computes the STFT of a signal. Output matrix has (freqs_hz, seconds_s).
 
@@ -771,9 +771,9 @@ def _get_framed_signal(td: np.ndarray, window_length_samples: int,
 
     """
     # Force casting to integers
-    if type(window_length_samples) != int:
+    if type(window_length_samples) is not int:
         window_length_samples = int(window_length_samples)
-    if type(step_size) != int:
+    if type(step_size) is not int:
         step_size = int(step_size)
 
     # Start Parameters
@@ -795,8 +795,8 @@ def _get_framed_signal(td: np.ndarray, window_length_samples: int,
 
 
 def _reconstruct_framed_signal(td_framed: np.ndarray, step_size: int,
-                               window: str | np.ndarray = None,
-                               original_signal_length: int = None,
+                               window: str | np.ndarray | None = None,
+                               original_signal_length: int | None = None,
                                safety_threshold: float = 1e-4) \
         -> np.ndarray:
     """Gets and returns a framed signal into its vector representation.
@@ -829,9 +829,9 @@ def _reconstruct_framed_signal(td_framed: np.ndarray, step_size: int,
     assert td_framed.ndim == 3, \
         'Framed signal must contain exactly three dimensions'
     if window is not None:
-        if type(window) == str:
+        if type(window) is str:
             window = windows.get_window(window, td_framed.shape[0])
-        elif type(window) == np.ndarray:
+        elif type(window) is np.ndarray:
             assert window.ndim == 1, \
                 'Window must be a 1D-array'
             assert window.shape[0] == td_framed.shape[0], \

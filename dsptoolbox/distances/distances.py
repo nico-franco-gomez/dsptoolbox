@@ -15,7 +15,7 @@ from ._distances import (_log_spectral_distance,
 
 def log_spectral(insig1: Signal, insig2: Signal, method: str = 'welch',
                  f_range_hz=[20, 20000], energy_normalization: bool = True,
-                 spectrum_parameters: dict = None) -> np.ndarray:
+                 spectrum_parameters: dict | None = None) -> np.ndarray:
     """Computes log spectral distance between two signals.
 
     Parameters
@@ -48,9 +48,9 @@ def log_spectral(insig1: Signal, insig2: Signal, method: str = 'welch',
     - https://en.wikipedia.org/wiki/Log-spectral_distance
 
     """
-    assert insig1.sampling_rate_hz == insig2.sampling_rate_hz,\
+    assert insig1.sampling_rate_hz == insig2.sampling_rate_hz, \
         'Sampling rates do not match'
-    assert insig1.number_of_channels == insig2.number_of_channels,\
+    assert insig1.number_of_channels == insig2.number_of_channels, \
         'Signals have different channel numbers'
     if spectrum_parameters is None:
         spectrum_parameters = {}
@@ -93,7 +93,7 @@ def log_spectral(insig1: Signal, insig2: Signal, method: str = 'welch',
 
 def itakura_saito(insig1: Signal, insig2: Signal, method: str = 'welch',
                   f_range_hz=[20, 20000], energy_normalization: bool = True,
-                  spectrum_parameters: dict = None) -> np.ndarray:
+                  spectrum_parameters: dict | None = None) -> np.ndarray:
     """Computes itakura-saito measure between two signals. Beware that this
     measure is not symmetric (x, y) != (y, x).
 
@@ -127,9 +127,9 @@ def itakura_saito(insig1: Signal, insig2: Signal, method: str = 'welch',
     - https://en.wikipedia.org/wiki/Itakura–Saito_distance
 
     """
-    assert insig1.sampling_rate_hz == insig2.sampling_rate_hz,\
+    assert insig1.sampling_rate_hz == insig2.sampling_rate_hz, \
         'Sampling rates do not match'
-    assert insig1.number_of_channels == insig2.number_of_channels,\
+    assert insig1.number_of_channels == insig2.number_of_channels, \
         'Signals have different channel numbers'
     if spectrum_parameters is None:
         spectrum_parameters = {}
@@ -191,10 +191,10 @@ def snr(signal: Signal, noise: Signal) -> np.ndarray:
     - https://en.wikipedia.org/wiki/Signal-to-noise_ratio
 
     """
-    assert signal.sampling_rate_hz == noise.sampling_rate_hz,\
+    assert signal.sampling_rate_hz == noise.sampling_rate_hz, \
         'Sampling rates do not match'
     if noise.number_of_channels != 1:
-        assert signal.number_of_channels == noise.number_of_channels,\
+        assert signal.number_of_channels == noise.number_of_channels, \
             'Signals have different channel numbers'
     return _snr(signal.time_data, noise.time_data)
 
@@ -223,8 +223,8 @@ def si_sdr(target_signal: Signal, modified_signal: Signal) -> np.ndarray:
     - https://arxiv.org/abs/1811.02508
 
     """
-    assert modified_signal.sampling_rate_hz == target_signal.sampling_rate_hz,\
-        'Sampling rates do not match'
+    assert modified_signal.sampling_rate_hz == \
+        target_signal.sampling_rate_hz, 'Sampling rates do not match'
     if target_signal.number_of_channels != 1:
         assert modified_signal.number_of_channels == \
             target_signal.number_of_channels, \

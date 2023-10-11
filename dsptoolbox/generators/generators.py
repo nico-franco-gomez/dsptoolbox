@@ -11,9 +11,9 @@ from ..classes._filter import _impulse
 
 
 def noise(type_of_noise: str = 'white', length_seconds: float = 1,
-          sampling_rate_hz: int = None, peak_level_dbfs: float = -10,
+          sampling_rate_hz: int | None = None, peak_level_dbfs: float = -10,
           number_of_channels: int = 1, fade: str = 'log',
-          padding_end_seconds: float = None) -> Signal:
+          padding_end_seconds: float | None = None) -> Signal:
     """Creates a noise signal.
 
     Parameters
@@ -109,9 +109,9 @@ def noise(type_of_noise: str = 'white', length_seconds: float = 1,
 
 
 def chirp(type_of_chirp: str = 'log', range_hz=None, length_seconds: float = 1,
-          sampling_rate_hz: int = None, peak_level_dbfs: float = -10,
+          sampling_rate_hz: int | None = None, peak_level_dbfs: float = -10,
           number_of_channels: int = 1, fade: str = 'log',
-          phase_offset: float = 0, padding_end_seconds: float = None)\
+          phase_offset: float = 0, padding_end_seconds: float | None = None)\
         -> Signal:
     """Creates a sine-sweep signal.
 
@@ -205,7 +205,7 @@ def chirp(type_of_chirp: str = 'log', range_hz=None, length_seconds: float = 1,
 
 
 def dirac(length_samples: int = 512, delay_samples: int = 0,
-          number_of_channels: int = 1, sampling_rate_hz: int = None) \
+          number_of_channels: int = 1, sampling_rate_hz: int | None = None) \
         -> Signal:
     """Generates a dirac impulse Signal with the specified length and
     sampling rate.
@@ -229,9 +229,9 @@ def dirac(length_samples: int = 512, delay_samples: int = 0,
     """
     assert sampling_rate_hz is not None, \
         'Sampling rate can not be None'
-    assert type(length_samples) == int and length_samples > 0, \
+    assert type(length_samples) is int and length_samples > 0, \
         'Only positive lengths are valid'
-    assert type(delay_samples) == int and delay_samples >= 0, \
+    assert type(delay_samples) is int and delay_samples >= 0, \
         'Only positive delay is supported'
     assert delay_samples < length_samples, \
         'Delay is bigger than the samples of the signal'
@@ -246,9 +246,10 @@ def dirac(length_samples: int = 512, delay_samples: int = 0,
 
 
 def harmonic(frequency_hz: float = 1000, length_seconds: float = 1,
-             sampling_rate_hz: int = None, peak_level_dbfs: float = -10,
+             sampling_rate_hz: int | None = None, peak_level_dbfs: float = -10,
              number_of_channels: int = 1, uncorrelated: bool = False,
-             fade: str = 'log', padding_end_seconds: float = None) -> Signal:
+             fade: str = 'log', padding_end_seconds: float | None = None) \
+        -> Signal:
     """Creates a multi-channel harmonic (sine) tone.
 
     Parameters
@@ -325,10 +326,12 @@ def harmonic(frequency_hz: float = 1000, length_seconds: float = 1,
 
 
 def oscillator(frequency_hz: float = 1000, length_seconds: float = 1,
-               mode: str = 'harmonic', harmonic_cutoff_hz: float = None,
-               sampling_rate_hz: int = None, peak_level_dbfs: float = -10,
+               mode: str = 'harmonic', harmonic_cutoff_hz: float | None = None,
+               sampling_rate_hz: int | None = None,
+               peak_level_dbfs: float = -10,
                number_of_channels: int = 1, uncorrelated: bool = False,
-               fade: str = 'log', padding_end_seconds: float = None) -> Signal:
+               fade: str = 'log', padding_end_seconds: float | None = None) \
+        -> Signal:
     """Creates a non-aliased, multi-channel wave tone.
 
     Parameters

@@ -20,7 +20,7 @@ from ..standard_functions import pad_trim
 
 
 def reverb_time(signal: Signal | MultiBandSignal, mode: str = 'T20',
-                ir_start: int | np.ndarray = None) -> np.ndarray:
+                ir_start: int | np.ndarray | None = None) -> np.ndarray:
     """Computes reverberation time. T20, T30, T60 and EDT.
 
     Parameters
@@ -52,7 +52,7 @@ def reverb_time(signal: Signal | MultiBandSignal, mode: str = 'T20',
       time of rooms with reference to other acoustical parameters.
 
     """
-    if type(signal) == Signal:
+    if type(signal) is Signal:
         ir_start = _check_ir_start_reverb(signal, ir_start)
         assert signal.signal_type in ('ir', 'rir'), \
             f'{signal.signal_type} is not a valid signal type for ' +\
@@ -67,7 +67,7 @@ def reverb_time(signal: Signal | MultiBandSignal, mode: str = 'T20',
             reverberation_times[n] = _reverb(
                 signal.time_data[:, n].copy(), signal.sampling_rate_hz,
                 mode, ir_start=ir_start[n], return_ir_start=False)
-    elif type(signal) == MultiBandSignal:
+    elif type(signal) is MultiBandSignal:
         ir_start = _check_ir_start_reverb(signal, ir_start)
         reverberation_times = \
             np.zeros(
@@ -235,7 +235,7 @@ def generate_synthetic_rir(room: ShoeboxRoom, source_position,
                            add_noise_reverberant_tail: bool = False,
                            apply_bandpass: bool = False,
                            use_detailed_absorption: bool = False,
-                           max_order: int = None) \
+                           max_order: int | None = None) \
         -> Signal:
     """This function returns a synthetized RIR in a shoebox-room using the
     image source model. The implementation is based on Brinkmann,
@@ -293,7 +293,7 @@ def generate_synthetic_rir(room: ShoeboxRoom, source_position,
     """
     assert sampling_rate_hz is not None, \
         'Sampling rate can not be None'
-    assert type(room) == ShoeboxRoom, \
+    assert type(room) is ShoeboxRoom, \
         'Room must be of type ShoeboxRoom'
     source_position = np.asarray(source_position)
     receiver_position = np.asarray(receiver_position)
@@ -397,7 +397,7 @@ def descriptors(rir: Signal | MultiBandSignal, mode: str = 'd50'):
     mode = mode.lower()
     assert mode in ('d50', 'c80', 'br', 'ts'), \
         'Given mode is not in the available descriptors'
-    if type(rir) == Signal:
+    if type(rir) is Signal:
         if mode == 'd50':
             func = _d50_from_rir
         elif mode == 'c80':
@@ -410,7 +410,7 @@ def descriptors(rir: Signal | MultiBandSignal, mode: str = 'd50'):
         desc = np.zeros(rir.number_of_channels)
         for ch in range(rir.number_of_channels):
             desc[ch] = func(rir.time_data[:, ch], rir.sampling_rate_hz)
-    elif type(rir) == MultiBandSignal:
+    elif type(rir) is MultiBandSignal:
         assert mode != 'br', \
             'Bass-ratio is not a valid descriptor to be used on a ' +\
             'MultiBandSignal. Pass a RIR as Signal to compute it'
@@ -466,13 +466,14 @@ def _check_ir_start_reverb(
         assert type(ir_start) in (int, np.ndarray, np.intp), \
             'Unsupported type for ir_start'
 
-    if type(sig) == Signal:
+    if type(sig) is Signal:
         if type(ir_start) in (int, np.intp):
             ir_start = np.ones(sig.number_of_channels,
                                dtype=np.intp) * ir_start
         elif ir_start is None:
             return [None]*sig.number_of_channels
-        assert ir_start.ndim == 1 and len(ir_start) == sig.number_of_channels,\
+        assert ir_start.ndim == 1 and \
+            len(ir_start) == sig.number_of_channels, \
             'Shape of ir_start is not valid'
     else:
         if type(ir_start) in (int, np.intp):

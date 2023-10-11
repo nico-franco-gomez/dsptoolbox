@@ -65,7 +65,7 @@ def cepstrum(signal: Signal, mode='power') -> np.ndarray:
 
 def log_mel_spectrogram(s: Signal, channel: int = 0, range_hz=None,
                         n_bands: int = 40, generate_plot: bool = True,
-                        stft_parameters: dict = None):
+                        stft_parameters: dict | None = None):
     """Returns the log mel spectrogram of the specific signal and channel.
 
     Parameters
@@ -204,7 +204,7 @@ def mel_filterbank(f_hz: np.ndarray, range_hz=None, n_bands: int = 40,
 
 def plot_waterfall(sig: Signal, channel: int = 0,
                    dynamic_range_db: float = 40,
-                   stft_parameters: dict = None) -> tuple[Figure, Axes]:
+                   stft_parameters: dict | None = None) -> tuple[Figure, Axes]:
     """Generates and returns a waterfall plot from a signal. The settings
     for the spectrogram saved in the signal are the ones used for the plot
     generation.
@@ -258,8 +258,8 @@ def plot_waterfall(sig: Signal, channel: int = 0,
 
 
 def mfcc(signal: Signal, channel: int = 0,
-         mel_filters: np.ndarray = None, generate_plot: bool = True,
-         stft_parameters: dict = None):
+         mel_filters: np.ndarray | None = None, generate_plot: bool = True,
+         stft_parameters: dict | None = None):
     """Mel-frequency cepstral coefficients for a windowed signal are computed
     and returned using the discrete cosine transform of type 2 (see
     `scipy.fft.dct` for more details).
@@ -349,11 +349,12 @@ def mfcc(signal: Signal, channel: int = 0,
     return time_s, f_mel, mfcc
 
 
-def istft(stft: np.ndarray, original_signal: Signal = None,
-          parameters: dict = None, sampling_rate_hz: int = None,
-          window_length_samples: int = None, window_type: str = None,
-          overlap_percent: int = None, fft_length_samples: int = None,
-          padding: bool = None, scaling: bool = None) -> Signal:
+def istft(stft: np.ndarray, original_signal: Signal | None = None,
+          parameters: dict | None = None, sampling_rate_hz: int | None = None,
+          window_length_samples: int | None = None,
+          window_type: str | None = None, overlap_percent: int | None = None,
+          fft_length_samples: int | None = None, padding: bool | None = None,
+          scaling: bool | None = None) -> Signal:
     """This function transforms a complex STFT back into its respective time
     signal using the method presented in [1]. For this to be possible, it is
     necessary to know the parameters that were used while converting the signal
@@ -558,7 +559,7 @@ def chroma_stft(signal: Signal, tuning_a_hz: float = 440,
 
 
 def cwt(signal: Signal, frequencies: np.ndarray,
-        wavelet: Wavelet | MorletWavelet, channel: np.ndarray = None,
+        wavelet: Wavelet | MorletWavelet, channel: np.ndarray | None = None,
         synchrosqueezed: bool = False) \
             -> np.ndarray:
     """Returns a scalogram by means of the continuous wavelet transform.
@@ -657,7 +658,7 @@ def hilbert(signal: Signal):
     return analytic
 
 
-def vqt(signal: Signal, channel: np.ndarray = None, q: float = 1,
+def vqt(signal: Signal, channel: np.ndarray | None = None, q: float = 1,
         gamma: float = 50, octaves: list = [1, 5], bins_per_octave: int = 24,
         a4_tuning: int = 440, window: str | tuple = 'hann'):
     """Variable-Q Transform. This is a special case of the continuous wavelet

@@ -25,8 +25,9 @@ class Signal():
 
     """
     # ======== Constructor and State handler ==================================
-    def __init__(self, path: str = None, time_data=None,
-                 sampling_rate_hz: int = None, signal_type: str = 'general',
+    def __init__(self, path: str | None = None, time_data=None,
+                 sampling_rate_hz: int | None = None,
+                 signal_type: str = 'general',
                  signal_id: str = '', constrain_amplitude: bool = True):
         """Signal class that saves time data, channel and sampling rate
         information as well as spectrum, cross-spectral matrix and more.
@@ -151,7 +152,7 @@ class Signal():
     @time_data.setter
     def time_data(self, new_time_data):
         # Shape of Time Data array
-        if not type(new_time_data) == np.ndarray:
+        if not type(new_time_data) is np.ndarray:
             new_time_data = np.asarray(new_time_data)
         if new_time_data.ndim > 2:
             new_time_data = new_time_data.squeeze()
@@ -201,7 +202,7 @@ class Signal():
 
     @sampling_rate_hz.setter
     def sampling_rate_hz(self, new_sampling_rate_hz):
-        assert type(new_sampling_rate_hz) == int, \
+        assert type(new_sampling_rate_hz) is int, \
             'Sampling rate can only be an integer'
         self.__sampling_rate_hz = new_sampling_rate_hz
 
@@ -211,7 +212,7 @@ class Signal():
 
     @signal_type.setter
     def signal_type(self, new_signal_type):
-        assert type(new_signal_type) == str, \
+        assert type(new_signal_type) is str, \
             'Signal type must be a string'
         self.__signal_type = new_signal_type.lower()
 
@@ -221,7 +222,7 @@ class Signal():
 
     @signal_id.setter
     def signal_id(self, new_signal_id: str):
-        assert type(new_signal_id) == str, \
+        assert type(new_signal_id) is str, \
             'Signal ID must be a string'
         self.__signal_id = new_signal_id.lower()
 
@@ -231,7 +232,7 @@ class Signal():
 
     @number_of_channels.setter
     def number_of_channels(self, new_number):
-        assert type(new_number) == int, \
+        assert type(new_number) is int, \
             'Number of channels must be integer'
         assert new_number > 0, \
             'There has to be at least one channel'
@@ -266,7 +267,7 @@ class Signal():
 
     @constrain_amplitude.setter
     def constrain_amplitude(self, nca):
-        assert type(nca) == bool, \
+        assert type(nca) is bool, \
             'constrain_amplitude must be of type boolean'
         self.__constrain_amplitude = nca
         # Restart time data setter for triggering normalization if needed
@@ -280,7 +281,7 @@ class Signal():
 
     @calibrated_signal.setter
     def calibrated_signal(self, ncs):
-        assert type(ncs) == bool, \
+        assert type(ncs) is bool, \
             'calibrated_signal must be of type boolean'
         self.__calibrated_signal = ncs
 
@@ -464,7 +465,7 @@ class Signal():
                                    window_length_samples: int = 1024,
                                    window_type: str = 'hann',
                                    overlap_percent=50,
-                                   fft_length_samples: int = None,
+                                   fft_length_samples: int | None = None,
                                    detrend: bool = False, padding: bool = True,
                                    scaling: bool = False):
         """Sets all necessary parameters for the computation of the
@@ -523,8 +524,9 @@ class Signal():
                 self.__spectrogram_state_update = True
 
     # ======== Add, remove and reorder channels ===============================
-    def add_channel(self, path: str = None, new_time_data: np.ndarray = None,
-                    sampling_rate_hz: int = None,
+    def add_channel(self, path: str | None = None,
+                    new_time_data: np.ndarray | None = None,
+                    sampling_rate_hz: int | None = None,
                     padding_trimming: bool = True):
         """Adds new channels to this signal object.
 
@@ -552,7 +554,7 @@ class Signal():
         assert sampling_rate_hz == self.sampling_rate_hz, \
             f'{sampling_rate_hz} does not match {self.sampling_rate_hz} ' +\
             'as the sampling rate'
-        if not type(new_time_data) == np.ndarray:
+        if not type(new_time_data) is np.ndarray:
             new_time_data = np.array(new_time_data)
         if new_time_data.ndim > 2:
             new_time_data = new_time_data.squeeze()
@@ -1183,7 +1185,7 @@ class Signal():
         stop_flag = False
         if self.time_data.shape[0] - position_samples < 0:
             stop_flag = True
-        assert type(position_samples) == int, \
+        assert type(position_samples) is int, \
             'Position must be in samples and thus an integer'
         self.streaming_position = position_samples
         return stop_flag

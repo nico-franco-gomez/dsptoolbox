@@ -300,7 +300,7 @@ class TestFilterClass():
         t_vec = np.random.normal(0, 0.01, self.fs*2)
 
         # FIR
-        result_scipy = sig.lfilter(self.fir, [1], t_vec)
+        result_scipy = sig.lfilter(self.fir, [1], t_vec.copy())
 
         s = dsp.Signal(None, t_vec, self.fs)
         f = dsp.Filter('other', filter_configuration=dict(ba=[self.fir, 1]),
@@ -309,7 +309,7 @@ class TestFilterClass():
         condfir = np.all(np.isclose(result_scipy, result_own))
 
         # IIR
-        result_scipy = sig.sosfilt(self.iir, t_vec)
+        result_scipy = sig.sosfilt(self.iir, t_vec.copy())
         f = dsp.Filter('other', filter_configuration=dict(sos=self.iir),
                        sampling_rate_hz=self.fs)
         result_own = f.filter_signal(s).time_data.squeeze()
@@ -554,7 +554,7 @@ class TestFilterBankClass():
         filt2, _ = fb.filters[1].get_coefficients(mode='ba')
         # Parallel
         s_ = fb.filter_signal(s, mode='parallel', activate_zi=False)
-        assert type(s_) == dsp.MultiBandSignal
+        assert type(s_) is dsp.MultiBandSignal
         assert s_.number_of_bands == fb.number_of_filters
         assert np.all(np.isclose(s_.bands[0].time_data[:, 0],
                                  sig.sosfilt(filt1, t_vec[:, 0])))
@@ -563,7 +563,7 @@ class TestFilterBankClass():
 
         # Sequential mode
         s_ = fb.filter_signal(s, mode='sequential', activate_zi=False)
-        assert type(s_) == dsp.Signal
+        assert type(s_) is dsp.Signal
         # Change order (just because they're linear systems)
         temp = sig.lfilter(filt2, [1], s.time_data[:, 1])
         temp = sig.sosfilt(filt1, temp)
@@ -572,7 +572,7 @@ class TestFilterBankClass():
 
         # Summed mode
         s_ = fb.filter_signal(s, mode='summed', activate_zi=False)
-        assert type(s_) == dsp.Signal
+        assert type(s_) is dsp.Signal
         # Add together
         temp = sig.lfilter(filt2, [1], s.time_data[:, 1])
         temp += sig.sosfilt(filt1, s.time_data[:, 1])
@@ -753,7 +753,7 @@ class TestMultiBandSignal():
 
         # Create from filter bank
         mbs = self.fb.filter_signal(self.s)
-        assert type(mbs) == dsp.MultiBandSignal
+        assert type(mbs) is dsp.MultiBandSignal
 
     def test_collapse(self):
         mbs = dsp.MultiBandSignal(
@@ -769,7 +769,7 @@ class TestMultiBandSignal():
                 bands=[self.s, self.s], same_sampling_rate=True,
                 info=dict(information='test filter bank'))
         mbs_ = mbs.get_all_bands(0)
-        assert type(mbs_) == dsp.Signal
+        assert type(mbs_) is dsp.Signal
         # Number of channels has to match number of bands
         assert mbs_.number_of_channels == mbs.number_of_bands
 
@@ -817,3 +817,36 @@ class TestMultiBandSignal():
                 info=dict(information='test filter bank'))
         for n in mbs:
             assert dsp.Signal == type(n)
+
+
+class TestLatticeLadderFilter():
+
+    b = np.array([1, 3, 3, 1])
+    a = np.array([1, -0.9, 0.64, -0.576])
+
+    def test_lattice_filter_coefficients(self):
+        # Example values taken from Oppenheim, A. V., Schafer, R. W.,,
+        # Buck, J. R. (1999). Discrete-Time Signal Processing.
+        # Prentice-hall Englewood Cliffs.
+        from dsptoolbox.classes._lattice_ladder_filter import \
+            _get_lattice_ladder_coefficients_iir
+        k, c = _get_lattice_ladder_coefficients_iir(self.b, self.a)
+
+        k_expected = np.array([0.6728, -0.182, 0.576])
+        c_expected = np.array([4.5404, 5.4612, 3.9, 1])
+
+        assert np.all(np.isclose(k, k_expected, rtol=5))
+        assert np.all(np.isclose(c, c_expected, rtol=5))
+
+    def test_lattice_filter_filtering(self):
+        n = dsp.generators.noise(sampling_rate_hz=200)
+        expected = sig.lfilter(self.b/10, self.a, n.time_data.squeeze())
+
+        from dsptoolbox.classes._lattice_ladder_filter import \
+            _get_lattice_ladder_coefficients_iir
+        k, c = _get_lattice_ladder_coefficients_iir(self.b/10, self.a)
+
+        f = dsp.LatticeLadderFilter(k, c, sampling_rate_hz=200)
+        out = f.filter_signal(n)
+        out = out.time_data.squeeze()
+        assert np.all(np.isclose(expected, out))

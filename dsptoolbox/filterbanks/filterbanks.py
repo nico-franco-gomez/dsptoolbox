@@ -38,7 +38,7 @@ def linkwitz_riley_crossovers(crossover_frequencies_hz, order,
 def reconstructing_fractional_octave_bands(
         frequency_range_hz=[63, 16000], octave_fraction: int = 1,
         overlap: float = 1, slope: int = 0, n_samples: int = 2**11,
-        sampling_rate_hz: int = None) -> FilterBank:
+        sampling_rate_hz: int | None = None) -> FilterBank:
     """Create a perfect reconstruction filter bank with linear-phase
     characteristics. According to (Antoni J., 2010). This implementation is
     taken from the pyfar package. See references for more information about it.
@@ -170,7 +170,7 @@ def reconstructing_fractional_octave_bands(
 
 def auditory_filters_gammatone(frequency_range_hz=[20, 20000],
                                resolution: float = 1,
-                               sampling_rate_hz: int = None) \
+                               sampling_rate_hz: int | None = None) \
         -> GammaToneFilterBank:
     """Generate an auditory filter bank for analysis purposes. This code was
     taken and adapted from the pyfar package. In this implementation, the
@@ -280,7 +280,7 @@ def qmf_crossover(lowpass: Filter) -> QMFCrossover:
 
 def fractional_octave_bands(frequency_range_hz=[31.5, 16e3],
                             octave_fraction: int = 1, filter_order: int = 6,
-                            sampling_rate_hz: int = None):
+                            sampling_rate_hz: int | None = None):
     """Create and return a filter bank containing a set of of fractional
     octave filters that are compliant with the specifications presented in [1].
     These are butterworth filters with at least order 3. For offline
@@ -344,7 +344,8 @@ def fractional_octave_bands(frequency_range_hz=[31.5, 16e3],
     return octave_filter_bank
 
 
-def weightning_filter(weightning: str = 'a', sampling_rate_hz: int = None):
+def weightning_filter(weightning: str = 'a',
+                      sampling_rate_hz: int | None = None):
     """Returns a digital IIR weightning filter according to [1]. The
     approximation is based on the coefficients given in [2].
 

@@ -10,7 +10,7 @@ from .multibandsignal import MultiBandSignal
 from .._general_helpers import _polyphase_decomposition
 
 
-def _get_biquad_type(number: int = None, name: str = None):
+def _get_biquad_type(number: int | None = None, name: str | None = None):
     """Helper method that handles string inputs for the biquad filters.
 
     """
@@ -282,7 +282,7 @@ def _filter_on_signal(signal: Signal, sos, channels=None,
 
 
 def _filter_on_signal_ba(signal: Signal, ba, channels=None,
-                         zi: list = None, zero_phase: bool = False,
+                         zi: list | None = None, zero_phase: bool = False,
                          filter_type: str = 'iir',
                          warning_on_complex_output: bool = True):
     """Takes in a `Signal` object and filters selected channels. Exports a new
@@ -434,7 +434,7 @@ def _filterbank_on_signal(signal: Signal, filters, activate_zi: bool = False,
 
 
 def _lfilter_fir(b: np.ndarray, a: np.ndarray, x: np.ndarray,
-                 zi: np.ndarray = None, axis: int = 0):
+                 zi: np.ndarray | None = None, axis: int = 0):
     """Variant to the `scipy.signal.lfilter` that uses `scipy.signal.convolve`
     for filtering. The advantage of this is that the convolution will be
     automatically made using fft or direct, depending on the inputs' sizes.
@@ -487,11 +487,6 @@ def _filter_and_downsample(time_data: np.ndarray, down_factor: int,
     assumed that the filter is FIR and only b-coefficients are used. In
     that case, an efficient downsampling is done, otherwise standard filtering
     and downsampling is applied.
-
-    NOTE: There must be a bug with this implementation because it is not
-    exactly the same output as when one uses normal filtering or
-    `scipy.signal.resample_poly`. Perceptually there is no difference between
-    the two results, though.
 
     Parameters
     ----------

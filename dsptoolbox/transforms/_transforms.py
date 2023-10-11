@@ -78,9 +78,9 @@ class MorletWavelet(Wavelet):
     """Complex morlet wavelet.
 
     """
-    def __init__(self, b: float = None, h: float = None, scale: float = 1.,
-                 precision_bounds: float = 1e-5, step: float = 5e-3,
-                 interpolation: bool = True):
+    def __init__(self, b: float | None = None, h: float | None = None,
+                 scale: float = 1., precision_bounds: float = 1e-5,
+                 step: float = 5e-3, interpolation: bool = True):
         """Instantiate a complex morlet wavelet based on the given parameters.
         Bandwidth can be defined through `b` or `h` (see Notes for the
         difference).

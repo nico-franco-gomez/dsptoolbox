@@ -23,7 +23,7 @@ def show():
 
 def general_plot(x, matrix, range_x=None, range_y=None, log: bool = True,
                  labels=None, xlabel: str = 'Frequency / Hz',
-                 ylabel: str = None, info_box: str = None,
+                 ylabel: str | None = None, info_box: str | None = None,
                  tight_layout: bool = True, returns: bool = False):
     """Generic plot template.
 
@@ -68,7 +68,7 @@ def general_plot(x, matrix, range_x=None, range_y=None, log: bool = True,
         x = arange(matrix.shape[0])
     if labels is not None:
         if type(labels) not in (list, tuple):
-            assert type(labels) == str, \
+            assert type(labels) is str, \
                 'labels should be a list or a string'
             labels = [labels]
     for n in range(matrix.shape[1]):
@@ -174,13 +174,13 @@ def general_subplots_line(x, matrix, column: bool = True,
         if ylabels is not None:
             ax[n].set_ylabel(ylabels[n])
         if xlabels is not None:
-            if not type(xlabels) == str and len(xlabels) > 1:
+            if not type(xlabels) is str and len(xlabels) > 1:
                 ax[n].set_xlabel(xlabels[n])
         if range_x is not None:
             ax[n].set_xlim(range_x)
         if range_y is not None:
             ax[n].set_ylim(range_y)
-    if type(xlabels) == str or len(xlabels) == 1:
+    if type(xlabels) is str or len(xlabels) == 1:
         ax[-1].set_xlabel(xlabels)
     fig.tight_layout()
     if returns:
@@ -188,9 +188,9 @@ def general_subplots_line(x, matrix, column: bool = True,
 
 
 def general_matrix_plot(matrix, range_x=None, range_y=None,
-                        range_z: float = None,
-                        xlabel: str = None, ylabel: str = None,
-                        zlabel: str = None, xlog: bool = False,
+                        range_z: float | None = None,
+                        xlabel: str | None = None, ylabel: str | None = None,
+                        zlabel: str | None = None, xlog: bool = False,
                         ylog: bool = False, colorbar: bool = True,
                         cmap: str = 'magma', lower_origin: bool = True,
                         returns: bool = False):

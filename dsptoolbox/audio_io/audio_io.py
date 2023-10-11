@@ -10,7 +10,7 @@ from ._audio_io import standard_callback
 default_config = sd.default
 
 
-def print_device_info(device_number: int = None):
+def print_device_info(device_number: int | None = None):
     """Prints available audio devices or information about a certain device
     when the device number is given.
 
@@ -38,7 +38,8 @@ def print_device_info(device_number: int = None):
         return d
 
 
-def set_device(device_numbers: list = None, sampling_rate_hz: int = None):
+def set_device(device_numbers: list | None = None,
+               sampling_rate_hz: int | None = None):
     """Takes in a device number to set it as the default for the input and the
     output. If `None` is passed, the available devices are first shown and
     then the user is asked for input to set the device two values separated by
@@ -74,11 +75,11 @@ def set_device(device_numbers: list = None, sampling_rate_hz: int = None):
         if len(device_numbers) == 1:
             device_numbers = device_numbers[0]
     device_list = sd.query_devices()
-    if type(device_numbers) == int:
+    if type(device_numbers) is int:
         d = device_list[device_numbers]['name']
         print(f"""{d} will be used for input and output!""")
         sd.default.device = device_numbers
-    elif type(device_numbers) == list:
+    elif type(device_numbers) is list:
         assert len(device_numbers) == 2, \
             'List with device numbers must be exactly 2'
         d = device_list[device_numbers[0]]['name']
@@ -96,8 +97,8 @@ def set_device(device_numbers: list = None, sampling_rate_hz: int = None):
     return sd.query_devices()
 
 
-def play_and_record(signal: Signal, duration_seconds: float = None,
-                    normalized_dbfs: float = -6, device: str = None,
+def play_and_record(signal: Signal, duration_seconds: float | None = None,
+                    normalized_dbfs: float = -6, device: str | None = None,
                     play_channels=None, rec_channels=[1]) -> Signal:
     """Play and record using some available device. Note that the channel
     numbers start here with 1.
@@ -133,9 +134,9 @@ def play_and_record(signal: Signal, duration_seconds: float = None,
     # Asserts
     if play_channels is None:
         play_channels = list(range(1, signal.number_of_channels+1))
-    if type(play_channels) == int:
+    if type(play_channels) is int:
         play_channels = [play_channels]
-    if type(rec_channels) == int:
+    if type(rec_channels) is int:
         rec_channels = [rec_channels]
     play_channels = sorted(play_channels)
     rec_channels = sorted(rec_channels)
@@ -179,7 +180,7 @@ def play_and_record(signal: Signal, duration_seconds: float = None,
 
 
 def record(duration_seconds: float = 5, sampling_rate_hz: int = 48000,
-           device: str | int = None, rec_channels=[1]) -> Signal:
+           device: str | int | None = None, rec_channels=[1]) -> Signal:
     """Record using some available device. Note that the channel numbers
     start here with 1.
 
@@ -202,7 +203,7 @@ def record(duration_seconds: float = 5, sampling_rate_hz: int = 48000,
 
     """
     # Asserts
-    if type(rec_channels) == int:
+    if type(rec_channels) is int:
         rec_channels = [rec_channels]
     rec_channels = sorted(rec_channels)
     assert not any([r < 1 for r in rec_channels]), \
@@ -224,8 +225,9 @@ def record(duration_seconds: float = 5, sampling_rate_hz: int = 48000,
     return rec_sig
 
 
-def play(signal: Signal, duration_seconds: float = None,
-         normalized_dbfs: float = -6, device: str = None, play_channels=None):
+def play(signal: Signal, duration_seconds: float | None = None,
+         normalized_dbfs: float = -6, device: str | None = None,
+         play_channels: int | list | tuple | None = None):
     """Playback of signal using some available device. Note that the channel
     numbers start here with 1.
 
@@ -252,7 +254,7 @@ def play(signal: Signal, duration_seconds: float = None,
     # Asserts and preprocessing
     if play_channels is None:
         play_channels = list(range(1, signal.number_of_channels+1))
-    if type(play_channels) == int:
+    if type(play_channels) is int:
         play_channels = [play_channels]
     play_channels = sorted(play_channels)
     assert not any([r < 1 for r in play_channels]), \
@@ -282,7 +284,7 @@ def play(signal: Signal, duration_seconds: float = None,
 
 def play_through_stream(signal: Signal, blocksize: int = 2048,
                         audio_callback: callable = standard_callback,
-                        device: str = None):
+                        device: str | None = None):
     """Plays a signal using a stream and a callback function.
     See `sounddevice.OutputStream` for extensive information about
     functionalities.
