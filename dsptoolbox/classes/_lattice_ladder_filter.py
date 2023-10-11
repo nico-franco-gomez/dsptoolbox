@@ -22,12 +22,11 @@ class LatticeLadderFilter():
     """
     def __init__(self, k_coefficients: np.ndarray,
                  c_coefficients: np.ndarray | None = None,
-                 iir_filter: bool | None = None,
                  sampling_rate_hz: int | None = None):
         """Constructs a lattice or lattice/ladder filter. If `k_coefficients`
         and `c_coefficients` are passed, it is assumed that it is an IIR
-        filter. In case no `c_coefficients` are passed, the user must define
-        if it is an IIR or FIR filter.
+        filter. In case no `c_coefficients` are passed, it is assumed to be an
+        FIR filter.
 
         Filtering can also be done with second-order sections by passing
         2d-arrays as coefficients (only IIR filters are supported).
@@ -40,11 +39,6 @@ class LatticeLadderFilter():
         c_coefficients : `np.ndarray`, optional
             Feedforward coefficients. It can be a 1d-array or a 2d-array for
             second-order sections. Default: `None`.
-        iir_filter : bool, optional
-            This can be set to `None` if both k and c coefficients are passed
-            (general IIR filter). In case there are only k coefficients, `True`
-            assumes an all-pole IIR filter while `False` gives a lattice FIR
-            representation. Default: `None`.
         sampling_rate_hz : int
             Sampling rate of the filter.
 
@@ -81,15 +75,13 @@ class LatticeLadderFilter():
             self.sos_filtering = True
         else:
             self.sos_filtering = False
-
-        if c_coefficients is not None and k_coefficients.ndim == 1:
-            assert len(c_coefficients) == len(k_coefficients) + 1, \
-                'c_coefficients must have the length len(k_coefficients) + 1'
-            self.iir_filter = True
-        else:
-            assert iir_filter is not None, \
-                'It must be specificied whether it is an IIR or FIR filter'
-            self.iir_filter = iir_filter
+            if c_coefficients is not None and k_coefficients.ndim == 1:
+                assert len(c_coefficients) == len(k_coefficients) + 1, \
+                    'c_coefficients must have the length ' +\
+                    'len(k_coefficients) + 1'
+                self.iir_filter = True
+            else:
+                self.iir_filter = False
         self.k = k_coefficients
         self.c = c_coefficients
         self.state = None
@@ -145,15 +137,15 @@ class LatticeLadderFilter():
                      'initiated')
                 self.initialize_zi(len(channels))
 
-        if self.iir_filter and self.c is not None:
+        if self.iir_filter:
             if self.sos_filtering:
                 td, self.state = _lattice_ladder_filtering_sos(
                     self.k, self.c, td, self.state)
             else:
-                td, self.state = \
-                    _lattice_ladder_filtering(self.k, self.c, td, self.state)
+                td, self.state = _lattice_ladder_filtering_iir(
+                    self.k, self.c, td, self.state)
         elif not self.iir_filter:
-            raise NotImplementedError('No implementation for FIR filtering')
+            td, self.state = _lattice_filtering_fir(self.k, td, self.state)
         elif self.iir_filter and self.c is None:
             raise NotImplementedError(
                 'No implementation for all-pole IIR filtering')
@@ -167,7 +159,8 @@ class LatticeLadderFilter():
 
 def _lattice_ladder_filtering_sos(
         k: np.ndarray, c: np.ndarray, td: np.ndarray,
-        state: np.ndarray | None = None) -> tuple[np.ndarray, np.ndarray]:
+        state: np.ndarray | None = None) -> \
+            tuple[np.ndarray, np.ndarray | None]:
     """Filtering using a lattice/ladder structure of second-order sections. See
     `_lattice_ladder_filtering` for the parameter explanation.
 
@@ -180,7 +173,8 @@ def _lattice_ladder_filtering_sos(
         passed_state = False
         state = np.zeros((k.shape[0], 2, td.shape[1]))
     else:
-        assert state.shape[0] == k.shape[0]
+        assert state.shape[0] == k.shape[0], 'State first dimension must ' +\
+            'match the number of second-order sections'
 
     for ch in range(td.shape[1]):
         for i_ch in np.arange(td.shape[0]):
@@ -205,9 +199,39 @@ def _lattice_ladder_filtering_sos(
     return td, state
 
 
-def _lattice_ladder_filtering(
+def _lattice_filtering_fir(
+        k: np.ndarray, td: np.ndarray, state: np.ndarray | None = None) \
+            -> tuple[np.ndarray, np.ndarray | None]:
+    """Filtering using a lattice structure.
+
+    """
+    passed_state = True
+    if state is None:
+        passed_state = False
+        state = np.zeros((len(k), td.shape[1]))
+    else:
+        assert state.shape[0] == k.shape[0], \
+            'State length must match filter order'
+
+    for ch in range(td.shape[1]):
+        for i_ch in np.arange(td.shape[0]):
+            x_o = td[i_ch, ch]
+            s0 = x_o
+            for i_k in range(len(k)):
+                s1 = -x_o*k[i_k] + state[i_k, ch]
+                x_o -= state[i_k, ch]*k[i_k]
+                state[i_k, ch] = s0
+                s0 = s1
+            td[i_ch, ch] = x_o
+    if not passed_state:
+        state = None
+    return td, state
+
+
+def _lattice_ladder_filtering_iir(
         k: np.ndarray, c: np.ndarray, td: np.ndarray,
-        state: np.ndarray | None = None) -> tuple[np.ndarray, np.ndarray]:
+        state: np.ndarray | None = None) \
+            -> tuple[np.ndarray, np.ndarray | None]:
     """Filtering using a lattice ladder structure (general IIR filter). The
     implementation follows [1].
 

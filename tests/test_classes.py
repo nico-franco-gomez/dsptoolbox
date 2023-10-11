@@ -300,7 +300,7 @@ class TestFilterClass():
         t_vec = np.random.normal(0, 0.01, self.fs*2)
 
         # FIR
-        result_scipy = sig.lfilter(self.fir, [1], t_vec)
+        result_scipy = sig.lfilter(self.fir, [1], t_vec.copy())
 
         s = dsp.Signal(None, t_vec, self.fs)
         f = dsp.Filter('other', filter_configuration=dict(ba=[self.fir, 1]),
@@ -309,7 +309,7 @@ class TestFilterClass():
         condfir = np.all(np.isclose(result_scipy, result_own))
 
         # IIR
-        result_scipy = sig.sosfilt(self.iir, t_vec)
+        result_scipy = sig.sosfilt(self.iir, t_vec.copy())
         f = dsp.Filter('other', filter_configuration=dict(sos=self.iir),
                        sampling_rate_hz=self.fs)
         result_own = f.filter_signal(s).time_data.squeeze()

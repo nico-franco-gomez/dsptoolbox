@@ -306,3 +306,12 @@ class TestStandardModule():
         n1 = f2.filter_signal(n).time_data.squeeze()
         n2 = new_f.filter_signal(n).time_data.squeeze()
         assert np.all(np.isclose(n1, n2))
+
+        # FIR
+        n = dsp.generators.noise(sampling_rate_hz=fs)
+        f = dsp.Filter('other', {'ba': [[1, 13/24, 5/8, 1/3], [1]]},
+                       sampling_rate_hz=fs)
+        new_f = dsp.convert_into_lattice_filter(f)
+        n1 = f.filter_signal(n).time_data.squeeze()
+        n2 = new_f.filter_signal(n).time_data.squeeze()
+        assert np.all(np.isclose(n1, n2))

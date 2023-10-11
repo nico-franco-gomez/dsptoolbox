@@ -488,11 +488,6 @@ def _filter_and_downsample(time_data: np.ndarray, down_factor: int,
     that case, an efficient downsampling is done, otherwise standard filtering
     and downsampling is applied.
 
-    NOTE: There must be a bug with this implementation because it is not
-    exactly the same output as when one uses normal filtering or
-    `scipy.signal.resample_poly`. Perceptually there is no difference between
-    the two results, though.
-
     Parameters
     ----------
     time_data : `np.ndarray`
