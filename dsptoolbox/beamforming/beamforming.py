@@ -393,7 +393,7 @@ class LineGrid(Grid):
 
         """
         line = np.atleast_1d(np.squeeze(line))
-        assert line.ndim == 1,\
+        assert line.ndim == 1, \
             'Line has an invalid shape'
         dimension = dimension.lower()
         # Initialize with 4 values to later find second
@@ -630,7 +630,7 @@ class SteeringVector():
           Acoustics and Vibration. 2012. 10.1155/2012/292695.
 
         """
-        if type(formulation) == str:
+        if type(formulation) is str:
             formulation = formulation.lower()
             if formulation == 'classic':
                 self.get_vector = classic_steering
@@ -645,7 +645,7 @@ class SteeringVector():
                     'Incorrect formulation. Use either classic, inverse, ' +
                     'true power or true location')
         else:
-            assert type(formulation) == callable, \
+            assert type(formulation) is callable, \
                 'Formulation should be a callable or a string'
             self.get_vector = formulation
 
@@ -675,9 +675,9 @@ class BaseBeamformer():
           object.
 
         """
-        assert type(multi_channel_signal) == Signal, \
+        assert type(multi_channel_signal) is Signal, \
             'Multi-channel signal must be of type Signal'
-        assert type(mic_array) == MicArray, \
+        assert type(mic_array) is MicArray, \
             'mic_array should be of type MicArray'
         assert c > 0, \
             'Speed of sound should be bigger than 0'
@@ -794,7 +794,7 @@ class BeamformerGridded(BaseBeamformer):
 
         """
         super().__init__(multi_channel_signal, mic_array, c)
-        assert type(steering_vector) == SteeringVector, \
+        assert type(steering_vector) is SteeringVector, \
             'steering_vector should be of type SteeringVector'
         assert issubclass(type(grid), Grid), \
             'grid should be a Grid object'
@@ -901,7 +901,7 @@ class BeamformerCleanSC(BeamformerGridded):
 
     def get_beamformer_map(self, center_frequency_hz: float,
                            octave_fraction: int = 3,
-                           maximum_iterations: int = None,
+                           maximum_iterations: int | None = None,
                            safety_factor: float = 0.5,
                            remove_csm_diagonal: bool = False) -> np.ndarray:
         """Returns a deconvolved beaforming map.
@@ -1020,7 +1020,8 @@ class BeamformerOrthogonal(BeamformerGridded):
 
     def get_beamformer_map(self, center_frequency_hz: float,
                            octave_fraction: int = 3,
-                           number_eigenvalues: int = None) -> np.ndarray:
+                           number_eigenvalues: int | None = None) \
+            -> np.ndarray:
         """Returns a beaforming map created with orthogonal beamforming.
 
         Parameters
@@ -1454,11 +1455,11 @@ def mix_sources_on_array(sources: list | MonopoleSource, mics: MicArray,
 
     """
     # Convert to list if only Monopole source is passed
-    if type(sources) == MonopoleSource:
+    if type(sources) is MonopoleSource:
         sources = [sources]
     assert len(sources) > 0, \
         'There must be at least one source to project on array'
-    assert all([type(i) == MonopoleSource for i in sources]), \
+    assert all([type(i) is MonopoleSource for i in sources]), \
         'All sources in list should be of type Source'
     # Take first source
     multi_channel_sig = sources[0].get_signals_on_array(mics, c)

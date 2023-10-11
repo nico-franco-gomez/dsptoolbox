@@ -25,8 +25,9 @@ class Signal():
 
     """
     # ======== Constructor and State handler ==================================
-    def __init__(self, path: str = None, time_data=None,
-                 sampling_rate_hz: int = None, signal_type: str = 'general',
+    def __init__(self, path: str | None = None, time_data=None,
+                 sampling_rate_hz: int | None = None,
+                 signal_type: str = 'general',
                  signal_id: str = '', constrain_amplitude: bool = True):
         """Signal class that saves time data, channel and sampling rate
         information as well as spectrum, cross-spectral matrix and more.
@@ -151,7 +152,7 @@ class Signal():
     @time_data.setter
     def time_data(self, new_time_data):
         # Shape of Time Data array
-        if not type(new_time_data) == np.ndarray:
+        if not type(new_time_data) is np.ndarray:
             new_time_data = np.asarray(new_time_data)
         if new_time_data.ndim > 2:
             new_time_data = new_time_data.squeeze()
@@ -201,7 +202,7 @@ class Signal():
 
     @sampling_rate_hz.setter
     def sampling_rate_hz(self, new_sampling_rate_hz):
-        assert type(new_sampling_rate_hz) == int, \
+        assert type(new_sampling_rate_hz) is int, \
             'Sampling rate can only be an integer'
         self.__sampling_rate_hz = new_sampling_rate_hz
 
@@ -211,7 +212,7 @@ class Signal():
 
     @signal_type.setter
     def signal_type(self, new_signal_type):
-        assert type(new_signal_type) == str, \
+        assert type(new_signal_type) is str, \
             'Signal type must be a string'
         self.__signal_type = new_signal_type.lower()
 
@@ -221,7 +222,7 @@ class Signal():
 
     @signal_id.setter
     def signal_id(self, new_signal_id: str):
-        assert type(new_signal_id) == str, \
+        assert type(new_signal_id) is str, \
             'Signal ID must be a string'
         self.__signal_id = new_signal_id.lower()
 
@@ -231,7 +232,7 @@ class Signal():
 
     @number_of_channels.setter
     def number_of_channels(self, new_number):
-        assert type(new_number) == int, \
+        assert type(new_number) is int, \
             'Number of channels must be integer'
         assert new_number > 0, \
             'There has to be at least one channel'
@@ -266,7 +267,7 @@ class Signal():
 
     @constrain_amplitude.setter
     def constrain_amplitude(self, nca):
-        assert type(nca) == bool, \
+        assert type(nca) is bool, \
             'constrain_amplitude must be of type boolean'
         self.__constrain_amplitude = nca
         # Restart time data setter for triggering normalization if needed
@@ -280,7 +281,7 @@ class Signal():
 
     @calibrated_signal.setter
     def calibrated_signal(self, ncs):
-        assert type(ncs) == bool, \
+        assert type(ncs) is bool, \
             'calibrated_signal must be of type boolean'
         self.__calibrated_signal = ncs
 
@@ -292,20 +293,22 @@ class Signal():
 
     def set_spectrum_parameters(self, method='welch', smoothe: int = 0,
                                 window_length_samples: int = 1024,
-                                window_type='hann', overlap_percent=50,
-                                detrend=True, average='mean',
+                                window_type='hann',
+                                overlap_percent: float = 50, detrend=True,
+                                average='mean',
                                 scaling='power spectral density'):
         """Sets all necessary parameters for the computation of the spectrum.
 
         Parameters
         ----------
         method : str, optional
-            `'welch'` (Welch's method for stochastic signals) or
-            `'standard'` (Direct FFT from signal). Default: `'welch'`.
+            `'welch'` (Welch's method for stochastic signals, returns a
+            periodogramm) or `'standard'` (Direct FFT from signal).
+            Default: `'welch'`.
         smoothe : int, optional
-            Smoothing across (1/smoothe) octave bands using a hamming
-            window. Smoothes magnitude AND phase. For accesing the smoothing
-            algorithm, refer to
+            Smoothing across (`1/smoothe`) octave bands using a hamming
+            window. It only applies when `method='standard'`. Smoothes
+            magnitude AND phase. For accesing the smoothing algorithm, refer to
             `dsptoolbox._general_helpers._fractional_octave_smoothing()`.
             If smoothing is applied here, `Signal.get_spectrum()` returns
             the smoothed spectrum as well and `Signal.plot_magnitude()` plots
@@ -411,7 +414,8 @@ class Signal():
                            window_type='hann', overlap_percent=75,
                            detrend=True, average='mean',
                            scaling='power spectral density'):
-        """Sets all necessary parameters for the computation of the CSM.
+        """Sets all necessary parameters for the computation of the
+        cross-spectral matrix.
 
         Parameters
         ----------
@@ -457,20 +461,18 @@ class Signal():
                 self._csm_parameters = _new_csm_parameters
                 self.__csm_state_update = True
 
-    def set_spectrogram_parameters(self, channel_number: int = 0,
+    def set_spectrogram_parameters(self,
                                    window_length_samples: int = 1024,
                                    window_type: str = 'hann',
                                    overlap_percent=50,
-                                   fft_length_samples: int = None,
-                                   detrend: bool = True, padding: bool = True,
+                                   fft_length_samples: int | None = None,
+                                   detrend: bool = False, padding: bool = True,
                                    scaling: bool = False):
         """Sets all necessary parameters for the computation of the
         spectrogram.
 
         Parameters
         ----------
-        channel_number : int, optional
-            Channel for which to compute the spectrogram. Default: 0.
         window_length_samples : int, optional
             Window size. Default: 1024.
         window_type : str, optional
@@ -482,10 +484,11 @@ class Signal():
             the frequency resolution and can also crop the time window. Pass
             `None` to use the window length. Default: `None`.
         detrend : bool, optional
-            Detrending (subtracting mean). Default: `True`.
+            Detrending (subtracting mean) for each time frame.
+            Default: `False`.
         padding : bool, optional
-            Padding signal in the beginning and end to center it.
-            Default: True.
+            Padding signal in the beginning and end to center it in order
+            to avoid losing energy because of windowing. Default: `True`.
         scaling : bool, optional
             When `True`, the output is scaled as an amplitude spectrum,
             otherwise no scaling is applied. See references for details.
@@ -501,7 +504,6 @@ class Signal():
         """
         _new_spectrogram_parameters = \
             dict(
-                channel_number=channel_number,
                 window_length_samples=window_length_samples,
                 window_type=window_type,
                 overlap_percent=overlap_percent,
@@ -522,8 +524,9 @@ class Signal():
                 self.__spectrogram_state_update = True
 
     # ======== Add, remove and reorder channels ===============================
-    def add_channel(self, path: str = None, new_time_data: np.ndarray = None,
-                    sampling_rate_hz: int = None,
+    def add_channel(self, path: str | None = None,
+                    new_time_data: np.ndarray | None = None,
+                    sampling_rate_hz: int | None = None,
                     padding_trimming: bool = True):
         """Adds new channels to this signal object.
 
@@ -551,7 +554,7 @@ class Signal():
         assert sampling_rate_hz == self.sampling_rate_hz, \
             f'{sampling_rate_hz} does not match {self.sampling_rate_hz} ' +\
             'as the sampling rate'
-        if not type(new_time_data) == np.ndarray:
+        if not type(new_time_data) is np.ndarray:
             new_time_data = np.array(new_time_data)
         if new_time_data.ndim > 2:
             new_time_data = new_time_data.squeeze()
@@ -747,15 +750,12 @@ class Signal():
             self.__csm_state_update = False
         return self.csm[0].copy(), self.csm[1].copy()
 
-    def get_spectrogram(self, channel_number: int = 0,
-                        force_computation: bool = False) -> \
+    def get_spectrogram(self, force_computation: bool = False) -> \
             tuple[np.ndarray, np.ndarray, np.ndarray]:
         """Returns a matrix containing the STFT of a specific channel.
 
         Parameters
         ----------
-        channel_number : int, optional
-            Channel number for which to compute the STFT. Default: 0.
         force_computation : bool, optional
             Forces new computation of the STFT. Default: False.
 
@@ -766,7 +766,7 @@ class Signal():
         f_hz : `np.ndarray`
             Frequency vector.
         spectrogram : `np.ndarray`
-            Complex spectrogram with shape (frequency, time).
+            Complex spectrogram with shape (frequency, time, channel).
 
         Notes
         -----
@@ -774,14 +774,11 @@ class Signal():
 
         """
         condition = not hasattr(self, 'spectrogram') or force_computation or \
-            self.__spectrogram_state_update or \
-            not channel_number == \
-            self._spectrogram_parameters['channel_number']
+            self.__spectrogram_state_update
 
         if condition:
-            self._spectrogram_parameters['channel_number'] = channel_number
             self.spectrogram = _stft(
-                self.time_data[:, channel_number],
+                self.time_data,
                 self.sampling_rate_hz,
                 self._spectrogram_parameters['window_length_samples'],
                 self._spectrogram_parameters['window_type'],
@@ -989,7 +986,12 @@ class Signal():
             Axes.
 
         """
-        t, f, stft = self.get_spectrogram(channel_number)
+        # Get whole spectrogram
+        t, f, stft = self.get_spectrogram()
+
+        # Select channel
+        stft = stft[:, :, channel_number]
+
         ids = _find_nearest([20, 20000], f)
         if ids[0] == 0:
             ids[0] += 1
@@ -1183,7 +1185,7 @@ class Signal():
         stop_flag = False
         if self.time_data.shape[0] - position_samples < 0:
             stop_flag = True
-        assert type(position_samples) == int, \
+        assert type(position_samples) is int, \
             'Position must be in samples and thus an integer'
         self.streaming_position = position_samples
         return stop_flag

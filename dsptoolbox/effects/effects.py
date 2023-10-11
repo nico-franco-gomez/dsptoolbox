@@ -25,7 +25,7 @@ class AudioEffect():
     """Base class for audio effects.
 
     """
-    def __init__(self, description: str = None):
+    def __init__(self, description: str | None = None):
         """Base constructor for an audio effect.
 
         Parameters
@@ -52,9 +52,9 @@ class AudioEffect():
             Modified signal.
 
         """
-        if type(signal) == Signal:
+        if type(signal) is Signal:
             return self._apply_this_effect(signal)
-        elif type(signal) == MultiBandSignal:
+        elif type(signal) is MultiBandSignal:
             new_mbs = signal.copy()
             for i, b in enumerate(new_mbs.bands):
                 new_mbs.bands[i] = self.apply(b)
@@ -187,7 +187,7 @@ class SpectralSubtractor(AudioEffect):
 
         """
         if adaptive_mode is not None:
-            assert type(adaptive_mode) == bool, \
+            assert type(adaptive_mode) is bool, \
                 'Adaptive mode must be of boolean type'
             self.adaptive_mode = adaptive_mode
 
@@ -205,7 +205,7 @@ class SpectralSubtractor(AudioEffect):
 
         if spectrum_to_subtract is not None:
             if np.any(spectrum_to_subtract):
-                assert type(spectrum_to_subtract) == np.ndarray, \
+                assert type(spectrum_to_subtract) is np.ndarray, \
                     'Spectrum to subtract must be of type numpy.ndarray'
                 spectrum_to_subtract = np.squeeze(spectrum_to_subtract)
                 assert spectrum_to_subtract.ndim == 1, \
@@ -317,9 +317,9 @@ class SpectralSubtractor(AudioEffect):
             'Release time for activity detector must be 0 or above'
         self.ad_release_time_ms = ad_release_time_ms
 
-    def set_parameters(self, adaptive_mode: bool = None,
-                       threshold_rms_dbfs: float = None,
-                       block_length_s: float = None,
+    def set_parameters(self, adaptive_mode: bool | None = None,
+                       threshold_rms_dbfs: float | None = None,
+                       block_length_s: float | None = None,
                        spectrum_to_subtract: np.ndarray = False):
         """Sets the audio effects parameters. Pass `None` to leave the
         previously selected value for each parameter unchanged.
@@ -663,12 +663,12 @@ class Distortion(AudioEffect):
         callables corresponding to the selected distortion functions.
 
         """
-        if type(type_of_distortion) != list:
+        if type(type_of_distortion) is not list:
             type_of_distortion = [type_of_distortion]
 
         self.__distortion_funcs = []
         for dist in type_of_distortion:
-            if type(dist) == str:
+            if type(dist) is str:
                 dist = dist.lower()
                 if dist == 'arctan':
                     self.__distortion_funcs.append(_arctan_distortion)
@@ -786,10 +786,11 @@ class Compressor(AudioEffect):
         if relative_to_peak_level is not None:
             self.relative_to_peak_level = relative_to_peak_level
 
-    def set_parameters(self, threshold_dbfs: float = None,
-                       attack_time_ms: float = None,
-                       release_time_ms: float = None, ratio: float = None,
-                       relative_to_peak_level: bool = None):
+    def set_parameters(self, threshold_dbfs: float | None = None,
+                       attack_time_ms: float | None = None,
+                       release_time_ms: float | None = None,
+                       ratio: float | None = None,
+                       relative_to_peak_level: bool | None = None):
         """This effect compresses the dynamic range of a signal based on
         a threshold in dBFS. Pass `None` to leave the previoulsy selected
         values unchanged.
@@ -951,7 +952,8 @@ class Tremolo(AudioEffect):
     low-frequency oscillator or another modulation signal.
 
     """
-    def __init__(self, depth: float = 0.5, modulator: LFO | np.ndarray = None):
+    def __init__(self, depth: float = 0.5,
+                 modulator: LFO | np.ndarray | None = None):
         """Constructor for a tremolo effect.
 
         Parameters
@@ -980,20 +982,20 @@ class Tremolo(AudioEffect):
         if modulator is not None:
             assert type(modulator) in (LFO, np.ndarray), \
                 'Unsupported modulator type. Use LFO or numpy.ndarray'
-            if type(modulator) == np.ndarray:
+            if type(modulator) is np.ndarray:
                 modulator = modulator.squeeze()
                 assert modulator.ndim == 1, \
                     'Modulator signal can have only one channel'
             self.modulator = modulator
 
         if depth is not None:
-            if type(self.modulator) == LFO:
+            if type(self.modulator) is LFO:
                 assert depth > 0 and depth <= 1, \
                     'Depth must be in ]0, 1]'
             self.depth = depth
 
-    def set_parameters(self, depth: float = None,
-                       modulator: LFO | np.ndarray = None):
+    def set_parameters(self, depth: float | None = None,
+                       modulator: LFO | np.ndarray | None = None):
         """Set the parameters for the tremolo effect. Passing `None` in this
         function leaves them unchanged.
 
@@ -1018,7 +1020,7 @@ class Tremolo(AudioEffect):
         """Apply tremolo effect.
 
         """
-        if type(self.modulator) == LFO:
+        if type(self.modulator) is LFO:
             modulation_signal = self.modulator.get_waveform(
                 signal.sampling_rate_hz, len(signal))
         else:
@@ -1036,7 +1038,7 @@ class Chorus(AudioEffect):
     """
     def __init__(self, depths_ms: float | np.ndarray = 5,
                  base_delays_ms: float | np.ndarray = 15,
-                 modulators: LFO | list | tuple | np.ndarray = None,
+                 modulators: LFO | list | tuple | np.ndarray | None = None,
                  mix_percent: float = 100):
         """Constructor for a chorus effect. Multiple voices with modulated
         delays are generated. The number of voices is inferred by the length
@@ -1106,7 +1108,7 @@ class Chorus(AudioEffect):
         if modulators is not None:
             if type(modulators) in (list, tuple):
                 nv_mod = len(modulators)
-            elif type(modulators) == np.ndarray:
+            elif type(modulators) is np.ndarray:
                 modulators = np.atleast_2d(modulators)
                 nv_mod = modulators.shape[1]
             else:
@@ -1131,19 +1133,19 @@ class Chorus(AudioEffect):
         if modulators is not None:
             assert type(modulators) in (LFO, list, tuple, np.ndarray), \
                 'Unsupported modulators type. Use LFO or numpy.ndarray'
-            if type(modulators) == np.ndarray:
+            if type(modulators) is np.ndarray:
                 modulators = np.atleast_2d(modulators)
                 modulators.shape[1] == self.number_of_voices, \
                     'The modulators signal must have the same number of ' +\
                     f'channels as there are voices {self.number_of_voices}'
                 self.modulators = modulators
-            elif type(modulators) == LFO:
+            elif type(modulators) is LFO:
                 self.modulators = [modulators] * self.number_of_voices
             else:
                 assert len(modulators) in (1, self.number_of_voices), \
                     'The number of modulators signals does not match the ' +\
                     f'number of voices {self.number_of_voices}'
-                assert all([type(i) == LFO for i in modulators]), \
+                assert all([type(i) is LFO for i in modulators]), \
                     'All modulators signals have to be of type LFO'
                 self.modulators = modulators
                 if len(self.modulators) == 1:
@@ -1151,7 +1153,7 @@ class Chorus(AudioEffect):
                         * self.number_of_voices
 
         if depths_ms is not None:
-            if type(self.modulators) == LFO:
+            if type(self.modulators) is LFO:
                 assert depths_ms >= 0, \
                     'Depth must be above 0'
             self.depths_ms = np.atleast_1d(depths_ms)
@@ -1168,10 +1170,11 @@ class Chorus(AudioEffect):
                 'Mix percent must be below 100 and above 0'
             self.mix = mix_percent
 
-    def set_parameters(self, depths_ms: float | np.ndarray = None,
-                       base_delays_ms: float | np.ndarray = None,
-                       modulators: LFO | list | tuple | np.ndarray = None,
-                       mix_percent: float = None):
+    def set_parameters(
+            self, depths_ms: float | np.ndarray | None = None,
+            base_delays_ms: float | np.ndarray | None = None,
+            modulators: LFO | list | tuple | np.ndarray | None = None,
+            mix_percent: float | None = None):
         """Sets the advanced parameters for the chorus effect. By passing
         multiple base delays, depths and LFOs, the effect can be fine-tuned.
         The number of voices is always extracted from the maximal length of
@@ -1207,7 +1210,7 @@ class Chorus(AudioEffect):
         le = len(signal)
 
         # Get valid modulation signals
-        if type(self.modulators) != np.ndarray:
+        if type(self.modulators) is not np.ndarray:
             modulation = np.zeros((le, self.number_of_voices))
             for ind, m in enumerate(self.modulators):
                 modulation[:, ind] = m.get_waveform(fs, le) \
@@ -1279,8 +1282,8 @@ class DigitalDelay(AudioEffect):
             'Feedback must be larger than one'
         self.feedback = feedback
 
-    def set_parameters(self, delay_time_ms: float = None,
-                       feedback: float = None):
+    def set_parameters(self, delay_time_ms: float | None = None,
+                       feedback: float | None = None):
         """Set the parameters for the tremolo effect. Passing `None` in this
         function leaves them unchanged.
 
@@ -1298,7 +1301,7 @@ class DigitalDelay(AudioEffect):
         assert self.delay_ms is not None
         assert self.feedback is not None
 
-    def set_advanced_parameters(self, saturation: str = None):
+    def set_advanced_parameters(self, saturation: str | None = None):
         """This function sets the advanced parameters for the delay effect.
 
         Parameters

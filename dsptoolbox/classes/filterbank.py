@@ -22,8 +22,9 @@ class FilterBank():
 
     """
     # ======== Constructor and initializers ===================================
-    def __init__(self, filters: list = None, same_sampling_rate: bool = True,
-                 info: dict = None):
+    def __init__(self, filters: list | None = None,
+                 same_sampling_rate: bool = True,
+                 info: dict | None = None):
         """FilterBank object saves multiple filters and some metadata.
         It also allows for easy filtering with multiple filters.
         Since the digital filters that are supported are linear systems,
@@ -106,9 +107,9 @@ class FilterBank():
     def filters(self, new_filters):
         if new_filters is None:
             new_filters = []
-        if type(new_filters) == tuple:
+        if type(new_filters) is tuple:
             new_filters = list(new_filters)
-        assert type(new_filters) == list, \
+        assert type(new_filters) is list, \
             'Filters have to be passed as a list'
         if new_filters:
             if self.same_sampling_rate:
@@ -119,7 +120,7 @@ class FilterBank():
                     sr.append(f.sampling_rate_hz)
                 self.sampling_rate_hz = sr
             for ind, f in enumerate(new_filters):
-                assert type(f) == Filter, \
+                assert type(f) is Filter, \
                     f'Object at index {ind} is not a supported Filter'
                 if self.same_sampling_rate:
                     assert f.sampling_rate_hz == self.sampling_rate_hz, \
@@ -146,7 +147,7 @@ class FilterBank():
 
     @same_sampling_rate.setter
     def same_sampling_rate(self, new_same):
-        assert type(new_same) == bool, \
+        assert type(new_same) is bool, \
             'same_sampling_rate must be a boolean'
         self.__same_sampling_rate = new_same
 
@@ -260,7 +261,7 @@ class FilterBank():
             New signal after filtering.
 
         """
-        if type(signal) == MultiBandSignal:
+        if type(signal) is MultiBandSignal:
             raise TypeError(
                 'This method only supports Signal objects. Use ' +
                 'filter_multiband_signal() for multirate parallel filtering')

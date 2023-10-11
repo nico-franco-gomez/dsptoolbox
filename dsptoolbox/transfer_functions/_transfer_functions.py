@@ -62,7 +62,7 @@ def _window_this_ir_tukey(vec, total_length: int, window_type: str = 'hann',
             length = np.argmax(abs(vec))
         else:
             # Selecting
-            assert constant_percentage > 0 and constant_percentage < 1,\
+            assert constant_percentage > 0 and constant_percentage < 1, \
                 'Constant percentage must be between 0 and 1'
             length = int((1-constant_percentage)*2**exp2_trim)//2
             ind_max = np.argmax(abs(vec))
@@ -138,7 +138,7 @@ def _window_this_ir(vec, total_length: int, window_type: str = 'hann',
     windowed IR, window and the start sample are passed.
 
     """
-    if window_parameter is not None and type(window_type) == str:
+    if window_parameter is not None and type(window_type) is str:
         window_type = (window_type, window_parameter)
     peak_ind = np.argmax(np.abs(vec))
     half_length = total_length // 2

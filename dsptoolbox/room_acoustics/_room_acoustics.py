@@ -5,7 +5,7 @@ import numpy as np
 from ..plots import general_plot
 
 
-def _reverb(h, fs_hz, mode, ir_start: int = None,
+def _reverb(h, fs_hz, mode, ir_start: int | None = None,
             return_ir_start: bool = False):
     """Computes reverberation time of signal.
 
@@ -260,7 +260,8 @@ class Room():
 
     """
     def __init__(self, volume_m3: float, area_m2: float,
-                 t60_s: float = None, absorption_coefficient: float = None):
+                 t60_s: float | None = None,
+                 absorption_coefficient: float | None = None):
         """Constructor for a generic Room. The passed reverberation time
         is checked for the volume and area.
 
@@ -294,14 +295,16 @@ class Room():
             'Either reverberation time or absorption coefficient should ' +\
             'not be None'
         if t60_s is None:
-            assert absorption_coefficient > 0 and absorption_coefficient <= 1,\
+            assert absorption_coefficient > 0 and \
+                absorption_coefficient <= 1, \
                 'Absorption coefficient should be ]0, 1]'
             self.absorption_coefficient = absorption_coefficient
             self.t60_s = 0.161 * self.volume / self.area / \
                 self.absorption_coefficient
         if absorption_coefficient is None:
             absorption_coefficient = 0.161 * self.volume / self.area / t60_s
-            assert absorption_coefficient > 0 and absorption_coefficient <= 1,\
+            assert absorption_coefficient > 0 and \
+                absorption_coefficient <= 1, \
                 'Given reverberation time is not valid. Absorption ' +\
                 'coefficient should be ]0, 1] and not ' +\
                 f'{absorption_coefficient}'
@@ -361,8 +364,8 @@ class ShoeboxRoom(Room):
     """Class for a shoebox room.
 
     """
-    def __init__(self, dimensions_m, t60_s: float = None,
-                 absorption_coefficient: float = None):
+    def __init__(self, dimensions_m, t60_s: float | None = None,
+                 absorption_coefficient: float | None = None):
         """Constructor for a shoebox-type room.
 
         Parameters
@@ -470,7 +473,7 @@ class ShoeboxRoom(Room):
         if mode == 'perceptual':
             mixing_time_s = (np.sqrt(self.volume) * 0.58 + 21.2)*1e-3
         else:
-            assert n_reflections > 0,\
+            assert n_reflections > 0, \
                 'n_reflections must be positive'
             mixing_time_s = np.sqrt(n_reflections*self.volume/(4*np.pi*c**3))
         self.mixing_time_s = mixing_time_s

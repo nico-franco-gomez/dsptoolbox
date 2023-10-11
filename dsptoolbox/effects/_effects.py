@@ -162,7 +162,7 @@ def _get_knee_func(threshold_db: float, ratio: float, knee_factor_db: float,
 
     if downward_compression:
         def compress_in_db(x: np.ndarray | float):
-            if type(x) == float:
+            if type(x) is float:
                 if (x - T < - W / 2):
                     return x
                 elif (np.abs(x - T) <= W / 2):
@@ -183,7 +183,7 @@ def _get_knee_func(threshold_db: float, ratio: float, knee_factor_db: float,
             return y
     else:
         def compress_in_db(x: np.ndarray | float):
-            if type(x) == float:
+            if type(x) is float:
                 if (x - T < - W / 2):
                     return T + (x - T) / R
                 elif (np.abs(x - T) <= W / 2):
@@ -364,15 +364,17 @@ class LFO():
         if random_phase is not None:
             self.random_phase = random_phase
 
-    def set_parameters(self, frequency_hz: float | tuple = None,
-                       waveform: str = None, random_phase: bool = None,
-                       smooth: float = None):
+    def set_parameters(self, frequency_hz: float | tuple | None = None,
+                       waveform: str | None = None,
+                       random_phase: bool | None = None,
+                       smooth: float | None = None):
         """Set the parameters of the LFO.
 
         """
         self.__set_parameters(frequency_hz, waveform, random_phase, smooth)
 
-    def get_waveform(self, sampling_rate_hz: int, length_samples: int = None):
+    def get_waveform(self, sampling_rate_hz: int,
+                     length_samples: int | None = None):
         """Get the waveform of the oscillator for a sampling frequency and a
         specified duration. If `length_samples` is `None`, only one oscillation
         is returned.
@@ -485,7 +487,7 @@ def get_frequency_from_musical_rhythm(note, bpm):
         Frequency in Hz corresponding to the musical rhythm.
 
     """
-    assert type(note) == str and \
+    assert type(note) is str and \
         type(bpm) in (float, int), \
         'Wrong data types for note duration and bpm'
     factor = 0

@@ -17,9 +17,9 @@ from .multibandsignal import MultiBandSignal
 from ._lattice_ladder_filter import LatticeLadderFilter
 
 __all__ = [
-    "Filter",
-    "FilterBank",
-    "Signal",
-    "MultiBandSignal",
-    "LatticeLadderFilter",
+    'Filter',
+    'FilterBank',
+    'Signal',
+    'MultiBandSignal',
+    'LatticeLadderFilter',
 ]

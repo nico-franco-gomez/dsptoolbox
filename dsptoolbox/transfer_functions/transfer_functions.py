@@ -79,7 +79,7 @@ def spectral_deconvolve(num: Signal, denum: Signal,
     assert num.sampling_rate_hz == denum.sampling_rate_hz, \
         'Sampling rates do not match'
     mode = mode.lower()
-    assert mode in ('regularized', 'window', 'standard'),\
+    assert mode in ('regularized', 'window', 'standard'), \
         f'{mode} is not supported. Use regularized, window or None'
     if mode == 'standard':
         assert start_stop_hz is None, \
@@ -255,7 +255,7 @@ def window_centered_ir(signal: Signal, total_length: int, window_type='hann') \
 
 def compute_transfer_function(output: Signal, input: Signal, mode='h2',
                               window_length_samples: int = 1024,
-                              spectrum_parameters: dict = None) -> \
+                              spectrum_parameters: dict | None = None) -> \
         tuple[Signal, np.ndarray]:
     """Gets transfer function H1, H2 or H3 (for stochastic signals).
     H1: for noise in the output signal. `Gxy/Gxx`.
@@ -306,7 +306,7 @@ def compute_transfer_function(output: Signal, input: Signal, mode='h2',
         multichannel = True
     if spectrum_parameters is None:
         spectrum_parameters = {}
-    assert type(spectrum_parameters) == dict, \
+    assert type(spectrum_parameters) is dict, \
         'Spectrum parameters should be passed as a dictionary'
 
     coherence = np.zeros((window_length_samples//2 + 1,
@@ -501,7 +501,7 @@ def lin_phase_from_mag(spectrum: np.ndarray, sampling_rate_hz: int,
 
     # Check group delay ms parameter
     minimum_group_delay = False
-    if type(group_delay_ms) == str:
+    if type(group_delay_ms) is str:
         group_delay_ms = group_delay_ms.lower()
         assert group_delay_ms == 'minimum', \
             'Group delay should be set to minimum'
@@ -522,7 +522,7 @@ def lin_phase_from_mag(spectrum: np.ndarray, sampling_rate_hz: int,
             min_phase = _minimum_phase(spectrum[:, n], False)
             min_gd = _group_delay_direct(min_phase, delta_f)
             gd = np.max(min_gd) + 1e-3  # add 1 ms as safety factor
-            if check_causality and type(group_delay_ms) != str:
+            if check_causality and type(group_delay_ms) is not str:
                 assert gd <= group_delay_ms, \
                     f'Given group delay {group_delay_ms*1000} ms is lower ' +\
                     f'than minimal group delay {gd*1000} ms for channel {n}'
@@ -757,7 +757,7 @@ def excess_group_delay(signal: Signal, method: str = 'real cepstrum') \
 def combine_ir_with_dirac(ir: Signal,
                           crossover_frequency: float,
                           take_lower_band: bool,
-                          order: int = 8, normalization: str = None) \
+                          order: int = 8, normalization: str | None = None) \
         -> Signal:
     """Combine an IR with a perfect impulse at a given crossover frequency
     using a linkwitz-riley crossover. Forward-Backward filtering is done so
@@ -929,8 +929,9 @@ def filter_to_ir(fir: Filter) -> Signal:
     return new_sig
 
 
-def window_frequency_dependent(ir: Signal, cycles: int, channel: int = None,
-                               frequency_range_hz: list = None):
+def window_frequency_dependent(ir: Signal, cycles: int,
+                               channel: int | None = None,
+                               frequency_range_hz: list | None = None):
     """A spectrum with frequency-dependent windowing defined by cycles is
     returned. To this end, a variable gaussian window is applied.
 
@@ -1019,7 +1020,7 @@ def window_frequency_dependent(ir: Signal, cycles: int, channel: int = None,
 
 
 def warp_ir(ir: Signal, warping_factor: float, shift_ir: bool = True,
-            total_length: int = None):
+            total_length: int | None = None):
     """Compute the IR in the warped-domain as explained by [1].
 
     To warp a signal, pass a negative `warping_factor`. To unwarp it, use a the

@@ -14,6 +14,21 @@ adheres to `Semantic Versioning <http://semver.org/spec/v2.0.0.html>`_.
 - Validation for results from tests in every module (so far many tests are
   only regarding functionality)
 
+`0.2.8 <https://pypi.org/project/dsptoolbox/0.2.8>`_ - 
+---------------------
+Added
+~~~~~~
+- ``LatticeLadderFilter`` in classes and standard module.
+
+Bugfix
+~~~~~~~
+- general bugfixes
+- flake8 new standards applied
+
+Misc
+~~~~~
+- corrected and updated doc
+
 `0.2.7 <https://pypi.org/project/dsptoolbox/0.2.7>`_ - 
 ---------------------
 

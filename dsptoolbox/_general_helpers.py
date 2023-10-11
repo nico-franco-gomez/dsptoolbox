@@ -90,7 +90,8 @@ def _calculate_window(points, window_length: int,
 
 
 def _get_normalized_spectrum(f, spectra: np.ndarray, mode='standard',
-                             f_range_hz=[20, 20000], normalize: str = None,
+                             f_range_hz=[20, 20000],
+                             normalize: str | None = None,
                              smoothe: int = 0, phase=False,
                              calibrated_data: bool = False) \
         -> tuple[np.ndarray, np.ndarray, np.ndarray]:
@@ -404,7 +405,8 @@ def _gaussian_window_sigma(window_length: int, alpha: float = 2.5) -> float:
 
 def _fractional_octave_smoothing(vector: np.ndarray, num_fractions: int = 3,
                                  window_type='hann',
-                                 window_vec: np.ndarray = None) -> np.ndarray:
+                                 window_vec: np.ndarray | None = None) \
+        -> np.ndarray:
     """Smoothes a vector using interpolation to a logarithmic scale. Usually
     done for smoothing of frequency data. This implementation is taken from
     the pyfar package, see references.
