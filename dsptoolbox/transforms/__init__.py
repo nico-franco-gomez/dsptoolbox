@@ -18,21 +18,32 @@ This module contains signal transforms.
 - `vqt()` (Variable-Q Transform)
 
 """
-from .transforms import (cepstrum, log_mel_spectrogram, mel_filterbank,
-                         plot_waterfall, mfcc, istft, MorletWavelet, cwt,
-                         chroma_stft, hilbert, vqt, stereo_mid_side)
+from .transforms import (
+    cepstrum,
+    log_mel_spectrogram,
+    mel_filterbank,
+    plot_waterfall,
+    mfcc,
+    istft,
+    MorletWavelet,
+    cwt,
+    chroma_stft,
+    hilbert,
+    vqt,
+    stereo_mid_side,
+)
 
 __all__ = [
-    'cepstrum',
-    'log_mel_spectrogram',
-    'mel_filterbank',
-    'plot_waterfall',
-    'mfcc',
-    'istft',
-    'MorletWavelet',
-    'cwt',
-    'chroma_stft',
-    'hilbert',
-    'vqt',
-    'stereo_mid_side',
+    "cepstrum",
+    "log_mel_spectrogram",
+    "mel_filterbank",
+    "plot_waterfall",
+    "mfcc",
+    "istft",
+    "MorletWavelet",
+    "cwt",
+    "chroma_stft",
+    "hilbert",
+    "vqt",
+    "stereo_mid_side",
 ]

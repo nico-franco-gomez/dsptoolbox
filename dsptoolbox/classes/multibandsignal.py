@@ -7,7 +7,7 @@ from .signal_class import Signal
 from .._general_helpers import _check_format_in_path
 
 
-class MultiBandSignal():
+class MultiBandSignal:
     """The `MultiBandSignal` class contains multiple Signal objects which are
     to be interpreted as frequency bands of the same signal. Since every
     signal has also multiple channels, the object resembles somewhat a
@@ -18,10 +18,14 @@ class MultiBandSignal():
     also carry all kinds of metadata that might characterize the signals.
 
     """
+
     # ======== Constructor and initializers ===================================
-    def __init__(self, bands: list | None = None,
-                 same_sampling_rate: bool = True,
-                 info: dict | None = None):
+    def __init__(
+        self,
+        bands: list | None = None,
+        same_sampling_rate: bool = True,
+        info: dict | None = None,
+    ):
         """`MultiBandSignal` contains a composite band list where each index
         is a Signal object with the same number of channels. For multirate
         systems, the parameter `same_sampling_rate` has to be set to `False`.
@@ -55,16 +59,19 @@ class MultiBandSignal():
     @sampling_rate_hz.setter
     def sampling_rate_hz(self, new_sampling_rate_hz):
         new_sampling_rate_hz = array(new_sampling_rate_hz).squeeze()
-        assert new_sampling_rate_hz.dtype == int, \
-            'Sampling rate can only be an integer'
+        assert (
+            new_sampling_rate_hz.dtype == int
+        ), "Sampling rate can only be an integer"
         if self.same_sampling_rate:
-            assert new_sampling_rate_hz.ndim == 0, \
-                'MultiBandSignal has only one sample rate'
+            assert (
+                new_sampling_rate_hz.ndim == 0
+            ), "MultiBandSignal has only one sample rate"
             self.__sampling_rate_hz = int(new_sampling_rate_hz)
         else:
-            if hasattr(self, '__bands'):
-                assert self.number_of_bands == len(new_sampling_rate_hz), \
-                    'Number of bands does not match number of sampling rates'
+            if hasattr(self, "__bands"):
+                assert self.number_of_bands == len(
+                    new_sampling_rate_hz
+                ), "Number of bands does not match number of sampling rates"
             self.__sampling_rate_hz = [int(s) for s in new_sampling_rate_hz]
 
     @property
@@ -77,21 +84,24 @@ class MultiBandSignal():
             new_bands = []
         if type(new_bands) is tuple:
             new_bands = list(new_bands)
-        assert type(new_bands) is list, \
-            'bands has to be a list'
+        assert type(new_bands) is list, "bands has to be a list"
         if new_bands:
             # Check length and number of channels
             self.number_of_channels = new_bands[0].number_of_channels
             self.signal_type = new_bands[0].signal_type
             sr = []
             for s in new_bands:
-                assert type(s) is Signal, f'{type(s)} is not a valid ' +\
-                    'band type. Use Signal objects'
-                assert s.number_of_channels == self.number_of_channels, \
-                    'Signals have different number of channels. This ' +\
-                    'behaviour is not supported'
-                assert s.signal_type == self.signal_type, \
-                    'Signal types do not match'
+                assert type(s) is Signal, (
+                    f"{type(s)} is not a valid "
+                    + "band type. Use Signal objects"
+                )
+                assert s.number_of_channels == self.number_of_channels, (
+                    "Signals have different number of channels. This "
+                    + "behaviour is not supported"
+                )
+                assert (
+                    s.signal_type == self.signal_type
+                ), "Signal types do not match"
                 sr.append(s.sampling_rate_hz)
             if self.same_sampling_rate:
                 self.sampling_rate_hz = new_bands[0].sampling_rate_hz
@@ -101,14 +111,16 @@ class MultiBandSignal():
             # Check sampling rate and duration
             if self.same_sampling_rate:
                 for s in new_bands:
-                    assert s.sampling_rate_hz == self.sampling_rate_hz, \
-                        'Not all Signals have the same sampling rate. ' +\
-                        'If you wish to create a multirate system, set ' +\
-                        'same_sampling_rate to False'
-                    assert s.time_data.shape[0] == self.band_length_samples, \
-                        'The length of the bands is not always the same. ' +\
-                        'This behaviour is not supported if there is a ' +\
-                        'constant sampling rate'
+                    assert s.sampling_rate_hz == self.sampling_rate_hz, (
+                        "Not all Signals have the same sampling rate. "
+                        + "If you wish to create a multirate system, set "
+                        + "same_sampling_rate to False"
+                    )
+                    assert s.time_data.shape[0] == self.band_length_samples, (
+                        "The length of the bands is not always the same. "
+                        + "This behaviour is not supported if there is a "
+                        + "constant sampling rate"
+                    )
         self.__bands = new_bands
         self._generate_metadata()
 
@@ -118,8 +130,9 @@ class MultiBandSignal():
 
     @same_sampling_rate.setter
     def same_sampling_rate(self, new_same):
-        assert type(new_same) is bool, \
-            'Same sampling rate attribute must be a boolean'
+        assert (
+            type(new_same) is bool
+        ), "Same sampling rate attribute must be a boolean"
         self.__same_sampling_rate = new_same
 
     @property
@@ -140,17 +153,17 @@ class MultiBandSignal():
         `MultiBandSignal`.
 
         """
-        if not hasattr(self, 'info'):
+        if not hasattr(self, "info"):
             self.info = {}
-        self.info['number_of_bands'] = self.number_of_bands
+        self.info["number_of_bands"] = self.number_of_bands
         if self.bands:
-            self.info['same_sampling_rate'] = self.same_sampling_rate
-            self.info['signal_type'] = self.signal_type
+            self.info["same_sampling_rate"] = self.same_sampling_rate
+            self.info["signal_type"] = self.signal_type
             if self.same_sampling_rate:
-                if hasattr(self, 'sampling_rate_hz'):
-                    self.info['sampling_rate_hz'] = self.sampling_rate_hz
-                self.info['band_length_samples'] = self.band_length_samples
-            self.info['number_of_channels'] = self.number_of_channels
+                if hasattr(self, "sampling_rate_hz"):
+                    self.info["sampling_rate_hz"] = self.sampling_rate_hz
+                self.info["band_length_samples"] = self.band_length_samples
+            self.info["number_of_channels"] = self.number_of_channels
 
     # ======== Add and remove =================================================
     def add_band(self, sig: Signal, index: int = -1):
@@ -189,7 +202,7 @@ class MultiBandSignal():
             When `True`, the erased band is returned. Default: `False`.
 
         """
-        assert self.bands, 'There are no filters to remove'
+        assert self.bands, "There are no filters to remove"
         bs = self.bands.copy()
         f = bs.pop(index)
         self.bands = bs
@@ -207,17 +220,20 @@ class MultiBandSignal():
 
         """
         new_order = array(new_order).squeeze()
-        assert new_order.ndim == 1, \
-            'Too many or too few dimensions are given in the new ' +\
-            'arrangement vector'
-        assert self.number_of_bands == len(new_order), \
-            'The number of bands does not match'
-        assert all(new_order < self.number_of_bands) \
-            and all(new_order >= 0), \
-            'Indexes of new bands have to be in ' +\
-            f'[0, {self.number_of_bands-1}]'
-        assert len(unique(new_order)) == len(new_order), \
-            'There are repeated indexes in the new order vector'
+        assert new_order.ndim == 1, (
+            "Too many or too few dimensions are given in the new "
+            + "arrangement vector"
+        )
+        assert self.number_of_bands == len(
+            new_order
+        ), "The number of bands does not match"
+        assert all(new_order < self.number_of_bands) and all(new_order >= 0), (
+            "Indexes of new bands have to be in "
+            + f"[0, {self.number_of_bands-1}]"
+        )
+        assert len(unique(new_order)) == len(
+            new_order
+        ), "There are repeated indexes in the new order vector"
         n_b = [self.bands[i] for i in new_order]
         self.bands = n_b
 
@@ -231,44 +247,41 @@ class MultiBandSignal():
             Collapsed Signal.
 
         """
-        assert self.same_sampling_rate, \
-            'Collapsing is only available for same sampling rate bands'
+        assert (
+            self.same_sampling_rate
+        ), "Collapsing is only available for same sampling rate bands"
         if self.bands[0].time_data_imaginary is None:
             initial = self.bands[0].time_data
             for n in range(1, len(self.bands)):
                 initial += self.bands[n].time_data
         else:
-            initial = zeros(self.bands[0].time_data.shape, dtype='cfloat')
+            initial = zeros(self.bands[0].time_data.shape, dtype="cfloat")
             for n in range(len(self.bands)):
                 initial += self.bands[n].time_data
                 initial += self.bands[n].time_data_imaginary * 1j
         new_sig = self.bands[0].copy()
-        if hasattr(new_sig, 'window'):
+        if hasattr(new_sig, "window"):
             del new_sig.window
         new_sig.time_data = initial
         return new_sig
 
     def show_info(self):
-        """Show information about the `MultiBandSignal`.
-
-        """
+        """Show information about the `MultiBandSignal`."""
         print(self._get_metadata_str())
 
     def _get_metadata_str(self):
-        txt = ''
+        txt = ""
         for k in self.info:
-            txt += \
-                f""" | {str(k).replace('_', ' ').
+            txt += f""" | {str(k).replace('_', ' ').
                         capitalize()}: {self.info[k]}"""
-        txt = 'Multiband signal:' + txt
-        txt += '\n'
-        txt += '–'*len(txt)
+        txt = "Multiband signal:" + txt
+        txt += "\n"
+        txt += "–" * len(txt)
         for ind, f1 in enumerate(self.bands):
-            txt += '\n'
-            txt += f'Signal {ind}:'
+            txt += "\n"
+            txt += f"Signal {ind}:"
             for kf in f1.info:
-                txt += \
-                    f""" | {str(kf).replace('_', ' ').
+                txt += f""" | {str(kf).replace('_', ' ').
                             capitalize()}: {f1.info[kf]}"""
         return txt
 
@@ -295,19 +308,23 @@ class MultiBandSignal():
         if self.same_sampling_rate:
             # Check if there is complex time data
             if self.bands[0].time_data_imaginary is None:
-                new_time_data = \
-                    zeros((self.bands[0].time_data.shape[0], len(self.bands)))
+                new_time_data = zeros(
+                    (self.bands[0].time_data.shape[0], len(self.bands))
+                )
                 for n in range(len(self.bands)):
-                    new_time_data[:, n] = \
+                    new_time_data[:, n] = (
                         self.bands[n].time_data[:, channel].copy()
+                    )
             else:
-                new_time_data = \
-                    zeros((self.bands[0].time_data.shape[0],
-                          len(self.bands)), dtype='cfloat')
+                new_time_data = zeros(
+                    (self.bands[0].time_data.shape[0], len(self.bands)),
+                    dtype="cfloat",
+                )
                 for n in range(len(self.bands)):
-                    new_time_data[:, n] = \
-                        self.bands[n].time_data[:, channel] + \
-                        self.bands[n].time_data_imaginary[:, channel] * 1j
+                    new_time_data[:, n] = (
+                        self.bands[n].time_data[:, channel]
+                        + self.bands[n].time_data_imaginary[:, channel] * 1j
+                    )
             sig = Signal(None, new_time_data, self.sampling_rate_hz)
             return sig
         else:
@@ -315,20 +332,20 @@ class MultiBandSignal():
             sr = []
             if self.bands[0].time_data_imaginary is None:
                 for n in range(len(self.bands)):
-                    new_time_data.append(
-                        self.bands[n].time_data[:, channel])
+                    new_time_data.append(self.bands[n].time_data[:, channel])
                     sr.append(self.bands[n].sampling_rate_hz)
             else:
                 for n in range(len(self.bands)):
                     new_time_data.append(
-                        self.bands[n].time_data[:, channel] +
-                        self.bands[n].time_data_imaginary[:, channel] * 1j)
+                        self.bands[n].time_data[:, channel]
+                        + self.bands[n].time_data_imaginary[:, channel] * 1j
+                    )
                     sr.append(self.bands[n].sampling_rate_hz)
-                warn('Output is complex since signal data had imaginary part')
+                warn("Output is complex since signal data had imaginary part")
             return new_time_data, sr
 
     # ======== Saving and copying =============================================
-    def save_signal(self, path: str = 'multibandsignal'):
+    def save_signal(self, path: str = "multibandsignal"):
         """Saves the `MultiBandSignal` object as a pickle.
 
         Parameters
@@ -339,8 +356,8 @@ class MultiBandSignal():
             (local folder, object named multibandsignal).
 
         """
-        path = _check_format_in_path(path, 'pkl')
-        with open(path, 'wb') as data_file:
+        path = _check_format_in_path(path, "pkl")
+        with open(path, "wb") as data_file:
             dump(self, data_file, HIGHEST_PROTOCOL)
 
     def copy(self):

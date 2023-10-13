@@ -4,69 +4,69 @@ Backend for the effects module
 from .._general_helpers import _get_smoothing_factor_ema
 from ..plots import general_plot
 import numpy as np
+
 # import matplotlib.pyplot as plt
 
 
 # ========= Distortion ========================================================
-def _arctan_distortion(inp: np.ndarray,
-                       distortion_level_db: float,
-                       offset_db: float) -> np.ndarray:
-    """Applies arctan distortion.
-
-    """
-    offset_linear = 10**(offset_db/20)
-    distortion_level_linear = 10**(distortion_level_db/20)
+def _arctan_distortion(
+    inp: np.ndarray, distortion_level_db: float, offset_db: float
+) -> np.ndarray:
+    """Applies arctan distortion."""
+    offset_linear = 10 ** (offset_db / 20)
+    distortion_level_linear = 10 ** (distortion_level_db / 20)
     peak_level = np.max(np.abs(inp), axis=0)
     normalized = inp / peak_level
-    return np.arctan(normalized * distortion_level_linear
-                     + offset_linear) * (2/np.pi)
+    return np.arctan(normalized * distortion_level_linear + offset_linear) * (
+        2 / np.pi
+    )
 
 
-def _hard_clip_distortion(inp: np.ndarray,
-                          distortion_level_db: float,
-                          offset_db: float) -> np.ndarray:
-    """Applies hard clipping distortion.
-
-    """
-    offset_linear = 10**(offset_db/20)
-    distortion_level_linear = 10**(distortion_level_db/20)
+def _hard_clip_distortion(
+    inp: np.ndarray, distortion_level_db: float, offset_db: float
+) -> np.ndarray:
+    """Applies hard clipping distortion."""
+    offset_linear = 10 ** (offset_db / 20)
+    distortion_level_linear = 10 ** (distortion_level_db / 20)
     peak_level = np.max(np.abs(inp), axis=0)
     normalized = inp / peak_level
-    return np.clip(normalized * distortion_level_linear + offset_linear,
-                   a_min=-1, a_max=1)
+    return np.clip(
+        normalized * distortion_level_linear + offset_linear, a_min=-1, a_max=1
+    )
 
 
-def _soft_clip_distortion(inp: np.ndarray,
-                          distortion_level_db: float,
-                          offset_db: float) -> np.ndarray:
-    """Applies non-linear cubic distortion.
-
-    """
-    offset_linear = 10**(offset_db/20)
-    distortion_level_linear = 10**(distortion_level_db/20)
+def _soft_clip_distortion(
+    inp: np.ndarray, distortion_level_db: float, offset_db: float
+) -> np.ndarray:
+    """Applies non-linear cubic distortion."""
+    offset_linear = 10 ** (offset_db / 20)
+    distortion_level_linear = 10 ** (distortion_level_db / 20)
     peak_level = np.max(np.abs(inp), axis=0)
-    normalized = inp / peak_level * (2/3)
+    normalized = inp / peak_level * (2 / 3)
     normalized += offset_linear
     normalized *= distortion_level_linear
-    normalized = (normalized - normalized**3 / 3)
-    return np.clip(normalized, a_min=-2/3, a_max=2/3)
+    normalized = normalized - normalized**3 / 3
+    return np.clip(normalized, a_min=-2 / 3, a_max=2 / 3)
 
 
-def _clean_signal(inp: np.ndarray,
-                  distortion_level_db: float,
-                  offset_db: float) -> np.ndarray:
-    """Returns the unchanged clean signal.
-
-    """
+def _clean_signal(
+    inp: np.ndarray, distortion_level_db: float, offset_db: float
+) -> np.ndarray:
+    """Returns the unchanged clean signal."""
     return inp
 
 
 # ========= Compressor ========================================================
-def _compressor(x: np.ndarray, threshold_db: float, ratio: float,
-                knee_factor_db: float, attack_samples: int,
-                release_samples: int, mix_compressed: float,
-                downward_compression: bool) \
-        -> np.ndarray:
+def _compressor(
+    x: np.ndarray,
+    threshold_db: float,
+    ratio: float,
+    knee_factor_db: float,
+    attack_samples: int,
+    release_samples: int,
+    mix_compressed: float,
+    downward_compression: bool,
+) -> np.ndarray:
     """Compresses the dynamic range of a signal.
 
     Parameters
@@ -105,8 +105,9 @@ def _compressor(x: np.ndarray, threshold_db: float, ratio: float,
         single_channel = True
 
     # Get function
-    compression_func = _get_knee_func(threshold_db, ratio, knee_factor_db,
-                                      downward_compression)
+    compression_func = _get_knee_func(
+        threshold_db, ratio, knee_factor_db, downward_compression
+    )
 
     # RMS detector
     attack_coeff = _get_smoothing_factor_ema(attack_samples, 1)
@@ -118,27 +119,27 @@ def _compressor(x: np.ndarray, threshold_db: float, ratio: float,
         momentary_gain = 1
         for i in np.arange(len(x)):
             # RMS Detection – if peaks, directly take rms
-            samp = x[i]**2
+            samp = x[i] ** 2
             if samp < momentary_rms:
                 coeff = attack_coeff
             else:
                 coeff = 1
             coeff = 0.01
-            momentary_rms = coeff*samp + (1-coeff)*momentary_rms
+            momentary_rms = coeff * samp + (1 - coeff) * momentary_rms
 
             # Amount of required compression
-            samp_db = 10*np.log10(samp)
+            samp_db = 10 * np.log10(samp)
             samp_db_comp = compression_func(samp_db)
             np.nan_to_num(samp_db, False, 0)
             np.nan_to_num(samp_db_comp, False, 0)
-            gain_factor = 10**((samp_db_comp-samp_db)/20)
+            gain_factor = 10 ** ((samp_db_comp - samp_db) / 20)
 
             # Gain depending on attack and release
             if gain_factor > momentary_gain:
                 coeff = attack_coeff
             else:
                 coeff = release_coeff
-            momentary_gain = coeff*gain_factor + (1-coeff)*momentary_gain
+            momentary_gain = coeff * gain_factor + (1 - coeff) * momentary_gain
 
             # Apply gain
             x_[i, n] *= momentary_gain
@@ -148,8 +149,12 @@ def _compressor(x: np.ndarray, threshold_db: float, ratio: float,
     return x_
 
 
-def _get_knee_func(threshold_db: float, ratio: float, knee_factor_db: float,
-                   downward_compression: bool):
+def _get_knee_func(
+    threshold_db: float,
+    ratio: float,
+    knee_factor_db: float,
+    downward_compression: bool,
+):
     """This function returns a callable that acts as the compression function
     in logarithmic space.
 
@@ -161,43 +166,50 @@ def _get_knee_func(threshold_db: float, ratio: float, knee_factor_db: float,
     W = knee_factor_db
 
     if downward_compression:
+
         def compress_in_db(x: np.ndarray | float):
             if type(x) is float:
-                if (x - T < - W / 2):
+                if x - T < -W / 2:
                     return x
-                elif (np.abs(x - T) <= W / 2):
-                    return x - (1/R - 1)*(x-T-W/2)**2 / 2 / W
-                elif (x - T > W / 2):
+                elif np.abs(x - T) <= W / 2:
+                    return x - (1 / R - 1) * (x - T - W / 2) ** 2 / 2 / W
+                elif x - T > W / 2:
                     return T + (x - T) / R
 
             y = np.zeros_like(x)
-            first_section = x - T < -W/2
+            first_section = x - T < -W / 2
             y[first_section] = x[first_section]
 
             second_section = np.abs(x - T) <= W / 2
-            y[second_section] = x[second_section] + \
-                (1/R - 1)*(x[second_section]-T+W/2)**2 / 2 / W
+            y[second_section] = (
+                x[second_section]
+                + (1 / R - 1) * (x[second_section] - T + W / 2) ** 2 / 2 / W
+            )
 
             third_section = x - T > W / 2
             y[third_section] = T + (x[third_section] - T) / R
             return y
+
     else:
+
         def compress_in_db(x: np.ndarray | float):
             if type(x) is float:
-                if (x - T < - W / 2):
+                if x - T < -W / 2:
                     return T + (x - T) / R
-                elif (np.abs(x - T) <= W / 2):
-                    return x - (1/R - 1)*(x-T-W/2)**2 / 2 / W
-                elif (x - T > W / 2):
+                elif np.abs(x - T) <= W / 2:
+                    return x - (1 / R - 1) * (x - T - W / 2) ** 2 / 2 / W
+                elif x - T > W / 2:
                     return x
 
             y = np.zeros_like(x)
-            first_section = x - T < - W / 2
+            first_section = x - T < -W / 2
             y[first_section] = T + (x[first_section] - T) / R
 
             second_section = np.abs(x - T) <= W / 2
-            y[second_section] = x[second_section] - \
-                (1/R - 1)*(x[second_section]-T-W/2)**2 / 2 / W
+            y[second_section] = (
+                x[second_section]
+                - (1 / R - 1) * (x[second_section] - T - W / 2) ** 2 / 2 / W
+            )
 
             third_section = x - T > W / 2
             y[third_section] = x[third_section]
@@ -207,10 +219,14 @@ def _get_knee_func(threshold_db: float, ratio: float, knee_factor_db: float,
 
 
 def _find_attack_hold_release(
-        x: np.ndarray, threshold_db: float, attack_samples: int,
-        hold_samples: int, release_samples: int, side_chain: np.ndarray,
-        indices_above: bool) \
-            -> tuple[np.ndarray, np.ndarray]:
+    x: np.ndarray,
+    threshold_db: float,
+    attack_samples: int,
+    hold_samples: int,
+    release_samples: int,
+    side_chain: np.ndarray,
+    indices_above: bool,
+) -> tuple[np.ndarray, np.ndarray]:
     """This function finds the indices corresponding to attack, hold and
     release. It returns boolean arrays. It can only handle 1D-arrays as input!
 
@@ -228,9 +244,12 @@ def _find_attack_hold_release(
     # Select if above or below threshold (depending on upward or downward
     # compression)
     if indices_above:
+
         def trigger(x, ind1, ind2, y) -> bool:
             return np.all(x[ind1:ind2] > y)
+
     else:
+
         def trigger(x, ind1, ind2, y) -> bool:
             return np.all(x[ind1:ind2] < y)
 
@@ -240,8 +259,9 @@ def _find_attack_hold_release(
         for i in np.arange(1, len(x)):
             ind = max(0, i - surpass_samples)
             if trigger(x, ind, i, threshold_db):
-                global_activation[i:i + attack_samples + hold_samples +
-                                  release_samples] = True
+                global_activation[
+                    i : i + attack_samples + hold_samples + release_samples
+                ] = True
     else:
         global_activation = side_chain
 
@@ -250,47 +270,57 @@ def _find_attack_hold_release(
     release = np.zeros_like(x).astype(bool)
     temp_attack = np.zeros_like(x).astype(bool)
     release[:-1] = np.bitwise_and(
-        global_activation[:-1], np.bitwise_not(global_activation[1:]))
+        global_activation[:-1], np.bitwise_not(global_activation[1:])
+    )
     temp_attack[1:] = np.bitwise_and(
-        np.bitwise_not(global_activation[:-1]), global_activation[1:])
+        np.bitwise_not(global_activation[:-1]), global_activation[1:]
+    )
     for i in np.arange(len(x)):
         if release[i]:
-            release[i-release_samples:i] = True
+            release[i - release_samples : i] = True
         if temp_attack[i]:
-            attack[i:i+attack_samples] = True
-    hold = (global_activation.astype(int) - attack.astype(int) -
-            release.astype(int)).astype(bool)
+            attack[i : i + attack_samples] = True
+    hold = (
+        global_activation.astype(int)
+        - attack.astype(int)
+        - release.astype(int)
+    ).astype(bool)
     return attack, hold, release
 
 
-def _cross_fade_samples(x_output: np.ndarray,
-                        x_fade_in: np.ndarray, x_fade_out: np.ndarray,
-                        indices: np.ndarray, length_of_fade: int,
-                        type_of_cross: str = 'log') -> np.ndarray:
-    """Cross fades two signals: at certain indices.
-
-    """
-    if type_of_cross == 'lin':
+def _cross_fade_samples(
+    x_output: np.ndarray,
+    x_fade_in: np.ndarray,
+    x_fade_out: np.ndarray,
+    indices: np.ndarray,
+    length_of_fade: int,
+    type_of_cross: str = "log",
+) -> np.ndarray:
+    """Cross fades two signals: at certain indices."""
+    if type_of_cross == "lin":
         mix_in = np.linspace(0, 1, length_of_fade)
-    elif type_of_cross == 'log':
+    elif type_of_cross == "log":
         mix_in = np.exp(np.linspace(-10, 0, length_of_fade))
 
     for i in np.arange(len(x_output)):
         if indices[i]:
-            length = np.sum(indices[i:i+length_of_fade])
-            x_output[i:i+length] = \
-                x_fade_in[i:i+length] * mix_in[:length] + \
-                x_fade_out[i:i+length] * (1 - mix_in[:length])
+            length = np.sum(indices[i : i + length_of_fade])
+            x_output[i : i + length] = x_fade_in[i : i + length] * mix_in[
+                :length
+            ] + x_fade_out[i : i + length] * (1 - mix_in[:length])
 
 
 # ========= LFO ===============================================================
-class LFO():
-    """Low-frequency oscillator.
+class LFO:
+    """Low-frequency oscillator."""
 
-    """
-    def __init__(self, frequency_hz: float | tuple,
-                 waveform: str = 'harmonic', random_phase: bool = False,
-                 smooth: float = 0):
+    def __init__(
+        self,
+        frequency_hz: float | tuple,
+        waveform: str = "harmonic",
+        random_phase: bool = False,
+        smooth: float = 0,
+    ):
         """Constructor for a low-frequency oscillator.
 
         Parameters
@@ -329,34 +359,35 @@ class LFO():
         """
         self.__set_parameters(frequency_hz, waveform, random_phase, smooth)
 
-    def __set_parameters(self, frequency_hz, waveform: str, random_phase,
-                         smooth):
-        """Internal method to set parameters.
-
-        """
+    def __set_parameters(
+        self, frequency_hz, waveform: str, random_phase, smooth
+    ):
+        """Internal method to set parameters."""
         if frequency_hz is not None:
             if type(frequency_hz) in (float, int):
                 self.frequency_hz = np.abs(frequency_hz)
             elif type(frequency_hz) in (tuple, list):
-                assert len(frequency_hz) == 2, \
-                    'frequency_hz as tuple must have length 2'
+                assert (
+                    len(frequency_hz) == 2
+                ), "frequency_hz as tuple must have length 2"
                 self.frequency_hz = get_frequency_from_musical_rhythm(
-                    frequency_hz[0], frequency_hz[1])
+                    frequency_hz[0], frequency_hz[1]
+                )
             else:
-                raise TypeError('frequency_hz does not have a valid type')
+                raise TypeError("frequency_hz does not have a valid type")
 
         if waveform is not None:
             waveform = waveform.lower()
-            if waveform == 'harmonic':
+            if waveform == "harmonic":
                 self.oscillator = _harmonic_oscillator
-            elif waveform == 'sawtooth':
+            elif waveform == "sawtooth":
                 self.oscillator = _sawtooth_oscillator
-            elif waveform == 'square':
+            elif waveform == "square":
                 self.oscillator = _square_oscillator
-            elif waveform == 'triangle':
+            elif waveform == "triangle":
                 self.oscillator = _triangle_oscillator
             else:
-                raise ValueError('Selected waveform is not valid')
+                raise ValueError("Selected waveform is not valid")
 
         if smooth is not None:
             self.smooth = smooth
@@ -364,17 +395,19 @@ class LFO():
         if random_phase is not None:
             self.random_phase = random_phase
 
-    def set_parameters(self, frequency_hz: float | tuple | None = None,
-                       waveform: str | None = None,
-                       random_phase: bool | None = None,
-                       smooth: float | None = None):
-        """Set the parameters of the LFO.
-
-        """
+    def set_parameters(
+        self,
+        frequency_hz: float | tuple | None = None,
+        waveform: str | None = None,
+        random_phase: bool | None = None,
+        smooth: float | None = None,
+    ):
+        """Set the parameters of the LFO."""
         self.__set_parameters(frequency_hz, waveform, random_phase, smooth)
 
-    def get_waveform(self, sampling_rate_hz: int,
-                     length_samples: int | None = None):
+    def get_waveform(
+        self, sampling_rate_hz: int, length_samples: int | None = None
+    ):
         """Get the waveform of the oscillator for a sampling frequency and a
         specified duration. If `length_samples` is `None`, only one oscillation
         is returned.
@@ -382,8 +415,13 @@ class LFO():
         """
         if length_samples is None:
             length_samples = int(sampling_rate_hz / self.frequency_hz)
-        return self.oscillator(self.frequency_hz, sampling_rate_hz,
-                               length_samples, self.random_phase, self.smooth)
+        return self.oscillator(
+            self.frequency_hz,
+            sampling_rate_hz,
+            length_samples,
+            self.random_phase,
+            self.smooth,
+        )
 
     def plot_waveform(self):
         """Plot the waveform (2 periods).
@@ -400,7 +438,7 @@ class LFO():
         fig, ax = general_plot(None, osc, log=False, returns=True, xlabel=None)
         ax.set_xticks([])
         ax.set_yticks([])
-        ax.set_title('Waveform')
+        ax.set_title("Waveform")
         return fig, ax
 
 
@@ -422,7 +460,7 @@ def _square_oscillator(freq, fs, length, random_phase, smooth):
     if smooth == 0:
         waveform = np.sign(x)
     else:
-        smooth *= (0.25/10)  # Adapt to some useful range
+        smooth *= 0.25 / 10  # Adapt to some useful range
         waveform = np.arctan(x / smooth)
     return waveform
 
@@ -435,14 +473,14 @@ def _sawtooth_oscillator(freq, fs, length, random_phase, smooth):
     if smooth == 0:
         phase_shift = np.random.uniform(0, 1) if random_phase else 0
         x = norm_freq * np.arange(length) + phase_shift
-        waveform = (x % 1 - 0.5)*2
+        waveform = (x % 1 - 0.5) * 2
     else:
         phase_shift = np.random.uniform(-np.pi, np.pi) if random_phase else 0
         x = np.pi * norm_freq * np.arange(length) + phase_shift
         # Adapt range
-        smooth = (12 - smooth)**1.5
+        smooth = (12 - smooth) ** 1.5
         smooth = max(1, smooth)
-        waveform = np.arcsin(np.tanh(np.cos(x)*smooth)*np.sin(x))
+        waveform = np.arcsin(np.tanh(np.cos(x) * smooth) * np.sin(x))
         waveform /= np.abs(np.max(waveform))
     return waveform
 
@@ -457,8 +495,8 @@ def _triangle_oscillator(freq, fs, length, random_phase, smooth):
     if smooth == 0:
         waveform = 2 / np.pi * np.arcsin(x)
     else:
-        smooth *= (0.08/10)  # Adapt to some useful range
-        waveform = 1 - 2/np.pi * np.arccos((1 - smooth)*x)
+        smooth *= 0.08 / 10  # Adapt to some useful range
+        waveform = 1 - 2 / np.pi * np.arccos((1 - smooth) * x)
     waveform /= np.max(np.abs(waveform))
     return waveform
 
@@ -487,31 +525,32 @@ def get_frequency_from_musical_rhythm(note, bpm):
         Frequency in Hz corresponding to the musical rhythm.
 
     """
-    assert type(note) is str and \
-        type(bpm) in (float, int), \
-        'Wrong data types for note duration and bpm'
+    assert type(note) is str and type(bpm) in (
+        float,
+        int,
+    ), "Wrong data types for note duration and bpm"
     factor = 0
-    if 'quarter' in note:
+    if "quarter" in note:
         factor = 1
-    if 'half' in note:
+    if "half" in note:
         factor = 2
-    if 'whole' in note:
+    if "whole" in note:
         factor = 4
-    if 'eighth' in note:
-        factor = 1/2
-    if 'sixteenth' in note:
-        factor = 1/4
-    if '32th' in note:
-        factor = 1/8
-    if 'quintuplet' in note:
-        factor = 1/5
-    if '3' in note:
-        factor *= 2/3
-    if 'dotted' in note:
+    if "eighth" in note:
+        factor = 1 / 2
+    if "sixteenth" in note:
+        factor = 1 / 4
+    if "32th" in note:
+        factor = 1 / 8
+    if "quintuplet" in note:
+        factor = 1 / 5
+    if "3" in note:
+        factor *= 2 / 3
+    if "dotted" in note:
         factor *= 1.5
     if factor == 0:
-        raise ValueError('No valid note description was passed')
-    return 60/bpm/factor
+        raise ValueError("No valid note description was passed")
+    return 60 / bpm / factor
 
 
 def get_time_period_from_musical_rhythm(note, bpm):
@@ -538,10 +577,10 @@ def get_time_period_from_musical_rhythm(note, bpm):
         Time period in s corresponding to the musical rhythm.
 
     """
-    return 1/get_frequency_from_musical_rhythm(note, bpm)
+    return 1 / get_frequency_from_musical_rhythm(note, bpm)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # Check functions
     import matplotlib.pyplot as plt
 

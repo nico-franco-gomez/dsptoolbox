@@ -11,25 +11,34 @@ from matplotlib.axes import Axes
 import scipy.signal as sig
 
 from .signal_class import Signal
-from ._filter import (_biquad_coefficients, _impulse,
-                      _group_delay_filter, _get_biquad_type,
-                      _filter_on_signal, _filter_on_signal_ba,
-                      _filter_and_downsample,
-                      _filter_and_upsample)
+from ._filter import (
+    _biquad_coefficients,
+    _impulse,
+    _group_delay_filter,
+    _get_biquad_type,
+    _filter_on_signal,
+    _filter_on_signal_ba,
+    _filter_and_downsample,
+    _filter_and_upsample,
+)
 from ._plots import _zp_plot
 from ..plots import general_plot
 from .._general_helpers import _check_format_in_path
 
 
-class Filter():
+class Filter:
     """Class for creating and storing linear digital filters with all their
     metadata.
 
     """
+
     # ======== Constructor and initializers ===================================
-    def __init__(self, filter_type: str = 'biquad',
-                 filter_configuration: dict | None = None,
-                 sampling_rate_hz: int | None = None):
+    def __init__(
+        self,
+        filter_type: str = "biquad",
+        filter_configuration: dict | None = None,
+        sampling_rate_hz: int | None = None,
+    ):
         """The Filter class contains all parameters and metadata needed for
         using a digital filter.
 
@@ -117,9 +126,13 @@ class Filter():
         self.warning_if_complex = True
         self.sampling_rate_hz = sampling_rate_hz
         if filter_configuration is None:
-            filter_configuration = \
-                {'eq_type': 0, 'freqs': 1000, 'gain': 0, 'q': 1,
-                 'filter_id': 'dummy'}
+            filter_configuration = {
+                "eq_type": 0,
+                "freqs": 1000,
+                "gain": 0,
+                "q": 1,
+                "filter_id": "dummy",
+            }
         self.set_filter_parameters(filter_type.lower(), filter_configuration)
 
     def initialize_zi(self, number_of_channels: int = 1):
@@ -133,10 +146,11 @@ class Filter():
             Default: 1.
 
         """
-        assert number_of_channels > 0, \
-            '''Zi's have to be initialized for at least one channel'''
+        assert (
+            number_of_channels > 0
+        ), """Zi's have to be initialized for at least one channel"""
         self.zi = []
-        if hasattr(self, 'sos'):
+        if hasattr(self, "sos"):
             for _ in range(number_of_channels):
                 self.zi.append(sig.sosfilt_zi(self.sos))
         else:
@@ -149,10 +163,12 @@ class Filter():
 
     @sampling_rate_hz.setter
     def sampling_rate_hz(self, new_sampling_rate_hz):
-        assert new_sampling_rate_hz is not None, \
-            'Sampling rate can not be None'
-        assert type(new_sampling_rate_hz) is int, \
-            'Sampling rate can only be an integer'
+        assert (
+            new_sampling_rate_hz is not None
+        ), "Sampling rate can not be None"
+        assert (
+            type(new_sampling_rate_hz) is int
+        ), "Sampling rate can only be an integer"
         self.__sampling_rate_hz = new_sampling_rate_hz
 
     @property
@@ -161,8 +177,9 @@ class Filter():
 
     @warning_if_complex.setter
     def warning_if_complex(self, new_warning):
-        assert type(new_warning) is bool, \
-            'This attribute must be of boolean type'
+        assert (
+            type(new_warning) is bool
+        ), "This attribute must be of boolean type"
         self.__warning_if_complex = new_warning
 
     @property
@@ -171,20 +188,23 @@ class Filter():
 
     @filter_type.setter
     def filter_type(self, new_type: str):
-        assert type(new_type) is str, \
-            'Filter type must be a string'
+        assert type(new_type) is str, "Filter type must be a string"
         self.__filter_type = new_type.lower()
 
     def __len__(self):
-        return self.info['order']+1
+        return self.info["order"] + 1
 
     def __str__(self):
         return self._get_metadata_string()
 
     # ======== Filtering ======================================================
-    def filter_signal(self, signal: Signal, channels=None,
-                      activate_zi: bool = False, zero_phase: bool = False) \
-            -> Signal:
+    def filter_signal(
+        self,
+        signal: Signal,
+        channels=None,
+        activate_zi: bool = False,
+        zero_phase: bool = False,
+    ) -> Signal:
         """Takes in a `Signal` object and filters selected channels. Exports a
         new `Signal` object.
 
@@ -210,70 +230,79 @@ class Filter():
 
         """
         # Check sampling rates
-        assert self.sampling_rate_hz == signal.sampling_rate_hz, \
-            'Sampling rates do not match'
+        assert (
+            self.sampling_rate_hz == signal.sampling_rate_hz
+        ), "Sampling rates do not match"
         # Zero phase and zi
-        assert not (activate_zi and zero_phase), \
-            'Filter initial and final values cannot be updated when ' +\
-            'filtering with zero-phase'
+        assert not (activate_zi and zero_phase), (
+            "Filter initial and final values cannot be updated when "
+            + "filtering with zero-phase"
+        )
         # Channels
         if channels is None:
             channels = np.arange(signal.number_of_channels)
         else:
             channels = np.squeeze(channels)
             channels = np.atleast_1d(channels)
-            assert channels.ndim == 1, \
-                'channels can be only a 1D-array or an int'
-            assert all(channels < signal.number_of_channels), \
-                f'Selected channels ({channels}) are not valid for the ' +\
-                f'signal with {signal.number_of_channels} channels'
+            assert (
+                channels.ndim == 1
+            ), "channels can be only a 1D-array or an int"
+            assert all(channels < signal.number_of_channels), (
+                f"Selected channels ({channels}) are not valid for the "
+                + f"signal with {signal.number_of_channels} channels"
+            )
 
         # Zi – create always for all channels and selected channels will get
         # updated while filtering
         if activate_zi:
-            if not hasattr(self, 'zi'):
+            if not hasattr(self, "zi"):
                 self.initialize_zi(signal.number_of_channels)
             if len(self.zi) != signal.number_of_channels:
-                warn('zi values of the filter have not been correctly ' +
-                     'intialized for the number of channels. They have now' +
-                     ' been corrected')
+                warn(
+                    "zi values of the filter have not been correctly "
+                    + "intialized for the number of channels. They have now"
+                    + " been corrected"
+                )
                 self.initialize_zi(signal.number_of_channels)
             zi_old = self.zi
         else:
             zi_old = None
 
         # Check filter length compared to signal
-        if self.info['order'] > signal.time_data.shape[0]:
-            warn('Filter is longer than signal, results might be ' +
-                 'meaningless!')
+        if self.info["order"] > signal.time_data.shape[0]:
+            warn(
+                "Filter is longer than signal, results might be "
+                + "meaningless!"
+            )
 
         # Filter with SOS when possible
-        if hasattr(self, 'sos'):
-            new_signal, zi_new = \
-                _filter_on_signal(
-                    signal=signal,
-                    sos=self.sos,
-                    channels=channels,
-                    zi=zi_old,
-                    zero_phase=zero_phase,
-                    warning_on_complex_output=self.warning_if_complex)
+        if hasattr(self, "sos"):
+            new_signal, zi_new = _filter_on_signal(
+                signal=signal,
+                sos=self.sos,
+                channels=channels,
+                zi=zi_old,
+                zero_phase=zero_phase,
+                warning_on_complex_output=self.warning_if_complex,
+            )
         else:
             # Filter with ba
-            new_signal, zi_new = \
-                _filter_on_signal_ba(
-                    signal=signal,
-                    ba=self.ba,
-                    channels=channels,
-                    zi=zi_old,
-                    zero_phase=zero_phase,
-                    filter_type=self.filter_type,
-                    warning_on_complex_output=self.warning_if_complex)
+            new_signal, zi_new = _filter_on_signal_ba(
+                signal=signal,
+                ba=self.ba,
+                channels=channels,
+                zi=zi_old,
+                zero_phase=zero_phase,
+                filter_type=self.filter_type,
+                warning_on_complex_output=self.warning_if_complex,
+            )
         if activate_zi:
             self.zi = zi_new
         return new_signal
 
-    def filter_and_resample_signal(self, signal: Signal,
-                                   new_sampling_rate_hz: int) -> Signal:
+    def filter_and_resample_signal(
+        self, signal: Signal, new_sampling_rate_hz: int
+    ) -> Signal:
         """Filters and resamples signal. This is only available for all
         channels and sampling rates that are achievable by (only) down- or
         upsampling. This method is for allowing specific filters to be
@@ -301,133 +330,154 @@ class Filter():
 
         """
         fraction = Fraction(
-            new_sampling_rate_hz, signal.sampling_rate_hz).as_integer_ratio()
-        assert fraction[0] == 1 or fraction[1] == 1, \
-            f'{new_sampling_rate_hz} is not valid because it needs down- ' +\
-            f'AND upsampling (Up/Down: {fraction[0]}/{fraction[1]})'
+            new_sampling_rate_hz, signal.sampling_rate_hz
+        ).as_integer_ratio()
+        assert fraction[0] == 1 or fraction[1] == 1, (
+            f"{new_sampling_rate_hz} is not valid because it needs down- "
+            + f"AND upsampling (Up/Down: {fraction[0]}/{fraction[1]})"
+        )
 
         # Check if standard or polyphase representation is to be used
-        if self.filter_type == 'fir':
+        if self.filter_type == "fir":
             polyphase = True
-        elif self.filter_type in ('iir', 'biquad'):
-            if not hasattr(self, 'ba'):
+        elif self.filter_type in ("iir", "biquad"):
+            if not hasattr(self, "ba"):
                 self.ba = sig.sos2tf(self.sos)
             polyphase = False
         else:
-            raise ValueError('Wrong filter type for filtering and resampling')
+            raise ValueError("Wrong filter type for filtering and resampling")
 
         # Check if down- or upsampling is required
         if fraction[0] == 1:
-            assert signal.sampling_rate_hz == self.sampling_rate_hz, \
-                'Sampling rates do not match'
+            assert (
+                signal.sampling_rate_hz == self.sampling_rate_hz
+            ), "Sampling rates do not match"
             new_time_data = _filter_and_downsample(
                 time_data=signal.time_data,
                 down_factor=fraction[1],
                 ba_coefficients=self.ba,
-                polyphase=polyphase)
+                polyphase=polyphase,
+            )
         elif fraction[1] == 1:
-            assert signal.sampling_rate_hz*fraction[0] == \
-                self.sampling_rate_hz, \
-                'Sampling rates do not match. For the upsampler, the ' +\
-                '''sampling rate of the filter should match the output's'''
+            assert (
+                signal.sampling_rate_hz * fraction[0] == self.sampling_rate_hz
+            ), (
+                "Sampling rates do not match. For the upsampler, the "
+                + """sampling rate of the filter should match the output's"""
+            )
             new_time_data = _filter_and_upsample(
                 time_data=signal.time_data,
                 up_factor=fraction[0],
                 ba_coefficients=self.ba,
-                polyphase=polyphase)
+                polyphase=polyphase,
+            )
 
         new_sig = signal.copy()
-        if hasattr(new_sig, 'window'):
+        if hasattr(new_sig, "window"):
             del new_sig.window
         new_sig.sampling_rate_hz = new_sampling_rate_hz
         new_sig.time_data = new_time_data
         return new_sig
 
     # ======== Setters ========================================================
-    def set_filter_parameters(self, filter_type: str,
-                              filter_configuration: dict):
-        if filter_type == 'iir':
-            if 'filter_design_method' not in filter_configuration:
-                filter_configuration['filter_design_method'] = 'butter'
-            if 'bandpass_ripple' not in filter_configuration:
-                filter_configuration['bandpass_ripple'] = None
-            if 'stopband_ripple' not in filter_configuration:
-                filter_configuration['stopband_ripple'] = None
+    def set_filter_parameters(
+        self, filter_type: str, filter_configuration: dict
+    ):
+        if filter_type == "iir":
+            if "filter_design_method" not in filter_configuration:
+                filter_configuration["filter_design_method"] = "butter"
+            if "bandpass_ripple" not in filter_configuration:
+                filter_configuration["bandpass_ripple"] = None
+            if "stopband_ripple" not in filter_configuration:
+                filter_configuration["stopband_ripple"] = None
             self.sos = sig.iirfilter(
-                N=filter_configuration['order'],
-                Wn=filter_configuration['freqs'],
-                btype=filter_configuration['type_of_pass'],
+                N=filter_configuration["order"],
+                Wn=filter_configuration["freqs"],
+                btype=filter_configuration["type_of_pass"],
                 analog=False,
                 fs=self.sampling_rate_hz,
-                ftype=filter_configuration['filter_design_method'],
-                rp=filter_configuration['bandpass_ripple'],
-                rs=filter_configuration['stopband_ripple'],
-                output='sos')
+                ftype=filter_configuration["filter_design_method"],
+                rp=filter_configuration["bandpass_ripple"],
+                rs=filter_configuration["stopband_ripple"],
+                output="sos",
+            )
             self.filter_type = filter_type
-        elif filter_type == 'fir':
+        elif filter_type == "fir":
             # Preparing parameters
-            if 'filter_design_method' not in filter_configuration:
-                filter_configuration['filter_design_method'] = 'hamming'
-            if 'width' not in filter_configuration:
-                filter_configuration['width'] = None
+            if "filter_design_method" not in filter_configuration:
+                filter_configuration["filter_design_method"] = "hamming"
+            if "width" not in filter_configuration:
+                filter_configuration["width"] = None
             # Filter creation
-            self.ba = [sig.firwin(
-                numtaps=filter_configuration['order']+1,
-                cutoff=filter_configuration['freqs'],
-                window=filter_configuration['filter_design_method'],
-                width=filter_configuration['width'],
-                pass_zero=filter_configuration['type_of_pass'],
-                fs=self.sampling_rate_hz), np.asarray([1])]
+            self.ba = [
+                sig.firwin(
+                    numtaps=filter_configuration["order"] + 1,
+                    cutoff=filter_configuration["freqs"],
+                    window=filter_configuration["filter_design_method"],
+                    width=filter_configuration["width"],
+                    pass_zero=filter_configuration["type_of_pass"],
+                    fs=self.sampling_rate_hz,
+                ),
+                np.asarray([1]),
+            ]
             self.filter_type = filter_type
-        elif filter_type == 'biquad':
+        elif filter_type == "biquad":
             # Preparing parameters
-            if type(filter_configuration['eq_type']) is str:
-                filter_configuration['eq_type'] = \
-                    _get_biquad_type(None, filter_configuration['eq_type'])
+            if type(filter_configuration["eq_type"]) is str:
+                filter_configuration["eq_type"] = _get_biquad_type(
+                    None, filter_configuration["eq_type"]
+                )
             # Filter creation
             self.ba = _biquad_coefficients(
-                eq_type=filter_configuration['eq_type'],
+                eq_type=filter_configuration["eq_type"],
                 fs_hz=self.sampling_rate_hz,
-                frequency_hz=filter_configuration['freqs'],
-                gain_db=filter_configuration['gain'],
-                q=filter_configuration['q'])
+                frequency_hz=filter_configuration["freqs"],
+                gain_db=filter_configuration["gain"],
+                q=filter_configuration["q"],
+            )
             # Setting back
-            filter_configuration['eq_type'] = \
-                _get_biquad_type(filter_configuration['eq_type']).capitalize()
-            filter_configuration['order'] = max(len(self.ba[0]),
-                                                len(self.ba[1])) - 1
+            filter_configuration["eq_type"] = _get_biquad_type(
+                filter_configuration["eq_type"]
+            ).capitalize()
+            filter_configuration["order"] = (
+                max(len(self.ba[0]), len(self.ba[1])) - 1
+            )
             self.filter_type = filter_type
         else:
-            assert ('ba' in filter_configuration) ^ \
-                ('sos' in filter_configuration) ^ \
-                ('zpk' in filter_configuration), \
-                'Only (and at least) one type of filter coefficients ' +\
-                'should be passed to create a filter'
-            if ('ba' in filter_configuration):
-                b, a = filter_configuration['ba']
+            assert (
+                ("ba" in filter_configuration)
+                ^ ("sos" in filter_configuration)
+                ^ ("zpk" in filter_configuration)
+            ), (
+                "Only (and at least) one type of filter coefficients "
+                + "should be passed to create a filter"
+            )
+            if "ba" in filter_configuration:
+                b, a = filter_configuration["ba"]
                 self.ba = [np.atleast_1d(b), np.atleast_1d(a)]
-                filter_configuration['order'] = \
+                filter_configuration["order"] = (
                     max(len(self.ba[0]), len(self.ba[1])) - 1
-            if ('zpk' in filter_configuration):
-                z, p, k = filter_configuration['zpk']
+                )
+            if "zpk" in filter_configuration:
+                z, p, k = filter_configuration["zpk"]
                 self.sos = sig.zpk2sos(z, p, k, analog=False)
-                filter_configuration['order'] = len(self.sos)*2 - 1
-            if ('sos' in filter_configuration):
-                self.sos = filter_configuration['sos']
-                filter_configuration['order'] = len(self.sos)*2 - 1
+                filter_configuration["order"] = len(self.sos) * 2 - 1
+            if "sos" in filter_configuration:
+                self.sos = filter_configuration["sos"]
+                filter_configuration["order"] = len(self.sos) * 2 - 1
             # Change filter type to 'fir' or 'iir' depending on coefficients
             self._check_and_update_filter_type()
 
         # Update Metadata about the Filter
         self.info = filter_configuration
-        self.info['sampling_rate_hz'] = self.sampling_rate_hz
-        self.info['filter_type'] = self.filter_type
-        if hasattr(self, 'ba'):
-            self.info['preferred_method_of_filtering'] = 'ba'
-        elif hasattr(self, 'sos'):
-            self.info['preferred_method_of_filtering'] = 'sos'
-        if 'filter_id' not in self.info:
-            self.info['filter_id'] = None
+        self.info["sampling_rate_hz"] = self.sampling_rate_hz
+        self.info["filter_type"] = self.filter_type
+        if hasattr(self, "ba"):
+            self.info["preferred_method_of_filtering"] = "ba"
+        elif hasattr(self, "sos"):
+            self.info["preferred_method_of_filtering"] = "sos"
+        if "filter_id" not in self.info:
+            self.info["filter_id"] = None
 
     # ======== Check type =====================================================
     def _check_and_update_filter_type(self):
@@ -436,9 +486,9 @@ class Filter():
 
         """
         # Get filter coefficients
-        if hasattr(self, 'ba'):
+        if hasattr(self, "ba"):
             b, a = self.ba[0], self.ba[1]
-        elif hasattr(self, 'sos'):
+        elif hasattr(self, "sos"):
             b, a = sig.sos2tf(self.sos)
         # Trim zeros for a
         a = np.atleast_1d(np.trim_zeros(a))
@@ -446,9 +496,9 @@ class Filter():
         if len(a) == 1:
             b /= a[0]
             a = a / a[0]
-            self.filter_type = 'fir'
+            self.filter_type = "fir"
         else:
-            self.filter_type = 'iir'
+            self.filter_type = "iir"
 
     # ======== Getters ========================================================
     def get_filter_metadata(self):
@@ -463,24 +513,22 @@ class Filter():
         return self.info
 
     def _get_metadata_string(self):
-        """Helper for creating a string containing all filter info.
-
-        """
+        """Helper for creating a string containing all filter info."""
         txt = f"""Filter – ID: {self.info['filter_id']}\n"""
-        temp = ''
+        temp = ""
         for n in range(len(txt)):
-            temp += '-'
-        txt += (temp+'\n')
+            temp += "-"
+        txt += temp + "\n"
         for k in self.info.keys():
-            if k == 'ba':
+            if k == "ba":
                 continue
-            txt += \
-                f"""{str(k).replace('_', ' ').
+            txt += f"""{str(k).replace('_', ' ').
                      capitalize()}: {self.info[k]}\n"""
         return txt
 
-    def get_ir(self, length_samples: int = 512, zero_phase: bool = False) \
-            -> Signal:
+    def get_ir(
+        self, length_samples: int = 512, zero_phase: bool = False
+    ) -> Signal:
         """Gets an impulse response of the filter with given length.
 
         Parameters
@@ -495,12 +543,18 @@ class Filter():
 
         """
         ir_filt = _impulse(length_samples)
-        ir_filt = Signal(None, ir_filt, self.sampling_rate_hz, 'ir',
-                         constrain_amplitude=False)
+        ir_filt = Signal(
+            None,
+            ir_filt,
+            self.sampling_rate_hz,
+            "ir",
+            constrain_amplitude=False,
+        )
         return self.filter_signal(ir_filt, zero_phase=zero_phase)
 
-    def get_coefficients(self, mode: str = 'sos') -> list | np.ndarray | \
-            tuple[np.ndarray, np.ndarray, np.ndarray]:
+    def get_coefficients(
+        self, mode: str = "sos"
+    ) -> list | np.ndarray | tuple[np.ndarray, np.ndarray, np.ndarray]:
         """Returns the filter coefficients.
 
         Parameters
@@ -518,63 +572,67 @@ class Filter():
             - `'zpk'`: tuple(z, p, k) with z, p, k of type `np.ndarray`
 
         """
-        if mode == 'sos':
-            if hasattr(self, 'sos'):
+        if mode == "sos":
+            if hasattr(self, "sos"):
                 coefficients = self.sos.copy()
             else:
-                if self.info['order'] > 500:
+                if self.info["order"] > 500:
                     inp = None
-                    while inp not in ('y', 'n'):
+                    while inp not in ("y", "n"):
                         inp = input(
-                            'This filter has a large order ' +
-                            f'''({self.info['order']}). Are you sure you ''' +
-                            'want to get sos? Computation might' +
-                            ' take long time. (y/n)')
+                            "This filter has a large order "
+                            + f"""({self.info['order']}). Are you sure you """
+                            + "want to get sos? Computation might"
+                            + " take long time. (y/n)"
+                        )
                         inp = inp.lower()
-                        if inp == 'y':
+                        if inp == "y":
                             break
-                        if inp == 'n':
+                        if inp == "n":
                             return None
                 coefficients = sig.tf2sos(self.ba[0], self.ba[1])
-        elif mode == 'ba':
-            if hasattr(self, 'sos'):
+        elif mode == "ba":
+            if hasattr(self, "sos"):
                 coefficients = sig.sos2tf(self.sos)
             else:
                 coefficients = deepcopy(self.ba)
-        elif mode == 'zpk':
-            if hasattr(self, 'sos'):
+        elif mode == "zpk":
+            if hasattr(self, "sos"):
                 coefficients = sig.sos2zpk(self.sos)
             else:
                 # Check if filter is too long
-                if self.info['order'] > 500:
+                if self.info["order"] > 500:
                     inp = None
-                    while inp not in ('y', 'n'):
+                    while inp not in ("y", "n"):
                         inp = input(
-                            'This filter has a large order ' +
-                            f'''({self.info['order']}). Are you sure you ''' +
-                            'want to get zeros and poles? Computation might' +
-                            ' take long time. (y/n)')
+                            "This filter has a large order "
+                            + f"""({self.info['order']}). Are you sure you """
+                            + "want to get zeros and poles? Computation might"
+                            + " take long time. (y/n)"
+                        )
                         inp = inp.lower()
-                        if inp == 'y':
+                        if inp == "y":
                             break
-                        if inp == 'n':
+                        if inp == "n":
                             return None
                 coefficients = sig.tf2zpk(self.ba[0], self.ba[1])
         else:
-            raise ValueError(f'{mode} is not valid. Use sos, ba or zpk')
+            raise ValueError(f"{mode} is not valid. Use sos, ba or zpk")
         return coefficients
 
     # ======== Plots and prints ===============================================
     def show_info(self):
-        """Prints all the filter parameters to the console.
-
-        """
+        """Prints all the filter parameters to the console."""
         print(self._get_metadata_string())
 
-    def plot_magnitude(self, length_samples: int = 512, range_hz=[20, 20e3],
-                       normalize: str | None = None,
-                       show_info_box: bool = True,
-                       zero_phase: bool = False):
+    def plot_magnitude(
+        self,
+        length_samples: int = 512,
+        range_hz=[20, 20e3],
+        normalize: str | None = None,
+        show_info_box: bool = True,
+        zero_phase: bool = False,
+    ):
         """Plots magnitude spectrum.
         Change parameters of spectrum with set_spectrum_parameters.
 
@@ -602,24 +660,35 @@ class Filter():
             Axes.
 
         """
-        if self.info['order'] > length_samples:
-            length_samples = self.info['order'] + 100
-            warn(f'length_samples ({length_samples}) is shorter than the ' +
-                 f'''filter order {self.info['order']}. Length will be ''' +
-                 'automatically extended.')
+        if self.info["order"] > length_samples:
+            length_samples = self.info["order"] + 100
+            warn(
+                f"length_samples ({length_samples}) is shorter than the "
+                + f"""filter order {self.info['order']}. Length will be """
+                + "automatically extended."
+            )
         ir = self.get_ir(length_samples=length_samples, zero_phase=zero_phase)
         fig, ax = ir.plot_magnitude(
-            range_hz, normalize, show_info_box=False, scale=False)
+            range_hz, normalize, show_info_box=False, scale=False
+        )
         if show_info_box:
             txt = self._get_metadata_string()
-            ax.text(0.1, 0.5, txt, transform=ax.transAxes,
-                    verticalalignment='top',
-                    bbox=dict(boxstyle='round', facecolor='grey', alpha=0.75))
+            ax.text(
+                0.1,
+                0.5,
+                txt,
+                transform=ax.transAxes,
+                verticalalignment="top",
+                bbox=dict(boxstyle="round", facecolor="grey", alpha=0.75),
+            )
         return fig, ax
 
-    def plot_group_delay(self, length_samples: int = 512,
-                         range_hz=[20, 20e3], show_info_box: bool = False) ->\
-            tuple[Figure, Axes]:
+    def plot_group_delay(
+        self,
+        length_samples: int = 512,
+        range_hz=[20, 20e3],
+        show_info_box: bool = False,
+    ) -> tuple[Figure, Axes]:
         """Plots group delay of the filter. Different methods are used for
         FIR or IIR filters.
 
@@ -641,17 +710,18 @@ class Filter():
             Axes.
 
         """
-        if self.info['order'] > length_samples:
-            length_samples = self.info['order'] + 100
-            warn(f'length_samples ({length_samples}) is shorter than the ' +
-                 f'''filter order {self.info['order']}. Length will be ''' +
-                 'automatically extended.')
-        if hasattr(self, 'sos'):
+        if self.info["order"] > length_samples:
+            length_samples = self.info["order"] + 100
+            warn(
+                f"length_samples ({length_samples}) is shorter than the "
+                + f"""filter order {self.info['order']}. Length will be """
+                + "automatically extended."
+            )
+        if hasattr(self, "sos"):
             ba = sig.sos2tf(self.sos)
         else:
             ba = self.ba
-        f, gd = \
-            _group_delay_filter(ba, length_samples, self.sampling_rate_hz)
+        f, gd = _group_delay_filter(ba, length_samples, self.sampling_rate_hz)
         gd *= 1e3
         ymax = None
         ymin = None
@@ -659,18 +729,32 @@ class Filter():
             ymin = -2
             ymax = 50
         fig, ax = general_plot(
-            x=f, matrix=gd[..., None], range_x=range_hz, range_y=[ymin, ymax],
-            ylabel='Group delay / ms', returns=True)
+            x=f,
+            matrix=gd[..., None],
+            range_x=range_hz,
+            range_y=[ymin, ymax],
+            ylabel="Group delay / ms",
+            returns=True,
+        )
         if show_info_box:
             txt = self._get_metadata_string()
-            ax.text(0.1, 0.5, txt, transform=ax.transAxes,
-                    verticalalignment='top',
-                    bbox=dict(boxstyle='round', facecolor='grey', alpha=0.75))
+            ax.text(
+                0.1,
+                0.5,
+                txt,
+                transform=ax.transAxes,
+                verticalalignment="top",
+                bbox=dict(boxstyle="round", facecolor="grey", alpha=0.75),
+            )
         return fig, ax
 
-    def plot_phase(self, length_samples: int = 512, range_hz=[20, 20e3],
-                   unwrap: bool = False, show_info_box: bool = False) ->\
-            tuple[Figure, Axes]:
+    def plot_phase(
+        self,
+        length_samples: int = 512,
+        range_hz=[20, 20e3],
+        unwrap: bool = False,
+        show_info_box: bool = False,
+    ) -> tuple[Figure, Axes]:
         """Plots phase spectrum.
 
         Parameters
@@ -693,18 +777,25 @@ class Filter():
             Axes.
 
         """
-        if self.info['order'] > length_samples:
-            length_samples = self.info['order'] + 100
-            warn(f'length_samples ({length_samples}) is shorter than the ' +
-                 f'''filter order {self.info['order']}. Length will be ''' +
-                 'automatically extended.')
+        if self.info["order"] > length_samples:
+            length_samples = self.info["order"] + 100
+            warn(
+                f"length_samples ({length_samples}) is shorter than the "
+                + f"""filter order {self.info['order']}. Length will be """
+                + "automatically extended."
+            )
         ir = self.get_ir(length_samples=length_samples)
         fig, ax = ir.plot_phase(range_hz, unwrap)
         if show_info_box:
             txt = self._get_metadata_string()
-            ax.text(0.1, 0.5, txt, transform=ax.transAxes,
-                    verticalalignment='top',
-                    bbox=dict(boxstyle='round', facecolor='grey', alpha=0.75))
+            ax.text(
+                0.1,
+                0.5,
+                txt,
+                transform=ax.transAxes,
+                verticalalignment="top",
+                bbox=dict(boxstyle="round", facecolor="grey", alpha=0.75),
+            )
         return fig, ax
 
     def plot_zp(self, show_info_box: bool = False) -> tuple[Figure, Axes]:
@@ -724,36 +815,47 @@ class Filter():
 
         """
         # Ask explicitely if filter is very long
-        if self.info['order'] > 500:
+        if self.info["order"] > 500:
             inp = None
-            while inp not in ('y', 'n'):
+            while inp not in ("y", "n"):
                 inp = input(
-                    'This filter has a large order ' +
-                    f'''({self.info['order']}). Are you sure you want to''' +
-                    ' plot zeros and poles? Computation might take long ' +
-                    'time. (y/n)')
+                    "This filter has a large order "
+                    + f"""({self.info['order']}). Are you sure you want to"""
+                    + " plot zeros and poles? Computation might take long "
+                    + "time. (y/n)"
+                )
                 inp = inp.lower()
-                if inp == 'y':
+                if inp == "y":
                     break
-                if inp == 'n':
+                if inp == "n":
                     return None
         #
-        if hasattr(self, 'sos'):
+        if hasattr(self, "sos"):
             z, p, k = sig.sos2zpk(self.sos)
         else:
             z, p, k = sig.tf2zpk(self.ba[0], self.ba[1])
         fig, ax = _zp_plot(z, p, returns=True)
-        ax.text(0.75, 0.91, rf'$k={k:.1e}$', transform=ax.transAxes,
-                verticalalignment='top')
+        ax.text(
+            0.75,
+            0.91,
+            rf"$k={k:.1e}$",
+            transform=ax.transAxes,
+            verticalalignment="top",
+        )
         if show_info_box:
             txt = self._get_metadata_string()
-            ax.text(0.1, 0.5, txt, transform=ax.transAxes,
-                    verticalalignment='top',
-                    bbox=dict(boxstyle='round', facecolor='grey', alpha=0.75))
+            ax.text(
+                0.1,
+                0.5,
+                txt,
+                transform=ax.transAxes,
+                verticalalignment="top",
+                bbox=dict(boxstyle="round", facecolor="grey", alpha=0.75),
+            )
         return fig, ax
 
     # ======== Saving and export ==============================================
-    def save_filter(self, path: str = 'filter'):
+    def save_filter(self, path: str = "filter"):
         """Saves the Filter object as a pickle.
 
         Parameters
@@ -764,8 +866,8 @@ class Filter():
             Default: `'filter'` (local folder, object named filter).
 
         """
-        path = _check_format_in_path(path, 'pkl')
-        with open(path, 'wb') as data_file:
+        path = _check_format_in_path(path, "pkl")
+        with open(path, "wb") as data_file:
             dump(self, data_file, HIGHEST_PROTOCOL)
 
     def copy(self):

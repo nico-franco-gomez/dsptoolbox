@@ -36,45 +36,40 @@ Analyze TF/IR:
 """
 from .transfer_functions import (
     spectral_deconvolve,
-
     window_ir,
     window_frequency_dependent,
     window_centered_ir,
-
     compute_transfer_function,
-
     spectral_average,
     min_phase_from_mag,
     lin_phase_from_mag,
     min_phase_ir,
-
     group_delay,
     minimum_group_delay,
     excess_group_delay,
     minimum_phase,
     ir_to_filter,
     filter_to_ir,
-
     combine_ir_with_dirac,
-    warp_ir
+    warp_ir,
 )
 
 __all__ = [
-    'spectral_deconvolve',
-    'window_ir',
-    'compute_transfer_function',
-    'spectral_average',
-    'min_phase_from_mag',
-    'lin_phase_from_mag',
-    'min_phase_ir',
-    'group_delay',
-    'minimum_group_delay',
-    'excess_group_delay',
-    'minimum_phase',
-    'window_frequency_dependent',
-    'ir_to_filter',
-    'filter_to_ir',
-    'combine_ir_with_dirac',
-    'window_centered_ir',
-    'warp_ir',
+    "spectral_deconvolve",
+    "window_ir",
+    "compute_transfer_function",
+    "spectral_average",
+    "min_phase_from_mag",
+    "lin_phase_from_mag",
+    "min_phase_ir",
+    "group_delay",
+    "minimum_group_delay",
+    "excess_group_delay",
+    "minimum_phase",
+    "window_frequency_dependent",
+    "ir_to_filter",
+    "filter_to_ir",
+    "combine_ir_with_dirac",
+    "window_centered_ir",
+    "warp_ir",
 ]

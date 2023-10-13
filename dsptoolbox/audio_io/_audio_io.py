@@ -28,7 +28,7 @@ def standard_callback(signal: Signal):
     # Normalize
     signal = normalize(signal)
     # Fade in and fade out
-    signal = fade(signal, length_fade_seconds=signal.time_vector_s[-1]*0.05)
+    signal = fade(signal, length_fade_seconds=signal.time_vector_s[-1] * 0.05)
 
     def call(outdata: ndarray, frames: int, time, status) -> None:
         """Standard version of an audio callback with a signal object.
@@ -49,8 +49,9 @@ def standard_callback(signal: Signal):
             print(status)
         out, flag = signal.stream_samples(frames, signal_mode=False)
         if flag:
-            outdata[:len(out)] = out
-            outdata[len(out):] = 0
+            outdata[: len(out)] = out
+            outdata[len(out) :] = 0
             raise CallbackStop()
         outdata[:] = out
+
     return call
