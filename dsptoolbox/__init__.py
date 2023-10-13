@@ -1,8 +1,21 @@
 from .standard_functions import (
-    latency, merge_signals, merge_filterbanks, pad_trim,
-    fractional_delay, fractional_octave_frequencies, activity_detector, fade,
-    normalize, true_peak_level, resample, load_pkl_object,
-    erb_frequencies, detrend, rms, CalibrationData, envelope,
+    latency,
+    merge_signals,
+    merge_filterbanks,
+    pad_trim,
+    fractional_delay,
+    fractional_octave_frequencies,
+    activity_detector,
+    fade,
+    normalize,
+    true_peak_level,
+    resample,
+    load_pkl_object,
+    erb_frequencies,
+    detrend,
+    rms,
+    CalibrationData,
+    envelope,
 )
 from .classes import Filter, FilterBank, Signal, MultiBandSignal
 from . import transfer_functions
@@ -18,18 +31,41 @@ from . import effects
 
 __all__ = [
     # Basic classes
-    'Signal', 'MultiBandSignal', 'Filter', 'FilterBank',
-
+    "Signal",
+    "MultiBandSignal",
+    "Filter",
+    "FilterBank",
     # Functions in standard module
-    'latency', 'pad_trim', 'fade', 'merge_signals', 'merge_filterbanks',
-    'resample', 'activity_detector', 'normalize',
-    'fractional_delay', 'true_peak_level', 'ir_to_filter', 'erb_frequencies',
-    'load_pkl_object', 'fractional_octave_frequencies', 'filter_to_ir',
-    'detrend', 'rms', 'CalibrationData', 'envelope',
-
+    "latency",
+    "pad_trim",
+    "fade",
+    "merge_signals",
+    "merge_filterbanks",
+    "resample",
+    "activity_detector",
+    "normalize",
+    "fractional_delay",
+    "true_peak_level",
+    "ir_to_filter",
+    "erb_frequencies",
+    "load_pkl_object",
+    "fractional_octave_frequencies",
+    "filter_to_ir",
+    "detrend",
+    "rms",
+    "CalibrationData",
+    "envelope",
     # Modules
-    'transfer_functions', 'distances', 'room_acoustics', 'plots', 'generators',
-    'filterbanks', 'transforms', 'audio_io', 'beamforming', 'effects'
+    "transfer_functions",
+    "distances",
+    "room_acoustics",
+    "plots",
+    "generators",
+    "filterbanks",
+    "transforms",
+    "audio_io",
+    "beamforming",
+    "effects",
 ]
 
-__version__ = '0.2.7'
+__version__ = "0.2.7"

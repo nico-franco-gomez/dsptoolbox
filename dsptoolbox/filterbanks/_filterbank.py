@@ -7,7 +7,7 @@ from os import sep
 from pickle import dump, HIGHEST_PROTOCOL
 from copy import deepcopy
 
-from scipy.signal import (sosfilt, sosfilt_zi, butter, sosfiltfilt)
+from scipy.signal import sosfilt, sosfilt_zi, butter, sosfiltfilt
 from ..classes import Signal, MultiBandSignal, FilterBank, Filter
 
 from ..generators import dirac
@@ -17,7 +17,7 @@ from .._standard import _group_delay_direct
 
 
 # ============== First implementation
-class LRFilterBank():
+class LRFilterBank:
     """This is specially crafted class for a Linkwitz-Riley crossovers filter
     bank since its implementation might be hard to generalize or inherit from
     the FilterBank class.
@@ -28,9 +28,11 @@ class LRFilterBank():
     structure used for the zi's is very convoluted.
 
     """
+
     # ======== Constructor and initiliazers ===================================
-    def __init__(self, freqs, order=4, sampling_rate_hz: int = 48000,
-                 info: dict = None):
+    def __init__(
+        self, freqs, order=4, sampling_rate_hz: int = 48000, info: dict = None
+    ):
         """Constructor for a linkwitz-riley crossovers filter bank. This is a
         near perfect magnitude reconstruction filter bank.
 
@@ -52,20 +54,24 @@ class LRFilterBank():
         """
         if info is None:
             info = {}
-        if type(order) == int:
-            order = np.ones(len(freqs))*order
+        if isinstance(order, int):
+            order = np.ones(len(freqs)) * order
         freqs = np.atleast_1d(np.asarray(freqs).squeeze())
         order = np.atleast_1d(np.asarray(order).squeeze())
-        assert np.max(freqs) <= sampling_rate_hz//2, \
-            'Highest frequency is above nyquist frequency for the given ' +\
-            'sampling rate'
-        assert len(freqs) == len(order), \
-            'Number of frequencies and number of order of the crossovers ' +\
-            'do not match'
+        assert np.max(freqs) <= sampling_rate_hz // 2, (
+            "Highest frequency is above nyquist frequency for the given "
+            + "sampling rate"
+        )
+        assert len(freqs) == len(order), (
+            "Number of frequencies and number of order of the crossovers "
+            + "do not match"
+        )
         for o in order:
             if o % 2 != 0:
-                warn('Order of the crossovers has to be an even number for ' +
-                     'perfect magnitude reconstruction!')
+                warn(
+                    "Order of the crossovers has to be an even number for "
+                    + "perfect magnitude reconstruction!"
+                )
         freqs_order = freqs.argsort()
         self.freqs = freqs[freqs_order]
         self.order = order[freqs_order]
@@ -80,28 +86,24 @@ class LRFilterBank():
         self.info = self.info | info
 
     def _compute_center_frequencies(self):
-        """Compute center frequencies from crossover frequencies.
-
-        """
+        """Compute center frequencies from crossover frequencies."""
         val = 0
         center_frequencies = []
         for cr in self.freqs:
-            center_frequencies.append((val+cr)/2)
+            center_frequencies.append((val + cr) / 2)
             val = cr
-        center_frequencies.append((val+self.sampling_rate_hz//2)/2)
+        center_frequencies.append((val + self.sampling_rate_hz // 2) / 2)
         self.center_frequencies = np.asarray(center_frequencies)
 
     def _generate_metadata(self):
-        """Internal method to update metadata about the filter bank.
-
-        """
-        if not hasattr(self, 'info'):
+        """Internal method to update metadata about the filter bank."""
+        if not hasattr(self, "info"):
             self.info = {}
-        self.info['crossover_frequencies'] = self.freqs
-        self.info['crossover_orders'] = self.order
-        self.info['number_of_crossovers'] = self.number_of_cross
-        self.info['number_of_bands'] = self.number_of_bands
-        self.info['sampling_rate_hz'] = self.sampling_rate_hz
+        self.info["crossover_frequencies"] = self.freqs
+        self.info["crossover_orders"] = self.order
+        self.info["number_of_crossovers"] = self.number_of_cross
+        self.info["number_of_bands"] = self.number_of_bands
+        self.info["sampling_rate_hz"] = self.sampling_rate_hz
 
     def _create_filters_sos(self):
         """Creates and saves filter's sos representations in a list with
@@ -110,10 +112,20 @@ class LRFilterBank():
         """
         self.sos = []
         for i in range(self.number_of_cross):
-            lp = butter(self.order[i], self.freqs[i], btype='lowpass',
-                        fs=self.sampling_rate_hz, output='sos')
-            hp = butter(self.order[i], self.freqs[i], btype='highpass',
-                        fs=self.sampling_rate_hz, output='sos')
+            lp = butter(
+                self.order[i],
+                self.freqs[i],
+                btype="lowpass",
+                fs=self.sampling_rate_hz,
+                output="sos",
+            )
+            hp = butter(
+                self.order[i],
+                self.freqs[i],
+                btype="highpass",
+                fs=self.sampling_rate_hz,
+                output="sos",
+            )
             self.sos.append([lp, hp])
 
     def initialize_zi(self, number_of_channels: int = 1):
@@ -147,9 +159,13 @@ class LRFilterBank():
             self.channels_zi.append([cross_zi, allpass_zi])
 
     # ======== Filtering ======================================================
-    def filter_signal(self, s: Signal, mode: str = 'parallel',
-                      activate_zi: bool = False, zero_phase: bool = False) \
-            -> MultiBandSignal | Signal:
+    def filter_signal(
+        self,
+        s: Signal,
+        mode: str = "parallel",
+        activate_zi: bool = False,
+        zero_phase: bool = False,
+    ) -> MultiBandSignal | Signal:
         """Filters a signal regarding the zi's of the filters and returns
         a MultiBandSignal. Only `'parallel'` mode is available for this type
         of filter bank.
@@ -174,71 +190,87 @@ class LRFilterBank():
 
         """
         mode = mode.lower()
-        assert mode in ('parallel', 'sequential', 'summed'), \
-            f'{mode} is not a valid mode. Use parallel, sequential or summed'
-        if mode == 'sequential':
-            warn('sequential mode is not supported for this filter bank. ' +
-                 'It is automatically changed to summed')
-            mode = 'summed'
-        assert s.sampling_rate_hz == self.sampling_rate_hz, \
-            'Sampling rates do not match'
-        assert not (activate_zi and zero_phase), \
-            'Zero phase filtering and activating zi is a valid setting'
-        new_time_data = np.zeros((s.time_data.shape[0],
-                                  s.number_of_channels,
-                                  self.number_of_bands))
+        assert mode in (
+            "parallel",
+            "sequential",
+            "summed",
+        ), f"{mode} is not a valid mode. Use parallel, sequential or summed"
+        if mode == "sequential":
+            warn(
+                "sequential mode is not supported for this filter bank. "
+                + "It is automatically changed to summed"
+            )
+            mode = "summed"
+        assert (
+            s.sampling_rate_hz == self.sampling_rate_hz
+        ), "Sampling rates do not match"
+        assert not (
+            activate_zi and zero_phase
+        ), "Zero phase filtering and activating zi is a valid setting"
+        new_time_data = np.zeros(
+            (s.time_data.shape[0], s.number_of_channels, self.number_of_bands)
+        )
         in_sig = s.time_data
 
         # Filter with zi
         if activate_zi:
-            if not hasattr(self, 'channels_zi'):
+            if not hasattr(self, "channels_zi"):
                 self.initialize_zi(s.number_of_channels)
             elif len(self.channels_zi) != s.number_of_channels:
                 self.initialize_zi(s.number_of_channels)
             for ch in range(s.number_of_channels):
                 for cn in range(self.number_of_cross):
-                    band, in_sig[:, ch] = \
-                        self._two_way_split_zi(
-                            in_sig[:, ch], channel_number=ch,
-                            cross_number=cn)
+                    band, in_sig[:, ch] = self._two_way_split_zi(
+                        in_sig[:, ch], channel_number=ch, cross_number=cn
+                    )
                     # band, in_sig[:, ch] = self._filt(in_sig[:, ch], cn)
-                    for ap_n in range(cn+1, self.number_of_cross):
-                        band = \
-                            self._allpass_zi(
-                                band, channel_number=ch,
-                                cross_number=cn, ap_number=ap_n)
+                    for ap_n in range(cn + 1, self.number_of_cross):
+                        band = self._allpass_zi(
+                            band,
+                            channel_number=ch,
+                            cross_number=cn,
+                            ap_number=ap_n,
+                        )
                         # band = self._filt(band, ap_n, split=False)
                     new_time_data[:, ch, cn] = band
                 # Last high frequency component
-                new_time_data[:, ch, cn+1] = in_sig[:, ch]
+                new_time_data[:, ch, cn + 1] = in_sig[:, ch]
         # Zero phase
         elif zero_phase:
             for cn in range(self.number_of_cross):
-                new_time_data[:, :, cn] = \
-                    sosfiltfilt(self.sos[cn][0], in_sig, axis=0)
+                new_time_data[:, :, cn] = sosfiltfilt(
+                    self.sos[cn][0], in_sig, axis=0
+                )
                 in_sig = sosfiltfilt(self.sos[cn][1], in_sig, axis=0)
             # Last high frequency component
-            new_time_data[:, :, cn+1] = in_sig
+            new_time_data[:, :, cn + 1] = in_sig
         # Standard filtering
         else:
             for cn in range(self.number_of_cross):
                 band, in_sig = self._filt(in_sig, cn)
-                for ap_n in range(cn+1, self.number_of_cross):
+                for ap_n in range(cn + 1, self.number_of_cross):
                     band = self._filt(band, ap_n, split=False)
                 new_time_data[:, :, cn] = band
             # Last high frequency component
-            new_time_data[:, :, cn+1] = in_sig
+            new_time_data[:, :, cn + 1] = in_sig
 
         b = []
         for n in range(self.number_of_bands):
-            b.append(Signal(None, new_time_data[:, :, n], s.sampling_rate_hz,
-                            signal_type=s.signal_type))
+            b.append(
+                Signal(
+                    None,
+                    new_time_data[:, :, n],
+                    s.sampling_rate_hz,
+                    signal_type=s.signal_type,
+                )
+            )
         d = dict(
-            readme='MultiBandSignal made using Linkwitz-Riley filter bank',
+            readme="MultiBandSignal made using Linkwitz-Riley filter bank",
             filterbank_freqs=self.freqs,
-            filterbank_order=self.order)
+            filterbank_order=self.order,
+        )
         out_sig = MultiBandSignal(bands=b, same_sampling_rate=True, info=d)
-        if mode == 'summed':
+        if mode == "summed":
             out_sig = out_sig.collapse()
         return out_sig
 
@@ -323,9 +355,14 @@ class LRFilterBank():
         return ir
 
     # ======== Prints and plots ===============================================
-    def plot_magnitude(self, range_hz=[20, 20e3], mode: str = 'parallel',
-                       length_samples: int = 2048, test_zi: bool = False,
-                       zero_phase: bool = False):
+    def plot_magnitude(
+        self,
+        range_hz=[20, 20e3],
+        mode: str = "parallel",
+        length_samples: int = 2048,
+        test_zi: bool = False,
+        zero_phase: bool = False,
+    ):
         """Plots the magnitude response of each filter. Only `'parallel'`
         mode is supported, thus no mode parameter can be set.
 
@@ -352,49 +389,67 @@ class LRFilterBank():
 
         """
         mode = mode.lower()
-        if mode != 'parallel':
-            warn('Plotting for LRFilterBank is only supported with parallel ' +
-                 'mode. Setting to parallel')
+        if mode != "parallel":
+            warn(
+                "Plotting for LRFilterBank is only supported with parallel "
+                + "mode. Setting to parallel"
+            )
         d = dirac(
-            length_samples=length_samples, number_of_channels=1,
-            sampling_rate_hz=self.sampling_rate_hz)
-        bs = self.filter_signal(d, mode='parallel', activate_zi=test_zi,
-                                zero_phase=zero_phase)
+            length_samples=length_samples,
+            number_of_channels=1,
+            sampling_rate_hz=self.sampling_rate_hz,
+        )
+        bs = self.filter_signal(
+            d, mode="parallel", activate_zi=test_zi, zero_phase=zero_phase
+        )
         specs = []
         f = bs.bands[0].get_spectrum()[0]
         summed = []
         for b in bs.bands:
-            b.set_spectrum_parameters(method='standard')
+            b.set_spectrum_parameters(method="standard")
             summed.append(b.time_data[:, 0])
-            f, sp = \
-                _get_normalized_spectrum(
-                    f, np.squeeze(b.get_spectrum()[1]),
-                    f_range_hz=range_hz,
-                    normalize=None)
+            f, sp = _get_normalized_spectrum(
+                f,
+                np.squeeze(b.get_spectrum()[1]),
+                f_range_hz=range_hz,
+                normalize=None,
+            )
             specs.append(np.squeeze(sp))
         specs = np.array(specs).T
-        fig, ax = general_plot(f, specs, range_hz, ylabel='Magnitude / dB',
-                               returns=True,
-                               labels=[f'Filter {h}'
-                                       for h in range(bs.number_of_bands)],
-                               range_y=[-30, 10])
+        fig, ax = general_plot(
+            f,
+            specs,
+            range_hz,
+            ylabel="Magnitude / dB",
+            returns=True,
+            labels=[f"Filter {h}" for h in range(bs.number_of_bands)],
+            range_y=[-30, 10],
+        )
         # Summed signal
         summed = np.sum(np.array(summed).T, axis=1)
         sp_summed = np.fft.rfft(summed)
-        f_s, sp_summed = \
-            _get_normalized_spectrum(
-                f, sp_summed,
-                f_range_hz=range_hz,
-                normalize=None)
-        ax.plot(f_s, sp_summed, alpha=0.7, linestyle='dashed',
-                label='Summed signal')
+        f_s, sp_summed = _get_normalized_spectrum(
+            f, sp_summed, f_range_hz=range_hz, normalize=None
+        )
+        ax.plot(
+            f_s,
+            sp_summed,
+            alpha=0.7,
+            linestyle="dashed",
+            label="Summed signal",
+        )
         ax.legend()
         return fig, ax
 
-    def plot_phase(self, range_hz=[20, 20e3], mode: str = 'parallel',
-                   length_samples: int = 2048,
-                   test_zi: bool = False, zero_phase: bool = True,
-                   unwrap: bool = False):
+    def plot_phase(
+        self,
+        range_hz=[20, 20e3],
+        mode: str = "parallel",
+        length_samples: int = 2048,
+        test_zi: bool = False,
+        zero_phase: bool = True,
+        unwrap: bool = False,
+    ):
         """Plots the phase response of each filter.
 
         Parameters
@@ -422,39 +477,55 @@ class LRFilterBank():
 
         """
         mode = mode.lower()
-        assert mode in ('parallel', 'summed'), \
-            f'{mode} is not supported. Use either parallel or summed'
+        assert mode in (
+            "parallel",
+            "summed",
+        ), f"{mode} is not supported. Use either parallel or summed"
         d = dirac(
             length_samples=length_samples,
-            number_of_channels=1, sampling_rate_hz=self.sampling_rate_hz)
+            number_of_channels=1,
+            sampling_rate_hz=self.sampling_rate_hz,
+        )
 
-        if mode == 'parallel':
-            bs = self.filter_signal(d, mode='parallel', activate_zi=test_zi,
-                                    zero_phase=zero_phase)
+        if mode == "parallel":
+            bs = self.filter_signal(
+                d, mode="parallel", activate_zi=test_zi, zero_phase=zero_phase
+            )
             phase = []
             f = bs.bands[0].get_spectrum()[0]
             for b in bs.bands:
                 phase.append(np.angle(b.get_spectrum()[1]))
             phase = np.squeeze(np.array(phase).T)
-            labels = [f'Filter {h}' for h in range(bs.number_of_bands)]
-        elif mode == 'summed':
-            bs = self.filter_signal(d, mode='summed', activate_zi=test_zi,
-                                    zero_phase=zero_phase)
+            labels = [f"Filter {h}" for h in range(bs.number_of_bands)]
+        elif mode == "summed":
+            bs = self.filter_signal(
+                d, mode="summed", activate_zi=test_zi, zero_phase=zero_phase
+            )
             f, phase = bs.get_spectrum()
             phase = np.angle(phase)
-            labels = ['Summed']
+            labels = ["Summed"]
 
         if unwrap:
             phase = np.unwrap(phase, axis=0)
-        fig, ax = general_plot(f, phase, range_hz, ylabel='Phase / rad',
-                               returns=True,
-                               labels=labels)
+        fig, ax = general_plot(
+            f,
+            phase,
+            range_hz,
+            ylabel="Phase / rad",
+            returns=True,
+            labels=labels,
+        )
         return fig, ax
 
-    def plot_group_delay(self, range_hz=[20, 20e3], mode: str = 'parallel',
-                         length_samples: int = 2048,
-                         test_zi: bool = False, zero_phase: bool = False,
-                         returns: bool = False):
+    def plot_group_delay(
+        self,
+        range_hz=[20, 20e3],
+        mode: str = "parallel",
+        length_samples: int = 2048,
+        test_zi: bool = False,
+        zero_phase: bool = False,
+        returns: bool = False,
+    ):
         """Plots the phase response of each filter.
 
         Parameters
@@ -482,43 +553,55 @@ class LRFilterBank():
 
         """
         mode = mode.lower()
-        assert mode in ('parallel', 'summed'), \
-            f'{mode} is not supported. Use either parallel or summed'
+        assert mode in (
+            "parallel",
+            "summed",
+        ), f"{mode} is not supported. Use either parallel or summed"
         d = dirac(
             length_samples=length_samples,
-            number_of_channels=1, sampling_rate_hz=self.sampling_rate_hz)
-        if mode == 'parallel':
-            bs = self.filter_signal(d, mode='parallel', activate_zi=test_zi,
-                                    zero_phase=zero_phase)
+            number_of_channels=1,
+            sampling_rate_hz=self.sampling_rate_hz,
+        )
+        if mode == "parallel":
+            bs = self.filter_signal(
+                d, mode="parallel", activate_zi=test_zi, zero_phase=zero_phase
+            )
             gd = []
             f = bs.bands[0].get_spectrum()[0]
             for b in bs.bands:
-                gd.append(_group_delay_direct(
-                    np.squeeze(b.get_spectrum()[1]), delta_f=f[1]-f[0]))
-            gd = np.squeeze(np.array(gd).T)*1e3
-            labels = [f'Filter {h}' for h in range(bs.number_of_bands)]
-        elif mode == 'summed':
-            bs = self.filter_signal(d, mode='summed', activate_zi=test_zi,
-                                    zero_phase=zero_phase)
+                gd.append(
+                    _group_delay_direct(
+                        np.squeeze(b.get_spectrum()[1]), delta_f=f[1] - f[0]
+                    )
+                )
+            gd = np.squeeze(np.array(gd).T) * 1e3
+            labels = [f"Filter {h}" for h in range(bs.number_of_bands)]
+        elif mode == "summed":
+            bs = self.filter_signal(
+                d, mode="summed", activate_zi=test_zi, zero_phase=zero_phase
+            )
             f, sp = bs.get_spectrum()
-            gd = _group_delay_direct(sp.squeeze(), delta_f=f[1]-f[0])
-            labels = ['Summed']
-        fig, ax = general_plot(f, gd, range_hz, ylabel='Group delay / ms',
-                               returns=True,
-                               labels=labels)
+            gd = _group_delay_direct(sp.squeeze(), delta_f=f[1] - f[0])
+            labels = ["Summed"]
+        fig, ax = general_plot(
+            f,
+            gd,
+            range_hz,
+            ylabel="Group delay / ms",
+            returns=True,
+            labels=labels,
+        )
         if returns:
             return fig, ax
 
     def show_info(self):
-        """Prints out information about the filter bank.
-
-        """
+        """Prints out information about the filter bank."""
         print()
         for k in self.info.keys():
-            print(str(k).replace('_', ' ').capitalize(), end='')
-            print(f': {self.info[k]}')
+            print(str(k).replace("_", " ").capitalize(), end="")
+            print(f": {self.info[k]}")
 
-    def save_filterbank(self, path: str = 'filterbank'):
+    def save_filterbank(self, path: str = "filterbank"):
         """Saves the FilterBank object as a pickle.
 
         Parameters
@@ -529,11 +612,12 @@ class LRFilterBank():
             (local folder, object named filterbank).
 
         """
-        if '.' in path.split(sep)[-1]:
-            raise ValueError('Please introduce the saving path without ' +
-                             'format')
-        path += '.pkl'
-        with open(path, 'wb') as data_file:
+        if "." in path.split(sep)[-1]:
+            raise ValueError(
+                "Please introduce the saving path without " + "format"
+            )
+        path += ".pkl"
+        with open(path, "wb") as data_file:
             dump(self, data_file, HIGHEST_PROTOCOL)
 
     def copy(self):
@@ -551,8 +635,15 @@ class LRFilterBank():
 class GammaToneFilterBank(FilterBank):
     """This class extends the FilterBank to the reconstruction
     possibilites of the Gamma Tone Filter Bank."""
-    def __init__(self, filters: list, info: dict, frequencies: np.ndarray,
-                 coefficients: np.ndarray, normalizations: np.ndarray):
+
+    def __init__(
+        self,
+        filters: list,
+        info: dict,
+        frequencies: np.ndarray,
+        coefficients: np.ndarray,
+        normalizations: np.ndarray,
+    ):
         """Constructor for the Gamma Tone Filter Bank. It is only available as
         a constant sampling rate filter bank.
 
@@ -592,7 +683,7 @@ class GammaToneFilterBank(FilterBank):
 
         # apply filterbank to impulse to estimate the required values
         d = dirac(delay_samples + 3, sampling_rate_hz=self.sampling_rate_hz)
-        d = self.filter_signal(d, mode='parallel')
+        d = self.filter_signal(d, mode="parallel")
         d = d.get_all_bands(channel=0)
         real, imag = d.time_data, d.time_data_imaginary
 
@@ -603,12 +694,16 @@ class GammaToneFilterBank(FilterBank):
 
         # sample at which the maximum occurs
         # (excluding last sample for a safe calculation of the slope below)
-        idx_max = np.argmax(env[:, :delay_samples + 1], axis=-1)
+        idx_max = np.argmax(env[:, : delay_samples + 1], axis=-1)
         delays = delay_samples - idx_max
 
         # calculate the phase factor from the slopes
-        slopes = np.array([ir[bb, idx + 1] - ir[bb, idx - 1]
-                           for bb, idx in enumerate(idx_max)])
+        slopes = np.array(
+            [
+                ir[bb, idx + 1] - ir[bb, idx - 1]
+                for bb, idx in enumerate(idx_max)
+            ]
+        )
 
         phase_factors = 1j / (slopes / np.abs(slopes))
 
@@ -623,21 +718,24 @@ class GammaToneFilterBank(FilterBank):
         """
         # positive and negative center frequencies in the z-plane
         z = np.atleast_2d(
-            np.exp(2j * np.pi * self._frequencies / self.sampling_rate_hz)).T
+            np.exp(2j * np.pi * self._frequencies / self.sampling_rate_hz)
+        ).T
         z_conj = np.conjugate(z)
 
         # calculate transfer function at all center frequencies for all bands
         # (matrixes contain center frequencies along first dimension and
-        h_pos = (1 - np.atleast_2d(self._coefficients) / z)**(-4) * \
-            np.atleast_2d(self._normalizations)
-        h_neg = (1 - np.atleast_2d(self._coefficients) / z_conj)**(-4) * \
-            np.atleast_2d(self._normalizations)
+        h_pos = (1 - np.atleast_2d(self._coefficients) / z) ** (
+            -4
+        ) * np.atleast_2d(self._normalizations)
+        h_neg = (1 - np.atleast_2d(self._coefficients) / z_conj) ** (
+            -4
+        ) * np.atleast_2d(self._normalizations)
 
         # apply delay and phase correction
         phase_factors = np.atleast_2d(self._phase_factors)
         delays = np.atleast_2d(self._delays)
-        h_pos *= phase_factors * z**(-delays)
-        h_neg *= phase_factors * np.conjugate(z)**(-delays)
+        h_pos *= phase_factors * z ** (-delays)
+        h_neg *= phase_factors * np.conjugate(z) ** (-delays)
 
         # combine positive and negative spectrum
         h = (h_pos + np.conjugate(h_neg)) / 2
@@ -671,16 +769,23 @@ class GammaToneFilterBank(FilterBank):
             The summed input.
 
         """
-        condition = all([signal.bands[n].time_data_imaginary is not None
-                         for n in range(signal.number_of_bands)])
-        assert condition, \
-            'Not all bands have imaginary time data. Reconstruction cannot ' +\
-            'be done'
-        shape = (signal.number_of_bands,
-                 signal.bands[0].time_data.shape[0],
-                 signal.number_of_channels)
+        condition = all(
+            [
+                signal.bands[n].time_data_imaginary is not None
+                for n in range(signal.number_of_bands)
+            ]
+        )
+        assert condition, (
+            "Not all bands have imaginary time data. Reconstruction cannot "
+            + "be done"
+        )
+        shape = (
+            signal.number_of_bands,
+            signal.bands[0].time_data.shape[0],
+            signal.number_of_channels,
+        )
         # (bands, time samples, channels)
-        time = np.empty(shape, dtype='cfloat')
+        time = np.empty(shape, dtype="cfloat")
         for ind, b in enumerate(signal.bands):
             time[ind, :, :] = b.time_data + b.time_data_imaginary * 1j
 
@@ -694,17 +799,17 @@ class GammaToneFilterBank(FilterBank):
         reconstructed_sig = signal.bands[0].copy()
 
         # apply phase shift, delay, and gain
-        for bb, (phase_factor, delay, gain) in enumerate(zip(
-                self._phase_factors, self._delays, self._gains)):
-
-            time[bb] = \
-                np.real(np.roll(time[bb], delay, axis=-1) * phase_factor) * \
-                gain
+        for bb, (phase_factor, delay, gain) in enumerate(
+            zip(self._phase_factors, self._delays, self._gains)
+        ):
+            time[bb] = (
+                np.real(np.roll(time[bb], delay, axis=-1) * phase_factor)
+                * gain
+            )
 
         # sum and squeeze first axis (the signal is already real, but the data
         # type is still complex)
-        reconstructed_sig.time_data = \
-            np.sum(np.real(time), axis=0)
+        reconstructed_sig.time_data = np.sum(np.real(time), axis=0)
         return reconstructed_sig
 
 
@@ -713,8 +818,13 @@ class BaseCrossover(FilterBank):
     crossover classes together.
 
     """
-    def __init__(self, analysis_filters: list, synthesis_filters: list,
-                 info: dict = None):
+
+    def __init__(
+        self,
+        analysis_filters: list,
+        synthesis_filters: list,
+        info: dict = None,
+    ):
         """Constructor for a crossover. Analysis and synthesis filters are
         needed for creating an instance.
 
@@ -737,11 +847,13 @@ class BaseCrossover(FilterBank):
           band signal.
 
         """
-        assert len(analysis_filters) == 2, \
-            'Exactly two filters are needed for a valid crossover'
+        assert (
+            len(analysis_filters) == 2
+        ), "Exactly two filters are needed for a valid crossover"
         self.filters_synthesis = synthesis_filters
-        super().__init__(filters=analysis_filters,
-                         same_sampling_rate=True, info=info)
+        super().__init__(
+            filters=analysis_filters, same_sampling_rate=True, info=info
+        )
 
     # ======== Extra properties ===============================================
     @property
@@ -750,35 +862,48 @@ class BaseCrossover(FilterBank):
 
     @filters_synthesis.setter
     def filters_synthesis(self, new_filters):
-        assert len(new_filters) == 2, \
-            'Two synthesis filters are needed in a crossover'
-        assert all([type(n) == Filter for n in new_filters]), \
-            'Filters have to be of type Filter'
+        assert (
+            len(new_filters) == 2
+        ), "Two synthesis filters are needed in a crossover"
+        assert all(
+            [isinstance(n, Filter) for n in new_filters]
+        ), "Filters have to be of type Filter"
         self.__filters_synthesis = new_filters
 
     # ======== Filtering ======================================================
-    def filter_signal(self, signal: Signal, mode: str = 'parallel',
-                      activate_zi: bool = False, downsample: bool = False) \
-            -> Signal | MultiBandSignal:
+    def filter_signal(
+        self,
+        signal: Signal,
+        mode: str = "parallel",
+        activate_zi: bool = False,
+        downsample: bool = False,
+    ) -> Signal | MultiBandSignal:
         if not downsample:
             return super().filter_signal(
-                signal, mode, activate_zi, zero_phase=False)
+                signal, mode, activate_zi, zero_phase=False
+            )
         # ========== In case of downsampling while filtering ==================
         mode = mode.lower()
-        assert mode in ('parallel', 'sequential', 'summed'), \
-            f'{mode} is not a valid mode. Use parallel, sequential or summed'
-        assert signal.sampling_rate_hz == self.sampling_rate_hz, \
-            'Sampling rates do not match'
+        assert mode in (
+            "parallel",
+            "sequential",
+            "summed",
+        ), f"{mode} is not a valid mode. Use parallel, sequential or summed"
+        assert (
+            signal.sampling_rate_hz == self.sampling_rate_hz
+        ), "Sampling rates do not match"
         if activate_zi:
             if len(self.filters[0].zi) != signal.number_of_channels:
                 self.initialize_zi(signal.number_of_channels)
         new_sig = _crossover_downsample(
-            signal, self.filters, mode=mode, down_factor=2)
+            signal, self.filters, mode=mode, down_factor=2
+        )
         return new_sig
 
     # ======== Reconstructing =================================================
-    def reconstruct_signal(self, signal: MultiBandSignal,
-                           upsample: bool = False):
+    def reconstruct_signal(
+        self, signal: MultiBandSignal, upsample: bool = False
+    ):
         """Reconstructs a two band signal using the synthesis filters of the
         crossover.
 
@@ -798,82 +923,119 @@ class BaseCrossover(FilterBank):
             Reconstructed signal.
 
         """
-        assert signal.number_of_bands == 2, \
-            'There must be exactly two bands in order to reconstruct ' +\
-            'signal using a crossover'
+        assert signal.number_of_bands == 2, (
+            "There must be exactly two bands in order to reconstruct "
+            + "signal using a crossover"
+        )
         uf = 2 if upsample else 1
         return _reconstruct_from_crossover_upsample(
-            signal.bands[0], signal.bands[1], self.filters_synthesis,
-            up_factor=uf)
+            signal.bands[0],
+            signal.bands[1],
+            self.filters_synthesis,
+            up_factor=uf,
+        )
 
     # ======== Plotting =======================================================
-    def plot_magnitude(self, mode: str = 'parallel', range_hz=[20, 20e3],
-                       length_samples: int = 2048, test_zi: bool = False,
-                       downsample: bool = True):
+    def plot_magnitude(
+        self,
+        mode: str = "parallel",
+        range_hz=[20, 20e3],
+        length_samples: int = 2048,
+        test_zi: bool = False,
+        downsample: bool = True,
+    ):
         if not downsample:
             return super().plot_magnitude(
-                mode, range_hz, length_samples, test_zi)
+                mode, range_hz, length_samples, test_zi
+            )
 
         # If downsampling is activated
         max_order = 0
         for b in self.filters:
-            max_order = max(max_order, b.info['order'])
+            max_order = max(max_order, b.info["order"])
         if max_order > length_samples:
-            warn(f'Filter order {max_order} is longer than {length_samples}.' +
-                 ' The length will be adapted to be 100 samples longer than' +
-                 ' the longest filter')
+            warn(
+                f"Filter order {max_order} is longer than {length_samples}."
+                + " The length will be adapted to be 100 samples longer than"
+                + " the longest filter"
+            )
             length_samples = max_order + 100
 
         # Impulse
         d = dirac(
             length_samples=length_samples,
-            number_of_channels=1, sampling_rate_hz=self.sampling_rate_hz)
+            number_of_channels=1,
+            sampling_rate_hz=self.sampling_rate_hz,
+        )
 
         # Filtering and plot
-        if mode == 'parallel':
-            bs = self.filter_signal(d, mode='parallel',
-                                    activate_zi=test_zi, downsample=True)
+        if mode == "parallel":
+            bs = self.filter_signal(
+                d, mode="parallel", activate_zi=test_zi, downsample=True
+            )
             specs = []
             f = bs.bands[0].get_spectrum()[0]
             for b in bs.bands:
-                b.set_spectrum_parameters(method='standard')
+                b.set_spectrum_parameters(method="standard")
                 f, sp = _get_normalized_spectrum(
-                    f, np.squeeze(b.get_spectrum()[1]), f_range_hz=range_hz,
-                    normalize=None)
+                    f,
+                    np.squeeze(b.get_spectrum()[1]),
+                    f_range_hz=range_hz,
+                    normalize=None,
+                )
                 specs.append(np.squeeze(sp))
             specs = np.array(specs).T
-            if np.min(specs) < np.max(specs)-50:
-                range_y = [np.max(specs)-50, np.max(specs)+2]
+            if np.min(specs) < np.max(specs) - 50:
+                range_y = [np.max(specs) - 50, np.max(specs) + 2]
             else:
                 range_y = None
-            fig, ax = general_plot(f, specs, range_hz, ylabel='Magnitude / dB',
-                                   returns=True,
-                                   labels=[f'Filter {h}'
-                                           for h in range(bs.number_of_bands)],
-                                   range_y=range_y,
-                                   tight_layout=False)
-        elif mode == 'sequential':
-            bs = self.filter_signal(d, mode='sequential',
-                                    activate_zi=test_zi, downsample=True)
-            bs.set_spectrum_parameters(method='standard')
-            f, sp = bs.get_spectrum()
-            f, sp = _get_normalized_spectrum(
-                f, np.squeeze(sp), f_range_hz=range_hz, normalize=None)
             fig, ax = general_plot(
-                f, sp, range_hz, ylabel='Magnitude / dB',
+                f,
+                specs,
+                range_hz,
+                ylabel="Magnitude / dB",
                 returns=True,
-                labels=[f'Sequential - Channel {n}'
-                        for n in range(bs.number_of_channels)])
-        elif mode == 'summed':
-            bs = self.filter_signal(d, mode='summed',
-                                    activate_zi=test_zi, downsample=True)
-            bs.set_spectrum_parameters(method='standard')
+                labels=[f"Filter {h}" for h in range(bs.number_of_bands)],
+                range_y=range_y,
+                tight_layout=False,
+            )
+        elif mode == "sequential":
+            bs = self.filter_signal(
+                d, mode="sequential", activate_zi=test_zi, downsample=True
+            )
+            bs.set_spectrum_parameters(method="standard")
             f, sp = bs.get_spectrum()
             f, sp = _get_normalized_spectrum(
-                f, np.squeeze(sp), f_range_hz=range_hz, normalize=None)
+                f, np.squeeze(sp), f_range_hz=range_hz, normalize=None
+            )
             fig, ax = general_plot(
-                f, sp, range_hz, ylabel='Magnitude / dB', returns=True,
-                labels=['Summed'])
+                f,
+                sp,
+                range_hz,
+                ylabel="Magnitude / dB",
+                returns=True,
+                labels=[
+                    f"Sequential - Channel {n}"
+                    for n in range(bs.number_of_channels)
+                ],
+            )
+        elif mode == "summed":
+            bs = self.filter_signal(
+                d, mode="summed", activate_zi=test_zi, downsample=True
+            )
+            bs.set_spectrum_parameters(method="standard")
+            f, sp = bs.get_spectrum()
+            f, sp = _get_normalized_spectrum(
+                f, np.squeeze(sp), f_range_hz=range_hz, normalize=None
+            )
+            fig, ax = general_plot(
+                f,
+                sp,
+                range_hz,
+                ylabel="Magnitude / dB",
+                returns=True,
+                labels=["Summed"],
+            )
         return fig, ax
 
 
@@ -882,6 +1044,7 @@ class QMFCrossover(BaseCrossover):
     filters, with which near-perfect signal reconstruction can be achieved.
 
     """
+
     def __init__(self, lowpass: Filter):
         """Create a quadrature mirror filters crossover based on a lowpass
         filter prototype.
@@ -896,15 +1059,18 @@ class QMFCrossover(BaseCrossover):
         - https://tinyurl.com/2a3frbyv
 
         """
-        if 'freqs' in lowpass.info:
-            if lowpass.info['freqs'] != lowpass.sampling_rate_hz//4:
-                warn('Cut-off frequency for lowpass filter should be half ' +
-                     'the nyquist frequency.')
+        if "freqs" in lowpass.info:
+            if lowpass.info["freqs"] != lowpass.sampling_rate_hz // 4:
+                warn(
+                    "Cut-off frequency for lowpass filter should be half "
+                    + "the nyquist frequency."
+                )
         # Create FilterBank
         super().__init__(
             analysis_filters=self._get_analysis_filters(lowpass),
             synthesis_filters=self._get_synthesis_filters(lowpass),
-            info=dict(Info='Quadrature mirror filters crossover'))
+            info=dict(Info="Quadrature mirror filters crossover"),
+        )
 
     def _get_analysis_filters(self, lowpass: Filter):
         """Create and return analysis filters based on a lowpass prototype.
@@ -925,24 +1091,28 @@ class QMFCrossover(BaseCrossover):
         - https://tinyurl.com/2a3frbyv
 
         """
-        if lowpass.filter_type == 'fir':
+        if lowpass.filter_type == "fir":
             # Create highpass filter based on lowpass
-            b_base, _ = lowpass.get_coefficients(mode='ba')
+            b_base, _ = lowpass.get_coefficients(mode="ba")
             b_high = b_base.copy()
             # H1(z) = H0(-z) <-> odd coefficients are multiplied by -1
             b_high[1::2] *= -1
             # Create filter
             highpass = Filter(
-                'other', dict(ba=[b_high, [1]]),
-                sampling_rate_hz=lowpass.sampling_rate_hz)
+                "other",
+                dict(ba=[b_high, [1]]),
+                sampling_rate_hz=lowpass.sampling_rate_hz,
+            )
             # Type of filter bank
             self.fir_filterbank = True
         else:
-            z_base, p_base, k_base = lowpass.get_coefficients(mode='zpk')
-            zpk_new = [z_base*-1, p_base*-1, k_base]
+            z_base, p_base, k_base = lowpass.get_coefficients(mode="zpk")
+            zpk_new = [z_base * -1, p_base * -1, k_base]
             highpass = Filter(
-                'other', dict(zpk=zpk_new),
-                sampling_rate_hz=lowpass.sampling_rate_hz)
+                "other",
+                dict(zpk=zpk_new),
+                sampling_rate_hz=lowpass.sampling_rate_hz,
+            )
             # Type of filter bank
             self.fir_filterbank = False
         return [lowpass, highpass]
@@ -966,10 +1136,14 @@ class QMFCrossover(BaseCrossover):
         - https://tinyurl.com/2a3frbyv
 
         """
-        b, a = lowpass.get_coefficients(mode='ba')
-        hp_filter = Filter('other', dict(ba=[-b, a]),
-                           sampling_rate_hz=lowpass.sampling_rate_hz)
+        b, a = lowpass.get_coefficients(mode="ba")
+        hp_filter = Filter(
+            "other",
+            dict(ba=[-b, a]),
+            sampling_rate_hz=lowpass.sampling_rate_hz,
+        )
         return [lowpass, hp_filter]
+
 
 # Not Working so far
 # class CQFCrossover(BaseCrossover):
@@ -1066,8 +1240,9 @@ class QMFCrossover(BaseCrossover):
 #         return [lp_filter, hp_filter]
 
 
-def _crossover_downsample(signal: Signal, filters: list, mode: str,
-                          down_factor: int = 2) -> Signal | MultiBandSignal:
+def _crossover_downsample(
+    signal: Signal, filters: list, mode: str, down_factor: int = 2
+) -> Signal | MultiBandSignal:
     """Apply crossover and downsample on signal.
 
     Parameters
@@ -1090,41 +1265,49 @@ def _crossover_downsample(signal: Signal, filters: list, mode: str,
 
     """
     n_filt = len(filters)
-    assert n_filt == 2, \
-        'A crossover should contain exactly 2 filters'
-    if mode == 'parallel':
+    assert n_filt == 2, "A crossover should contain exactly 2 filters"
+    if mode == "parallel":
         ss = []
         for n in range(n_filt):
-            ss.append(filters[n].filter_and_resample_signal(
-                signal,
-                new_sampling_rate_hz=signal.sampling_rate_hz//down_factor))
-        out_sig = MultiBandSignal(
-            ss, same_sampling_rate=True)
-    elif mode == 'sequential':
+            ss.append(
+                filters[n].filter_and_resample_signal(
+                    signal,
+                    new_sampling_rate_hz=signal.sampling_rate_hz
+                    // down_factor,
+                )
+            )
+        out_sig = MultiBandSignal(ss, same_sampling_rate=True)
+    elif mode == "sequential":
         out_sig = signal.copy()
         for n in range(n_filt):
             out_sig = filters[n].filter_and_resample_signal(
                 signal,
-                new_sampling_rate_hz=signal.sampling_rate_hz//down_factor)
+                new_sampling_rate_hz=signal.sampling_rate_hz // down_factor,
+            )
     else:
-        new_time_data = \
-            np.zeros((signal.time_data.shape[0]//down_factor,
-                      signal.number_of_channels, n_filt))
+        new_time_data = np.zeros(
+            (
+                signal.time_data.shape[0] // down_factor,
+                signal.number_of_channels,
+                n_filt,
+            )
+        )
         for n in range(n_filt):
             s = filters[n].filter_and_resample_signal(
                 signal,
-                new_sampling_rate_hz=signal.sampling_rate_hz//down_factor)
+                new_sampling_rate_hz=signal.sampling_rate_hz // down_factor,
+            )
             new_time_data[:, :, n] = s.time_data
         new_time_data = np.sum(new_time_data, axis=-1)
         out_sig = signal.copy()
-        out_sig.sampling_rate_hz = signal.sampling_rate_hz//down_factor
+        out_sig.sampling_rate_hz = signal.sampling_rate_hz // down_factor
         out_sig.time_data = new_time_data
     return out_sig
 
 
-def _reconstruct_from_crossover_upsample(sig_low: Signal, sig_high: Signal,
-                                         filters: list,
-                                         up_factor: int = 2) -> Signal:
+def _reconstruct_from_crossover_upsample(
+    sig_low: Signal, sig_high: Signal, filters: list, up_factor: int = 2
+) -> Signal:
     """Reconstructs signal from crossover.
 
     Parameters
@@ -1145,11 +1328,12 @@ def _reconstruct_from_crossover_upsample(sig_low: Signal, sig_high: Signal,
 
     """
     n_filt = len(filters)
-    assert n_filt == 2, \
-        'A crossover should contain exactly 2 filters'
+    assert n_filt == 2, "A crossover should contain exactly 2 filters"
     rec_sig = filters[0].filter_and_resample_signal(
-        sig_low, new_sampling_rate_hz=sig_low.sampling_rate_hz*up_factor)
+        sig_low, new_sampling_rate_hz=sig_low.sampling_rate_hz * up_factor
+    )
     temp_sig = filters[1].filter_and_resample_signal(
-        sig_high, new_sampling_rate_hz=sig_low.sampling_rate_hz*up_factor)
+        sig_high, new_sampling_rate_hz=sig_low.sampling_rate_hz * up_factor
+    )
     rec_sig.time_data += temp_sig.time_data
     return rec_sig

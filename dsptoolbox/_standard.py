@@ -7,8 +7,9 @@ from ._general_helpers import _pad_trim, _compute_number_frames
 from warnings import warn
 
 
-def _latency(in1: np.ndarray, in2: np.ndarray = None,
-             polynomial_points: int = 0):
+def _latency(
+    in1: np.ndarray, in2: np.ndarray = None, polynomial_points: int = 0
+):
     """Computes the latency between two functions using the correlation method.
     The variable polynomial_points is only a dummy to share the same API as
     the _fractional_latency function.
@@ -24,13 +25,15 @@ def _latency(in1: np.ndarray, in2: np.ndarray = None,
     latency_per_channel_samples = np.zeros(in1.shape[1], dtype=int)
     for i in range(in1.shape[1]):
         xcorr = correlate(in2[:, i].flatten(), in1[:, i].flatten())
-        latency_per_channel_samples[i] = \
-            int(in1.shape[0] - np.argmax(abs(xcorr)) - 1)
+        latency_per_channel_samples[i] = int(
+            in1.shape[0] - np.argmax(abs(xcorr)) - 1
+        )
     return latency_per_channel_samples
 
 
-def _fractional_latency(td1: np.ndarray, td2: np.ndarray = None,
-                        polynomial_points: int = 1):
+def _fractional_latency(
+    td1: np.ndarray, td2: np.ndarray = None, polynomial_points: int = 1
+):
     """This function computes the sub-sample latency between two signals using
     Zero-Crossing of the analytic (hilbert transformed) correlation function.
     The number of polynomial points taken around the correlation maximum can be
@@ -83,28 +86,36 @@ def _fractional_latency(td1: np.ndarray, td2: np.ndarray = None,
 
         # Find exact index before maximum
         index_prior_max = 0
-        if analytical_xcor[ind_max-1]*analytical_xcor[ind_max] < 0:
-            index_prior_max = ind_max-1
-        elif analytical_xcor[ind_max]*analytical_xcor[ind_max+1] < 0:
+        if analytical_xcor[ind_max - 1] * analytical_xcor[ind_max] < 0:
+            index_prior_max = ind_max - 1
+        elif analytical_xcor[ind_max] * analytical_xcor[ind_max + 1] < 0:
             index_prior_max = ind_max
         else:
-            print('There was an error while finding maximum of ' +
-                  f'correlation for channel {ch}. Integer latency is returned')
+            print(
+                "There was an error while finding maximum of "
+                + f"correlation for channel {ch}. Integer latency is returned"
+            )
             lags[ch] = td1.shape[0] - ind_max - 1
 
         if index_prior_max != 0:
             # Polynomial fit around root
             polynomial = np.polyfit(
-                np.arange(-polynomial_points, polynomial_points)+1,
-                analytical_xcor[index_prior_max-polynomial_points+1:
-                                index_prior_max+polynomial_points+1],
-                deg=2*polynomial_points-1)
+                np.arange(-polynomial_points, polynomial_points) + 1,
+                analytical_xcor[
+                    index_prior_max
+                    - polynomial_points
+                    + 1 : index_prior_max
+                    + polynomial_points
+                    + 1
+                ],
+                deg=2 * polynomial_points - 1,
+            )
             roots = np.roots(polynomial)
             epsilon = 1e-10
             # Get only root between 0 and 1
             roots = roots[
-                (roots == roots.real)               # Real roots
-                & (roots <= 1 + epsilon)            # Range
+                (roots == roots.real)  # Real roots
+                & (roots <= 1 + epsilon)  # Range
                 & (roots >= 0)
             ].real
             try:
@@ -112,17 +123,26 @@ def _fractional_latency(td1: np.ndarray, td2: np.ndarray = None,
                 lags[ch] = td1.shape[0] - (index_prior_max + roots) - 1
             except IndexError as e:
                 print(e)
-                print('There was an error with the polynomial fitting. ' +
-                      'Try a different number for the polynomial points. ' +
-                      'Integer latencies will be returned.')
+                print(
+                    "There was an error with the polynomial fitting. "
+                    + "Try a different number for the polynomial points. "
+                    + "Integer latencies will be returned."
+                )
                 lags[ch] = td1.shape[0] - ind_max - 1
     return lags
 
 
-def _welch(x, y, fs_hz: int, window_type: str = 'hann',
-           window_length_samples: int = 1024, overlap_percent=50,
-           detrend: bool = True, average: str = 'mean',
-           scaling: str = 'power spectral density') -> np.ndarray:
+def _welch(
+    x,
+    y,
+    fs_hz: int,
+    window_type: str = "hann",
+    window_length_samples: int = 1024,
+    overlap_percent=50,
+    detrend: bool = True,
+    average: str = "mean",
+    scaling: str = "power spectral density",
+) -> np.ndarray:
     """Cross spectral density computation with Welch's method.
 
     Parameters
@@ -172,12 +192,11 @@ def _welch(x, y, fs_hz: int, window_type: str = 'hann',
       See http://arxiv.org/abs/gr-qc/0509116.
 
     """
-    if type(x) != np.ndarray:
+    if isinstance(x) != np.ndarray:
         x = np.asarray(x).squeeze()
-    if type(y) != np.ndarray:
+    if isinstance(y) != np.ndarray:
         y = np.asarray(y).squeeze()
-    assert x.shape == y.shape, \
-        'Shapes of data do not match'
+    assert x.shape == y.shape, "Shapes of data do not match"
     # NOTE: Computing the spectrum in a vectorized manner for all channels
     # simultaneously does not seem to be faster than doing it sequentally
     # for each channel. Maybe parallelizing with something like numba could
@@ -187,36 +206,51 @@ def _welch(x, y, fs_hz: int, window_type: str = 'hann',
     else:
         multi_channel = False
 
-    assert len(x.shape) <= 2, f'{x.shape} are too many dimensions. Use flat' +\
-        ' arrays or 2D-Arrays instead'
+    assert len(x.shape) <= 2, (
+        f"{x.shape} are too many dimensions. Use flat"
+        + " arrays or 2D-Arrays instead"
+    )
 
     valid_window_sizes = np.array([int(2**x) for x in range(3, 19)])
-    assert window_length_samples in valid_window_sizes, \
-        'Window length should be a power of 2 between [8, 262_144] or ' +\
-        '[2**3, 2**18]'
-    assert overlap_percent >= 0 and overlap_percent < 100, \
-        'overlap_percent should be between 0 and 100'
-    valid_average = ['mean', 'median']
-    assert average in valid_average, f'{average} is not valid. Use ' +\
-        'either mean or median'
-    valid_scaling = ['power spectrum', 'power spectral density',
-                     'amplitude spectrum', 'amplitude spectral density', None]
-    assert scaling in valid_scaling, f'{scaling} is not valid. Use ' +\
-        'power spectrum, power spectral density, amplitude spectrum, ' +\
-        'amplitude spectral density or None'
+    assert window_length_samples in valid_window_sizes, (
+        "Window length should be a power of 2 between [8, 262_144] or "
+        + "[2**3, 2**18]"
+    )
+    assert (
+        overlap_percent >= 0 and overlap_percent < 100
+    ), "overlap_percent should be between 0 and 100"
+    valid_average = ["mean", "median"]
+    assert average in valid_average, (
+        f"{average} is not valid. Use " + "either mean or median"
+    )
+    valid_scaling = [
+        "power spectrum",
+        "power spectral density",
+        "amplitude spectrum",
+        "amplitude spectral density",
+        None,
+    ]
+    assert scaling in valid_scaling, (
+        f"{scaling} is not valid. Use "
+        + "power spectrum, power spectral density, amplitude spectrum, "
+        + "amplitude spectral density or None"
+    )
     if scaling is None:
-        scaling = ''
+        scaling = ""
 
     # Window and step
     window = windows.get_window(
-        window_type, window_length_samples, fftbins=True)
-    overlap_samples = int(overlap_percent/100 * window_length_samples)
+        window_type, window_length_samples, fftbins=True
+    )
+    overlap_samples = int(overlap_percent / 100 * window_length_samples)
     step = window_length_samples - overlap_samples
 
     # Check COLA
     if not check_COLA(window, nperseg=len(window), noverlap=overlap_samples):
-        warn('Selected window type and overlap do not meet the constant ' +
-             'overlap and add constraint! Results might be distorted')
+        warn(
+            "Selected window type and overlap do not meet the constant "
+            + "overlap and add constraint! Results might be distorted"
+        )
 
     if not multi_channel:
         x = x[..., None]
@@ -239,25 +273,30 @@ def _welch(x, y, fs_hz: int, window_type: str = 'hann',
         y_frames -= np.mean(y_frames, axis=0)
 
     # Combine
-    sp_frames = np.fft.rfft(x_frames, axis=0).conjugate() * \
-        np.fft.rfft(y_frames, axis=0)
+    sp_frames = np.fft.rfft(x_frames, axis=0).conjugate() * np.fft.rfft(
+        y_frames, axis=0
+    )
 
     # Direct averaging much faster
-    if average == 'mean':
+    if average == "mean":
         csd = np.mean(sp_frames, axis=1)
     else:
-        csd = np.median(sp_frames.real, axis=1) + 1j * \
-            np.median(sp_frames.imag, axis=1)
+        csd = np.median(sp_frames.real, axis=1) + 1j * np.median(
+            sp_frames.imag, axis=1
+        )
         # Bias according to reference
-        n = sp_frames.shape[1] if sp_frames.shape[1] % 2 == 1 else \
-            sp_frames.shape[1] - 1
-        bias = np.sum((-1)**(n+1)/n)
+        n = (
+            sp_frames.shape[1]
+            if sp_frames.shape[1] % 2 == 1
+            else sp_frames.shape[1] - 1
+        )
+        bias = np.sum((-1) ** (n + 1) / n)
         csd /= bias
 
     # Weightning (with 2 because one-sided)
-    if scaling in ('power spectrum', 'amplitude spectrum'):
-        factor = 2 / np.sum(window)**2
-    elif scaling in ('power spectral density', 'amplitude spectral density'):
+    if scaling in ("power spectrum", "amplitude spectrum"):
+        factor = 2 / np.sum(window) ** 2
+    elif scaling in ("power spectral density", "amplitude spectral density"):
         factor = 2 / (window @ window) / fs_hz
         # With this factor, energy can be regained by integrating the psd
         # while taking into account the frequency step
@@ -272,7 +311,7 @@ def _welch(x, y, fs_hz: int, window_type: str = 'hann',
     csd[0, ...] /= 2
     csd[-1, ...] /= 2
 
-    if 'amplitude' in scaling:
+    if "amplitude" in scaling:
         csd = np.sqrt(csd)
 
     # Cast to real output if there is no imaginary part
@@ -302,14 +341,15 @@ def _group_delay_direct(phase: np.ndarray, delta_f: float = 1):
     if np.iscomplexobj(phase):
         phase = np.angle(phase)
     if delta_f != 1:
-        gd = -np.gradient(np.unwrap(phase), delta_f)/np.pi/2
+        gd = -np.gradient(np.unwrap(phase), delta_f) / np.pi / 2
     else:
         gd = -np.gradient(np.unwrap(phase))
     return gd
 
 
-def _minimum_phase(magnitude: np.ndarray, unwrapped: bool = True) \
-        -> np.ndarray:
+def _minimum_phase(
+    magnitude: np.ndarray, unwrapped: bool = True
+) -> np.ndarray:
     """Computes minimum phase system from magnitude spectrum.
 
     Parameters
@@ -328,17 +368,25 @@ def _minimum_phase(magnitude: np.ndarray, unwrapped: bool = True) \
     """
     if np.iscomplexobj(magnitude):
         magnitude = np.abs(magnitude)
-    minimum_phase = -np.imag(hilbert(np.log(np.clip(
-        magnitude, a_min=1e-40, a_max=None)), axis=0))
+    minimum_phase = -np.imag(
+        hilbert(np.log(np.clip(magnitude, a_min=1e-40, a_max=None)), axis=0)
+    )
     if not unwrapped:
-        minimum_phase = np.angle(np.exp(1j*minimum_phase))
+        minimum_phase = np.angle(np.exp(1j * minimum_phase))
     return minimum_phase
 
 
-def _stft(x: np.ndarray, fs_hz: int, window_length_samples: int = 2048,
-          window_type: str = 'hann', overlap_percent=50,
-          fft_length_samples: int = None, detrend: bool = True,
-          padding: bool = False, scaling: bool = False):
+def _stft(
+    x: np.ndarray,
+    fs_hz: int,
+    window_length_samples: int = 2048,
+    window_type: str = "hann",
+    overlap_percent=50,
+    fft_length_samples: int = None,
+    detrend: bool = True,
+    padding: bool = False,
+    scaling: bool = False,
+):
     """Computes the STFT of a signal. Output matrix has (freqs_hz, seconds_s).
 
     Parameters
@@ -386,22 +434,27 @@ def _stft(x: np.ndarray, fs_hz: int, window_length_samples: int = 2048,
 
     """
     valid_window_sizes = np.array([int(2**x) for x in range(4, 17)])
-    assert window_length_samples in valid_window_sizes, \
-        'Window length should be a power of 2 between [16, 65536] or ' +\
-        '[2**4, 2**16]'
-    assert overlap_percent >= 0 and overlap_percent < 100, 'overlap_percent' +\
-        ' should be between 0 and 100'
+    assert window_length_samples in valid_window_sizes, (
+        "Window length should be a power of 2 between [16, 65536] or "
+        + "[2**4, 2**16]"
+    )
+    assert overlap_percent >= 0 and overlap_percent < 100, (
+        "overlap_percent" + " should be between 0 and 100"
+    )
 
     # Window and step
-    window = \
-        windows.get_window(window_type, window_length_samples, fftbins=True)
-    overlap_samples = int(overlap_percent/100 * window_length_samples)
+    window = windows.get_window(
+        window_type, window_length_samples, fftbins=True
+    )
+    overlap_samples = int(overlap_percent / 100 * window_length_samples)
     step = window_length_samples - overlap_samples
 
     # Check COLA
     if not check_COLA(window, nperseg=len(window), noverlap=overlap_samples):
-        warn('Selected window type and overlap do not meet the constant ' +
-             'overlap and add constraint! Results might be distorted')
+        warn(
+            "Selected window type and overlap do not meet the constant "
+            + "overlap and add constraint! Results might be distorted"
+        )
 
     # Padding
     if padding:
@@ -417,20 +470,26 @@ def _stft(x: np.ndarray, fs_hz: int, window_length_samples: int = 2048,
     stft = np.fft.rfft(time_x, axis=0, n=fft_length_samples)
     # Scaling
     if scaling:
-        factor = np.sqrt(2 / np.sum(window)**2)
+        factor = np.sqrt(2 / np.sum(window) ** 2)
     else:
         factor = 1
     stft *= factor
 
-    time_s = np.linspace(0, len(x)/fs_hz, stft.shape[1])
-    freqs_hz = np.fft.rfftfreq(len(window), 1/fs_hz)
+    time_s = np.linspace(0, len(x) / fs_hz, stft.shape[1])
+    freqs_hz = np.fft.rfftfreq(len(window), 1 / fs_hz)
     return time_s, freqs_hz, stft
 
 
-def _csm(time_data: np.ndarray, sampling_rate_hz: int,
-         window_length_samples: int = 1024, window_type: str = 'hann',
-         overlap_percent: int = 50, detrend: bool = True,
-         average: str = 'mean', scaling: str = 'power'):
+def _csm(
+    time_data: np.ndarray,
+    sampling_rate_hz: int,
+    window_length_samples: int = 1024,
+    window_type: str = "hann",
+    overlap_percent: int = 50,
+    detrend: bool = True,
+    average: str = "mean",
+    scaling: str = "power",
+):
     """Computes the cross spectral matrix of a multichannel signal.
     Output matrix has (frequency, channels, channels).
 
@@ -482,27 +541,33 @@ def _csm(time_data: np.ndarray, sampling_rate_hz: int,
     # package... So far the double loop has been best solution
     # =====================================
     number_of_channels = time_data.shape[1]
-    csm = np.zeros((window_length_samples//2+1,
-                    number_of_channels,
-                    number_of_channels), dtype='cfloat')
+    csm = np.zeros(
+        (
+            window_length_samples // 2 + 1,
+            number_of_channels,
+            number_of_channels,
+        ),
+        dtype="cfloat",
+    )
     for ind1 in range(number_of_channels):
         for ind2 in range(ind1, number_of_channels):
             # Complex conjugate second signal and not first (like transposing
             # the matrix)
-            csm[:, ind2, ind1] = \
-                _welch(time_data[:, ind1],
-                       time_data[:, ind2],
-                       sampling_rate_hz,
-                       window_length_samples=window_length_samples,
-                       window_type=window_type,
-                       overlap_percent=overlap_percent,
-                       detrend=detrend,
-                       average=average,
-                       scaling=scaling)
+            csm[:, ind2, ind1] = _welch(
+                time_data[:, ind1],
+                time_data[:, ind2],
+                sampling_rate_hz,
+                window_length_samples=window_length_samples,
+                window_type=window_type,
+                overlap_percent=overlap_percent,
+                detrend=detrend,
+                average=average,
+                scaling=scaling,
+            )
             if ind1 == ind2:
                 csm[:, ind1, ind2] *= 0.5
     csm += np.swapaxes(csm, 1, 2).conjugate()
-    f = np.fft.rfftfreq(window_length_samples, 1/sampling_rate_hz)
+    f = np.fft.rfftfreq(window_length_samples, 1 / sampling_rate_hz)
     return f, csm
 
 
@@ -540,30 +605,69 @@ def _center_frequencies_fractional_octaves_iec(nominal, num_fractions):
 
     """
     if num_fractions == 1:
-        nominal = np.array([
-            31.5, 63, 125, 250, 500, 1e3,
-            2e3, 4e3, 8e3, 16e3], dtype=float)
+        nominal = np.array(
+            [31.5, 63, 125, 250, 500, 1e3, 2e3, 4e3, 8e3, 16e3], dtype=float
+        )
     elif num_fractions == 3:
-        nominal = np.array([
-            25, 31.5, 40, 50, 63, 80, 100, 125, 160,
-            200, 250, 315, 400, 500, 630, 800, 1000,
-            1250, 1600, 2000, 2500, 3150, 4000, 5000,
-            6300, 8000, 10000, 12500, 16000, 20000], dtype=float)
+        nominal = np.array(
+            [
+                25,
+                31.5,
+                40,
+                50,
+                63,
+                80,
+                100,
+                125,
+                160,
+                200,
+                250,
+                315,
+                400,
+                500,
+                630,
+                800,
+                1000,
+                1250,
+                1600,
+                2000,
+                2500,
+                3150,
+                4000,
+                5000,
+                6300,
+                8000,
+                10000,
+                12500,
+                16000,
+                20000,
+            ],
+            dtype=float,
+        )
 
     reference_freq = 1e3
-    octave_ratio = 10**(3/10)
+    octave_ratio = 10 ** (3 / 10)
 
     iseven = np.mod(num_fractions, 2) == 0
     if ~iseven:
         indices = np.around(
-            num_fractions * np.log(nominal/reference_freq)
-            / np.log(octave_ratio))
-        exponent = (indices/num_fractions)
+            num_fractions
+            * np.log(nominal / reference_freq)
+            / np.log(octave_ratio)
+        )
+        exponent = indices / num_fractions
     else:
-        indices = np.around(
-            2.0*num_fractions *
-            np.log(nominal/reference_freq) / np.log(octave_ratio) - 1)/2
-        exponent = ((2*indices + 1) / num_fractions / 2)
+        indices = (
+            np.around(
+                2.0
+                * num_fractions
+                * np.log(nominal / reference_freq)
+                / np.log(octave_ratio)
+                - 1
+            )
+            / 2
+        )
+        exponent = (2 * indices + 1) / num_fractions / 2
 
     exact = reference_freq * octave_ratio**exponent
 
@@ -571,7 +675,8 @@ def _center_frequencies_fractional_octaves_iec(nominal, num_fractions):
 
 
 def _exact_center_frequencies_fractional_octaves(
-        num_fractions, frequency_range):
+    num_fractions, frequency_range
+):
     """Calculate the center frequencies of arbitrary fractional octave bands.
 
     Parameters
@@ -594,11 +699,11 @@ def _exact_center_frequencies_fractional_octaves(
 
     """
     ref_freq = 1e3
-    Nmax = np.around(num_fractions*(np.log2(frequency_range[1]/ref_freq)))
-    Nmin = np.around(num_fractions*(np.log2(ref_freq/frequency_range[0])))
+    Nmax = np.around(num_fractions * (np.log2(frequency_range[1] / ref_freq)))
+    Nmin = np.around(num_fractions * (np.log2(ref_freq / frequency_range[0])))
 
-    indices = np.arange(-Nmin, Nmax+1)
-    exact = ref_freq * 2**(indices / num_fractions)
+    indices = np.arange(-Nmin, Nmax + 1)
+    exact = ref_freq * 2 ** (indices / num_fractions)
 
     return exact
 
@@ -630,17 +735,20 @@ def _kaiser_window_beta(A):
     if A > 50:
         beta = 0.1102 * (A - 8.7)
     elif A >= 21:
-        beta = 0.5842 * (A - 21)**0.4 + 0.07886 * (A - 21)
+        beta = 0.5842 * (A - 21) ** 0.4 + 0.07886 * (A - 21)
     else:
         beta = 0.0
 
     return beta
 
 
-def _indices_above_threshold_dbfs(time_vec: np.ndarray, threshold_dbfs: float,
-                                  attack_smoothing_coeff: int,
-                                  release_smoothing_coeff: int,
-                                  normalize: bool = True):
+def _indices_above_threshold_dbfs(
+    time_vec: np.ndarray,
+    threshold_dbfs: float,
+    attack_smoothing_coeff: int,
+    release_smoothing_coeff: int,
+    normalize: bool = True,
+):
     """Returns indices with power above a given power threshold (in dBFS) in a
     time series. time_vec can be normalized to peak value prior to computation.
 
@@ -667,26 +775,27 @@ def _indices_above_threshold_dbfs(time_vec: np.ndarray, threshold_dbfs: float,
 
     """
     time_vec = np.asarray(time_vec).squeeze()
-    assert time_vec.ndim == 1, \
-        'Function is implemented for 1D-arrays only'
+    assert time_vec.ndim == 1, "Function is implemented for 1D-arrays only"
 
     # Normalization
     if normalize:
         time_vec /= np.abs(time_vec).max()
 
     # Power in dB
-    time_power = time_vec.squeeze()**2
+    time_power = time_vec.squeeze() ** 2
 
     momentary_gain = np.zeros(len(time_power))
     for i in np.arange(1, len(time_power)):
-        if momentary_gain[i] > time_power[i-1]:
+        if momentary_gain[i] > time_power[i - 1]:
             coeff = attack_smoothing_coeff
-        elif momentary_gain[i] < time_power[i-1]:
+        elif momentary_gain[i] < time_power[i - 1]:
             coeff = release_smoothing_coeff
         else:
             coeff = 0
-        momentary_gain[i] = coeff*time_power[i] + (1-coeff)*momentary_gain[i-1]
-    momentary_gain = 10*np.log10(momentary_gain)
+        momentary_gain[i] = (
+            coeff * time_power[i] + (1 - coeff) * momentary_gain[i - 1]
+        )
+    momentary_gain = 10 * np.log10(momentary_gain)
 
     # Get Indices above threshold
     indices_above = momentary_gain > threshold_dbfs
@@ -738,17 +847,21 @@ def _rms(x: np.ndarray) -> float | np.ndarray:
     elif x.ndim == 2:
         pass
     else:
-        raise ValueError('Shape of array is not valid. Only 2D-Arrays ' +
-                         'are valid')
+        raise ValueError(
+            "Shape of array is not valid. Only 2D-Arrays " + "are valid"
+        )
     rms_vals = np.sqrt(np.mean(x**2, axis=0))
     if single_dim:
         rms_vals = np.squeeze(rms_vals)
     return rms_vals
 
 
-def _get_framed_signal(td: np.ndarray, window_length_samples: int,
-                       step_size: int, keep_last_frame: bool = True) \
-        -> np.ndarray:
+def _get_framed_signal(
+    td: np.ndarray,
+    window_length_samples: int,
+    step_size: int,
+    keep_last_frame: bool = True,
+) -> np.ndarray:
     """This method computes a framed version of a signal and returns it.
 
     Parameters
@@ -771,22 +884,26 @@ def _get_framed_signal(td: np.ndarray, window_length_samples: int,
 
     """
     # Force casting to integers
-    if type(window_length_samples) != int:
+    if isinstance(window_length_samples) != int:
         window_length_samples = int(window_length_samples)
-    if type(step_size) != int:
+    if isinstance(step_size) != int:
         step_size = int(step_size)
 
     # Start Parameters
-    n_frames, padding_samp = \
-        _compute_number_frames(window_length_samples, step_size, td.shape[0])
+    n_frames, padding_samp = _compute_number_frames(
+        window_length_samples, step_size, td.shape[0]
+    )
     td = _pad_trim(td, td.shape[0] + padding_samp)
-    td_framed = np.zeros((window_length_samples, n_frames, td.shape[1]),
-                         dtype='float')
+    td_framed = np.zeros(
+        (window_length_samples, n_frames, td.shape[1]), dtype="float"
+    )
 
     # Create time frames
     start = 0
     for n in range(n_frames):
-        td_framed[:, n, :] = td[start:start+window_length_samples, :].copy()
+        td_framed[:, n, :] = td[
+            start : start + window_length_samples, :
+        ].copy()
         start += step_size
 
     if not keep_last_frame:
@@ -794,11 +911,13 @@ def _get_framed_signal(td: np.ndarray, window_length_samples: int,
     return td_framed
 
 
-def _reconstruct_framed_signal(td_framed: np.ndarray, step_size: int,
-                               window: str | np.ndarray = None,
-                               original_signal_length: int = None,
-                               safety_threshold: float = 1e-4) \
-        -> np.ndarray:
+def _reconstruct_framed_signal(
+    td_framed: np.ndarray,
+    step_size: int,
+    window: str | np.ndarray = None,
+    original_signal_length: int = None,
+    safety_threshold: float = 1e-4,
+) -> np.ndarray:
     """Gets and returns a framed signal into its vector representation.
 
     Parameters
@@ -826,31 +945,34 @@ def _reconstruct_framed_signal(td_framed: np.ndarray, step_size: int,
         Reconstructed signal.
 
     """
-    assert td_framed.ndim == 3, \
-        'Framed signal must contain exactly three dimensions'
+    assert (
+        td_framed.ndim == 3
+    ), "Framed signal must contain exactly three dimensions"
     if window is not None:
-        if type(window) == str:
+        if isinstance(window, str):
             window = windows.get_window(window, td_framed.shape[0])
-        elif type(window) == np.ndarray:
-            assert window.ndim == 1, \
-                'Window must be a 1D-array'
-            assert window.shape[0] == td_framed.shape[0], \
-                'Window length does not match signal length'
+        elif isinstance(window, np.ndarray):
+            assert window.ndim == 1, "Window must be a 1D-array"
+            assert (
+                window.shape[0] == td_framed.shape[0]
+            ), "Window length does not match signal length"
         td_framed *= window[:, np.newaxis, np.newaxis]
 
-    total_length = int(step_size * td_framed.shape[1] +
-                       td_framed.shape[0]*(1 - step_size/td_framed.shape[0]))
+    total_length = int(
+        step_size * td_framed.shape[1]
+        + td_framed.shape[0] * (1 - step_size / td_framed.shape[0])
+    )
     td = np.zeros((total_length, td_framed.shape[-1]))
 
     start = 0
     for i in range(td_framed.shape[1]):
-        td[start:start+td_framed.shape[0], :] += td_framed[:, i, :]
+        td[start : start + td_framed.shape[0], :] += td_framed[:, i, :]
         start += step_size
 
     if window is not None:
         envelope = _get_window_envelope(
-            window, total_length, step_size,
-            td_framed.shape[1], True)
+            window, total_length, step_size, td_framed.shape[1], True
+        )
         if safety_threshold is not None:
             envelope = np.clip(envelope, a_min=safety_threshold, a_max=None)
         non_zero = envelope > np.finfo(td.dtype).tiny
@@ -861,9 +983,13 @@ def _reconstruct_framed_signal(td_framed: np.ndarray, step_size: int,
     return td
 
 
-def _get_window_envelope(window: np.ndarray, total_length_samples: int,
-                         step_size_samples: int, number_frames: int,
-                         squared: bool = True):
+def _get_window_envelope(
+    window: np.ndarray,
+    total_length_samples: int,
+    step_size_samples: int,
+    number_frames: int,
+    squared: bool = True,
+):
     """Compute the window envelope for a given window with step size and total
     length. The window can be squared or not.
 
@@ -874,6 +1000,6 @@ def _get_window_envelope(window: np.ndarray, total_length_samples: int,
 
     start = 0
     for _ in range(number_frames):
-        envelope[start:start+len(window)] += window
+        envelope[start : start + len(window)] += window
         start += step_size_samples
     return envelope

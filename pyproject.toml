@@ -1,12 +1,12 @@
 [build-system]
 requires = [
-    "scipy>=1.11",
-    "numpy>=1.25",
-    "soundfile>=0.12",
-    "sounddevice>=0.4",
-    "matplotlib>=3.8",
-    "seaborn>=0.12",
-    "hatchling",
+  "scipy>=1.11",
+  "numpy>=1.25",
+  "soundfile>=0.12",
+  "sounddevice>=0.4",
+  "matplotlib>=3.8",
+  "seaborn>=0.12",
+  "hatchling",
 ]
 build-backend = "hatchling.build"
 
@@ -14,17 +14,10 @@ build-backend = "hatchling.build"
 name = "dsptoolbox"
 dynamic = ["version"]
 license = "MIT"
-authors = [
-  { name="Nicolas Franco-Gomez" },
-]
+authors = [{ name = "Nicolas Franco-Gomez" }]
 description = "Collection of dsp algorithms to be used for analysis of audio signals"
 readme = "README.rst"
-keywords = [
-  "Digital Signal Processing",
-  "dsp",
-  "Research",
-  "Prototyping",
-]
+keywords = ["Digital Signal Processing", "dsp", "Research", "Prototyping"]
 requires-python = ">=3.10"
 dependencies = [
   "matplotlib",
@@ -35,11 +28,11 @@ dependencies = [
   "sounddevice",
 ]
 classifiers = [
-    "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.11",
-    "License :: OSI Approved :: MIT License",
-    "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
 ]
 
 [project.urls]
@@ -57,12 +50,11 @@ dependencies = [
 ]
 
 [tool.hatch.envs.dev]
-dependencies = [
-  "flake8",
-  "twine",
-  "hatch",
-  "wheel",
-]
+dependencies = ["flake8", "twine", "hatch", "wheel"]
 
 [tool.hatch.version]
 path = "dsptoolbox/__init__.py"
+
+[tool.flake8]
+ignore = "E203,W503"
+enable-extensions = "W504"
