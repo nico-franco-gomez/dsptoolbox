@@ -6,45 +6,55 @@ from scipy.signal import get_window, lfilter
 from .._general_helpers import _find_nearest, _calculate_window, _pad_trim
 
 
-def _spectral_deconvolve(num_fft: np.ndarray, denum_fft: np.ndarray, freqs_hz,
-                         time_signal_length: int, mode='regularized',
-                         start_stop_hz=None) -> np.ndarray:
-    assert num_fft.shape == denum_fft.shape, 'Shapes do not match'
-    assert len(freqs_hz) == len(num_fft), 'Frequency vector does not match'
+def _spectral_deconvolve(
+    num_fft: np.ndarray,
+    denum_fft: np.ndarray,
+    freqs_hz,
+    time_signal_length: int,
+    mode="regularized",
+    start_stop_hz=None,
+) -> np.ndarray:
+    assert num_fft.shape == denum_fft.shape, "Shapes do not match"
+    assert len(freqs_hz) == len(num_fft), "Frequency vector does not match"
 
-    if mode == 'regularized':
+    if mode == "regularized":
         # Regularized division
         ids = _find_nearest(start_stop_hz, freqs_hz)
         outside = 30
-        inside = 10**(-200/20)
+        inside = 10 ** (-200 / 20)
         eps = _calculate_window(ids, len(freqs_hz), inverse=True)
         eps += inside
         eps *= outside
-        denum_reg = denum_fft.conj() /\
-            (denum_fft.conj()*denum_fft + eps)
-        new_time_data = \
-            np.fft.irfft(num_fft * denum_reg, n=time_signal_length)
-    elif mode == 'window':
+        denum_reg = denum_fft.conj() / (denum_fft.conj() * denum_fft + eps)
+        new_time_data = np.fft.irfft(num_fft * denum_reg, n=time_signal_length)
+    elif mode == "window":
         ids = _find_nearest(start_stop_hz, freqs_hz)
         window = _calculate_window(ids, len(freqs_hz), inverse=False)
-        window += 10**(-200/10)
+        window += 10 ** (-200 / 10)
         num_fft_n = num_fft * window
         new_time_data = np.fft.irfft(
-            np.divide(num_fft_n, denum_fft), n=time_signal_length)
-    elif mode == 'standard':
+            np.divide(num_fft_n, denum_fft), n=time_signal_length
+        )
+    elif mode == "standard":
         new_time_data = np.fft.irfft(
-            np.divide(num_fft, denum_fft), n=time_signal_length)
+            np.divide(num_fft, denum_fft), n=time_signal_length
+        )
     else:
-        raise ValueError(f'{mode} is not supported. Choose window' +
-                         ', regularized or standard')
+        raise ValueError(
+            f"{mode} is not supported. Choose window"
+            + ", regularized or standard"
+        )
     return new_time_data
 
 
-def _window_this_ir_tukey(vec, total_length: int, window_type: str = 'hann',
-                          exp2_trim: int = 13,
-                          constant_percentage: float = 0.75,
-                          at_start: bool = True) -> \
-        tuple[np.ndarray, np.ndarray, np.ndarray]:
+def _window_this_ir_tukey(
+    vec,
+    total_length: int,
+    window_type: str = "hann",
+    exp2_trim: int = 13,
+    constant_percentage: float = 0.75,
+    at_start: bool = True,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """This function finds the index of the impulse and trims or windows it
     accordingly. Window used and the start sample are returned.
 
@@ -62,20 +72,22 @@ def _window_this_ir_tukey(vec, total_length: int, window_type: str = 'hann',
             length = np.argmax(abs(vec))
         else:
             # Selecting
-            assert constant_percentage > 0 and constant_percentage < 1, \
-                'Constant percentage must be between 0 and 1'
-            length = int((1-constant_percentage)*2**exp2_trim)//2
+            assert (
+                constant_percentage > 0 and constant_percentage < 1
+            ), "Constant percentage must be between 0 and 1"
+            length = int((1 - constant_percentage) * 2**exp2_trim) // 2
             ind_max = np.argmax(abs(vec))
             if ind_max - length < 0:
                 length = ind_max
-            start_sample = ind_max-length
-            vec = vec[start_sample:start_sample+2**exp2_trim]
+            start_sample = ind_max - length
+            vec = vec[start_sample : start_sample + 2**exp2_trim]
     else:
         length = np.argmax(abs(vec))
-    points = [0, length, total_length-length, total_length]
-    window = _calculate_window(points, total_length, window_type,
-                               at_start=at_start)
-    return vec*window, window, start_sample
+    points = [0, length, total_length - length, total_length]
+    window = _calculate_window(
+        points, total_length, window_type, at_start=at_start
+    )
+    return vec * window, window, start_sample
 
 
 def _min_phase_ir_from_real_cepstrum(time_data: np.ndarray):
@@ -94,8 +106,11 @@ def _min_phase_ir_from_real_cepstrum(time_data: np.ndarray):
         New time series.
 
     """
-    return np.real(np.fft.ifft(
-        _get_minimum_phase_spectrum_from_real_cepstrum(time_data), axis=0))
+    return np.real(
+        np.fft.ifft(
+            _get_minimum_phase_spectrum_from_real_cepstrum(time_data), axis=0
+        )
+    )
 
 
 def _get_minimum_phase_spectrum_from_real_cepstrum(time_data: np.ndarray):
@@ -115,24 +130,25 @@ def _get_minimum_phase_spectrum_from_real_cepstrum(time_data: np.ndarray):
 
     """
     # Real cepstrum
-    y = np.real(np.fft.ifft(np.log(np.abs(
-        np.fft.fft(time_data, axis=0))), axis=0))
+    y = np.real(
+        np.fft.ifft(np.log(np.abs(np.fft.fft(time_data, axis=0))), axis=0)
+    )
 
     # Window in the cepstral domain, like obtaining hilbert transform
     w = np.zeros(y.shape[0])
     w[0] = 1
-    w[:len(w)//2-1] = 2
+    w[: len(w) // 2 - 1] = 2
     # If length is even, nyquist is exactly in the middle
     if len(w) % 2 == 0:
-        w[len(w)//2] = 1
+        w[len(w) // 2] = 1
 
     # Windowing in cepstral domain and back to spectral domain
-    return np.exp(np.fft.fft(y*w[..., None], axis=0))
+    return np.exp(np.fft.fft(y * w[..., None], axis=0))
 
 
-def _window_this_ir(vec, total_length: int, window_type: str = 'hann',
-                    window_parameter=None) -> \
-        tuple[np.ndarray, np.ndarray, np.ndarray]:
+def _window_this_ir(
+    vec, total_length: int, window_type: str = "hann", window_parameter=None
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """This function windows an impulse response by placing the peak exactly
     in the middle of the window. It trims or pads at the end if needed. The
     windowed IR, window and the start sample are passed.
@@ -150,7 +166,7 @@ def _window_this_ir(vec, total_length: int, window_type: str = 'hann',
         flipping = True
         peak_ind = len(vec) - peak_ind - 1
 
-    w = get_window(window_type, half_length*2 + 1, False)
+    w = get_window(window_type, half_length * 2 + 1, False)
 
     if peak_ind - half_length < 0:
         ind_low_td = 0
@@ -207,11 +223,15 @@ def _warp_time_series(td: np.ndarray, warping_factor: float):
     warped_td = dirac[..., None] * td[0, :]
 
     # Print progress to console
-    ns = [int(0.25*td.shape[0]), int(0.5*td.shape[0]), int(0.75*td.shape[0])]
+    ns = [
+        int(0.25 * td.shape[0]),
+        int(0.5 * td.shape[0]),
+        int(0.75 * td.shape[0]),
+    ]
 
     for n in np.arange(1, td.shape[0]):
         dirac = lfilter(b, a, dirac)
-        warped_td += (dirac[..., None] * td[n, :])
+        warped_td += dirac[..., None] * td[n, :]
         if n in ns:
-            print(f'Warped: {ns.pop(0)}% of signal')
+            print(f"Warped: {ns.pop(0)}% of signal")
     return warped_td
