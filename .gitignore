@@ -9,3 +9,4 @@ checklist_for_dev.txt
 docs/_build
 .ipynb_checkpoints
 .pytest_cache
+.mypy_cache/
