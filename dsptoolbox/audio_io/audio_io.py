@@ -10,7 +10,7 @@ from ._audio_io import standard_callback
 default_config = sd.default
 
 
-def print_device_info(device_number: int = None):
+def print_device_info(device_number: int | None = None):
     """Prints available audio devices or information about a certain device
     when the device number is given.
 
@@ -38,7 +38,9 @@ def print_device_info(device_number: int = None):
         return d
 
 
-def set_device(device_numbers: list = None, sampling_rate_hz: int = None):
+def set_device(
+    device_numbers: list | None = None, sampling_rate_hz: int | None = None
+):
     """Takes in a device number to set it as the default for the input and the
     output. If `None` is passed, the available devices are first shown and
     then the user is asked for input to set the device two values separated by
@@ -62,33 +64,34 @@ def set_device(device_numbers: list = None, sampling_rate_hz: int = None):
 
     """
     if device_numbers is None:
-        txt = 'List of available devices'
-        print(txt+'\n'+'-'*len(txt))
+        txt = "List of available devices"
+        print(txt + "\n" + "-" * len(txt))
         print(sd.query_devices())
-        print('-'*len(txt))
+        print("-" * len(txt))
         device_numbers = input(
-            'Which device should be set as default? Between ' +
-            f'0 and {len(sd.query_devices())-1}: ')
-        device_numbers = \
-            [int(d) for d in device_numbers.split(',')]
+            "Which device should be set as default? Between "
+            + f"0 and {len(sd.query_devices()) - 1}: "
+        )
+        device_numbers = [int(d) for d in device_numbers.split(",")]
         if len(device_numbers) == 1:
             device_numbers = device_numbers[0]
     device_list = sd.query_devices()
-    if type(device_numbers) == int:
-        d = device_list[device_numbers]['name']
+    if type(device_numbers) is int:
+        d = device_list[device_numbers]["name"]
         print(f"""{d} will be used for input and output!""")
         sd.default.device = device_numbers
-    elif type(device_numbers) == list:
-        assert len(device_numbers) == 2, \
-            'List with device numbers must be exactly 2'
-        d = device_list[device_numbers[0]]['name']
+    elif type(device_numbers) is list:
+        assert (
+            len(device_numbers) == 2
+        ), "List with device numbers must be exactly 2"
+        d = device_list[device_numbers[0]]["name"]
         print(f"""{d} will be used for input!""")
 
-        d = device_list[device_numbers[1]]['name']
+        d = device_list[device_numbers[1]]["name"]
         print(f"""{d} will be used for output!""")
         sd.default.device = device_numbers
     else:
-        raise TypeError('device_number must be either a list or an int')
+        raise TypeError("device_number must be either a list or an int")
 
     # Sampling rate
     if sampling_rate_hz is not None:
@@ -96,9 +99,14 @@ def set_device(device_numbers: list = None, sampling_rate_hz: int = None):
     return sd.query_devices()
 
 
-def play_and_record(signal: Signal, duration_seconds: float = None,
-                    normalized_dbfs: float = -6, device: str = None,
-                    play_channels=None, rec_channels=[1]) -> Signal:
+def play_and_record(
+    signal: Signal,
+    duration_seconds: float | None = None,
+    normalized_dbfs: float = -6,
+    device: str | None = None,
+    play_channels=None,
+    rec_channels=[1],
+) -> Signal:
     """Play and record using some available device. Note that the channel
     numbers start here with 1.
 
@@ -132,23 +140,26 @@ def play_and_record(signal: Signal, duration_seconds: float = None,
     """
     # Asserts
     if play_channels is None:
-        play_channels = list(range(1, signal.number_of_channels+1))
-    if type(play_channels) == int:
+        play_channels = list(range(1, signal.number_of_channels + 1))
+    if type(play_channels) is int:
         play_channels = [play_channels]
-    if type(rec_channels) == int:
+    if type(rec_channels) is int:
         rec_channels = [rec_channels]
     play_channels = sorted(play_channels)
     rec_channels = sorted(rec_channels)
-    assert signal.number_of_channels == len(play_channels), \
-        'The number of channels in signal does not match the number of ' +\
-        'channels in play_channels'
-    assert not any([p < 1 for p in play_channels]), \
-        'Play channel has to be 1 or more'
-    assert not any([r < 1 for r in rec_channels]), \
-        'Recording channel has to be 1 or more'
+    assert signal.number_of_channels == len(play_channels), (
+        "The number of channels in signal does not match the number of "
+        + "channels in play_channels"
+    )
+    assert not any(
+        [p < 1 for p in play_channels]
+    ), "Play channel has to be 1 or more"
+    assert not any(
+        [r < 1 for r in rec_channels]
+    ), "Recording channel has to be 1 or more"
     #
     if duration_seconds is not None:
-        assert duration_seconds > 0, 'Duration must be positive'
+        assert duration_seconds > 0, "Duration must be positive"
         duration_samples = duration_seconds * signal.sampling_rate_hz
     else:
         duration_seconds = signal.time_data.shape[0] / signal.sampling_rate_hz
@@ -157,29 +168,35 @@ def play_and_record(signal: Signal, duration_seconds: float = None,
     play_data = signal.time_data.copy()[:duration_samples, :]
 
     if normalized_dbfs is not None:
-        assert normalized_dbfs <= 0, 'Only values beneath 0 dBFS are allowed'
-        play_data = _normalize(play_data, dbfs=normalized_dbfs, mode='peak')
+        assert normalized_dbfs <= 0, "Only values beneath 0 dBFS are allowed"
+        play_data = _normalize(play_data, dbfs=normalized_dbfs, mode="peak")
 
     if device is not None:
         sd.default.device = device
 
-    print('Playback and recording have started ' +
-          f'({duration_seconds:.1f} s)...')
-    rec_time_data = \
-        sd.playrec(
-            data=play_data,
-            samplerate=signal.sampling_rate_hz,
-            input_mapping=rec_channels,
-            output_mapping=play_channels)
+    print(
+        "Playback and recording have started "
+        + f"({duration_seconds:.1f} s)..."
+    )
+    rec_time_data = sd.playrec(
+        data=play_data,
+        samplerate=signal.sampling_rate_hz,
+        input_mapping=rec_channels,
+        output_mapping=play_channels,
+    )
     sd.wait()
-    print('Playback and recording have ended\n')
+    print("Playback and recording have ended\n")
 
     rec_sig = Signal(None, rec_time_data, signal.sampling_rate_hz)
     return rec_sig
 
 
-def record(duration_seconds: float = 5, sampling_rate_hz: int = 48000,
-           device: str | int = None, rec_channels=[1]) -> Signal:
+def record(
+    duration_seconds: float = 5,
+    sampling_rate_hz: int = 48000,
+    device: str | int | None = None,
+    rec_channels=[1],
+) -> Signal:
     """Record using some available device. Note that the channel numbers
     start here with 1.
 
@@ -202,30 +219,36 @@ def record(duration_seconds: float = 5, sampling_rate_hz: int = 48000,
 
     """
     # Asserts
-    if type(rec_channels) == int:
+    if type(rec_channels) is int:
         rec_channels = [rec_channels]
     rec_channels = sorted(rec_channels)
-    assert not any([r < 1 for r in rec_channels]), \
-        'Recording channel has to be 1 or more'
+    assert not any(
+        [r < 1 for r in rec_channels]
+    ), "Recording channel has to be 1 or more"
     #
     if device is not None:
         sd.default.device = device
 
-    print(f'\nRecording started ({duration_seconds:.1f} s)...')
-    rec_time_data = \
-        sd.rec(
-            frames=int(duration_seconds * sampling_rate_hz),
-            samplerate=sampling_rate_hz,
-            mapping=rec_channels)
+    print(f"\nRecording started ({duration_seconds:.1f} s)...")
+    rec_time_data = sd.rec(
+        frames=int(duration_seconds * sampling_rate_hz),
+        samplerate=sampling_rate_hz,
+        mapping=rec_channels,
+    )
     sd.wait()
-    print('Recording has ended\n')
+    print("Recording has ended\n")
 
     rec_sig = Signal(None, rec_time_data, sampling_rate_hz)
     return rec_sig
 
 
-def play(signal: Signal, duration_seconds: float = None,
-         normalized_dbfs: float = -6, device: str = None, play_channels=None):
+def play(
+    signal: Signal,
+    duration_seconds: float | None = None,
+    normalized_dbfs: float = -6,
+    device: str | None = None,
+    play_channels: int | list | tuple | None = None,
+):
     """Playback of signal using some available device. Note that the channel
     numbers start here with 1.
 
@@ -251,38 +274,43 @@ def play(signal: Signal, duration_seconds: float = None,
     """
     # Asserts and preprocessing
     if play_channels is None:
-        play_channels = list(range(1, signal.number_of_channels+1))
-    if type(play_channels) == int:
+        play_channels = list(range(1, signal.number_of_channels + 1))
+    if type(play_channels) is int:
         play_channels = [play_channels]
     play_channels = sorted(play_channels)
-    assert not any([r < 1 for r in play_channels]), \
-        'Play channel has to be 1 or more'
+    assert not any(
+        [r < 1 for r in play_channels]
+    ), "Play channel has to be 1 or more"
     if duration_seconds is not None:
-        assert duration_seconds > 0, 'Duration must be positive'
+        assert duration_seconds > 0, "Duration must be positive"
         duration_samples = int(duration_seconds * signal.sampling_rate_hz)
     else:
         duration_seconds = signal.time_data.shape[0] / signal.sampling_rate_hz
         duration_samples = signal.time_data.shape[0]
     play_data = signal.time_data.copy()[:duration_samples, :]
     if normalized_dbfs is not None:
-        assert normalized_dbfs <= 0, 'Only values beneath 0 dBFS are allowed'
-        play_data = _normalize(play_data, dbfs=normalized_dbfs, mode='peak')
+        assert normalized_dbfs <= 0, "Only values beneath 0 dBFS are allowed"
+        play_data = _normalize(play_data, dbfs=normalized_dbfs, mode="peak")
     #
     if device is not None:
         sd.default.device = device
 
-    print(f'Playback started ({duration_seconds:.1f} s)...')
+    print(f"Playback started ({duration_seconds:.1f} s)...")
     sd.play(
         data=play_data,
         samplerate=signal.sampling_rate_hz,
-        mapping=play_channels)
+        mapping=play_channels,
+    )
     sd.wait()
-    print('Playback has ended\n')
+    print("Playback has ended\n")
 
 
-def play_through_stream(signal: Signal, blocksize: int = 2048,
-                        audio_callback: callable = standard_callback,
-                        device: str = None):
+def play_through_stream(
+    signal: Signal,
+    blocksize: int = 2048,
+    audio_callback: callable = standard_callback,
+    device: str | None = None,
+):
     """Plays a signal using a stream and a callback function.
     See `sounddevice.OutputStream` for extensive information about
     functionalities.
@@ -323,19 +351,22 @@ def play_through_stream(signal: Signal, blocksize: int = 2048,
 
     """
 
-    if not hasattr(signal, 'streaming_position'):
+    if not hasattr(signal, "streaming_position"):
         signal.set_streaming_position()
 
     duration_samples = signal.time_data.shape[0] - signal.streaming_position
-    duration_ms = int(duration_samples/signal.sampling_rate_hz*1000)
+    duration_ms = int(duration_samples / signal.sampling_rate_hz * 1000)
 
     if device is not None:
         sd.default.device = device
 
     try:
-        with sd.OutputStream(signal.sampling_rate_hz, blocksize=blocksize,
-                             callback=audio_callback(signal),
-                             channels=signal.number_of_channels):
+        with sd.OutputStream(
+            signal.sampling_rate_hz,
+            blocksize=blocksize,
+            callback=audio_callback(signal),
+            channels=signal.number_of_channels,
+        ):
             sd.sleep(duration_ms + 5)
     except Exception as e:
         print(e)
@@ -359,14 +390,22 @@ def sleep(seconds: float):
         Seconds to wait.
 
     """
-    sd.sleep(int(seconds*1000))
+    sd.sleep(int(seconds * 1000))
 
 
-def output_stream(signal: Signal, blocksize=2048,
-                  device=None, latency=None,
-                  extra_settings=None, callback=None, finished_callback=None,
-                  clip_off=None, dither_off=None, never_drop_input=None,
-                  prime_output_buffers_using_stream_callback=None):
+def output_stream(
+    signal: Signal,
+    blocksize=2048,
+    device=None,
+    latency=None,
+    extra_settings=None,
+    callback=None,
+    finished_callback=None,
+    clip_off=None,
+    dither_off=None,
+    never_drop_input=None,
+    prime_output_buffers_using_stream_callback=None,
+):
     """Creates and return a sounddevice's OutputStream object. See
     sounddevice's documentation for more information.
 
@@ -402,12 +441,18 @@ def output_stream(signal: Signal, blocksize=2048,
     """
     pobusc = prime_output_buffers_using_stream_callback
     stream = sd.OutputStream(
-        samplerate=signal.sampling_rate_hz, blocksize=blocksize,
-        device=device, channels=signal.number_of_channels,
-        dtype=None, latency=latency,
-        extra_settings=extra_settings, callback=callback,
+        samplerate=signal.sampling_rate_hz,
+        blocksize=blocksize,
+        device=device,
+        channels=signal.number_of_channels,
+        dtype=None,
+        latency=latency,
+        extra_settings=extra_settings,
+        callback=callback,
         finished_callback=finished_callback,
-        clip_off=clip_off, dither_off=dither_off,
+        clip_off=clip_off,
+        dither_off=dither_off,
         never_drop_input=never_drop_input,
-        prime_output_buffers_using_stream_callback=pobusc)
+        prime_output_buffers_using_stream_callback=pobusc,
+    )
     return stream

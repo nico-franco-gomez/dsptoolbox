@@ -5,13 +5,16 @@ import numpy as np
 from .._general_helpers import _euclidean_distance_matrix
 import matplotlib.pyplot as plt
 from seaborn import set_style
-set_style('whitegrid')
+
+set_style("whitegrid")
 
 
-class BasePoints():
-    """This is a base class for saving point data (like grids or mic arrays).
+class BasePoints:
+    """This is a base class for saving point data (like grids or mic
+    arrays).
 
     """
+
     # ======== Constructor ====================================================
     def __init__(self, positions: dict):
         """Initiate a grid based on the positions dictionary that contains
@@ -34,14 +37,14 @@ class BasePoints():
           `'y'` and `'z'`.
 
         """
-        for i in ('x', 'y', 'z'):
-            assert i in positions, \
-                f'{i} values are missing'
-        x = np.asarray(positions['x']).squeeze()[None, ...]
-        y = np.asarray(positions['y']).squeeze()[None, ...]
-        z = np.asarray(positions['z']).squeeze()[None, ...]
-        assert x.shape == y.shape and x.shape == z.shape, \
-            'Shapes of x, y or z are not compatible'
+        for i in ("x", "y", "z"):
+            assert i in positions, f"{i} values are missing"
+        x = np.asarray(positions["x"]).squeeze()[None, ...]
+        y = np.asarray(positions["y"]).squeeze()[None, ...]
+        z = np.asarray(positions["z"]).squeeze()[None, ...]
+        assert (
+            x.shape == y.shape and x.shape == z.shape
+        ), "Shapes of x, y or z are not compatible"
         new_r = np.append(x, y, axis=0)
         new_r = np.append(new_r, z, axis=0)
         self.coordinates = new_r.T
@@ -57,12 +60,13 @@ class BasePoints():
 
     @coordinates.setter
     def coordinates(self, new_r):
-        assert type(new_r) == np.ndarray,\
-            'R vectors array should be of type numpy.ndarray'
+        assert (
+            type(new_r) is np.ndarray
+        ), "R vectors array should be of type numpy.ndarray"
         # Check if grid is 1, 2 or 3D
         ndimensions = 3
-        dimensions = ['x', 'y', 'z']
-        base_dimensions = ['x', 'y', 'z']
+        dimensions = ["x", "y", "z"]
+        base_dimensions = ["x", "y", "z"]
         for i in range(new_r.shape[1]):
             if len(np.unique(new_r[:, i])) == 1:
                 ndimensions -= 1
@@ -74,7 +78,7 @@ class BasePoints():
     @property
     def extent(self):
         extent = {}
-        dims = ['x', 'y', 'z']
+        dims = ["x", "y", "z"]
         for i, d in enumerate(dims):
             min_val = np.min(self.coordinates[:, i])
             max_val = np.max(self.coordinates[:, i])
@@ -98,12 +102,13 @@ class BasePoints():
             Distances with shape (points, new_points).
 
         """
-        if type(point) != np.ndarray:
+        if type(point) is not np.ndarray:
             point = np.asarray(point)
         if point.ndim == 1:
             point = point[None, ...]
-        assert point.shape[1] == self.coordinates.shape[1], \
-            f'Invalid shapes: {point.shape}, {self.coordinates.shape}'
+        assert (
+            point.shape[1] == self.coordinates.shape[1]
+        ), f"Invalid shapes: {point.shape}, {self.coordinates.shape}"
         return _euclidean_distance_matrix(self.coordinates, point).squeeze()
 
     # ======== Plotting =======================================================
@@ -120,38 +125,41 @@ class BasePoints():
         """
         if projection is not None:
             projection = projection.lower()
-        if self.ndim == 3 or projection == '3d':
-            projection = '3d'
+        if self.ndim == 3 or projection == "3d":
+            projection = "3d"
             threed = True
-        elif projection in (None, '2d'):
+        elif projection in (None, "2d"):
             threed = False
             projection = None
         else:
-            raise ValueError('projection must be 2d, 3d or None')
+            raise ValueError("projection must be 2d, 3d or None")
 
-        fig, ax = plt.subplots(1, 1, figsize=(7, 5),
-                               subplot_kw={'projection': projection})
+        fig, ax = plt.subplots(
+            1, 1, figsize=(7, 5), subplot_kw={"projection": projection}
+        )
         if threed:
             ax.scatter(
-                xs=self.coordinates[:, 0], ys=self.coordinates[:, 1],
+                xs=self.coordinates[:, 0],
+                ys=self.coordinates[:, 1],
                 zs=self.coordinates[:, 2],
-                )
-            ax.set_xlabel('$x$ / m')
-            ax.set_ylabel('$y$ / m')
-            ax.set_zlabel('$z$ / m')
+            )
+            ax.set_xlabel("$x$ / m")
+            ax.set_ylabel("$y$ / m")
+            ax.set_zlabel("$z$ / m")
         else:
             # Get right coordinates
             helper = dict(x=0, y=1, z=2)
             dim1 = helper[self.dim[0]]
             if self.ndim == 1:
-                dim2 = dim1-1
+                dim2 = dim1 - 1
             else:
                 dim2 = helper[self.dim[1]]
             ax.scatter(
-                x=self.coordinates[:, dim1], y=self.coordinates[:, dim2],
+                x=self.coordinates[:, dim1],
+                y=self.coordinates[:, dim2],
             )
-            ax.set_xlabel(f'${self.dim[0]}$ / m')
-            ax.set_ylabel(f'''${['x', 'y', 'z'][dim2]}$ / m''')
+            ax.set_xlabel(f"${self.dim[0]}$ / m")
+            ax.set_ylabel(f"""${['x', 'y', 'z'][dim2]}$ / m""")
         fig.tight_layout()
         return fig, ax
 
@@ -173,20 +181,27 @@ class BasePoints():
 
         """
         point = np.asarray(point).squeeze()
-        assert point.ndim == 1, \
-            'Passed vector is not broadcastable to a 1D-array'
-        assert len(point) == 3, \
-            'Point must have exactly 3 dimensions (x, y, z)'
+        assert (
+            point.ndim == 1
+        ), "Passed vector is not broadcastable to a 1D-array"
+        assert (
+            len(point) == 3
+        ), "Point must have exactly 3 dimensions (x, y, z)"
         dist = self.get_distances_to_point(point)
         index = np.argmin(dist)
         coord = self.coordinates[index, :]
         return index, coord
 
 
-def _clean_sc_deconvolve(map: np.ndarray, csm: np.ndarray, h: np.ndarray,
-                         h_H: np.ndarray, maximum_iterations: int,
-                         remove_diagonal_csm: bool, safety_factor: float) \
-        -> np.ndarray:
+def _clean_sc_deconvolve(
+    map: np.ndarray,
+    csm: np.ndarray,
+    h: np.ndarray,
+    h_H: np.ndarray,
+    maximum_iterations: int,
+    remove_diagonal_csm: bool,
+    safety_factor: float,
+) -> np.ndarray:
     """Computes and returns the degraded csm.
 
     Parameters
@@ -226,7 +241,7 @@ def _clean_sc_deconvolve(map: np.ndarray, csm: np.ndarray, h: np.ndarray,
     D = csm
 
     # Save last CSM to check stopping criterion given in [1]
-    D = np.append(D[None, ...]*2, D[None, ...], axis=0)
+    D = np.append(D[None, ...] * 2, D[None, ...], axis=0)
 
     # Save powers for stopping criterion – Alternative
     # powers = np.zeros(maximum_iterations)
@@ -243,8 +258,9 @@ def _clean_sc_deconvolve(map: np.ndarray, csm: np.ndarray, h: np.ndarray,
         second_map[maximum_power_ind] += maximum_power * safety_factor
 
         # Stopping criterion
-        if np.linalg.norm(D[1, :, :], ord=1) >= \
-                np.linalg.norm(D[0, :, :], ord=1):
+        if np.linalg.norm(D[1, :, :], ord=1) >= np.linalg.norm(
+            D[0, :, :], ord=1
+        ):
             break
 
         # Alternatively...
@@ -257,13 +273,13 @@ def _clean_sc_deconvolve(map: np.ndarray, csm: np.ndarray, h: np.ndarray,
         h_ = w_max.copy()
 
         # For saving computations later in loop
-        w_max_squared = w_max.conjugate()*w_max
+        w_max_squared = w_max.conjugate() * w_max
         D_ = D[1, :, :] @ w_max / maximum_power
 
         # Computation of G, according to [1], only a couple iterations
         # are needed; following acoular, 20 are used here
         for _ in range(20):
-            H = h_.conjugate()*h_
+            H = h_.conjugate() * h_
             h_ = (D_ + H * w_max) / np.sqrt(1 + H @ w_max_squared)
 
         G = np.outer(h_, h_.conjugate()) * maximum_power
@@ -273,8 +289,10 @@ def _clean_sc_deconvolve(map: np.ndarray, csm: np.ndarray, h: np.ndarray,
 
         for gind in range(len(map)):
             # Clean map
-            map[gind] -= np.linalg.multi_dot([
-                h_H[gind, :], G, h[:, gind]]).real * safety_factor
+            map[gind] -= (
+                np.linalg.multi_dot([h_H[gind, :], G, h[:, gind]]).real
+                * safety_factor
+            )
 
         # Swap degraded CSM
         temp = D[1, :, :].copy()

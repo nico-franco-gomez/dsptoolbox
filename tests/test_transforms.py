@@ -4,46 +4,69 @@ from os.path import join
 import numpy as np
 
 
-class TestTransformsModule():
-    speech = dsp.Signal(join('examples', 'data', 'speech.flac'))
+class TestTransformsModule:
+    speech = dsp.Signal(join("examples", "data", "speech.flac"))
 
     def test_cepstrum(self):
         # Only functionality
-        dsp.transforms.cepstrum(self.speech, mode='power')
-        dsp.transforms.cepstrum(self.speech, mode='real')
-        dsp.transforms.cepstrum(self.speech, mode='complex')
+        dsp.transforms.cepstrum(self.speech, mode="power")
+        dsp.transforms.cepstrum(self.speech, mode="real")
+        dsp.transforms.cepstrum(self.speech, mode="complex")
 
     def test_log_mel_spectrogram(self):
         # Only functionality
         dsp.transforms.log_mel_spectrogram(
-            self.speech, range_hz=None, n_bands=40, generate_plot=False,
-            stft_parameters=None)
+            self.speech,
+            range_hz=None,
+            n_bands=40,
+            generate_plot=False,
+            stft_parameters=None,
+        )
         dsp.transforms.log_mel_spectrogram(
-            self.speech, range_hz=[20, 20e3], n_bands=10, generate_plot=False,
-            stft_parameters=None)
+            self.speech,
+            range_hz=[20, 20e3],
+            n_bands=10,
+            generate_plot=False,
+            stft_parameters=None,
+        )
         dsp.transforms.log_mel_spectrogram(
-            self.speech, range_hz=None, n_bands=40, generate_plot=True,
-            stft_parameters=None)
+            self.speech,
+            range_hz=None,
+            n_bands=40,
+            generate_plot=True,
+            stft_parameters=None,
+        )
         dsp.transforms.log_mel_spectrogram(
-            self.speech, range_hz=None, n_bands=40, generate_plot=False,
-            stft_parameters=dict(window_type=('chebwin', 40)))
+            self.speech,
+            range_hz=None,
+            n_bands=40,
+            generate_plot=False,
+            stft_parameters=dict(window_type=("chebwin", 40)),
+        )
 
         # Raise Assertion error if set range is larger than the nyquist
         # frequency
         with pytest.raises(AssertionError):
             dsp.transforms.log_mel_spectrogram(
-                self.speech, range_hz=[20, 30e3], n_bands=10,
-                generate_plot=False, stft_parameters=None)
+                self.speech,
+                range_hz=[20, 30e3],
+                n_bands=10,
+                generate_plot=False,
+                stft_parameters=None,
+            )
 
     def test_mel_filters(self):
         # Only functionality
         f = np.linspace(0, 24000, 2048)
         dsp.transforms.mel_filterbank(
-            f_hz=f, range_hz=None, n_bands=30, normalize=False)
+            f_hz=f, range_hz=None, n_bands=30, normalize=False
+        )
         dsp.transforms.mel_filterbank(
-            f_hz=f, range_hz=[1e3, 5e3], n_bands=10, normalize=False)
+            f_hz=f, range_hz=[1e3, 5e3], n_bands=10, normalize=False
+        )
         dsp.transforms.mel_filterbank(
-            f_hz=f, range_hz=None, n_bands=30, normalize=True)
+            f_hz=f, range_hz=None, n_bands=30, normalize=True
+        )
 
     def test_plot_waterfall(self):
         # Only functionality
@@ -51,15 +74,17 @@ class TestTransformsModule():
         with pytest.raises(AssertionError):
             dsp.transforms.plot_waterfall(self.speech, dynamic_range_db=-10)
         dsp.transforms.plot_waterfall(
-            self.speech, stft_parameters=dict(window_type=('chebwin', 40)))
+            self.speech, stft_parameters=dict(window_type=("chebwin", 40))
+        )
 
     def test_mfcc(self):
         # Only functionality
         t, f, s = self.speech.get_spectrogram()
 
         mels, _ = dsp.transforms.mel_filterbank(f, [20, 10e3], n_bands=4)
-        t, mel, mf, fig, ax = dsp.transforms.mfcc(self.speech,
-                                                  mel_filters=mels)
+        t, mel, mf, fig, ax = dsp.transforms.mfcc(
+            self.speech, mel_filters=mels
+        )
         t, mel, mf = dsp.transforms.mfcc(self.speech, generate_plot=False)
 
     def test_istft(self):
@@ -70,10 +95,15 @@ class TestTransformsModule():
         assert np.all(np.isclose(self.speech.time_data, speech_rec.time_data))
 
         speech_rec = dsp.transforms.istft(
-            sp, parameters=self.speech._spectrogram_parameters,
-            sampling_rate_hz=self.speech.sampling_rate_hz)
-        assert np.all(np.isclose(self.speech.time_data,
-                                 speech_rec.time_data[:len(self.speech)]))
+            sp,
+            parameters=self.speech._spectrogram_parameters,
+            sampling_rate_hz=self.speech.sampling_rate_hz,
+        )
+        assert np.all(
+            np.isclose(
+                self.speech.time_data, speech_rec.time_data[: len(self.speech)]
+            )
+        )
 
     def test_chroma(self):
         # Only functionality
@@ -90,10 +120,11 @@ class TestTransformsModule():
     def test_hilbert(self):
         # Results compared with scipy hilbert
         s = dsp.transforms.hilbert(self.speech)
-        s = s.time_data + s.time_data_imaginary*1j
+        s = s.time_data + s.time_data_imaginary * 1j
         s2 = self.speech.time_data
 
         from scipy.signal import hilbert
+
         s2 = hilbert(s2, axis=0)
         assert np.all(np.isclose(s, s2))
 

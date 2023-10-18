@@ -24,18 +24,20 @@ Other:
 - `weightning_filter()`: A- or C-Weightning filter.
 
 """
-from .filterbanks import (linkwitz_riley_crossovers,
-                          reconstructing_fractional_octave_bands,
-                          auditory_filters_gammatone,
-                          fractional_octave_bands,
-                          qmf_crossover,
-                          weightning_filter)
+from .filterbanks import (
+    linkwitz_riley_crossovers,
+    reconstructing_fractional_octave_bands,
+    auditory_filters_gammatone,
+    fractional_octave_bands,
+    qmf_crossover,
+    weightning_filter,
+)
 
 __all__ = [
-    'linkwitz_riley_crossovers',
-    'reconstructing_fractional_octave_bands',
-    'fractional_octave_bands',
-    'auditory_filters_gammatone',
-    'qmf_crossover',
-    'weightning_filter'
+    "linkwitz_riley_crossovers",
+    "reconstructing_fractional_octave_bands",
+    "fractional_octave_bands",
+    "auditory_filters_gammatone",
+    "qmf_crossover",
+    "weightning_filter",
 ]

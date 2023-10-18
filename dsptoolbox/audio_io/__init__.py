@@ -33,20 +33,30 @@ References
 - https://pypi.org/project/sounddevice/
 
 """
-from .audio_io import (play, play_and_record, set_device, record,
-                       print_device_info, play_through_stream, CallbackStop,
-                       standard_callback, sleep, output_stream, default_config)
+from .audio_io import (
+    play,
+    play_and_record,
+    set_device,
+    record,
+    print_device_info,
+    play_through_stream,
+    CallbackStop,
+    standard_callback,
+    sleep,
+    output_stream,
+    default_config,
+)
 
 __all__ = [
-    'play',
-    'play_and_record',
-    'set_device',
-    'record',
-    'print_device_info',
-    'play_through_stream',
-    'CallbackStop',
-    'standard_callback',
-    'sleep',
-    'output_stream',
-    'default_config',
+    "play",
+    "play_and_record",
+    "set_device",
+    "record",
+    "print_device_info",
+    "play_through_stream",
+    "CallbackStop",
+    "standard_callback",
+    "sleep",
+    "output_stream",
+    "default_config",
 ]

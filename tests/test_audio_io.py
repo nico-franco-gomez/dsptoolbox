@@ -6,8 +6,8 @@ import dsptoolbox as dsp
 from os.path import join
 
 
-class TestAudioIOModule():
-    speech = dsp.Signal(join('examples', 'data', 'speech.flac'))
+class TestAudioIOModule:
+    speech = dsp.Signal(join("examples", "data", "speech.flac"))
 
     def test_device_selection(self):
         dsp.audio_io.print_device_info()

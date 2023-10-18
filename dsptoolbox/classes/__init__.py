@@ -14,10 +14,12 @@ from .filter_class import Filter
 from .filterbank import FilterBank
 from .signal_class import Signal
 from .multibandsignal import MultiBandSignal
+from ._lattice_ladder_filter import LatticeLadderFilter
 
 __all__ = [
-    'Filter',
-    'FilterBank',
-    'Signal',
-    'MultiBandSignal'
+    "Filter",
+    "FilterBank",
+    "Signal",
+    "MultiBandSignal",
+    "LatticeLadderFilter",
 ]
