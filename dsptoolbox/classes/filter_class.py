@@ -523,7 +523,7 @@ class Filter:
             if k == "ba":
                 continue
             txt += f"""{str(k).replace('_', ' ').
-                     capitalize()}: {self.info[k]}\n"""
+                        capitalize()}: {self.info[k]}\n"""
         return txt
 
     def get_ir(

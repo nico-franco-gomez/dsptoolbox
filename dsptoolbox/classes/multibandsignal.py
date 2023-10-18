@@ -229,7 +229,7 @@ class MultiBandSignal:
         ), "The number of bands does not match"
         assert all(new_order < self.number_of_bands) and all(new_order >= 0), (
             "Indexes of new bands have to be in "
-            + f"[0, {self.number_of_bands-1}]"
+            + f"[0, {self.number_of_bands - 1}]"
         )
         assert len(unique(new_order)) == len(
             new_order
@@ -273,7 +273,7 @@ class MultiBandSignal:
         txt = ""
         for k in self.info:
             txt += f""" | {str(k).replace('_', ' ').
-                        capitalize()}: {self.info[k]}"""
+                           capitalize()}: {self.info[k]}"""
         txt = "Multiband signal:" + txt
         txt += "\n"
         txt += "–" * len(txt)
@@ -282,7 +282,7 @@ class MultiBandSignal:
             txt += f"Signal {ind}:"
             for kf in f1.info:
                 txt += f""" | {str(kf).replace('_', ' ').
-                            capitalize()}: {f1.info[kf]}"""
+                               capitalize()}: {f1.info[kf]}"""
         return txt
 
     # ======== Getters ========================================================

@@ -75,7 +75,8 @@ class AudioEffect:
             )
 
     def _apply_this_effect(self, signal: Signal) -> Signal:
-        """Abstract class method to apply the audio effect on a given signal.
+        """Abstract class method to apply the audio effect on a given
+        signal.
 
         """
         return signal
@@ -204,7 +205,8 @@ class SpectralSubtractor(AudioEffect):
         block_length_s,
         spectrum_to_subtract,
     ):
-        """Internal method to set the parameters for the spectral subtraction.
+        """Internal method to set the parameters for the spectral
+        subtraction.
 
         """
         if adaptive_mode is not None:
@@ -540,7 +542,7 @@ class SpectralSubtractor(AudioEffect):
             # Noise estimate
             noise_psd = np.zeros((len(self.window) // 2 + 1))
 
-            print(f"Denoising channel {n+1} of {signal.number_of_channels}")
+            print(f"Denoising channel {n + 1} of {signal.number_of_channels}")
             for i in range(td_spec.shape[1]):
                 if td_rms_db[i, n] < self.threshold_rms_dbfs:
                     noise_psd = (
@@ -1276,11 +1278,11 @@ class Chorus(AudioEffect):
             ), "Unsupported modulators type. Use LFO or numpy.ndarray"
             if type(modulators) is np.ndarray:
                 modulators = np.atleast_2d(modulators)
-                modulators.shape[
-                    1
-                ] == self.number_of_voices, "The modulators signal must " \
-                    + "have the same number of channels as there are " \
+                modulators.shape[1] == self.number_of_voices, (
+                    "The modulators signal must "
+                    + "have the same number of channels as there are "
                     + f"voices {self.number_of_voices}"
+                )
                 self.modulators = modulators
             elif type(modulators) is LFO:
                 self.modulators = [modulators] * self.number_of_voices

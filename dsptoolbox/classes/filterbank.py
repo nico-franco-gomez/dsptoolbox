@@ -229,7 +229,7 @@ class FilterBank:
             new_order >= 0
         ), (
             "Indexes of new filters have to be in "
-            + f"[0, {self.number_of_filters-1}]"
+            + f"[0, {self.number_of_filters - 1}]"
         )
         assert len(np.unique(new_order)) == len(
             new_order
@@ -444,7 +444,7 @@ class FilterBank:
         txt = ""
         for k in self.info:
             txt += f""" | {str(k).replace('_', ' ').
-                        capitalize()}: {self.info[k]}"""
+                           capitalize()}: {self.info[k]}"""
         txt = "Filter Bank:" + txt
         txt += "\n"
         txt += "–" * len(txt)
@@ -455,7 +455,7 @@ class FilterBank:
                 if kf == "ba":
                     continue
                 txt += f""" | {str(kf).replace('_', ' ').
-                            capitalize()}: {f1.info[kf]}"""
+                               capitalize()}: {f1.info[kf]}"""
         return txt
 
     def plot_magnitude(

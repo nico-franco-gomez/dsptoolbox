@@ -364,7 +364,9 @@ def generate_synthetic_rir(
 
         print("\nRIR Generator\n")
         for ind in range(fb.number_of_bands):
-            print(f"Band {ind+1} of {fb.number_of_bands} is being computed...")
+            print(
+                f"Band {ind + 1} of {fb.number_of_bands} is being computed..."
+            )
             alphas = room.detailed_absorption["absorption_matrix"][:, ind]
             rir_band = _generate_rir(
                 room_dim=room.dimensions_m,
