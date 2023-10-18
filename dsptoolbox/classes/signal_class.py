@@ -653,7 +653,7 @@ class Signal:
         assert self.time_data.shape[1] > 1, "Cannot not erase only channel"
         assert self.time_data.shape[1] - 1 >= channel_number, (
             f"Channel number {channel_number} does not exist. Signal only "
-            + f"has {self.number_of_channels-1} channels (zero included)."
+            + f"has {self.number_of_channels - 1} channels (zero included)."
         )
         self.time_data = np.delete(self.time_data, channel_number, axis=-1)
         self.__update_state()
@@ -679,7 +679,7 @@ class Signal:
             new_order >= 0
         ), (
             "Indexes of new channels have to be in "
-            + f"[0, {self.number_of_channels-1}]"
+            + f"[0, {self.number_of_channels - 1}]"
         )
         assert len(np.unique(new_order)) == len(
             new_order
@@ -1292,7 +1292,7 @@ class Signal:
             if k == "signal_id":
                 continue
             txt += f"""{str(k).replace('_', ' ').
-                     capitalize()}: {self.info[k]}\n"""
+                        capitalize()}: {self.info[k]}\n"""
         return txt
 
     def show_info(self):

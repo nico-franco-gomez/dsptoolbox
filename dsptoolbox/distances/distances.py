@@ -354,7 +354,7 @@ def fw_snr_seg(
     f_range.sort()
     assert f_range[1] < fs_hz // 2, (
         f"Upper frequency range {f_range[1]} must be smaller than nyquist "
-        + f"frequency {fs_hz//2}"
+        + f"frequency {fs_hz // 2}"
     )
     assert f_range[0] > 0, "Frequency range must be positive"
     # SNR range

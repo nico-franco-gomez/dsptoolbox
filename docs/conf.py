@@ -4,9 +4,11 @@
 # https://www.sphinx-doc.org/en/master/usage/configuration.html
 import os
 import sys
-sys.path.insert(0, os.path.abspath('..'))
 
-from dsptoolbox import __version__
+sys.path.insert(0, os.path.abspath(".."))
+
+if True:
+    from dsptoolbox import __version__
 
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information

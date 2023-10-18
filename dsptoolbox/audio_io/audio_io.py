@@ -70,7 +70,7 @@ def set_device(
         print("-" * len(txt))
         device_numbers = input(
             "Which device should be set as default? Between "
-            + f"0 and {len(sd.query_devices())-1}: "
+            + f"0 and {len(sd.query_devices()) - 1}: "
         )
         device_numbers = [int(d) for d in device_numbers.split(",")]
         if len(device_numbers) == 1:

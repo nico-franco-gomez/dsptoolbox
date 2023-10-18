@@ -591,8 +591,9 @@ def lin_phase_from_mag(
             gd = np.max(min_gd) + 1e-3  # add 1 ms as safety factor
             if check_causality and type(group_delay_ms) is not str:
                 assert gd <= group_delay_ms, (
-                    f"Given group delay {group_delay_ms*1000} ms is lower "
-                    + f"than minimal group delay {gd*1000} ms for channel {n}"
+                    f"Given group delay {group_delay_ms * 1000} ms is lower "
+                    + f"than minimal group delay {gd * 1000} ms for "
+                    + f"channel {n}"
                 )
                 gd = group_delay_ms
         else:
