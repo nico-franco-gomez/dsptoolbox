@@ -1217,7 +1217,7 @@ def find_ir_latency(ir: Signal) -> np.ndarray:
     assert ir.signal_type in ("rir", "ir"), "Only valid for rir or ir"
     # Get maximum with fractional precision by finding the root of the complex
     # part of the analytical signal
-    delay_samples = np.argmax(ir.time_data, axis=0).astype(int)
+    delay_samples = np.argmax(np.abs(ir.time_data), axis=0).astype(int)
     h = hilbert(ir.time_data, axis=0)
     point_around = 1
     x = np.arange(-point_around, point_around)
