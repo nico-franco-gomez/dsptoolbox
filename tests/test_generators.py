@@ -131,6 +131,23 @@ class TestGeneratorsModule:
 
         # Same as with scipy's chirp
         fs = 44_100
+        duration = 1
+        t = np.linspace(0, duration, duration * fs)
+        s = chirp(t=t, f0=20, t1=1, f1=20e3, method="logarithmic")
+        s2 = dsp.generators.chirp(
+            length_seconds=1,
+            sampling_rate_hz=fs,
+            type_of_chirp="log",
+            fade=None,
+            peak_level_dbfs=0,
+            phase_offset=np.pi / 2,  # Offset because scipy uses cosine
+            range_hz=[20, 20e3],
+        )
+        s2 = s2.time_data[:, 0]
+        assert np.all(np.isclose(s, s2))
+
+        # Same as with scipy's chirp
+        fs = 44_100
         fs = 44100
         duration = 1
         t = np.linspace(0, duration, duration * fs)

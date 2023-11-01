@@ -41,6 +41,13 @@ class Wavelet:
         """
         raise NotImplementedError("Wavelet function has not been implemented")
 
+    def get_wavelet(self, f, fs):
+        """Abstract method to get the sampled wavelet. It must be implemented
+        in each Wavelet class.
+
+        """
+        raise NotImplementedError("Wavelet function has not been implemented")
+
     def get_center_frequency(self):
         """Returns the center frequency of the wavelet (normalized,
         i.e., with fs=1).
@@ -290,7 +297,7 @@ def _get_length_longest_wavelet(
         Length of longest wavelet in samples.
 
     """
-    return len(wave.get_wavelet(np.min(f), fs, False))
+    return len(wave.get_wavelet(np.min(f), fs))
 
 
 def _get_kernels_vqt(

@@ -1454,7 +1454,7 @@ class BeamformerDASTime(BaseBeamformer):
                     * ds[im, ig]
                 )
                 new_time_data += _pad_trim(ntd, total_length_samples)
-            new_time_data *= 4 * np.pi / self.mics.number_of_points
+            new_time_data /= self.mics.number_of_points
             out_sig.add_channel(None, new_time_data, out_sig.sampling_rate_hz)
         out_sig.remove_channel(0)
         return out_sig
