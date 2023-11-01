@@ -29,9 +29,9 @@ Analyze TF/IR:
 - `minimum_group_delay()`
 - `excess_group_delay()`
 - `minimum_phase()`
-- `find_ir_delay()`
 - `window_frequency_dependent()` (obtain a spectrum with a frequency-dependent
   window)
+- `find_ir_latency()`
 
 """
 from .transfer_functions import (
@@ -52,6 +52,7 @@ from .transfer_functions import (
     filter_to_ir,
     combine_ir_with_dirac,
     warp_ir,
+    find_ir_latency,
 )
 
 __all__ = [
@@ -72,4 +73,5 @@ __all__ = [
     "combine_ir_with_dirac",
     "window_centered_ir",
     "warp_ir",
+    "find_ir_latency",
 ]

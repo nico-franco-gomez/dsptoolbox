@@ -367,6 +367,16 @@ class TestTransferFunctionsModule:
             s, 1000, False, normalization="energy"
         )
 
+    def test_find_ir_latency(self):
+        ir = dsp.generators.dirac(self.fs, sampling_rate_hz=self.fs)
+        ir.signal_type = "ir"
+        delay_seconds = 0.00133  # Some value to have a fractional delay
+        delay_samples = self.fs * delay_seconds
+        ir = dsp.fractional_delay(ir, delay_seconds)
+        output = dsp.transfer_functions.find_ir_latency(ir).squeeze()
+
+        assert np.isclose(delay_samples, output, atol=0.4)
+
     def test_window_frequency_dependent(self):
         s = dsp.Signal(join("examples", "data", "rir.wav"), signal_type="rir")
         f, sp = dsp.transfer_functions.window_frequency_dependent(
