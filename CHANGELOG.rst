@@ -14,6 +14,16 @@ adheres to `Semantic Versioning <http://semver.org/spec/v2.0.0.html>`_.
 - Validation for results from tests in every module (so far many tests are
   only regarding functionality)
 
+`0.2.9 <https://pypi.org/project/dsptoolbox/0.2.9>`_ - 
+---------------------
+Added
+~~~~~~
+- ``find_ir_latency`` in `transfer_functions` module
+
+Misc
+~~~~~
+- corrected and updated doc
+
 `0.2.8 <https://pypi.org/project/dsptoolbox/0.2.8>`_ - 
 ---------------------
 Added
