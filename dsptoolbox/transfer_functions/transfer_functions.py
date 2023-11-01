@@ -874,7 +874,7 @@ def combine_ir_with_dirac(
         `False` delivers the opposite result.
     order : int, optional
         Crossover order. This is doubled due to forward-backward filtering.
-        It should be an even number. Default: 8.
+        Default: 8.
     normalization : str, optional
         `'energy'` means that the band of the perfect dirac impulse is
         normalized so that it matches the energy contained in the band of the
@@ -897,12 +897,7 @@ def combine_ir_with_dirac(
         None,
     ), "Invalid normalization parameter"
     ir = normalize(ir)
-    # Get maximum with fractional precision by finding the root of the complex
-    # part of the analytical signal
-    delay_samples = np.argmax(ir.time_data, axis=0).astype(int)
-    h = hilbert(ir.time_data, axis=0)
-    point_around = 1
-    x = np.arange(-point_around, point_around)
+    latencies_samples = find_ir_latency(ir)
 
     # Make impulse
     imp = dirac(
@@ -913,22 +908,7 @@ def combine_ir_with_dirac(
     )
 
     for ch in range(ir.number_of_channels):
-        pol = np.polyfit(
-            x,
-            np.imag(
-                h[
-                    delay_samples[ch]
-                    - point_around : delay_samples[ch]
-                    + point_around,
-                    ch,
-                ]
-            ),
-            1,
-        )
-        fractional_delay_samples = np.roots(pol).squeeze()
-        delay_seconds = (
-            delay_samples[ch] + fractional_delay_samples
-        ) / ir.sampling_rate_hz
+        delay_seconds = latencies_samples[ch] / ir.sampling_rate_hz
         imp_ch = imp.get_channels(ch)
         imp_ch = fractional_delay(
             imp_ch, delay_seconds=delay_seconds, keep_length=True
@@ -1216,3 +1196,47 @@ def warp_ir(
     f_unwarped = ir.sampling_rate_hz / 2 / np.pi * np.arccos(warping_factor)
 
     return f_unwarped, warped_ir
+
+
+def find_ir_latency(ir: Signal) -> np.ndarray:
+    """Find the subsample maximum of each channel of the IR using the root of
+    the analytical function. This value can be associated with the latency
+    of the impulse response.
+
+    Parameters
+    ----------
+    ir : `Signal`
+        Impulse response to find the maximum.
+
+    Returns
+    -------
+    latency_samples : `np.ndarray`
+        Array with the position of each channel's maximum in samples.
+
+    """
+    assert ir.signal_type in ("rir", "ir"), "Only valid for rir or ir"
+    # Get maximum with fractional precision by finding the root of the complex
+    # part of the analytical signal
+    delay_samples = np.argmax(ir.time_data, axis=0).astype(int)
+    h = hilbert(ir.time_data, axis=0)
+    point_around = 1
+    x = np.arange(-point_around, point_around)
+
+    latency_samples = np.zeros(ir.number_of_channels)
+
+    for ch in range(ir.number_of_channels):
+        pol = np.polyfit(
+            x,
+            np.imag(
+                h[
+                    delay_samples[ch]
+                    - point_around : delay_samples[ch]
+                    + point_around,
+                    ch,
+                ]
+            ),
+            1,
+        )
+        fractional_delay_samples = np.roots(pol).squeeze()
+        latency_samples[ch] = delay_samples[ch] + fractional_delay_samples
+    return latency_samples
