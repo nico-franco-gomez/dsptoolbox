@@ -8,7 +8,8 @@ under a same category.
 import numpy as np
 import pickle
 from scipy.signal import resample_poly, convolve, hilbert
-from scipy.special import iv as bessel_first_mod
+
+# from scipy.special import iv as bessel_first_mod
 from fractions import Fraction
 from warnings import warn
 
@@ -28,11 +29,12 @@ from ._standard import (
     _latency,
     _center_frequencies_fractional_octaves_iec,
     _exact_center_frequencies_fractional_octaves,
-    _kaiser_window_beta,
+    # _kaiser_window_beta,
     _indices_above_threshold_dbfs,
     _detrend,
     _rms,
     _fractional_latency,
+    _fractional_delay_filter,
 )
 from ._general_helpers import (
     _pad_trim,
@@ -707,8 +709,7 @@ def fractional_delay(
     order: int = 30,
     side_lobe_suppression_db: float = 60,
 ) -> Signal | MultiBandSignal:
-    """Apply fractional time delay to a signal. This
-    implementation is taken and adapted from the pyfar package. See references.
+    """Apply fractional time delay to a signal.
 
     Parameters
     ----------
@@ -733,16 +734,7 @@ def fractional_delay(
     Returns
     -------
     out_sig : `Signal` or `MultiBandSignal`
-        Newly created Signal
-
-    References
-    ----------
-    - The pyfar package: https://github.com/pyfar/pyfar
-    - T. I. Laakso, V. Välimäki, M. Karjalainen, and U. K. Laine,
-      'Splitting the unit delay,' IEEE Signal Processing Magazine 13,
-      30-60 (1996). doi:10.1109/79.482137
-    - A. V. Oppenheim and R. W. Schafer, Discrete-time signal processing,
-      (Upper Saddle et al., Pearson, 2010), Third edition.
+        Delayed signal.
 
     """
     assert delay_seconds >= 0, "Delay must be positive"
@@ -772,56 +764,10 @@ def fractional_delay(
             channels
         ), "At least one channel is repeated"
 
-        # =========== separate integer and fractional delay ===================
-        delay_int = np.atleast_1d(delay_samples).astype(int)
-        delay_frac = np.atleast_1d(delay_samples - delay_int)
-        # force delay_frac >= 0 as required by Laakso et al. 1996 Eq. (2)
-        mask = delay_frac < 0
-        delay_int[mask] -= 1
-        delay_frac[mask] += 1
-
-        # =========== get sinc function =======================================
-        if order % 2:
-            M_opt = delay_frac.astype("int") - (order - 1) / 2
-        else:
-            M_opt = np.round(delay_frac) - order / 2
-        # get matrix versions of the fractional shift and M_opt
-        delay_frac_matrix = np.tile(
-            delay_frac[..., np.newaxis],
-            tuple(np.ones(delay_frac.ndim, dtype="int")) + (order + 1,),
+        # Get filter and integer delay
+        delay_int, frac_delay_filter = _fractional_delay_filter(
+            delay_samples, order, side_lobe_suppression_db
         )
-        M_opt_matrix = np.tile(
-            M_opt[..., np.newaxis],
-            tuple(np.ones(M_opt.ndim, dtype="int")) + (order + 1,),
-        )
-        # discrete time vector
-        n = np.arange(order + 1) + M_opt_matrix - delay_frac_matrix
-        sinc = np.sinc(n)
-
-        # =========== get kaiser window =======================================
-        #  beta parameter for side lobe rejection according to
-        # Oppenheim (2010) Eq. (10.13)
-        beta = _kaiser_window_beta(np.abs(side_lobe_suppression_db))
-
-        # Kaiser window according to Oppenheim (2010) Eq. (10.12)
-        alpha = order / 2
-        L = np.arange(order + 1).astype("float") - delay_frac_matrix
-        # required to counter operations on M_opt and make sure that the maxima
-        # of the underlying continuous sinc function and Kaiser window appear
-        # at the same time
-        if order % 2:
-            L += 0.5
-        else:
-            L[delay_frac_matrix > 0.5] += 1
-        Z = beta * np.sqrt(
-            np.array(1 - ((L - alpha) / alpha) ** 2, dtype="complex")
-        )
-        # suppress small imaginary parts
-        kaiser = np.real(bessel_first_mod(0, Z)) / bessel_first_mod(0, beta)
-
-        # =========== create and apply fractional delay filter ================
-        # compute filter and match dimensions
-        frac_delay_filter = (sinc * kaiser).squeeze()
 
         # Copy data
         new_time_data = sig.time_data
@@ -838,10 +784,7 @@ def fractional_delay(
             mode="full",
         )
 
-        # =========== apply integer delay =====================================
-        delay_int += M_opt.astype("int")
-        delay_int = np.squeeze(delay_int)
-
+        # Handle delayed and undelayed channels
         channels_not = np.setdiff1d(
             channels, np.arange(new_time_data.shape[1])
         )

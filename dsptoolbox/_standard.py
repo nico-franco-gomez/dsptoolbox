@@ -3,6 +3,7 @@ Backend for standard functions
 """
 import numpy as np
 from scipy.signal import correlate, check_COLA, windows, hilbert
+from scipy.special import iv as bessel_first_mod
 from ._general_helpers import _pad_trim, _compute_number_frames
 from warnings import warn
 
@@ -81,7 +82,7 @@ def _fractional_latency(
     for ch in range(td1.shape[1]):
         # td2 is original, td1 is delayed
         xcor = correlate(td2[:, ch], td1[:, ch])
-        ind_max = np.argmax(xcor)
+        ind_max = int(np.argmax(xcor))
         analytical_xcor = np.imag(hilbert(xcor))
 
         # Find exact index before maximum
@@ -1003,3 +1004,78 @@ def _get_window_envelope(
         envelope[start : start + len(window)] += window
         start += step_size_samples
     return envelope
+
+
+def _fractional_delay_filter(
+    delay_samples: float,
+    filter_order: int,
+    side_lobe_suppression_db: float | None,
+) -> tuple[int, np.ndarray]:
+    """This function delivers fractional delay filters according to
+    specifications. Besides, additional integer delay, that might be necessary
+    to compute the output, is returned as well.
+
+    The implementation was taken and adapted from the pyfar package. See
+    references.
+
+    Parameters
+    ---------
+    delay_samples : float
+        Amount of delay in samples.
+    filter_order : int
+        Order for the sinc-filter. Higher orders deliver better results but
+        require more computational resources.
+    side_lobe_suppression_db : float, optional
+        A kaiser window can be applied to the sinc-filter. Its beta parameter
+        will be computed according to the required side lobe suppression (
+        a common value would be 60 dB). Pass `None` to avoid any windowing
+        on the filter.
+
+    Returns
+    -------
+    integer_delay : int
+        Additional integer delay necessary to achieve total desired delay.
+    h : `np.ndarray`
+        Filter's impulse response for fractional delay.
+
+    References
+    ----------
+    - The pyfar package: https://github.com/pyfar/pyfar
+    - T. I. Laakso, V. Välimäki, M. Karjalainen, and U. K. Laine,
+      'Splitting the unit delay,' IEEE Signal Processing Magazine 13,
+      30-60 (1996). doi:10.1109/79.482137
+    - A. V. Oppenheim and R. W. Schafer, Discrete-time signal processing,
+      (Upper Saddle et al., Pearson, 2010), Third edition.
+
+    """
+    # Separate delay in integer and fractional
+    delay_int = int(delay_samples)
+    delay_frac = delay_samples - delay_int
+
+    # =========== Sinc function ===============================================
+    if filter_order % 2:
+        M_opt = int(delay_frac) - (filter_order - 1) / 2
+    else:
+        M_opt = np.round(delay_frac) - filter_order / 2
+    n = np.arange(filter_order + 1) + M_opt - delay_frac
+    sinc = np.sinc(n)
+
+    # =========== Kaiser window ===============================================
+    beta = _kaiser_window_beta(np.abs(side_lobe_suppression_db))
+    alpha = filter_order / 2
+    L = np.arange(filter_order + 1).astype(float) - delay_frac
+    if filter_order % 2:
+        L += 0.5
+    else:
+        if delay_frac > 0.5:
+            L += 1
+    Z = beta * np.sqrt(
+        np.array(1 - ((L - alpha) / alpha) ** 2, dtype="complex")
+    )
+    kaiser = np.real(bessel_first_mod(0, Z)) / bessel_first_mod(0, beta)
+
+    # Compute filter and final integer delay
+    frac_delay_filter = sinc * kaiser
+    integer_delay = int(delay_int + M_opt)
+
+    return integer_delay, frac_delay_filter

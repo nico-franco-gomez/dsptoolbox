@@ -768,8 +768,8 @@ def vqt(
     -------
     f : `np.ndarray`
         Frequency vector.
-    cqt : `np.ndarray`
-        CQT coefficients with shape (frequency, time samples, channel).
+    vqt : `np.ndarray`
+        VQT coefficients with shape (frequency, time samples, channel).
 
     References
     ----------
