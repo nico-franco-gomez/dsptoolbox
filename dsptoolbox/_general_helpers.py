@@ -426,6 +426,7 @@ def _fractional_octave_smoothing(
     num_fractions: int = 3,
     window_type="hann",
     window_vec: np.ndarray | None = None,
+    clip_values: bool = False,
 ) -> np.ndarray:
     """Smoothes a vector using interpolation to a logarithmic scale. Usually
     done for smoothing of frequency data. This implementation is taken from
@@ -445,6 +446,8 @@ def _fractional_octave_smoothing(
     window_vec : `np.ndarray`, optional
         Window vector to be used as a window. `window_type` should be set to
         `None` if this direct window is going to be used. Default: `None`.
+    clip_values : bool, optional
+        When `True`, negative values are clipped to 0. Default: `False`.
 
     Returns
     -------
@@ -522,6 +525,10 @@ def _fractional_octave_smoothing(
     vec_final = smoothed(l1 + 1)
     if one_dim:
         vec_final = vec_final.squeeze()
+
+    # Avoid any negative values (numerical errors)
+    if clip_values:
+        vec_final = np.clip(vec_final, a_min=0, a_max=None)
     return vec_final
 
 

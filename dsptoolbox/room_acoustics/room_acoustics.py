@@ -521,10 +521,9 @@ def _check_ir_start_reverb(
     if ir_start is not None:
         if type(ir_start) in (list, tuple, np.ndarray):
             ir_start = np.atleast_1d(ir_start).astype(int)
-        assert type(ir_start) in (
-            int,
-            np.ndarray[int],
-            np.intp,
+        assert (
+            np.issubdtype(type(ir_start), np.integer)
+            or type(ir_start) is np.ndarray
         ), "Unsupported type for ir_start"
 
     if type(sig) is Signal:
