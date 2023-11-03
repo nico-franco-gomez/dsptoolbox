@@ -520,7 +520,7 @@ def _check_ir_start_reverb(
     """
     if ir_start is not None:
         if type(ir_start) in (list, tuple, np.ndarray):
-            ir_start = np.asarray(ir_start).astype(int)
+            ir_start = np.atleast_1d(ir_start).astype(int)
         assert type(ir_start) in (
             int,
             np.ndarray[int],
