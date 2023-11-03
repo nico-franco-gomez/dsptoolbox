@@ -777,6 +777,7 @@ class Signal:
                     temp_abs = _fractional_octave_smoothing(
                         np.abs(spectrum) ** 2,
                         self._spectrum_parameters["smoothe"],
+                        clip_values=True,
                     ) ** (0.5)
                     # Smoothing the phase is not shift-invariant...
                     temp_phase = _fractional_octave_smoothing(

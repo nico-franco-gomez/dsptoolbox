@@ -96,7 +96,7 @@ def _find_ir_start(ir, threshold_dbfs: float = -20) -> int:
     energy_curve_db = 10 * np.log10(
         np.clip(energy_curve / np.max(energy_curve), a_min=1e-30, a_max=None)
     )
-    ind = np.where(energy_curve_db > threshold_dbfs)[0][0] - 1
+    ind = int(np.where(energy_curve_db > threshold_dbfs)[0][0] - 1)
     if ind < 0:
         ind = 0
     return ind
