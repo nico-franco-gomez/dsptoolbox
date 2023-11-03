@@ -246,10 +246,10 @@ def find_ir_start(signal: Signal, threshold_dbfs: float = -20) -> np.ndarray:
 
     """
     assert threshold_dbfs <= 0, "Threshold must be negative"
-    start_index = np.empty(signal.number_of_channels, dtype=np.intp)
+    start_index = np.empty(signal.number_of_channels, dtype=int)
     for n in range(signal.number_of_channels):
         start_index[n] = _find_ir_start(signal.time_data[:, n], threshold_dbfs)
-    return start_index.squeeze()
+    return start_index.astype(int).squeeze()
 
 
 def generate_synthetic_rir(
@@ -519,30 +519,28 @@ def _check_ir_start_reverb(
 
     """
     if ir_start is not None:
-        if type(ir_start) in (list, tuple):
-            ir_start = np.asarray(ir_start)
+        if type(ir_start) in (list, tuple, np.ndarray):
+            ir_start = np.asarray(ir_start).astype(int)
         assert type(ir_start) in (
             int,
-            np.ndarray,
+            np.ndarray[int],
             np.intp,
         ), "Unsupported type for ir_start"
 
     if type(sig) is Signal:
-        if type(ir_start) in (int, np.intp):
-            ir_start = (
-                np.ones(sig.number_of_channels, dtype=np.intp) * ir_start
-            )
+        if np.issubdtype(type(ir_start), np.integer):
+            ir_start = np.ones(sig.number_of_channels, dtype=int) * ir_start
         elif ir_start is None:
             return [None] * sig.number_of_channels
         assert (
             ir_start.ndim == 1 and len(ir_start) == sig.number_of_channels
         ), "Shape of ir_start is not valid"
     else:
-        if type(ir_start) in (int, np.intp):
+        if np.issubdtype(type(ir_start), np.integer):
             ir_start = (
                 np.ones(
                     (sig.number_of_bands, sig.number_of_channels),
-                    dtype=np.intp,
+                    dtype=int,
                 )
                 * ir_start
             )
@@ -558,5 +556,5 @@ def _check_ir_start_reverb(
                 sig.number_of_channels,
             ), "Shape of ir_start is not valid for the passed signal"
     if ir_start.dtype not in (int, np.intp):
-        ir_start = ir_start.astype(np.intp)
+        ir_start = ir_start.astype(int)
     return ir_start
