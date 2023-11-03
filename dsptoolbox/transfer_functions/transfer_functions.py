@@ -907,6 +907,9 @@ def combine_ir_with_dirac(
         sampling_rate_hz=ir.sampling_rate_hz,
     )
 
+    # Regard polarity
+    polarity = np.ones(ir.number_of_channels)
+
     for ch in range(ir.number_of_channels):
         delay_seconds = latencies_samples[ch] / ir.sampling_rate_hz
         imp_ch = imp.get_channels(ch)
@@ -914,6 +917,9 @@ def combine_ir_with_dirac(
             imp_ch, delay_seconds=delay_seconds, keep_length=True
         )
         imp = merge_signals(imp, imp_ch)
+
+        # Save polarity for each channel using sample prior to peak
+        polarity[ch] *= np.sign(ir.time_data[int(latencies_samples[ch]), ch])
     imp.remove_channel(0)
 
     # Filter crossover for both
@@ -942,7 +948,7 @@ def combine_ir_with_dirac(
 
     # Combine
     combined_ir = ir.copy()
-    combined_ir.time_data = td_ir + td_imp
+    combined_ir.time_data = td_ir + td_imp * polarity[None, ...]
     combined_ir = normalize(combined_ir)
     return combined_ir
 
