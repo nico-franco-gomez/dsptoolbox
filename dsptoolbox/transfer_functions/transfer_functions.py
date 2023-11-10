@@ -1104,12 +1104,16 @@ def window_frequency_dependent(
     td = ir.time_data[:, channel]
 
     f = np.fft.rfftfreq(td.shape[0], 1 / fs)
-    inds = (f > frequency_range_hz[0]) & (f < frequency_range_hz[1])
+    inds = (f >= frequency_range_hz[0]) & (f <= frequency_range_hz[1])
     inds_f = np.arange(len(f))[inds]
     f = f[inds]
 
     # Samples for each frequency according to number of cycles
+    if f[0] == 0:
+        f[0] = f[1]
     cycles_per_freq_samples = np.round(fs / f * cycles).astype(int)
+    if f[0] == f[1]:
+        f[0] = 0
 
     spec = np.zeros((len(f), td.shape[1]), dtype="cfloat")
 
