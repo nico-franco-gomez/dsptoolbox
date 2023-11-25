@@ -6,6 +6,7 @@ import dsptoolbox as dsp
 import numpy as np
 from os.path import join
 import scipy.signal as sig
+from matplotlib.pyplot import close
 
 
 class TestSignal:
@@ -188,6 +189,7 @@ class TestSignal:
         with pytest.raises(AssertionError):
             s.set_spectrum_parameters(method="welch", window_length_samples=32)
             s.plot_phase()
+        close("all")
 
     def test_get_power_spectrum_welch(self):
         # Try to get power spectrum
@@ -397,6 +399,7 @@ class TestFilterClass:
 
         f.plot_magnitude(normalize="1k")
         f.plot_magnitude(normalize="max")
+        close("all")
 
     def test_get_coefficients(self):
         f = dsp.Filter(

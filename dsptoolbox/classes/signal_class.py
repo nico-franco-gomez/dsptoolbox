@@ -755,7 +755,7 @@ class Signal:
                 for n in range(self.number_of_channels):
                     spectrum[:, n] = _welch(
                         self.time_data[:, n],
-                        self.time_data[:, n],
+                        None,
                         self.sampling_rate_hz,
                         self._spectrum_parameters["window_type"],
                         self._spectrum_parameters["window_length_samples"],
