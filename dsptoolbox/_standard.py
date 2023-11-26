@@ -194,13 +194,10 @@ def _welch(
       See http://arxiv.org/abs/gr-qc/0509116.
 
     """
-    autospectrum = False
+    autospectrum = y is None
 
     if type(x) is not np.ndarray:
         x = np.asarray(x).squeeze()
-
-    if y is None:
-        autospectrum = True
 
     if not autospectrum:
         if type(y) is not np.ndarray:
