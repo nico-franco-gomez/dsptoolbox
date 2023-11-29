@@ -142,7 +142,7 @@ def _welch(
     overlap_percent=50,
     detrend: bool = True,
     average: str = "mean",
-    scaling: str = "power spectral density",
+    scaling: str | None = "power spectral density",
 ) -> np.ndarray:
     """Cross spectral density computation with Welch's method.
 
