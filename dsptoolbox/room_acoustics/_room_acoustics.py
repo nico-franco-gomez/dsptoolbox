@@ -51,27 +51,31 @@ def _reverb(
     edc = np.sum(energy_curve) - np.cumsum(energy_curve)
     edc[edc <= 0] = epsilon
     edc = 10 * np.log10(edc / edc[max_ind])
+    time_vector = np.linspace(0, len(edc) / fs_hz, len(edc))
+
     # Reverb
-    i1 = np.where(edc < -5)[0][0]
+    if mode == "TOPT":
+        if return_ir_start:
+            return _obtain_optimal_reverb_time(time_vector, edc), ir_start
+        return _obtain_optimal_reverb_time(time_vector, edc)
+
     mode = mode.upper()
     if mode == "T20":
-        i2 = np.where(edc < -25)[0][0]
+        p, _ = _get_polynomial_coeffs_from_edc(time_vector, edc, -5, -25)
     elif mode == "T30":
-        i2 = np.where(edc < -35)[0][0]
+        p, _ = _get_polynomial_coeffs_from_edc(time_vector, edc, -5, -35)
     elif mode == "T60":
-        i2 = np.where(edc < -65)[0][0]
+        p, _ = _get_polynomial_coeffs_from_edc(time_vector, edc, -5, -65)
     elif mode == "EDT":
-        i1 = np.where(edc < 0)[0][0]
-        i2 = np.where(edc < -10)[0][0]
+        p, _ = _get_polynomial_coeffs_from_edc(time_vector, edc, 0, -10)
     else:
         raise ValueError("Supported modes are only T20, T30, T60 and EDT")
-    # Time
-    length_samp = i2 - i1
-    time = np.linspace(0, length_samp / fs_hz, length_samp)
-    reg = np.polyfit(time, edc[i1:i2], 1)
+
+    factor = 60 if mode != "EDT" else 10
+
     if return_ir_start:
-        return (60 / np.abs(reg[0])), ir_start
-    return 60 / np.abs(reg[0])
+        return (factor / np.abs(p[0])), ir_start
+    return factor / np.abs(p[0])
 
 
 def _find_ir_start(ir, threshold_dbfs: float = -20) -> int:
@@ -186,11 +190,11 @@ def _generate_rir(room_dim, alpha, s_pos, r_pos, rt, mo, sr) -> np.ndarray:
         beta_2 = np.ones(3) * beta
     elif len(beta) == 6:
         beta_1 = np.array(
-            [beta[1], beta[3], beta[4]]  # South  # West  # Floor
-        )
+            [beta[1], beta[3], beta[4]]
+        )  # South  # West  # Floor
         beta_2 = np.array(
-            [beta[0], beta[2], beta[5]]  # North  # East  # Ceiling
-        )
+            [beta[0], beta[2], beta[5]]
+        )  # North  # East  # Ceiling
     else:
         raise ValueError("Wrong length for absorption coefficients")
 
@@ -207,7 +211,7 @@ def _generate_rir(room_dim, alpha, s_pos, r_pos, rt, mo, sr) -> np.ndarray:
     rir_vec = np.zeros(int(t_max * 5 * sr))
 
     def seconds2samples(t):
-        return np.asarray(t * sr).astype(int)
+        return np.asarray(t * sr + 0.5).astype(int)
 
     # Vectorized computation of nested sums U (Eq. 2)
     u_vectors = np.array(
@@ -964,6 +968,109 @@ def _ts_from_rir(td: np.ndarray, fs: int) -> float:
     td = td[ind:] ** 2
     time_vec = np.linspace(0, len(td) / fs, len(td))
     return np.sum(td * time_vec) / np.sum(td)
+
+
+def _obtain_optimal_reverb_time(
+    time_vector: np.ndarray, edc: np.ndarray
+) -> float:
+    """Compute the optimal reverberation time by analyzing the best linear
+    fit (with the smallest least-squares error) from T10 until T60. If EDT
+    is much smaller than T30, the intersection of the two regression lines is
+    taken as the start. Otherwise, -5 dB is the start.
+
+    Parameters
+    ----------
+    time_vector : `np.ndarray`
+        Time vector corresponding to the edc.
+    edc : `np.ndarray`
+        Energy decay curve in dB and normalized so that 0 dB corresponds to
+        the impulse.
+
+    Returns
+    -------
+    float
+        Optimal reverberation time.
+
+    References
+    ----------
+    - Algorithm based on Room-EQ-Wizard's Topt.
+
+    """
+    # Invert edc for speed while using searchsorted
+
+    coeff_edt = _get_polynomial_coeffs_from_edc(time_vector, edc, 0, -10)[0]
+    coeff_t30 = _get_polynomial_coeffs_from_edc(time_vector, edc, -5, -35)[0]
+
+    # Check EDT*60 is still smaller than T30
+    very_short_edt = (-6 * 10 / coeff_edt[0]) * 10 < -60 / coeff_t30[0]
+
+    if very_short_edt:
+        x_intersection = (coeff_edt[1] - coeff_t30[1]) / (
+            coeff_t30[0] - coeff_edt[0]
+        )
+        start = np.polyval(coeff_edt, [x_intersection]).squeeze()
+    else:
+        start = -5
+
+    steps = np.arange(start - 20, start - 60, -2)
+    residuals = np.zeros(len(steps))
+    coefficients = np.zeros_like(residuals)
+
+    for ind, step in enumerate(steps):
+        c, residuals[ind] = _get_polynomial_coeffs_from_edc(
+            time_vector, edc, start, step
+        )
+        coefficients[ind] = c[0]
+
+    optimum = np.argmin(residuals)
+    return 60 / np.abs(coefficients[optimum])
+
+
+def _get_polynomial_coeffs_from_edc(
+    time_vector: np.ndarray,
+    edc: np.ndarray,
+    start_value: float,
+    end_value: float,
+) -> tuple[np.ndarray, float]:
+    """Return the polynomial coefficients from the energy decay curve for
+    given starting and ending values. This can be used for all reverberation
+    time computations.
+
+    Parameters
+    ----------
+    time_vector : `np.ndarray`
+        Time vector in seconds corresponding to the energy decay curve.
+    edc : `np.ndarray`
+        Energy decay curve in dB normalized to 0 dB at the point of the
+        impulse.
+    start_value : float
+        Value in dB from which to start the polynomial fit.
+    end_value : float
+        Value in dB at which to end the polynomial fit.
+    inverted_edc : bool
+        When `True`, it is assumed that the energy decay curve has been
+        inverted in time (for speed reasons). This avoids re-inverting it.
+
+    Returns
+    -------
+    coeff : `np.ndarray`
+        Polynomial coefficients x^1 and x^0.
+    residual : float
+        Residual from the least-squares fit normalized by the sample length
+        of the fit.
+
+    """
+    L = len(edc)
+
+    edc_inverted = edc[::-1]
+    i1 = L - np.searchsorted(edc_inverted, start_value)
+    i2 = L - np.searchsorted(edc_inverted, end_value)
+
+    coeff, residual, _, _, _ = np.polyfit(
+        time_vector[i1:i2], edc[i1:i2], 1, full=True
+    )
+    residual /= i2 - i1  # Normalize residual to length
+    return coeff, residual
 
 
 if __name__ == "__main__":
