@@ -354,7 +354,11 @@ class LRFilterBank:
             Impulse response of the filter bank.
 
         """
-        d = dirac(length_samples=length_samples, number_of_channels=1)
+        d = dirac(
+            length_samples=length_samples,
+            number_of_channels=1,
+            sampling_rate_hz=self.sampling_rate_hz,
+        )
         ir = self.filter_signal(d, activate_zi=test_zi)
         return ir
 
