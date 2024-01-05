@@ -9,6 +9,7 @@ class TestRoomAcousticsModule:
 
     def test_reverb_time(self):
         # Only functionality
+        dsp.room_acoustics.reverb_time(self.rir, mode="topt", ir_start=None)
         dsp.room_acoustics.reverb_time(self.rir, mode="t20", ir_start=None)
         dsp.room_acoustics.reverb_time(self.rir, mode="t30", ir_start=None)
         dsp.room_acoustics.reverb_time(self.rir, mode="t60", ir_start=None)

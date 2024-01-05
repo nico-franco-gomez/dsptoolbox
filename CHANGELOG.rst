@@ -16,6 +16,10 @@ adheres to `Semantic Versioning <http://semver.org/spec/v2.0.0.html>`_.
 
 `0.2.13 <https://pypi.org/project/dsptoolbox/0.2.13>`_ - 
 ---------------------
+Added
+~~~~~~
+- ``reverb_time`` now has option ``Topt``
+
 Bugfix
 ~~~~~~
 - ``fade`` in ``log`` mode has been corrected to have the correct length
