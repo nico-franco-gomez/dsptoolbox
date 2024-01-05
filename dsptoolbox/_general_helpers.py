@@ -387,9 +387,9 @@ def _fade(
     elif mode == "lin":
         fade = np.linspace(0, 1, l_samples)
     else:
-        db = np.linspace(-100, 0, l_samples)
-        fade = 10 ** (db / 20)
-        fade = 1 - np.flip(fade)
+        # The constant 50 could be an extra parameter for the user...
+        fade = np.log10(np.linspace(1, 50 * 10**0.5, l_samples))
+        fade /= fade[-1]
     if not at_start:
         s = np.flip(s, axis=0)
     s[:l_samples, :] *= fade[..., None]

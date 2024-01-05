@@ -311,11 +311,11 @@ class Signal:
         method="welch",
         smoothe: int = 0,
         window_length_samples: int = 1024,
-        window_type="hann",
+        window_type: str = "hann",
         overlap_percent: float = 50,
-        detrend=True,
-        average="mean",
-        scaling="power spectral density",
+        detrend: bool = True,
+        average: str = "mean",
+        scaling: str | None = "power spectral density",
     ):
         """Sets all necessary parameters for the computation of the spectrum.
 
@@ -331,8 +331,8 @@ class Signal:
             magnitude AND phase. For accesing the smoothing algorithm, refer to
             `dsptoolbox._general_helpers._fractional_octave_smoothing()`.
             If smoothing is applied here, `Signal.get_spectrum()` returns
-            the smoothed spectrum as well and `Signal.plot_magnitude()` plots
-            the smoothed version. Default: 0 (no smoothing).
+            the smoothed spectrum and `Signal.plot_magnitude()` plots
+            the smoothed version, too. Default: 0 (no smoothing).
         window_length_samples : int, optional
             Window size. Default: 1024.
         window_type : str, optional
@@ -443,11 +443,11 @@ class Signal:
     def set_csm_parameters(
         self,
         window_length_samples: int = 1024,
-        window_type="hann",
-        overlap_percent=75,
-        detrend=True,
-        average="mean",
-        scaling="power spectral density",
+        window_type: str = "hann",
+        overlap_percent: float = 75.0,
+        detrend: bool = True,
+        average: str = "mean",
+        scaling: str | None = "power spectral density",
     ):
         """Sets all necessary parameters for the computation of the
         cross-spectral matrix.
@@ -456,6 +456,8 @@ class Signal:
         ----------
         window_length_samples : int, optional
             Window size. Default: 1024.
+        window_type : str, optional
+            Window to be used. Default: `'hann'`.
         overlap_percent : float, optional
             Overlap in percent. Default: 75.
         detrend : bool, optional
@@ -463,7 +465,7 @@ class Signal:
         average : str, optional
             Averaging method. Choose from `'mean'` or `'median'`.
             Default: `'mean'`.
-        scaling : str, optional
+        scaling : str or `None`, optional
             Scaling. Use `'power spectrum'`, `'power spectral density'`,
             `'amplitude spectrum'` or `'amplitude spectral density'`. Pass
             `None` to avoid any scaling. See references for details about
@@ -755,7 +757,7 @@ class Signal:
                 for n in range(self.number_of_channels):
                     spectrum[:, n] = _welch(
                         self.time_data[:, n],
-                        self.time_data[:, n],
+                        None,
                         self.sampling_rate_hz,
                         self._spectrum_parameters["window_type"],
                         self._spectrum_parameters["window_length_samples"],

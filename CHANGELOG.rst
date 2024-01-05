@@ -14,6 +14,21 @@ adheres to `Semantic Versioning <http://semver.org/spec/v2.0.0.html>`_.
 - Validation for results from tests in every module (so far many tests are
   only regarding functionality)
 
+`0.2.13 <https://pypi.org/project/dsptoolbox/0.2.13>`_ - 
+---------------------
+Added
+~~~~~~
+- ``reverb_time`` now has option ``Topt``
+
+Bugfix
+~~~~~~
+- ``fade`` in ``log`` mode has been corrected to have the correct length
+- ``istft`` in `transforms` module can handle different fft lengths
+
+Misc
+~~~~~~
+- ``_welch`` is now faster when the autospectrum is computed
+
 `0.2.12 <https://pypi.org/project/dsptoolbox/0.2.12>`_ - 
 ---------------------
 Bugfix

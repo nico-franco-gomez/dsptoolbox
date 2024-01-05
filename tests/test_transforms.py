@@ -2,6 +2,7 @@ import dsptoolbox as dsp
 import pytest
 from os.path import join
 import numpy as np
+from matplotlib.pyplot import close
 
 
 class TestTransformsModule:
@@ -54,6 +55,7 @@ class TestTransformsModule:
                 generate_plot=False,
                 stft_parameters=None,
             )
+        close("all")
 
     def test_mel_filters(self):
         # Only functionality
@@ -90,6 +92,26 @@ class TestTransformsModule:
     def test_istft(self):
         # Test reconstruction fidelity
         # This would most likely fail if padding=False or detrend=True
+        t, f, sp = self.speech.get_spectrogram()
+        speech_rec = dsp.transforms.istft(sp, original_signal=self.speech)
+        assert np.all(np.isclose(self.speech.time_data, speech_rec.time_data))
+
+        speech_rec = dsp.transforms.istft(
+            sp,
+            parameters=self.speech._spectrogram_parameters,
+            sampling_rate_hz=self.speech.sampling_rate_hz,
+        )
+        assert np.all(
+            np.isclose(
+                self.speech.time_data, speech_rec.time_data[: len(self.speech)]
+            )
+        )
+
+        # With longer fft length than window
+        wl = 512
+        self.speech.set_spectrogram_parameters(
+            window_length_samples=wl, fft_length_samples=wl * 2
+        )
         t, f, sp = self.speech.get_spectrogram()
         speech_rec = dsp.transforms.istft(sp, original_signal=self.speech)
         assert np.all(np.isclose(self.speech.time_data, speech_rec.time_data))

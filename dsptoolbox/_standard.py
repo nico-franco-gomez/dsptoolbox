@@ -134,15 +134,15 @@ def _fractional_latency(
 
 
 def _welch(
-    x,
-    y,
+    x: np.ndarray,
+    y: np.ndarray | None,
     fs_hz: int,
     window_type: str = "hann",
     window_length_samples: int = 1024,
     overlap_percent=50,
     detrend: bool = True,
     average: str = "mean",
-    scaling: str = "power spectral density",
+    scaling: str | None = "power spectral density",
 ) -> np.ndarray:
     """Cross spectral density computation with Welch's method.
 
@@ -150,8 +150,9 @@ def _welch(
     ----------
     x : `np.ndarray`
         First signal with shape (time samples, channel).
-    y : `np.ndarray`
-        Second signal with shape (time samples, channel).
+    y : `np.ndarray` or `None`
+        Second signal with shape (time samples, channel). If `None`, the auto-
+        spectrum of `x` will be computed.
     fs_hz : int
         Sampling rate in Hz.
     window_type : str, optional
@@ -193,15 +194,20 @@ def _welch(
       See http://arxiv.org/abs/gr-qc/0509116.
 
     """
+    autospectrum = y is None
+
     if type(x) is not np.ndarray:
         x = np.asarray(x).squeeze()
-    if type(y) is not np.ndarray:
-        y = np.asarray(y).squeeze()
-    assert x.shape == y.shape, "Shapes of data do not match"
-    # NOTE: Computing the spectrum in a vectorized manner for all channels
-    # simultaneously does not seem to be faster than doing it sequentally
-    # for each channel. Maybe parallelizing with something like numba could
-    # be advantageous...
+
+    if not autospectrum:
+        if type(y) is not np.ndarray:
+            y = np.asarray(y).squeeze()
+        assert x.shape == y.shape, "Shapes of data do not match"
+        # NOTE: Computing the spectrum in a vectorized manner for all channels
+        # simultaneously does not seem to be faster than doing it sequentally
+        # for each channel. Maybe parallelizing with something like numba could
+        # be advantageous...
+
     if x.ndim == 2:
         multi_channel = True
     else:
@@ -255,28 +261,37 @@ def _welch(
 
     if not multi_channel:
         x = x[..., None]
-        y = y[..., None]
+        if not autospectrum:
+            y = y[..., None]
 
     x_frames = _get_framed_signal(x, window_length_samples, step)
-    y_frames = _get_framed_signal(y, window_length_samples, step)
+    if not autospectrum:
+        y_frames = _get_framed_signal(y, window_length_samples, step)
 
     # Window
     x_frames *= window[:, np.newaxis, np.newaxis]
-    y_frames *= window[:, np.newaxis, np.newaxis]
+    if not autospectrum:
+        y_frames *= window[:, np.newaxis, np.newaxis]
 
     if not multi_channel:
         x_frames = np.squeeze(x_frames)
-        y_frames = np.squeeze(y_frames)
+        if not autospectrum:
+            y_frames = np.squeeze(y_frames)
 
     # Detrend
     if detrend:
         x_frames -= np.mean(x_frames, axis=0)
-        y_frames -= np.mean(y_frames, axis=0)
+        if not autospectrum:
+            y_frames -= np.mean(y_frames, axis=0)
 
     # Combine
-    sp_frames = np.fft.rfft(x_frames, axis=0).conjugate() * np.fft.rfft(
-        y_frames, axis=0
-    )
+
+    if not autospectrum:
+        sp_frames = np.fft.rfft(x_frames, axis=0).conjugate() * np.fft.rfft(
+            y_frames, axis=0
+        )
+    else:
+        sp_frames = np.abs(np.fft.rfft(x_frames, axis=0)) ** 2
 
     # Direct averaging much faster
     if average == "mean":
@@ -315,9 +330,6 @@ def _welch(
     if "amplitude" in scaling:
         csd = np.sqrt(csd)
 
-    # Cast to real output if there is no imaginary part
-    if np.all(csd.imag == 0):
-        csd = csd.real
     return csd
 
 
@@ -556,7 +568,7 @@ def _csm(
             # the matrix)
             csm[:, ind2, ind1] = _welch(
                 time_data[:, ind1],
-                time_data[:, ind2],
+                time_data[:, ind2] if ind1 != ind2 else None,
                 sampling_rate_hz,
                 window_length_samples=window_length_samples,
                 window_type=window_type,

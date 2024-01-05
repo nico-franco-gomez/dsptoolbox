@@ -494,6 +494,7 @@ def istft(
         stft /= np.sqrt(2 / np.sum(window) ** 2)
 
     td_framed = np.fft.irfft(stft, axis=0, n=parameters["fft_length_samples"])
+    td_framed = td_framed[: parameters["window_length_samples"], ...]
 
     # Reconstruct from framed representation to continuous
     step = int((1 - parameters["overlap_percent"] / 100) * len(window))

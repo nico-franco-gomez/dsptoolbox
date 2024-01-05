@@ -366,7 +366,7 @@ def compute_transfer_function(
     if multichannel:
         G_xx = _welch(
             input.time_data[:, 0],
-            input.time_data[:, 0],
+            None,
             input.sampling_rate_hz,
             window_length_samples=window_length_samples,
             **spectrum_parameters,
@@ -374,7 +374,7 @@ def compute_transfer_function(
     for n in range(output.number_of_channels):
         G_yy = _welch(
             output.time_data[:, n],
-            output.time_data[:, n],
+            None,
             input.sampling_rate_hz,
             window_length_samples=window_length_samples,
             **spectrum_parameters,
@@ -385,7 +385,7 @@ def compute_transfer_function(
             n_input = n
             G_xx = _welch(
                 input.time_data[:, n_input],
-                input.time_data[:, n_input],
+                None,
                 input.sampling_rate_hz,
                 window_length_samples=window_length_samples,
                 **spectrum_parameters,
