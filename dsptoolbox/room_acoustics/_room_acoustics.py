@@ -2,6 +2,7 @@
 Low-level methods for room acoustics
 """
 import numpy as np
+from scipy.stats import pearsonr
 from ..plots import general_plot
 
 
@@ -56,8 +57,8 @@ def _reverb(
     # Reverb
     if mode == "TOPT":
         if return_ir_start:
-            return _obtain_optimal_reverb_time(time_vector, edc), ir_start
-        return _obtain_optimal_reverb_time(time_vector, edc)
+            return _obtain_optimal_reverb_time(time_vector, edc)[0], ir_start
+        return _obtain_optimal_reverb_time(time_vector, edc)[0]
 
     mode = mode.upper()
     if mode == "T20":
@@ -990,10 +991,14 @@ def _obtain_optimal_reverb_time(
     -------
     float
         Optimal reverberation time.
+    r : float
+        Pearson (linear) correlation coefficient for the regression fit.
+        The closer it is to -1, the better.
 
     References
     ----------
-    - Algorithm based on Room-EQ-Wizard's Topt.
+    - Algorithm based on Room-EQ-Wizard's Topt. Same idea, though results might
+      differ slightly.
 
     """
     # Invert edc for speed while using searchsorted
@@ -1012,18 +1017,53 @@ def _obtain_optimal_reverb_time(
     else:
         start = -5
 
-    steps = np.arange(start - 20, start - 60, -2)
-    residuals = np.zeros(len(steps))
-    coefficients = np.zeros_like(residuals)
+    steps = np.arange(start - 20, start - 60, -1)
+    end, r = _get_best_linear_fit_for_edc(time_vector, edc, start, steps)
+    coefficients = _get_polynomial_coeffs_from_edc(
+        time_vector, edc, start, end
+    )[0]
+    return 60 / np.abs(coefficients[0]), r
+
+
+def _get_best_linear_fit_for_edc(
+    time_vector: np.ndarray,
+    edc: np.ndarray,
+    start_value: float,
+    steps: np.ndarray,
+):
+    """Obtain the best end value for a linear regression of the EDC based on
+    the lowest pearson correlation coefficient, i.e., with the maximum of
+    linear correlation.
+
+    Parameters
+    ----------
+    time_vector : `np.ndarray`
+        Time vector.
+    edc : `np.ndarray`
+        Energy decay curve.
+    start_value : float
+        Start value of the EDC in dB for the regression.
+    steps : `np.ndarray`
+        Array of all ending values of the EDC in dB to take into account.
+
+    Returns
+    -------
+    float
+        Best end value for the linear regression in dB.
+    float
+        Corresponding pearson correlation coefficient.
+
+    """
+    # Invert for using searchsorted which is faster than other alternatives
+    edc_inverted = edc[::-1]
+    i1 = len(edc) - np.searchsorted(edc_inverted, start_value)
+    rs = np.zeros(len(steps))
 
     for ind, step in enumerate(steps):
-        c, residuals[ind] = _get_polynomial_coeffs_from_edc(
-            time_vector, edc, start, step
-        )
-        coefficients[ind] = c[0]
+        i2 = len(edc) - np.searchsorted(edc_inverted, step)
+        rs[ind] = pearsonr(time_vector[i1:i2], edc[i1:i2])[0]
 
-    optimum = np.argmin(residuals)
-    return 60 / np.abs(coefficients[optimum])
+    return steps[np.argmin(rs)], np.min(rs)
 
 
 def _get_polynomial_coeffs_from_edc(
@@ -1047,17 +1087,14 @@ def _get_polynomial_coeffs_from_edc(
         Value in dB from which to start the polynomial fit.
     end_value : float
         Value in dB at which to end the polynomial fit.
-    inverted_edc : bool
-        When `True`, it is assumed that the energy decay curve has been
-        inverted in time (for speed reasons). This avoids re-inverting it.
 
     Returns
     -------
     coeff : `np.ndarray`
-        Polynomial coefficients x^1 and x^0.
-    residual : float
-        Residual from the least-squares fit normalized by the sample length
-        of the fit.
+        Polynomial coefficients for x^1 and x^0, respectively.
+    r_coefficient : float
+        Pearson's correlation coefficient r. It takes values between [-1, 1]
+        and the closest it is to -1, the better the fit.
 
     """
     L = len(edc)
@@ -1066,11 +1103,10 @@ def _get_polynomial_coeffs_from_edc(
     i1 = L - np.searchsorted(edc_inverted, start_value)
     i2 = L - np.searchsorted(edc_inverted, end_value)
 
-    coeff, residual, _, _, _ = np.polyfit(
-        time_vector[i1:i2], edc[i1:i2], 1, full=True
-    )
-    residual /= i2 - i1  # Normalize residual to length
-    return coeff, residual
+    coeff = np.polyfit(time_vector[i1:i2], edc[i1:i2], 1)
+    r_coefficient = pearsonr(time_vector[i1:i2], edc[i1:i2])[0]
+
+    return coeff, r_coefficient
 
 
 if __name__ == "__main__":
