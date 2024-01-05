@@ -26,7 +26,7 @@ def reverb_time(
     mode: str = "T20",
     ir_start: int | np.ndarray | None = None,
 ) -> np.ndarray:
-    """Computes reverberation time. T20, T30, T60 and EDT.
+    """Computes reverberation time. Topt, T20, T30, T60 and EDT.
 
     Parameters
     ----------
@@ -34,8 +34,8 @@ def reverb_time(
         Signal for which to compute reverberation times. It must be type
         `'ir'` or `'rir'`.
     mode : str, optional
-        Reverberation time mode. Options are `'T20'`, `'T30'`, `'T60'` or
-        `'EDT'`. Default: `'T20'`.
+        Reverberation time mode. Options are `'Topt'`, `'T20'`, `'T30'`,
+        `'T60'` or `'EDT'`. Default: `'Topt'`.
     ir_start : int or array-like, optional
         If it is an integer, it is assumed as the start of the IR for all
         channels (and all bands). For more specific cases, pass a 1d-array
@@ -55,6 +55,12 @@ def reverb_time(
     ----------
     - DIN EN ISO 3382-1:2009-10, Acoustics - Measurement of the reverberation
       time of rooms with reference to other acoustical parameters.
+    - Room-EQ-Wizard for Topt.
+
+    Notes
+    -----
+    - In order to compare EDT to the other measures, it must be multiplied
+      by 6.
 
     """
     if type(signal) is Signal:
@@ -64,10 +70,10 @@ def reverb_time(
             + "reverb_time. It should be ir or rir"
         )
         mode = mode.upper()
-        valid_modes = ("T20", "T30", "T60", "EDT")
+        valid_modes = ("TOPT", "T20", "T30", "T60", "EDT")
         assert mode in valid_modes, (
             f"{mode} is not valid. Use either one of "
-            + "these: T20, T30, T60 or EDT"
+            + "these: Topt, T20, T30, T60 or EDT"
         )
         reverberation_times = np.zeros((signal.number_of_channels))
         for n in range(signal.number_of_channels):
