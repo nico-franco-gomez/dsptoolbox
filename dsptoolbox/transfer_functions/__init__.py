@@ -32,7 +32,7 @@ Analyze TF/IR:
 - `window_frequency_dependent()` (obtain a spectrum with a frequency-dependent
   window)
 - `find_ir_latency()`
-- `thd_from_chirp_ir()`
+- `harmonics_from_chirp_ir()`
 
 """
 from .transfer_functions import (
@@ -54,7 +54,7 @@ from .transfer_functions import (
     combine_ir_with_dirac,
     warp_ir,
     find_ir_latency,
-    thd_from_chirp_ir,
+    harmonics_from_chirp_ir,
 )
 
 __all__ = [
@@ -76,5 +76,5 @@ __all__ = [
     "window_centered_ir",
     "warp_ir",
     "find_ir_latency",
-    "thd_from_chirp_ir",
+    "harmonics_from_chirp_ir",
 ]

@@ -1253,12 +1253,12 @@ def find_ir_latency(ir: Signal) -> np.ndarray:
     return latency_samples
 
 
-def thd_from_chirp_ir(
+def harmonics_from_chirp_ir(
     ir: Signal,
     chirp_range_hz: list,
     chirp_length_seconds: float,
     n_harmonics: int = 5,
-) -> MultiBandSignal:
+) -> list:
     """Get the total harmonic distortion (THD) of the IR computed using
     an exponential chirp.
 
@@ -1276,6 +1276,8 @@ def thd_from_chirp_ir(
 
     Returns
     -------
+    harmonics : list
+        List containing the IRs of each harmonic in ascending order.
 
     Notes
     -----
@@ -1295,21 +1297,17 @@ def thd_from_chirp_ir(
     td = np.roll(td, offsets, axis=0)
 
     # Get times of each harmonic
-    ts = _get_harmonic_times(chirp_range_hz, chirp_length_seconds, n_harmonics)
+    ts = _get_harmonic_times(
+        chirp_range_hz, chirp_length_seconds, n_harmonics + 1
+    )
     time_harmonics_samples = len(td) + (ts * ir.sampling_rate_hz + 0.5).astype(
         int
     )
 
     time_harmonics_samples = np.insert(time_harmonics_samples, 0, len(td))
-    time_harmonics_samples = np.insert(
-        time_harmonics_samples, -1, time_harmonics_samples[-1] + 10
-    )
 
-    import matplotlib.pyplot as plt
-
-    irs = []
+    harmonics = []
     for nh in range(n_harmonics):
-        # max_index = time_harmonics_samples[nh]
         max_ind = int(
             time_harmonics_samples[nh]
             - (time_harmonics_samples[nh] - time_harmonics_samples[nh + 1])
@@ -1321,13 +1319,5 @@ def thd_from_chirp_ir(
             * 0.1
         )
         snippet = td[min_ind:max_ind, 0]
-        snippet, w, _ = _window_this_ir(snippet, total_length=len(snippet))
-        irs.append(snippet)
-        # irs.append(td[min_index:max_index, 0])
-        f = np.fft.rfftfreq(len(irs[-1]), 1 / ir.sampling_rate_hz)
-        x = np.fft.rfft(irs[-1])
-        plt.plot(irs[-1])
-        plt.plot(w * np.max(np.abs(irs[-1])))
-        # plt.semilogx(f, 20 * np.log10(np.abs(x)))
-    plt.show()
-    print()
+        harmonics.append(snippet)
+    return harmonics
