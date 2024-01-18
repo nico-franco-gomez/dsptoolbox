@@ -5,7 +5,7 @@ from warnings import warn
 from pickle import dump, HIGHEST_PROTOCOL
 from copy import deepcopy
 import numpy as np
-from soundfile import read, write
+import soundfile as sf
 from matplotlib.figure import Figure
 from matplotlib.axes import Axes
 
@@ -106,7 +106,7 @@ class Signal:
                 "Constructor cannot take a path and a sampling rate at the"
                 + " same time"
             )
-            time_data, sampling_rate_hz = read(path)
+            time_data, sampling_rate_hz = sf.read(path)
         else:
             assert time_data is not None, (
                 "Either a path to an audio file or a time vector has to be "
@@ -592,7 +592,7 @@ class Signal:
             assert new_time_data is None, (
                 "Only path or new time data is " + "accepted, not both."
             )
-            new_time_data, sampling_rate_hz = read(path)
+            new_time_data, sampling_rate_hz = sf.read(path)
         else:
             if new_time_data is not None:
                 assert path is None, (
@@ -1263,7 +1263,9 @@ class Signal:
         mode = mode.lower()
         path = _check_format_in_path(path, mode)
         if mode in ("wav", "flac"):
-            write(path, self.time_data, self.sampling_rate_hz)
+            sf.write(
+                path, self.time_data, self.sampling_rate_hz, subtype="FLOAT"
+            )
         elif mode == "pkl":
             with open(path, "wb") as data_file:
                 dump(self, data_file, HIGHEST_PROTOCOL)
