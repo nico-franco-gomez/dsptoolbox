@@ -46,12 +46,13 @@ def spectral_deconvolve(
         `'window'` uses a spectral window in the numerator. `'regularized'`
         uses a regularized inversion. `'standard'` uses direct deconvolution.
         Default: `'regularized'`.
-    start_stop_hz : array, None, optional
-        `'automatic'` uses a threshold dBFS to create a spectral
-        window for the numerator or regularized inversion. Array of 2 or
-        4 frequency points can be also manually given. `None` uses no
-        spectral window. If mode is standard, start_stop_hz has to be set
-        to `None`. Default: `None`.
+    start_stop_hz : array-like or `None`, optional
+        This is a vector of length 2 or 4 with frequency values that define the
+        area of the denominator that has some energy. This is only relevant for
+        `'window'` and `'regularized'`. Pass `None` to use an automatic mode
+        that recognizes the start and stop of the denominator
+        (it assumes a chirp). If mode is standard, `start_stop_hz` has to be
+        set to `None`. Default: `None`.
     threshold_db : int, optional
         Threshold in dBFS for the automatic creation of the window.
         Default: -30.

@@ -20,12 +20,10 @@ def _spectral_deconvolve(
     if mode == "regularized":
         # Regularized division
         ids = _find_nearest(start_stop_hz, freqs_hz)
-        outside = 30
-        inside = 10 ** (-200 / 20)
-        eps = _calculate_window(ids, len(freqs_hz), inverse=True)
-        eps += inside
-        eps *= outside
-        denum_reg = denum_fft.conj() / (denum_fft.conj() * denum_fft + eps)
+        eps = _calculate_window(ids, len(freqs_hz), inverse=True) * 10 ** (
+            30 / 20
+        )
+        denum_reg = denum_fft.conj() / (np.abs(denum_fft) ** 2 + eps)
         new_time_data = np.fft.irfft(num_fft * denum_reg, n=time_signal_length)
     elif mode == "window":
         ids = _find_nearest(start_stop_hz, freqs_hz)
