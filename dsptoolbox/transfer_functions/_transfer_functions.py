@@ -3,7 +3,12 @@ Backend for transfer functions methods
 """
 import numpy as np
 from scipy.signal import get_window, lfilter
-from .._general_helpers import _find_nearest, _calculate_window, _pad_trim
+from .._general_helpers import (
+    _find_nearest,
+    _calculate_window,
+    _pad_trim,
+    _get_chirp_rate,
+)
 
 
 def _spectral_deconvolve(
@@ -151,6 +156,15 @@ def _window_this_ir(
     in the middle of the window. It trims or pads at the end if needed. The
     windowed IR, window and the start sample are passed.
 
+    Returns
+    -------
+    td : `np.ndarray`
+        Windowed vector.
+    w : `np.ndarray`
+        Generated window.
+    ind_low_td : int
+        Sample position of the start.
+
     """
     if window_parameter is not None and type(window_type) is str:
         window_type = (window_type, window_parameter)
@@ -233,3 +247,40 @@ def _warp_time_series(td: np.ndarray, warping_factor: float):
         if n in ns:
             print(f"Warped: {ns.pop(0)}% of signal")
     return warped_td
+
+
+def _get_harmonic_times(
+    chirp_range_hz: list,
+    chirp_length_seconds: float,
+    n_harmonics: int,
+    time_offset_seconds: float = 0.0,
+) -> np.ndarray:
+    """Get the time at which each harmonic IR occur relative to the fundamental
+    IR in a measurement with an exponential chirp. This is computed according
+    to [1]. If the fundamental happens at time `t=0`, all harmonics will be at
+    a negative time.
+
+    Parameters
+    ----------
+    chirp_range_hz : list of length 2
+        The frequency range of the chirp.
+    chirp_length_seconds : float
+        Length of chirp in seconds (without zero-padding).
+    n_harmonics : int
+        Number of harmonics to analyze.
+    time_offset_seconds : float, optional
+        Time at which the fundamental occurs. Default: 0.
+
+    Returns
+    -------
+    np.ndarray
+        Array with the times for each harmonic in ascending order. The values
+        are given in seconds.
+
+    References
+    ----------
+    - [1]: Weinzierl, S. Handbuch der Audiotechnik. Chapter 21.
+
+    """
+    rate = _get_chirp_rate(chirp_range_hz, chirp_length_seconds)
+    return time_offset_seconds - np.log2(np.arange(n_harmonics) + 2) / rate
