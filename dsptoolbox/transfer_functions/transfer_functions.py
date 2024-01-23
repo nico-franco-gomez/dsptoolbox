@@ -14,7 +14,7 @@ from ._transfer_functions import (
     _warp_time_series,
     _get_harmonic_times,
 )
-from ..classes import Signal, Filter, MultiBandSignal
+from ..classes import Signal, Filter
 from ..classes._filter import _group_delay_filter
 from .._general_helpers import _find_frequencies_above_threshold
 from .._standard import _welch, _minimum_phase, _group_delay_direct, _pad_trim

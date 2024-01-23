@@ -18,6 +18,7 @@ adheres to `Semantic Versioning <http://semver.org/spec/v2.0.0.html>`_.
 ---------------------
 Added
 ~~~~~~
+- Distortion analysis of IR when measured with an exponential chirp
 
 Bugfix
 ~~~~~~
