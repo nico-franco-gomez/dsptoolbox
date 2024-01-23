@@ -395,22 +395,10 @@ class TestTransferFunctionsModule:
 
     def test_harmonics_from_chirp_ir(self):
         # Only functionality
-        ir = dsp.Signal(
-            "/Users/nico/Downloads/tests/some_new_ir.wav",
-            signal_type="rir",
-        )
-        harms = dsp.transfer_functions.harmonics_from_chirp_ir(
+        ir = dsp.Signal(join("examples", "data", "rir.wav"), signal_type="rir")
+        dsp.transfer_functions.harmonics_from_chirp_ir(
             ir,
             chirp_range_hz=[20, 20e3],
             chirp_length_seconds=2,
             n_harmonics=2,
         )
-
-        import matplotlib.pyplot as plt
-
-        fig, ax = plt.subplots(1, 1)
-        for ind, h in enumerate(harms):
-            freqs = np.fft.rfftfreq(len(h), 1 / ir.sampling_rate_hz)
-            s = np.fft.rfft(h)
-            ax.semilogx(freqs, 20 * np.log10(np.abs(s)))
-        plt.show()
