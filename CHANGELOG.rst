@@ -14,6 +14,18 @@ adheres to `Semantic Versioning <http://semver.org/spec/v2.0.0.html>`_.
 - Validation for results from tests in every module (so far many tests are
   only regarding functionality)
 
+`0.2.14 <https://pypi.org/project/dsptoolbox/0.2.14>`_ - 
+---------------------
+Added
+~~~~~~
+
+Bugfix
+~~~~~~
+- Selecting a bit depth for saving wav and flac files is now possible
+
+Misc
+~~~~~~
+
 `0.2.13 <https://pypi.org/project/dsptoolbox/0.2.13>`_ - 
 ---------------------
 Added
