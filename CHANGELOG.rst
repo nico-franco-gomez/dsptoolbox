@@ -21,7 +21,7 @@ Added
 
 Bugfix
 ~~~~~~
-- saving wav and flac files is now done with 32-bit depth instead of 16
+- Selecting a bit depth for saving wav and flac files is now possible
 
 Misc
 ~~~~~~

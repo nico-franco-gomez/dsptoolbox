@@ -1246,7 +1246,9 @@ class Signal:
         return fig, ax
 
     # ======== Saving and copy ================================================
-    def save_signal(self, path: str = "signal", mode: str = "wav"):
+    def save_signal(
+        self, path: str = "signal", mode: str = "wav", bit_depth: int = 32
+    ):
         """Saves the Signal object as wav, flac or pickle.
 
         Parameters
@@ -1258,13 +1260,29 @@ class Signal:
         mode : str, optional
             Mode of saving. Available modes are `'wav'`, `'flac'`, `'pkl'`.
             Default: `'wav'`.
+        bit_depth : int, optional
+            Bit depth when saving a signal in `'wav'` or `'flac'` format.
+            Only 16, 24, 32 and 64 are valid. Default: 32.
 
         """
         mode = mode.lower()
         path = _check_format_in_path(path, mode)
         if mode in ("wav", "flac"):
+            if bit_depth == 32:
+                subtype = "FLOAT"
+            elif bit_depth == 64:
+                subtype = "DOUBLE"
+            elif bit_depth == 24:
+                subtype = "PCM_24"
+            elif bit_depth == 16:
+                subtype = "PCM_16"
+            else:
+                raise ValueError(
+                    "Selected bit depth is not valid. "
+                    + "Use either 16, 24, 32 or 64"
+                )
             sf.write(
-                path, self.time_data, self.sampling_rate_hz, subtype="FLOAT"
+                path, self.time_data, self.sampling_rate_hz, subtype=subtype
             )
         elif mode == "pkl":
             with open(path, "wb") as data_file:
