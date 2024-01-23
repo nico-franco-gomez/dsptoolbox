@@ -392,3 +392,13 @@ class TestTransferFunctionsModule:
         s = dsp.Signal(join("examples", "data", "rir.wav"), signal_type="rir")
         dsp.transfer_functions.warp_ir(s, -0.6, True, 2**8)
         dsp.transfer_functions.warp_ir(s, 0.6, False, 2**8)
+
+    def test_harmonics_from_chirp_ir(self):
+        # Only functionality
+        ir = dsp.Signal(join("examples", "data", "rir.wav"), signal_type="rir")
+        dsp.transfer_functions.harmonics_from_chirp_ir(
+            ir,
+            chirp_range_hz=[20, 20e3],
+            chirp_length_seconds=2,
+            n_harmonics=2,
+        )

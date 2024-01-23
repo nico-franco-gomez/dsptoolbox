@@ -12,6 +12,7 @@ from ._transfer_functions import (
     _min_phase_ir_from_real_cepstrum,
     _get_minimum_phase_spectrum_from_real_cepstrum,
     _warp_time_series,
+    _get_harmonic_times,
 )
 from ..classes import Signal, Filter
 from ..classes._filter import _group_delay_filter
@@ -1251,3 +1252,91 @@ def find_ir_latency(ir: Signal) -> np.ndarray:
         fractional_delay_samples = np.roots(pol).squeeze()
         latency_samples[ch] = delay_samples[ch] + fractional_delay_samples
     return latency_samples
+
+
+def harmonics_from_chirp_ir(
+    ir: Signal,
+    chirp_range_hz: list,
+    chirp_length_seconds: float,
+    n_harmonics: int = 5,
+    offset_percentage: float = 0.05,
+) -> list[Signal]:
+    """Get the individual harmonics (distortion) IRs of an IR computed with
+    an exponential chirp.
+
+    Parameters
+    ----------
+    ir : `Signal`
+        Impulse response obtained through deconvolution with an exponential
+        chirp.
+    chirp_range_hz : list of length 2
+        The frequency range of the chirp.
+    chirp_length_seconds : float
+        Length of chirp in seconds (without zero-padding).
+    n_harmonics : int, optional
+        Number of harmonics to analyze. Default: 5.
+    offset_percentage : float, optional
+        When this is larger than zero, each IR will also contain some samples
+        prior to the impulse. Their amount corresponds to a percentage of the
+        time length between that harmonic and their adjacent ones.
+        All samples are gathered in a mutually exclusive manner, such they are
+        never passed to two different harmonics. Default: 0.05.
+
+    Returns
+    -------
+    harmonics : list[Signal]
+        List containing the IRs of each harmonic in ascending order.
+
+    Notes
+    -----
+    - This will only work if the IR was gained utilizing an exponential
+      chirp that has also been zero padded during the deconvolution. This will
+      not be checked in this function.
+
+    """
+    assert ir.signal_type in (
+        "ir",
+        "rir",
+    ), "Signal type has to be either ir or rir"
+    assert (
+        offset_percentage < 1 and offset_percentage >= 0
+    ), "Offset must be smaller than one"
+
+    # Get offsets
+    td = ir.time_data
+    offsets = -np.argmax(td, axis=0) + 1
+    td = np.roll(td, offsets, axis=0)
+
+    # Get times of each harmonic
+    ts = _get_harmonic_times(
+        chirp_range_hz, chirp_length_seconds, n_harmonics + 1
+    )
+    time_harmonics_samples = len(td) + (ts * ir.sampling_rate_hz + 0.5).astype(
+        int
+    )
+
+    time_harmonics_samples = np.insert(time_harmonics_samples, 0, len(td))
+
+    harmonics = []
+    for nh in range(n_harmonics):
+        max_ind = int(
+            time_harmonics_samples[nh]
+            - (time_harmonics_samples[nh] - time_harmonics_samples[nh + 1])
+            * offset_percentage
+        )
+        min_ind = int(
+            time_harmonics_samples[nh + 1]
+            - (time_harmonics_samples[nh + 1] - time_harmonics_samples[nh + 2])
+            * offset_percentage
+        )
+        snippet = td[min_ind:max_ind, 0]
+        harmonics.append(
+            Signal(
+                None,
+                snippet,
+                ir.sampling_rate_hz,
+                signal_type="ir",
+                constrain_amplitude=ir.constrain_amplitude,
+            )
+        )
+    return harmonics

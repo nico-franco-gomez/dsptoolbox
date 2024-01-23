@@ -974,3 +974,26 @@ def gaussian_window(
     if not symmetric:
         return w[:-1]
     return w
+
+
+def _get_chirp_rate(range_hz: list, length_seconds: float) -> float:
+    """Compute the chirp rate based on the frequency range of the exponential
+    chirp and its duration.
+
+    Parameters
+    ----------
+    range_hz : list with length 2
+        Range of the exponential chirp.
+    length_seconds : float
+        Chirp's length in seconds.
+
+    Returns
+    -------
+    float
+        The chirp rate in octaves/second.
+
+    """
+    range_hz = np.atleast_1d(range_hz)
+    assert range_hz.shape == (2,), "Range must contain exactly two elements."
+    range_hz = np.sort(range_hz)
+    return np.log2(range_hz[1] / range_hz[0]) / length_seconds
