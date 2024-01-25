@@ -140,6 +140,11 @@ def _get_normalized_spectrum(
     phase_spectra : `np.ndarray`
         Phase spectrum matrix, only returned when `phase=True`.
 
+    Notes
+    -----
+    - The spectrum is clipped at -800 dB by default when standard or -400 dB
+      when welch method is used.
+
     """
     if normalize is not None:
         normalize = normalize.lower()
@@ -186,7 +191,10 @@ def _get_normalized_spectrum(
     for n in range(spectra.shape[1]):
         sp = np.abs(spectra[:, n])
         if smoothe != 0:
-            sp = _fractional_octave_smoothing(sp, smoothe)
+            if mode == "standard":
+                sp = _fractional_octave_smoothing(sp**2, smoothe) ** 0.5
+            else:  # welch
+                sp = _fractional_octave_smoothing(sp, smoothe)
         epsilon = 10 ** (-400 / 10)
         sp_db = factor * np.log10(
             np.clip(sp, a_min=epsilon, a_max=None) / scale_factor

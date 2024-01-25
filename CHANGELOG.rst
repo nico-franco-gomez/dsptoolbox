@@ -14,6 +14,15 @@ adheres to `Semantic Versioning <http://semver.org/spec/v2.0.0.html>`_.
 - Validation for results from tests in every module (so far many tests are
   only regarding functionality)
 
+`0.2.15 <https://pypi.org/project/dsptoolbox/0.2.15>`_ - 
+---------------------
+Added
+~~~~~~
+
+Bugfix
+~~~~~~
+- Smoothing is done on the spectral energy instead of the magnitude response
+
 `0.2.14 <https://pypi.org/project/dsptoolbox/0.2.14>`_ - 
 ---------------------
 Added
