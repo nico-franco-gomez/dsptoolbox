@@ -229,13 +229,14 @@ class TestTransferFunctionsModule:
         # Check that coherence is saved
         h.get_coherence()
 
-    def test_spectral_average(self):
+    def test_average_irs(self):
         # Only functionality is tested
         h = dsp.transfer_functions.spectral_deconvolve(self.y_st, self.x)
         # h.plot_phase()
-        dsp.transfer_functions.spectral_average(h, True)
+        dsp.transfer_functions.average_irs(h, normalize_energy=True)
         # h1.plot_magnitude()
-        dsp.transfer_functions.spectral_average(h, False)
+        dsp.transfer_functions.average_irs(h, normalize_energy=False)
+        dsp.transfer_functions.average_irs(h, mode="spectral")
         # h2.plot_magnitude()
 
     def test_min_phase_from_mag(self):
