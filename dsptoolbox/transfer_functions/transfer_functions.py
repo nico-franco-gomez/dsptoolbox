@@ -443,7 +443,9 @@ def average_irs(
         the magnitude and phase of each IR. Default: `"time"`.
     normalize_energy : bool, optional
         When `True`, the energy of all spectra is normalized to the first
-        channel's energy and then averaged. Default: `True`.
+        channel's energy and then averaged. Beware that normalization factors
+        might be clipped if the impulses are already at or close to 0 dBFS.
+        Default: `True`.
 
     Returns
     -------

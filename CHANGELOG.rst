@@ -18,6 +18,8 @@ adheres to `Semantic Versioning <http://semver.org/spec/v2.0.0.html>`_.
 ---------------------
 Added
 ~~~~~~
+- renamed `spectral_average` into `average_irs` in ``transfer_functions``
+  module. Now also a time-aligned average of irs can be done
 
 Bugfix
 ~~~~~~
