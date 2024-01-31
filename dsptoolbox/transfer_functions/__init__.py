@@ -15,6 +15,7 @@ Modify TF/IR:
 - `window_ir()` (Windows a TF in time domain)
 - `min_phase_ir()` (returns a minimum-phase version of the IR)
 - `combine_ir_with_dirac()` (combines an IR with a time-aligned dirac impulse)
+- `average_irs()` (averages all channels into a single IR)
 
 Generate TF/IR from magnitude spectrum:
 
@@ -41,7 +42,7 @@ from .transfer_functions import (
     window_frequency_dependent,
     window_centered_ir,
     compute_transfer_function,
-    spectral_average,
+    average_irs,
     min_phase_from_mag,
     lin_phase_from_mag,
     min_phase_ir,
@@ -61,7 +62,7 @@ __all__ = [
     "spectral_deconvolve",
     "window_ir",
     "compute_transfer_function",
-    "spectral_average",
+    "average_irs",
     "min_phase_from_mag",
     "lin_phase_from_mag",
     "min_phase_ir",

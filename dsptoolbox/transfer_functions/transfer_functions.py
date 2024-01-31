@@ -425,17 +425,27 @@ def compute_transfer_function(
     return tf_sig, tf
 
 
-def spectral_average(signal: Signal, normalize_energy: bool = True) -> Signal:
-    """Averages all channels of a given IR using their magnitude and
-    phase spectra and returns the averaged IR.
+def average_irs(
+    signal: Signal, mode: str = "time", normalize_energy: bool = True
+) -> Signal:
+    """Averages all channels of a given IR. It can either use a time domain
+    average while time-aligning all channels to the one with the longest
+    latency, or average directly their magnitude and phase responses.
 
     Parameters
     ----------
     signal : `Signal`
         Signal with channels to be averaged over.
+    mode : str, optional
+        It can be either `"time"` or `"spectral"`. When `"time"` is selected,
+        the IRs are time-aligned to the channel with the biggest latency
+        and then averaged in the time domain. `"spectral"` averages directly
+        the magnitude and phase of each IR. Default: `"time"`.
     normalize_energy : bool, optional
         When `True`, the energy of all spectra is normalized to the first
-        channel's energy and then averaged. Default: `True`.
+        channel's energy and then averaged. Beware that normalization factors
+        might be clipped if the impulses are already at or close to 0 dBFS.
+        Default: `True`.
 
     Returns
     -------
@@ -447,29 +457,52 @@ def spectral_average(signal: Signal, normalize_energy: bool = True) -> Signal:
         "Averaging is valid for signal types rir or ir and not "
         + f"{signal.signal_type}"
     )
+    mode = mode.lower()
+    assert mode in (
+        "time",
+        "spectral",
+    ), "Invalid mode. Use either time or spectral"
     assert (
         signal.number_of_channels > 1
     ), "Signal has only one channel so no meaningful averaging can be done"
-
-    l_samples = signal.time_data.shape[0]
-
-    # Obtain channel magnitude and phase spectra
-    _, sp = signal.get_spectrum()
-    mag = np.abs(sp)
-    pha = np.unwrap(np.angle(sp), axis=0)
-
-    # Build averages
-    new_mag = np.mean(mag, axis=1)
-    if normalize_energy:
-        norm = np.sum(new_mag**2, axis=0, keepdims=True)
-        new_mag *= norm[0] / norm
-    new_pha = np.mean(pha, axis=1)
-    # New signal
-    new_sp = new_mag * np.exp(1j * new_pha)
-
-    # New time data and signal object
-    new_time_data = np.fft.irfft(new_sp[..., None], n=l_samples, axis=0)
     avg_sig = signal.copy()
+
+    if normalize_energy:
+        energies = np.sum(signal.time_data**2, axis=0)
+        energies /= energies[0]
+        avg_sig.time_data = avg_sig.time_data * energies
+
+    if mode == "spectral":
+        # Obtain channel magnitude and phase spectra
+        _, sp = signal.get_spectrum()
+        mag = np.abs(sp)
+        pha = np.unwrap(np.angle(sp), axis=0)
+
+        # Build averages
+        new_mag = np.mean(mag, axis=1)
+        new_pha = np.mean(pha, axis=1)
+        # New signal
+        new_sp = new_mag * np.exp(1j * new_pha)
+
+        # New time data and signal object
+        new_time_data = np.fft.irfft(
+            new_sp[..., None], n=signal.time_data.shape[0], axis=0
+        )
+    else:
+        latencies = find_ir_latency(signal)
+        channel_to_follow = np.argmax(latencies)
+        for i in range(signal.number_of_channels):
+            if channel_to_follow == i:
+                continue
+            latency_s = (
+                latencies[channel_to_follow] - latencies[i]
+            ) / signal.sampling_rate_hz
+            new_channel = fractional_delay(
+                signal.get_channels(i), latency_s, keep_length=True
+            )
+            avg_sig.time_data[:, i] = new_channel.time_data[:, 0]
+        new_time_data = np.mean(avg_sig.time_data, axis=1)
+
     avg_sig.time_data = new_time_data
     if hasattr(avg_sig, "window"):
         del avg_sig.window

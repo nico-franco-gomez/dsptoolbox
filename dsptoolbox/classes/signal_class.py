@@ -1262,7 +1262,8 @@ class Signal:
             Default: `'wav'`.
         bit_depth : int, optional
             Bit depth when saving a signal in `'wav'` or `'flac'` format.
-            Only 16, 24, 32 and 64 are valid. Default: 32.
+            Only 16, 24, 32 and 64 are valid. 32 and 64 are only valid for
+            `'wav'`. Default: 32.
 
         """
         mode = mode.lower()
