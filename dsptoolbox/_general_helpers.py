@@ -122,9 +122,8 @@ def _get_normalized_spectrum(
         normalization for 1 kHz uses a linear interpolation for getting the
         value at 1 kHz regardless of the frequency resolution. Default: `None`.
     smoothe : int, optional
-        1/smoothe-fractional octave band smoothing for magnitude spectra.
-        Pass `0` for no smoothing.
-        Default: 0.
+        1/smoothe-fractional octave band smoothing for magnitude spectra. Pass
+        `0` for no smoothing. Default: 0.
     phase : bool, optional
         When `True`, phase spectra are also returned. Default: `False`.
     calibrated_data : bool, optional
@@ -165,8 +164,8 @@ def _get_normalized_spectrum(
         )
     # Factor
     if mode == "standard":
-        factor = 20
         scale_factor = 20e-6 if calibrated_data and normalize is None else 1
+        factor = 20
     elif mode == "welch":
         scale_factor = 4e-10 if calibrated_data and normalize is None else 1
         factor = 10
@@ -174,6 +173,7 @@ def _get_normalized_spectrum(
         raise ValueError(
             f"{mode} is not supported. Please select standard " "or welch"
         )
+
     if f_range_hz is not None:
         assert len(f_range_hz) == 2, (
             "Frequency range must have only " + "a lower and an upper bound"
@@ -186,33 +186,40 @@ def _get_normalized_spectrum(
         id1 = 0
         id2 = len(f)
 
-    mag_spectra = np.zeros((id2 - id1, spectra.shape[1]))
-    phase_spectra = np.zeros_like(mag_spectra)
-    for n in range(spectra.shape[1]):
-        sp = np.abs(spectra[:, n])
-        if smoothe != 0:
-            if mode == "standard":
-                sp = _fractional_octave_smoothing(sp**2, smoothe) ** 0.5
-            else:  # welch
-                sp = _fractional_octave_smoothing(sp, smoothe)
-        epsilon = 10 ** (-400 / 10)
-        sp_db = factor * np.log10(
-            np.clip(sp, a_min=epsilon, a_max=None) / scale_factor
-        )
-        if normalize is not None:
+    mag_spectra = np.abs(spectra)
+    if smoothe != 0 and mode == "standard":
+        if mode == "standard":
+            mag_spectra = _fractional_octave_smoothing(mag_spectra, smoothe)
+        else:  # Welch
+            mag_spectra = (
+                _fractional_octave_smoothing(mag_spectra**0.5, smoothe) ** 2
+            )
+
+    mag_spectra = mag_spectra[id1:id2, ...]
+    epsilon = 10 ** (-400 / 10)
+    mag_spectra = factor * np.log10(
+        np.clip(mag_spectra, a_min=epsilon, a_max=None) / scale_factor
+    )
+
+    if normalize is not None:
+        for i in range(spectra.shape[1]):
             if normalize == "1k":
-                gain = _get_exact_gain_1khz(f, sp_db)
-                sp_db -= gain
+                gain = _get_exact_gain_1khz(f, mag_spectra[:, i])
+                mag_spectra[:, i] -= gain
             else:
-                sp_db -= np.max(sp_db)
-        if phase:
-            phase_spectra[:, n] = np.angle(sp[id1:id2])
-        mag_spectra[:, n] = sp_db[id1:id2]
+                mag_spectra[:, i] -= np.max(mag_spectra[:, i])
+
+    if phase:
+        phase_spectra = np.angle(spectra[id1:id2, ...])
 
     if one_dimensional:
         mag_spectra = np.squeeze(mag_spectra)
+        if phase:
+            phase_spectra = np.squeeze(phase_spectra)
+
     if phase:
         return f[id1:id2], mag_spectra, phase_spectra
+
     return f[id1:id2], mag_spectra
 
 
@@ -934,6 +941,10 @@ def _get_exact_gain_1khz(f: np.ndarray, sp_db: np.ndarray) -> float:
         Interpolated value.
 
     """
+    assert np.min(f) < 1e3, (
+        "No gain at 1 kHz can be obtained because it is outside the "
+        + "given frequency vector"
+    )
     # Get nearest value just before
     ind = _find_nearest(1e3, f)
     if f[ind] > 1e3:
