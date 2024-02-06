@@ -1,6 +1,7 @@
 """
 Tests for basic functionalities of the classes in dsptoolbox
 """
+
 import pytest
 import dsptoolbox as dsp
 import numpy as np
@@ -77,7 +78,7 @@ class TestSignal:
             method="standard", scaling="amplitude spectrum"
         )
         _, sp_sig = s.get_spectrum()
-        assert np.all(sp / self.time_vec.shape[0] == sp_sig)
+        assert np.all(sp / self.time_vec.shape[0] * 2 == sp_sig)
 
         # Try smoothing
         s.set_spectrum_parameters(

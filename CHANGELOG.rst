@@ -14,6 +14,12 @@ adheres to `Semantic Versioning <http://semver.org/spec/v2.0.0.html>`_.
 - Validation for results from tests in every module (so far many tests are
   only regarding functionality)
 
+`0.2.17 <https://pypi.org/project/dsptoolbox/0.2.17>`_ - 
+---------------------
+Bugfix
+~~~~~~
+- corrected scaling of spectrum in the case of amplitude spectrum
+
 `0.2.16 <https://pypi.org/project/dsptoolbox/0.2.16>`_ - 
 ---------------------
 Added

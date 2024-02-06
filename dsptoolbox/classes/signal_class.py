@@ -1,6 +1,7 @@
 """
 Signal class
 """
+
 from warnings import warn
 from pickle import dump, HIGHEST_PROTOCOL
 from copy import deepcopy
@@ -794,7 +795,7 @@ class Signal:
                     self._spectrum_parameters["scaling"]
                     == "amplitude spectrum"
                 ):
-                    spectrum /= time_length
+                    spectrum *= 2 / time_length
             self.spectrum = []
             self.spectrum.append(
                 np.fft.rfftfreq(time_length, 1 / self.sampling_rate_hz)
