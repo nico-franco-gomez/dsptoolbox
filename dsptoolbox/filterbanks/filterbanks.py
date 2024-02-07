@@ -2,6 +2,7 @@
 General use filter banks to be created and given back as a filter bank
 object
 """
+
 import numpy as np
 from scipy.signal import windows, bilinear_zpk
 import warnings
@@ -142,13 +143,13 @@ def reconstructing_fractional_octave_bands(
             phi = 0.5 * (phi + 1)
 
             # apply fade out to current channel
-            g[
-                b_idx - 1, k_1[b_idx] - P[b_idx] : k_1[b_idx] + P[b_idx] + 1
-            ] = np.cos(np.pi / 2 * phi)
+            g[b_idx - 1, k_1[b_idx] - P[b_idx] : k_1[b_idx] + P[b_idx] + 1] = (
+                np.cos(np.pi / 2 * phi)
+            )
             # apply fade in in to next channel
-            g[
-                b_idx, k_1[b_idx] - P[b_idx] : k_1[b_idx] + P[b_idx] + 1
-            ] = np.sin(np.pi / 2 * phi)
+            g[b_idx, k_1[b_idx] - P[b_idx] : k_1[b_idx] + P[b_idx] + 1] = (
+                np.sin(np.pi / 2 * phi)
+            )
 
         # set current and next channel to zero outside their range
         g[b_idx - 1, k_1[b_idx] + P[b_idx] :] = 0.0
@@ -416,25 +417,33 @@ def weightning_filter(
     return weightning_filter
 
 
-# Not yet working
-# def cqf_crossover(lowpass: Filter) -> CQFCrossover:
-#     """This creates conjugate quadrature filters that work as a two band,
-#     maximally decimated filter bank. This crossover has perfect magnitude
-#     reconstruction.
+def complementary_fir_filter(fir: Filter) -> Filter:
+    """Returns a complementary filter for an FIR filter with linear phase.
+    It returns for instance a lowpass from a highpass prototype with perfect
+    reconstruction. Combined, they deliver perfect magnitude reconstruction
+    (with some quantization error) and a constant group delay.
 
-#     Parameters
-#     ----------
-#     lowpass : `Filter`
-#         Lowpass filter prototype with which to create the other filters.
+    Parameters
+    ----------
+    fir : `Filter`
+        Filter prototype with linear phase.
 
-#     Returns
-#     -------
-#     fb : `CQFCrossover`
-#         Conjugate quadrature filters crossover.
+    Returns
+    -------
+    fir_complementary : `Filter`
+        Complementary filter.
 
-#     References
-#     ----------
-#     - https://tinyurl.com/2cssq2oa
+    """
+    assert fir.filter_type == "fir", "Filter prototype must be an FIR filter"
 
-#     """
-#     return CQFCrossover(lowpass)
+    b = fir.ba[0].copy()
+    # b = fir.get_coefficients("ba")[0]
+    assert len(b) % 2 == 1, "Filter has no linear phase"
+    impulse_index = np.argmax(np.abs(b))
+    assert np.all(
+        np.isclose(b[:impulse_index], b[impulse_index + 1 :][::-1])
+    ), "Filter has no linear phase"
+    b = -b
+    b[impulse_index] += 1
+    fir_complementary = Filter("other", {"ba": [b, [1]]}, fir.sampling_rate_hz)
+    return fir_complementary

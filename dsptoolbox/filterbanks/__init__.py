@@ -22,8 +22,11 @@ Other:
 - `fractional_octave_bands()`: Butterworth bandpass filter bank with signal
   energy conservation.
 - `weightning_filter()`: A- or C-Weightning filter.
+- `fir_complementary()`: Create a complementary FIR filter from a linear-phase
+  FIR prototype.
 
 """
+
 from .filterbanks import (
     linkwitz_riley_crossovers,
     reconstructing_fractional_octave_bands,
@@ -31,6 +34,7 @@ from .filterbanks import (
     fractional_octave_bands,
     qmf_crossover,
     weightning_filter,
+    complementary_fir_filter,
 )
 
 __all__ = [
@@ -40,4 +44,5 @@ __all__ = [
     "auditory_filters_gammatone",
     "qmf_crossover",
     "weightning_filter",
+    "complementary_fir_filter",
 ]
