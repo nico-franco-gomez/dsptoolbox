@@ -78,7 +78,12 @@ class TestSignal:
             method="standard", scaling="amplitude spectrum"
         )
         _, sp_sig = s.get_spectrum()
-        assert np.all(sp / self.time_vec.shape[0] * 2 == sp_sig)
+        sp /= self.time_vec.shape[0]
+        if self.time_vec.shape[0] % 2 == 0:
+            sp[1:-1] *= 2
+        else:
+            sp[1:] *= 2
+        assert np.all(sp == sp_sig)
 
         # Try smoothing
         s.set_spectrum_parameters(

@@ -795,7 +795,12 @@ class Signal:
                     self._spectrum_parameters["scaling"]
                     == "amplitude spectrum"
                 ):
-                    spectrum *= 2 / time_length
+                    spectrum /= time_length
+                    # Scale one-sided spectrum except for DC and Nyquist
+                    if time_length % 2 == 0:
+                        spectrum[1:-1] *= 2
+                    else:
+                        spectrum[1:] *= 2
             self.spectrum = []
             self.spectrum.append(
                 np.fft.rfftfreq(time_length, 1 / self.sampling_rate_hz)
