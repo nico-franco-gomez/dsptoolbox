@@ -152,9 +152,9 @@ def spectral_deconvolve(
 
 def window_ir(
     signal: Signal,
+    total_length_samples: int,
     constant_percentage: float = 0.75,
-    total_length_samples: int = 2**13,
-    window_type="hann",
+    window_type: str | tuple | list = "hann",
     at_start: bool = True,
     offset_samples: int = 0,
     left_to_right_flank_length_ratio: float = 1.0,
@@ -168,17 +168,19 @@ def window_ir(
     ----------
     signal : `Signal`
         Signal to window
+    total_length_samples : int
+        Total window length in samples.
     constant_percentage : float, optional
         Percentage (between 0 and 1) of the window's length that should be
         constant value. Default: 0.75.
-    total_length_samples : int, optional
-        Total window length in samples. Default: 2**13.
-    window_type : str, optional
-        Window function to be used. Available selection from
+    window_type : str, tuple, list, optional
+        Window function to be used for the flanks. Available selection from
         scipy.signal.windows: `barthann`, `bartlett`, `blackman`,
         `boxcar`, `cosine`, `hamming`, `hann`, `flattop`, `nuttall` and
         others. Pass a tuple with window type and extra parameters if needed.
-        Default: `hann`.
+        Pass a list containing two valid windows (str or tuple) to use
+        different windows for the left and right flanks respectively.
+        Default: `'hann'`.
     at_start : bool, optional
         Windows the start with a rising window as well as the end.
         Default: `True`.
@@ -188,8 +190,8 @@ def window_ir(
         of the window. Default: 0.
     left_to_right_flank_length_ratio : float, optional
         This is the length ratio between left and right flanks. For instance,
-        2 leads to a length of the left flank twice as long as the right one.
-        Default: 1 (equal length).
+        2 leads to a length of the left flank twice as long as the right one,
+        while 0.1 would be a tenth of the length. Default: 1 (equal length).
 
     Returns
     -------
@@ -197,13 +199,8 @@ def window_ir(
         Windowed signal. The used window is also saved under `new_sig.window`.
     start_positions_samples : `np.ndarray`
         This array contains the position index of the start of the IR in
-        each channel of the original IR.
-
-    Notes
-    -----
-    - The window flanks are adapted in case that the distance between impulse
-      and start is not enough for the selected flank lengths (flank lengths
-      depend on `constant_percentage` and `exp2_trim`).
+        each channel of the original IR (relative to the possibly padded
+        windowed IR).
 
     """
     assert signal.signal_type in (

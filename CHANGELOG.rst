@@ -16,9 +16,16 @@ adheres to `Semantic Versioning <http://semver.org/spec/v2.0.0.html>`_.
 
 `0.2.17 <https://pypi.org/project/dsptoolbox/0.2.17>`_ - 
 ---------------------
+
 Bugfix
 ~~~~~~
-- corrected scaling of spectrum in the case of amplitude spectrum
+- corrected scaling of spectrum in the case of amplitude spectrum in `signal`
+  class
+- corrected computation of minimum phase using log hilbert method
+
+Misc
+~~~~~
+- refactored `window_ir` for more flexibility and consistency
 
 `0.2.16 <https://pypi.org/project/dsptoolbox/0.2.16>`_ - 
 ---------------------

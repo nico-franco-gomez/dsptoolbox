@@ -54,7 +54,7 @@ def _spectral_deconvolve(
 def _window_this_ir_tukey(
     vec,
     total_length: int,
-    window_type: str = "hann",
+    window_type: str | tuple | list = "hann",
     constant_percentage: float = 0.75,
     at_start: bool = True,
     offset_samples: int = 0,
