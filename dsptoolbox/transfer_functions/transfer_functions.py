@@ -152,10 +152,12 @@ def spectral_deconvolve(
 
 def window_ir(
     signal: Signal,
-    constant_percentage=0.75,
-    exp2_trim: int = 13,
+    constant_percentage: float = 0.75,
+    total_length_samples: int = 2**13,
     window_type="hann",
     at_start: bool = True,
+    offset_samples: int = 0,
+    left_to_right_flank_length_ratio: float = 1.0,
 ) -> tuple[Signal, np.ndarray]:
     """Windows an IR with trimming and selection of constant valued length.
     This is equivalent to a tukey window whose flanks can be selected to be
@@ -164,23 +166,30 @@ def window_ir(
 
     Parameters
     ----------
-    signal: `Signal`
+    signal : `Signal`
         Signal to window
-    constant_percentage: float, optional
+    constant_percentage : float, optional
         Percentage (between 0 and 1) of the window's length that should be
         constant value. Default: 0.75.
-    exp2_trim: int, optional
-        Exponent of two defining the length to which the IR should be
-        trimmed. For avoiding trimming set to `None`. Default: 13.
-    window_type: str, optional
+    total_length_samples : int, optional
+        Total window length in samples. Default: 2**13.
+    window_type : str, optional
         Window function to be used. Available selection from
         scipy.signal.windows: `barthann`, `bartlett`, `blackman`,
         `boxcar`, `cosine`, `hamming`, `hann`, `flattop`, `nuttall` and
         others. Pass a tuple with window type and extra parameters if needed.
         Default: `hann`.
-    at_start: bool, optional
+    at_start : bool, optional
         Windows the start with a rising window as well as the end.
         Default: `True`.
+    offset_samples : int, optional
+        Passing an offset in samples delays the impulse from the first window
+        value with amplitude 1. The offset must be inside the constant region
+        of the window. Default: 0.
+    left_to_right_flank_length_ratio : float, optional
+        This is the length ratio between left and right flanks. For instance,
+        2 leads to a length of the left flank twice as long as the right one.
+        Default: 1 (equal length).
 
     Returns
     -------
@@ -201,14 +210,16 @@ def window_ir(
         "rir",
         "ir",
     ), f"{signal.signal_type} is not a valid signal type. Use rir or ir."
-    if exp2_trim is not None:
-        total_length = int(2**exp2_trim)
-    else:
-        total_length = len(signal.time_data)
-    new_time_data = np.zeros((total_length, signal.number_of_channels))
+    assert offset_samples >= 0, "Offset must be positive"
+    assert offset_samples < constant_percentage * total_length_samples, (
+        "Offset is too large for the constant part of the window and its "
+        + "total length"
+    )
+
+    new_time_data = np.zeros((total_length_samples, signal.number_of_channels))
     start_positions_samples = np.zeros(signal.number_of_channels, dtype=int)
 
-    window = np.zeros((total_length, signal.number_of_channels))
+    window = np.zeros((total_length_samples, signal.number_of_channels))
     for n in range(signal.number_of_channels):
         (
             new_time_data[:, n],
@@ -216,11 +227,12 @@ def window_ir(
             start_positions_samples[n],
         ) = _window_this_ir_tukey(
             signal.time_data[:, n],
-            total_length,
+            total_length_samples,
             window_type,
-            exp2_trim,
             constant_percentage,
             at_start,
+            offset_samples,
+            left_to_right_flank_length_ratio,
         )
 
     new_sig = Signal(

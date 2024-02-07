@@ -1,6 +1,7 @@
 """
 Backend for transfer functions methods
 """
+
 import numpy as np
 from scipy.signal import get_window, lfilter
 from .._general_helpers import (
@@ -54,39 +55,58 @@ def _window_this_ir_tukey(
     vec,
     total_length: int,
     window_type: str = "hann",
-    exp2_trim: int = 13,
     constant_percentage: float = 0.75,
     at_start: bool = True,
+    offset_samples: int = 0,
+    left_to_right_flank_ratio: float = 1.0,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """This function finds the index of the impulse and trims or windows it
     accordingly. Window used and the start sample are returned.
 
     It is defined to place the impulse at the start of the constant area
-    of the tukey window. However, flanks can be any type.
+    of the tukey window. However, an offset for delaying the impulse can be
+    passed. Flanks can be any type.
 
     """
     start_sample = 0
-    # Trimming
-    if exp2_trim is not None:
-        # Padding
-        if 2**exp2_trim >= len(vec):
-            # Padding
-            vec = np.hstack([vec, np.zeros(total_length - len(vec))])
-            length = np.argmax(abs(vec))
-        else:
-            # Selecting
-            assert (
-                constant_percentage > 0 and constant_percentage < 1
-            ), "Constant percentage must be between 0 and 1"
-            length = int((1 - constant_percentage) * 2**exp2_trim) // 2
-            ind_max = np.argmax(abs(vec))
-            if ind_max - length < 0:
-                length = ind_max
-            start_sample = ind_max - length
-            vec = vec[start_sample : start_sample + 2**exp2_trim]
+
+    # Expected flank length
+    flank_length_total = int((1 - constant_percentage) * total_length)
+    left_flank_length = int(
+        flank_length_total * 0.5 * left_to_right_flank_ratio
+    )
+    right_flank_length = flank_length_total - left_flank_length
+
+    # Maximum
+    impulse_index = np.argmax(np.abs(vec))
+
+    # If offset and impulse index are outside or inside
+    if impulse_index - offset_samples < 0:
+        vec = np.pad(vec, ((-(impulse_index - offset_samples), 0)))
+        start_sample += -(impulse_index - offset_samples)
     else:
-        length = np.argmax(abs(vec))
-    points = [0, length, total_length - length, total_length]
+        impulse_index -= offset_samples
+
+    # If left flank is longer than the amount of samples expected
+    if impulse_index - left_flank_length < 0:
+        vec = np.pad(vec, ((-(impulse_index - left_flank_length), 0)))
+        start_sample += -(impulse_index - left_flank_length)
+    else:
+        vec = vec[impulse_index - left_flank_length :]
+        start_sample = impulse_index - left_flank_length
+
+    # If total length is larger than actual length
+    if len(vec) < total_length:
+        vec = np.pad(vec, ((0, total_length - len(vec))))
+    else:
+        vec = vec[:total_length]
+
+    points = [
+        0,
+        left_flank_length,
+        total_length - right_flank_length,
+        total_length,
+    ]
     window = _calculate_window(
         points, total_length, window_type, at_start=at_start
     )
