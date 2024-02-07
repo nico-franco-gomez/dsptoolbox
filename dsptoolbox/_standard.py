@@ -1,6 +1,7 @@
 """
 Backend for standard functions
 """
+
 import numpy as np
 from scipy.signal import correlate, check_COLA, windows, hilbert
 from scipy.special import iv as bessel_first_mod
@@ -361,7 +362,7 @@ def _group_delay_direct(phase: np.ndarray, delta_f: float = 1):
 
 
 def _minimum_phase(
-    magnitude: np.ndarray, unwrapped: bool = True
+    magnitude: np.ndarray, whole_spectrum: bool = False, unwrapped: bool = True
 ) -> np.ndarray:
     """Computes minimum phase system from magnitude spectrum.
 
@@ -370,6 +371,10 @@ def _minimum_phase(
     magnitude : `np.ndarray`
         Spectrum for which to compute the minimum phase. If real, it is assumed
         to be already the magnitude.
+    whole_spectrum : bool, optional
+        When `True`, it is assumed that the spectrum is passed with both
+        positive and negative frequencies. Otherwise, the negative frequencies
+        are obtained by mirroring the spectrum. Default: `False`.
     uwrapped : bool, optional
         If `True`, the unwrapped phase is given. Default: `True`.
 
@@ -381,9 +386,15 @@ def _minimum_phase(
     """
     if np.iscomplexobj(magnitude):
         magnitude = np.abs(magnitude)
+
+    original_length = magnitude.shape[0]
+    if not whole_spectrum:
+        magnitude = np.concatenate([magnitude, magnitude[1:-1][::-1]], axis=0)
+
     minimum_phase = -np.imag(
         hilbert(np.log(np.clip(magnitude, a_min=1e-40, a_max=None)), axis=0)
-    )
+    )[:original_length]
+
     if not unwrapped:
         minimum_phase = np.angle(np.exp(1j * minimum_phase))
     return minimum_phase

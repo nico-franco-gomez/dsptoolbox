@@ -128,8 +128,8 @@ def _get_minimum_phase_spectrum_from_real_cepstrum(time_data: np.ndarray):
 
     Returns
     -------
-    min_phase_time_data : `np.ndarray`
-        New time series.
+    `np.ndarray`
+        New spectrum with minimum phase.
 
     """
     # Real cepstrum

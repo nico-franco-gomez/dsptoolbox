@@ -1,6 +1,7 @@
 """
 Methods used for acquiring and windowing transfer functions
 """
+
 import numpy as np
 from scipy.signal import minimum_phase as min_phase_scipy
 from scipy.signal import hilbert
@@ -417,7 +418,7 @@ def compute_transfer_function(
         coherence[:, n] = np.abs(G_xy) ** 2 / G_xx / G_yy
     tf_sig = Signal(
         None,
-        np.fft.irfft(tf, axis=0),
+        np.fft.irfft(tf, axis=0, n=window_length_samples),
         output.sampling_rate_hz,
         signal_type=mode.lower(),
     )
@@ -510,7 +511,10 @@ def average_irs(
 
 
 def min_phase_from_mag(
-    spectrum: np.ndarray, sampling_rate_hz: int, signal_type: str = "ir"
+    spectrum: np.ndarray,
+    sampling_rate_hz: int,
+    original_length_time_data: int | None = None,
+    signal_type: str = "ir",
 ):
     """Returns a minimum-phase signal from a magnitude spectrum using
     the discrete hilbert transform.
@@ -518,9 +522,14 @@ def min_phase_from_mag(
     Parameters
     ----------
     spectrum : `np.ndarray`
-        Spectrum with only positive frequencies and 0.
+        Spectrum (no scaling) with only positive frequencies.
     sampling_rate_hz : int
         Signal's sampling rate in Hz.
+    original_length_time_data : int, optional
+        Original length for the time data that gave the spectrum. This is
+        necessary for reconstruction of the time data since the first half
+        of the spectrum (only positive frequencies) is ambiguous. Pass `None`
+        to assume an even length. Default: `None`.
     signal_type : str, optional
         Type of signal to be returned. Default: `'ir'`.
 
@@ -539,11 +548,20 @@ def min_phase_from_mag(
     assert spectrum.ndim < 3, "Spectrum should have shape (bins, channels)"
     if spectrum.shape[0] < spectrum.shape[1]:
         spectrum = spectrum.T
-    spectrum = np.abs(spectrum)
-    min_spectrum = np.empty(spectrum.shape, dtype="cfloat")
-    phase = _minimum_phase(spectrum, False)
-    min_spectrum = spectrum * np.exp(1j * phase)
-    time_data = np.fft.irfft(min_spectrum, axis=0)
+    if original_length_time_data is None:
+        original_length_time_data = (spectrum.shape[0] - 1) * 2
+    assert original_length_time_data in (
+        (spectrum.shape[0] - 1) * 2,
+        (spectrum.shape[0] - 1) * 2 + 1,
+    ), (
+        f"Passed length {original_length_time_data} is not valid for the "
+        + f"given spectrum with shape {spectrum.shape}"
+    )
+
+    phase = _minimum_phase(np.abs(spectrum), False, True)
+    time_data = np.fft.irfft(
+        spectrum * np.exp(1j * phase), axis=0, n=original_length_time_data
+    )
     sig_min_phase = Signal(
         None,
         time_data=time_data,
@@ -556,6 +574,7 @@ def min_phase_from_mag(
 def lin_phase_from_mag(
     spectrum: np.ndarray,
     sampling_rate_hz: int,
+    original_length_time_data: int | None = None,
     group_delay_ms: str | float = "minimum",
     check_causality: bool = True,
     signal_type: str = "ir",
@@ -575,6 +594,11 @@ def lin_phase_from_mag(
         Spectrum with only positive frequencies and 0.
     sampling_rate_hz : int
         Signal's sampling rate in Hz.
+    original_length_time_data : int, optional
+        Original length for the time data that gave the spectrum. This is
+        necessary for reconstruction of the time data since the first half
+        of the spectrum (only positive frequencies) is ambiguous. Pass `None`
+        to assume an even length. Default: `None`.
     group_delay_ms : str or float, optional
         Constant group delay that the phase should have for all channels
         (in ms). Pass `'minimum'` to create a signal with the minimum linear
@@ -598,6 +622,16 @@ def lin_phase_from_mag(
     assert spectrum.ndim < 3, "Spectrum should have shape (bins, channels)"
     if spectrum.shape[0] < spectrum.shape[1]:
         spectrum = spectrum.T
+    if original_length_time_data is None:
+        original_length_time_data = (spectrum.shape[0] - 1) * 2
+    assert original_length_time_data in (
+        (spectrum.shape[0] - 1) * 2,
+        (spectrum.shape[0] - 1) * 2 + 1,
+    ), (
+        f"Passed length {original_length_time_data} is not valid for the "
+        + f"given spectrum with shape {spectrum.shape}"
+    )
+
     spectrum = np.abs(spectrum)
 
     # Check group delay ms parameter
@@ -614,14 +648,14 @@ def lin_phase_from_mag(
         raise TypeError("group_delay_ms must be either str, float or int")
 
     # Frequency vector
-    f_vec = np.fft.rfftfreq(spectrum.shape[0] * 2 - 1, 1 / sampling_rate_hz)
+    f_vec = np.fft.rfftfreq(original_length_time_data, 1 / sampling_rate_hz)
     delta_f = f_vec[1] - f_vec[0]
 
     # New spectrum
     lin_spectrum = np.empty(spectrum.shape, dtype="cfloat")
     for n in range(spectrum.shape[1]):
         if check_causality or minimum_group_delay:
-            min_phase = _minimum_phase(spectrum[:, n], False)
+            min_phase = _minimum_phase(spectrum[:, n])
             min_gd = _group_delay_direct(min_phase, delta_f)
             gd = np.max(min_gd) + 1e-3  # add 1 ms as safety factor
             if check_causality and type(group_delay_ms) is not str:
@@ -636,7 +670,7 @@ def lin_phase_from_mag(
         lin_spectrum[:, n] = spectrum[:, n] * np.exp(
             -1j * 2 * np.pi * f_vec * gd
         )
-    time_data = np.fft.irfft(lin_spectrum, axis=0)
+    time_data = np.fft.irfft(lin_spectrum, axis=0, n=original_length_time_data)
     sig_lin_phase = Signal(
         None,
         time_data=time_data,
@@ -690,7 +724,7 @@ def min_phase_ir(sig: Signal, method: str = "real cepstrum") -> Signal:
         _, min_phases = minimum_phase(sig, method=method)
         _, sp = sig.get_spectrum()
         new_time_data = np.fft.irfft(
-            np.abs(sp) * np.exp(1j * min_phases), axis=0
+            np.abs(sp) * np.exp(1j * min_phases), axis=0, n=len(sig)
         )
 
     min_phase_sig = sig.copy()
