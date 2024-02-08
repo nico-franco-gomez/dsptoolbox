@@ -92,16 +92,64 @@ class TestTransferFunctionsModule:
     def test_window_ir(self):
         # Only functionality
         h = dsp.transfer_functions.spectral_deconvolve(self.y_m, self.x)
-
-        dsp.transfer_functions.window_ir(h, window_type="hann", at_start=True)
-        dsp.transfer_functions.window_ir(h, window_type="hann", at_start=False)
-        dsp.transfer_functions.window_ir(
-            h, exp2_trim=None, window_type="hann", at_start=True
+        h.time_data = np.roll(
+            h.time_data, 256 - np.argmax(np.abs(h.time_data)), axis=0
         )
+        h = dsp.pad_trim(h, 2**13)
 
+        dsp.transfer_functions.window_ir(
+            h, 2**11, window_type="hann", at_start=True
+        )
+        dsp.transfer_functions.window_ir(
+            h, 2**11, window_type="hann", at_start=False
+        )
+        dsp.transfer_functions.window_ir(
+            h, 2**15, window_type="hann", at_start=True
+        )
         # Try window with extra parameters
         dsp.transfer_functions.window_ir(
-            h, exp2_trim=None, window_type=("chebwin", 50), at_start=True
+            h, 2**12, window_type=("kaiser", 10), at_start=True
+        )
+        dsp.transfer_functions.window_ir(
+            h,
+            2**12,
+            adaptive=False,
+            window_type=("kaiser", 10),
+            at_start=True,
+        )
+        dsp.transfer_functions.window_ir(
+            h,
+            2**12,
+            adaptive=False,
+            window_type=("kaiser", 10),
+            at_start=True,
+            offset_samples=200,
+        )
+        dsp.transfer_functions.window_ir(
+            h,
+            2**12,
+            adaptive=False,
+            window_type=["hann", "hamming"],
+            at_start=False,
+            offset_samples=200,
+        )
+        dsp.transfer_functions.window_ir(
+            h,
+            2**12,
+            adaptive=True,
+            window_type=["hann", ("kaiser", 10)],
+            at_start=False,
+            offset_samples=200,
+            left_to_right_flank_length_ratio=0.5,
+        )
+        dsp.transfer_functions.window_ir(
+            h,
+            2**15,
+            adaptive=True,
+            window_type=["hann", ("kaiser", 10)],
+            at_start=False,
+            offset_samples=200,
+            left_to_right_flank_length_ratio=0.5,
         )
 
     def test_window_centered_ir(self):
@@ -266,7 +314,7 @@ class TestTransferFunctionsModule:
             keep_original_length=False,
         )
         ir, _ = dsp.transfer_functions.window_ir(
-            ir, window_type="hann", exp2_trim=12, at_start=True
+            ir, window_type="hann", total_length_samples=2**12, at_start=True
         )
         # Check only that some result is produced, validity should be checked
         # somewhere else
@@ -287,7 +335,7 @@ class TestTransferFunctionsModule:
             keep_original_length=False,
         )
         ir, _ = dsp.transfer_functions.window_ir(
-            ir, window_type="hann", exp2_trim=12, at_start=True
+            ir, 2**12, window_type="hann", at_start=True
         )
         # Check only that some result is produced, validity should be checked
         # somewhere else
@@ -316,7 +364,7 @@ class TestTransferFunctionsModule:
             keep_original_length=False,
         )
         ir, _ = dsp.transfer_functions.window_ir(
-            ir, window_type="hann", exp2_trim=12, at_start=True
+            ir, 2**12, window_type="hann", at_start=True
         )
         # Check only that some result is produced, validity should be checked
         # somewhere else
@@ -339,7 +387,7 @@ class TestTransferFunctionsModule:
             keep_original_length=False,
         )
         ir, _ = dsp.transfer_functions.window_ir(
-            ir, window_type="hann", exp2_trim=12, at_start=True
+            ir, 2**12, window_type="hann", at_start=True
         )
         # Check only that some result is produced, validity should be checked
         # somewhere else
