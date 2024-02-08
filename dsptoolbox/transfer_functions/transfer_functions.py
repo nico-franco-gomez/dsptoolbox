@@ -153,6 +153,7 @@ def spectral_deconvolve(
 def window_ir(
     signal: Signal,
     total_length_samples: int,
+    adaptive: bool = True,
     constant_percentage: float = 0.75,
     window_type: str | tuple | list = "hann",
     at_start: bool = True,
@@ -170,6 +171,10 @@ def window_ir(
         Signal to window
     total_length_samples : int
         Total window length in samples.
+    adaptive : bool, optional
+        When `True`, some design parameters will modified in case that the
+        IR does not have enough samples to accomodate them. See Notes for
+        more details. Default: `True`.
     constant_percentage : float, optional
         Percentage (between 0 and 1) of the window's length that should be
         constant value. Default: 0.75.
@@ -185,7 +190,7 @@ def window_ir(
         Windows the start with a rising window as well as the end.
         Default: `True`.
     offset_samples : int, optional
-        Passing an offset in samples delays the impulse from the first window
+        Passing an offset in samples delays the impulse w.r.t. the first window
         value with amplitude 1. The offset must be inside the constant region
         of the window. Default: 0.
     left_to_right_flank_length_ratio : float, optional
@@ -202,6 +207,19 @@ def window_ir(
         each channel of the original IR (relative to the possibly padded
         windowed IR).
 
+    Notes
+    -----
+    - With `adaptive=True`, following modifications are allowed:
+        - Left flank length is variable to fit the first part of the IR. The
+          offset is always maintained.
+        - Constant amplitude part of the window is modified in order to fit
+          the right flank into the IR. If the IR is too short, there might
+          be only a couple samples with constant amplitude.
+
+    - With `adaptive=False`, the desired window might not fit the given IR.
+      In that case, the window values that will be multiplied with zero-padded
+      parts of the window are set to 0 in order to make them visible.
+
     """
     assert signal.signal_type in (
         "rir",
@@ -212,11 +230,14 @@ def window_ir(
         "Offset is too large for the constant part of the window and its "
         + "total length"
     )
+    assert (
+        left_to_right_flank_length_ratio >= 0
+    ), "Ratio between window flanks must be a positive number"
 
     new_time_data = np.zeros((total_length_samples, signal.number_of_channels))
     start_positions_samples = np.zeros(signal.number_of_channels, dtype=int)
-
     window = np.zeros((total_length_samples, signal.number_of_channels))
+
     for n in range(signal.number_of_channels):
         (
             new_time_data[:, n],
@@ -230,6 +251,7 @@ def window_ir(
             at_start,
             offset_samples,
             left_to_right_flank_length_ratio,
+            adaptive,
         )
 
     new_sig = Signal(

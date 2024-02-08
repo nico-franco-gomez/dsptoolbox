@@ -59,6 +59,7 @@ def _window_this_ir_tukey(
     at_start: bool = True,
     offset_samples: int = 0,
     left_to_right_flank_ratio: float = 1.0,
+    adaptive_window: bool = True,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """This function finds the index of the impulse and trims or windows it
     accordingly. Window used and the start sample are returned.
@@ -68,6 +69,7 @@ def _window_this_ir_tukey(
     passed. Flanks can be any type.
 
     """
+    # Start sample for vector
     start_sample = 0
 
     # Expected flank length
@@ -80,26 +82,59 @@ def _window_this_ir_tukey(
     # Maximum
     impulse_index = np.argmax(np.abs(vec))
 
-    # If offset and impulse index are outside or inside
-    if impulse_index - offset_samples < 0:
-        vec = np.pad(vec, ((-(impulse_index - offset_samples), 0)))
-        start_sample += -(impulse_index - offset_samples)
-    else:
-        impulse_index -= offset_samples
+    if not adaptive_window:
+        # If offset and impulse index are outside or inside
+        padding_left = 0
+        if impulse_index - offset_samples < 0:
+            pad_length = -(impulse_index - offset_samples)
+            vec = np.pad(vec, ((pad_length, 0)))
+            start_sample += pad_length
+            padding_left += pad_length
+        else:
+            impulse_index -= offset_samples
 
-    # If left flank is longer than the amount of samples expected
-    if impulse_index - left_flank_length < 0:
-        vec = np.pad(vec, ((-(impulse_index - left_flank_length), 0)))
-        start_sample += -(impulse_index - left_flank_length)
-    else:
-        vec = vec[impulse_index - left_flank_length :]
-        start_sample = impulse_index - left_flank_length
+        # If left flank is longer than the amount of samples expected
+        if impulse_index - left_flank_length < 0:
+            pad_length = -(impulse_index - left_flank_length)
+            vec = np.pad(vec, ((pad_length, 0)))
+            start_sample += pad_length
+            padding_left += pad_length
+        else:
+            vec = vec[impulse_index - left_flank_length :]
+            start_sample = impulse_index - left_flank_length
 
-    # If total length is larger than actual length
-    if len(vec) < total_length:
-        vec = np.pad(vec, ((0, total_length - len(vec))))
+        # If total length is larger than actual length
+        padding_right = 0
+        if len(vec) < total_length:
+            pad_length = total_length - len(vec)
+            vec = np.pad(vec, ((0, pad_length)))
+            padding_right += pad_length
+        else:
+            vec = vec[:total_length]
     else:
-        vec = vec[:total_length]
+        # Left flank adaptation
+        if impulse_index - offset_samples - left_flank_length < 0:
+            left_flank_length = max(0, impulse_index - offset_samples)
+        else:
+            start_sample = impulse_index - offset_samples - left_flank_length
+            vec = vec[start_sample:]
+
+        # Right flank adaptation
+        if len(vec) > total_length:
+            vec = vec[:total_length]
+
+        padding_after_adaptation = 0
+        if len(vec) < total_length:
+            padding_after_adaptation = total_length - len(vec)
+            total_length = len(vec)
+
+        if (
+            left_flank_length + offset_samples
+            < total_length - right_flank_length
+        ):
+            right_flank_length = (
+                total_length - left_flank_length - offset_samples - 1
+            )
 
     points = [
         0,
@@ -110,6 +145,15 @@ def _window_this_ir_tukey(
     window = _calculate_window(
         points, total_length, window_type, at_start=at_start
     )
+
+    if not adaptive_window:
+        window[:padding_left] = 0
+        if padding_right != 0:
+            window[-padding_right:] = 0
+    else:
+        vec = np.pad(vec, ((0, padding_after_adaptation)))
+        window = np.pad(window, ((0, padding_after_adaptation)))
+
     return vec * window, window, start_sample
 
 
