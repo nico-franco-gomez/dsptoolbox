@@ -265,7 +265,9 @@ def window_ir(
 
 
 def window_centered_ir(
-    signal: Signal, total_length: int, window_type="hann"
+    signal: Signal,
+    total_length_samples: int,
+    window_type: str | tuple = "hann",
 ) -> tuple[Signal, np.ndarray]:
     """This function windows an IR placing its peak in the middle. It trims
     it to the total length of the window or pads it to the desired length
@@ -275,9 +277,9 @@ def window_centered_ir(
     ----------
     signal: `Signal`
         Signal to window
-    total_length: int
-        Total window length.
-    window_type: str, optional
+    total_length_samples: int
+        Total window length in samples.
+    window_type: str, tuple, optional
         Window function to be used. Available selection from
         scipy.signal.windows: `barthann`, `bartlett`, `blackman`,
         `boxcar`, `cosine`, `hamming`, `hann`, `flattop`, `nuttall` and
@@ -304,16 +306,18 @@ def window_centered_ir(
         "ir",
     ), f"{signal.signal_type} is not a valid signal type. Use rir or ir."
 
-    new_time_data = np.zeros((total_length, signal.number_of_channels))
+    new_time_data = np.zeros((total_length_samples, signal.number_of_channels))
     start_positions_samples = np.zeros(signal.number_of_channels, dtype=int)
-    window = np.zeros((total_length, signal.number_of_channels))
+    window = np.zeros((total_length_samples, signal.number_of_channels))
 
     for n in range(signal.number_of_channels):
         (
             new_time_data[:, n],
             window[:, n],
             start_positions_samples[n],
-        ) = _window_this_ir(signal.time_data[:, n], total_length, window_type)
+        ) = _window_this_ir(
+            signal.time_data[:, n], total_length_samples, window_type
+        )
 
     new_sig = Signal(
         None,
