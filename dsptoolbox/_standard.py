@@ -362,7 +362,10 @@ def _group_delay_direct(phase: np.ndarray, delta_f: float = 1):
 
 
 def _minimum_phase(
-    magnitude: np.ndarray, whole_spectrum: bool = False, unwrapped: bool = True
+    magnitude: np.ndarray,
+    whole_spectrum: bool = False,
+    unwrapped: bool = True,
+    odd_length: bool = False,
 ) -> np.ndarray:
     """Computes minimum phase system from magnitude spectrum.
 
@@ -377,6 +380,9 @@ def _minimum_phase(
         are obtained by mirroring the spectrum. Default: `False`.
     uwrapped : bool, optional
         If `True`, the unwrapped phase is given. Default: `True`.
+    odd_length : bool, optional
+        When `True`, it is assumed that the underlying time data of the half
+        spectrum had an odd length. Default: `False`.
 
     Returns
     -------
@@ -389,7 +395,15 @@ def _minimum_phase(
 
     original_length = magnitude.shape[0]
     if not whole_spectrum:
-        magnitude = np.concatenate([magnitude, magnitude[1:-1][::-1]], axis=0)
+        if odd_length:
+            # Nyquist is not contained in the spectrum
+            magnitude = np.concatenate(
+                [magnitude, magnitude[1:][::-1]], axis=0
+            )
+        else:
+            magnitude = np.concatenate(
+                [magnitude, magnitude[1:-1][::-1]], axis=0
+            )
 
     minimum_phase = -np.imag(
         hilbert(np.log(np.clip(magnitude, a_min=1e-40, a_max=None)), axis=0)

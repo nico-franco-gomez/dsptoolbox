@@ -567,7 +567,9 @@ def min_phase_from_mag(
         + f"given spectrum with shape {spectrum.shape}"
     )
 
-    phase = _minimum_phase(np.abs(spectrum), False, True)
+    phase = _minimum_phase(
+        np.abs(spectrum), False, True, original_length_time_data % 2 == 1
+    )
     time_data = np.fft.irfft(
         spectrum * np.exp(1j * phase), axis=0, n=original_length_time_data
     )
@@ -664,7 +666,9 @@ def lin_phase_from_mag(
     lin_spectrum = np.empty(spectrum.shape, dtype="cfloat")
     for n in range(spectrum.shape[1]):
         if check_causality or minimum_group_delay:
-            min_phase = _minimum_phase(spectrum[:, n])
+            min_phase = _minimum_phase(
+                spectrum[:, n], odd_length=original_length_time_data % 2 == 1
+            )
             min_gd = _group_delay_direct(min_phase, delta_f)
             gd = np.max(min_gd) + 1e-3  # add 1 ms as safety factor
             if check_causality and type(group_delay_ms) is not str:
@@ -848,7 +852,11 @@ def minimum_phase(
     elif method == "log hilbert":
         signal.set_spectrum_parameters("standard")
         f, sp = signal.get_spectrum()
-        min_phases = _minimum_phase(np.abs(sp), unwrapped=False)
+        min_phases = _minimum_phase(
+            np.abs(sp),
+            unwrapped=False,
+            odd_length=signal.time_data.shape[0] % 2 == 1,
+        )
     else:
         sp = _get_minimum_phase_spectrum_from_real_cepstrum(signal.time_data)
         f = np.fft.fftfreq(
