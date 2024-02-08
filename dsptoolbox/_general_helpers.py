@@ -78,10 +78,11 @@ def _calculate_window(
     idx_start_stop_f = [int(i) for i in points]
 
     len_low_flank = idx_start_stop_f[1] - idx_start_stop_f[0]
+
     if at_start:
         low_flank = windows.get_window(
             left_window_type, len_low_flank * 2, fftbins=True
-        )[0:len_low_flank]
+        )[:len_low_flank]
     else:
         low_flank = np.ones(len_low_flank)
 
