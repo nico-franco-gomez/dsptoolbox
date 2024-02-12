@@ -1,13 +1,21 @@
 """
 Low-level methods for room acoustics
 """
+
 import numpy as np
 from scipy.stats import pearsonr
 from ..plots import general_plot
+from .._general_helpers import _get_smoothing_factor_ema
+from warnings import warn
 
 
 def _reverb(
-    h, fs_hz, mode, ir_start: int | None = None, return_ir_start: bool = False
+    h,
+    fs_hz,
+    mode,
+    ir_start: int | None = None,
+    return_ir_start: bool = False,
+    trim_ending: bool = True,
 ):
     """Computes reverberation time of signal.
 
@@ -26,6 +34,9 @@ def _reverb(
         When `True`, it returns not only reverberation time but also the
         index of the sample with the start of the impulse response.
         Default: `False`.
+    trim_ending : bool, optional
+        When `True`, signal's power is trimmed to the first point falling below
+        a threshold before computing the energy decay curve.
 
     Returns
     -------
@@ -44,14 +55,14 @@ def _reverb(
     """
     # Energy decay curve
     energy_curve = h**2
-    epsilon = 1e-20
     if ir_start is None:
         max_ind = _find_ir_start(h, threshold_dbfs=-20)
     else:
         max_ind = ir_start
-    edc = np.sum(energy_curve) - np.cumsum(energy_curve)
-    edc[edc <= 0] = epsilon
-    edc = 10 * np.log10(edc / edc[max_ind])
+
+    edc = _compute_energy_decay_curve(
+        energy_curve, max_ind, trim_ending, fs_hz
+    )
     time_vector = np.linspace(0, len(edc) / fs_hz, len(edc))
 
     # Reverb
@@ -249,9 +260,7 @@ def _generate_rir(room_dim, alpha, s_pos, r_pos, rt, mo, sr) -> np.ndarray:
     # Damping term (Numerator in Eq. 8)
     def get_damping(lvec):
         diff = np.abs(lvec - u_vectors)
-        return np.prod(beta_1**diff, axis=1) * np.prod(
-            beta_2 ** np.abs(lvec)
-        )
+        return np.prod(beta_1**diff, axis=1) * np.prod(beta_2 ** np.abs(lvec))
 
     # Core computation (Eq. 1) – could be further optimized by vectorizing
     # the outer loops
@@ -1107,6 +1116,58 @@ def _get_polynomial_coeffs_from_edc(
     r_coefficient = pearsonr(time_vector[i1:i2], edc[i1:i2])[0]
 
     return coeff, r_coefficient
+
+
+def _compute_energy_decay_curve(
+    signal_power: np.ndarray,
+    impulse_index: int,
+    trim_automatically: bool,
+    fs_hz: int,
+) -> np.ndarray:
+    """Get the energy decay curve from a signal power."""
+    epsilon = 1e-50
+    if trim_automatically:
+        stopping_index = _get_stop_index_for_energy_decay_curve(
+            signal_power, impulse_index, fs_hz
+        )
+    else:
+        stopping_index = len(signal_power)
+    edc = np.sum(signal_power[:stopping_index]) - np.cumsum(
+        signal_power[:stopping_index]
+    )
+    edc = 10 * np.log10(
+        np.clip(edc / edc[impulse_index], a_min=epsilon, a_max=None)
+    )
+    return edc
+
+
+def _get_stop_index_for_energy_decay_curve(
+    signal_power: np.ndarray, impulse_index: int, fs_hz: int
+) -> int:
+    # ETC
+    normalized = 10 * np.log10(np.clip(signal_power, a_min=1e-50, a_max=None))
+    # Envelope
+    factor = _get_smoothing_factor_ema(20e-3, fs_hz)
+    envelope = np.zeros_like(normalized)
+    envelope[0] = normalized[0]
+    for i2 in range(1, len(normalized)):
+        if normalized[i2] > envelope[i2 - 1]:
+            envelope[i2] = normalized[i2]
+            continue
+        envelope[i2] = (
+            normalized[i2] * factor + (1 - factor) * envelope[i2 - 1]
+        )
+    # Threshold
+    threshold = np.percentile(envelope[int(len(envelope) * 0.66) :], 70)
+    stop = np.where(envelope[impulse_index:] < threshold)[0][0] + impulse_index
+
+    if stop - impulse_index < 10:
+        warn(
+            "Passed impulse index might be wrong, no meaningful trimming"
+            + " could be done"
+        )
+        stop = len(signal_power)
+    return stop
 
 
 if __name__ == "__main__":

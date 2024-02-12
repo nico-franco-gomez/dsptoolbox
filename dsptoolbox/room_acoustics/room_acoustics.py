@@ -1,6 +1,7 @@
 """
 High-level methods for room acoustics functions
 """
+
 import numpy as np
 from scipy.signal import find_peaks, convolve
 
@@ -25,6 +26,7 @@ def reverb_time(
     signal: Signal | MultiBandSignal,
     mode: str = "T20",
     ir_start: int | np.ndarray | None = None,
+    trim_ending: bool = True,
 ) -> np.ndarray:
     """Computes reverberation time. Topt, T20, T30, T60 and EDT.
 
@@ -44,6 +46,11 @@ def reverb_time(
         are automatically computed as the first point before the normalized IR
         arrives at -20 dBFS. This is then done independently for each channel
         and each band. Default: `None`.
+    trim_ending : bool, optional
+        When set to `True`, the IR is cut after the energy has decayed below a
+        threshold before performing Schroeder integration. This can influence
+        the energy decay curve and, therefore, the reverberation time. See
+        notes for details on the algorithm. Default: `True`.
 
     Returns
     -------
@@ -61,6 +68,12 @@ def reverb_time(
     -----
     - In order to compare EDT to the other measures, it must be multiplied
       by 6.
+    - For defining the ending of the IR automatically, an envelope of the
+      signal's power is first computed. Then, the 70th percentile of the last
+      third of this vector is used as a threshold. The first point to go
+      below this threshold is taken as the end. The underlying assumption is
+      that there might be only noise when this signal level is reached. If it
+      fails to deliver a meaningful result, no trimming is performed.
 
     """
     if type(signal) is Signal:
@@ -83,6 +96,7 @@ def reverb_time(
                 mode,
                 ir_start=ir_start[n],
                 return_ir_start=False,
+                trim_ending=trim_ending,
             )
     elif type(signal) is MultiBandSignal:
         ir_start = _check_ir_start_reverb(signal, ir_start)

@@ -13,7 +13,16 @@ class TestRoomAcousticsModule:
         dsp.room_acoustics.reverb_time(self.rir, mode="t20", ir_start=None)
         dsp.room_acoustics.reverb_time(self.rir, mode="t30", ir_start=None)
         dsp.room_acoustics.reverb_time(self.rir, mode="t60", ir_start=None)
-        dsp.room_acoustics.reverb_time(self.rir, mode="edt", ir_start=None)
+
+        dsp.room_acoustics.reverb_time(
+            self.rir, mode="edt", ir_start=None, trim_ending=False
+        )
+        dsp.room_acoustics.reverb_time(
+            self.rir, mode="t60", ir_start=None, trim_ending=False
+        )
+        dsp.room_acoustics.reverb_time(
+            self.rir, mode="edt", ir_start=None, trim_ending=False
+        )
 
         # Check Index
         ind = np.argmax(np.abs(self.rir.time_data))
@@ -27,11 +36,11 @@ class TestRoomAcousticsModule:
         fb = dsp.filterbanks.auditory_filters_gammatone(
             [500, 800], sampling_rate_hz=self.rir.sampling_rate_hz
         )
-        mb = fb.filter_signal(self.rir)
+        mb = fb.filter_signal(self.rir, zero_phase=True)
         dsp.room_acoustics.reverb_time(mb, mode="t20", ir_start=None)
         dsp.room_acoustics.reverb_time(mb, mode="t20", ir_start=ind)
 
-        mb = fb.filter_signal(combined)
+        mb = fb.filter_signal(combined, zero_phase=True)
         dsp.room_acoustics.reverb_time(mb, mode="t20", ir_start=[ind, ind - 1])
 
         starts = np.ones((mb.number_of_bands, mb.number_of_channels)) * ind
