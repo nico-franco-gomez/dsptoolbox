@@ -130,7 +130,7 @@ def _window_this_ir_tukey(
 
         if (
             left_flank_length + offset_samples
-            < total_length - right_flank_length
+            > total_length - right_flank_length
         ):
             right_flank_length = (
                 total_length - left_flank_length - offset_samples - 1
