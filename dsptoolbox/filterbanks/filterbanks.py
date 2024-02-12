@@ -419,9 +419,9 @@ def weightning_filter(
 
 def complementary_fir_filter(fir: Filter) -> Filter:
     """Returns a complementary filter for an FIR filter with linear phase.
-    It returns for instance a lowpass from a highpass prototype with perfect
-    reconstruction. Combined, they deliver perfect magnitude reconstruction
-    (with some quantization error) and a constant group delay.
+    It returns for instance a lowpass from a highpass prototype. Combined,
+    they deliver perfect magnitude reconstruction (with some quantization
+    error) and a constant group delay.
 
     Parameters
     ----------
