@@ -68,11 +68,11 @@ def reverb_time(
     -----
     - In order to compare EDT to the other measures, it must be multiplied
       by 6.
-    - For defining the ending of the IR automatically, an envelope of the
-      signal's power is first computed. Then, the 70th percentile of the last
+    - For defining the ending of the IR automatically, a smooth envelope of the
+      energy time curve (ETC) is first computed. Then, the median of the last
       third of this vector is used as a threshold. The first point to go
       below this threshold is taken as the end. The underlying assumption is
-      that there might be only noise when this signal level is reached. If it
+      that there might be only noise when this threshold is reached. If it
       fails to deliver a meaningful result, no trimming is performed.
 
     """
@@ -439,7 +439,11 @@ def generate_synthetic_rir(
     return rir
 
 
-def descriptors(rir: Signal | MultiBandSignal, mode: str = "d50"):
+def descriptors(
+    rir: Signal | MultiBandSignal,
+    mode: str = "d50",
+    automatic_trimming_rir: bool = True,
+):
     """Returns a desired room acoustics descriptor from an RIR.
 
     Parameters
@@ -458,6 +462,11 @@ def descriptors(rir: Signal | MultiBandSignal, mode: str = "d50"):
           of the lower-frequency octave bands (125, 250) to the higher ones
           (500, 1000). T20 is always used.
         - `'ts'`: Center time. It is the central time computed of the RIR.
+    automatic_trimming_rir : bool, optional
+        When `True`, the RIR is automatically trimmed after a certain energy
+        threshold relative to the peak value has been surpassed. See notes
+        for details on the algorithm. This parameter is ignored when computing
+        the bass ratio. Default: `True`.
 
     Returns
     -------
@@ -465,6 +474,15 @@ def descriptors(rir: Signal | MultiBandSignal, mode: str = "d50"):
         Array containing the output descriptor. If RIR is a `Signal`,
         it has shape (channel). If RIR is a `MultiBandSignal`, the array has
         shape (band, channel).
+
+    Notes
+    -----
+    - For defining the ending of the IR automatically, an envelope of the
+      energy time curve (ETC) is first computed. Then, the median of the last
+      third of this vector is used as a threshold. The first point to go
+      below this threshold is taken as the end. The underlying assumption is
+      that there might be only noise when this signal level is reached. If it
+      fails to deliver a meaningful result, no trimming is performed.
 
     """
     mode = mode.lower()
@@ -484,9 +502,14 @@ def descriptors(rir: Signal | MultiBandSignal, mode: str = "d50"):
         else:
             # Bass ratio
             return _bass_ratio(rir)
+
         desc = np.zeros(rir.number_of_channels)
         for ch in range(rir.number_of_channels):
-            desc[ch] = func(rir.time_data[:, ch], rir.sampling_rate_hz)
+            desc[ch] = func(
+                rir.time_data[:, ch],
+                rir.sampling_rate_hz,
+                automatic_trimming_rir,
+            )
     elif type(rir) is MultiBandSignal:
         assert mode != "br", (
             "Bass-ratio is not a valid descriptor to be used on a "
@@ -507,6 +530,7 @@ def _bass_ratio(rir: Signal) -> np.ndarray:
     ----------
     rir : `Signal`
         RIR.
+    automatic_trimming : bool
 
     Returns
     -------

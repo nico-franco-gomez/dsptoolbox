@@ -53,16 +53,12 @@ def _reverb(
     acoustical parameters. pp. 22.
 
     """
-    # Energy decay curve
-    energy_curve = h**2
     if ir_start is None:
         max_ind = _find_ir_start(h, threshold_dbfs=-20)
     else:
         max_ind = ir_start
 
-    edc = _compute_energy_decay_curve(
-        energy_curve, max_ind, trim_ending, fs_hz
-    )
+    edc = _compute_energy_decay_curve(h, max_ind, trim_ending, fs_hz)
     time_vector = np.linspace(0, len(edc) / fs_hz, len(edc))
 
     # Reverb
@@ -908,7 +904,7 @@ def _add_reverberant_tail_noise(
     return rir
 
 
-def _d50_from_rir(td: np.ndarray, fs: int) -> float:
+def _d50_from_rir(td: np.ndarray, fs: int, automatic_trimming: bool) -> float:
     """Compute definition D50 from a given RIR (1D-Array).
 
     Parameters
@@ -917,6 +913,8 @@ def _d50_from_rir(td: np.ndarray, fs: int) -> float:
         IR.
     fs : int
         Sampling rate in Hz.
+    automatic_trimming : bool
+        When `True`, the RIR is trimmed before computing.
 
     Returns
     -------
@@ -928,10 +926,15 @@ def _d50_from_rir(td: np.ndarray, fs: int) -> float:
     ind = _find_ir_start(td)
     td = td[ind:] ** 2
     window = int(50e-3 * fs)
-    return np.sum(td[:window]) / np.sum(td)
+    if automatic_trimming:
+        stop = _get_stop_index_for_energy_decay_curve(td, 0, fs)
+        stop = np.max([window, stop])
+    else:
+        stop = len(td)
+    return np.sum(td[:window]) / np.sum(td[:stop])
 
 
-def _c80_from_rir(td: np.ndarray, fs: int) -> float:
+def _c80_from_rir(td: np.ndarray, fs: int, automatic_trimming: bool) -> float:
     """Compute clarity C80 from a given RIR (1D-Array).
 
     Parameters
@@ -940,6 +943,8 @@ def _c80_from_rir(td: np.ndarray, fs: int) -> float:
         IR.
     fs : int
         Sampling rate in Hz.
+    automatic_trimming : bool
+        When `True`, the RIR is trimmed before computing.
 
     Returns
     -------
@@ -953,10 +958,15 @@ def _c80_from_rir(td: np.ndarray, fs: int) -> float:
     td = td[ind:] ** 2
     # Time window
     window = int(80e-3 * fs)
-    return 10 * np.log10(np.sum(td[:window]) / np.sum(td[window:]))
+    if automatic_trimming:
+        stop = _get_stop_index_for_energy_decay_curve(td, 0, fs)
+        stop = np.max([window, stop])
+    else:
+        stop = len(td)
+    return 10 * np.log10(np.sum(td[:window]) / np.sum(td[window:stop]))
 
 
-def _ts_from_rir(td: np.ndarray, fs: int) -> float:
+def _ts_from_rir(td: np.ndarray, fs: int, automatic_trimming: bool) -> float:
     """Compute center time from a given RIR (1D-Array).
 
     Parameters
@@ -965,6 +975,8 @@ def _ts_from_rir(td: np.ndarray, fs: int) -> float:
         IR.
     fs : int
         Sampling rate in Hz.
+    automatic_trimming : bool
+        When `True`, the RIR is trimmed before computing.
 
     Returns
     -------
@@ -976,6 +988,13 @@ def _ts_from_rir(td: np.ndarray, fs: int) -> float:
     # Trim IR
     ind = _find_ir_start(td)
     td = td[ind:] ** 2
+
+    if automatic_trimming:
+        stop = _get_stop_index_for_energy_decay_curve(td, 0, fs)
+    else:
+        stop = len(td)
+    td = td[:stop]
+
     time_vec = np.linspace(0, len(td) / fs, len(td))
     return np.sum(td * time_vec) / np.sum(td)
 
@@ -1119,16 +1138,19 @@ def _get_polynomial_coeffs_from_edc(
 
 
 def _compute_energy_decay_curve(
-    signal_power: np.ndarray,
+    time_data: np.ndarray,
     impulse_index: int,
     trim_automatically: bool,
     fs_hz: int,
 ) -> np.ndarray:
     """Get the energy decay curve from a signal power."""
     epsilon = 1e-50
+
+    signal_power = time_data**2
+
     if trim_automatically:
         stopping_index = _get_stop_index_for_energy_decay_curve(
-            signal_power, impulse_index, fs_hz
+            time_data, impulse_index, fs_hz
         )
     else:
         stopping_index = len(signal_power)
@@ -1142,23 +1164,21 @@ def _compute_energy_decay_curve(
 
 
 def _get_stop_index_for_energy_decay_curve(
-    signal_power: np.ndarray, impulse_index: int, fs_hz: int
+    time_data: np.ndarray, impulse_index: int, fs_hz: int
 ) -> int:
     # ETC
-    normalized = 10 * np.log10(np.clip(signal_power, a_min=1e-50, a_max=None))
+    etc = 20 * np.log10(np.clip(np.abs(time_data), a_min=1e-50, a_max=None))
     # Envelope
-    factor = _get_smoothing_factor_ema(20e-3, fs_hz)
-    envelope = np.zeros_like(normalized)
-    envelope[0] = normalized[0]
-    for i2 in range(1, len(normalized)):
-        if normalized[i2] > envelope[i2 - 1]:
-            envelope[i2] = normalized[i2]
+    factor = _get_smoothing_factor_ema(5e-3, fs_hz)
+    envelope = np.zeros_like(etc)
+    envelope[0] = etc[0]
+    for i2 in range(1, len(etc)):
+        if etc[i2] > envelope[i2 - 1]:
+            envelope[i2] = etc[i2]
             continue
-        envelope[i2] = (
-            normalized[i2] * factor + (1 - factor) * envelope[i2 - 1]
-        )
+        envelope[i2] = etc[i2] * factor + (1 - factor) * envelope[i2 - 1]
     # Threshold
-    threshold = np.percentile(envelope[int(len(envelope) * 0.66) :], 70)
+    threshold = np.median(envelope[int(len(envelope) * 0.66) :])
     stop = np.where(envelope[impulse_index:] < threshold)[0][0] + impulse_index
 
     if stop - impulse_index < 10:
@@ -1166,7 +1186,7 @@ def _get_stop_index_for_energy_decay_curve(
             "Passed impulse index might be wrong, no meaningful trimming"
             + " could be done"
         )
-        stop = len(signal_power)
+        stop = len(time_data)
     return stop
 
 
