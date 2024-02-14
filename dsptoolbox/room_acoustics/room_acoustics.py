@@ -256,8 +256,7 @@ def find_ir_start(signal: Signal, threshold_dbfs: float = -20) -> np.ndarray:
     Returns
     -------
     start_index : `np.ndarray`
-        Index of IR start for each channel. Returns an integer when signal
-        only has one channel
+        Index of IR start for each channel.
 
     References
     ----------
@@ -269,7 +268,7 @@ def find_ir_start(signal: Signal, threshold_dbfs: float = -20) -> np.ndarray:
     start_index = np.empty(signal.number_of_channels, dtype=int)
     for n in range(signal.number_of_channels):
         start_index[n] = _find_ir_start(signal.time_data[:, n], threshold_dbfs)
-    return start_index.astype(int).squeeze()
+    return start_index.astype(int)
 
 
 def generate_synthetic_rir(

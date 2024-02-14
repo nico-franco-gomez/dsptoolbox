@@ -931,7 +931,7 @@ def _d50_from_rir(td: np.ndarray, fs: int, automatic_trimming: bool) -> float:
         stop = np.max([window, stop])
     else:
         stop = len(td)
-    td = td**2
+    td **= 2
     return np.sum(td[:window]) / np.sum(td[:stop])
 
 
@@ -964,7 +964,7 @@ def _c80_from_rir(td: np.ndarray, fs: int, automatic_trimming: bool) -> float:
         stop = np.max([window, stop])
     else:
         stop = len(td)
-    td = td**2
+    td **= 2
     return 10 * np.log10(np.sum(td[:window]) / np.sum(td[window:stop]))
 
 
@@ -1182,7 +1182,15 @@ def _get_stop_index_for_energy_decay_curve(
         envelope[i2] = etc[i2] * factor + (1 - factor) * envelope[i2 - 1]
     # Threshold
     threshold = np.median(envelope[int(len(envelope) * 0.66) :])
-    stop = np.where(envelope[impulse_index:] < threshold)[0][0] + impulse_index
+
+    try:
+        stop = (
+            np.where(envelope[impulse_index:] < threshold)[0][0]
+            + impulse_index
+        )
+    except Exception as e:
+        print(e)
+        stop = 0
 
     if stop - impulse_index < 10:
         warn(
@@ -1201,7 +1209,8 @@ def _get_stop_index_for_energy_decay_curve(
 
     # # Threshold
     # threshold = np.median(envelope[int(len(envelope) * 0.66) :])
-    # stop = np.where(envelope[impulse_index:] < threshold)[0][0] + impulse_index
+    # stop = np.where(envelope[impulse_index:] < threshold)[0][0] +
+    # impulse_index
 
     # if stop - impulse_index < 10:
     #     warn(
