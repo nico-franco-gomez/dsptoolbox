@@ -999,6 +999,13 @@ def combine_ir_with_dirac(
     combined_ir : `dsp.Signal`
         New IR.
 
+    Notes
+    -----
+    - The algorithm checks for the fractional delay of the IR and adds a
+      fractional delayed dirac. For ensuring good results, it is
+      recommended that the IR has some delay, so that the first part of the
+      added dirac impulse has time to grow smoothly.
+
     """
     assert ir.signal_type in ("rir", "ir"), "Only valid for rir or ir"
     if normalization is not None:
