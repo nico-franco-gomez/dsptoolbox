@@ -1,5 +1,6 @@
 import dsptoolbox as dsp
 import pytest
+import numpy as np
 
 
 class TestFilterbanksModule:
@@ -98,3 +99,22 @@ class TestFilterbanksModule:
         fs_hz = 5_000
         dsp.filterbanks.weightning_filter("a", fs_hz)
         dsp.filterbanks.weightning_filter("c", fs_hz)
+
+    def test_complementary_filter_fir(self):
+        fs_hz = 5000
+        f = dsp.Filter(
+            "fir",
+            {"type_of_pass": "highpass", "order": 120, "freqs": 400},
+            fs_hz,
+        )
+        f2 = dsp.filterbanks.complementary_fir_filter(f)
+        coefficients = f.get_coefficients("ba")[0]
+
+        # Get perfect impulse
+        h = np.zeros(len(coefficients))
+        h[len(coefficients) // 2] = 1
+
+        # Assert that both filters summed give a perfect impulse
+        assert np.all(
+            np.isclose(h, f2.get_coefficients("ba")[0] + coefficients)
+        )
