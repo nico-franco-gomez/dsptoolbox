@@ -924,13 +924,14 @@ def _d50_from_rir(td: np.ndarray, fs: int, automatic_trimming: bool) -> float:
     """
     assert td.ndim == 1, "Only supported for 1D-Arrays"
     ind = _find_ir_start(td)
-    td = td[ind:] ** 2
+    td = td[ind:]
     window = int(50e-3 * fs)
     if automatic_trimming:
         stop = _get_stop_index_for_energy_decay_curve(td, 0, fs)
         stop = np.max([window, stop])
     else:
         stop = len(td)
+    td = td**2
     return np.sum(td[:window]) / np.sum(td[:stop])
 
 
@@ -955,7 +956,7 @@ def _c80_from_rir(td: np.ndarray, fs: int, automatic_trimming: bool) -> float:
     assert td.ndim == 1, "Only supported for 1D-Arrays"
     # Trim IR
     ind = _find_ir_start(td)
-    td = td[ind:] ** 2
+    td = td[ind:]
     # Time window
     window = int(80e-3 * fs)
     if automatic_trimming:
@@ -963,6 +964,7 @@ def _c80_from_rir(td: np.ndarray, fs: int, automatic_trimming: bool) -> float:
         stop = np.max([window, stop])
     else:
         stop = len(td)
+    td = td**2
     return 10 * np.log10(np.sum(td[:window]) / np.sum(td[window:stop]))
 
 
@@ -987,13 +989,14 @@ def _ts_from_rir(td: np.ndarray, fs: int, automatic_trimming: bool) -> float:
     assert td.ndim == 1, "Only supported for 1D-Arrays"
     # Trim IR
     ind = _find_ir_start(td)
-    td = td[ind:] ** 2
+    td = td[ind:]
 
     if automatic_trimming:
         stop = _get_stop_index_for_energy_decay_curve(td, 0, fs)
     else:
         stop = len(td)
-    td = td[:stop]
+
+    td = td[:stop] ** 2
 
     time_vec = np.linspace(0, len(td) / fs, len(td))
     return np.sum(td * time_vec) / np.sum(td)
@@ -1187,6 +1190,25 @@ def _get_stop_index_for_energy_decay_curve(
             + " could be done"
         )
         stop = len(time_data)
+
+    # # Envelope (ETC)
+    # envelope = np.abs(hilbert(time_data, axis=0))
+    # etc = 20 * np.log10(np.clip(envelope, a_min=1e-50, a_max=None))
+
+    # # Smoothing (5 ms)
+    # factor = _get_smoothing_factor_ema(5e-3, fs_hz)
+    # envelope = lfilter([factor], [1, factor - 1], etc)
+
+    # # Threshold
+    # threshold = np.median(envelope[int(len(envelope) * 0.66) :])
+    # stop = np.where(envelope[impulse_index:] < threshold)[0][0] + impulse_index
+
+    # if stop - impulse_index < 10:
+    #     warn(
+    #         "Passed impulse index might be wrong, no meaningful trimming"
+    #         + " could be done"
+    #     )
+    #     stop = len(envelope)
     return stop
 
 

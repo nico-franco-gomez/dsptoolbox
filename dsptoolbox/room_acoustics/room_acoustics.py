@@ -477,9 +477,9 @@ def descriptors(
 
     Notes
     -----
-    - For defining the ending of the IR automatically, an envelope of the
-      energy time curve (ETC) is first computed. Then, the median of the last
-      third of this vector is used as a threshold. The first point to go
+    - For defining the ending of the IR automatically, a smoothed envelope of
+      the energy time curve (ETC) is first computed. Then, the median of the
+      last third of this vector is used as a threshold. The first point to go
       below this threshold is taken as the end. The underlying assumption is
       that there might be only noise when this signal level is reached. If it
       fails to deliver a meaningful result, no trimming is performed.
