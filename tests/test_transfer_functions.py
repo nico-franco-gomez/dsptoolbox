@@ -170,7 +170,7 @@ class TestTransferFunctionsModule:
 
         # Try window with extra parameters
         h_, _ = dsp.transfer_functions.window_centered_ir(
-            h, len(h), window_type=("gauss", 8)
+            h, len(h), window_type=("gauss", 5000)
         )
         assert np.argmax(h_.time_data[:, 0]) == np.argmax(h_.window[:, 0])
 
@@ -189,7 +189,7 @@ class TestTransferFunctionsModule:
 
         # Try window with extra parameters
         h_, _ = dsp.transfer_functions.window_centered_ir(
-            h, len(h), window_type=("gauss", 8)
+            h, len(h), window_type=("gauss", 5000)
         )
         assert np.argmax(h_.time_data[:, 0]) == np.argmax(h_.window[:, 0])
 
@@ -208,7 +208,7 @@ class TestTransferFunctionsModule:
 
         # Try window with extra parameters
         h_, _ = dsp.transfer_functions.window_centered_ir(
-            h, len(h), window_type=("gauss", 8)
+            h, len(h), window_type=("gauss", 5000)
         )
         assert np.argmax(h_.time_data[:, 0]) == np.argmax(h_.window[:, 0])
 
@@ -227,7 +227,7 @@ class TestTransferFunctionsModule:
 
         # Try window with extra parameters
         h_, _ = dsp.transfer_functions.window_centered_ir(
-            h, len(h), window_type=("gauss", 8)
+            h, len(h), window_type=("gauss", 5000)
         )
         assert np.argmax(h_.time_data[:, 0]) == np.argmax(h_.window[:, 0])
 
