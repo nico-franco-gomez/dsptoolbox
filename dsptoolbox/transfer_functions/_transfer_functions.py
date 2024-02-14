@@ -244,6 +244,7 @@ def _window_this_ir(
 
     w = get_window(window_type, half_length * 2 + 1, False)
 
+    # Define start index for time data and window
     if peak_ind - half_length < 0:
         ind_low_td = 0
         ind_low_w = half_length - peak_ind
@@ -251,6 +252,11 @@ def _window_this_ir(
         ind_low_td = peak_ind - half_length
         ind_low_w = 0
 
+    # Pad vector if necessary
+    if total_length - ind_low_td > len(vec):
+        vec = np.pad(vec, ((0, total_length + ind_low_td - len(vec))))
+
+    # Get second half
     if peak_ind + half_length + 1 > len(vec):
         ind_up_td = len(vec)
         ind_up_w = peak_ind + half_length + 1 - len(vec)
@@ -258,17 +264,20 @@ def _window_this_ir(
         ind_up_td = peak_ind + half_length + 1
         ind_up_w = len(w)
 
+    # Get time data and window
     w = w[ind_low_w:ind_up_w]
     td = vec[ind_low_td:ind_up_td] * w
 
+    # Flip back if needed
     if flipping:
         td = td[::-1]
         w = w[::-1]
 
-    # Length adaptation
+    # Final length adaptation (ensure length)
     if len(td) != total_length:
         td = _pad_trim(td, total_length)
         w = _pad_trim(w, total_length)
+
     return td, w, ind_low_td
 
 
