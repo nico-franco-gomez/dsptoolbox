@@ -421,7 +421,8 @@ def complementary_fir_filter(fir: Filter) -> Filter:
     """Returns a complementary filter for an FIR filter with linear phase.
     It returns for instance a lowpass from a highpass prototype. Combined,
     they deliver perfect magnitude reconstruction (with some quantization
-    error) and a constant group delay.
+    error) and a constant group delay. This method might only return meaningful
+    results if the filter prototype has an odd number of taps and linear phase.
 
     Parameters
     ----------
@@ -437,13 +438,8 @@ def complementary_fir_filter(fir: Filter) -> Filter:
     assert fir.filter_type == "fir", "Filter prototype must be an FIR filter"
 
     b = fir.ba[0].copy()
-    # b = fir.get_coefficients("ba")[0]
-    assert len(b) % 2 == 1, "Filter has no linear phase"
     impulse_index = np.argmax(np.abs(b))
-    assert np.all(
-        np.isclose(b[:impulse_index], b[impulse_index + 1 :][::-1])
-    ), "Filter has no linear phase"
-    b = -b
+    b *= -1
     b[impulse_index] += 1
     fir_complementary = Filter("other", {"ba": [b, [1]]}, fir.sampling_rate_hz)
     return fir_complementary
