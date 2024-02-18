@@ -970,7 +970,7 @@ class Signal:
             and normalize is None
             and scale
         ):
-            sp *= (2 / self.time_data.shape[0])
+            sp *= 2 / self.time_data.shape[0]
             sp[0] /= 2
             if self.time_data.shape[0] % 2 == 0:
                 sp[-1] /= 2
@@ -1167,9 +1167,7 @@ class Signal:
 
         """
         if not hasattr(self, "coherence"):
-            raise AttributeError(
-                "There is no coherence data saved in the " + "Signal object"
-            )
+            raise AttributeError("There is no coherence data saved")
         f, coh = self.get_coherence()
         fig, ax = general_subplots_line(
             x=f,
