@@ -26,15 +26,29 @@ def linkwitz_riley_crossovers(
         Frequencies at which to set the crossovers.
     order : array-like
         Order of the crossovers. The higher, the steeper.
+        See notes for more details.
     sampling_rate_hz : int
         Sampling rate for the filterbank.
 
     Returns
     -------
-    LRFilterBank
+    `LRFilterBank`
         Filter bank in form of LRFilterBank class which contains the same
         methods as the FilterBank class but is generated with different
         internal methods.
+
+    Notes
+    -----
+    - The crossover orders are doubled when creating crossovers with even
+      orders. Odd orders are not doubled. It follows that:
+        - Passed order -> Real order: -x dB / Octave
+        - 1 -> 1: -6 dB / Octave
+        - 2 -> 4: -24 dB / Octave
+        - 3 -> 3: -18 dB / Octave
+        - 4 -> 8: -48 dB / Octave
+        - 5 -> 5: -30 dB / Octave
+        - 6 -> 12: -72 dB / Octave
+        - etc...
 
     """
     return LRFilterBank(crossover_frequencies_hz, order, sampling_rate_hz)
