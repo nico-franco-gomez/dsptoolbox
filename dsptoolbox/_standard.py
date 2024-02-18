@@ -285,8 +285,6 @@ def _welch(
         if not autospectrum:
             y_frames -= np.mean(y_frames, axis=0)
 
-    # Combine
-
     if not autospectrum:
         sp_frames = np.fft.rfft(x_frames, axis=0).conjugate() * np.fft.rfft(
             y_frames, axis=0
@@ -294,7 +292,7 @@ def _welch(
     else:
         sp_frames = np.abs(np.fft.rfft(x_frames, axis=0)) ** 2
 
-    # Direct averaging much faster
+    # Direct averaging (much faster than averaging magnitude and phase)
     if average == "mean":
         csd = np.mean(sp_frames, axis=1)
     else:
@@ -320,13 +318,10 @@ def _welch(
     else:
         factor = 1
 
-    # Zero frequency fix when detrending (especially useful for dB plotting)
-    if detrend:
-        csd[0, ...] = csd[1, ...]
-
     csd *= factor
-    csd[0, ...] /= 2
-    csd[-1, ...] /= 2
+    if factor != 1:
+        csd[0, ...] /= 2
+        csd[-1, ...] /= 2
 
     if "amplitude" in scaling:
         csd = np.sqrt(csd)
