@@ -267,7 +267,7 @@ class TestTransferFunctionsModule:
             spectrum_parameters=None,
         )
         # Single-channel with other windows
-        h, h_numpy = dsp.transfer_functions.compute_transfer_function(
+        h, h_numpy, coh = dsp.transfer_functions.compute_transfer_function(
             self.y_m,
             self.x,
             mode="H2",
