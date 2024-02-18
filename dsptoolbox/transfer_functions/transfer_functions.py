@@ -336,7 +336,7 @@ def compute_transfer_function(
     window_length_samples: int = 1024,
     spectrum_parameters: dict | None = None,
 ) -> tuple[Signal, np.ndarray]:
-    """Gets transfer function H1, H2 or H3 (for stochastic signals).
+    r"""Gets transfer function H1, H2 or H3 (for stochastic signals).
     H1: for noise in the output signal. `Gxy/Gxx`.
     H2: for noise in the input signal. `Gyy/Gyx`.
     H3: for noise in both signals. `G_xy / abs(G_xy) * (G_yy/G_xx)**0.5`.
@@ -354,7 +354,7 @@ def compute_transfer_function(
         Default: `'h2'`.
     window_length_samples : int, optional
         Window length for the IR. Spectrum has the length
-        window_length_samples//2 + 1. Default: 1024.
+        window_length_samples // 2 + 1. Default: 1024.
     spectrum_parameters : dict, optional
         Extra parameters for the computation of the cross spectral densities
         using welch's method. See `Signal.set_spectrum_parameters()`
@@ -366,7 +366,14 @@ def compute_transfer_function(
         Transfer functions as `Signal` object. Coherences are also computed
         and saved in the `Signal` object.
     tf : `np.ndarray`
-        Complex transfer function as type `np.ndarray`.
+        Complex transfer function as type `np.ndarray` with shape (frequency,
+        channel).
+    coherence : `np.ndarray`
+        Coherence of the measurement with shape (frequency, channel).
+
+    Notes
+    -----
+    - SNR can be gained from the coherence: `snr = coherence / (1 - coherence)`
 
     """
     mode = mode.casefold()
@@ -458,7 +465,7 @@ def compute_transfer_function(
         signal_type=mode.lower(),
     )
     tf_sig.set_coherence(coherence)
-    return tf_sig, tf
+    return tf_sig, tf, coherence
 
 
 def average_irs(
