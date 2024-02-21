@@ -766,13 +766,46 @@ def _kaiser_window_beta(A):
     """
     A = np.abs(A)
     if A > 50:
-        beta = 0.1102 * (A - 8.7)
-    elif A >= 21:
-        beta = 0.5842 * (A - 21) ** 0.4 + 0.07886 * (A - 21)
-    else:
-        beta = 0.0
+        return 0.1102 * (A - 8.7)
+    if A >= 21:
+        return 0.5842 * (A - 21) ** 0.4 + 0.07886 * (A - 21)
+    return 0.0
 
-    return beta
+
+def _kaiser_window_fractional(
+    length: int, side_lobe_suppression_db: float, fractional_delay: float
+) -> np.ndarray:
+    """Create a kaiser window with a fractional offset.
+
+    Parameters
+    ----------
+    length : int
+        Window length.
+    side_lobe_suppression_db : float
+        Expected side lobe suppression in dB.
+    fractional_delay : float
+        Decimal sample offset.
+
+    Returns
+    -------
+    `np.ndarray`
+        Kaiser window.
+
+    """
+    filter_order = length - 1
+    alpha = filter_order / 2
+    beta = _kaiser_window_beta(np.abs(side_lobe_suppression_db))
+    L = np.arange(length).astype(float) - fractional_delay
+
+    if filter_order % 2:
+        L += 0.5
+    else:
+        if fractional_delay > 0.5:
+            L += 1
+    Z = beta * np.sqrt(
+        np.array(1 - ((L - alpha) / alpha) ** 2, dtype="complex")
+    )
+    return np.real(bessel_first_mod(0, Z)) / bessel_first_mod(0, beta)
 
 
 def _indices_above_threshold_dbfs(
@@ -1041,7 +1074,7 @@ def _get_window_envelope(
 def _fractional_delay_filter(
     delay_samples: float,
     filter_order: int,
-    side_lobe_suppression_db: float | None,
+    side_lobe_suppression_db: float,
 ) -> tuple[int, np.ndarray]:
     """This function delivers fractional delay filters according to
     specifications. Besides, additional integer delay, that might be necessary
@@ -1057,7 +1090,7 @@ def _fractional_delay_filter(
     filter_order : int
         Order for the sinc-filter. Higher orders deliver better results but
         require more computational resources.
-    side_lobe_suppression_db : float, optional
+    side_lobe_suppression_db : float
         A kaiser window can be applied to the sinc-filter. Its beta parameter
         will be computed according to the required side lobe suppression (
         a common value would be 60 dB). Pass `None` to avoid any windowing
@@ -1093,18 +1126,9 @@ def _fractional_delay_filter(
     sinc = np.sinc(n)
 
     # =========== Kaiser window ===============================================
-    beta = _kaiser_window_beta(np.abs(side_lobe_suppression_db))
-    alpha = filter_order / 2
-    L = np.arange(filter_order + 1).astype(float) - delay_frac
-    if filter_order % 2:
-        L += 0.5
-    else:
-        if delay_frac > 0.5:
-            L += 1
-    Z = beta * np.sqrt(
-        np.array(1 - ((L - alpha) / alpha) ** 2, dtype="complex")
+    kaiser = _kaiser_window_fractional(
+        filter_order + 1, side_lobe_suppression_db, delay_frac
     )
-    kaiser = np.real(bessel_first_mod(0, Z)) / bessel_first_mod(0, beta)
 
     # Compute filter and final integer delay
     frac_delay_filter = sinc * kaiser
