@@ -37,6 +37,9 @@ from .filterbanks import (
     complementary_fir_filter,
 )
 
+from ..classes._lattice_ladder_filter import LatticeLadderFilter
+from ..classes._phaseLinearizer import PhaseLinearizer
+
 __all__ = [
     "linkwitz_riley_crossovers",
     "reconstructing_fractional_octave_bands",
@@ -45,4 +48,6 @@ __all__ = [
     "qmf_crossover",
     "weightning_filter",
     "complementary_fir_filter",
+    "LatticeLadderFilter",
+    "PhaseLinearizer",
 ]

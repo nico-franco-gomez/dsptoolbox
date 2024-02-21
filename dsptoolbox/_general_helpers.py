@@ -949,7 +949,7 @@ def _get_exact_gain_1khz(f: np.ndarray, sp_db: np.ndarray) -> float:
         Interpolated value.
 
     """
-    assert np.min(f) < 1e3, (
+    assert np.min(f) < 1e3 and np.max(f) >= 1e3, (
         "No gain at 1 kHz can be obtained because it is outside the "
         + "given frequency vector"
     )
@@ -1024,3 +1024,33 @@ def _get_chirp_rate(range_hz: list, length_seconds: float) -> float:
     assert range_hz.shape == (2,), "Range must contain exactly two elements."
     range_hz = np.sort(range_hz)
     return np.log2(range_hz[1] / range_hz[0]) / length_seconds
+
+
+def _correct_for_real_phase_spectrum(phase_spectrum: np.ndarray):
+    """This function takes in a wrapped phase spectrum and corrects it to
+    be for a real signal (assuming the last frequency bin corresponds to
+    nyquist, i.e., time data had an even length). This effectively adds a
+    small linear phase offset so that the phase at nyquist is either 0 or
+    np.pi.
+
+    Parameters
+    ----------
+    phase_spectrum : np.ndarray
+        Wrapped phase to be corrected. It is assumed that its last element
+        corresponds to the nyquist frequency.
+
+    Returns
+    -------
+    np.ndarray
+        Phase spectrum that can correspond to a real signal.
+
+    """
+    factor = (
+        phase_spectrum[-1]
+        if phase_spectrum[-1] >= 0
+        else np.pi + phase_spectrum[-1]
+    )
+    return (
+        phase_spectrum
+        - np.linspace(0, 1, len(phase_spectrum), endpoint=True) * factor
+    )

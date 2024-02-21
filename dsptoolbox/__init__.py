@@ -23,7 +23,6 @@ from .classes import (
     FilterBank,
     Signal,
     MultiBandSignal,
-    LatticeLadderFilter,
 )
 from . import transfer_functions
 from . import distances
@@ -42,7 +41,6 @@ __all__ = [
     "MultiBandSignal",
     "Filter",
     "FilterBank",
-    "LatticeLadderFilter",
     # Functions in standard module
     "latency",
     "pad_trim",
