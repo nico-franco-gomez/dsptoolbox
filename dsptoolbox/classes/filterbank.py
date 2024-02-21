@@ -57,8 +57,8 @@ class FilterBank:
         if info is None:
             info = {}
         self.same_sampling_rate = same_sampling_rate
-        self.filters = filters
-        self.info: dict = self.info | info
+        self.filters = filters if filters is not None else []
+        self.info: dict = info
 
     def _generate_metadata(self):
         """Generates the info dictionary with metadata about the FilterBank."""
@@ -401,11 +401,21 @@ class FilterBank:
             Impulse response of the filter bank.
 
         """
-        # No support for multirate system
         if not self.same_sampling_rate:
-            raise NotImplementedError(
-                "IR from multirate filter bank is not implemented"
-            )
+            assert (
+                mode.lower() == "parallel"
+            ), "Multirate filter bank can only deliver an IR in parallel mode"
+            mb = MultiBandSignal(same_sampling_rate=False)
+            sr = self.sampling_rate_hz
+            for ind, f in enumerate(self.filters):
+                d = dirac(length_samples, 0, 1, sr[ind])
+                mb.add_band(
+                    f.filter_signal(
+                        d, activate_zi=test_zi, zero_phase=zero_phase
+                    )
+                )
+            return mb
+
         # Obtain biggest filter order from FilterBank
         max_order = 0
         for b in self.filters:
