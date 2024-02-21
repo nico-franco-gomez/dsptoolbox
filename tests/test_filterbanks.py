@@ -118,3 +118,26 @@ class TestFilterbanksModule:
         assert np.all(
             np.isclose(h, f2.get_coefficients("ba")[0] + coefficients)
         )
+
+    def test_phase_linearizer(self):
+        # Get some phase response
+        fs_hz = 48_000
+        fb = dsp.filterbanks.linkwitz_riley_crossovers(
+            [570, 2000], order=[2, 2], sampling_rate_hz=fs_hz
+        )
+        ir = fb.get_ir(length_samples=2**14).collapse()
+        ir.set_spectrum_parameters(method="standard")
+        freqs, sp = ir.get_spectrum()
+
+        # Phase linearizer - Without interpolating
+        pl = dsp.filterbanks.PhaseLinearizer(freqs, np.angle(sp[:, 0]), fs_hz)
+        pl.get_filter_as_ir()
+        pl.get_filter()
+
+        # Phase linearizer – with interpolation
+        ir = fb.get_ir(length_samples=2**9).collapse()
+        ir.set_spectrum_parameters(method="standard")
+        freqs, sp = ir.get_spectrum()
+        pl = dsp.filterbanks.PhaseLinearizer(freqs, np.angle(sp[:, 0]), fs_hz)
+        pl.get_filter_as_ir()
+        pl.get_filter()
