@@ -4,9 +4,10 @@ Low-level methods for room acoustics
 
 import numpy as np
 from scipy.stats import pearsonr
+from warnings import warn
+from scipy.signal import hilbert, lfilter
 from ..plots import general_plot
 from .._general_helpers import _get_smoothing_factor_ema
-from warnings import warn
 
 
 def _reverb(
@@ -1044,12 +1045,18 @@ def _obtain_optimal_reverb_time(
         x_intersection = (coeff_edt[1] - coeff_t30[1]) / (
             coeff_t30[0] - coeff_edt[0]
         )
-        start = np.polyval(coeff_edt, [x_intersection]).squeeze()
+        start: float = float(np.polyval(coeff_edt, [x_intersection]).squeeze())
     else:
-        start = -5
+        start = -5.0
 
-    steps = np.arange(start - 20, start - 60, -1)
+    steps: np.ndarray = np.arange(start - 20, start - 60, -1)
     end, r = _get_best_linear_fit_for_edc(time_vector, edc, start, steps)
+    if r > -0.95:
+        warn(
+            f"Correlation coefficient for reverb computation is {r} "
+            + "(larger than -0.95). Computation might be invalid. "
+            + "-1 is the ideal value."
+        )
     coefficients = _get_polynomial_coeffs_from_edc(
         time_vector, edc, start, end
     )[0]
@@ -1146,7 +1153,7 @@ def _compute_energy_decay_curve(
     trim_automatically: bool,
     fs_hz: int,
 ) -> np.ndarray:
-    """Get the energy decay curve from a signal power."""
+    """Get the energy decay curve from an energy time curve."""
     epsilon = 1e-50
 
     signal_power = time_data**2
@@ -1169,20 +1176,18 @@ def _compute_energy_decay_curve(
 def _get_stop_index_for_energy_decay_curve(
     time_data: np.ndarray, impulse_index: int, fs_hz: int
 ) -> int:
-    # ETC
-    etc = 20 * np.log10(np.clip(np.abs(time_data), a_min=1e-50, a_max=None))
-    # Envelope
-    factor = _get_smoothing_factor_ema(5e-3, fs_hz)
-    envelope = np.zeros_like(etc)
-    envelope[0] = etc[0]
-    for i2 in range(1, len(etc)):
-        if etc[i2] > envelope[i2 - 1]:
-            envelope[i2] = etc[i2]
-            continue
-        envelope[i2] = etc[i2] * factor + (1 - factor) * envelope[i2 - 1]
+    """Obtain the stopping index for an energy decay curve using the smooth
+    (exponential, 10 ms) envelope of the energy time curve."""
+    # Envelope (ETC)
+    envelope = np.abs(hilbert(time_data, axis=0))
+    etc = 20 * np.log10(np.clip(envelope, a_min=1e-50, a_max=None))
+
+    # Smoothing (10 ms)
+    factor = _get_smoothing_factor_ema(10e-3, fs_hz)
+    envelope = lfilter([factor], [1, -(1 - factor)], etc)
+
     # Threshold
     threshold = np.median(envelope[int(len(envelope) * 0.66) :])
-
     try:
         stop = (
             np.where(envelope[impulse_index:] < threshold)[0][0]
@@ -1194,30 +1199,10 @@ def _get_stop_index_for_energy_decay_curve(
 
     if stop - impulse_index < 10:
         warn(
-            "Passed impulse index might be wrong, no meaningful trimming"
-            + " could be done"
+            "Passed impulse index or RIR might be wrong, no meaningful "
+            + "trimming could be done"
         )
-        stop = len(time_data)
-
-    # # Envelope (ETC)
-    # envelope = np.abs(hilbert(time_data, axis=0))
-    # etc = 20 * np.log10(np.clip(envelope, a_min=1e-50, a_max=None))
-
-    # # Smoothing (5 ms)
-    # factor = _get_smoothing_factor_ema(5e-3, fs_hz)
-    # envelope = lfilter([factor], [1, factor - 1], etc)
-
-    # # Threshold
-    # threshold = np.median(envelope[int(len(envelope) * 0.66) :])
-    # stop = np.where(envelope[impulse_index:] < threshold)[0][0] +
-    # impulse_index
-
-    # if stop - impulse_index < 10:
-    #     warn(
-    #         "Passed impulse index might be wrong, no meaningful trimming"
-    #         + " could be done"
-    #     )
-    #     stop = len(envelope)
+        stop = len(envelope)
     return stop
 
 
