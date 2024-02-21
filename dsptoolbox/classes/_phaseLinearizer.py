@@ -12,7 +12,10 @@ from warnings import warn
 
 
 class PhaseLinearizer:
-    """This class designs an FIR filter that linearizes a known phase response."""
+    """This class designs an FIR filter that linearizes a known phase
+    response.
+
+    """
 
     def __init__(
         self,
@@ -26,12 +29,13 @@ class PhaseLinearizer:
 
         Parameters
         ----------
-        frequency_vector : np.ndarray
+        frequency_vector : `np.ndarray`
             Frequency vector that corresponds to the phase response.
-        phase_response : np.ndarray
+        phase_response : `np.ndarray`
             Wrapped phase response that should be linearized. It is expected
             to contain only the positive frequencies (including dc and
-            eventually nyquist).
+            eventually nyquist). It should have the same shape as
+            `frequency_vector`.
         sampling_rate_hz : int
             Sampling rate corresponding to the passed phase response. It is
             also used for the designed FIR filter.
@@ -51,7 +55,7 @@ class PhaseLinearizer:
     def set_parameters(
         self,
         delay_increase_percent: float = 100.0,
-        total_length_factor: float = 0.6,
+        total_length_factor: float = 0.5,
     ):
         """Set parameters for the FIR filter.
 
@@ -67,9 +71,8 @@ class PhaseLinearizer:
         total_length_factor : float, optional
             The total length of the filter is by default two times the longest
             group delay of the designed filter. This can be reduced or
-            augmented by this factor. A factor of 0.5 means that it will be
-            exactly as long as the longest group delay of the designed filter.
-            Default: 0.6.
+            augmented by this factor. A factor of 0.5 or less returns the
+            minimum length. Default: 0.5.
 
         """
         assert (
@@ -144,12 +147,12 @@ class PhaseLinearizer:
 
         # Convert to time domain and trim
         ir = np.fft.irfft(np.exp(1j * new_phase))
-        ir = _pad_trim(
-            ir,
-            int(
-                (max_delay_samples_synthesized * 2) * self.total_length_factor
-            ),
+        trim_length = (
+            int(max_delay_samples_synthesized * 2 * self.total_length_factor)
+            if self.total_length_factor > 0.5
+            else int(max_delay_samples_synthesized + 1)
         )
+        ir = _pad_trim(ir, trim_length)
         return ir
 
     def _get_group_delay(self) -> np.ndarray:
