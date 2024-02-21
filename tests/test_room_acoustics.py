@@ -15,13 +15,13 @@ class TestRoomAcousticsModule:
         dsp.room_acoustics.reverb_time(self.rir, mode="t60", ir_start=None)
 
         dsp.room_acoustics.reverb_time(
-            self.rir, mode="edt", ir_start=None, trim_ending=False
+            self.rir, mode="edt", ir_start=None, automatic_trimming=False
         )
         dsp.room_acoustics.reverb_time(
-            self.rir, mode="t60", ir_start=None, trim_ending=False
+            self.rir, mode="t60", ir_start=None, automatic_trimming=False
         )
         dsp.room_acoustics.reverb_time(
-            self.rir, mode="edt", ir_start=None, trim_ending=False
+            self.rir, mode="edt", ir_start=None, automatic_trimming=False
         )
 
         # Check Index

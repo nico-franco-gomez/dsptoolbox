@@ -26,7 +26,7 @@ def reverb_time(
     signal: Signal | MultiBandSignal,
     mode: str = "T20",
     ir_start: int | np.ndarray | None = None,
-    trim_ending: bool = True,
+    automatic_trimming: bool = True,
 ) -> np.ndarray:
     """Computes reverberation time. Topt, T20, T30, T60 and EDT.
 
@@ -46,11 +46,12 @@ def reverb_time(
         are automatically computed as the first point before the normalized IR
         arrives at -20 dBFS. This is then done independently for each channel
         and each band. Default: `None`.
-    trim_ending : bool, optional
-        When set to `True`, the IR is cut after the energy has decayed below a
-        threshold before performing Schroeder integration. This can influence
-        the energy decay curve and, therefore, the reverberation time. See
-        notes for details on the algorithm. Default: `True`.
+    automatic_trimming : bool, optional
+        When set to `True`, the IR is cut 20 ms before the impulse and after
+        the energy has decayed below a threshold prior to the Schroeder
+        integration. This can influence the energy decay curve and, therefore,
+        the reverberation time. See notes for details on the algorithm.
+        Default: `True`.
 
     Returns
     -------
@@ -96,7 +97,7 @@ def reverb_time(
                 mode,
                 ir_start=ir_start[n],
                 return_ir_start=False,
-                trim_ending=trim_ending,
+                automatic_trimming=automatic_trimming,
             )
     elif type(signal) is MultiBandSignal:
         ir_start = _check_ir_start_reverb(signal, ir_start)
@@ -106,7 +107,10 @@ def reverb_time(
         for ind in range(signal.number_of_bands):
             band_ir_start = None if ir_start is None else ir_start[ind, :]
             reverberation_times[ind, :] = reverb_time(
-                signal.bands[ind], mode, ir_start=band_ir_start
+                signal.bands[ind],
+                mode,
+                ir_start=band_ir_start,
+                automatic_trimming=automatic_trimming,
             )
     else:
         raise TypeError(
@@ -550,7 +554,7 @@ def _bass_ratio(rir: Signal) -> np.ndarray:
 
 def _check_ir_start_reverb(
     sig: Signal | MultiBandSignal, ir_start: int | np.ndarray | list | tuple
-) -> np.ndarray | list:
+) -> np.ndarray | list | None:
     """This method checks `ir_start` and parses it into the necessary form
     if relevant. For a `Signal`, it is a vector with the same number of
     elements as channels of `sig`. For `MultiBandSignal`, it is a 2d-array

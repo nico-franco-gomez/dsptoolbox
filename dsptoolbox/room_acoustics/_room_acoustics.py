@@ -16,7 +16,7 @@ def _reverb(
     mode,
     ir_start: int | None = None,
     return_ir_start: bool = False,
-    trim_ending: bool = True,
+    automatic_trimming: bool = True,
 ):
     """Computes reverberation time of signal.
 
@@ -59,7 +59,7 @@ def _reverb(
     else:
         max_ind = ir_start
 
-    edc = _compute_energy_decay_curve(h, max_ind, trim_ending, fs_hz)
+    edc = _compute_energy_decay_curve(h, max_ind, automatic_trimming, fs_hz)
     time_vector = np.linspace(0, len(edc) / fs_hz, len(edc))
 
     # Reverb
@@ -1154,19 +1154,28 @@ def _compute_energy_decay_curve(
     fs_hz: int,
 ) -> np.ndarray:
     """Get the energy decay curve from an energy time curve."""
-    epsilon = 1e-50
-
-    signal_power = time_data**2
-
     if trim_automatically:
-        stopping_index = _get_stop_index_for_energy_decay_curve(
-            time_data, impulse_index, fs_hz
+        # Trimming prior to impulse
+        time_before_impulse = int(20e-3 * fs_hz + 0.5)
+        if impulse_index - time_before_impulse > 0:
+            start_index = impulse_index - time_before_impulse
+            impulse_index = time_before_impulse
+        else:
+            start_index = 0
+        # Trimming in the end
+        stopping_index = (
+            _get_stop_index_for_energy_decay_curve(
+                time_data[start_index:], impulse_index, fs_hz
+            )
+            + start_index
         )
     else:
-        stopping_index = len(signal_power)
-    edc = np.sum(signal_power[:stopping_index]) - np.cumsum(
-        signal_power[:stopping_index]
-    )
+        start_index = 0
+        stopping_index = len(time_data)
+
+    signal_power = time_data[start_index:stopping_index] ** 2
+    edc = np.sum(signal_power) - np.cumsum(signal_power)
+    epsilon = 1e-50
     edc = 10 * np.log10(
         np.clip(edc / edc[impulse_index], a_min=epsilon, a_max=None)
     )
