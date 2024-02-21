@@ -119,6 +119,14 @@ class TestFilterbanksModule:
             np.isclose(h, f2.get_coefficients("ba")[0] + coefficients)
         )
 
+        # Check functionality for even length
+        f = dsp.Filter(
+            "fir",
+            {"type_of_pass": "lowpass", "order": 121, "freqs": 400},
+            fs_hz,
+        )
+        dsp.filterbanks.complementary_fir_filter(f)
+
     def test_phase_linearizer(self):
         # Get some phase response
         fs_hz = 48_000
