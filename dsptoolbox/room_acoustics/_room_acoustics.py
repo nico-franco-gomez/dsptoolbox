@@ -1177,7 +1177,8 @@ def _get_stop_index_for_energy_decay_curve(
     time_data: np.ndarray, impulse_index: int, fs_hz: int
 ) -> int:
     """Obtain the stopping index for an energy decay curve using the smooth
-    (exponential, 10 ms) envelope of the energy time curve."""
+    (exponential, 10 ms) envelope of the energy time curve. The threshold is
+    the median of the last third of the RIR."""
     # Envelope (ETC)
     envelope = np.abs(hilbert(time_data, axis=0))
     etc = 20 * np.log10(np.clip(envelope, a_min=1e-50, a_max=None))
