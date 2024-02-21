@@ -1,6 +1,7 @@
 """
 Contains Filter class
 """
+
 from pickle import dump, HIGHEST_PROTOCOL
 from warnings import warn
 from copy import deepcopy
@@ -342,7 +343,7 @@ class Filter:
             polyphase = True
         elif self.filter_type in ("iir", "biquad"):
             if not hasattr(self, "ba"):
-                self.ba = sig.sos2tf(self.sos)
+                self.ba: list = list(sig.sos2tf(self.sos))
             polyphase = False
         else:
             raise ValueError("Wrong filter type for filtering and resampling")
@@ -469,7 +470,7 @@ class Filter:
             self._check_and_update_filter_type()
 
         # Update Metadata about the Filter
-        self.info = filter_configuration
+        self.info: dict = filter_configuration
         self.info["sampling_rate_hz"] = self.sampling_rate_hz
         self.info["filter_type"] = self.filter_type
         if hasattr(self, "ba"):
@@ -554,7 +555,7 @@ class Filter:
 
     def get_coefficients(
         self, mode: str = "sos"
-    ) -> list | np.ndarray | tuple[np.ndarray, np.ndarray, np.ndarray]:
+    ) -> list | np.ndarray | tuple[np.ndarray, np.ndarray, np.ndarray] | None:
         """Returns the filter coefficients.
 
         Parameters
@@ -570,6 +571,8 @@ class Filter:
             - `'ba'`: list(b, a) with b and a of type `np.ndarray`.
             - `'sos'`: `np.ndarray`
             - `'zpk'`: tuple(z, p, k) with z, p, k of type `np.ndarray`
+            - Return `None` if user decides that ba->sos is too costly. The
+              threshold is for filters with order > 500.
 
         """
         if mode == "sos":
@@ -798,8 +801,11 @@ class Filter:
             )
         return fig, ax
 
-    def plot_zp(self, show_info_box: bool = False) -> tuple[Figure, Axes]:
-        """Plots zeros and poles with the unit circle.
+    def plot_zp(
+        self, show_info_box: bool = False
+    ) -> tuple[Figure, Axes] | None:
+        """Plots zeros and poles with the unit circle. This returns `None` and
+        produces no plot if user decides that conversion ba->sos is too costly.
 
         Parameters
         ----------

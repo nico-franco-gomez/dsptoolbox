@@ -111,7 +111,7 @@ def _get_normalized_spectrum(
     smoothe: int = 0,
     phase=False,
     calibrated_data: bool = False,
-) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray] | tuple[np.ndarray, np.ndarray, np.ndarray]:
     """This function gives a normalized magnitude spectrum in dB with frequency
     vector for a given range. It is also smoothed. Use `None` for the
     spectrum without f_range_hz.
@@ -610,7 +610,7 @@ def _frequency_weightning(
 
 def _polyphase_decomposition(
     in_sig: np.ndarray, number_polyphase_components: int, flip: bool = False
-) -> np.ndarray:
+) -> tuple[np.ndarray, int]:
     """Converts input signal array with shape (time samples, channels) into
     its polyphase representation with shape (time samples, polyphase
     components, channels).

@@ -2,6 +2,7 @@
 Here are wrappers for streams with sounddevice. This is useful for
 measurements and testing audio streams
 """
+
 import sounddevice as sd
 from .. import Signal
 from .._general_helpers import _normalize
@@ -39,7 +40,8 @@ def print_device_info(device_number: int | None = None):
 
 
 def set_device(
-    device_numbers: list | None = None, sampling_rate_hz: int | None = None
+    device_numbers: list | int | None = None,
+    sampling_rate_hz: int | None = None,
 ):
     """Takes in a device number to set it as the default for the input and the
     output. If `None` is passed, the available devices are first shown and
@@ -308,7 +310,7 @@ def play(
 def play_through_stream(
     signal: Signal,
     blocksize: int = 2048,
-    audio_callback: callable = standard_callback,
+    audio_callback=standard_callback,
     device: str | None = None,
 ):
     """Plays a signal using a stream and a callback function.

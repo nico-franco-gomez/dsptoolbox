@@ -1,6 +1,7 @@
 """
 This file contains alternative filter implementations.
 """
+
 from .signal_class import Signal
 from warnings import warn
 import numpy as np
@@ -94,7 +95,7 @@ class LatticeLadderFilter:
                 self.iir_filter = False
         self.k = k_coefficients
         self.c = c_coefficients
-        self.state = None
+        self.state: np.ndarray | None = None
         self.sampling_rate_hz = sampling_rate_hz
 
     def initialize_zi(self, n_channels: int):

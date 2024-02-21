@@ -1,6 +1,7 @@
 """
 Beamforming classes and functions
 """
+
 from warnings import warn
 import numpy as np
 import matplotlib.pyplot as plt

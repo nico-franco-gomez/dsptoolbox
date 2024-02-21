@@ -914,7 +914,7 @@ class Signal:
     def plot_magnitude(
         self,
         range_hz=[20, 20e3],
-        normalize: str = "1k",
+        normalize: str | None = "1k",
         range_db=None,
         smoothe: int = 0,
         show_info_box: bool = False,
