@@ -1,8 +1,7 @@
 """
 Filter Banks
 ------------
-This is a collection of useful filter banks. They use primarily the
-`FilterBank` class or some derivation from it.
+This is a collection of useful filters and filter banks.
 
 Perfect magnitude reconstruction:
 
@@ -24,6 +23,8 @@ Other:
 - `weightning_filter()`: A- or C-Weightning filter.
 - `fir_complementary()`: Create a complementary FIR filter from a linear-phase
   FIR prototype.
+- `LatticeLadderFilter()`: Filter with lattice-ladder topology.
+- `PhaseLinearizer()`: Design FIR that linearize a phase spectrum.
 
 """
 

@@ -13,6 +13,7 @@ from .. import (
     erb_frequencies,
 )
 from ._filterbank import LRFilterBank, GammaToneFilterBank, QMFCrossover
+from .._standard import _kaiser_window_fractional
 
 
 def linkwitz_riley_crossovers(
@@ -436,7 +437,8 @@ def complementary_fir_filter(fir: Filter) -> Filter:
     It returns for instance a lowpass from a highpass prototype. Combined,
     they deliver perfect magnitude reconstruction (with some quantization
     error) and a constant group delay. This method might only return meaningful
-    results if the filter prototype has an odd number of taps and linear phase.
+    results if the filter prototype has linear phase. It is the most precise
+    for odd lengths, but it can be used for even lengths as well.
 
     Parameters
     ----------
@@ -448,12 +450,26 @@ def complementary_fir_filter(fir: Filter) -> Filter:
     fir_complementary : `Filter`
         Complementary filter.
 
+    Notes
+    -----
+    - For even length FIR filters, a windowed sinc function has to be computed.
+      It uses by default the length of the filter together with a kaiser
+      window with side lobe suppression of 60 dB. Depending on the filter
+      length, this might give a small error for in the summed magnitude
+      response of both filters.
+
     """
     assert fir.filter_type == "fir", "Filter prototype must be an FIR filter"
-
     b = fir.ba[0].copy()
-    impulse_index = np.argmax(np.abs(b))
-    b *= -1
-    b[impulse_index] += 1
+    odd_length = len(b) % 2 == 1
+
+    if odd_length:
+        impulse_index = np.argmax(np.abs(b))
+        b *= -1
+        b[impulse_index] += 1
+    else:
+        h = np.sinc(np.arange(-len(b) // 2 + 1, len(b) // 2 + 1) - 0.5)
+        b = h * _kaiser_window_fractional(len(h), 60, 0.5) - b
+
     fir_complementary = Filter("other", {"ba": [b, [1]]}, fir.sampling_rate_hz)
     return fir_complementary
