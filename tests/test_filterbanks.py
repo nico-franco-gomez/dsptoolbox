@@ -139,8 +139,14 @@ class TestFilterbanksModule:
 
         # Phase linearizer - Without interpolating
         pl = dsp.filterbanks.PhaseLinearizer(freqs, np.angle(sp[:, 0]), fs_hz)
+        with pytest.raises(AssertionError):
+            pl.set_parameters(-10, 2)
         pl.get_filter_as_ir()
         pl.get_filter()
+
+        # Parameters
+        pl.set_parameters(80, 0.8)
+        pl.set_parameters()
 
         # Phase linearizer – with interpolation
         ir = fb.get_ir(length_samples=2**9).collapse()

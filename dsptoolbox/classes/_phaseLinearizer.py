@@ -50,12 +50,15 @@ class PhaseLinearizer:
         self.phase_response = phase_response
         self.frequency_vector = frequency_vector
         self.sampling_rate_hz = sampling_rate_hz
+        self.length_time_signal_samples = (len(self.phase_response) - 1) * 2
+        if not self.nyquist_included:
+            self.length_time_signal_samples += 1
         self.set_parameters()
 
     def set_parameters(
         self,
         delay_increase_percent: float = 100.0,
-        total_length_factor: float = 0.5,
+        total_length_factor: float = 1.5,
     ):
         """Set parameters for the FIR filter.
 
@@ -69,20 +72,22 @@ class PhaseLinearizer:
             2 times larger than the longest group delay in the phase response.
             Default: 100.
         total_length_factor : float, optional
-            The total length of the filter is by default two times the longest
-            group delay of the designed filter. This can be reduced or
-            augmented by this factor. A factor of 0.5 or less returns the
-            minimum length. Default: 0.5.
+            The total length of the filter is based on the longest group delay.
+            This factor can augment it. Default: 1.5.
 
         """
         assert (
             delay_increase_percent >= 0
         ), "Delay increase must be larger than zero"
-        assert (
-            total_length_factor > 0
-        ), "Total length factor must be larger than zero"
+        if total_length_factor < 1.0:
+            warn(
+                "Total length factor should not be less than 1. It "
+                + "will be clipped."
+            )
         self.group_delay_increase_factor = 1 + delay_increase_percent / 100
-        self.total_length_factor = total_length_factor
+        self.total_length_factor = np.clip(
+            total_length_factor, a_min=1.0, a_max=None
+        )
 
     def get_filter(self) -> Filter:
         """Get FIR filter."""
@@ -102,28 +107,34 @@ class PhaseLinearizer:
         # Get initial parameters
         if not hasattr(self, "group_delay"):
             self.gd = self._get_group_delay()
-            self.gd_time_length = (len(self.phase_response) - 1) * 2
-            if not self.nyquist_included:
-                self.gd_time_length += 1
+            self.gd_time_length_samples = self.length_time_signal_samples
 
         max_delay_samples_synthesized = int(
             np.max(self.gd)
             * self._get_group_delay_factor_in_samples()
             * self.group_delay_increase_factor
             # Ceil
-            + 0.9999999
+            + 0.99999999999
         )
 
         # Interpolate if phase response is not much longer than maximum
         # expected delay
-        if max_delay_samples_synthesized * 20 > self.gd_time_length:
-            # Define new time length for the group delay
-            self.gd_time_length = (
-                int(max_delay_samples_synthesized * 20)
-                + max_delay_samples_synthesized % 2
+        if max_delay_samples_synthesized * 20 > self.gd_time_length_samples:
+            warn(
+                "Phase response is not much longer than maximum expected "
+                + "group delay (less than 20 times longer). Spectrum "
+                + "interpolation is triggered, but it is recommended to pass "
+                + "a phase spectrum with finer resolution!"
             )
+            # Define new time length for the group delay
+            self.gd_time_length_samples = (
+                int(max_delay_samples_synthesized * 20) + 2
+            )
+            # Ensure even length
+            self.gd_time_length_samples += self.gd_time_length_samples % 2
+            # Interpolate
             new_freqs = np.fft.rfftfreq(
-                self.gd_time_length, 1 / self.sampling_rate_hz
+                self.gd_time_length_samples, 1 / self.sampling_rate_hz
             )
             self.gd = interp1d(
                 self.frequency_vector,
@@ -131,12 +142,6 @@ class PhaseLinearizer:
                 "cubic",
                 assume_sorted=True,
             )(new_freqs) * (len(self.gd) / len(new_freqs))
-            warn(
-                "Phase response is not much longer than maximum expected "
-                + "group delay (less than 20 times longer). Spectrum "
-                + "interpolation was done, but it is recommended to pass "
-                + "a phase spectrum with finer resolution!"
-            )
 
         # Get new phase using group target group delay
         target_gd = (
@@ -148,8 +153,9 @@ class PhaseLinearizer:
         # Convert to time domain and trim
         ir = np.fft.irfft(np.exp(1j * new_phase))
         trim_length = (
-            int(max_delay_samples_synthesized * 2 * self.total_length_factor)
-            if self.total_length_factor > 0.5
+            int(max_delay_samples_synthesized * self.total_length_factor)
+            if self.total_length_factor
+            > 1.0 + (1 / max_delay_samples_synthesized)
             else int(max_delay_samples_synthesized + 1)
         )
         ir = _pad_trim(ir, trim_length)
@@ -161,14 +167,10 @@ class PhaseLinearizer:
 
     def _get_group_delay_factor_in_samples(self) -> float:
         """This is the conversion factor from unscaled to delay in samples."""
-        length = (len(self.phase_response) - 1) * 2
-        if not self.nyquist_included:
-            length += 1
-        return length / 2 / np.pi
+        return self.length_time_signal_samples / 2 / np.pi
 
     def _get_group_delay_factor_in_seconds(self) -> float:
         """This is the conversion factor from unscaled to delay in seconds."""
-        length = (len(self.phase_response) - 1) * 2
-        if not self.nyquist_included:
-            length += 1
-        return length / 2 / np.pi / self.sampling_rate_hz
+        return (
+            self.length_time_signal_samples / 2 / np.pi / self.sampling_rate_hz
+        )
