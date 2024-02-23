@@ -29,6 +29,8 @@ Added
   crossovers
 - `PhaseLinearizer` in ``filterbanks`` module is now available for designing
   FIR filters to linearize a given phase response
+- added `trim_rir` in ``room_acoustics`` for trimming RIRs in a parametrized
+  manner
 
 Bugfix
 ~~~~~~
