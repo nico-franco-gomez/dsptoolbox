@@ -10,16 +10,15 @@ Here are the classes of the dsptoolbox:
 - `FilterBank` (class containing a group of `Filters` and their metadata)
 
 """
+
 from .filter_class import Filter
 from .filterbank import FilterBank
 from .signal_class import Signal
 from .multibandsignal import MultiBandSignal
-from ._lattice_ladder_filter import LatticeLadderFilter
 
 __all__ = [
     "Filter",
     "FilterBank",
     "Signal",
     "MultiBandSignal",
-    "LatticeLadderFilter",
 ]

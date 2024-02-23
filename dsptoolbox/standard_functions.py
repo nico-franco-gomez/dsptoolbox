@@ -5,6 +5,7 @@ This module contains a general collection of DSP functions that do not fall
 under a same category.
 
 """
+
 import numpy as np
 import pickle
 from scipy.signal import resample_poly, convolve, hilbert
@@ -18,9 +19,9 @@ from .classes import (
     MultiBandSignal,
     FilterBank,
     Filter,
-    LatticeLadderFilter,
 )
 from .classes._lattice_ladder_filter import (
+    LatticeLadderFilter,
     _get_lattice_ladder_coefficients_iir,
     _get_lattice_coefficients_fir,
     _get_lattice_ladder_coefficients_iir_sos,
@@ -139,8 +140,8 @@ def latency(
             )
             for band in range(in1.number_of_bands):
                 lags[band, :] = latency(
-                    in1[band],
-                    pass_in2[band],
+                    in1.bands[band],
+                    in2.bands[band],
                     polynomial_points=polynomial_points,
                 )
         else:
@@ -150,7 +151,7 @@ def latency(
             )
             for band in range(in1.number_of_bands):
                 lags[band, :] = latency(
-                    in1[band], None, polynomial_points=polynomial_points
+                    in1.bands[band], None, polynomial_points=polynomial_points
                 )
         return lags
     else:
@@ -358,7 +359,7 @@ def resample(sig: Signal, desired_sampling_rate_hz: int) -> Signal:
 
 def fractional_octave_frequencies(
     num_fractions=1, frequency_range=(20, 20e3), return_cutoff=False
-) -> tuple[np.ndarray, np.ndarray, np.ndarray] | tuple[np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray, tuple] | tuple[np.ndarray, np.ndarray]:
     """Return the octave center frequencies according to the IEC 61260:1:2014
     standard. This implementation has been taken from the pyfar package. See
     references.
@@ -837,7 +838,7 @@ def activity_detector(
     threshold_dbfs: float = -20,
     channel: int = 0,
     relative_to_peak: bool = True,
-    pre_filter: Filter = None,
+    pre_filter: Filter | None = None,
     attack_time_ms: float = 1,
     release_time_ms: float = 25,
 ) -> tuple[Signal, dict]:
@@ -1029,7 +1030,7 @@ def rms(sig: Signal | MultiBandSignal, in_dbfs: bool = True) -> np.ndarray:
         )
     if in_dbfs:
         rms = 20 * np.log10(rms)
-    return rms
+    return np.atleast_1d(rms)
 
 
 class CalibrationData:
@@ -1209,7 +1210,7 @@ class CalibrationData:
 def envelope(
     signal: Signal | MultiBandSignal,
     mode: str = "analytic",
-    window_length_samples: int = None,
+    window_length_samples: int | None = None,
 ):
     """This function computes the envelope of a given signal by means of its
     hilbert transformation. It can also compute the RMS value over a certain
@@ -1243,23 +1244,26 @@ def envelope(
 
     if isinstance(signal, Signal):
         signal = detrend(signal, 1)
+
         if mode == "analytic":
             env = signal.time_data
             env = np.abs(hilbert(env, axis=0))
             return env
-        else:
-            assert (
-                window_length_samples > 0
-            ), "Window length must be more than 1 sample"
-            rms_vec = signal.time_data
-            rms_vec = convolve(
-                rms_vec**2,
-                np.ones(window_length_samples)[..., None]
-                / window_length_samples,
-                mode="full",
-            )[: len(rms_vec), ...]
-            rms_vec **= 0.5
-            return rms_vec
+
+        assert (
+            window_length_samples is not None
+        ), "Some window length must be passed"
+        assert (
+            window_length_samples > 0
+        ), "Window length must be more than 1 sample"
+        rms_vec = signal.time_data
+        rms_vec = convolve(
+            rms_vec**2,
+            np.ones(window_length_samples)[..., None] / window_length_samples,
+            mode="full",
+        )[: len(rms_vec), ...]
+        rms_vec **= 0.5
+        return rms_vec
     elif isinstance(signal, MultiBandSignal):
         assert (
             signal.same_sampling_rate

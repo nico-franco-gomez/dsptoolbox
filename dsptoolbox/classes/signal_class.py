@@ -795,7 +795,12 @@ class Signal:
                     self._spectrum_parameters["scaling"]
                     == "amplitude spectrum"
                 ):
-                    spectrum *= 2 / time_length
+                    spectrum /= time_length
+                    # Scale one-sided spectrum except for DC and Nyquist
+                    if time_length % 2 == 0:
+                        spectrum[1:-1] *= 2
+                    else:
+                        spectrum[1:] *= 2
             self.spectrum = []
             self.spectrum.append(
                 np.fft.rfftfreq(time_length, 1 / self.sampling_rate_hz)
@@ -909,7 +914,7 @@ class Signal:
     def plot_magnitude(
         self,
         range_hz=[20, 20e3],
-        normalize: str = "1k",
+        normalize: str | None = "1k",
         range_db=None,
         smoothe: int = 0,
         show_info_box: bool = False,
@@ -940,11 +945,9 @@ class Signal:
             If it is str, it overwrites the standard message.
             Default: `False`.
         scale : bool, optional
-            When `True`, spectrum gets scaled (divided) by double the length
-            of the time signal. This ensures that the energy of the time signal
-            is distributed in the whole spectrum. This only applies when
-            `method = 'standard'` and no normalization is applied.
-            Default: `True`.
+            When `True`, spectrum gets scaled as an amplitude spectrum.
+            This only applies when `method = 'standard'` and no normalization
+            is applied. Default: `True`.
 
         Returns
         -------
@@ -967,7 +970,10 @@ class Signal:
             and normalize is None
             and scale
         ):
-            sp = sp / self.time_data.shape[0] * 2
+            sp *= 2 / self.time_data.shape[0]
+            sp[0] /= 2
+            if self.time_data.shape[0] % 2 == 0:
+                sp[-1] /= 2
         f, mag_db = _get_normalized_spectrum(
             f=f,
             spectra=sp,
@@ -986,6 +992,8 @@ class Signal:
         else:
             txt = None
         if normalize is not None:
+            normalize = normalize.lower()
+            assert normalize in ("1k", "max"), "No valid normalization passed"
             if normalize == "1k":
                 y_extra = " (normalized @ 1 kHz)"
             elif normalize == "max":
@@ -1159,9 +1167,7 @@ class Signal:
 
         """
         if not hasattr(self, "coherence"):
-            raise AttributeError(
-                "There is no coherence data saved in the " + "Signal object"
-            )
+            raise AttributeError("There is no coherence data saved")
         f, coh = self.get_coherence()
         fig, ax = general_subplots_line(
             x=f,

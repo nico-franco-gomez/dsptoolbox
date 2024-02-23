@@ -78,7 +78,12 @@ class TestSignal:
             method="standard", scaling="amplitude spectrum"
         )
         _, sp_sig = s.get_spectrum()
-        assert np.all(sp / self.time_vec.shape[0] * 2 == sp_sig)
+        sp /= self.time_vec.shape[0]
+        if self.time_vec.shape[0] % 2 == 0:
+            sp[1:-1] *= 2
+        else:
+            sp[1:] *= 2
+        assert np.all(sp == sp_sig)
 
         # Try smoothing
         s.set_spectrum_parameters(
@@ -774,6 +779,8 @@ class TestFilterBankClass:
         fb.plot_phase()
         fb.plot_group_delay()
         fb.get_ir()
+        with pytest.raises(AssertionError):
+            fb.get_ir(mode="summed")
 
     def test_filtering_multirate_multiband(self):
         fb = dsp.FilterBank(same_sampling_rate=False)
@@ -976,7 +983,7 @@ class TestLatticeLadderFilter:
 
         k, c = _get_lattice_ladder_coefficients_iir(self.b / 10, self.a)
 
-        f = dsp.LatticeLadderFilter(k, c, sampling_rate_hz=200)
+        f = dsp.filterbanks.LatticeLadderFilter(k, c, sampling_rate_hz=200)
         out = f.filter_signal(n)
         out = out.time_data.squeeze()
         assert np.all(np.isclose(expected, out))

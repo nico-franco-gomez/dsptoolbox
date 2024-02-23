@@ -1,6 +1,7 @@
 """
 Backend for filter class and general filtering functions.
 """
+
 import numpy as np
 from warnings import warn
 from enum import Enum
@@ -58,7 +59,7 @@ def _get_biquad_type(number: int | None = None, name: str | None = None):
 def _biquad_coefficients(
     eq_type: int | str = 0,
     fs_hz: int = 48000,
-    frequency_hz: float = 1000,
+    frequency_hz: float | list | tuple | np.ndarray = 1000,
     gain_db: float = 1,
     q: float = 1,
 ):

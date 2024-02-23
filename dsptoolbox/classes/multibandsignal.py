@@ -1,4 +1,4 @@
-from numpy import zeros, array, unique
+from numpy import zeros, array, unique, atleast_1d
 from copy import deepcopy
 from pickle import dump, HIGHEST_PROTOCOL
 from warnings import warn
@@ -48,8 +48,8 @@ class MultiBandSignal:
         if info is None:
             info = {}
         self.same_sampling_rate = same_sampling_rate
-        self.bands = bands
-        self.info = self.info | info
+        self.bands = bands if bands is not None else []
+        self.info: dict = info
 
     # ======== Properties and setters =========================================
     @property
@@ -58,16 +58,15 @@ class MultiBandSignal:
 
     @sampling_rate_hz.setter
     def sampling_rate_hz(self, new_sampling_rate_hz):
-        new_sampling_rate_hz = array(new_sampling_rate_hz).squeeze()
-        assert (
-            new_sampling_rate_hz.dtype == int
-        ), "Sampling rate can only be an integer"
+        new_sampling_rate_hz = array(new_sampling_rate_hz)
         if self.same_sampling_rate:
+            new_sampling_rate_hz = new_sampling_rate_hz.squeeze()
             assert (
                 new_sampling_rate_hz.ndim == 0
             ), "MultiBandSignal has only one sample rate"
             self.__sampling_rate_hz = int(new_sampling_rate_hz)
         else:
+            new_sampling_rate_hz = atleast_1d(new_sampling_rate_hz)
             if hasattr(self, "__bands"):
                 assert self.number_of_bands == len(
                     new_sampling_rate_hz

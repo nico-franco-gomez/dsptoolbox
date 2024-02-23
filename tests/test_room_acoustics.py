@@ -13,7 +13,16 @@ class TestRoomAcousticsModule:
         dsp.room_acoustics.reverb_time(self.rir, mode="t20", ir_start=None)
         dsp.room_acoustics.reverb_time(self.rir, mode="t30", ir_start=None)
         dsp.room_acoustics.reverb_time(self.rir, mode="t60", ir_start=None)
-        dsp.room_acoustics.reverb_time(self.rir, mode="edt", ir_start=None)
+
+        dsp.room_acoustics.reverb_time(
+            self.rir, mode="edt", ir_start=None, automatic_trimming=False
+        )
+        dsp.room_acoustics.reverb_time(
+            self.rir, mode="t60", ir_start=None, automatic_trimming=False
+        )
+        dsp.room_acoustics.reverb_time(
+            self.rir, mode="edt", ir_start=None, automatic_trimming=False
+        )
 
         # Check Index
         ind = np.argmax(np.abs(self.rir.time_data))
@@ -27,11 +36,11 @@ class TestRoomAcousticsModule:
         fb = dsp.filterbanks.auditory_filters_gammatone(
             [500, 800], sampling_rate_hz=self.rir.sampling_rate_hz
         )
-        mb = fb.filter_signal(self.rir)
+        mb = fb.filter_signal(self.rir, zero_phase=True)
         dsp.room_acoustics.reverb_time(mb, mode="t20", ir_start=None)
         dsp.room_acoustics.reverb_time(mb, mode="t20", ir_start=ind)
 
-        mb = fb.filter_signal(combined)
+        mb = fb.filter_signal(combined, zero_phase=True)
         dsp.room_acoustics.reverb_time(mb, mode="t20", ir_start=[ind, ind - 1])
 
         starts = np.ones((mb.number_of_bands, mb.number_of_channels)) * ind
@@ -45,7 +54,7 @@ class TestRoomAcousticsModule:
         h = dsp.transfer_functions.spectral_deconvolve(
             y, x, padding=True, keep_original_length=True
         )
-        h, _ = dsp.transfer_functions.window_ir(h, exp2_trim=10)
+        h, _ = dsp.transfer_functions.window_ir(h, 2**10)
 
         dsp.room_acoustics.find_modes(h, f_range_hz=[50, 150], dist_hz=5)
 
@@ -149,4 +158,15 @@ class TestRoomAcousticsModule:
         with pytest.raises(AssertionError):
             dsp.room_acoustics.descriptors(rir_filt, mode="br")
 
-        print()
+    def test_trim_rir(self):
+        # Only functionality
+        dsp.room_acoustics.trim_rir(self.rir)
+        # No smoothing
+        dsp.room_acoustics.trim_rir(self.rir, envelope_smoothing_ms=0)
+        # Start offset way longer than rir (should be clipped to 0)
+        assert (
+            self.rir.time_data[0, 0]
+            == dsp.room_acoustics.trim_rir(
+                self.rir, start_offset_s=3
+            ).time_data[0, 0]
+        )

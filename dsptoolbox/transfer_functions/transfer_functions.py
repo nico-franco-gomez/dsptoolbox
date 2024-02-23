@@ -1,6 +1,7 @@
 """
 Methods used for acquiring and windowing transfer functions
 """
+
 import numpy as np
 from scipy.signal import minimum_phase as min_phase_scipy
 from scipy.signal import hilbert
@@ -151,10 +152,13 @@ def spectral_deconvolve(
 
 def window_ir(
     signal: Signal,
-    constant_percentage=0.75,
-    exp2_trim: int = 13,
-    window_type="hann",
+    total_length_samples: int,
+    adaptive: bool = True,
+    constant_percentage: float = 0.75,
+    window_type: str | tuple | list = "hann",
     at_start: bool = True,
+    offset_samples: int = 0,
+    left_to_right_flank_length_ratio: float = 1.0,
 ) -> tuple[Signal, np.ndarray]:
     """Windows an IR with trimming and selection of constant valued length.
     This is equivalent to a tukey window whose flanks can be selected to be
@@ -163,23 +167,36 @@ def window_ir(
 
     Parameters
     ----------
-    signal: `Signal`
+    signal : `Signal`
         Signal to window
-    constant_percentage: float, optional
+    total_length_samples : int
+        Total window length in samples.
+    adaptive : bool, optional
+        When `True`, some design parameters will modified in case that the
+        IR does not have enough samples to accomodate them. See Notes for
+        more details. Default: `True`.
+    constant_percentage : float, optional
         Percentage (between 0 and 1) of the window's length that should be
         constant value. Default: 0.75.
-    exp2_trim: int, optional
-        Exponent of two defining the length to which the IR should be
-        trimmed. For avoiding trimming set to `None`. Default: 13.
-    window_type: str, optional
-        Window function to be used. Available selection from
+    window_type : str, tuple, list, optional
+        Window function to be used for the flanks. Available selection from
         scipy.signal.windows: `barthann`, `bartlett`, `blackman`,
         `boxcar`, `cosine`, `hamming`, `hann`, `flattop`, `nuttall` and
         others. Pass a tuple with window type and extra parameters if needed.
-        Default: `hann`.
-    at_start: bool, optional
+        Pass a list containing two valid windows (str or tuple) to use
+        different windows for the left and right flanks respectively.
+        Default: `'hann'`.
+    at_start : bool, optional
         Windows the start with a rising window as well as the end.
         Default: `True`.
+    offset_samples : int, optional
+        Passing an offset in samples delays the impulse w.r.t. the first window
+        value with amplitude 1. The offset must be inside the constant region
+        of the window. Default: 0.
+    left_to_right_flank_length_ratio : float, optional
+        This is the length ratio between left and right flanks. For instance,
+        2 leads to a length of the left flank twice as long as the right one,
+        while 0.1 would be a tenth of the length. Default: 1 (equal length).
 
     Returns
     -------
@@ -187,27 +204,40 @@ def window_ir(
         Windowed signal. The used window is also saved under `new_sig.window`.
     start_positions_samples : `np.ndarray`
         This array contains the position index of the start of the IR in
-        each channel of the original IR.
+        each channel of the original IR (relative to the possibly padded
+        windowed IR).
 
     Notes
     -----
-    - The window flanks are adapted in case that the distance between impulse
-      and start is not enough for the selected flank lengths (flank lengths
-      depend on `constant_percentage` and `exp2_trim`).
+    - With `adaptive=True`, following modifications are allowed:
+        - Left flank length is variable to fit the first part of the IR. The
+          offset is always maintained.
+        - Constant amplitude part of the window is modified in order to fit
+          the right flank into the IR. If the IR is too short, there might
+          be only a couple samples with constant amplitude.
+
+    - With `adaptive=False`, the desired window might not fit the given IR.
+      In that case, the window values that will be multiplied with zero-padded
+      parts of the window are set to 0 in order to make them visible.
 
     """
     assert signal.signal_type in (
         "rir",
         "ir",
     ), f"{signal.signal_type} is not a valid signal type. Use rir or ir."
-    if exp2_trim is not None:
-        total_length = int(2**exp2_trim)
-    else:
-        total_length = len(signal.time_data)
-    new_time_data = np.zeros((total_length, signal.number_of_channels))
-    start_positions_samples = np.zeros(signal.number_of_channels, dtype=int)
+    assert offset_samples >= 0, "Offset must be positive"
+    assert offset_samples < constant_percentage * total_length_samples, (
+        "Offset is too large for the constant part of the window and its "
+        + "total length"
+    )
+    assert (
+        left_to_right_flank_length_ratio >= 0
+    ), "Ratio between window flanks must be a positive number"
 
-    window = np.zeros((total_length, signal.number_of_channels))
+    new_time_data = np.zeros((total_length_samples, signal.number_of_channels))
+    start_positions_samples = np.zeros(signal.number_of_channels, dtype=int)
+    window = np.zeros((total_length_samples, signal.number_of_channels))
+
     for n in range(signal.number_of_channels):
         (
             new_time_data[:, n],
@@ -215,11 +245,13 @@ def window_ir(
             start_positions_samples[n],
         ) = _window_this_ir_tukey(
             signal.time_data[:, n],
-            total_length,
+            total_length_samples,
             window_type,
-            exp2_trim,
             constant_percentage,
             at_start,
+            offset_samples,
+            left_to_right_flank_length_ratio,
+            adaptive,
         )
 
     new_sig = Signal(
@@ -233,7 +265,9 @@ def window_ir(
 
 
 def window_centered_ir(
-    signal: Signal, total_length: int, window_type="hann"
+    signal: Signal,
+    total_length_samples: int,
+    window_type: str | tuple = "hann",
 ) -> tuple[Signal, np.ndarray]:
     """This function windows an IR placing its peak in the middle. It trims
     it to the total length of the window or pads it to the desired length
@@ -243,9 +277,9 @@ def window_centered_ir(
     ----------
     signal: `Signal`
         Signal to window
-    total_length: int
-        Total window length.
-    window_type: str, optional
+    total_length_samples: int
+        Total window length in samples.
+    window_type: str, tuple, optional
         Window function to be used. Available selection from
         scipy.signal.windows: `barthann`, `bartlett`, `blackman`,
         `boxcar`, `cosine`, `hamming`, `hann`, `flattop`, `nuttall` and
@@ -272,16 +306,18 @@ def window_centered_ir(
         "ir",
     ), f"{signal.signal_type} is not a valid signal type. Use rir or ir."
 
-    new_time_data = np.zeros((total_length, signal.number_of_channels))
+    new_time_data = np.zeros((total_length_samples, signal.number_of_channels))
     start_positions_samples = np.zeros(signal.number_of_channels, dtype=int)
-    window = np.zeros((total_length, signal.number_of_channels))
+    window = np.zeros((total_length_samples, signal.number_of_channels))
 
     for n in range(signal.number_of_channels):
         (
             new_time_data[:, n],
             window[:, n],
             start_positions_samples[n],
-        ) = _window_this_ir(signal.time_data[:, n], total_length, window_type)
+        ) = _window_this_ir(
+            signal.time_data[:, n], total_length_samples, window_type
+        )
 
     new_sig = Signal(
         None,
@@ -300,7 +336,7 @@ def compute_transfer_function(
     window_length_samples: int = 1024,
     spectrum_parameters: dict | None = None,
 ) -> tuple[Signal, np.ndarray]:
-    """Gets transfer function H1, H2 or H3 (for stochastic signals).
+    r"""Gets transfer function H1, H2 or H3 (for stochastic signals).
     H1: for noise in the output signal. `Gxy/Gxx`.
     H2: for noise in the input signal. `Gyy/Gyx`.
     H3: for noise in both signals. `G_xy / abs(G_xy) * (G_yy/G_xx)**0.5`.
@@ -318,7 +354,7 @@ def compute_transfer_function(
         Default: `'h2'`.
     window_length_samples : int, optional
         Window length for the IR. Spectrum has the length
-        window_length_samples//2 + 1. Default: 1024.
+        window_length_samples // 2 + 1. Default: 1024.
     spectrum_parameters : dict, optional
         Extra parameters for the computation of the cross spectral densities
         using welch's method. See `Signal.set_spectrum_parameters()`
@@ -330,7 +366,14 @@ def compute_transfer_function(
         Transfer functions as `Signal` object. Coherences are also computed
         and saved in the `Signal` object.
     tf : `np.ndarray`
-        Complex transfer function as type `np.ndarray`.
+        Complex transfer function as type `np.ndarray` with shape (frequency,
+        channel).
+    coherence : `np.ndarray`
+        Coherence of the measurement with shape (frequency, channel).
+
+    Notes
+    -----
+    - SNR can be gained from the coherence: `snr = coherence / (1 - coherence)`
 
     """
     mode = mode.casefold()
@@ -417,12 +460,12 @@ def compute_transfer_function(
         coherence[:, n] = np.abs(G_xy) ** 2 / G_xx / G_yy
     tf_sig = Signal(
         None,
-        np.fft.irfft(tf, axis=0),
+        np.fft.irfft(tf, axis=0, n=window_length_samples),
         output.sampling_rate_hz,
         signal_type=mode.lower(),
     )
     tf_sig.set_coherence(coherence)
-    return tf_sig, tf
+    return tf_sig, tf, coherence
 
 
 def average_irs(
@@ -510,7 +553,10 @@ def average_irs(
 
 
 def min_phase_from_mag(
-    spectrum: np.ndarray, sampling_rate_hz: int, signal_type: str = "ir"
+    spectrum: np.ndarray,
+    sampling_rate_hz: int,
+    original_length_time_data: int | None = None,
+    signal_type: str = "ir",
 ):
     """Returns a minimum-phase signal from a magnitude spectrum using
     the discrete hilbert transform.
@@ -518,9 +564,14 @@ def min_phase_from_mag(
     Parameters
     ----------
     spectrum : `np.ndarray`
-        Spectrum with only positive frequencies and 0.
+        Spectrum (no scaling) with only positive frequencies.
     sampling_rate_hz : int
         Signal's sampling rate in Hz.
+    original_length_time_data : int, optional
+        Original length for the time data that gave the spectrum. This is
+        necessary for reconstruction of the time data since the first half
+        of the spectrum (only positive frequencies) is ambiguous. Pass `None`
+        to assume an even length. Default: `None`.
     signal_type : str, optional
         Type of signal to be returned. Default: `'ir'`.
 
@@ -539,11 +590,22 @@ def min_phase_from_mag(
     assert spectrum.ndim < 3, "Spectrum should have shape (bins, channels)"
     if spectrum.shape[0] < spectrum.shape[1]:
         spectrum = spectrum.T
-    spectrum = np.abs(spectrum)
-    min_spectrum = np.empty(spectrum.shape, dtype="cfloat")
-    phase = _minimum_phase(spectrum, False)
-    min_spectrum = spectrum * np.exp(1j * phase)
-    time_data = np.fft.irfft(min_spectrum, axis=0)
+    if original_length_time_data is None:
+        original_length_time_data = (spectrum.shape[0] - 1) * 2
+    assert original_length_time_data in (
+        (spectrum.shape[0] - 1) * 2,
+        (spectrum.shape[0] - 1) * 2 + 1,
+    ), (
+        f"Passed length {original_length_time_data} is not valid for the "
+        + f"given spectrum with shape {spectrum.shape}"
+    )
+
+    phase = _minimum_phase(
+        np.abs(spectrum), False, True, original_length_time_data % 2 == 1
+    )
+    time_data = np.fft.irfft(
+        spectrum * np.exp(1j * phase), axis=0, n=original_length_time_data
+    )
     sig_min_phase = Signal(
         None,
         time_data=time_data,
@@ -556,6 +618,7 @@ def min_phase_from_mag(
 def lin_phase_from_mag(
     spectrum: np.ndarray,
     sampling_rate_hz: int,
+    original_length_time_data: int | None = None,
     group_delay_ms: str | float = "minimum",
     check_causality: bool = True,
     signal_type: str = "ir",
@@ -575,6 +638,11 @@ def lin_phase_from_mag(
         Spectrum with only positive frequencies and 0.
     sampling_rate_hz : int
         Signal's sampling rate in Hz.
+    original_length_time_data : int, optional
+        Original length for the time data that gave the spectrum. This is
+        necessary for reconstruction of the time data since the first half
+        of the spectrum (only positive frequencies) is ambiguous. Pass `None`
+        to assume an even length. Default: `None`.
     group_delay_ms : str or float, optional
         Constant group delay that the phase should have for all channels
         (in ms). Pass `'minimum'` to create a signal with the minimum linear
@@ -598,6 +666,16 @@ def lin_phase_from_mag(
     assert spectrum.ndim < 3, "Spectrum should have shape (bins, channels)"
     if spectrum.shape[0] < spectrum.shape[1]:
         spectrum = spectrum.T
+    if original_length_time_data is None:
+        original_length_time_data = (spectrum.shape[0] - 1) * 2
+    assert original_length_time_data in (
+        (spectrum.shape[0] - 1) * 2,
+        (spectrum.shape[0] - 1) * 2 + 1,
+    ), (
+        f"Passed length {original_length_time_data} is not valid for the "
+        + f"given spectrum with shape {spectrum.shape}"
+    )
+
     spectrum = np.abs(spectrum)
 
     # Check group delay ms parameter
@@ -614,14 +692,16 @@ def lin_phase_from_mag(
         raise TypeError("group_delay_ms must be either str, float or int")
 
     # Frequency vector
-    f_vec = np.fft.rfftfreq(spectrum.shape[0] * 2 - 1, 1 / sampling_rate_hz)
+    f_vec = np.fft.rfftfreq(original_length_time_data, 1 / sampling_rate_hz)
     delta_f = f_vec[1] - f_vec[0]
 
     # New spectrum
     lin_spectrum = np.empty(spectrum.shape, dtype="cfloat")
     for n in range(spectrum.shape[1]):
         if check_causality or minimum_group_delay:
-            min_phase = _minimum_phase(spectrum[:, n], False)
+            min_phase = _minimum_phase(
+                spectrum[:, n], odd_length=original_length_time_data % 2 == 1
+            )
             min_gd = _group_delay_direct(min_phase, delta_f)
             gd = np.max(min_gd) + 1e-3  # add 1 ms as safety factor
             if check_causality and type(group_delay_ms) is not str:
@@ -636,7 +716,7 @@ def lin_phase_from_mag(
         lin_spectrum[:, n] = spectrum[:, n] * np.exp(
             -1j * 2 * np.pi * f_vec * gd
         )
-    time_data = np.fft.irfft(lin_spectrum, axis=0)
+    time_data = np.fft.irfft(lin_spectrum, axis=0, n=original_length_time_data)
     sig_lin_phase = Signal(
         None,
         time_data=time_data,
@@ -690,7 +770,7 @@ def min_phase_ir(sig: Signal, method: str = "real cepstrum") -> Signal:
         _, min_phases = minimum_phase(sig, method=method)
         _, sp = sig.get_spectrum()
         new_time_data = np.fft.irfft(
-            np.abs(sp) * np.exp(1j * min_phases), axis=0
+            np.abs(sp) * np.exp(1j * min_phases), axis=0, n=len(sig)
         )
 
     min_phase_sig = sig.copy()
@@ -805,7 +885,11 @@ def minimum_phase(
     elif method == "log hilbert":
         signal.set_spectrum_parameters("standard")
         f, sp = signal.get_spectrum()
-        min_phases = _minimum_phase(np.abs(sp), unwrapped=False)
+        min_phases = _minimum_phase(
+            np.abs(sp),
+            unwrapped=False,
+            odd_length=signal.time_data.shape[0] % 2 == 1,
+        )
     else:
         sp = _get_minimum_phase_spectrum_from_real_cepstrum(signal.time_data)
         f = np.fft.fftfreq(
@@ -921,6 +1005,13 @@ def combine_ir_with_dirac(
     -------
     combined_ir : `dsp.Signal`
         New IR.
+
+    Notes
+    -----
+    - The algorithm checks for the fractional delay of the IR and adds a
+      fractional delayed dirac. For ensuring good results, it is
+      recommended that the IR has some delay, so that the first part of the
+      added dirac impulse has time to grow smoothly.
 
     """
     assert ir.signal_type in ("rir", "ir"), "Only valid for rir or ir"

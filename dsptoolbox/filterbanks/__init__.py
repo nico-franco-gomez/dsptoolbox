@@ -1,8 +1,7 @@
 """
 Filter Banks
 ------------
-This is a collection of useful filter banks. They use primarily the
-`FilterBank` class or some derivation from it.
+This is a collection of useful filters and filter banks.
 
 Perfect magnitude reconstruction:
 
@@ -22,8 +21,13 @@ Other:
 - `fractional_octave_bands()`: Butterworth bandpass filter bank with signal
   energy conservation.
 - `weightning_filter()`: A- or C-Weightning filter.
+- `fir_complementary()`: Create a complementary FIR filter from a linear-phase
+  FIR prototype.
+- `LatticeLadderFilter()`: Filter with lattice-ladder topology.
+- `PhaseLinearizer()`: Design FIR that linearize a phase spectrum.
 
 """
+
 from .filterbanks import (
     linkwitz_riley_crossovers,
     reconstructing_fractional_octave_bands,
@@ -31,7 +35,11 @@ from .filterbanks import (
     fractional_octave_bands,
     qmf_crossover,
     weightning_filter,
+    complementary_fir_filter,
 )
+
+from ..classes._lattice_ladder_filter import LatticeLadderFilter
+from ..classes._phaseLinearizer import PhaseLinearizer
 
 __all__ = [
     "linkwitz_riley_crossovers",
@@ -40,4 +48,7 @@ __all__ = [
     "auditory_filters_gammatone",
     "qmf_crossover",
     "weightning_filter",
+    "complementary_fir_filter",
+    "LatticeLadderFilter",
+    "PhaseLinearizer",
 ]

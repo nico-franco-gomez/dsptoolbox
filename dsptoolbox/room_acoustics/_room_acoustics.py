@@ -1,13 +1,22 @@
 """
 Low-level methods for room acoustics
 """
+
 import numpy as np
 from scipy.stats import pearsonr
+from warnings import warn
+from scipy.signal import hilbert, lfilter
 from ..plots import general_plot
+from .._general_helpers import _get_smoothing_factor_ema
 
 
 def _reverb(
-    h, fs_hz, mode, ir_start: int | None = None, return_ir_start: bool = False
+    h,
+    fs_hz,
+    mode,
+    ir_start: int | None = None,
+    return_ir_start: bool = False,
+    automatic_trimming: bool = True,
 ):
     """Computes reverberation time of signal.
 
@@ -26,6 +35,9 @@ def _reverb(
         When `True`, it returns not only reverberation time but also the
         index of the sample with the start of the impulse response.
         Default: `False`.
+    trim_ending : bool, optional
+        When `True`, signal's power is trimmed to the first point falling below
+        a threshold before computing the energy decay curve.
 
     Returns
     -------
@@ -42,16 +54,12 @@ def _reverb(
     acoustical parameters. pp. 22.
 
     """
-    # Energy decay curve
-    energy_curve = h**2
-    epsilon = 1e-20
     if ir_start is None:
         max_ind = _find_ir_start(h, threshold_dbfs=-20)
     else:
         max_ind = ir_start
-    edc = np.sum(energy_curve) - np.cumsum(energy_curve)
-    edc[edc <= 0] = epsilon
-    edc = 10 * np.log10(edc / edc[max_ind])
+
+    edc = _compute_energy_decay_curve(h, max_ind, automatic_trimming, fs_hz)
     time_vector = np.linspace(0, len(edc) / fs_hz, len(edc))
 
     # Reverb
@@ -249,9 +257,7 @@ def _generate_rir(room_dim, alpha, s_pos, r_pos, rt, mo, sr) -> np.ndarray:
     # Damping term (Numerator in Eq. 8)
     def get_damping(lvec):
         diff = np.abs(lvec - u_vectors)
-        return np.prod(beta_1**diff, axis=1) * np.prod(
-            beta_2 ** np.abs(lvec)
-        )
+        return np.prod(beta_1**diff, axis=1) * np.prod(beta_2 ** np.abs(lvec))
 
     # Core computation (Eq. 1) – could be further optimized by vectorizing
     # the outer loops
@@ -899,7 +905,7 @@ def _add_reverberant_tail_noise(
     return rir
 
 
-def _d50_from_rir(td: np.ndarray, fs: int) -> float:
+def _d50_from_rir(td: np.ndarray, fs: int, automatic_trimming: bool) -> float:
     """Compute definition D50 from a given RIR (1D-Array).
 
     Parameters
@@ -908,6 +914,8 @@ def _d50_from_rir(td: np.ndarray, fs: int) -> float:
         IR.
     fs : int
         Sampling rate in Hz.
+    automatic_trimming : bool
+        When `True`, the RIR is trimmed before computing.
 
     Returns
     -------
@@ -917,12 +925,18 @@ def _d50_from_rir(td: np.ndarray, fs: int) -> float:
     """
     assert td.ndim == 1, "Only supported for 1D-Arrays"
     ind = _find_ir_start(td)
-    td = td[ind:] ** 2
+    td = td[ind:]
     window = int(50e-3 * fs)
-    return np.sum(td[:window]) / np.sum(td)
+    if automatic_trimming:
+        _, stop, _ = _trim_rir(td, fs, 0, 10, 0.66, 50)
+        stop = np.max([window, stop])
+    else:
+        stop = len(td)
+    td **= 2
+    return np.sum(td[:window]) / np.sum(td[:stop])
 
 
-def _c80_from_rir(td: np.ndarray, fs: int) -> float:
+def _c80_from_rir(td: np.ndarray, fs: int, automatic_trimming: bool) -> float:
     """Compute clarity C80 from a given RIR (1D-Array).
 
     Parameters
@@ -931,6 +945,8 @@ def _c80_from_rir(td: np.ndarray, fs: int) -> float:
         IR.
     fs : int
         Sampling rate in Hz.
+    automatic_trimming : bool
+        When `True`, the RIR is trimmed before computing.
 
     Returns
     -------
@@ -941,13 +957,19 @@ def _c80_from_rir(td: np.ndarray, fs: int) -> float:
     assert td.ndim == 1, "Only supported for 1D-Arrays"
     # Trim IR
     ind = _find_ir_start(td)
-    td = td[ind:] ** 2
+    td = td[ind:]
     # Time window
     window = int(80e-3 * fs)
-    return 10 * np.log10(np.sum(td[:window]) / np.sum(td[window:]))
+    if automatic_trimming:
+        _, stop, _ = _trim_rir(td, fs, 0, 10, 0.66, 50)
+        stop = np.max([window, stop])
+    else:
+        stop = len(td)
+    td **= 2
+    return 10 * np.log10(np.sum(td[:window]) / np.sum(td[window:stop]))
 
 
-def _ts_from_rir(td: np.ndarray, fs: int) -> float:
+def _ts_from_rir(td: np.ndarray, fs: int, automatic_trimming: bool) -> float:
     """Compute center time from a given RIR (1D-Array).
 
     Parameters
@@ -956,6 +978,8 @@ def _ts_from_rir(td: np.ndarray, fs: int) -> float:
         IR.
     fs : int
         Sampling rate in Hz.
+    automatic_trimming : bool
+        When `True`, the RIR is trimmed before computing.
 
     Returns
     -------
@@ -966,14 +990,22 @@ def _ts_from_rir(td: np.ndarray, fs: int) -> float:
     assert td.ndim == 1, "Only supported for 1D-Arrays"
     # Trim IR
     ind = _find_ir_start(td)
-    td = td[ind:] ** 2
+    td = td[ind:]
+
+    if automatic_trimming:
+        _, stop, _ = _trim_rir(td, fs, 0, 10, 0.66, 50)
+    else:
+        stop = len(td)
+
+    td = td[:stop] ** 2
+
     time_vec = np.linspace(0, len(td) / fs, len(td))
     return np.sum(td * time_vec) / np.sum(td)
 
 
 def _obtain_optimal_reverb_time(
     time_vector: np.ndarray, edc: np.ndarray
-) -> float:
+) -> tuple[float, float]:
     """Compute the optimal reverberation time by analyzing the best linear
     fit (with the smallest least-squares error) from T10 until T60. If EDT
     is much smaller than T30, the intersection of the two regression lines is
@@ -1013,12 +1045,18 @@ def _obtain_optimal_reverb_time(
         x_intersection = (coeff_edt[1] - coeff_t30[1]) / (
             coeff_t30[0] - coeff_edt[0]
         )
-        start = np.polyval(coeff_edt, [x_intersection]).squeeze()
+        start: float = float(np.polyval(coeff_edt, [x_intersection]).squeeze())
     else:
-        start = -5
+        start = -5.0
 
-    steps = np.arange(start - 20, start - 60, -1)
+    steps: np.ndarray = np.arange(start - 20, start - 60, -1)
     end, r = _get_best_linear_fit_for_edc(time_vector, edc, start, steps)
+    if r > -0.95:
+        warn(
+            f"Correlation coefficient for reverb computation is {r} "
+            + "(larger than -0.95). Computation might be invalid. "
+            + "-1 is the ideal value."
+        )
     coefficients = _get_polynomial_coeffs_from_edc(
         time_vector, edc, start, end
     )[0]
@@ -1107,6 +1145,97 @@ def _get_polynomial_coeffs_from_edc(
     r_coefficient = pearsonr(time_vector[i1:i2], edc[i1:i2])[0]
 
     return coeff, r_coefficient
+
+
+def _compute_energy_decay_curve(
+    time_data: np.ndarray,
+    impulse_index: int,
+    trim_automatically: bool,
+    fs_hz: int,
+) -> np.ndarray:
+    """Get the energy decay curve from an energy time curve."""
+    if trim_automatically:
+        start_index, stopping_index, impulse_index = _trim_rir(
+            time_data,
+            fs_hz,
+            offset_start_s=20e-3,
+            envelope_smoothing_ms=10,
+            threshold_factor=0.66,
+            threshold_percentile=50,
+        )
+    else:
+        start_index = 0
+        stopping_index = len(time_data)
+
+    signal_power = time_data[start_index:stopping_index] ** 2
+    edc = np.sum(signal_power) - np.cumsum(signal_power)
+    epsilon = 1e-50
+    edc = 10 * np.log10(
+        np.clip(edc / edc[impulse_index], a_min=epsilon, a_max=None)
+    )
+    return edc
+
+
+def _trim_rir(
+    time_data: np.ndarray,
+    fs_hz: int,
+    offset_start_s: float,
+    envelope_smoothing_ms: float,
+    threshold_factor: float,
+    threshold_percentile: float,
+) -> tuple[int, int, int]:
+    """Obtain the starting and stopping index for an energy decay curve using
+    the smooth (exponential) envelope of the energy time curve. The threshold
+    is the selected percentile of the trailing part of the RIR.
+
+    This function returns the start and stop indices relative to the original
+    time data, but the impulse index relative to the new vector.
+    """
+    # Envelope
+    envelope = np.abs(hilbert(time_data, axis=0))
+
+    # Start index
+    impulse_index = int(np.argmax(envelope))
+    offset_start_samples = int(offset_start_s * fs_hz + 0.5)
+    start_index = int(np.max([0, impulse_index - 1 - offset_start_samples]))
+    impulse_index -= start_index
+
+    # Index for finding threshold
+    threshold_start = int(len(envelope) * threshold_factor + 0.5) - start_index
+
+    # ETC
+    etc = 20 * np.log10(
+        np.clip(envelope[start_index:], a_min=1e-50, a_max=None)
+    )
+
+    # Smoothing
+    if envelope_smoothing_ms != 0:
+        factor = _get_smoothing_factor_ema(envelope_smoothing_ms * 1e-3, fs_hz)
+        envelope = lfilter([factor], [1, -(1 - factor)], etc)
+    else:
+        envelope = etc
+
+    # Threshold
+    threshold = np.percentile(envelope[threshold_start:], threshold_percentile)
+
+    try:
+        stop = (
+            np.where(envelope[impulse_index:] < threshold)[0][0]
+            # Correct for impulse offset and start index
+            + impulse_index
+            + start_index
+        )
+    except Exception as e:
+        print(e)
+        stop = 0
+
+    if stop - impulse_index < 10:
+        warn(
+            "Passed impulse index or RIR might be wrong, no meaningful "
+            + "trimming at the end could be done"
+        )
+        stop = len(envelope)
+    return start_index, stop, impulse_index
 
 
 if __name__ == "__main__":

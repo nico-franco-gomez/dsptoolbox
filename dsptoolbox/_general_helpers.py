@@ -1,6 +1,7 @@
 """
 General functionality from helper methods
 """
+
 import numpy as np
 from scipy.signal import windows, convolve as scipy_convolve
 from scipy.interpolate import interp1d
@@ -36,7 +37,7 @@ def _find_nearest(points, vector) -> np.ndarray:
 def _calculate_window(
     points,
     window_length: int,
-    window_type="hann",
+    window_type: str | tuple | list = "hann",
     at_start: bool = True,
     inverse=False,
 ) -> np.ndarray:
@@ -49,9 +50,10 @@ def _calculate_window(
         window.
     window_length: int
         Length of the window.
-    window_type: str, optional
-        Type of window to use. Select from scipy.signal.windows.
-        Default: hann.
+    window_type: str, list, tuple, optional
+        Type of window to use. Select from scipy.signal.windows. It can be a
+        tuple with the window type and extra parameters or a list with two
+        window types. Default: `'hann'`.
     at_start: bool, optional
         Creates a half rising window at the start as well. Default: `True`.
     inverse: bool, optional
@@ -64,21 +66,31 @@ def _calculate_window(
         Custom window.
 
     """
-    assert len(points) == 4, "For the custom window 4 points " + "are needed"
+    assert len(points) == 4, "For the custom window 4 points are needed"
+    if type(window_type) in (str, tuple):
+        left_window_type = window_type
+        right_window_type = window_type
+    if type(window_type) is list:
+        assert len(window_type) == 2, "There must be exactly two window types"
+        left_window_type = window_type[0]
+        right_window_type = window_type[1]
 
     idx_start_stop_f = [int(i) for i in points]
 
     len_low_flank = idx_start_stop_f[1] - idx_start_stop_f[0]
+
     if at_start:
         low_flank = windows.get_window(
-            window_type, len_low_flank * 2, fftbins=True
-        )[0:len_low_flank]
+            left_window_type, len_low_flank * 2, fftbins=True
+        )[:len_low_flank]
     else:
         low_flank = np.ones(len_low_flank)
+
     len_high_flank = idx_start_stop_f[3] - idx_start_stop_f[2]
     high_flank = windows.get_window(
-        window_type, len_high_flank * 2, fftbins=True
+        right_window_type, len_high_flank * 2, fftbins=True
     )[len_high_flank:]
+
     zeros_low = np.zeros(idx_start_stop_f[0])
     ones_mid = np.ones(idx_start_stop_f[2] - idx_start_stop_f[1])
     zeros_high = np.zeros(window_length - idx_start_stop_f[3])
@@ -99,7 +111,7 @@ def _get_normalized_spectrum(
     smoothe: int = 0,
     phase=False,
     calibrated_data: bool = False,
-) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray] | tuple[np.ndarray, np.ndarray, np.ndarray]:
     """This function gives a normalized magnitude spectrum in dB with frequency
     vector for a given range. It is also smoothed. Use `None` for the
     spectrum without f_range_hz.
@@ -589,11 +601,7 @@ def _frequency_weightning(
             )
         )
     else:
-        weights = (
-            12194**2
-            * f**2
-            / ((f**2 + 20.6**2) * (f**2 + 12194**2))
-        )
+        weights = 12194**2 * f**2 / ((f**2 + 20.6**2) * (f**2 + 12194**2))
     weights /= weights[ind1k]
     if db_output:
         weights = 20 * np.log10(weights)
@@ -602,7 +610,7 @@ def _frequency_weightning(
 
 def _polyphase_decomposition(
     in_sig: np.ndarray, number_polyphase_components: int, flip: bool = False
-) -> np.ndarray:
+) -> tuple[np.ndarray, int]:
     """Converts input signal array with shape (time samples, channels) into
     its polyphase representation with shape (time samples, polyphase
     components, channels).
@@ -941,7 +949,7 @@ def _get_exact_gain_1khz(f: np.ndarray, sp_db: np.ndarray) -> float:
         Interpolated value.
 
     """
-    assert np.min(f) < 1e3, (
+    assert np.min(f) < 1e3 and np.max(f) >= 1e3, (
         "No gain at 1 kHz can be obtained because it is outside the "
         + "given frequency vector"
     )
@@ -1016,3 +1024,33 @@ def _get_chirp_rate(range_hz: list, length_seconds: float) -> float:
     assert range_hz.shape == (2,), "Range must contain exactly two elements."
     range_hz = np.sort(range_hz)
     return np.log2(range_hz[1] / range_hz[0]) / length_seconds
+
+
+def _correct_for_real_phase_spectrum(phase_spectrum: np.ndarray):
+    """This function takes in a wrapped phase spectrum and corrects it to
+    be for a real signal (assuming the last frequency bin corresponds to
+    nyquist, i.e., time data had an even length). This effectively adds a
+    small linear phase offset so that the phase at nyquist is either 0 or
+    np.pi.
+
+    Parameters
+    ----------
+    phase_spectrum : np.ndarray
+        Wrapped phase to be corrected. It is assumed that its last element
+        corresponds to the nyquist frequency.
+
+    Returns
+    -------
+    np.ndarray
+        Phase spectrum that can correspond to a real signal.
+
+    """
+    factor = (
+        phase_spectrum[-1]
+        if phase_spectrum[-1] >= 0
+        else np.pi + phase_spectrum[-1]
+    )
+    return (
+        phase_spectrum
+        - np.linspace(0, 1, len(phase_spectrum), endpoint=True) * factor
+    )

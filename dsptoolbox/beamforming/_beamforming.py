@@ -1,6 +1,7 @@
 """
 Backend for beamforming module
 """
+
 import numpy as np
 from .._general_helpers import _euclidean_distance_matrix
 import matplotlib.pyplot as plt
@@ -112,7 +113,7 @@ class BasePoints:
         return _euclidean_distance_matrix(self.coordinates, point).squeeze()
 
     # ======== Plotting =======================================================
-    def plot_points(self, projection: str = None):
+    def plot_points(self, projection: str | None = None):
         """Plot points in 2D or 3D plot depending on the actual points.
 
         Parameters
@@ -188,7 +189,7 @@ class BasePoints:
             len(point) == 3
         ), "Point must have exactly 3 dimensions (x, y, z)"
         dist = self.get_distances_to_point(point)
-        index = np.argmin(dist)
+        index = int(np.argmin(dist))
         coord = self.coordinates[index, :]
         return index, coord
 

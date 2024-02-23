@@ -1,6 +1,7 @@
 """
 Backend for the creation of specific filter banks
 """
+
 import numpy as np
 from warnings import warn
 from os import sep
@@ -71,10 +72,11 @@ class LRFilterBank:
             + "do not match"
         )
         for o in order:
-            if o % 2 != 0:
+            if o % 2 != 0 and o != 1:
                 warn(
-                    "Order of the crossovers has to be an even number for "
-                    + "perfect magnitude reconstruction!"
+                    "Order of the crossovers is recommended to be even. "
+                    + "Odd orders cannot perform zero-phase filtering "
+                    + "with perfect magnitude reconstruction"
                 )
         freqs_order = freqs.argsort()
         self.freqs = freqs[freqs_order]
@@ -130,6 +132,9 @@ class LRFilterBank:
                 fs=self.sampling_rate_hz,
                 output="sos",
             )
+            if self.order[i] % 2 == 0:
+                lp = np.vstack([lp, lp])
+                hp = np.vstack([hp, hp])
             self.sos.append([lp, hp])
 
     def initialize_zi(self, number_of_channels: int = 1):
@@ -227,7 +232,6 @@ class LRFilterBank:
                     band, in_sig[:, ch] = self._two_way_split_zi(
                         in_sig[:, ch], channel_number=ch, cross_number=cn
                     )
-                    # band, in_sig[:, ch] = self._filt(in_sig[:, ch], cn)
                     for ap_n in range(cn + 1, self.number_of_cross):
                         band = self._allpass_zi(
                             band,
@@ -235,19 +239,26 @@ class LRFilterBank:
                             cross_number=cn,
                             ap_number=ap_n,
                         )
-                        # band = self._filt(band, ap_n, split=False)
                     new_time_data[:, ch, cn] = band
                 # Last high frequency component
                 new_time_data[:, ch, cn + 1] = in_sig[:, ch]
+
         # Zero phase
         elif zero_phase:
             for cn in range(self.number_of_cross):
+                # Select SOS
+                factor = 2 if self.order[cn] % 2 == 0 else 1
+                valid_dim = self.sos[cn][0].shape[0] // factor
+                # Filter
                 new_time_data[:, :, cn] = sosfiltfilt(
-                    self.sos[cn][0], in_sig, axis=0
+                    self.sos[cn][0][:valid_dim, ...], in_sig, axis=0
                 )
-                in_sig = sosfiltfilt(self.sos[cn][1], in_sig, axis=0)
+                in_sig = sosfiltfilt(
+                    self.sos[cn][1][:valid_dim, ...], in_sig, axis=0
+                )
             # Last high frequency component
             new_time_data[:, :, cn + 1] = in_sig
+
         # Standard filtering
         else:
             for cn in range(self.number_of_cross):
@@ -280,40 +291,35 @@ class LRFilterBank:
 
     # ======== Update zi's and backend filtering ============================
     def _allpass_zi(self, s, channel_number, cross_number, ap_number):
+        """Handles the allpass filtering while updating the filter states."""
         # Unpack zi's
         ap_zi = self.channels_zi[channel_number][1][cross_number][ap_number]
         zi_l = ap_zi[0]
         zi_h = ap_zi[1]
         # Low band
         s_l, zi_l = sosfilt(self.sos[ap_number][0], x=s, zi=zi_l)
-        s_l, zi_l = sosfilt(self.sos[ap_number][0], x=s_l, zi=zi_l)
         # High band
         s_h, zi_h = sosfilt(self.sos[ap_number][1], x=s, zi=zi_h)
-        s_h, zi_h = sosfilt(self.sos[ap_number][1], x=s_h, zi=zi_h)
         # Pack zi's
         ap_zi[0] = zi_l
         ap_zi[1] = zi_h
         self.channels_zi[channel_number][1][cross_number][ap_number] = ap_zi
-        # self.allpass_zi[cross_number][ap_number] = ap_zi
         return s_l + s_h
 
     def _two_way_split_zi(self, s, channel_number, cross_number):
+        """Filters the signal while updating the filter states."""
         # Unpack zi's
         cross_zi = self.channels_zi[channel_number][0][cross_number]
-        # cross_zi = self.cross_zi[cross_number]
         zi_l = cross_zi[0]
         zi_h = cross_zi[1]
         # Low band
         s_l, zi_l = sosfilt(self.sos[cross_number][0], x=s, zi=zi_l)
-        s_l, zi_l = sosfilt(self.sos[cross_number][0], x=s_l, zi=zi_l)
         # High band
         s_h, zi_h = sosfilt(self.sos[cross_number][1], x=s, zi=zi_h)
-        s_h, zi_h = sosfilt(self.sos[cross_number][1], x=s_h, zi=zi_h)
         # Pack zi's
         cross_zi[0] = zi_l
         cross_zi[1] = zi_h
         self.channels_zi[channel_number][0][cross_number] = cross_zi
-        # self.cross_zi[cross_number] = cross_zi
         return s_l, s_h
 
     def _filt(self, s, f_number, split: bool = True):
@@ -324,17 +330,20 @@ class LRFilterBank:
         """
         # Low band
         s_l = sosfilt(self.sos[f_number][0], x=s, axis=0)
-        s_l = sosfilt(self.sos[f_number][0], x=s_l, axis=0)
         # High band
         s_h = sosfilt(self.sos[f_number][1], x=s, axis=0)
-        s_h = sosfilt(self.sos[f_number][1], x=s_h, axis=0)
         if split:
             return s_l, s_h
         else:
             return s_l + s_h
 
     # ======== IR =============================================================
-    def get_ir(self, length_samples: int = 1024, test_zi: bool = False):
+    def get_ir(
+        self,
+        length_samples: int = 1024,
+        mode: str = "parallel",
+        zero_phase: bool = False,
+    ) -> Signal | MultiBandSignal:
         """Returns impulse response from the filter bank. For this filter
         bank only `mode='parallel'` is valid and there is no zero phase
         filtering.
@@ -344,9 +353,11 @@ class LRFilterBank:
         length_samples : int, optional
             Impulse length in samples. This defines the resolution of the
             plot. Default: 2048.
-        test_zi : bool, optional
-            When `True`, filtering is done while updating filters' initial
-            values. Default: `False`.
+        mode : str, optional
+            Way to apply filter bank to the signal. Supported modes are:
+            `'parallel'`, `'summed'`. Default: `'parallel'`.
+        zero_phase : bool, optional
+            When `True`, zero-phase filtering is done. Default: `False`.
 
         Returns
         -------
@@ -359,8 +370,9 @@ class LRFilterBank:
             number_of_channels=1,
             sampling_rate_hz=self.sampling_rate_hz,
         )
-        ir = self.filter_signal(d, activate_zi=test_zi)
-        return ir
+        return self.filter_signal(
+            d, mode=mode, zero_phase=zero_phase, activate_zi=False
+        )
 
     # ======== Prints and plots ===============================================
     def plot_magnitude(
@@ -468,7 +480,7 @@ class LRFilterBank:
             Range of Hz to plot. Default: [20, 20e3].
         mode : str, optional
             Way to apply filter bank to the signal. Supported modes are:
-            `'parallel'`. Default: `'parallel'`.
+            `'parallel'`, `'summed'`. Default: `'parallel'`.
         length_samples : int, optional
             Impulse length in samples. This defines the resolution of the
             plot. Default: 2048.
@@ -544,7 +556,7 @@ class LRFilterBank:
             Range of Hz to plot. Default: [20, 20e3].
         mode : str, optional
             Way to apply filter bank to the signal. Supported modes are:
-            `'parallel'`. Default: `'parallel'`.
+            `'parallel'`, `'summed'`. Default: `'parallel'`.
         length_samples : int, optional
             Impulse length in samples. This defines the resolution of the
             plot. Default: 2048.
@@ -591,7 +603,7 @@ class LRFilterBank:
                 d, mode="summed", activate_zi=test_zi, zero_phase=zero_phase
             )
             f, sp = bs.get_spectrum()
-            gd = _group_delay_direct(sp.squeeze(), delta_f=f[1] - f[0])
+            gd = _group_delay_direct(sp.squeeze(), delta_f=f[1] - f[0]) * 1e3
             labels = ["Summed"]
         fig, ax = general_plot(
             f,
