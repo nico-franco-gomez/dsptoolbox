@@ -928,7 +928,7 @@ def _d50_from_rir(td: np.ndarray, fs: int, automatic_trimming: bool) -> float:
     td = td[ind:]
     window = int(50e-3 * fs)
     if automatic_trimming:
-        stop = _get_stop_index_for_energy_decay_curve(td, 0, fs)
+        _, stop, _ = _trim_rir(td, fs, 0, 10, 0.66, 50)
         stop = np.max([window, stop])
     else:
         stop = len(td)
@@ -961,7 +961,7 @@ def _c80_from_rir(td: np.ndarray, fs: int, automatic_trimming: bool) -> float:
     # Time window
     window = int(80e-3 * fs)
     if automatic_trimming:
-        stop = _get_stop_index_for_energy_decay_curve(td, 0, fs)
+        _, stop, _ = _trim_rir(td, fs, 0, 10, 0.66, 50)
         stop = np.max([window, stop])
     else:
         stop = len(td)
@@ -993,7 +993,7 @@ def _ts_from_rir(td: np.ndarray, fs: int, automatic_trimming: bool) -> float:
     td = td[ind:]
 
     if automatic_trimming:
-        stop = _get_stop_index_for_energy_decay_curve(td, 0, fs)
+        _, stop, _ = _trim_rir(td, fs, 0, 10, 0.66, 50)
     else:
         stop = len(td)
 
@@ -1005,7 +1005,7 @@ def _ts_from_rir(td: np.ndarray, fs: int, automatic_trimming: bool) -> float:
 
 def _obtain_optimal_reverb_time(
     time_vector: np.ndarray, edc: np.ndarray
-) -> float:
+) -> tuple[float, float]:
     """Compute the optimal reverberation time by analyzing the best linear
     fit (with the smallest least-squares error) from T10 until T60. If EDT
     is much smaller than T30, the intersection of the two regression lines is
@@ -1155,19 +1155,13 @@ def _compute_energy_decay_curve(
 ) -> np.ndarray:
     """Get the energy decay curve from an energy time curve."""
     if trim_automatically:
-        # Trimming prior to impulse
-        time_before_impulse = int(20e-3 * fs_hz + 0.5)
-        if impulse_index - time_before_impulse > 0:
-            start_index = impulse_index - time_before_impulse
-            impulse_index = time_before_impulse
-        else:
-            start_index = 0
-        # Trimming in the end
-        stopping_index = (
-            _get_stop_index_for_energy_decay_curve(
-                time_data[start_index:], impulse_index, fs_hz
-            )
-            + start_index
+        start_index, stopping_index, impulse_index = _trim_rir(
+            time_data,
+            fs_hz,
+            offset_start_s=20e-3,
+            envelope_smoothing_ms=10,
+            threshold_factor=0.66,
+            threshold_percentile=50,
         )
     else:
         start_index = 0
@@ -1182,26 +1176,54 @@ def _compute_energy_decay_curve(
     return edc
 
 
-def _get_stop_index_for_energy_decay_curve(
-    time_data: np.ndarray, impulse_index: int, fs_hz: int
-) -> int:
-    """Obtain the stopping index for an energy decay curve using the smooth
-    (exponential, 10 ms) envelope of the energy time curve. The threshold is
-    the median of the last third of the RIR."""
-    # Envelope (ETC)
-    envelope = np.abs(hilbert(time_data, axis=0))
-    etc = 20 * np.log10(np.clip(envelope, a_min=1e-50, a_max=None))
+def _trim_rir(
+    time_data: np.ndarray,
+    fs_hz: int,
+    offset_start_s: float,
+    envelope_smoothing_ms: float,
+    threshold_factor: float,
+    threshold_percentile: float,
+) -> tuple[int, int, int]:
+    """Obtain the starting and stopping index for an energy decay curve using
+    the smooth (exponential) envelope of the energy time curve. The threshold
+    is the selected percentile of the trailing part of the RIR.
 
-    # Smoothing (10 ms)
-    factor = _get_smoothing_factor_ema(10e-3, fs_hz)
-    envelope = lfilter([factor], [1, -(1 - factor)], etc)
+    This function returns the start and stop indices relative to the original
+    time data, but the impulse index relative to the new vector.
+    """
+    # Envelope
+    envelope = np.abs(hilbert(time_data, axis=0))
+
+    # Start index
+    impulse_index = int(np.argmax(envelope))
+    offset_start_samples = int(offset_start_s * fs_hz + 0.5)
+    start_index = int(np.max([0, impulse_index - 1 - offset_start_samples]))
+    impulse_index -= start_index
+
+    # Index for finding threshold
+    threshold_start = int(len(envelope) * threshold_factor + 0.5) - start_index
+
+    # ETC
+    etc = 20 * np.log10(
+        np.clip(envelope[start_index:], a_min=1e-50, a_max=None)
+    )
+
+    # Smoothing
+    if envelope_smoothing_ms != 0:
+        factor = _get_smoothing_factor_ema(envelope_smoothing_ms * 1e-3, fs_hz)
+        envelope = lfilter([factor], [1, -(1 - factor)], etc)
+    else:
+        envelope = etc
 
     # Threshold
-    threshold = np.median(envelope[int(len(envelope) * 0.66) :])
+    threshold = np.percentile(envelope[threshold_start:], threshold_percentile)
+
     try:
         stop = (
             np.where(envelope[impulse_index:] < threshold)[0][0]
+            # Correct for impulse offset and start index
             + impulse_index
+            + start_index
         )
     except Exception as e:
         print(e)
@@ -1210,10 +1232,10 @@ def _get_stop_index_for_energy_decay_curve(
     if stop - impulse_index < 10:
         warn(
             "Passed impulse index or RIR might be wrong, no meaningful "
-            + "trimming could be done"
+            + "trimming at the end could be done"
         )
         stop = len(envelope)
-    return stop
+    return start_index, stop, impulse_index
 
 
 if __name__ == "__main__":

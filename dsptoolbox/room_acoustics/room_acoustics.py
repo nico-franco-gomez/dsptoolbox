@@ -17,6 +17,7 @@ from ._room_acoustics import (
     _d50_from_rir,
     _c80_from_rir,
     _ts_from_rir,
+    _trim_rir,
 )
 from .._general_helpers import _find_nearest, _normalize, _pad_trim
 from ..standard_functions import pad_trim
@@ -47,11 +48,11 @@ def reverb_time(
         arrives at -20 dBFS. This is then done independently for each channel
         and each band. Default: `None`.
     automatic_trimming : bool, optional
-        When set to `True`, the IR is cut 20 ms before the impulse and after
-        the energy has decayed below a threshold prior to the Schroeder
-        integration. This can influence the energy decay curve and, therefore,
-        the reverberation time. See notes for details on the algorithm.
-        Default: `True`.
+        When set to `True`, the IR is trimmed using `trim_rir` with offset 20
+        ms before the impulse, envelope smoothing of 10 ms and threshold
+        factor 0.66. This can influence significantly the energy decay curve
+        and, therefore, the reverberation time. See notes for details on the
+        algorithm. Default: `True`.
 
     Returns
     -------
@@ -485,7 +486,9 @@ def descriptors(
       last third of this vector is used as a threshold. The first point to go
       below this threshold is taken as the end. The underlying assumption is
       that there might be only noise when this signal level is reached. If it
-      fails to deliver a meaningful result, no trimming is performed.
+      fails to deliver a meaningful result, no trimming is performed. It uses
+      the function `trim_rir`, envelope smoothing of 10 ms and threshold
+      factor 0.66. The start is found using find_ir_start with threshold 20 dB.
 
     """
     mode = mode.lower()
@@ -533,7 +536,6 @@ def _bass_ratio(rir: Signal) -> np.ndarray:
     ----------
     rir : `Signal`
         RIR.
-    automatic_trimming : bool
 
     Returns
     -------
@@ -550,6 +552,73 @@ def _bass_ratio(rir: Signal) -> np.ndarray:
     for ch in range(rir.number_of_channels):
         br[ch] = (rt[0, ch] + rt[1, ch]) / (rt[2, ch] + rt[3, ch])
     return br
+
+
+def trim_rir(
+    rir: Signal,
+    channel: int = 0,
+    start_offset_s: float = 20e-3,
+    envelope_smoothing_ms: float = 10.0,
+    threshold_length_factor: float = 0.66,
+    threshold_percentile: float = 50.0,
+) -> Signal:
+    """Trim a RIR in the beginning and end following certain parameters. This
+    methods acts only on one channel and returns it trimmed. For defining the
+    ending, a smooth envelope of the energy time curve (ETC) is used. When
+    it goes below a certain threshold, it is trimmed. See notes for details.
+
+    Parameters
+    ----------
+    rir : `Signal`
+        Room impulse response to trim.
+    channel : int, optional
+        Channel to take from `rir`. Default: 0.
+    start_offset_s : float, optional
+        This is the time prior to the peak value that is left after trimming.
+        Pass 0 to start the RIR one sample prior to peak value or a very big
+        offset to avoid any trimming at the beginning. Default: 20e-3
+        (20 milliseconds).
+    envelope_smoothing_ms : float, optional
+        This defines the factor used for exponential smoothing of the ETC
+        envelope. Pass 0 to avoid any smoothing. Default: 10 (10 milliseconds).
+    threshold_length_factor : float, optional
+        Percentage of the total length from which to start the percentile
+        computation for defining the threshold. See notes for more details.
+        Default: 0.66.
+    threshold_percentile : float, optional
+        Percentile used to define the threshold. Default: 50.0 (median).
+
+    Returns
+    -------
+    trimmed_rir : `Signal`
+        RIR with the new length.
+
+    Notes
+    -----
+    - To define the threshold, a percentile of the trailing part of the ETC
+      envelope is used. The threshold factor refers to the percentage of the
+      total length from which to start computing the percentile. For instance,
+      0.8 means that the percentile is computed in the portion [0.8, 1] of the
+      length.
+
+    """
+    assert start_offset_s >= 0, "Offset must be at least 0"
+    assert envelope_smoothing_ms >= 0, "Envelope smoothing cannot be negative"
+    assert (
+        threshold_length_factor > 0 and threshold_length_factor < 1
+    ), "Threshold factor must be in ]0 and 1["
+    trimmed_rir = rir.get_channels(channel)
+    td = trimmed_rir.time_data.squeeze()
+    start, stop, _ = _trim_rir(
+        td,
+        rir.sampling_rate_hz,
+        start_offset_s,
+        envelope_smoothing_ms,
+        threshold_length_factor,
+        threshold_percentile,
+    )
+    trimmed_rir.time_data = td[start:stop]
+    return trimmed_rir
 
 
 def _check_ir_start_reverb(
