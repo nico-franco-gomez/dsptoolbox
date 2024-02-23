@@ -24,7 +24,7 @@ from ._filter import (
 )
 from ._plots import _zp_plot
 from ..plots import general_plot
-from .._general_helpers import _check_format_in_path
+from .._general_helpers import _check_format_in_path, _pad_trim
 
 
 class Filter:
@@ -543,6 +543,21 @@ class Filter:
             Impulse response of the filter.
 
         """
+        # FIR with no zero phase filtering
+        if self.filter_type == "fir" and not zero_phase:
+            b = self.ba[0].copy()
+            if length_samples < len(b):
+                warn(
+                    f"{length_samples} is not enough for filter with "
+                    + f"length {len(b)}. IR will have the latter length."
+                )
+                length_samples = len(b)
+            b = _pad_trim(b, length_samples)
+            return Signal(
+                None, b, self.sampling_rate_hz, "ir", constrain_amplitude=False
+            )
+
+        # IIR or zero phase IR
         ir_filt = _impulse(length_samples)
         ir_filt = Signal(
             None,
