@@ -19,8 +19,8 @@ class PhaseLinearizer:
 
     def __init__(
         self,
-        frequency_vector: np.ndarray,
         phase_response: np.ndarray,
+        time_data_length_samples: int,
         sampling_rate_hz: int,
     ):
         """PhaseLinearizer creates an FIR filter that can linearize a phase
@@ -29,30 +29,27 @@ class PhaseLinearizer:
 
         Parameters
         ----------
-        frequency_vector : `np.ndarray`
-            Frequency vector that corresponds to the phase response.
         phase_response : `np.ndarray`
             Wrapped phase response that should be linearized. It is expected
             to contain only the positive frequencies (including dc and
-            eventually nyquist). It should have the same shape as
-            `frequency_vector`.
+            eventually nyquist).
+        time_data_length_samples : `np.ndarray`
+            Length of the time signal that gave the phase response.
         sampling_rate_hz : int
             Sampling rate corresponding to the passed phase response. It is
             also used for the designed FIR filter.
 
         """
-        assert (
-            frequency_vector.shape == phase_response.shape
-        ), "Frequency vector and phase response vector do not match"
-        self.nyquist_included = np.isclose(
-            frequency_vector[-1], sampling_rate_hz // 2
+        self.frequency_vector = np.fft.rfftfreq(
+            time_data_length_samples, 1 / sampling_rate_hz
+        )
+        self.time_data_length_samples = time_data_length_samples
+        assert len(self.frequency_vector) == len(phase_response), (
+            f"Phase response with length {len(phase_response)} and "
+            + f"length {time_data_length_samples} do not match."
         )
         self.phase_response = phase_response
-        self.frequency_vector = frequency_vector
         self.sampling_rate_hz = sampling_rate_hz
-        self.length_time_signal_samples = (len(self.phase_response) - 1) * 2
-        if not self.nyquist_included:
-            self.length_time_signal_samples += 1
         self.set_parameters()
 
     def set_parameters(
@@ -107,7 +104,7 @@ class PhaseLinearizer:
         # Get initial parameters
         if not hasattr(self, "group_delay"):
             self.gd = self._get_group_delay()
-            self.gd_time_length_samples = self.length_time_signal_samples
+            self.gd_time_length_samples = self.time_data_length_samples
 
         max_delay_samples_synthesized = int(
             np.max(self.gd)
@@ -121,14 +118,16 @@ class PhaseLinearizer:
         # expected delay
         if max_delay_samples_synthesized * 20 > self.gd_time_length_samples:
             warn(
-                "Phase response is not much longer than maximum expected "
-                + "group delay (less than 20 times longer). Spectrum "
-                + "interpolation is triggered, but it is recommended to pass "
-                + "a phase spectrum with finer resolution!"
+                f"Phase response (length {self.gd_time_length_samples}) is "
+                + "not much longer than maximum expected "
+                + f"group delay {max_delay_samples_synthesized} (less than "
+                + "20 times longer). Spectrum interpolation is triggered, "
+                + "but it is recommended to pass a phase spectrum with "
+                + "finer resolution!"
             )
             # Define new time length for the group delay
             self.gd_time_length_samples = (
-                int(max_delay_samples_synthesized * 20) + 2
+                int(max_delay_samples_synthesized * 20) + 1
             )
             # Ensure even length
             self.gd_time_length_samples += self.gd_time_length_samples % 2
@@ -141,6 +140,9 @@ class PhaseLinearizer:
                 self.gd,
                 "cubic",
                 assume_sorted=True,
+                # Extrapolate if nyquist goes above last frequency bin
+                bounds_error=False,
+                fill_value=(self.gd[0], self.gd[-1]),
             )(new_freqs) * (len(self.gd) / len(new_freqs))
 
         # Get new phase using group target group delay
@@ -148,7 +150,11 @@ class PhaseLinearizer:
             np.max(self.gd) * self.group_delay_increase_factor - self.gd
         )
         new_phase = -cumulative_simpson(target_gd, initial=0)
-        new_phase = _correct_for_real_phase_spectrum(_wrap_phase(new_phase))
+        # Correct if nyquist is given
+        if self.gd_time_length_samples % 2 == 0:
+            new_phase = _correct_for_real_phase_spectrum(
+                _wrap_phase(new_phase)
+            )
 
         # Convert to time domain and trim
         ir = np.fft.irfft(np.exp(1j * new_phase))
@@ -167,10 +173,10 @@ class PhaseLinearizer:
 
     def _get_group_delay_factor_in_samples(self) -> float:
         """This is the conversion factor from unscaled to delay in samples."""
-        return self.length_time_signal_samples / 2 / np.pi
+        return self.time_data_length_samples / 2 / np.pi
 
     def _get_group_delay_factor_in_seconds(self) -> float:
         """This is the conversion factor from unscaled to delay in seconds."""
         return (
-            self.length_time_signal_samples / 2 / np.pi / self.sampling_rate_hz
+            self.time_data_length_samples / 2 / np.pi / self.sampling_rate_hz
         )

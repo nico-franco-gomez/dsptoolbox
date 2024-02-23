@@ -135,10 +135,18 @@ class TestFilterbanksModule:
         )
         ir = fb.get_ir(length_samples=2**14).collapse()
         ir.set_spectrum_parameters(method="standard")
-        freqs, sp = ir.get_spectrum()
+        _, sp = ir.get_spectrum()
+
+        # Initialize with wrong length
+        with pytest.raises(AssertionError):
+            dsp.filterbanks.PhaseLinearizer(
+                np.angle(sp[:, 0]), len(ir) // 2, fs_hz
+            )
 
         # Phase linearizer - Without interpolating
-        pl = dsp.filterbanks.PhaseLinearizer(freqs, np.angle(sp[:, 0]), fs_hz)
+        pl = dsp.filterbanks.PhaseLinearizer(
+            np.angle(sp[:, 0]), len(ir), fs_hz
+        )
         with pytest.raises(AssertionError):
             pl.set_parameters(-10, 2)
         pl.get_filter_as_ir()
@@ -151,7 +159,9 @@ class TestFilterbanksModule:
         # Phase linearizer – with interpolation
         ir = fb.get_ir(length_samples=2**9).collapse()
         ir.set_spectrum_parameters(method="standard")
-        freqs, sp = ir.get_spectrum()
-        pl = dsp.filterbanks.PhaseLinearizer(freqs, np.angle(sp[:, 0]), fs_hz)
+        _, sp = ir.get_spectrum()
+        pl = dsp.filterbanks.PhaseLinearizer(
+            np.angle(sp[:, 0]), len(ir), fs_hz
+        )
         pl.get_filter_as_ir()
         pl.get_filter()
