@@ -1198,7 +1198,7 @@ def _trim_rir(
     impulse_index = int(np.argmax(envelope))
     offset_start_samples = int(offset_start_s * fs_hz + 0.5)
     start_index = int(np.max([0, impulse_index - 1 - offset_start_samples]))
-    impulse_index -= start_index + 1
+    impulse_index -= start_index
 
     # Index for finding threshold
     threshold_start = int(len(envelope) * threshold_factor + 0.5) - start_index
