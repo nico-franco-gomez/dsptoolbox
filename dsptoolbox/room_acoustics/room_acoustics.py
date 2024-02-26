@@ -561,7 +561,7 @@ def trim_rir(
     envelope_smoothing_ms: float = 10.0,
     threshold_length_factor: float = 0.66,
     threshold_percentile: float = 50.0,
-) -> Signal:
+) -> tuple[Signal, int, int]:
     """Trim a RIR in the beginning and end following certain parameters. This
     methods acts only on one channel and returns it trimmed. For defining the
     ending, a smooth envelope of the energy time curve (ETC) is used. When
@@ -592,6 +592,10 @@ def trim_rir(
     -------
     trimmed_rir : `Signal`
         RIR with the new length.
+    start : int
+        Start index of the trimmed RIR in the original vector.
+    stop : int
+        Stop index of the trimmed RIR in the original vector.
 
     Notes
     -----
@@ -618,7 +622,7 @@ def trim_rir(
         threshold_percentile,
     )
     trimmed_rir.time_data = td[start:stop]
-    return trimmed_rir
+    return trimmed_rir, start, stop
 
 
 def _check_ir_start_reverb(
