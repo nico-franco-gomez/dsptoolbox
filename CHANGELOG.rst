@@ -14,6 +14,13 @@ adheres to `Semantic Versioning <http://semver.org/spec/v2.0.0.html>`_.
 - Validation for results from tests in every module (so far many tests are
   only regarding functionality)
 
+`0.3.1 <https://pypi.org/project/dsptoolbox/0.3.1>`_ - 
+---------------------
+
+Added
+~~~~~~
+- added returning the indices for start and stop in `trim_rir` in ``room_acoustics``
+
 `0.3.0 <https://pypi.org/project/dsptoolbox/0.3.0>`_ - 
 ---------------------
 
