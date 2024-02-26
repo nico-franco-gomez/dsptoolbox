@@ -1,6 +1,7 @@
 """
 High-level methods for room acoustics functions
 """
+
 import numpy as np
 from scipy.signal import find_peaks, convolve
 
@@ -16,6 +17,7 @@ from ._room_acoustics import (
     _d50_from_rir,
     _c80_from_rir,
     _ts_from_rir,
+    _trim_rir,
 )
 from .._general_helpers import _find_nearest, _normalize, _pad_trim
 from ..standard_functions import pad_trim
@@ -25,6 +27,7 @@ def reverb_time(
     signal: Signal | MultiBandSignal,
     mode: str = "T20",
     ir_start: int | np.ndarray | None = None,
+    automatic_trimming: bool = True,
 ) -> np.ndarray:
     """Computes reverberation time. Topt, T20, T30, T60 and EDT.
 
@@ -44,6 +47,12 @@ def reverb_time(
         are automatically computed as the first point before the normalized IR
         arrives at -20 dBFS. This is then done independently for each channel
         and each band. Default: `None`.
+    automatic_trimming : bool, optional
+        When set to `True`, the IR is trimmed using `trim_rir` with offset 20
+        ms before the impulse, envelope smoothing of 10 ms and threshold
+        factor 0.66. This can influence significantly the energy decay curve
+        and, therefore, the reverberation time. See notes for details on the
+        algorithm. Default: `True`.
 
     Returns
     -------
@@ -61,6 +70,12 @@ def reverb_time(
     -----
     - In order to compare EDT to the other measures, it must be multiplied
       by 6.
+    - For defining the ending of the IR automatically, a smooth envelope of the
+      energy time curve (ETC) is first computed. Then, the median of the last
+      third of this vector is used as a threshold. The first point to go
+      below this threshold is taken as the end. The underlying assumption is
+      that there might be only noise when this threshold is reached. If it
+      fails to deliver a meaningful result, no trimming is performed.
 
     """
     if type(signal) is Signal:
@@ -83,6 +98,7 @@ def reverb_time(
                 mode,
                 ir_start=ir_start[n],
                 return_ir_start=False,
+                automatic_trimming=automatic_trimming,
             )
     elif type(signal) is MultiBandSignal:
         ir_start = _check_ir_start_reverb(signal, ir_start)
@@ -92,7 +108,10 @@ def reverb_time(
         for ind in range(signal.number_of_bands):
             band_ir_start = None if ir_start is None else ir_start[ind, :]
             reverberation_times[ind, :] = reverb_time(
-                signal.bands[ind], mode, ir_start=band_ir_start
+                signal.bands[ind],
+                mode,
+                ir_start=band_ir_start,
+                automatic_trimming=automatic_trimming,
             )
     else:
         raise TypeError(
@@ -242,8 +261,7 @@ def find_ir_start(signal: Signal, threshold_dbfs: float = -20) -> np.ndarray:
     Returns
     -------
     start_index : `np.ndarray`
-        Index of IR start for each channel. Returns an integer when signal
-        only has one channel
+        Index of IR start for each channel.
 
     References
     ----------
@@ -255,7 +273,7 @@ def find_ir_start(signal: Signal, threshold_dbfs: float = -20) -> np.ndarray:
     start_index = np.empty(signal.number_of_channels, dtype=int)
     for n in range(signal.number_of_channels):
         start_index[n] = _find_ir_start(signal.time_data[:, n], threshold_dbfs)
-    return start_index.astype(int).squeeze()
+    return start_index.astype(int)
 
 
 def generate_synthetic_rir(
@@ -425,7 +443,11 @@ def generate_synthetic_rir(
     return rir
 
 
-def descriptors(rir: Signal | MultiBandSignal, mode: str = "d50"):
+def descriptors(
+    rir: Signal | MultiBandSignal,
+    mode: str = "d50",
+    automatic_trimming_rir: bool = True,
+):
     """Returns a desired room acoustics descriptor from an RIR.
 
     Parameters
@@ -444,6 +466,11 @@ def descriptors(rir: Signal | MultiBandSignal, mode: str = "d50"):
           of the lower-frequency octave bands (125, 250) to the higher ones
           (500, 1000). T20 is always used.
         - `'ts'`: Center time. It is the central time computed of the RIR.
+    automatic_trimming_rir : bool, optional
+        When `True`, the RIR is automatically trimmed after a certain energy
+        threshold relative to the peak value has been surpassed. See notes
+        for details on the algorithm. This parameter is ignored when computing
+        the bass ratio. Default: `True`.
 
     Returns
     -------
@@ -451,6 +478,17 @@ def descriptors(rir: Signal | MultiBandSignal, mode: str = "d50"):
         Array containing the output descriptor. If RIR is a `Signal`,
         it has shape (channel). If RIR is a `MultiBandSignal`, the array has
         shape (band, channel).
+
+    Notes
+    -----
+    - For defining the ending of the IR automatically, a smoothed envelope of
+      the energy time curve (ETC) is first computed. Then, the median of the
+      last third of this vector is used as a threshold. The first point to go
+      below this threshold is taken as the end. The underlying assumption is
+      that there might be only noise when this signal level is reached. If it
+      fails to deliver a meaningful result, no trimming is performed. It uses
+      the function `trim_rir`, envelope smoothing of 10 ms and threshold
+      factor 0.66. The start is found using find_ir_start with threshold 20 dB.
 
     """
     mode = mode.lower()
@@ -470,9 +508,14 @@ def descriptors(rir: Signal | MultiBandSignal, mode: str = "d50"):
         else:
             # Bass ratio
             return _bass_ratio(rir)
+
         desc = np.zeros(rir.number_of_channels)
         for ch in range(rir.number_of_channels):
-            desc[ch] = func(rir.time_data[:, ch], rir.sampling_rate_hz)
+            desc[ch] = func(
+                rir.time_data[:, ch],
+                rir.sampling_rate_hz,
+                automatic_trimming_rir,
+            )
     elif type(rir) is MultiBandSignal:
         assert mode != "br", (
             "Bass-ratio is not a valid descriptor to be used on a "
@@ -511,9 +554,76 @@ def _bass_ratio(rir: Signal) -> np.ndarray:
     return br
 
 
+def trim_rir(
+    rir: Signal,
+    channel: int = 0,
+    start_offset_s: float = 20e-3,
+    envelope_smoothing_ms: float = 10.0,
+    threshold_length_factor: float = 0.66,
+    threshold_percentile: float = 50.0,
+) -> Signal:
+    """Trim a RIR in the beginning and end following certain parameters. This
+    methods acts only on one channel and returns it trimmed. For defining the
+    ending, a smooth envelope of the energy time curve (ETC) is used. When
+    it goes below a certain threshold, it is trimmed. See notes for details.
+
+    Parameters
+    ----------
+    rir : `Signal`
+        Room impulse response to trim.
+    channel : int, optional
+        Channel to take from `rir`. Default: 0.
+    start_offset_s : float, optional
+        This is the time prior to the peak value that is left after trimming.
+        Pass 0 to start the RIR one sample prior to peak value or a very big
+        offset to avoid any trimming at the beginning. Default: 20e-3
+        (20 milliseconds).
+    envelope_smoothing_ms : float, optional
+        This defines the factor used for exponential smoothing of the ETC
+        envelope. Pass 0 to avoid any smoothing. Default: 10 (10 milliseconds).
+    threshold_length_factor : float, optional
+        Percentage of the total length from which to start the percentile
+        computation for defining the threshold. See notes for more details.
+        Default: 0.66.
+    threshold_percentile : float, optional
+        Percentile used to define the threshold. Default: 50.0 (median).
+
+    Returns
+    -------
+    trimmed_rir : `Signal`
+        RIR with the new length.
+
+    Notes
+    -----
+    - To define the threshold, a percentile of the trailing part of the ETC
+      envelope is used. The threshold factor refers to the percentage of the
+      total length from which to start computing the percentile. For instance,
+      0.8 means that the percentile is computed in the portion [0.8, 1] of the
+      length.
+
+    """
+    assert start_offset_s >= 0, "Offset must be at least 0"
+    assert envelope_smoothing_ms >= 0, "Envelope smoothing cannot be negative"
+    assert (
+        threshold_length_factor > 0 and threshold_length_factor < 1
+    ), "Threshold factor must be in ]0 and 1["
+    trimmed_rir = rir.get_channels(channel)
+    td = trimmed_rir.time_data.squeeze()
+    start, stop, _ = _trim_rir(
+        td,
+        rir.sampling_rate_hz,
+        start_offset_s,
+        envelope_smoothing_ms,
+        threshold_length_factor,
+        threshold_percentile,
+    )
+    trimmed_rir.time_data = td[start:stop]
+    return trimmed_rir
+
+
 def _check_ir_start_reverb(
     sig: Signal | MultiBandSignal, ir_start: int | np.ndarray | list | tuple
-) -> np.ndarray | list:
+) -> np.ndarray | list | None:
     """This method checks `ir_start` and parses it into the necessary form
     if relevant. For a `Signal`, it is a vector with the same number of
     elements as channels of `sig`. For `MultiBandSignal`, it is a 2d-array

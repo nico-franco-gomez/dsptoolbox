@@ -2,6 +2,7 @@
 General use filter banks to be created and given back as a filter bank
 object
 """
+
 import numpy as np
 from scipy.signal import windows, bilinear_zpk
 import warnings
@@ -12,6 +13,7 @@ from .. import (
     erb_frequencies,
 )
 from ._filterbank import LRFilterBank, GammaToneFilterBank, QMFCrossover
+from .._standard import _kaiser_window_fractional
 
 
 def linkwitz_riley_crossovers(
@@ -25,15 +27,29 @@ def linkwitz_riley_crossovers(
         Frequencies at which to set the crossovers.
     order : array-like
         Order of the crossovers. The higher, the steeper.
+        See notes for more details.
     sampling_rate_hz : int
         Sampling rate for the filterbank.
 
     Returns
     -------
-    LRFilterBank
+    `LRFilterBank`
         Filter bank in form of LRFilterBank class which contains the same
         methods as the FilterBank class but is generated with different
         internal methods.
+
+    Notes
+    -----
+    - The crossover orders are doubled when creating crossovers with even
+      orders. Odd orders are not doubled. It follows that:
+        - Passed order -> Real order: -x dB / Octave
+        - 1 -> 1: -6 dB / Octave
+        - 2 -> 4: -24 dB / Octave
+        - 3 -> 3: -18 dB / Octave
+        - 4 -> 8: -48 dB / Octave
+        - 5 -> 5: -30 dB / Octave
+        - 6 -> 12: -72 dB / Octave
+        - etc...
 
     """
     return LRFilterBank(crossover_frequencies_hz, order, sampling_rate_hz)
@@ -142,13 +158,13 @@ def reconstructing_fractional_octave_bands(
             phi = 0.5 * (phi + 1)
 
             # apply fade out to current channel
-            g[
-                b_idx - 1, k_1[b_idx] - P[b_idx] : k_1[b_idx] + P[b_idx] + 1
-            ] = np.cos(np.pi / 2 * phi)
+            g[b_idx - 1, k_1[b_idx] - P[b_idx] : k_1[b_idx] + P[b_idx] + 1] = (
+                np.cos(np.pi / 2 * phi)
+            )
             # apply fade in in to next channel
-            g[
-                b_idx, k_1[b_idx] - P[b_idx] : k_1[b_idx] + P[b_idx] + 1
-            ] = np.sin(np.pi / 2 * phi)
+            g[b_idx, k_1[b_idx] - P[b_idx] : k_1[b_idx] + P[b_idx] + 1] = (
+                np.sin(np.pi / 2 * phi)
+            )
 
         # set current and next channel to zero outside their range
         g[b_idx - 1, k_1[b_idx] + P[b_idx] :] = 0.0
@@ -416,25 +432,44 @@ def weightning_filter(
     return weightning_filter
 
 
-# Not yet working
-# def cqf_crossover(lowpass: Filter) -> CQFCrossover:
-#     """This creates conjugate quadrature filters that work as a two band,
-#     maximally decimated filter bank. This crossover has perfect magnitude
-#     reconstruction.
+def complementary_fir_filter(fir: Filter) -> Filter:
+    """Returns a complementary filter for an FIR filter with linear phase.
+    It returns for instance a lowpass from a highpass prototype. Combined,
+    they deliver perfect magnitude reconstruction (with some quantization
+    error) and a constant group delay. This method might only return meaningful
+    results if the filter prototype has linear phase. It is the most precise
+    for odd lengths, but it can be used for even lengths as well.
 
-#     Parameters
-#     ----------
-#     lowpass : `Filter`
-#         Lowpass filter prototype with which to create the other filters.
+    Parameters
+    ----------
+    fir : `Filter`
+        Filter prototype with linear phase.
 
-#     Returns
-#     -------
-#     fb : `CQFCrossover`
-#         Conjugate quadrature filters crossover.
+    Returns
+    -------
+    fir_complementary : `Filter`
+        Complementary filter.
 
-#     References
-#     ----------
-#     - https://tinyurl.com/2cssq2oa
+    Notes
+    -----
+    - For even length FIR filters, a windowed sinc function has to be computed.
+      It uses by default the length of the filter together with a kaiser
+      window with side lobe suppression of 60 dB. Depending on the filter
+      length, this might give a small error for in the summed magnitude
+      response of both filters.
 
-#     """
-#     return CQFCrossover(lowpass)
+    """
+    assert fir.filter_type == "fir", "Filter prototype must be an FIR filter"
+    b = fir.ba[0].copy()
+    odd_length = len(b) % 2 == 1
+
+    if odd_length:
+        impulse_index = np.argmax(np.abs(b))
+        b *= -1
+        b[impulse_index] += 1
+    else:
+        h = np.sinc(np.arange(-len(b) // 2 + 1, len(b) // 2 + 1) - 0.5)
+        b = h * _kaiser_window_fractional(len(h), 60, 0.5) - b
+
+    fir_complementary = Filter("other", {"ba": [b, [1]]}, fir.sampling_rate_hz)
+    return fir_complementary

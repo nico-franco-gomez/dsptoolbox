@@ -1,5 +1,6 @@
 import dsptoolbox as dsp
 import pytest
+import numpy as np
 
 
 class TestFilterbanksModule:
@@ -98,3 +99,69 @@ class TestFilterbanksModule:
         fs_hz = 5_000
         dsp.filterbanks.weightning_filter("a", fs_hz)
         dsp.filterbanks.weightning_filter("c", fs_hz)
+
+    def test_complementary_filter_fir(self):
+        fs_hz = 5000
+        f = dsp.Filter(
+            "fir",
+            {"type_of_pass": "highpass", "order": 120, "freqs": 400},
+            fs_hz,
+        )
+        f2 = dsp.filterbanks.complementary_fir_filter(f)
+        coefficients = f.get_coefficients("ba")[0]
+
+        # Get perfect impulse
+        h = np.zeros(len(coefficients))
+        h[len(coefficients) // 2] = 1
+
+        # Assert that both filters summed give a perfect impulse
+        assert np.all(
+            np.isclose(h, f2.get_coefficients("ba")[0] + coefficients)
+        )
+
+        # Check functionality for even length
+        f = dsp.Filter(
+            "fir",
+            {"type_of_pass": "lowpass", "order": 121, "freqs": 400},
+            fs_hz,
+        )
+        dsp.filterbanks.complementary_fir_filter(f)
+
+    def test_phase_linearizer(self):
+        # Get some phase response
+        fs_hz = 48_000
+        fb = dsp.filterbanks.linkwitz_riley_crossovers(
+            [570, 2000], order=[2, 2], sampling_rate_hz=fs_hz
+        )
+        ir = fb.get_ir(length_samples=2**14).collapse()
+        ir.set_spectrum_parameters(method="standard")
+        _, sp = ir.get_spectrum()
+
+        # Initialize with wrong length
+        with pytest.raises(AssertionError):
+            dsp.filterbanks.PhaseLinearizer(
+                np.angle(sp[:, 0]), len(ir) // 2, fs_hz
+            )
+
+        # Phase linearizer - Without interpolating
+        pl = dsp.filterbanks.PhaseLinearizer(
+            np.angle(sp[:, 0]), len(ir), fs_hz
+        )
+        with pytest.raises(AssertionError):
+            pl.set_parameters(-10, 2)
+        pl.get_filter_as_ir()
+        pl.get_filter()
+
+        # Parameters
+        pl.set_parameters(80, 0.8)
+        pl.set_parameters()
+
+        # Phase linearizer – with interpolation
+        ir = fb.get_ir(length_samples=2**9).collapse()
+        ir.set_spectrum_parameters(method="standard")
+        _, sp = ir.get_spectrum()
+        pl = dsp.filterbanks.PhaseLinearizer(
+            np.angle(sp[:, 0]), len(ir), fs_hz
+        )
+        pl.get_filter_as_ir()
+        pl.get_filter()

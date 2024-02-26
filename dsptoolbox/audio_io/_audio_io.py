@@ -1,6 +1,7 @@
 """
 Backend for audio io module
 """
+
 from sounddevice import CallbackStop
 from .. import Signal, normalize, fade
 from numpy import ndarray

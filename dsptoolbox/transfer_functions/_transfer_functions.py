@@ -1,6 +1,7 @@
 """
 Backend for transfer functions methods
 """
+
 import numpy as np
 from scipy.signal import get_window, lfilter
 from .._general_helpers import (
@@ -53,43 +54,106 @@ def _spectral_deconvolve(
 def _window_this_ir_tukey(
     vec,
     total_length: int,
-    window_type: str = "hann",
-    exp2_trim: int = 13,
+    window_type: str | tuple | list = "hann",
     constant_percentage: float = 0.75,
     at_start: bool = True,
+    offset_samples: int = 0,
+    left_to_right_flank_ratio: float = 1.0,
+    adaptive_window: bool = True,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """This function finds the index of the impulse and trims or windows it
     accordingly. Window used and the start sample are returned.
 
     It is defined to place the impulse at the start of the constant area
-    of the tukey window. However, flanks can be any type.
+    of the tukey window. However, an offset for delaying the impulse can be
+    passed. Flanks can be any type.
 
     """
+    # Start sample for vector
     start_sample = 0
-    # Trimming
-    if exp2_trim is not None:
-        # Padding
-        if 2**exp2_trim >= len(vec):
-            # Padding
-            vec = np.hstack([vec, np.zeros(total_length - len(vec))])
-            length = np.argmax(abs(vec))
+
+    # Expected flank length
+    flank_length_total = int((1 - constant_percentage) * total_length)
+    left_flank_length = int(
+        flank_length_total * 0.5 * left_to_right_flank_ratio
+    )
+    right_flank_length = flank_length_total - left_flank_length
+
+    # Maximum
+    impulse_index = np.argmax(np.abs(vec))
+
+    if not adaptive_window:
+        # If offset and impulse index are outside or inside
+        padding_left = 0
+        if impulse_index - offset_samples < 0:
+            pad_length = -(impulse_index - offset_samples)
+            vec = np.pad(vec, ((pad_length, 0)))
+            start_sample += pad_length
+            padding_left += pad_length
         else:
-            # Selecting
-            assert (
-                constant_percentage > 0 and constant_percentage < 1
-            ), "Constant percentage must be between 0 and 1"
-            length = int((1 - constant_percentage) * 2**exp2_trim) // 2
-            ind_max = np.argmax(abs(vec))
-            if ind_max - length < 0:
-                length = ind_max
-            start_sample = ind_max - length
-            vec = vec[start_sample : start_sample + 2**exp2_trim]
+            impulse_index -= offset_samples
+
+        # If left flank is longer than the amount of samples expected
+        if impulse_index - left_flank_length < 0:
+            pad_length = -(impulse_index - left_flank_length)
+            vec = np.pad(vec, ((pad_length, 0)))
+            start_sample += pad_length
+            padding_left += pad_length
+        else:
+            vec = vec[impulse_index - left_flank_length :]
+            start_sample = impulse_index - left_flank_length
+
+        # If total length is larger than actual length
+        padding_right = 0
+        if len(vec) < total_length:
+            pad_length = total_length - len(vec)
+            vec = np.pad(vec, ((0, pad_length)))
+            padding_right += pad_length
+        else:
+            vec = vec[:total_length]
     else:
-        length = np.argmax(abs(vec))
-    points = [0, length, total_length - length, total_length]
+        # Left flank adaptation
+        if impulse_index - offset_samples - left_flank_length < 0:
+            left_flank_length = max(0, impulse_index - offset_samples)
+        else:
+            start_sample = impulse_index - offset_samples - left_flank_length
+            vec = vec[start_sample:]
+
+        # Right flank adaptation
+        if len(vec) > total_length:
+            vec = vec[:total_length]
+
+        padding_after_adaptation = 0
+        if len(vec) < total_length:
+            padding_after_adaptation = total_length - len(vec)
+            total_length = len(vec)
+
+        if (
+            left_flank_length + offset_samples
+            > total_length - right_flank_length
+        ):
+            right_flank_length = (
+                total_length - left_flank_length - offset_samples - 1
+            )
+
+    points = [
+        0,
+        left_flank_length,
+        total_length - right_flank_length,
+        total_length,
+    ]
     window = _calculate_window(
         points, total_length, window_type, at_start=at_start
     )
+
+    if not adaptive_window:
+        window[:padding_left] = 0
+        if padding_right != 0:
+            window[-padding_right:] = 0
+    else:
+        vec = np.pad(vec, ((0, padding_after_adaptation)))
+        window = np.pad(window, ((0, padding_after_adaptation)))
+
     return vec * window, window, start_sample
 
 
@@ -128,8 +192,8 @@ def _get_minimum_phase_spectrum_from_real_cepstrum(time_data: np.ndarray):
 
     Returns
     -------
-    min_phase_time_data : `np.ndarray`
-        New time series.
+    `np.ndarray`
+        New spectrum with minimum phase.
 
     """
     # Real cepstrum
@@ -180,6 +244,7 @@ def _window_this_ir(
 
     w = get_window(window_type, half_length * 2 + 1, False)
 
+    # Define start index for time data and window
     if peak_ind - half_length < 0:
         ind_low_td = 0
         ind_low_w = half_length - peak_ind
@@ -187,6 +252,11 @@ def _window_this_ir(
         ind_low_td = peak_ind - half_length
         ind_low_w = 0
 
+    # Pad vector if necessary
+    if total_length - ind_low_td > len(vec):
+        vec = np.pad(vec, ((0, total_length + ind_low_td - len(vec))))
+
+    # Get second half
     if peak_ind + half_length + 1 > len(vec):
         ind_up_td = len(vec)
         ind_up_w = peak_ind + half_length + 1 - len(vec)
@@ -194,17 +264,20 @@ def _window_this_ir(
         ind_up_td = peak_ind + half_length + 1
         ind_up_w = len(w)
 
+    # Get time data and window
     w = w[ind_low_w:ind_up_w]
     td = vec[ind_low_td:ind_up_td] * w
 
+    # Flip back if needed
     if flipping:
         td = td[::-1]
         w = w[::-1]
 
-    # Length adaptation
+    # Final length adaptation (ensure length)
     if len(td) != total_length:
         td = _pad_trim(td, total_length)
         w = _pad_trim(w, total_length)
+
     return td, w, ind_low_td
 
 

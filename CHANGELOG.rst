@@ -14,6 +14,40 @@ adheres to `Semantic Versioning <http://semver.org/spec/v2.0.0.html>`_.
 - Validation for results from tests in every module (so far many tests are
   only regarding functionality)
 
+`0.3.0 <https://pypi.org/project/dsptoolbox/0.3.0>`_ - 
+---------------------
+
+Added
+~~~~~~
+- added `complementary_fir_filter` in ``filterbanks`` module
+- `window_ir` in ``transfer_functions`` is now adaptive to the impulse
+- added automatic trimming of room impulse responses for reverberation time
+  and descriptors using a smooth envelope of the energy time curve. Additionally,
+  added warning if `reverb_time` with Topt does not seem to find a good
+  linear fit for the energy decay curve
+- partly refactored `linkwitz_riley_crossover` and allow for odd order
+  crossovers
+- `PhaseLinearizer` in ``filterbanks`` module is now available for designing
+  FIR filters to linearize a given phase response
+- added `trim_rir` in ``room_acoustics`` for trimming RIRs in a parametrized
+  manner
+
+Bugfix
+~~~~~~
+- corrected scaling of spectrum in the case of amplitude spectrum in `signal`
+  class
+- corrected computation of minimum phase using log hilbert method
+- corrected a case in `window_centered_ir` where padding was needed
+- fixed a bug for `MultiBandSignal` where it could not add new bands in a
+  multirate configuration
+
+Misc
+~~~~~
+- docs and tests
+- refactored `window_ir` for more flexibility and consistency
+- now `compute_transfer_function` also returns the coherence
+- change `LatticeLadderFilter` to be part of ``filterbanks`` module
+
 `0.2.16 <https://pypi.org/project/dsptoolbox/0.2.16>`_ - 
 ---------------------
 Added

@@ -57,8 +57,8 @@ class FilterBank:
         if info is None:
             info = {}
         self.same_sampling_rate = same_sampling_rate
-        self.filters = filters
-        self.info = self.info | info
+        self.filters = filters if filters is not None else []
+        self.info: dict = info
 
     def _generate_metadata(self):
         """Generates the info dictionary with metadata about the FilterBank."""
@@ -207,6 +207,7 @@ class FilterBank:
         self.filters = n_f
         if return_filter:
             return f
+        return None
 
     def swap_filters(self, new_order):
         """Rearranges the filters in the new given order.
@@ -400,13 +401,21 @@ class FilterBank:
             Impulse response of the filter bank.
 
         """
-        # No plotting for multirate system
         if not self.same_sampling_rate:
-            warn(
-                "Plotting for multirate FilterBank is not supported, "
-                + "skipping IR generation"
-            )
-            return None
+            assert (
+                mode.lower() == "parallel"
+            ), "Multirate filter bank can only deliver an IR in parallel mode"
+            mb = MultiBandSignal(same_sampling_rate=False)
+            sr = self.sampling_rate_hz
+            for ind, f in enumerate(self.filters):
+                d = dirac(length_samples, 0, 1, sr[ind])
+                mb.add_band(
+                    f.filter_signal(
+                        d, activate_zi=test_zi, zero_phase=zero_phase
+                    )
+                )
+            return mb
+
         # Obtain biggest filter order from FilterBank
         max_order = 0
         for b in self.filters:
@@ -464,7 +473,7 @@ class FilterBank:
         range_hz=[20, 20e3],
         length_samples: int = 2048,
         test_zi: bool = False,
-    ) -> tuple[Figure, Axes]:
+    ) -> tuple[Figure, Axes] | None:
         """Plots the magnitude response of each filter.
 
         Parameters
@@ -585,7 +594,7 @@ class FilterBank:
         unwrap: bool = False,
         length_samples: int = 2048,
         test_zi: bool = False,
-    ) -> tuple[Figure, Axes]:
+    ) -> tuple[Figure, Axes] | None:
         """Plots the phase response of each filter.
 
         Parameters
@@ -698,7 +707,7 @@ class FilterBank:
         range_hz=[20, 20e3],
         length_samples: int = 2048,
         test_zi: bool = False,
-    ) -> tuple[Figure, Axes]:
+    ) -> tuple[Figure, Axes] | None:
         """Plots the phase response of each filter.
 
         Parameters
