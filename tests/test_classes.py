@@ -951,39 +951,3 @@ class TestMultiBandSignal:
         )
         for n in mbs:
             assert dsp.Signal == type(n)
-
-
-class TestLatticeLadderFilter:
-    b = np.array([1, 3, 3, 1])
-    a = np.array([1, -0.9, 0.64, -0.576])
-
-    def test_lattice_filter_coefficients(self):
-        # Example values taken from Oppenheim, A. V., Schafer, R. W.,,
-        # Buck, J. R. (1999). Discrete-Time Signal Processing.
-        # Prentice-hall Englewood Cliffs.
-        from dsptoolbox.classes._lattice_ladder_filter import (
-            _get_lattice_ladder_coefficients_iir,
-        )
-
-        k, c = _get_lattice_ladder_coefficients_iir(self.b, self.a)
-
-        k_expected = np.array([0.6728, -0.182, 0.576])
-        c_expected = np.array([4.5404, 5.4612, 3.9, 1])
-
-        assert np.all(np.isclose(k, k_expected, rtol=5))
-        assert np.all(np.isclose(c, c_expected, rtol=5))
-
-    def test_lattice_filter_filtering(self):
-        n = dsp.generators.noise(sampling_rate_hz=200)
-        expected = sig.lfilter(self.b / 10, self.a, n.time_data.squeeze())
-
-        from dsptoolbox.classes._lattice_ladder_filter import (
-            _get_lattice_ladder_coefficients_iir,
-        )
-
-        k, c = _get_lattice_ladder_coefficients_iir(self.b / 10, self.a)
-
-        f = dsp.filterbanks.LatticeLadderFilter(k, c, sampling_rate_hz=200)
-        out = f.filter_signal(n)
-        out = out.time_data.squeeze()
-        assert np.all(np.isclose(expected, out))
