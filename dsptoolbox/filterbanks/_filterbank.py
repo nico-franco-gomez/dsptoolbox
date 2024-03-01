@@ -8,7 +8,14 @@ from os import sep
 from pickle import dump, HIGHEST_PROTOCOL
 from copy import deepcopy
 
-from scipy.signal import sosfilt, sosfilt_zi, butter, sosfiltfilt
+from scipy.signal import (
+    sosfilt,
+    sosfilt_zi,
+    butter,
+    sosfiltfilt,
+    bilinear,
+    tf2sos,
+)
 from ..classes import Signal, MultiBandSignal, FilterBank, Filter
 
 from ..generators import dirac
@@ -26,7 +33,10 @@ class LRFilterBank:
     It is a cascaded structure that handles every band and its respective
     initial values for the filters to work in streaming applications. Since
     the crossovers need allpasses at every other crossover frequency, the
-    structure used for the zi's is very convoluted.
+    structure used for the zi's is somewhat convoluted.
+
+    For 4th order crossovers, two cascaded topology-preserving filters can
+    be used.
 
     """
 
@@ -75,8 +85,9 @@ class LRFilterBank:
             if o % 2 != 0 and o != 1:
                 warn(
                     "Order of the crossovers is recommended to be even. "
-                    + "Odd orders cannot perform zero-phase filtering "
-                    + "with perfect magnitude reconstruction"
+                    + "Odd orders have band crossing at -3 dB and are not "
+                    + "really Linkwitz-Riley crossovers, although they have "
+                    + "perfect magnitude reconstruction."
                 )
         freqs_order = freqs.argsort()
         self.freqs = freqs[freqs_order]
@@ -89,7 +100,7 @@ class LRFilterBank:
         #
         self._create_filters_sos()
         self._generate_metadata()
-        self.info = self.info | info
+        self.info: dict = self.info | info
 
     def _compute_center_frequencies(self):
         """Compute center frequencies from crossover frequencies."""
@@ -118,15 +129,30 @@ class LRFilterBank:
         """
         self.sos = []
         for i in range(self.number_of_cross):
+            if self.order[i] == 2:
+                lp, hp = _get_2nd_order_linkwitz_riley(
+                    self.freqs[i], self.sampling_rate_hz
+                )
+                self.sos.append([lp, hp])
+                continue
+
+            if self.order[i] % 2 == 0:
+                assert (
+                    self.order[i] % 4 == 0
+                ), f"{self.order[i]} order is not supported for crossover"
+                order = self.order[i] // 2
+            else:
+                order = self.order[i]
+
             lp = butter(
-                self.order[i],
+                order,
                 self.freqs[i],
                 btype="lowpass",
                 fs=self.sampling_rate_hz,
                 output="sos",
             )
             hp = butter(
-                self.order[i],
+                order,
                 self.freqs[i],
                 btype="highpass",
                 fs=self.sampling_rate_hz,
@@ -247,7 +273,9 @@ class LRFilterBank:
         elif zero_phase:
             for cn in range(self.number_of_cross):
                 # Select SOS
-                factor = 2 if self.order[cn] % 2 == 0 else 1
+                factor = (
+                    1 if self.order[cn] % 2 == 1 or self.order[cn] == 2 else 2
+                )
                 valid_dim = self.sos[cn][0].shape[0] // factor
                 # Filter
                 new_time_data[:, :, cn] = sosfiltfilt(
@@ -1359,3 +1387,44 @@ def _reconstruct_from_crossover_upsample(
     )
     rec_sig.time_data += temp_sig.time_data
     return rec_sig
+
+
+def _get_2nd_order_linkwitz_riley(
+    f0: float, sampling_rate_hz: int
+) -> tuple[np.ndarray, np.ndarray]:
+    """Return filters (SOS representation) for a 2nd-order linkwitz-riley
+    crossover. These are based on sallen-key filters (with Q=0.5). In order to
+    obtain an allpass sum response, one band must be phase-inverted. Here,
+    the high band is phase-inverted.
+
+    Parameters
+    ----------
+    f0 : float
+        Crossover frequency.
+    sampling_rate_hz : int
+        Sampling rate in Hz.
+
+    Returns
+    -------
+    low_sos : `np.ndarray`
+        SOS for low band.
+    high_sos : `np.ndarray`
+        SOS for high band.
+
+    """
+    # Q = 0.5 so damping coefficient is 1.
+    omega_0 = 2 * np.pi * f0
+    omega_02 = omega_0**2
+    warped = np.pi * f0 / np.tan(np.pi * f0 / sampling_rate_hz)
+
+    # Lowpass
+    a_s = [1, 2 * omega_0, omega_02]
+    b_s = [omega_02]
+    b, a = bilinear(b_s, a_s, warped)
+    low_sos = tf2sos(b, a)
+
+    # Highpass
+    b_s = [-1, 0, 0]  # Phase-inversion here
+    b, a = bilinear(b_s, a_s, warped)
+    high_sos = tf2sos(b, a)
+    return low_sos, high_sos
