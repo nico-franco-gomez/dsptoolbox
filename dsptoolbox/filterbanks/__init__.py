@@ -40,7 +40,7 @@ from .filterbanks import (
 
 from ..classes._lattice_ladder_filter import LatticeLadderFilter
 from ..classes._phaseLinearizer import PhaseLinearizer
-from ..classes._tpt_filter import TPTFilter
+from ..classes._vsfilter import VariableStateFilter
 
 __all__ = [
     "linkwitz_riley_crossovers",
@@ -52,5 +52,5 @@ __all__ = [
     "complementary_fir_filter",
     "LatticeLadderFilter",
     "PhaseLinearizer",
-    "TPTFilter",
+    "VariableStateFilter",
 ]

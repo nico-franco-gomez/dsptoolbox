@@ -1,25 +1,25 @@
 """
-Topology-Preserving (trapezoidal integrators) 2-Pole multimode filter
+Variable-State filter topology-Preserving (trapezoidal integrators) 2-Pole multimode filter
 """
 
 import numpy as np
 from matplotlib.figure import Figure
 from matplotlib.axes import Axes
-from ..plots import general_plot
 from .signal_class import Signal
 from .multibandsignal import MultiBandSignal
 from ..generators import dirac
 
 
-class TPTFilter:
-    """This is a filter based on the topology-preserving transform
-    (trapezoidal integrator)."""
+class VariableStateFilter:
+    """This is a variable state filter discretized using the
+    topology-preserving transform (trapezoidal integrator)."""
 
     def __init__(
         self, frequency_hz: float, resonance: float, sampling_rate_hz: int
     ):
-        """Construct a (TPT) 2-pole multimode filter. The implementation is
-        based on [1], but the resonance parameter is here equal to 2R.
+        """Construct a variable state, 2-pole multimode filter. The
+        implementation is based on [1], but the resonance parameter is here
+        equal to 2R.
 
         Parameters
         ----------
@@ -152,7 +152,7 @@ class TPTFilter:
         )
 
     def get_ir(self, length_samples: int = 1024) -> MultiBandSignal:
-        """Get an IR from the TPT Filter.
+        """Get an IR from the VS-Filter.
 
         Parameters
         ----------
