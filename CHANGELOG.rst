@@ -14,6 +14,18 @@ adheres to `Semantic Versioning <http://semver.org/spec/v2.0.0.html>`_.
 - Validation for results from tests in every module (so far many tests are
   only regarding functionality)
 
+`0.3.2 <https://pypi.org/project/dsptoolbox/0.3.2>`_ - 
+---------------------
+
+Added
+~~~~~~~
+- added variable state filter `VSFilter` discretized with a topology-preserving
+  transform
+
+Misc
+~~~~~~
+- Corrected orders for `linkwitz_riley_crossover` and added 2nd order
+
 `0.3.1 <https://pypi.org/project/dsptoolbox/0.3.1>`_ - 
 ---------------------
 
