@@ -26,8 +26,8 @@ def linkwitz_riley_crossovers(
     crossover_frequencies_hz : array-like
         Frequencies at which to set the crossovers.
     order : array-like
-        Order of the crossovers. The higher, the steeper.
-        See notes for more details.
+        Order of the crossovers. The higher, the steeper. See notes for
+        more details.
     sampling_rate_hz : int
         Sampling rate for the filterbank.
 
@@ -36,19 +36,24 @@ def linkwitz_riley_crossovers(
     `LRFilterBank`
         Filter bank in form of LRFilterBank class which contains the same
         methods as the FilterBank class but is generated with different
-        internal methods.
+        internal implementations.
 
     Notes
     -----
-    - The crossover orders are doubled when creating crossovers with even
-      orders. Odd orders are not doubled. It follows that:
-        - Passed order -> Real order: -x dB / Octave
-        - 1 -> 1: -6 dB / Octave
-        - 2 -> 4: -24 dB / Octave
-        - 3 -> 3: -18 dB / Octave
-        - 4 -> 8: -48 dB / Octave
-        - 5 -> 5: -30 dB / Octave
-        - 6 -> 12: -72 dB / Octave
+    - Only even orders correspond to Linkwitz-Riley crossovers, but odd orders
+      are still supported, since they deliver perfect magnitude reconstruction
+      as well. Odd orders have band crossing at -3 dB, even orders at -6 dB.
+    - All crossovers are butterworth filters except for 2nd order which are
+      based on sallen-key filters (Q=0.5) with phase-inverted high band.
+    - Slopes:
+        - Order -> -x dB / Octave
+        - 1 -> -6 dB / Octave
+        - 2 -> -12 dB / Octave
+        - 3 -> -18 dB / Octave
+        - 4 -> -24 dB / Octave
+        - 5 -> -30 dB / Octave
+        - 7 -> -42 dB / Octave
+        - 8 -> -48 dB / Octave
         - etc...
 
     """
