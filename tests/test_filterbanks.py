@@ -169,7 +169,7 @@ class TestFilterbanksModule:
 
     def test_VSFilter(self):
         fs_hz = 10_000
-        f = dsp.filterbanks.VariableStateFilter(500, np.sqrt(2), fs_hz)
+        f = dsp.filterbanks.StateVariableFilter(500, np.sqrt(2), fs_hz)
 
         n = dsp.generators.noise(sampling_rate_hz=fs_hz)
         f.filter_signal(n)

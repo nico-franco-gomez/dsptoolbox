@@ -1,5 +1,6 @@
 """
-Variable-State filter topology-Preserving (trapezoidal integrators) 2-Pole multimode filter
+State variable filter topology-Preserving (trapezoidal integrators)
+2-Pole multimode filter
 """
 
 import numpy as np
@@ -10,14 +11,14 @@ from .multibandsignal import MultiBandSignal
 from ..generators import dirac
 
 
-class VariableStateFilter:
-    """This is a variable state filter discretized using the
+class StateVariableFilter:
+    """This is a state variable filter discretized using the
     topology-preserving transform (trapezoidal integrator)."""
 
     def __init__(
         self, frequency_hz: float, resonance: float, sampling_rate_hz: int
     ):
-        """Construct a variable state, 2-pole multimode filter. The
+        """Construct a state variable, 2-pole multimode filter. The
         implementation is based on [1], but the resonance parameter is here
         equal to 2R.
 

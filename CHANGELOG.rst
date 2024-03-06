@@ -14,13 +14,13 @@ adheres to `Semantic Versioning <http://semver.org/spec/v2.0.0.html>`_.
 - Validation for results from tests in every module (so far many tests are
   only regarding functionality)
 
-`0.3.2 <https://pypi.org/project/dsptoolbox/0.3.2>`_ - 
+`0.3.3 <https://pypi.org/project/dsptoolbox/0.3.3>`_ - 
 ---------------------
 
 Added
 ~~~~~~~
-- added variable state filter `VSFilter` discretized with a topology-preserving
-  transform
+- added state variable filter `StateVariableFilter` discretized with a
+  topology-preserving transform
 
 Misc
 ~~~~~~
