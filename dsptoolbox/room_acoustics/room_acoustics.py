@@ -622,6 +622,8 @@ def trim_rir(
         threshold_percentile,
     )
     trimmed_rir.time_data = td[start:stop]
+    if hasattr(trimmed_rir, "window"):
+        del trimmed_rir.window
     return trimmed_rir, start, stop
 
 
