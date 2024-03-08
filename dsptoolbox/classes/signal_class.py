@@ -1083,18 +1083,21 @@ class Signal:
         )
         if normalize_at_peak:
             etc -= peak_values
+        db_type = "dBFS"
         if self.calibrated_signal and not normalize_at_peak:
             # Convert to dB
             factor = 20 * np.log10(2e-5)
             etc -= factor
             peak_values -= factor
+            db_type = "dB"
 
         fig, ax = general_subplots_line(
             self.time_vector_s,
             etc,
             sharex=True,
             ylabels=[
-                f"Channel {n} / dB" for n in range(self.number_of_channels)
+                f"Channel {n} / {db_type}"
+                for n in range(self.number_of_channels)
             ],
             xlabels="Time / s",
             returns=True,
