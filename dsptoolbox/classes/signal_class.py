@@ -1044,6 +1044,90 @@ class Signal:
             ax[n].set_ylim([-mx, mx])
         return fig, ax
 
+    def plot_spl(
+        self, normalize_at_peak: bool = False, range_db: float | None = 100.0
+    ) -> tuple[Figure, Axes]:
+        """Plots the momentary sound pressure level (dB or dBFS) of each
+        channel. If the signal is calibrated and not normalized at peak, the
+        values correspond to dB, otherwise they are dBFS.
+
+        Parameters
+        ----------
+        normalize_at_peak : bool, optional
+            When `True`, each channel gets normalize by its peak value.
+            Default: `False`.
+        range_db : float, optional
+            This is the range in dB used for plotting. Each plot will be in the
+            range [1 + peak - range_db, 1 + peak]. Pass `None` to avoid
+            setting any range. Default: 100.
+
+        Returns
+        -------
+        fig : `matplotlib.figure.Figure`
+            Figure.
+        ax : `matplotlib.axes.Axes`
+            Axes.
+
+        Notes
+        -----
+        - All values are clipped to be at least -800 dBFS.
+        - No time averaging is done in this function.
+
+        """
+        if not hasattr(self, "time_vector_s"):
+            self._generate_time_vector()
+
+        peak_values = 20 * np.log10(np.max(np.abs(self.time_data), axis=0))
+        etc = 20 * np.log10(
+            np.clip(np.abs(self.time_data), a_min=1e-40, a_max=None)
+        )
+        if normalize_at_peak:
+            etc -= peak_values
+        if self.calibrated_signal and not normalize_at_peak:
+            # Convert to dB
+            factor = 20 * np.log10(2e-5)
+            etc -= factor
+            peak_values -= factor
+
+        fig, ax = general_subplots_line(
+            self.time_vector_s,
+            etc,
+            sharex=True,
+            ylabels=[
+                f"Channel {n} / dB" for n in range(self.number_of_channels)
+            ],
+            xlabels="Time / s",
+            returns=True,
+        )
+
+        add_to_peak = 1  # Add 1 dB for better plotting
+        max_values = (
+            peak_values + add_to_peak
+            if not normalize_at_peak
+            else np.ones(self.number_of_channels)
+        )
+
+        for n in range(self.number_of_channels):
+            if hasattr(self, "window"):
+                ax[n].plot(
+                    self.time_vector_s,
+                    20
+                    * np.log10(
+                        np.clip(
+                            np.abs(self.window[:, n] / 1.1),
+                            a_min=1e-40,
+                            a_max=None,
+                        )
+                    )
+                    + max_values[n],
+                    alpha=0.75,
+                )
+            if range_db is not None:
+                ax[n].set_ylim(
+                    [max_values[n] - np.abs(range_db), max_values[n]]
+                )
+        return fig, ax
+
     def plot_group_delay(self, range_hz=[20, 20000]) -> tuple[Figure, Axes]:
         """Plots group delay of each channel.
         Only works if `signal_type in ('ir', 'h1', 'h2', 'h3', 'rir', 'chirp',
