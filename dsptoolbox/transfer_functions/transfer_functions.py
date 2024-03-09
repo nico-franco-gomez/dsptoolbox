@@ -1249,18 +1249,20 @@ def window_frequency_dependent(
 
     # Optimal length for FFT
     fast_length = next_fast_length_fft(td.shape[0], True)
-    td = np.pad(td, ((0, fast_length - len(td)), (0, 0)))
+    td = np.pad(td, ((0, fast_length - td.shape[0]), (0, 0)))
 
+    # Construct window vectors
+    n = np.zeros_like(td)
     for ch in range(td.shape[1]):
-        # Construct window centered around impulse
-        n = np.arange(-ind_max[ch], td.shape[0] - ind_max[ch])
-        for ind, ind_f in enumerate(inds_f):
-            # Alpha such that window is exactly 0.5 after the number of
-            # required samples for each frequency
-            alpha = alpha_factor / cycles_per_freq_samples[ind]
-            w = np.exp(-0.5 * (alpha * n[: td.shape[0]] / half) ** 2)
+        n[:, ch] = np.arange(-ind_max[ch], td.shape[0] - ind_max[ch])
 
-            spec[ind, ch] = rfft_scipy(w * td[:, ch])[ind_f]
+    for ind, ind_f in enumerate(inds_f):
+        # Alpha such that window is exactly 0.5 after the number of
+        # required samples for each frequency
+        alpha = alpha_factor / cycles_per_freq_samples[ind]
+        w = np.exp(-0.5 * (alpha * n / half) ** 2)
+
+        spec[ind, :] = rfft_scipy(w * td, axis=0)[ind_f]
     return f, spec
 
 
