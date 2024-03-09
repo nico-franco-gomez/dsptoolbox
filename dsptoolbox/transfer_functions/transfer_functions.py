@@ -3,8 +3,8 @@ Methods used for acquiring and windowing transfer functions
 """
 
 import numpy as np
-from scipy.signal import minimum_phase as min_phase_scipy
-from scipy.signal import hilbert
+from scipy.signal import minimum_phase as min_phase_scipy, hilbert
+from scipy.fft import rfft as rfft_scipy, next_fast_len as next_fast_length_fft
 
 from ._transfer_functions import (
     _spectral_deconvolve,
@@ -1206,12 +1206,12 @@ def window_frequency_dependent(
       right-windowed using, for instance, a tukey window. However, its length
       should be somewhat larger than the longest window (this depends on the
       number of cycles and lowest frequency).
-    - The length of the IR should be a power of 2 and not very long in general
-      to speed up the computation.
+    - The length of the IR should be as short as possible for a fast
+      computation. If a large band should be computed, it is recommended to
+      divide into smaller bands with shorter lengths for higher frequencies.
     - The implemented method is a straight-forward windowing in the time domain
       for each respective frequency bin. Warping the IR is a more flexible
-      approach but not necessarily faster for IR with short lengths
-      corresponding to powers of 2.
+      approach but not necessarily faster for IR with optimal lengths.
 
     """
     assert ir.signal_type in ("rir", "ir"), "Only valid for rir or ir"
@@ -1245,18 +1245,22 @@ def window_frequency_dependent(
 
     half = (td.shape[0] - 1) / 2
     alpha_factor = np.log(4) ** 0.5 * half
-    for ind, ind_f in enumerate(inds_f):
-        for ch in range(td.shape[1]):
-            # Construct window centered around impulse
-            ind_max = np.argmax(np.abs(td[:, ch]))
-            n = np.arange(-ind_max, td.shape[0] - ind_max)
+    ind_max = np.argmax(np.abs(td), axis=0)
 
+    # Optimal length for FFT
+    fast_length = next_fast_length_fft(td.shape[0], True)
+    td = np.pad(td, ((0, fast_length - len(td)), (0, 0)))
+
+    for ch in range(td.shape[1]):
+        # Construct window centered around impulse
+        n = np.arange(-ind_max[ch], td.shape[0] - ind_max[ch])
+        for ind, ind_f in enumerate(inds_f):
             # Alpha such that window is exactly 0.5 after the number of
             # required samples for each frequency
             alpha = alpha_factor / cycles_per_freq_samples[ind]
-
             w = np.exp(-0.5 * (alpha * n[: td.shape[0]] / half) ** 2)
-            spec[ind, ch] = np.fft.rfft(w * td[:, ch])[ind_f]
+
+            spec[ind, ch] = rfft_scipy(w * td[:, ch])[ind_f]
     return f, spec
 
 
