@@ -379,7 +379,7 @@ def generate_synthetic_rir(
         )
         fb = linkwitz_riley_crossovers(
             crossover_frequencies_hz=freqs,
-            order=10,
+            order=12,
             sampling_rate_hz=sampling_rate_hz,
         )
 
@@ -418,7 +418,7 @@ def generate_synthetic_rir(
             rir, room.mixing_time_s, room.t60_s, sr=sampling_rate_hz
         )
 
-    rir = Signal(
+    rir_output = Signal(
         None,
         rir,
         sampling_rate_hz,
@@ -438,9 +438,9 @@ def generate_synthetic_rir(
             ),
             sampling_rate_hz=sampling_rate_hz,
         )
-        rir = f.filter_signal(rir)
+        rir_output = f.filter_signal(rir_output)
 
-    return rir
+    return rir_output
 
 
 def descriptors(
