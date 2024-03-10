@@ -234,6 +234,7 @@ def _window_this_ir(
         window_type = (window_type, window_parameter)
     peak_ind = np.argmax(np.abs(vec))
     half_length = total_length // 2
+    already_centered_impulse = peak_ind + half_length == len(vec)
 
     # If Peak is in the second half
     flipping = False
@@ -242,7 +243,11 @@ def _window_this_ir(
         flipping = True
         peak_ind = len(vec) - peak_ind - 1
 
-    w = get_window(window_type, half_length * 2 + 1, False)
+    w = get_window(
+        window_type,
+        half_length * 2 + (1 if not already_centered_impulse else 0),
+        False,
+    )
 
     # Define start index for time data and window
     if peak_ind - half_length < 0:
@@ -257,7 +262,7 @@ def _window_this_ir(
         vec = np.pad(vec, ((0, total_length + ind_low_td - len(vec))))
 
     # Get second half
-    if peak_ind + half_length + 1 > len(vec):
+    if peak_ind + half_length + 1 > len(vec) and not already_centered_impulse:
         ind_up_td = len(vec)
         ind_up_w = peak_ind + half_length + 1 - len(vec)
     else:
