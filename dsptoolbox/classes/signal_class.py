@@ -1034,6 +1034,9 @@ class Signal:
             xlabels="Time / s",
             returns=True,
         )
+
+        plot_complex = self.time_data_imaginary is not None
+
         for n in range(self.number_of_channels):
             mx = np.max(np.abs(self.time_data[:, n])) * 1.1
             if hasattr(self, "window"):
@@ -1041,6 +1044,13 @@ class Signal:
                     self.time_vector_s,
                     self.window[:, n] * mx / 1.1,
                     alpha=0.75,
+                )
+            if plot_complex:
+                ax[n].plot(
+                    self.time_vector_s,
+                    self.time_data_imaginary[:, n],
+                    alpha=0.9,
+                    linestyle="dotted",
                 )
             ax[n].set_ylim([-mx, mx])
         return fig, ax
@@ -1073,6 +1083,8 @@ class Signal:
         -----
         - All values are clipped to be at least -800 dBFS.
         - No time averaging is done in this function.
+        - If it is an analytic signal and normalization is applied, the peak
+          value of the real part is used as the normalization factor.
 
         """
         if not hasattr(self, "time_vector_s"):
@@ -1082,8 +1094,23 @@ class Signal:
         etc = 20 * np.log10(
             np.clip(np.abs(self.time_data), a_min=1e-40, a_max=None)
         )
+
+        complex_data = self.time_data_imaginary is not None
+
+        if complex_data:
+            complex_etc = 20 * np.log10(
+                np.clip(
+                    np.abs(self.time_data_imaginary),
+                    a_min=1e-40,
+                    a_max=None,
+                )
+            )
+
         if normalize_at_peak:
             etc -= peak_values
+            if complex_data:
+                complex_etc -= peak_values
+
         db_type = "dBFS"
         if self.calibrated_signal and not normalize_at_peak:
             # Convert to dB
@@ -1091,6 +1118,8 @@ class Signal:
             etc -= factor
             peak_values -= factor
             db_type = "dB"
+            if complex_data:
+                complex_etc -= factor
 
         fig, ax = general_subplots_line(
             self.time_vector_s,
@@ -1126,6 +1155,8 @@ class Signal:
                     + max_values[n],
                     alpha=0.75,
                 )
+            if complex_data:
+                ax[n].plot(self.time_vector_s, complex_etc[:, n], alpha=0.75)
             if range_db is not None:
                 ax[n].set_ylim(
                     [max_values[n] - np.abs(range_db), max_values[n]]
