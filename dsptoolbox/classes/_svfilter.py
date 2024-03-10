@@ -163,7 +163,8 @@ class StateVariableFilter:
         Returns
         -------
         `MultiBandSignal`
-            Impulse responses of the filter.
+            Impulse responses of the filter in following order: lowpass,
+            highpass, bandpass and allpass.
 
         """
         d = dirac(length_samples, sampling_rate_hz=self.sampling_rate_hz)

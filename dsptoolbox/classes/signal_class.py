@@ -46,7 +46,7 @@ class Signal:
         Parameters
         ----------
         path : str, optional
-            A path to audio files. Reading is done with the package soundfile.
+            A path to audio files. Reading is done with the soundfile library.
             Wave and Flac audio files are accepted. Default: `None`.
         time_data : array-like, `np.ndarray`, optional
             Time data of the signal. It is saved as a matrix with the form
@@ -79,7 +79,8 @@ class Signal:
         Spectrogram:
             set_spectrogram_parameters, get_spectrogram.
         Plots:
-            plot_magnitude, plot_time, plot_spectrogram, plot_phase, plot_csm.
+            plot_magnitude, plot_time, plot_spl, plot_spectrogram, plot_phase,
+            plot_csm.
         General:
             save_signal, get_stream_samples.
         Only for `signal_type in ('rir', 'ir', 'h1', 'h2', 'h3')`:
@@ -1058,7 +1059,7 @@ class Signal:
             Default: `False`.
         range_db : float, optional
             This is the range in dB used for plotting. Each plot will be in the
-            range [1 + peak - range_db, 1 + peak]. Pass `None` to avoid
+            range [peak + 1 - range_db, peak + 1]. Pass `None` to avoid
             setting any range. Default: 100.
 
         Returns
