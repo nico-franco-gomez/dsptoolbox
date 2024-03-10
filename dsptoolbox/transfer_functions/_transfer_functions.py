@@ -234,20 +234,17 @@ def _window_this_ir(
         window_type = (window_type, window_parameter)
     peak_ind = np.argmax(np.abs(vec))
     half_length = total_length // 2
-    already_centered_impulse = peak_ind + half_length == len(vec)
+    centered_impulse_and_even = (
+        peak_ind + half_length == len(vec) and len(vec) % 2 == 0
+    )
 
     # If Peak is in the second half
-    flipping = False
-    if peak_ind > half_length:
+    flipping = peak_ind > half_length
+    if flipping:
         vec = vec[::-1]
-        flipping = True
         peak_ind = len(vec) - peak_ind - 1
 
-    w = get_window(
-        window_type,
-        half_length * 2 + (1 if not already_centered_impulse else 0),
-        False,
-    )
+    w = get_window(window_type, half_length * 2 + 1, False)
 
     # Define start index for time data and window
     if peak_ind - half_length < 0:
@@ -262,26 +259,26 @@ def _window_this_ir(
         vec = np.pad(vec, ((0, total_length + ind_low_td - len(vec))))
 
     # Get second half
-    if peak_ind + half_length + 1 > len(vec) and not already_centered_impulse:
+    if peak_ind + half_length + 1 > len(vec) and not centered_impulse_and_even:
         ind_up_td = len(vec)
         ind_up_w = peak_ind + half_length + 1 - len(vec)
     else:
         ind_up_td = peak_ind + half_length + 1
-        ind_up_w = len(w)
+        ind_up_w = len(w) - (1 if centered_impulse_and_even else 0)
 
     # Get time data and window
     w = w[ind_low_w:ind_up_w]
     td = vec[ind_low_td:ind_up_td] * w
 
-    # Flip back if needed
-    if flipping:
-        td = td[::-1]
-        w = w[::-1]
-
     # Final length adaptation (ensure length)
     if len(td) != total_length:
         td = _pad_trim(td, total_length)
         w = _pad_trim(w, total_length)
+
+    # Flip back if needed
+    if flipping:
+        td = td[::-1]
+        w = w[::-1]
 
     return td, w, ind_low_td
 

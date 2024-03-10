@@ -172,7 +172,9 @@ class TestTransferFunctionsModule:
         h_, _ = dsp.transfer_functions.window_centered_ir(
             h, len(h), window_type=("gauss", 5000)
         )
-        assert np.argmax(h_.time_data[:, 0]) == np.argmax(h_.window[:, 0])
+        assert np.argmax(h_.time_data[:, 0]) == np.argmax(
+            h_.window[:, 0]
+        ) and np.argmax(h.time_data[:, 0]) == np.argmax(h_.time_data[:, 0])
 
         # ============= Odd
         # Shorter
@@ -191,7 +193,9 @@ class TestTransferFunctionsModule:
         h_, _ = dsp.transfer_functions.window_centered_ir(
             h, len(h), window_type=("gauss", 5000)
         )
-        assert np.argmax(h_.time_data[:, 0]) == np.argmax(h_.window[:, 0])
+        assert np.argmax(h_.time_data[:, 0]) == np.argmax(
+            h_.window[:, 0]
+        ) and np.argmax(h.time_data[:, 0]) == np.argmax(h_.time_data[:, 0])
 
         # ============= Impulse on the second half, odd
         # Shorter
@@ -210,7 +214,10 @@ class TestTransferFunctionsModule:
         h_, _ = dsp.transfer_functions.window_centered_ir(
             h, len(h), window_type=("gauss", 5000)
         )
-        assert np.argmax(h_.time_data[:, 0]) == np.argmax(h_.window[:, 0])
+
+        assert np.argmax(h_.time_data[:, 0]) == np.argmax(
+            h_.window[:, 0]
+        ) and np.argmax(h.time_data[:, 0]) == np.argmax(h_.time_data[:, 0])
 
         # ============= Impulse on the second half, even
         # Shorter
@@ -229,7 +236,29 @@ class TestTransferFunctionsModule:
         h_, _ = dsp.transfer_functions.window_centered_ir(
             h, len(h), window_type=("gauss", 5000)
         )
-        assert np.argmax(h_.time_data[:, 0]) == np.argmax(h_.window[:, 0])
+        assert np.argmax(h_.time_data[:, 0]) == np.argmax(
+            h_.window[:, 0]
+        ) and np.argmax(h.time_data[:, 0]) == np.argmax(h_.time_data[:, 0])
+
+        # ============= Impulse in the middle, no changing lengths, even
+        d = dsp.generators.dirac(1024, 512, sampling_rate_hz=self.fs)
+        d.signal_type = "rir"
+        d2, _ = dsp.transfer_functions.window_centered_ir(d, len(d))
+        assert (
+            np.argmax(d.time_data[:, 0]) == np.argmax(d2.window[:, 0])
+            and len(d) == len(d2)
+            and np.all(np.isclose(d.time_data, d2.time_data))
+        )
+
+        # ============= Impulse in the middle, no changing lengths, odd
+        d = dsp.generators.dirac(1025, 513, sampling_rate_hz=self.fs)
+        d.signal_type = "rir"
+        d2, _ = dsp.transfer_functions.window_centered_ir(d, len(d))
+        assert (
+            np.argmax(d.time_data[:, 0]) == np.argmax(d2.window[:, 0])
+            and len(d) == len(d2)
+            and np.all(np.isclose(d.time_data, d2.time_data))
+        )
 
     def test_ir_to_filter(self):
         s = self.audio_multi.time_data[:200, 0]
