@@ -177,6 +177,8 @@ class TestSignal:
         s.plot_spectrogram(channel_number=0, logfreqs=True)
         s.plot_csm()
         s.plot_csm(with_phase=False)
+        s.plot_spl(False)
+        s.plot_spl(True)
 
         # Plot phase and group delay
         s.signal_type = "rir"
@@ -195,6 +197,14 @@ class TestSignal:
         with pytest.raises(AssertionError):
             s.set_spectrum_parameters(method="welch", window_length_samples=32)
             s.plot_phase()
+
+        # Plot signal with window and imaginary time data
+        d = dsp.generators.dirac(1024, 512, sampling_rate_hz=self.fs)
+        d.signal_type = "ir"
+        d, _ = dsp.transfer_functions.window_centered_ir(d, len(d))
+        d = dsp.transforms.hilbert(d)
+        d.plot_time()
+        d.plot_spl()
         close("all")
 
     def test_get_power_spectrum_welch(self):

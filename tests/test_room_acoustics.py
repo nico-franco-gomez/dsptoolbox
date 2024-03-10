@@ -166,7 +166,7 @@ class TestRoomAcousticsModule:
         # Start offset way longer than rir (should be clipped to 0)
         assert (
             self.rir.time_data[0, 0]
-            == dsp.room_acoustics.trim_rir(
-                self.rir, start_offset_s=3
-            ).time_data[0, 0]
+            == dsp.room_acoustics.trim_rir(self.rir, start_offset_s=3)[
+                0
+            ].time_data[0, 0]
         )
