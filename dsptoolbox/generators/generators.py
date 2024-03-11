@@ -89,16 +89,16 @@ def noise(
 
     ph = np.random.uniform(-np.pi, np.pi, (len(f), number_of_channels))
     if type_of_noise == "pink":
-        mag[id_low:, :] /= f[id_low:][..., None]
+        mag[id_low:, :] /= (f[id_low:] ** 0.5)[..., None]
     elif type_of_noise == "red":
-        mag[id_low:, :] /= (f[id_low:] ** 2)[..., None]
+        mag[id_low:, :] /= f[id_low:][..., None]
     elif type_of_noise == "blue":
-        mag[id_low:, :] *= f[id_low:][..., None]
+        mag[id_low:, :] *= (f[id_low:] ** 0.5)[..., None]
     elif type_of_noise == "violet":
-        mag[id_low:, :] *= (f[id_low:] ** 2)[..., None]
+        mag[id_low:, :] *= f[id_low:][..., None]
     elif type_of_noise == "grey":
         w = _frequency_weightning(f, "a", db_output=False)
-        mag[id_low:, :] /= w[id_low:][..., None]
+        mag[id_low:, :] /= (w[id_low:] ** 0.5)[..., None]
     t_vec = np.fft.irfft(mag * np.exp(1j * ph), n=l_samples, axis=0)
     vec = _normalize(t_vec, dbfs=peak_level_dbfs, mode="peak")
     if fade is not None:
