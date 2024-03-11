@@ -3,6 +3,7 @@ This contains signal generators that might be useful for measurements.
 See measure.py for routines where the signals that are created here can be
 used
 """
+
 import numpy as np
 from ..classes.signal_class import Signal
 from .._general_helpers import (
@@ -43,8 +44,8 @@ def noise(
     fade : str, optional
         Type of fade done on the generated signal. By default, 10% of signal
         length (without the padding in the end) is faded at the beginning and
-        end. Options are `'exp'`, `'lin'`, `'log'`.
-        Pass `None` for no fading. Default: `'log'`.
+        end. Options are `'exp'`, `'lin'`, `'log'`. Pass `None` for no
+        fading. Default: `'log'`.
     padding_end_seconds : float, optional
         Padding at the end of signal. Use `None` to avoid any padding.
         Default: `None`.
@@ -88,6 +89,12 @@ def noise(
         mag[:id_low] *= 1e-20
 
     ph = np.random.uniform(-np.pi, np.pi, (len(f), number_of_channels))
+
+    # Correct DC and Nyquist
+    ph[0, :] = 0
+    if l_samples % 2 == 0:
+        ph[-1, :] = 0
+
     if type_of_noise == "pink":
         mag[id_low:, :] /= (f[id_low:] ** 0.5)[..., None]
     elif type_of_noise == "red":
@@ -98,9 +105,10 @@ def noise(
         mag[id_low:, :] *= f[id_low:][..., None]
     elif type_of_noise == "grey":
         w = _frequency_weightning(f, "a", db_output=False)
-        mag[id_low:, :] /= (w[id_low:] ** 0.5)[..., None]
-    t_vec = np.fft.irfft(mag * np.exp(1j * ph), n=l_samples, axis=0)
-    vec = _normalize(t_vec, dbfs=peak_level_dbfs, mode="peak")
+        mag[id_low:, :] /= w[id_low:][..., None]
+
+    vec = np.fft.irfft(mag * np.exp(1j * ph), n=l_samples, axis=0)
+    vec = _normalize(vec, dbfs=peak_level_dbfs, mode="peak")
     if fade is not None:
         fade_length = 0.05 * length_seconds
         vec = _fade(
