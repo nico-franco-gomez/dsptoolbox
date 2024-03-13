@@ -335,7 +335,7 @@ def compute_transfer_function(
     mode="h2",
     window_length_samples: int = 1024,
     spectrum_parameters: dict | None = None,
-) -> tuple[Signal, np.ndarray]:
+) -> tuple[Signal, np.ndarray, np.ndarray]:
     r"""Gets transfer function H1, H2 or H3 (for stochastic signals).
     H1: for noise in the output signal. `Gxy/Gxx`.
     H2: for noise in the input signal. `Gyy/Gyx`.
