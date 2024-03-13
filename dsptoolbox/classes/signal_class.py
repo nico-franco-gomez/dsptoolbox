@@ -353,8 +353,10 @@ class Signal:
             `'power spectral density'`, `'amplitude spectrum'` or
             `'amplitude spectral density'`. Pass `None` to avoid any scaling.
             See references for details about scaling. When method is set to
-            standard, no scaling is applied unless `'amplitude spectrum'` is
-            selected. Default: `'power spectral density'`.
+            standard, no scaling is applied unless `'amplitude spectrum'` or
+            `'amplitude spectral density'` are selected. This ensures that
+            squaring the result will have the right values. Default:
+            `'power spectral density'`.
 
         References
         ----------
@@ -797,11 +799,18 @@ class Signal:
                     == "amplitude spectrum"
                 ):
                     spectrum /= time_length
+                elif (
+                    self._spectrum_parameters["scaling"]
+                    == "amplitude spectral density"
+                ):
+                    spectrum *= (1 / time_length / self.sampling_rate_hz)**0.5
+                if "amplitude" in self._spectrum_parameters["scaling"]:
                     # Scale one-sided spectrum except for DC and Nyquist
                     if time_length % 2 == 0:
-                        spectrum[1:-1] *= 2
+                        spectrum[1:-1] *= 2**0.5
                     else:
-                        spectrum[1:] *= 2
+                        spectrum[1:] *= 2**0.5
+
             self.spectrum = []
             self.spectrum.append(
                 np.fft.rfftfreq(time_length, 1 / self.sampling_rate_hz)
