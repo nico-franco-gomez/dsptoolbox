@@ -1054,3 +1054,66 @@ def _correct_for_real_phase_spectrum(phase_spectrum: np.ndarray):
         phase_spectrum
         - np.linspace(0, 1, len(phase_spectrum), endpoint=True) * factor
     )
+
+
+def _scale_spectrum(
+    spectrum: np.ndarray,
+    mode: str | None,
+    time_length_samples: int,
+    sampling_rate_hz: int,
+) -> np.ndarray:
+    """Scale the spectrum directly from the (unscaled) FFT. It is assumed that
+    the time data was not windowed.
+
+    Parameters
+    ----------
+    spectrum : `np.ndarray`
+        Spectrum to scale. It is assumed that the frequency bins are along
+        the first dimension.
+    mode : str, None
+        Type of scaling to use. `"power spectral density"`, `"power spectrum"`,
+        `"amplitude spectral density"`, `"amplitude spectrum"`. Pass `None`
+        to avoid any scaling and return the same spectrum.
+    time_length_samples : int
+        Original length of the time data.
+    sampling_rate_hz : int
+        Sampling rate.
+
+    Returns
+    -------
+    `np.ndarray`
+        Scaled spectrum
+
+    """
+    assert time_length_samples in (
+        (spectrum.shape[0] - 1) * 2,
+        spectrum.shape[0] * 2 - 1,
+    ), "Time length does not match"
+
+    if mode is None:
+        return spectrum
+
+    mode = mode.lower()
+    assert mode in (
+        "amplitude spectral density",
+        "amplitude spectrum",
+        "power spectral density",
+        "power spectrum",
+    ), f"{mode} is not a supported mode"
+
+    if "spectral density" in mode:
+        factor = (1 / time_length_samples / sampling_rate_hz) ** 0.5
+    elif "spectrum" in mode:
+        factor = 1 / time_length_samples
+
+    spectrum *= factor
+
+    if time_length_samples % 2 == 0:
+        spectrum[1:-1] *= 2**0.5
+    else:
+        spectrum[1:] *= 2**0.5
+
+    if "power" in mode:
+        spectrum = np.abs(spectrum) ** 2
+
+    return spectrum

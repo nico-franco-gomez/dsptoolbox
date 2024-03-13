@@ -18,6 +18,7 @@ from .._general_helpers import (
     _find_nearest,
     _fractional_octave_smoothing,
     _check_format_in_path,
+    _scale_spectrum,
 )
 from .._standard import _welch, _group_delay_direct, _stft, _csm
 
@@ -120,7 +121,7 @@ class Signal:
         self.sampling_rate_hz = sampling_rate_hz
         self.time_data = time_data
         if signal_type in ("rir", "ir", "h1", "h2", "h3", "chirp", "dirac"):
-            self.set_spectrum_parameters(method="standard")
+            self.set_spectrum_parameters(method="standard", scaling=None)
         else:
             self.set_spectrum_parameters()
         self.set_csm_parameters()
@@ -352,11 +353,8 @@ class Signal:
             Scaling for welch's method. Use `'power spectrum'`,
             `'power spectral density'`, `'amplitude spectrum'` or
             `'amplitude spectral density'`. Pass `None` to avoid any scaling.
-            See references for details about scaling. When method is set to
-            standard, no scaling is applied unless `'amplitude spectrum'` or
-            `'amplitude spectral density'` are selected. This ensures that
-            squaring the result will have the right values. Default:
-            `'power spectral density'`.
+            See references for details about scaling.
+            Default: `'power spectral density'`.
 
         References
         ----------
@@ -794,22 +792,12 @@ class Signal:
 
                 # Length of signal for frequency vector and scaling
                 time_length = self.time_data.shape[0]
-                if (
-                    self._spectrum_parameters["scaling"]
-                    == "amplitude spectrum"
-                ):
-                    spectrum /= time_length
-                elif (
-                    self._spectrum_parameters["scaling"]
-                    == "amplitude spectral density"
-                ):
-                    spectrum *= (1 / time_length / self.sampling_rate_hz)**0.5
-                if "amplitude" in self._spectrum_parameters["scaling"]:
-                    # Scale one-sided spectrum except for DC and Nyquist
-                    if time_length % 2 == 0:
-                        spectrum[1:-1] *= 2**0.5
-                    else:
-                        spectrum[1:] *= 2**0.5
+                spectrum = _scale_spectrum(
+                    spectrum,
+                    self._spectrum_parameters["scaling"],
+                    time_length,
+                    self.sampling_rate_hz,
+                )
 
             self.spectrum = []
             self.spectrum.append(
@@ -928,7 +916,6 @@ class Signal:
         range_db=None,
         smoothe: int = 0,
         show_info_box: bool = False,
-        scale: bool = True,
     ) -> tuple[Figure, Axes]:
         """Plots magnitude spectrum.
         Change parameters of spectrum with set_spectrum_parameters.
@@ -941,8 +928,8 @@ class Signal:
         normalize : str, optional
             Mode for normalization, supported are `'1k'` for normalization
             with value at frequency 1 kHz or `'max'` for normalization with
-            maximal value. Use `None` for no normalization (only by the
-            sampling rate if standard method for spectrum is selected).
+            maximal value. Use `None` for no normalization. Spectrum uses
+            then scaling set in the `set_spectrum_parameters()` method.
             Default: `'1k'`.
         range_db : array-like with length 2, optional
             Range in dB for which to plot the magnitude response.
@@ -954,10 +941,6 @@ class Signal:
             Plots a info box regarding spectrum parameters and plot parameters.
             If it is str, it overwrites the standard message.
             Default: `False`.
-        scale : bool, optional
-            When `True`, spectrum gets scaled as an amplitude spectrum.
-            This only applies when `method = 'standard'` and no normalization
-            is applied. Default: `True`.
 
         Returns
         -------
@@ -975,19 +958,19 @@ class Signal:
 
         """
         f, sp = self.get_spectrum()
-        if (
-            self._spectrum_parameters["method"] == "standard"
-            and normalize is None
-            and scale
-        ):
-            sp *= 2 / self.time_data.shape[0]
-            sp[0] /= 2
-            if self.time_data.shape[0] % 2 == 0:
-                sp[-1] /= 2
+        if self._spectrum_parameters["scaling"] is not None:
+            mode = (
+                "welch"
+                if "power" in self._spectrum_parameters["scaling"]
+                else "standard"
+            )
+        else:
+            mode = self._spectrum_parameters["method"]
+
         f, mag_db = _get_normalized_spectrum(
             f=f,
             spectra=sp,
-            mode=self._spectrum_parameters["method"],
+            mode=mode,
             f_range_hz=range_hz,
             normalize=normalize,
             smoothe=smoothe,
@@ -1205,7 +1188,7 @@ class Signal:
             f"{self.signal_type} is not valid. Please set it to ir or "
             + "h1, h2, h3, rir"
         )
-        self.set_spectrum_parameters("standard")
+        self.set_spectrum_parameters("standard", scaling=None)
         f, sp = self.get_spectrum()
         gd = np.zeros((len(f), self.number_of_channels))
         for n in range(self.number_of_channels):
@@ -1525,5 +1508,5 @@ class Signal:
             )
             # In an audio stream, welch's method for acquiring a spectrum
             # is not very logical...
-            sig.set_spectrum_parameters(method="standard")
+            sig.set_spectrum_parameters(method="standard", scaling=None)
         return sig, stop_flag
