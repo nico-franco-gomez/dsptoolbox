@@ -74,22 +74,35 @@ class TestSignal:
         assert np.all(sp == sp_sig)
 
         # Check amplitude spectrum scaling for normal FFT
+        s.set_spectrum_parameters(method="standard", scaling="power spectrum")
+        _, sp_sig = s.get_spectrum()
+        _, sp_reference = sig.periodogram(
+            self.time_vec.squeeze(),
+            fs=self.fs,
+            detrend=False,
+            scaling="spectrum",
+            axis=0,
+        )
+        assert np.all(np.isclose(sp_reference, sp_sig.squeeze()))
+
         s.set_spectrum_parameters(
-            method="standard", scaling="amplitude spectrum"
+            method="standard", scaling="power spectral density"
         )
         _, sp_sig = s.get_spectrum()
-        sp /= self.time_vec.shape[0]
-        if self.time_vec.shape[0] % 2 == 0:
-            sp[1:-1] *= 2
-        else:
-            sp[1:] *= 2
-        assert np.all(sp == sp_sig)
+        _, sp_reference = sig.periodogram(
+            self.time_vec.squeeze(),
+            axis=0,
+            detrend=False,
+            scaling="density",
+            fs=self.fs,
+        )
+        assert np.all(np.isclose(sp_reference, sp_sig.squeeze()))
 
         # Try smoothing
         s.set_spectrum_parameters(
             method="standard", scaling="amplitude spectrum", smoothe=3
         )
-        f, sp_sig = s.get_spectrum()
+        s.get_spectrum()
 
     def test_managing_channels(self):
         # Add new channel

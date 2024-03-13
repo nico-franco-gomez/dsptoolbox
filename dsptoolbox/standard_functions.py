@@ -1143,11 +1143,11 @@ class CalibrationData:
 
     def _get_rms_from_spectrum(self):
         self.calibration_signal.set_spectrum_parameters(
-            method="welch", scaling="power spectrum"
+            method="standard", scaling="amplitude spectrum"
         )
         f, sp = self.calibration_signal.get_spectrum()
         ind1k = np.argmin(np.abs(f - 1e3))
-        return sp[ind1k, :] ** 0.5
+        return np.abs(sp[ind1k, :])
 
     def calibrate_signal(
         self, signal: Signal | MultiBandSignal, force_update: bool = False

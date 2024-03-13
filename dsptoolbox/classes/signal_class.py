@@ -318,7 +318,7 @@ class Signal:
         overlap_percent: float = 50,
         detrend: bool = True,
         average: str = "mean",
-        scaling: str | None = "power spectral density",
+        scaling: str | None = None,
     ):
         """Sets all necessary parameters for the computation of the spectrum.
 
@@ -354,7 +354,7 @@ class Signal:
             `'power spectral density'`, `'amplitude spectrum'` or
             `'amplitude spectral density'`. Pass `None` to avoid any scaling.
             See references for details about scaling.
-            Default: `'power spectral density'`.
+            Default: `None`.
 
         References
         ----------

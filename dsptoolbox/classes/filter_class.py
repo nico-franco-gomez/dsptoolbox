@@ -686,9 +686,7 @@ class Filter:
                 + "automatically extended."
             )
         ir = self.get_ir(length_samples=length_samples, zero_phase=zero_phase)
-        fig, ax = ir.plot_magnitude(
-            range_hz, normalize, show_info_box=False, scale=False
-        )
+        fig, ax = ir.plot_magnitude(range_hz, normalize, show_info_box=False)
         if show_info_box:
             txt = self._get_metadata_string()
             ax.text(

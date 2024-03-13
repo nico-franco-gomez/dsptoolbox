@@ -204,7 +204,6 @@ class StateVariableFilter:
             normalize=None,
             range_db=range_db,
             smoothe=0,
-            scale=False,
         )
         ax.legend(["Lowpass", "Highpass", "Bandpass", "Allpass"])
         return fig, ax
