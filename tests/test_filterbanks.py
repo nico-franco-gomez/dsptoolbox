@@ -167,6 +167,17 @@ class TestFilterbanksModule:
         pl.get_filter_as_ir()
         pl.get_filter()
 
+        # Group delay-based correction
+        ir = fb.get_ir(length_samples=2**14).collapse()
+        _, gd = dsp.transfer_functions.group_delay(ir)
+        gd = np.max(gd) * 2 - gd
+        gd *= ir.sampling_rate_hz
+        pl = dsp.filterbanks.PhaseLinearizer(
+            np.ones(len(gd)), len(ir), fs_hz, gd.squeeze()
+        )
+        pl.get_filter_as_ir()
+        pl.get_filter()
+
     def test_VSFilter(self):
         fs_hz = 10_000
         f = dsp.filterbanks.StateVariableFilter(500, np.sqrt(2), fs_hz)
