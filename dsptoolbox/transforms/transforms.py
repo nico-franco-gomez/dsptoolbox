@@ -1,7 +1,9 @@
 """
 Here are methods considered as somewhat special or less common.
 """
+
 from ..classes.signal_class import Signal
+from ..classes.multibandsignal import MultiBandSignal
 from ..plots import general_matrix_plot
 from .._standard import _reconstruct_framed_signal
 from .._general_helpers import _hz2mel, _mel2hz, _pad_trim
@@ -680,18 +682,18 @@ def cwt(
     return scalogram
 
 
-def hilbert(signal: Signal):
+def hilbert(signal: Signal | MultiBandSignal) -> Signal | MultiBandSignal:
     """Compute the analytic signal using the hilbert transform of the real
     signal.
 
     Parameters
     ----------
-    signal : `Signal`
+    signal : `Signal`, `MultiBandSignal`
         Signal to convert.
 
     Returns
     -------
-    analytic : `Signal`
+    analytic : `Signal`, `MultiBandSignal`
         Analytical signal.
 
     Notes
@@ -706,19 +708,27 @@ def hilbert(signal: Signal):
         complex_ts = Signal.time_data + Signal.time_data_imaginary*1j
 
     """
-    td = signal.time_data
+    if type(signal) is Signal:
+        td = signal.time_data
 
-    sp = np.fft.fft(td, axis=0)
-    if len(td) % 2 == 0:
-        nyquist = len(td) // 2
-        sp[1:nyquist, :] *= 2
-        sp[nyquist + 1 :, :] = 0
+        sp = np.fft.fft(td, axis=0)
+        if len(td) % 2 == 0:
+            nyquist = len(td) // 2
+            sp[1:nyquist, :] *= 2
+            sp[nyquist + 1 :, :] = 0
+        else:
+            sp[1 : (len(td) + 1) // 2, :] *= 2
+            sp[(len(td) + 1) // 2 :, :] = 0
+
+        analytic = signal.copy()
+        analytic.time_data = np.fft.ifft(sp, axis=0)
+    elif type(signal) is MultiBandSignal:
+        new_mb = signal.copy()
+        for ind, b in enumerate(new_mb):
+            new_mb.bands[ind] = hilbert(b)
+        return new_mb
     else:
-        sp[1 : (len(td) + 1) // 2, :] *= 2
-        sp[(len(td) + 1) // 2 :, :] = 0
-
-    analytic = signal.copy()
-    analytic.time_data = np.fft.ifft(sp, axis=0)
+        raise TypeError("Signal does not have a valid type")
     return analytic
 
 
