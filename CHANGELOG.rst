@@ -14,6 +14,17 @@ adheres to `Semantic Versioning <http://semver.org/spec/v2.0.0.html>`_.
 - Validation for results from tests in every module (so far many tests are
   only regarding functionality)
 
+`0.3.4 <https://pypi.org/project/dsptoolbox/0.3.4>`_ - 
+---------------------
+
+Added
+~~~~~~~
+- added support for `MultiBandSignal` in `hilbert` in module ``transforms``
+
+Misc
+~~~~~~
+
+
 `0.3.3 <https://pypi.org/project/dsptoolbox/0.3.3>`_ - 
 ---------------------
 
