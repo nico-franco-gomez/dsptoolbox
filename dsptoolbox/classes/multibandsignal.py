@@ -1,4 +1,4 @@
-from numpy import zeros, array, unique, atleast_1d
+from numpy import zeros, array, unique, atleast_1d, ndarray
 from copy import deepcopy
 from pickle import dump, HIGHEST_PROTOCOL
 from warnings import warn
@@ -285,7 +285,9 @@ class MultiBandSignal:
         return txt
 
     # ======== Getters ========================================================
-    def get_all_bands(self, channel: int = 0) -> Signal | tuple[list, list]:
+    def get_all_bands(
+        self, channel: int = 0
+    ) -> Signal | tuple[list[ndarray], list[ndarray]]:
         """Broadcasts and returns the `MultiBandSignal` as a `Signal` object
         with all bands as channels in the output. This is done only for a
         single channel of the original signal.
