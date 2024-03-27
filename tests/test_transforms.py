@@ -130,8 +130,8 @@ class TestTransformsModule:
 
     def test_chroma(self):
         # Only functionality
-        dsp.transforms.chroma_stft(self.speech)
-        dsp.transforms.chroma_stft(self.speech, plot_channel=0)
+        dsp.transforms.chroma_stft(self.speech.copy())
+        dsp.transforms.chroma_stft(self.speech.copy(), plot_channel=0)
 
     def test_cwt(self):
         # Only functionality

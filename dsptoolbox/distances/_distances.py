@@ -1,15 +1,14 @@
 """
 Backend for distance measures
 """
+
 import numpy as np
 from scipy.integrate import simpson
 from .._general_helpers import _compute_number_frames, _pad_trim
 from .._standard import _rms
 
 
-def _log_spectral_distance(
-    x: np.ndarray, y: np.ndarray, f: np.ndarray
-) -> float:
+def _log_spectral_distance(x: np.ndarray, y: np.ndarray, f: np.ndarray) -> float:
     """Computes log spectral distance between two signals.
 
     Parameters
@@ -28,14 +27,12 @@ def _log_spectral_distance(
 
     """
     assert x.shape == y.shape, "Power spectra have different lengths"
-    integral = simpson((10 * np.log10(x / y)) ** 2, f)
+    integral = simpson((10 * np.log10(x / y)) ** 2, x=f)
     log_spec = np.sqrt(integral)
     return log_spec
 
 
-def _itakura_saito_measure(
-    x: np.ndarray, y: np.ndarray, f: np.ndarray
-) -> float:
+def _itakura_saito_measure(x: np.ndarray, y: np.ndarray, f: np.ndarray) -> float:
     """Computes log spectral distance between two signals.
 
     Parameters
@@ -54,7 +51,7 @@ def _itakura_saito_measure(
 
     """
     assert x.shape == y.shape, "Power spectra have different lengths"
-    ism = simpson(x / y - np.log10(x / y) - 1, f)
+    ism = simpson(x / y - np.log10(x / y) - 1, x=f)
     return ism
 
 
@@ -94,9 +91,7 @@ def _sisdr(s: np.ndarray, shat: np.ndarray) -> float:
 
     """
     alpha = (s @ shat) / (s @ s)
-    sisdr = 10 * np.log10(
-        np.sum((alpha * s) ** 2) / np.sum((alpha * s - shat) ** 2)
-    )
+    sisdr = 10 * np.log10(np.sum((alpha * s) ** 2) / np.sum((alpha * s - shat) ** 2))
     return sisdr
 
 

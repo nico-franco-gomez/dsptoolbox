@@ -1,6 +1,7 @@
 """
 Backend for the effects module
 """
+
 from .._general_helpers import _get_smoothing_factor_ema
 from ..plots import general_plot
 import numpy as np
@@ -120,11 +121,10 @@ def _compressor(
         for i in np.arange(len(x)):
             # RMS Detection – if peaks, directly take rms
             samp = x[i] ** 2
-            if samp < momentary_rms:
-                coeff = attack_coeff
+            if samp > momentary_rms:
+                coeff = 1.0
             else:
-                coeff = 1
-            coeff = 0.01
+                coeff = 0.01
             momentary_rms = coeff * samp + (1 - coeff) * momentary_rms
 
             # Amount of required compression
@@ -226,7 +226,7 @@ def _find_attack_hold_release(
     release_samples: int,
     side_chain: np.ndarray,
     indices_above: bool,
-) -> tuple[np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """This function finds the indices corresponding to attack, hold and
     release. It returns boolean arrays. It can only handle 1D-arrays as input!
 
@@ -286,28 +286,6 @@ def _find_attack_hold_release(
         - release.astype(int)
     ).astype(bool)
     return attack, hold, release
-
-
-def _cross_fade_samples(
-    x_output: np.ndarray,
-    x_fade_in: np.ndarray,
-    x_fade_out: np.ndarray,
-    indices: np.ndarray,
-    length_of_fade: int,
-    type_of_cross: str = "log",
-) -> np.ndarray:
-    """Cross fades two signals: at certain indices."""
-    if type_of_cross == "lin":
-        mix_in = np.linspace(0, 1, length_of_fade)
-    elif type_of_cross == "log":
-        mix_in = np.exp(np.linspace(-10, 0, length_of_fade))
-
-    for i in np.arange(len(x_output)):
-        if indices[i]:
-            length = np.sum(indices[i : i + length_of_fade])
-            x_output[i : i + length] = x_fade_in[i : i + length] * mix_in[
-                :length
-            ] + x_fade_out[i : i + length] * (1 - mix_in[:length])
 
 
 # ========= LFO ===============================================================

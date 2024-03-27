@@ -1,9 +1,10 @@
 """
 Includes some basic plotting templates
 """
+
 import matplotlib.pyplot as plt
 from matplotlib.ticker import ScalarFormatter
-from matplotlib import cm
+from matplotlib import colormaps as cm
 from numpy import array, max, min, arange
 
 try:
