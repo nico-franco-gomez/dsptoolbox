@@ -20,9 +20,26 @@ adheres to `Semantic Versioning <http://semver.org/spec/v2.0.0.html>`_.
 Added
 ~~~~~~~
 - added support for `MultiBandSignal` in `hilbert` in module ``transforms``
+- plot momentary spl added in `Signal`
+- `PhaseLinearizer` can now adapt to an input group delay
+
+Bugfix
+~~~~~~~
+- `trim_rir` now deletes a contained window in the output
+- `window_centered_ir` fixed for certain lengths
+- `generate_synthetic_rir` has been fixed after previous refactoring changed
+  some underlying functions
+- `noise` in ``generators`` has been now fixed since its previous slopes were
+  erroneously defined in the amplitude spectrum instead of the power spectrum
 
 Misc
 ~~~~~~
+- `window_frequency_dependent` is now optimized to be faster
+- if `Signal` has `time_data_imaginary`, it is now also plotted in the
+  `plot_time` method
+- `get_spectrum` now returns the correctly scaled spectrum also when the method
+  is standard
+- updated some example notebooks
 
 
 `0.3.3 <https://pypi.org/project/dsptoolbox/0.3.3>`_ - 
