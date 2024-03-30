@@ -17,7 +17,10 @@ from ._transfer_functions import (
 )
 from ..classes import Signal, Filter
 from ..classes._filter import _group_delay_filter
-from .._general_helpers import _find_frequencies_above_threshold
+from .._general_helpers import (
+    _find_frequencies_above_threshold,
+    _fractional_octave_smoothing,
+)
 from .._standard import _welch, _minimum_phase, _group_delay_direct, _pad_trim
 from ..standard_functions import fractional_delay, merge_signals, normalize
 from ..generators import dirac
@@ -781,7 +784,9 @@ def min_phase_ir(sig: Signal, method: str = "real cepstrum") -> Signal:
 
 
 def group_delay(
-    signal: Signal, method="matlab"
+    signal: Signal,
+    method="matlab",
+    smoothing: int = 0,
 ) -> tuple[np.ndarray, np.ndarray]:
     """Computes and returns group delay.
 
@@ -794,6 +799,9 @@ def group_delay(
         this implementation:
         https://www.dsprelated.com/freebooks/filters/Phase_Group_Delay.html.
         Default: `'matlab'`.
+    smoothing : int, optional
+        Octave fraction by which to apply smoothing. `0` avoids any smoothing
+        of the group delay. Default: `0`.
 
     Returns
     -------
@@ -825,6 +833,8 @@ def group_delay(
             _, group_delays[:, n] = _group_delay_filter(
                 [b, a], len(b) // 2 + 1, signal.sampling_rate_hz
             )
+    if smoothing != 0:
+        group_delays = _fractional_octave_smoothing(group_delays, smoothing)
     return f, group_delays
 
 
@@ -904,7 +914,9 @@ def minimum_phase(
 
 
 def minimum_group_delay(
-    signal: Signal, method: str = "real cepstrum"
+    signal: Signal,
+    method: str = "real cepstrum",
+    smoothing: int = 0,
 ) -> tuple[np.ndarray, np.ndarray]:
     """Computes minimum group delay of given IR.
 
@@ -915,6 +927,9 @@ def minimum_group_delay(
     method : str, optional
         Select method for computing the minimum phase. It might be either
         `'real cepstrum'` or `'log hilbert'`. Default: `'real cepstrum'`.
+    smoothing : int, optional
+        Octave fraction by which to apply smoothing. `0` avoids any smoothing
+        of the group delay. Default: `0`.
 
     Returns
     -------
@@ -933,11 +948,15 @@ def minimum_group_delay(
     min_gd = np.zeros_like(min_phases)
     for n in range(signal.number_of_channels):
         min_gd[:, n] = _group_delay_direct(min_phases[:, n], f[1] - f[0])
+    if smoothing != 0:
+        min_gd = _fractional_octave_smoothing(min_gd, smoothing)
     return f, min_gd
 
 
 def excess_group_delay(
-    signal: Signal, method: str = "real cepstrum"
+    signal: Signal,
+    method: str = "real cepstrum",
+    smoothing: int = 0,
 ) -> tuple[np.ndarray, np.ndarray]:
     """Computes excess group delay of an IR.
 
@@ -948,6 +967,9 @@ def excess_group_delay(
     method : str, optional
         Select method for computing the minimum phase. It might be either
         `'real cepstrum'` or `'log hilbert'`. Default: `'real cepstrum'`.
+    smoothing : int, optional
+        Octave fraction by which to apply smoothing. `0` avoids any smoothing
+        of the group delay. Default: `0`.
 
     Returns
     -------
@@ -965,6 +987,10 @@ def excess_group_delay(
     f, min_gd = minimum_group_delay(signal, method)
     f, gd = group_delay(signal)
     ex_gd = gd - min_gd
+
+    if smoothing != 0:
+        ex_gd = _fractional_octave_smoothing(ex_gd, smoothing)
+
     return f, ex_gd
 
 

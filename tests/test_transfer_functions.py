@@ -350,6 +350,9 @@ class TestTransferFunctionsModule:
         dsp.transfer_functions.group_delay(ir, method="matlab")
         dsp.transfer_functions.group_delay(ir, method="direct")
 
+        dsp.transfer_functions.group_delay(ir, method="matlab", smoothing=4)
+        dsp.transfer_functions.group_delay(ir, method="direct", smoothing=4)
+
         # Single-channel plausibility check
         dsp.transfer_functions.group_delay(ir.get_channels(0))
 
@@ -399,6 +402,7 @@ class TestTransferFunctionsModule:
         # somewhere else
         # Only works for some signal types
         dsp.transfer_functions.minimum_group_delay(ir)
+        dsp.transfer_functions.minimum_group_delay(ir, smoothing=3)
         with pytest.raises(AssertionError):
             s1 = dsp.Signal(None, ir.time_data, ir.sampling_rate_hz)
             dsp.transfer_functions.minimum_group_delay(s1)
@@ -422,6 +426,7 @@ class TestTransferFunctionsModule:
         # somewhere else
         # Only works for some signal types
         dsp.transfer_functions.excess_group_delay(ir)
+        dsp.transfer_functions.excess_group_delay(ir, smoothing=3)
         with pytest.raises(AssertionError):
             s1 = dsp.Signal(None, ir.time_data, ir.sampling_rate_hz)
             dsp.transfer_functions.excess_group_delay(s1)
