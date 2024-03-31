@@ -794,7 +794,7 @@ class Filter:
 
         """
         if self.info["order"] > length_samples:
-            length_samples = self.info["order"] + 100
+            length_samples = self.info["order"] + 1
             warn(
                 f"length_samples ({length_samples}) is shorter than the "
                 + f"""filter order {self.info['order']}. Length will be """
