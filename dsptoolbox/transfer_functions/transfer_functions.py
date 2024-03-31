@@ -1199,6 +1199,7 @@ def window_frequency_dependent(
     cycles: int,
     channel: int | None = None,
     frequency_range_hz: list | None = None,
+    scaling: str | None = None,
 ):
     """A spectrum with frequency-dependent windowing defined by cycles is
     returned. To this end, a variable gaussian window is applied.
@@ -1206,8 +1207,7 @@ def window_frequency_dependent(
     A width of 5 cycles means that there are 5 periods of each frequency
     before the window values hit 0.5, i.e., -6 dB.
 
-    This is computed only for real-valued signals (positive frequencies). No
-    scaling is applied to the spectrum.
+    This is computed only for real-valued signals (positive frequencies).
 
     Parameters
     ----------
@@ -1222,6 +1222,11 @@ def window_frequency_dependent(
     frequency_range_hz : list of length 2, optional
         Frequency range to extract spectrum. Use `None` to compute the whole
         spectrum. Default: `None`.
+    scaling : str, optional
+        Scaling for the spectrum. Choose from `"amplitude spectrum"`,
+        `"amplitude spectral density"`, `"fft"` or `None`. The first two take
+        the window into account. `"fft"` scales the forward FFT by `1/N**0.5`
+        and `None` leaves the spectrum completely unscaled. Default: `None`.
 
     Returns
     -------
@@ -1242,9 +1247,19 @@ def window_frequency_dependent(
     - The implemented method is a straight-forward windowing in the time domain
       for each respective frequency bin. Warping the IR is a more flexible
       approach but not necessarily faster for IR with optimal lengths.
+    - Scaling is available but leaving the spectrum unscaled seems to be the
+      correct way to obtain the spectrum.
 
     """
     assert ir.signal_type in ("rir", "ir"), "Only valid for rir or ir"
+    scaling = scaling if scaling is None else scaling.lower()
+    assert scaling in (
+        "amplitude spectrum",
+        "amplitude spectral density",
+        "fft",
+        None,
+    ), f"{scaling} is an unsupported scaling option."
+
     fs = ir.sampling_rate_hz
     if frequency_range_hz is not None:
         assert len(frequency_range_hz) == 2
@@ -1279,7 +1294,32 @@ def window_frequency_dependent(
 
     # Optimal length for FFT
     fast_length = next_fast_length_fft(td.shape[0], True)
+    original_length = len(td)
     td = np.pad(td, ((0, fast_length - td.shape[0]), (0, 0)))
+
+    # Scaling function
+    if scaling == "amplitude spectrum":
+
+        def scaling_func(window: np.ndarray) -> float:
+            return 2**0.5 / np.sum(window[:original_length])
+
+    elif scaling == "amplitude spectral density":
+
+        def scaling_func(window: np.ndarray) -> float:
+            return (
+                2 / np.sum(window[:original_length] ** 2) / ir.sampling_rate_hz
+            ) ** 0.5
+
+    elif scaling == "fft":
+        scaling_value = fast_length**0.5
+
+        def scaling_func(window: np.ndarray) -> float:
+            return 1 / scaling_value
+
+    else:
+
+        def scaling_func(window: np.ndarray) -> float:
+            return 1
 
     # Construct window vectors
     n = np.zeros_like(td)
@@ -1292,7 +1332,7 @@ def window_frequency_dependent(
         alpha = alpha_factor / cycles_per_freq_samples[ind]
         w = np.exp(-0.5 * (alpha * n / half) ** 2)
 
-        spec[ind, :] = rfft_scipy(w * td, axis=0)[ind_f]
+        spec[ind, :] = rfft_scipy(w * td, axis=0)[ind_f] * scaling_func(w)
     return f, spec
 
 
