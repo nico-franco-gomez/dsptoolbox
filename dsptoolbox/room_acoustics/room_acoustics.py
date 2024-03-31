@@ -28,7 +28,7 @@ def reverb_time(
     mode: str = "T20",
     ir_start: int | np.ndarray | None = None,
     automatic_trimming: bool = True,
-) -> np.ndarray:
+) -> tuple[np.ndarray, np.ndarray]:
     """Computes reverberation time. Topt, T20, T30, T60 and EDT.
 
     Parameters
@@ -58,7 +58,12 @@ def reverb_time(
     -------
     reverberation_times : `np.ndarray`
         Reverberation times for each channel. Shape is (band, channel)
-        if MultiBandSignal object is passed.
+        if `MultiBandSignal` object is passed.
+    correlation_coefficient : `np.ndarray`
+        Pearson correlation coefficient to determine the accuracy of the
+        reverberation time estimation. It has shape (channels) or
+        (band, channels) if `MultiBandSignal` object is passed. See notes
+        for more details.
 
     References
     ----------
@@ -68,6 +73,10 @@ def reverb_time(
 
     Notes
     -----
+    - A correlation coefficient of -1 means there is a perfectly linear
+      relation between time and energy decay, which is an optimal estimation.
+      Coefficients larger than -0.9 might mean that the estimation is not
+      valid.
     - In order to compare EDT to the other measures, it must be multiplied
       by 6.
     - For defining the ending of the IR automatically, a smooth envelope of the
@@ -91,8 +100,9 @@ def reverb_time(
             + "these: Topt, T20, T30, T60 or EDT"
         )
         reverberation_times = np.zeros((signal.number_of_channels))
+        correlation_coefficients = np.zeros((signal.number_of_channels))
         for n in range(signal.number_of_channels):
-            reverberation_times[n] = _reverb(
+            reverberation_times[n], correlation_coefficients[n] = _reverb(
                 signal.time_data[:, n].copy(),
                 signal.sampling_rate_hz,
                 mode,
@@ -105,19 +115,24 @@ def reverb_time(
         reverberation_times = np.zeros(
             (signal.number_of_bands, signal.bands[0].number_of_channels)
         )
+        correlation_coefficients = np.zeros(
+            (signal.number_of_bands, signal.bands[0].number_of_channels)
+        )
         for ind in range(signal.number_of_bands):
             band_ir_start = None if ir_start is None else ir_start[ind, :]
-            reverberation_times[ind, :] = reverb_time(
-                signal.bands[ind],
-                mode,
-                ir_start=band_ir_start,
-                automatic_trimming=automatic_trimming,
+            reverberation_times[ind, :], correlation_coefficients[ind, :] = (
+                reverb_time(
+                    signal.bands[ind],
+                    mode,
+                    ir_start=band_ir_start,
+                    automatic_trimming=automatic_trimming,
+                )
             )
     else:
         raise TypeError(
             "Passed signal should be of type Signal or MultiBandSignal"
         )
-    return reverberation_times
+    return reverberation_times, correlation_coefficients
 
 
 def find_modes(

@@ -64,27 +64,28 @@ def _reverb(
 
     # Reverb
     if mode == "TOPT":
+        time, corr = _obtain_optimal_reverb_time(time_vector, edc)
         if return_ir_start:
-            return _obtain_optimal_reverb_time(time_vector, edc)[0], ir_start
-        return _obtain_optimal_reverb_time(time_vector, edc)[0]
+            return time, corr, ir_start
+        return time, corr
 
     mode = mode.upper()
     if mode == "T20":
-        p, _ = _get_polynomial_coeffs_from_edc(time_vector, edc, -5, -25)
+        p, corr = _get_polynomial_coeffs_from_edc(time_vector, edc, -5, -25)
     elif mode == "T30":
-        p, _ = _get_polynomial_coeffs_from_edc(time_vector, edc, -5, -35)
+        p, corr = _get_polynomial_coeffs_from_edc(time_vector, edc, -5, -35)
     elif mode == "T60":
-        p, _ = _get_polynomial_coeffs_from_edc(time_vector, edc, -5, -65)
+        p, corr = _get_polynomial_coeffs_from_edc(time_vector, edc, -5, -65)
     elif mode == "EDT":
-        p, _ = _get_polynomial_coeffs_from_edc(time_vector, edc, 0, -10)
+        p, corr = _get_polynomial_coeffs_from_edc(time_vector, edc, 0, -10)
     else:
         raise ValueError("Supported modes are only T20, T30, T60 and EDT")
 
     factor = 60 if mode != "EDT" else 10
 
     if return_ir_start:
-        return (factor / np.abs(p[0])), ir_start
-    return factor / np.abs(p[0])
+        return (factor / np.abs(p[0])), corr, ir_start
+    return factor / np.abs(p[0]), corr
 
 
 def _find_ir_start(ir, threshold_dbfs: float = -20) -> int:
