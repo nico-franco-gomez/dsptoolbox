@@ -20,6 +20,8 @@ from ..classes._filter import _group_delay_filter
 from .._general_helpers import (
     _find_frequencies_above_threshold,
     _fractional_octave_smoothing,
+    _correct_for_real_phase_spectrum,
+    _wrap_phase,
 )
 from .._standard import _welch, _minimum_phase, _group_delay_direct, _pad_trim
 from ..standard_functions import fractional_delay, merge_signals, normalize
@@ -229,7 +231,7 @@ def window_ir(
         "ir",
     ), f"{signal.signal_type} is not a valid signal type. Use rir or ir."
     assert offset_samples >= 0, "Offset must be positive"
-    assert offset_samples < constant_percentage * total_length_samples, (
+    assert offset_samples <= constant_percentage * total_length_samples, (
         "Offset is too large for the constant part of the window and its "
         + "total length"
     )
@@ -716,9 +718,11 @@ def lin_phase_from_mag(
                 gd = group_delay_ms
         else:
             gd = group_delay_ms
-        lin_spectrum[:, n] = spectrum[:, n] * np.exp(
-            -1j * 2 * np.pi * f_vec * gd
-        )
+
+        phase = 2 * np.pi * f_vec * gd
+        if original_length_time_data % 2 == 0:
+            phase = _correct_for_real_phase_spectrum(_wrap_phase(phase))
+        lin_spectrum[:, n] = spectrum[:, n] * np.exp(-1j * phase)
     time_data = np.fft.irfft(lin_spectrum, axis=0, n=original_length_time_data)
     sig_lin_phase = Signal(
         None,
