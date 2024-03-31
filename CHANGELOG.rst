@@ -40,6 +40,8 @@ Misc
 - `get_spectrum` now returns the correctly scaled spectrum also when the method
   is standard
 - updated some example notebooks
+- `group_delay` functions in ``transfer_functions`` can apply now smoothing
+- `reverb_time` returns correlation coefficients
 
 
 `0.3.3 <https://pypi.org/project/dsptoolbox/0.3.3>`_ - 
