@@ -79,12 +79,9 @@ def reverb_time(
       valid.
     - In order to compare EDT to the other measures, it must be multiplied
       by 6.
-    - For defining the ending of the IR automatically, a smooth envelope of the
-      energy time curve (ETC) is first computed. Then, the median of the last
-      third of this vector is used as a threshold. The first point to go
-      below this threshold is taken as the end. The underlying assumption is
-      that there might be only noise when this threshold is reached. If it
-      fails to deliver a meaningful result, no trimming is performed.
+    - For defining the ending of the IR automatically, `trim_rir(
+      offset_start_s = 0, threshold_factor = 0.66, window_time_s = 30e-3)` is
+      used.
 
     """
     if type(signal) is Signal:
@@ -518,14 +515,9 @@ def descriptors(
 
     Notes
     -----
-    - For defining the ending of the IR automatically, a smoothed envelope of
-      the energy time curve (ETC) is first computed. Then, the median of the
-      last third of this vector is used as a threshold. The first point to go
-      below this threshold is taken as the end. The underlying assumption is
-      that there might be only noise when this signal level is reached. If it
-      fails to deliver a meaningful result, no trimming is performed. It uses
-      the function `trim_rir`, envelope smoothing of 10 ms and threshold
-      factor 0.66. The start is found using find_ir_start with threshold 20 dB.
+    - For defining the ending of the IR automatically, `trim_rir(
+      offset_start_s = 0, threshold_factor = 0.66, window_time_s = 30e-3)` is
+      used.
 
     """
     mode = mode.lower()
@@ -584,7 +576,7 @@ def _bass_ratio(rir: Signal) -> np.ndarray:
         [125, 1000], filter_order=10, sampling_rate_hz=rir.sampling_rate_hz
     )
     rir_multi = fb.filter_signal(rir, zero_phase=True)
-    rt = reverb_time(rir_multi)
+    rt, _ = reverb_time(rir_multi)
     br = np.zeros(rir.number_of_channels)
     for ch in range(rir.number_of_channels):
         br[ch] = (rt[0, ch] + rt[1, ch]) / (rt[2, ch] + rt[3, ch])
@@ -595,14 +587,15 @@ def trim_rir(
     rir: Signal,
     channel: int = 0,
     start_offset_s: float = 20e-3,
-    envelope_smoothing_ms: float = 10.0,
+    window_time_s: float = 30e-3,
     threshold_length_factor: float = 0.66,
-    threshold_percentile: float = 50.0,
 ) -> tuple[Signal, int, int]:
-    """Trim a RIR in the beginning and end following certain parameters. This
+    """
+    Trim a RIR in the beginning and end following certain parameters. This
     methods acts only on one channel and returns it trimmed. For defining the
-    ending, a smooth envelope of the energy time curve (ETC) is used. When
-    it goes below a certain threshold, it is trimmed. See notes for details.
+    ending, a smooth envelope of the energy time curve (ETC) is used and the
+    assumption that the energy always has to decay after the impulse arrives.
+    See notes for details.
 
     Parameters
     ----------
@@ -615,15 +608,14 @@ def trim_rir(
         Pass 0 to start the RIR one sample prior to peak value or a very big
         offset to avoid any trimming at the beginning. Default: 20e-3
         (20 milliseconds).
-    envelope_smoothing_ms : float, optional
-        This defines the factor used for exponential smoothing of the ETC
-        envelope. Pass 0 to avoid any smoothing. Default: 10 (10 milliseconds).
+    window_time_s : float, optional
+        This defines the length of non-overlapping windows in which the energy
+        is observed. The first window that has more energy than a previous one
+        is regarded as the end. Default: 30e-3.
     threshold_length_factor : float, optional
-        Percentage of the total length from which to start the percentile
+        Percentage of the total length from which to start the median
         computation for defining the threshold. See notes for more details.
         Default: 0.66.
-    threshold_percentile : float, optional
-        Percentile used to define the threshold. Default: 50.0 (median).
 
     Returns
     -------
@@ -636,27 +628,32 @@ def trim_rir(
 
     Notes
     -----
-    - To define the threshold, a percentile of the trailing part of the ETC
-      envelope is used. The threshold factor refers to the percentage of the
-      total length from which to start computing the percentile. For instance,
-      0.8 means that the percentile is computed in the portion [0.8, 1] of the
-      length.
+    - This method works as follows:
+        - A (hilbert) envelope is computed in dB (energy time curve). This is
+          smoothed by exponential averaging with 20 ms.
+        - A threshold is defined using from `threshold_length_factor` up until
+          the end of the envelope. When the median value of this part is
+          surpassed for the first time, the envelope is trimmed. This ensures
+          trimming to a sensible length.
+        - Non-overlapping windows with length `window_time_s` are checked
+          for decaying energy. The first window to contain more energy than
+          the previous one is regarded as the end. Trimming is done in the
+          middle of this window.
 
     """
     assert start_offset_s >= 0, "Offset must be at least 0"
-    assert envelope_smoothing_ms >= 0, "Envelope smoothing cannot be negative"
     assert (
         threshold_length_factor > 0 and threshold_length_factor < 1
     ), "Threshold factor must be in ]0 and 1["
+    assert window_time_s > 0, "Time window should be longer than 0 seconds"
     trimmed_rir = rir.get_channels(channel)
     td = trimmed_rir.time_data.squeeze()
     start, stop, _ = _trim_rir(
         td,
         rir.sampling_rate_hz,
         start_offset_s,
-        envelope_smoothing_ms,
         threshold_length_factor,
-        threshold_percentile,
+        window_time_s,
     )
     trimmed_rir.time_data = td[start:stop]
     if hasattr(trimmed_rir, "window"):

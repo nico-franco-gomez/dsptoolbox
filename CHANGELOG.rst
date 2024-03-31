@@ -22,10 +22,15 @@ Added
 - added support for `MultiBandSignal` in `hilbert` in module ``transforms``
 - plot momentary spl added in `Signal`
 - `PhaseLinearizer` can now adapt to an input group delay
+- `find_modes` in ``room_acoustics`` can now find antiresonances and use a
+  prominence value in dB for finding peaks in the CMIF
 
 Bugfix
 ~~~~~~~
-- `trim_rir` now deletes a contained window in the output
+- a new criterion was added to `trim_rir` to reliably find the end of an RIR.
+  It now looks at non-overlapping windows and expects the energy to decay
+  monotonically after the impulse has arrived. It now deletes a contained
+  window in the output
 - `window_centered_ir` fixed for certain lengths
 - `generate_synthetic_rir` has been fixed after previous refactoring changed
   some underlying functions
