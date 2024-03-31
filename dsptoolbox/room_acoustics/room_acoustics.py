@@ -136,7 +136,11 @@ def reverb_time(
 
 
 def find_modes(
-    signal: Signal, f_range_hz=[50, 200], dist_hz: float = 5
+    signal: Signal,
+    f_range_hz=[50, 200],
+    dist_hz: float = 5,
+    prominence_db: float | None = None,
+    antiresonances: bool = False,
 ) -> np.ndarray:
     """Finds the room modes of a set of RIR using the peaks of the complex
     mode indicator function (CMIF).
@@ -149,6 +153,12 @@ def find_modes(
         Vector setting range for mode search. Default: [50, 200].
     dist_hz : float, optional
         Minimum distance (in Hz) between modes. Default: 5.
+    prominence_db : float, optional
+        Prominence of the peaks in dB of the CMIF in order to be classified as
+        modes. Pass `None` to avoid checking prominence. Default: `None`.
+    antiresonances : bool, optional
+        When `True`, the spectra are inverted so that antiresonances are
+        found instead of resonances. Default: `False`.
 
     Returns
     -------
@@ -183,14 +193,22 @@ def find_modes(
     f = f[ids[0] : ids[1]]
     df = f[1] - f[0]
 
-    # Compute CMIF and sum of all magnitude spectra
-    cmif = _complex_mode_identification(sp[ids[0] : ids[1], :], True).squeeze()
+    # Compute CMIF
+    sp = sp[ids[0] : ids[1], :]
+    if antiresonances:
+        sp = 1 / sp
+    cmif = _complex_mode_identification(sp, True).squeeze()
 
     # Find peaks
     dist_samp = int(np.ceil(dist_hz / df))
     dist_samp = 1 if dist_samp < 1 else dist_samp
 
-    id_cmif, _ = find_peaks(cmif, distance=dist_samp, width=dist_samp)
+    id_cmif, _ = find_peaks(
+        10 * np.log10(cmif),
+        distance=dist_samp,
+        width=dist_samp,
+        prominence=prominence_db,
+    )
     f_modes = f[id_cmif]
 
     return f_modes
