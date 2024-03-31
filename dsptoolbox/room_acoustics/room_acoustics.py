@@ -138,7 +138,7 @@ def reverb_time(
 def find_modes(
     signal: Signal, f_range_hz=[50, 200], dist_hz: float = 5
 ) -> np.ndarray:
-    """Computes the room modes of a set of RIR using the peaks of the complex
+    """Finds the room modes of a set of RIR using the peaks of the complex
     mode indicator function (CMIF).
 
     Parameters
@@ -157,7 +157,11 @@ def find_modes(
 
     References
     ----------
-    - http://papers.vibetech.com/Paper17-CMIF.pdf
+    - http://papers.vibetech.com/Paper17.pdf
+
+    Notes
+    -----
+    - This function finds the resonant modes but not the antiresonants.
 
     """
     assert len(f_range_hz) == 2, (
