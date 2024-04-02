@@ -19,6 +19,8 @@ from .._general_helpers import (
     _fractional_octave_smoothing,
     _check_format_in_path,
     _scale_spectrum,
+    _remove_impulse_delay_from_phase,
+    _wrap_phase,
 )
 from .._standard import _welch, _group_delay_direct, _stft, _csm
 
@@ -334,8 +336,8 @@ class Signal:
             magnitude AND phase. For accesing the smoothing algorithm, refer to
             `dsptoolbox._general_helpers._fractional_octave_smoothing()`.
             If smoothing is applied here, `Signal.get_spectrum()` returns
-            the smoothed spectrum and `Signal.plot_magnitude()` plots
-            the smoothed version, too. Default: 0 (no smoothing).
+            the smoothed spectrum, but plotting ignores this parameter.
+            Default: 0 (no smoothing).
         window_length_samples : int, optional
             Window size. Default: 1024.
         window_type : str, optional
@@ -935,8 +937,9 @@ class Signal:
             Range in dB for which to plot the magnitude response.
             Default: `None`.
         smoothe : int, optional
-            Smoothing across the (1/smoothe) octave band.
-            Default: 0 (no smoothing).
+            Smoothing across the (1/smoothe) octave band. It only applies to
+            the plot data and not to `get_spectrum()`. Default: 0 (no
+            smoothing).
         show_info_box : bool, optional
             Plots a info box regarding spectrum parameters and plot parameters.
             If it is str, it overwrites the standard message.
@@ -957,7 +960,15 @@ class Signal:
           when no normalization is active.
 
         """
+        # Handle smoothing
+        prior_smoothing = self._spectrum_parameters["smoothe"]
+        self._spectrum_parameters["smoothe"] = 0
+
+        # Get spectrum
         f, sp = self.get_spectrum()
+
+        self._spectrum_parameters["smoothe"] = prior_smoothing
+
         if self._spectrum_parameters["scaling"] is not None:
             mode = (
                 "welch"
@@ -1297,10 +1308,14 @@ class Signal:
         return fig, ax
 
     def plot_phase(
-        self, range_hz=[20, 20e3], unwrap: bool = False
+        self,
+        range_hz=[20, 20e3],
+        unwrap: bool = False,
+        smoothing: int = 0,
+        remove_impulse_delay: bool = False,
     ) -> tuple[Figure, Axes]:
         """Plots phase of the frequency response, only available if the method
-        for the spectrum parameters is not welch.
+        for the spectrum `"standard"`.
 
         Parameters
         ----------
@@ -1309,6 +1324,13 @@ class Signal:
             Default: [20, 20e3].
         unwrap : bool, optional
             When `True`, the unwrapped phase is plotted. Default: `False`.
+        smoothing : int, optional
+            When different than 0, the phase response is smoothed across the
+            1/smoothing-octave band. This only applies smoothing to the plot
+            data. Default: 0.
+        remove_impulse_delay : bool, optional
+            If the signal is of type `"rir"` or `"ir"`, the delay of the
+            impulse can be removed. Default: `False`.
 
         Returns
         -------
@@ -1323,10 +1345,33 @@ class Signal:
             + "welch. Please change spectrum parameters method to "
             + "standard"
         )
+
+        prior_smoothing = self._spectrum_parameters["smoothe"]
+        self._spectrum_parameters["smoothe"] = 0
+
+        # Get spectrum
         f, sp = self.get_spectrum()
         ph = np.angle(sp)
+
+        self._spectrum_parameters["smoothe"] = prior_smoothing
+
+        if remove_impulse_delay:
+            assert self.signal_type in (
+                "rir",
+                "ir",
+            ), f"{self.signal_type} is not valid, use rir or ir"
+            ph = _remove_impulse_delay_from_phase(
+                f, ph, self.time_data, self.sampling_rate_hz
+            )
+
+        if smoothing != 0:
+            ph = _wrap_phase(
+                _fractional_octave_smoothing(np.unwrap(ph, axis=0), smoothing)
+            )
+
         if unwrap:
             ph = np.unwrap(ph, axis=0)
+
         fig, ax = general_plot(
             x=f,
             matrix=ph,

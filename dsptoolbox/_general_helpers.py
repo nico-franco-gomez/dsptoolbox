@@ -3,7 +3,7 @@ General functionality from helper methods
 """
 
 import numpy as np
-from scipy.signal import windows, convolve as scipy_convolve
+from scipy.signal import windows, convolve as scipy_convolve, hilbert
 from scipy.interpolate import interp1d
 from scipy.linalg import toeplitz as toeplitz_scipy
 from os import sep
@@ -198,7 +198,11 @@ def _get_normalized_spectrum(
         id1 = 0
         id2 = len(f)
 
+    spectra = spectra[id1:id2]
+    f = f[id1:id2]
+
     mag_spectra = np.abs(spectra)
+
     if smoothe != 0 and mode == "standard":
         if mode == "standard":
             mag_spectra = _fractional_octave_smoothing(mag_spectra, smoothe)
@@ -207,7 +211,6 @@ def _get_normalized_spectrum(
                 _fractional_octave_smoothing(mag_spectra**0.5, smoothe) ** 2
             )
 
-    mag_spectra = mag_spectra[id1:id2, ...]
     epsilon = 10 ** (-400 / 10)
     mag_spectra = factor * np.log10(
         np.clip(mag_spectra, a_min=epsilon, a_max=None) / scale_factor
@@ -222,7 +225,13 @@ def _get_normalized_spectrum(
                 mag_spectra[:, i] -= np.max(mag_spectra[:, i])
 
     if phase:
-        phase_spectra = np.angle(spectra[id1:id2, ...])
+        phase_spectra = np.angle(spectra)
+        if smoothe != 0:
+            phase_spectra = _wrap_phase(
+                _fractional_octave_smoothing(
+                    np.unwrap(phase_spectra, axis=0), smoothe
+                )
+            )
 
     if one_dimensional:
         mag_spectra = np.squeeze(mag_spectra)
@@ -230,9 +239,9 @@ def _get_normalized_spectrum(
             phase_spectra = np.squeeze(phase_spectra)
 
     if phase:
-        return f[id1:id2], mag_spectra, phase_spectra
+        return f, mag_spectra, phase_spectra
 
-    return f[id1:id2], mag_spectra
+    return f, mag_spectra
 
 
 def _find_frequencies_above_threshold(
@@ -1117,3 +1126,41 @@ def _scale_spectrum(
         spectrum = np.abs(spectrum) ** 2
 
     return spectrum
+
+
+def _remove_impulse_delay_from_phase(
+    freqs: np.ndarray,
+    phase: np.ndarray,
+    time_data: np.ndarray,
+    sampling_rate_hz: int,
+):
+    """
+    Remove the impulse delay from a phase response.
+
+    Parameters
+    ----------
+    freqs : `np.ndarray`
+        Frequency vector.
+    phase : `np.ndarray`
+        Phase vector.
+    time_data : `np.ndarray`
+        Corresponding time signal.
+    sampling_rate_hz : int
+        Sample rate.
+
+    Returns
+    -------
+    new_phase : `np.ndarray`
+        New phase response without impulse delay.
+
+    """
+
+    # Get impulse times from envelopes
+    inds_impulses = np.argmax(np.abs(time_data), axis=0)
+    time_data = time_data[
+        : np.max(inds_impulses) + 200, :
+    ]  # Safety margin of 200 samples
+    inds_impulses = np.argmax(np.abs(hilbert(time_data, axis=0)), axis=0)
+
+    delays = inds_impulses / sampling_rate_hz
+    return _wrap_phase(phase + 2 * np.pi * freqs[:, None] * delays[None, :])

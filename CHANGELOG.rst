@@ -24,6 +24,8 @@ Added
 - `PhaseLinearizer` can now adapt to an input group delay
 - `find_modes` in ``room_acoustics`` can now find antiresonances and use a
   prominence value in dB for finding peaks in the CMIF
+- `plot_phase` in signal class can now apply smoothing to the phase and also
+  remove the delay of the impulse response
 
 Bugfix
 ~~~~~~~
@@ -47,6 +49,7 @@ Misc
 - updated some example notebooks
 - `group_delay` functions in ``transfer_functions`` can apply now smoothing
 - `reverb_time` returns correlation coefficients
+- corrected smoothing behavior in signal class when plotting
 
 
 `0.3.3 <https://pypi.org/project/dsptoolbox/0.3.3>`_ - 
