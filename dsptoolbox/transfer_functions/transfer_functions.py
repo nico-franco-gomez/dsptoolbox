@@ -1294,37 +1294,34 @@ def window_frequency_dependent(
 
     # Optimal length for FFT
     fast_length = next_fast_length_fft(td.shape[0], True)
-    original_length = len(td)
     td = np.pad(td, ((0, fast_length - td.shape[0]), (0, 0)))
-
-    # Scaling function
-    if scaling == "amplitude spectrum":
-
-        def scaling_func(window: np.ndarray) -> float:
-            return 2**0.5 / np.sum(window[:original_length])
-
-    elif scaling == "amplitude spectral density":
-
-        def scaling_func(window: np.ndarray) -> float:
-            return (
-                2 / np.sum(window[:original_length] ** 2) / ir.sampling_rate_hz
-            ) ** 0.5
-
-    elif scaling == "fft":
-        scaling_value = fast_length**0.5
-
-        def scaling_func(window: np.ndarray) -> float:
-            return 1 / scaling_value
-
-    else:
-
-        def scaling_func(window: np.ndarray) -> float:
-            return 1
 
     # Construct window vectors
     n = np.zeros_like(td)
     for ch in range(td.shape[1]):
         n[:, ch] = np.arange(-ind_max[ch], td.shape[0] - ind_max[ch])
+
+    # Scaling function
+    if scaling == "amplitude spectrum":
+
+        def scaling_func(window: np.ndarray):
+            return 2**0.5 / np.sum(window, axis=0)
+
+    elif scaling == "amplitude spectral density":
+
+        def scaling_func(window: np.ndarray):
+            return (2 / np.sum(window**2, axis=0) / ir.sampling_rate_hz) ** 0.5
+
+    elif scaling == "fft":
+        scaling_value = fast_length**-0.5
+
+        def scaling_func(window: np.ndarray):
+            return scaling_value
+
+    else:
+
+        def scaling_func(window: np.ndarray):
+            return 1
 
     for ind, ind_f in enumerate(inds_f):
         # Alpha such that window is exactly 0.5 after the number of
