@@ -1166,7 +1166,12 @@ class Signal:
                 )
         return fig, ax
 
-    def plot_group_delay(self, range_hz=[20, 20000]) -> tuple[Figure, Axes]:
+    def plot_group_delay(
+        self,
+        range_hz=[20, 20000],
+        remove_impulse_delay: bool = False,
+        smoothing: int = 0,
+    ) -> tuple[Figure, Axes]:
         """Plots group delay of each channel.
         Only works if `signal_type in ('ir', 'h1', 'h2', 'h3', 'rir', 'chirp',
         'noise', 'dirac')`.
@@ -1176,6 +1181,13 @@ class Signal:
         range_hz : array-like with length 2, optional
             Range of frequencies for which to show group delay.
             Default: [20, 20e3].
+        remove_impulse_delay : bool, optional
+            When `True`, the delay of the impulse is removed prior to the
+            computation of the group delay. Default: `False`.
+        smoothing : int, optional
+            When different than 0, smoothing is applied to the group delay
+            along the (1/smoothing) octave band. This only affects the values
+            in the plot. Default: 0.
 
         Returns
         -------
@@ -1199,11 +1211,26 @@ class Signal:
             f"{self.signal_type} is not valid. Please set it to ir or "
             + "h1, h2, h3, rir"
         )
-        self.set_spectrum_parameters("standard", scaling=None)
+
+        # Handle spectrum parameters
+        prior_spectrum_parameters = self._spectrum_parameters
+        self.set_spectrum_parameters("standard", scaling=None, smoothe=0)
         f, sp = self.get_spectrum()
+        self._spectrum_parameters = prior_spectrum_parameters
+
+        sp = np.angle(sp)
+        if remove_impulse_delay:
+            sp = _remove_impulse_delay_from_phase(
+                f, sp, self.time_data, self.sampling_rate_hz
+            )
+
         gd = np.zeros((len(f), self.number_of_channels))
         for n in range(self.number_of_channels):
             gd[:, n] = _group_delay_direct(sp[:, n], f[1] - f[0])
+
+        if smoothing != 0:
+            gd = _fractional_octave_smoothing(gd, smoothing)
+
         fig, ax = general_plot(
             f,
             gd * 1e3,
