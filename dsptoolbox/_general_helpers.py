@@ -1155,7 +1155,7 @@ def _get_fractional_impulse_peak_index(
     time_data = time_data[: np.max(delay_samples) + 200, :]
 
     h = hilbert(time_data, axis=0)
-    x = np.arange(-1, 1)
+    x = np.arange(0, 2)
 
     latency_samples = np.zeros(n_channels)
 
