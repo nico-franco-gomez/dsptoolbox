@@ -22,6 +22,7 @@ from .._general_helpers import (
     _fractional_octave_smoothing,
     _correct_for_real_phase_spectrum,
     _wrap_phase,
+    _remove_impulse_delay_from_phase,
 )
 from .._standard import _welch, _minimum_phase, _group_delay_direct, _pad_trim
 from ..standard_functions import fractional_delay, merge_signals, normalize
@@ -792,12 +793,13 @@ def group_delay(
     signal: Signal,
     method="matlab",
     smoothing: int = 0,
+    remove_impulse_delay: bool = False,
 ) -> tuple[np.ndarray, np.ndarray]:
     """Computes and returns group delay.
 
     Parameters
     ----------
-    signal : Signal
+    signal : `Signal`
         Signal for which to compute group delay.
     method : str, optional
         `'direct'` uses gradient with unwrapped phase. `'matlab'` uses
@@ -807,6 +809,9 @@ def group_delay(
     smoothing : int, optional
         Octave fraction by which to apply smoothing. `0` avoids any smoothing
         of the group delay. Default: `0`.
+    remove_impulse_delay : bool, optional
+        If the signal is of type `"ir"` or `"rir"`, the impulse delay can be
+        removed. Default: `False`.
 
     Returns
     -------
@@ -822,8 +827,20 @@ def group_delay(
         "matlab",
     ), f"{method} is not valid. Use direct or matlab"
 
+    spec_parameters = signal._spectrum_parameters
     signal.set_spectrum_parameters("standard")
     f, sp = signal.get_spectrum()
+    signal._spectrum_parameters = spec_parameters
+
+    if remove_impulse_delay:
+        assert signal.signal_type in (
+            "rir",
+            "ir",
+        ), f"{signal.signal_type} is not a valid signal type. Use ir or rir"
+        sp = _remove_impulse_delay_from_phase(
+            f, np.angle(sp), signal.time_data, signal.sampling_rate_hz
+        )
+
     if method == "direct":
         group_delays = np.zeros((sp.shape[0], sp.shape[1]))
         for n in range(signal.number_of_channels):
@@ -838,8 +855,10 @@ def group_delay(
             _, group_delays[:, n] = _group_delay_filter(
                 [b, a], len(b) // 2 + 1, signal.sampling_rate_hz
             )
+
     if smoothing != 0:
         group_delays = _fractional_octave_smoothing(group_delays, smoothing)
+
     return f, group_delays
 
 
@@ -962,6 +981,7 @@ def excess_group_delay(
     signal: Signal,
     method: str = "real cepstrum",
     smoothing: int = 0,
+    remove_impulse_delay: bool = False,
 ) -> tuple[np.ndarray, np.ndarray]:
     """Computes excess group delay of an IR.
 
@@ -975,6 +995,9 @@ def excess_group_delay(
     smoothing : int, optional
         Octave fraction by which to apply smoothing. `0` avoids any smoothing
         of the group delay. Default: `0`.
+    remove_impulse_delay : bool, optional
+        If the signal is of type `"ir"` or `"rir"`, the impulse delay can be
+        removed. Default: `False`.
 
     Returns
     -------
@@ -989,8 +1012,10 @@ def excess_group_delay(
 
     """
     assert signal.signal_type in ("rir", "ir"), "Only valid for rir or ir"
-    f, min_gd = minimum_group_delay(signal, method)
-    f, gd = group_delay(signal)
+    f, min_gd = minimum_group_delay(signal, method, smoothing=0)
+    f, gd = group_delay(
+        signal, smoothing=0, remove_impulse_delay=remove_impulse_delay
+    )
     ex_gd = gd - min_gd
 
     if smoothing != 0:
