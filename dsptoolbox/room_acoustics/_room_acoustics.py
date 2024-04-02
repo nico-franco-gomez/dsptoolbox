@@ -1246,6 +1246,9 @@ def _trim_rir(
     if stop - impulse_index < int(5e-3 * fs_hz):
         stop = len(envelope)
 
+    if window_time_s == 0:
+        return start_index, stop, impulse_index
+
     # Ensure that energy is always decaying by looking at non-overlapping
     # windows. Trim when energy grows in the next window
     window_length = int(window_time_s * fs_hz)

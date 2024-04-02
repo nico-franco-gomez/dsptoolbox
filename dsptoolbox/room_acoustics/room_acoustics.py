@@ -611,7 +611,8 @@ def trim_rir(
     window_time_s : float, optional
         This defines the length of non-overlapping windows in which the energy
         is observed. The first window that has more energy than a previous one
-        is regarded as the end. Default: 30e-3.
+        is regarded as the end. If a window time of 0 is passed, this step
+        of the computation is ignored. Default: 30e-3.
     threshold_length_factor : float, optional
         Percentage of the total length from which to start the median
         computation for defining the threshold. See notes for more details.
@@ -645,7 +646,7 @@ def trim_rir(
     assert (
         threshold_length_factor > 0 and threshold_length_factor < 1
     ), "Threshold factor must be in ]0 and 1["
-    assert window_time_s > 0, "Time window should be longer than 0 seconds"
+    assert window_time_s >= 0, "Time window should be longer than 0 seconds"
     trimmed_rir = rir.get_channels(channel)
     td = trimmed_rir.time_data.squeeze()
     start, stop, _ = _trim_rir(
