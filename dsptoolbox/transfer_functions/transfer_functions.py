@@ -699,6 +699,7 @@ def lin_phase_from_mag(
     # Frequency vector
     f_vec = np.fft.rfftfreq(original_length_time_data, 1 / sampling_rate_hz)
     delta_f = f_vec[1] - f_vec[0]
+    spectrum_has_nyquist = original_length_time_data % 2 == 0
 
     # New spectrum
     lin_spectrum = np.empty(spectrum.shape, dtype="cfloat")
@@ -708,21 +709,21 @@ def lin_phase_from_mag(
                 spectrum[:, n], odd_length=original_length_time_data % 2 == 1
             )
             min_gd = _group_delay_direct(min_phase, delta_f)
-            gd = np.max(min_gd) + 1e-3  # add 1 ms as safety factor
+            gd_ms = np.max(min_gd) + 1e-3  # add 1 ms as safety factor
             if check_causality and type(group_delay_ms) is not str:
-                assert gd <= group_delay_ms, (
+                assert gd_ms <= group_delay_ms, (
                     f"Given group delay {group_delay_ms * 1000} ms is lower "
-                    + f"than minimal group delay {gd * 1000} ms for "
+                    + f"than minimal group delay {gd_ms * 1000} ms for "
                     + f"channel {n}"
                 )
-                gd = group_delay_ms
+                gd_ms = group_delay_ms
         else:
-            gd = group_delay_ms
+            gd_ms = group_delay_ms
 
-        phase = 2 * np.pi * f_vec * gd
-        if original_length_time_data % 2 == 0:
+        phase = 2 * np.pi * f_vec * gd_ms
+        if spectrum_has_nyquist:
             phase = _correct_for_real_phase_spectrum(_wrap_phase(phase))
-        lin_spectrum[:, n] = spectrum[:, n] * np.exp(-1j * phase)
+        lin_spectrum[:, n] = spectrum[:, n] * np.exp(1j * phase)
     time_data = np.fft.irfft(lin_spectrum, axis=0, n=original_length_time_data)
     sig_lin_phase = Signal(
         None,
