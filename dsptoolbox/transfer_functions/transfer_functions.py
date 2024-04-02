@@ -833,33 +833,41 @@ def group_delay(
         "matlab",
     ), f"{method} is not valid. Use direct or matlab"
 
-    spec_parameters = signal._spectrum_parameters
-    signal.set_spectrum_parameters("standard")
-    f, sp = signal.get_spectrum()
-    signal._spectrum_parameters = spec_parameters
-
-    if remove_impulse_delay:
-        assert signal.signal_type in (
-            "rir",
-            "ir",
-        ), f"{signal.signal_type} is not a valid signal type. Use ir or rir"
-        sp = _remove_impulse_delay_from_phase(
-            f, np.angle(sp), signal.time_data, signal.sampling_rate_hz
-        )
-
     if method == "direct":
+        spec_parameters = signal._spectrum_parameters
+        signal.set_spectrum_parameters("standard")
+        f, sp = signal.get_spectrum()
+        signal._spectrum_parameters = spec_parameters
         group_delays = np.zeros((sp.shape[0], sp.shape[1]))
+
+        if remove_impulse_delay:
+            assert signal.signal_type in (
+                "rir",
+                "ir",
+            ), (
+                f"{signal.signal_type} is not a valid signal type. Use ir "
+                + "or rir"
+            )
+            sp = _remove_impulse_delay_from_phase(
+                f, np.angle(sp), signal.time_data, signal.sampling_rate_hz
+            )
         for n in range(signal.number_of_channels):
             group_delays[:, n] = _group_delay_direct(sp[:, n], f[1] - f[0])
     else:
         group_delays = np.zeros(
             (signal.time_data.shape[0] // 2 + 1, signal.time_data.shape[1])
         )
+        f = np.fft.rfftfreq(
+            signal.time_data.shape[0], 1 / signal.sampling_rate_hz
+        )
+
         for n in range(signal.number_of_channels):
-            b = signal.time_data[:, n].copy()
+            b = signal.time_data[:, n]
+            if remove_impulse_delay:
+                b = b[max(int(np.argmax(np.abs(b))) - 1, 0) :]
             a = [1]
             _, group_delays[:, n] = _group_delay_filter(
-                [b, a], len(b) // 2 + 1, signal.sampling_rate_hz
+                [b, a], len(f), signal.sampling_rate_hz
             )
 
     if smoothing != 0:
@@ -1020,7 +1028,10 @@ def excess_group_delay(
     assert signal.signal_type in ("rir", "ir"), "Only valid for rir or ir"
     f, min_gd = minimum_group_delay(signal, method, smoothing=0)
     f, gd = group_delay(
-        signal, smoothing=0, remove_impulse_delay=remove_impulse_delay
+        signal,
+        smoothing=0,
+        method="direct",
+        remove_impulse_delay=remove_impulse_delay,
     )
     ex_gd = gd - min_gd
 
