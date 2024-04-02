@@ -7,6 +7,7 @@ from scipy.signal import windows, convolve as scipy_convolve, hilbert
 from scipy.interpolate import interp1d
 from scipy.linalg import toeplitz as toeplitz_scipy
 from os import sep
+from warnings import warn
 
 
 def _find_nearest(points, vector) -> np.ndarray:
@@ -1128,6 +1129,65 @@ def _scale_spectrum(
     return spectrum
 
 
+def _get_fractional_impulse_peak_index(
+    time_data: np.ndarray,
+):
+    """
+    Obtain the index for the peak in subsample precision using the root
+    of the analytical function.
+
+    Parameters
+    ----------
+    time_data : `np.ndarray`
+        Time vector with shape (time samples, channels).
+
+    Returns
+    -------
+    latency_samples : `np.ndarray`
+        Latency of impulses (in samples). It has shape (channels).
+
+    """
+    n_channels = time_data.shape[1]
+    delay_samples = np.argmax(np.abs(time_data), axis=0).astype(int)
+
+    # Take only the part of the time vector with the impulses and some safety
+    # samples
+    time_data = time_data[: np.max(delay_samples) + 200, :]
+
+    h = hilbert(time_data, axis=0)
+    x = np.arange(-1, 1)
+
+    latency_samples = np.zeros(n_channels)
+
+    for ch in range(n_channels):
+        # ===== Ensure that delay_samples is before the peak in each channel
+        selection = h[delay_samples[ch] - 1 : delay_samples[ch] + 1, ch].imag
+        move_back_one_sample = np.sign(selection[0] * selection[1]) == 1
+        if move_back_one_sample:
+            delay_samples[ch] -= 1
+        # =====
+
+        # Fit line
+        pol = np.polyfit(
+            x,
+            np.imag(h[delay_samples[ch] - 1 : delay_samples[ch] + 1, ch]),
+            1,
+        )
+
+        # Find root and check it is less than one
+        fractional_delay_samples = np.roots(pol).squeeze()
+        if np.abs(fractional_delay_samples) >= 1:
+            warn(
+                "Fractional latency detection failed. Integer latency is"
+                + "returned"
+            )
+            fractional_delay_samples = np.array(0.0)
+            if move_back_one_sample:
+                delay_samples[ch] += 1
+        latency_samples[ch] = delay_samples[ch] + fractional_delay_samples
+    return latency_samples
+
+
 def _remove_impulse_delay_from_phase(
     freqs: np.ndarray,
     phase: np.ndarray,
@@ -1154,13 +1214,5 @@ def _remove_impulse_delay_from_phase(
         New phase response without impulse delay.
 
     """
-
-    # Get impulse times from envelopes
-    inds_impulses = np.argmax(np.abs(time_data), axis=0)
-    time_data = time_data[
-        : np.max(inds_impulses) + 200, :
-    ]  # Safety margin of 200 samples
-    inds_impulses = np.argmax(np.abs(hilbert(time_data, axis=0)), axis=0)
-
-    delays = inds_impulses / sampling_rate_hz
-    return _wrap_phase(phase + 2 * np.pi * freqs[:, None] * delays[None, :])
+    delays_s = _get_fractional_impulse_peak_index(time_data) / sampling_rate_hz
+    return _wrap_phase(phase + 2 * np.pi * freqs[:, None] * delays_s[None, :])

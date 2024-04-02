@@ -3,7 +3,7 @@ Methods used for acquiring and windowing transfer functions
 """
 
 import numpy as np
-from scipy.signal import minimum_phase as min_phase_scipy, hilbert
+from scipy.signal import minimum_phase as min_phase_scipy
 from scipy.fft import rfft as rfft_scipy, next_fast_len as next_fast_length_fft
 
 from ._transfer_functions import (
@@ -18,13 +18,19 @@ from ._transfer_functions import (
 from ..classes import Signal, Filter
 from ..classes._filter import _group_delay_filter
 from .._general_helpers import (
+    _remove_impulse_delay_from_phase,
     _find_frequencies_above_threshold,
     _fractional_octave_smoothing,
     _correct_for_real_phase_spectrum,
     _wrap_phase,
-    _remove_impulse_delay_from_phase,
+    _get_fractional_impulse_peak_index,
 )
-from .._standard import _welch, _minimum_phase, _group_delay_direct, _pad_trim
+from .._standard import (
+    _welch,
+    _minimum_phase,
+    _group_delay_direct,
+    _pad_trim,
+)
 from ..standard_functions import fractional_delay, merge_signals, normalize
 from ..generators import dirac
 from ..filterbanks import linkwitz_riley_crossovers
@@ -1450,31 +1456,7 @@ def find_ir_latency(ir: Signal) -> np.ndarray:
 
     """
     assert ir.signal_type in ("rir", "ir"), "Only valid for rir or ir"
-    # Get maximum with fractional precision by finding the root of the complex
-    # part of the analytical signal
-    delay_samples = np.argmax(np.abs(ir.time_data), axis=0).astype(int)
-    h = hilbert(ir.time_data, axis=0)
-    point_around = 1
-    x = np.arange(-point_around, point_around)
-
-    latency_samples = np.zeros(ir.number_of_channels)
-
-    for ch in range(ir.number_of_channels):
-        pol = np.polyfit(
-            x,
-            np.imag(
-                h[
-                    delay_samples[ch]
-                    - point_around : delay_samples[ch]
-                    + point_around,
-                    ch,
-                ]
-            ),
-            1,
-        )
-        fractional_delay_samples = np.roots(pol).squeeze()
-        latency_samples[ch] = delay_samples[ch] + fractional_delay_samples
-    return latency_samples
+    return _get_fractional_impulse_peak_index(ir.time_data)
 
 
 def harmonics_from_chirp_ir(

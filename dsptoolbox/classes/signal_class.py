@@ -20,8 +20,8 @@ from .._general_helpers import (
     _fractional_octave_smoothing,
     _check_format_in_path,
     _scale_spectrum,
-    _remove_impulse_delay_from_phase,
     _wrap_phase,
+    _remove_impulse_delay_from_phase,
 )
 from .._standard import _welch, _group_delay_direct, _stft, _csm
 
@@ -1112,9 +1112,10 @@ class Signal:
 
         complex_data = self.time_data_imaginary is not None
         if complex_data:
+            td_squared_imaginary = self.time_data_imaginary**2
             if window_length_s > 0:
                 td_squared_imaginary = convolve(
-                    self.time_data_imaginary**2,
+                    td_squared_imaginary,
                     window,
                     mode="same",
                     method="auto",

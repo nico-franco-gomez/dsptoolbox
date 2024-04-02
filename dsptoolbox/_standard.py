@@ -13,8 +13,8 @@ def _latency(
     in1: np.ndarray, in2: np.ndarray | None = None, polynomial_points: int = 0
 ):
     """Computes the latency between two functions using the correlation method.
-    The variable polynomial_points is only a dummy to share the same API as
-    the _fractional_latency function.
+    The variable polynomial_points is only a dummy to share the same function
+    signature as the `_fractional_latency` function.
 
     """
     if in2 is None:
@@ -83,7 +83,7 @@ def _fractional_latency(
     for ch in range(td1.shape[1]):
         # td2 is original, td1 is delayed
         xcor = correlate(td2[:, ch], td1[:, ch])
-        ind_max = int(np.argmax(xcor))
+        ind_max = int(np.argmax(np.abs(xcor)))
         analytical_xcor = np.imag(hilbert(xcor))
 
         # Find exact index before maximum

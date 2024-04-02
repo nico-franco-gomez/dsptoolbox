@@ -50,7 +50,7 @@ def latency(
     in1: Signal | MultiBandSignal,
     in2: Signal | MultiBandSignal | None = None,
     polynomial_points: int = 0,
-) -> np.ndarray:
+) -> np.ndarray[int | float]:
     """Computes latency between two signals using the correlation method.
     If there is no second signal, the latency between the first and the other
     channels is computed. `in1` is to be understood as a delayed version
