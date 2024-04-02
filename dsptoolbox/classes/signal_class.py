@@ -9,6 +9,7 @@ import numpy as np
 import soundfile as sf
 from matplotlib.figure import Figure
 from matplotlib.axes import Axes
+from scipy.signal import convolve
 
 from ..plots import general_plot, general_subplots_line, general_matrix_plot
 from ._plots import _csm_plot
@@ -1059,7 +1060,10 @@ class Signal:
         return fig, ax
 
     def plot_spl(
-        self, normalize_at_peak: bool = False, range_db: float | None = 100.0
+        self,
+        normalize_at_peak: bool = False,
+        range_db: float | None = 100.0,
+        window_length_s: float = 0.0,
     ) -> tuple[Figure, Axes]:
         """Plots the momentary sound pressure level (dB or dBFS) of each
         channel. If the signal is calibrated and not normalized at peak, the
@@ -1072,8 +1076,11 @@ class Signal:
             Default: `False`.
         range_db : float, optional
             This is the range in dB used for plotting. Each plot will be in the
-            range [peak + 1 - range_db, peak + 1]. Pass `None` to avoid
-            setting any range. Default: 100.
+            range [peak + 1 - range_db, peak + 1]. Pass `None` to avoid setting
+            any range. Default: 100.
+        window_length_s : float, optional
+            When different than 0, a moving average along the time axis is done
+            with the given length. Default: 0.
 
         Returns
         -------
@@ -1088,26 +1095,40 @@ class Signal:
         - No time averaging is done in this function.
         - If it is an analytic signal and normalization is applied, the peak
           value of the real part is used as the normalization factor.
+        - If the time window is not 0, effects at the edges of the signal might
+          be present due to zero-padding.
 
         """
-        if not hasattr(self, "time_vector_s"):
-            self._generate_time_vector()
+        td_squared = self.time_data**2
 
-        peak_values = 20 * np.log10(np.max(np.abs(self.time_data), axis=0))
-        etc = 20 * np.log10(
-            np.clip(np.abs(self.time_data), a_min=1e-40, a_max=None)
-        )
+        if window_length_s > 0:
+            window = np.ones(
+                (int(window_length_s * self.sampling_rate_hz + 0.5), 1)
+            )
+            window /= len(window)
+            td_squared = convolve(
+                td_squared, window, mode="same", method="auto"
+            )
 
         complex_data = self.time_data_imaginary is not None
-
         if complex_data:
-            complex_etc = 20 * np.log10(
+            if window_length_s > 0:
+                td_squared_imaginary = convolve(
+                    self.time_data_imaginary**2,
+                    window,
+                    mode="same",
+                    method="auto",
+                )
+            complex_etc = 10 * np.log10(
                 np.clip(
-                    np.abs(self.time_data_imaginary),
-                    a_min=1e-40,
+                    td_squared_imaginary,
+                    a_min=1e-80,
                     a_max=None,
                 )
             )
+
+        peak_values = 10 * np.log10(np.max(td_squared, axis=0))
+        etc = 10 * np.log10(np.clip(td_squared, a_min=1e-80, a_max=None))
 
         if normalize_at_peak:
             etc -= peak_values
