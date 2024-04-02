@@ -1130,7 +1130,7 @@ def _scale_spectrum(
 
 
 def _get_fractional_impulse_peak_index(
-    time_data: np.ndarray,
+    time_data: np.ndarray, polynomial_points: int = 1
 ):
     """
     Obtain the index for the peak in subsample precision using the root
@@ -1161,7 +1161,7 @@ def _get_fractional_impulse_peak_index(
 
     for ch in range(n_channels):
         # ===== Ensure that delay_samples is before the peak in each channel
-        selection = h[delay_samples[ch] - 1 : delay_samples[ch] + 1, ch].imag
+        selection = h[delay_samples[ch] : delay_samples[ch] + 2, ch].imag
         move_back_one_sample = np.sign(selection[0] * selection[1]) == 1
         if move_back_one_sample:
             delay_samples[ch] -= 1
@@ -1170,7 +1170,7 @@ def _get_fractional_impulse_peak_index(
         # Fit line
         pol = np.polyfit(
             x,
-            np.imag(h[delay_samples[ch] - 1 : delay_samples[ch] + 1, ch]),
+            np.imag(h[delay_samples[ch] : delay_samples[ch] + 2, ch]),
             1,
         )
 
@@ -1178,12 +1178,15 @@ def _get_fractional_impulse_peak_index(
         fractional_delay_samples = np.roots(pol).squeeze()
         if np.abs(fractional_delay_samples) >= 1:
             warn(
-                "Fractional latency detection failed. Integer latency is"
-                + "returned"
+                f"Fractional latency detection failed for channel {ch}. "
+                + "Integer latency is"
+                + " returned"
             )
-            fractional_delay_samples = np.array(0.0)
-            if move_back_one_sample:
-                delay_samples[ch] += 1
+            latency_samples[ch] = delay_samples[ch] + (
+                1 if move_back_one_sample else 0
+            )
+            continue
+
         latency_samples[ch] = delay_samples[ch] + fractional_delay_samples
     return latency_samples
 
