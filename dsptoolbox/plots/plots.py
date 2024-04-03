@@ -283,9 +283,7 @@ def general_matrix_plot(
         extent = (range_x[0], range_x[1], range_y[0], range_y[1])
 
     fig, ax = plt.subplots(1, 1, figsize=(7, 5))
-    cmap = cm.get_cmap(cmap)
-    # cmap._init()
-    # cmap._lut[-3, -1]
+    cmap2 = cm.get_cmap(cmap)
     if range_z is not None:
         max_val = max(matrix)
         min_val = max_val - range_z
@@ -302,7 +300,7 @@ def general_matrix_plot(
         col = ax.imshow(
             matrix,
             alpha=0.95,
-            cmap=cmap,
+            cmap=cmap2,
             vmin=min_val,
             vmax=max_val,
             origin=origin,
@@ -313,7 +311,7 @@ def general_matrix_plot(
             matrix,
             extent=extent,
             alpha=0.95,
-            cmap=cmap,
+            cmap=cmap2,
             vmin=min_val,
             vmax=max_val,
             origin=origin,

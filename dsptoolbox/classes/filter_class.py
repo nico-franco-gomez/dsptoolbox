@@ -570,7 +570,12 @@ class Filter:
 
     def get_coefficients(
         self, mode: str = "sos"
-    ) -> list | np.ndarray | tuple[np.ndarray, np.ndarray, np.ndarray] | None:
+    ) -> (
+        list[np.ndarray]
+        | np.ndarray
+        | tuple[np.ndarray, np.ndarray, np.ndarray]
+        | None
+    ):
         """Returns the filter coefficients.
 
         Parameters

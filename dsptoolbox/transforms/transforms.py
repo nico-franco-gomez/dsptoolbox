@@ -64,12 +64,12 @@ def cepstrum(signal: Signal, mode="power") -> np.ndarray:
     _, sp = signal.get_spectrum()
 
     if mode in ("power", "real"):
-        ceps = np.abs(np.fft.irfft((2 * np.log(np.abs(sp))), axis=0)) ** 2
+        ceps = np.abs(np.fft.irfft((2 * np.log(np.abs(sp))), axis=0)) ** 2.0
     else:
         phase = np.unwrap(np.angle(sp), axis=0)
         ceps = np.fft.irfft(np.log(np.abs(sp)) + 1j * phase, axis=0).real
     if mode == "real":
-        ceps = (ceps**0.5) / 2
+        ceps = (ceps**0.5) / 2.0
     return ceps
 
 
@@ -130,7 +130,7 @@ def log_mel_spectrogram(
         s.set_spectrogram_parameters(**stft_parameters)
     time_s, f_hz, sp = s.get_spectrogram()
     mfilt, f_mel = mel_filterbank(f_hz, range_hz, n_bands, normalize=True)
-    log_mel_sp = np.tensordot(mfilt, np.abs(sp), axes=[-1, 0])
+    log_mel_sp = np.tensordot(mfilt, np.abs(sp), axes=(-1, 0))
     log_mel_sp = 20 * np.log10(np.clip(log_mel_sp, a_min=1e-20, a_max=None))
     if generate_plot:
         fig, ax = general_matrix_plot(
@@ -359,10 +359,10 @@ def mfcc(
             f"Shape of the mel filter matrix {mel_filters.shape} does "
             + f"not match the STFT {log_sp.shape}"
         )
-        f_mel = [0, mel_filters.shape[0]]
+        f_mel = np.array([0, mel_filters.shape[0]])
 
     # Convert from Hz to Mel
-    log_sp = np.tensordot(mel_filters, log_sp, axes=[-1, 0])
+    log_sp = np.tensordot(mel_filters, log_sp, axes=(-1, 0))
 
     # Discrete cosine transform
     mfcc = np.abs(dct(log_sp, type=2, axis=0))
@@ -664,12 +664,8 @@ def cwt(
     )
 
     for ind_f, f in enumerate(frequencies):
-        wv = wavelet.get_wavelet(f, signal.sampling_rate_hz)
-        # Decide if convolve, fftconvolve or oaconvolve
-        # if len(wv) > td.shape[0]*0.2:
-        #     scalogram[ind_f, ...] = convolve(
-        #         td, wv[..., None], axes=0, mode='same')
-        # else:
+        wv = np.array(wavelet.get_wavelet(f, signal.sampling_rate_hz))
+
         scalogram[ind_f, ...] = oaconvolve(
             td, wv[..., None], axes=0, mode="same"
         )

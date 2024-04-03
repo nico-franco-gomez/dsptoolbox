@@ -814,8 +814,7 @@ def _check_format_in_path(path: str, desired_format: str) -> str:
         Path with the desired format.
 
     """
-    format = path.split(sep)[-1]
-    format = format.split(".")
+    format = path.split(sep)[-1].split(".")
     if len(format) != 1:
         assert (
             format[-1] == desired_format
@@ -1030,10 +1029,12 @@ def _get_chirp_rate(range_hz: list, length_seconds: float) -> float:
         The chirp rate in octaves/second.
 
     """
-    range_hz = np.atleast_1d(range_hz)
-    assert range_hz.shape == (2,), "Range must contain exactly two elements."
-    range_hz = np.sort(range_hz)
-    return np.log2(range_hz[1] / range_hz[0]) / length_seconds
+    range_hz_array = np.atleast_1d(range_hz)
+    assert range_hz_array.shape == (
+        2,
+    ), "Range must contain exactly two elements."
+    range_hz_array = np.sort(range_hz_array)
+    return np.log2(range_hz_array[1] / range_hz_array[0]) / length_seconds
 
 
 def _correct_for_real_phase_spectrum(phase_spectrum: np.ndarray):

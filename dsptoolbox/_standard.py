@@ -244,7 +244,7 @@ def _welch(
             y_frames, axis=0
         )
     else:
-        sp_frames = np.abs(np.fft.rfft(x_frames, axis=0)) ** 2
+        sp_frames = np.abs(np.fft.rfft(x_frames, axis=0)) ** 2.0
 
     # Direct averaging (much faster than averaging magnitude and phase)
     if average == "mean":
@@ -558,7 +558,9 @@ def _csm(
     return f, csm
 
 
-def _center_frequencies_fractional_octaves_iec(nominal, num_fractions):
+def _center_frequencies_fractional_octaves_iec(
+    nominal, num_fractions
+) -> tuple[np.ndarray, np.ndarray]:
     """Returns the exact center frequencies for fractional octave bands
     according to the IEC 61260:1:2014 standard.
     octave ratio
@@ -663,7 +665,7 @@ def _center_frequencies_fractional_octaves_iec(nominal, num_fractions):
 
 def _exact_center_frequencies_fractional_octaves(
     num_fractions, frequency_range
-):
+) -> np.ndarray:
     """Calculate the center frequencies of arbitrary fractional octave bands.
 
     Parameters

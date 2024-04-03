@@ -97,7 +97,7 @@ def latency(
     assert polynomial_points >= 0, "Polynomial points has to be at least 0"
     if polynomial_points == 0:
         latency_func = _latency
-        data_type = int
+        data_type: type[int | float] = int
     else:
         latency_func = _fractional_latency
         data_type = float
@@ -359,7 +359,10 @@ def resample(sig: Signal, desired_sampling_rate_hz: int) -> Signal:
 
 def fractional_octave_frequencies(
     num_fractions=1, frequency_range=(20, 20e3), return_cutoff=False
-) -> tuple[np.ndarray, np.ndarray, tuple] | tuple[np.ndarray, np.ndarray]:
+) -> (
+    tuple[np.ndarray, np.ndarray, tuple[np.ndarray, np.ndarray]]
+    | tuple[np.ndarray, np.ndarray]
+):
     """Return the octave center frequencies according to the IEC 61260:1:2014
     standard. This implementation has been taken from the pyfar package. See
     references.
@@ -382,7 +385,7 @@ def fractional_octave_frequencies(
     nominal : array, float
         The nominal center frequencies in Hz specified in the standard.
         Nominal frequencies are only returned for octave bands and third octave
-        bands.
+        bands. Otherwise, an empty array is returned.
     exact : array, float
         The exact center frequencies in Hz, resulting in a uniform distribution
         of frequency bands over the frequency range.
@@ -395,7 +398,7 @@ def fractional_octave_frequencies(
     - The pyfar package: https://github.com/pyfar/pyfar
 
     """
-    nominal = None
+    nominal = np.array([])
 
     f_lims = np.asarray(frequency_range)
     if f_lims.size != 2:
