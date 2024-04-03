@@ -1140,6 +1140,9 @@ def _get_fractional_impulse_peak_index(
     ----------
     time_data : `np.ndarray`
         Time vector with shape (time samples, channels).
+    polynomial_points : int, optional
+        Number of points to take for the polynomial interpolation and root
+        finding of the analytic part of the time series. Default: 1.
 
     Returns
     -------
@@ -1155,36 +1158,60 @@ def _get_fractional_impulse_peak_index(
     time_data = time_data[: np.max(delay_samples) + 200, :]
 
     h = hilbert(time_data, axis=0)
-    x = np.arange(0, 2)
+    x = np.arange(-polynomial_points + 1, polynomial_points + 1)
 
     latency_samples = np.zeros(n_channels)
 
     for ch in range(n_channels):
         # ===== Ensure that delay_samples is before the peak in each channel
         selection = h[delay_samples[ch] : delay_samples[ch] + 2, ch].imag
-        move_back_one_sample = np.sign(selection[0] * selection[1]) == 1
-        if move_back_one_sample:
-            delay_samples[ch] -= 1
-        # =====
-
-        # Fit line
-        pol = np.polyfit(
-            x,
-            np.imag(h[delay_samples[ch] : delay_samples[ch] + 2, ch]),
-            1,
-        )
-
-        # Find root and check it is less than one
-        fractional_delay_samples = np.roots(pol).squeeze()
-        if fractional_delay_samples > 1 or fractional_delay_samples < 0:
+        move_back_one_sample = selection[0] * selection[1] > 0
+        delay_samples[ch] -= int(move_back_one_sample)
+        if (
+            h[delay_samples[ch], ch].imag * h[delay_samples[ch] + 1, ch].imag
+            > 0
+        ):
+            latency_samples[ch] = delay_samples[ch] + int(move_back_one_sample)
             warn(
                 f"Fractional latency detection failed for channel {ch}. "
                 + "Integer latency is"
                 + " returned"
             )
-            latency_samples[ch] = delay_samples[ch] + (
-                1 if move_back_one_sample else 0
+            continue
+        # =====
+
+        # Fit polynomial
+        pol = np.polyfit(
+            x,
+            h[
+                delay_samples[ch]
+                - polynomial_points
+                + 1 : delay_samples[ch]
+                + polynomial_points
+                + 1,
+                ch,
+            ].imag,
+            deg=2 * polynomial_points - 1,
+        )
+
+        # Find root and check it is less than one
+        roots = np.roots(pol).squeeze()
+        # Get only root between 0 and 1
+        roots = roots[
+            (roots == roots.real)  # Real roots
+            & (roots <= 1 + 1e-10)  # Range
+            & (roots >= 0)
+        ].real
+        try:
+            fractional_delay_samples = roots[0]
+        except IndexError as e:
+            print(e)
+            warn(
+                f"Fractional latency detection failed for channel {ch}. "
+                + "Integer latency is"
+                + " returned"
             )
+            latency_samples[ch] = delay_samples[ch] + int(move_back_one_sample)
             continue
 
         latency_samples[ch] = delay_samples[ch] + fractional_delay_samples

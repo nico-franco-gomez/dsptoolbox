@@ -8,6 +8,7 @@ from scipy.special import iv as bessel_first_mod
 from ._general_helpers import (
     _pad_trim,
     _compute_number_frames,
+    _get_fractional_impulse_peak_index,
 )
 from warnings import warn
 
@@ -63,7 +64,7 @@ def _fractional_latency(
     -------
     lags : `np.ndarray`
         Fractional delays. It has shape (channel). In case td2 was `None`, its
-        length is channels-1.
+        length is `channels - 1`.
 
     References
     ----------
@@ -81,66 +82,10 @@ def _fractional_latency(
             td2 = td2[..., None]
         td1 = np.repeat(td1[:, 0][..., None], td2.shape[1], axis=1)
 
-    lags = np.zeros(td1.shape[1], dtype=float)
-
     # td2 is original, td1 is delayed
     xcor = correlate(td2, td1)
-    inds_max = (np.argmax(np.abs(xcor), axis=0)).astype(int)
-
-    # Cut up until the peak and some safety samples
-    xcor = xcor[: np.max(inds_max) + 200, :]
-    analytical_xcors = np.imag(hilbert(xcor, axis=0))
-
-    for ch in range(td1.shape[1]):
-        ind_max = inds_max[ch]
-        analytical_xcor = analytical_xcors[:, ch]
-
-        # Find exact index before maximum
-        index_prior_max = 0
-        if analytical_xcor[ind_max - 1] * analytical_xcor[ind_max] < 0:
-            index_prior_max = ind_max - 1
-        elif analytical_xcor[ind_max] * analytical_xcor[ind_max + 1] < 0:
-            index_prior_max = ind_max
-        else:
-            print(
-                "There was an error while finding maximum of "
-                + f"correlation for channel {ch}. Integer latency is returned"
-            )
-            lags[ch] = td1.shape[0] - ind_max - 1
-            continue
-
-        # Polynomial fit around root
-        polynomial = np.polyfit(
-            np.arange(-polynomial_points, polynomial_points) + 1,
-            analytical_xcor[
-                index_prior_max
-                - polynomial_points
-                + 1 : index_prior_max
-                + polynomial_points
-                + 1
-            ],
-            deg=2 * polynomial_points - 1,
-        )
-        roots = np.roots(polynomial)
-        epsilon = 1e-10
-        # Get only root between 0 and 1
-        roots = roots[
-            (roots == roots.real)  # Real roots
-            & (roots <= 1 + epsilon)  # Range
-            & (roots >= 0)
-        ].real
-        try:
-            roots = roots[0]
-            lags[ch] = td1.shape[0] - (index_prior_max + roots) - 1
-        except IndexError as e:
-            print(e)
-            print(
-                "There was an error with the polynomial fitting. "
-                + "Try a different number for the polynomial points. "
-                + "Integer latencies will be returned."
-            )
-            lags[ch] = td1.shape[0] - ind_max - 1
-    return lags
+    inds = _get_fractional_impulse_peak_index(xcor, polynomial_points)
+    return td1.shape[0] - inds - 1
 
 
 def _welch(
