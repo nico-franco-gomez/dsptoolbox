@@ -8,7 +8,9 @@ from .._general_helpers import _compute_number_frames, _pad_trim
 from .._standard import _rms
 
 
-def _log_spectral_distance(x: np.ndarray, y: np.ndarray, f: np.ndarray) -> float:
+def _log_spectral_distance(
+    x: np.ndarray, y: np.ndarray, f: np.ndarray
+) -> float:
     """Computes log spectral distance between two signals.
 
     Parameters
@@ -32,7 +34,9 @@ def _log_spectral_distance(x: np.ndarray, y: np.ndarray, f: np.ndarray) -> float
     return log_spec
 
 
-def _itakura_saito_measure(x: np.ndarray, y: np.ndarray, f: np.ndarray) -> float:
+def _itakura_saito_measure(
+    x: np.ndarray, y: np.ndarray, f: np.ndarray
+) -> float:
     """Computes log spectral distance between two signals.
 
     Parameters
@@ -55,7 +59,7 @@ def _itakura_saito_measure(x: np.ndarray, y: np.ndarray, f: np.ndarray) -> float
     return ism
 
 
-def _snr(s: np.ndarray, n: np.ndarray) -> float:
+def _snr(s: np.ndarray, n: np.ndarray) -> float | np.ndarray:
     """Computes SNR from the passed numpy arrays.
 
     Parameters
@@ -67,8 +71,8 @@ def _snr(s: np.ndarray, n: np.ndarray) -> float:
 
     Returns
     -------
-    snr : float
-        SNR between signals.
+    snr : float or `np.ndarray`
+        SNR between signals. It can be an array if signals are multichannel.
 
     """
     return 20 * np.log10(_rms(s) / _rms(n))
@@ -91,7 +95,9 @@ def _sisdr(s: np.ndarray, shat: np.ndarray) -> float:
 
     """
     alpha = (s @ shat) / (s @ s)
-    sisdr = 10 * np.log10(np.sum((alpha * s) ** 2) / np.sum((alpha * s - shat) ** 2))
+    sisdr = 10 * np.log10(
+        np.sum((alpha * s) ** 2) / np.sum((alpha * s - shat) ** 2)
+    )
     return sisdr
 
 

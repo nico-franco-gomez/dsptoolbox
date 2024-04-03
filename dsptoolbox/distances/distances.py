@@ -2,6 +2,7 @@
 Distance measures between signals.
 Beware that these distances have not been yet validated with other tools.
 """
+
 import numpy as np
 from scipy.signal import windows
 
@@ -224,7 +225,7 @@ def snr(signal: Signal, noise: Signal) -> np.ndarray:
         assert (
             signal.number_of_channels == noise.number_of_channels
         ), "Signals have different channel numbers"
-    return _snr(signal.time_data, noise.time_data)
+    return np.atleast_1d(_snr(signal.time_data, noise.time_data))
 
 
 def si_sdr(target_signal: Signal, modified_signal: Signal) -> np.ndarray:

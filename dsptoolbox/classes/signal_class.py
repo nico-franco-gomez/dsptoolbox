@@ -1112,7 +1112,7 @@ class Signal:
 
         complex_data = self.time_data_imaginary is not None
         if complex_data:
-            td_squared_imaginary = self.time_data_imaginary**2
+            td_squared_imaginary = self.time_data_imaginary**2.0
             if window_length_s > 0:
                 td_squared_imaginary = convolve(
                     td_squared_imaginary,
