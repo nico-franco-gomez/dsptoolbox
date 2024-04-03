@@ -1176,7 +1176,7 @@ def _get_fractional_impulse_peak_index(
 
         # Find root and check it is less than one
         fractional_delay_samples = np.roots(pol).squeeze()
-        if np.abs(fractional_delay_samples) >= 1:
+        if fractional_delay_samples > 1 or fractional_delay_samples < 0:
             warn(
                 f"Fractional latency detection failed for channel {ch}. "
                 + "Integer latency is"
