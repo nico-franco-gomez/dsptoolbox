@@ -89,6 +89,7 @@ class MultiBandSignal:
             self.number_of_channels = new_bands[0].number_of_channels
             self.signal_type = new_bands[0].signal_type
             sr = []
+            complex_data = new_bands[0].time_data_imaginary is not None
             for s in new_bands:
                 assert type(s) is Signal, (
                     f"{type(s)} is not a valid "
@@ -101,6 +102,10 @@ class MultiBandSignal:
                 assert (
                     s.signal_type == self.signal_type
                 ), "Signal types do not match"
+                assert (s.time_data_imaginary is not None) == complex_data, (
+                    "Some bands have imaginary time data and others do "
+                    + "not. This behavior is not supported."
+                )
                 sr.append(s.sampling_rate_hz)
             if self.same_sampling_rate:
                 self.sampling_rate_hz = new_bands[0].sampling_rate_hz
@@ -367,21 +372,33 @@ class MultiBandSignal:
                 contained.
 
         """
+        complex_data = self.bands[0].time_data_imaginary is not None
         if self.same_sampling_rate:
             td = zeros(
                 (
                     self.band_length_samples,
                     self.number_of_bands,
                     self.number_of_channels,
-                )
+                ),
+                dtype=("cfloat" if complex_data else "float"),
             )
             for ind, b in enumerate(self.bands):
-                td[:, ind, :] = b.time_data
+                td[:, ind, :] = b.time_data + (
+                    b.time_data_imaginary * 1j if complex_data else 0.0
+                )
             return td, self.sampling_rate_hz
         else:
             td = []
             for b in self.bands:
-                td.append((b.time_data, b.sampling_rate_hz))
+                td.append(
+                    (
+                        b.time_data
+                        + (
+                            b.time_data_imaginary * 1j if complex_data else 0.0
+                        ),
+                        b.sampling_rate_hz,
+                    )
+                )
             return td
 
     # ======== Saving and copying =============================================

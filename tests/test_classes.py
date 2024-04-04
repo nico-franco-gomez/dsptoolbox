@@ -886,6 +886,15 @@ class TestMultiBandSignal:
             mbs.swap_bands([1, 1])
         with pytest.raises(AssertionError):
             mbs.swap_bands([5, 0])
+        with pytest.raises(AssertionError):
+            # Inconsistent data in regards to complex values
+            s2 = self.s.copy()
+            s2.time_data = s2.time_data + 1j
+            mbs = dsp.MultiBandSignal(
+                bands=[self.s, s2],
+                same_sampling_rate=True,
+                info=dict(information="test filter bank"),
+            )
 
         # Create from filter bank
         mbs = self.fb.filter_signal(self.s)
@@ -922,6 +931,22 @@ class TestMultiBandSignal:
         td, fs = mbs.get_all_time_data()
 
         td_s = self.s.time_data
+        td_s = np.concatenate([td_s[:, None, :], td_s[:, None, :]], axis=1)
+
+        assert np.all(td == td_s)
+        assert fs == self.s.sampling_rate_hz
+
+        # Complex time data
+        s2 = self.s.copy()
+        s2.time_data = s2.time_data + 1j
+        mbs = dsp.MultiBandSignal(
+            bands=[s2, s2],
+            same_sampling_rate=True,
+            info=dict(information="test filter bank"),
+        )
+        td, fs = mbs.get_all_time_data()
+
+        td_s = s2.time_data + 1j * s2.time_data_imaginary
         td_s = np.concatenate([td_s[:, None, :], td_s[:, None, :]], axis=1)
 
         assert np.all(td == td_s)
