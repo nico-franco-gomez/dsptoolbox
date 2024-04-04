@@ -1204,8 +1204,8 @@ def _trim_rir(
     """
     Obtain the starting and stopping index for an energy decay curve using
     the smooth (exponential) envelope of the energy time curve. First, a
-    threshold is the median of the trailing part of the RIR. Then non-
-    overlapping windows are checked, so that the first window to grow its
+    threshold is defined as the median of the trailing part of the RIR. Then
+    non-overlapping windows are checked, so that the first window to grow its
     average energy after the impulse is taken as the end.
 
     This function returns the start and stop indices relative to the original
@@ -1229,7 +1229,7 @@ def _trim_rir(
     )
 
     # Smoothing
-    factor = _get_smoothing_factor_ema(20 * 1e-3, fs_hz)
+    factor = _get_smoothing_factor_ema(20e-3, fs_hz)
     envelope = lfilter([factor], [1, -(1 - factor)], etc)
 
     # Threshold
@@ -1242,8 +1242,8 @@ def _trim_rir(
         + start_index
     )
 
-    # Discard if threshold is too close to impulse (5 ms)
-    if stop - impulse_index < int(5e-3 * fs_hz):
+    # Discard if threshold is too close to impulse (1 ms)
+    if stop - impulse_index < int(1e-3 * fs_hz):
         stop = len(envelope)
 
     if window_time_s == 0:
@@ -1253,10 +1253,10 @@ def _trim_rir(
     # windows. Trim when energy grows in the next window
     window_length = int(window_time_s * fs_hz)
     envelope = envelope[impulse_index : stop - start_index]
-    # Be sure that filtering does not affect the start
 
+    # Ensure that energy prior to impulse not affect the computation
     if impulse_index > 0:
-        envelope[:impulse_index] = np.max(etc[:impulse_index])
+        envelope[: impulse_index + 1] = np.max(etc[: impulse_index + 1])
 
     position = 0
     current_window_mean_db = 0
