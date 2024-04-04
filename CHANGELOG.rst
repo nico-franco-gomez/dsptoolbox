@@ -26,13 +26,13 @@ Added
   prominence value in dB for finding peaks in the CMIF
 - `plot_phase` in signal class can now apply smoothing to the phase and also
   remove the delay of the impulse response
+- `MultiBandSignal` can now return its time data
 
 Bugfix
 ~~~~~~~
-- a new criterion was added to `trim_rir` to reliably find the end of an RIR.
+- a new criterion was added to `trim_rir` to reliably find the end of aqs RIR.
   It now looks at non-overlapping windows and expects the energy to decay
-  monotonically after the impulse has arrived. It now deletes a contained
-  window in the output
+  monotonically after the impulse has arrived
 - `window_centered_ir` fixed for certain lengths
 - `generate_synthetic_rir` has been fixed after previous refactoring changed
   some underlying functions
@@ -41,14 +41,18 @@ Bugfix
 
 Misc
 ~~~~~~
-- `window_frequency_dependent` is now optimized to be faster
+- general documentation and small performance improvements
+- `window_frequency_dependent` is now optimized to be faster and can apply a
+  window-dependent scaling to its output
+- `MultiBandSignal` checks now for complex time data and ensures it is
+  consistent in every band
 - if `Signal` has `time_data_imaginary`, it is now also plotted in the
   `plot_time` method
 - `get_spectrum` now returns the correctly scaled spectrum also when the method
   is standard
 - updated some example notebooks
 - `group_delay` functions in ``transfer_functions`` can apply now smoothing
-- `reverb_time` returns correlation coefficients
+- `reverb_time` now returns correlation coefficients as well
 - corrected smoothing behavior in signal class when plotting
 
 
