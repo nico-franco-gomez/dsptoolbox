@@ -82,7 +82,7 @@ def latency(
     -------
     lags : `np.ndarray`
         Delays. For `Signal`, the output shape is (channel).
-        In case in2 is `None`, the length is channels-1. In the case of
+        In case in2 is `None`, the length is `channels - 1`. In the case of
         `MultiBandSignal`, output shape is (band, channel).
 
     References
@@ -872,8 +872,8 @@ def activity_detector(
     pre_filter : `Filter`, optional
         Filter used for prefiltering the signal. It can be for instance a
         bandpass filter selecting the relevant frequencies in which the
-        activity might be. Pass `None` to avoid any pre filtering.
-        Default: `None`.
+        activity might be. Pass `None` to avoid any pre filtering. The filter
+        is applied using zero-phase filtering. Default: `None`.
     attack_time_ms : float, optional
         Attack time (in ms). It corresponds to a lag time for detecting
         activity after surpassing the threshold. Default: 1.
@@ -911,7 +911,7 @@ def activity_detector(
         assert isinstance(
             pre_filter, Filter
         ), "pre_filter must be of type Filter"
-        signal_filtered = pre_filter.filter_signal(signal)
+        signal_filtered = pre_filter.filter_signal(signal, zero_phase=True)
     else:
         signal_filtered = signal
 

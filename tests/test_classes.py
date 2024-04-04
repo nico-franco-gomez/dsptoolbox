@@ -913,6 +913,35 @@ class TestMultiBandSignal:
         # Number of channels has to match number of bands
         assert mbs_.number_of_channels == mbs.number_of_bands
 
+    def test_get_all_time_data(self):
+        mbs = dsp.MultiBandSignal(
+            bands=[self.s, self.s],
+            same_sampling_rate=True,
+            info=dict(information="test filter bank"),
+        )
+        td, fs = mbs.get_all_time_data()
+
+        td_s = self.s.time_data
+        td_s = np.concatenate([td_s[:, None, :], td_s[:, None, :]], axis=1)
+
+        assert np.all(td == td_s)
+        assert fs == self.s.sampling_rate_hz
+
+        # Multirate
+        s2 = dsp.resample(self.s, self.s.sampling_rate_hz // 2)
+        mbs = dsp.MultiBandSignal(
+            bands=[self.s, s2],
+            same_sampling_rate=False,
+            info=dict(information="test filter bank"),
+        )
+        tds = mbs.get_all_time_data()
+
+        assert np.all(tds[0][0] == self.s.time_data)
+        assert np.all(tds[1][0] == s2.time_data)
+
+        assert np.all(tds[0][1] == self.s.sampling_rate_hz)
+        assert np.all(tds[1][1] == s2.sampling_rate_hz)
+
     def test_multirate(self):
         s2 = dsp.resample(self.s, self.s.sampling_rate_hz // 2)
 
