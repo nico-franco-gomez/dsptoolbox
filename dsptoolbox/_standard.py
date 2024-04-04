@@ -3,7 +3,7 @@ Backend for standard functions
 """
 
 import numpy as np
-from scipy.signal import correlate, check_COLA, windows, hilbert
+from scipy.signal import correlate, check_COLA, windows, hilbert, convolve
 from scipy.special import iv as bessel_first_mod
 from ._general_helpers import (
     _pad_trim,
@@ -23,9 +23,7 @@ def _latency(
     """
     if in2 is None:
         in2 = in1.copy()
-        in2 = in2[:, 1:]
-        if in2.ndim < 2:
-            in2 = in2[..., None]
+        in2 = in2[:, 1:][..., None]
         in1 = np.repeat(in1[:, 0][..., None], in2.shape[1], axis=1)
 
     latency_per_channel_samples = np.zeros(in1.shape[1], dtype=int)
@@ -76,14 +74,14 @@ def _fractional_latency(
 
     """
     if td2 is None:
-        td2 = td1.copy()
-        td2 = td2[:, 1:]
-        if td2.ndim < 2:
-            td2 = td2[..., None]
+        td2 = td1.copy()[:, 1:]
         td1 = np.repeat(td1[:, 0][..., None], td2.shape[1], axis=1)
-
-    # td2 is original, td1 is delayed
-    xcor = correlate(td2, td1)
+        td1 = td1[:, 0][..., None]
+        xcor = correlate(td2, td1[:, 0][..., None])
+    else:
+        xcor = np.zeros((td1.shape[0] + td2.shape[0] - 1, td2.shape[1]))
+        for i in range(td2.shape[1]):
+            xcor[:, i] = correlate(td2[:, i], td1[:, i])
     inds = _get_fractional_impulse_peak_index(xcor, polynomial_points)
     return td1.shape[0] - inds - 1
 
