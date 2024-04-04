@@ -70,7 +70,8 @@ def latency(
     in1 : `Signal` or `MultiBandSignal`
         First signal.
     in2 : `Signal` or `MultiBandSignal`, optional
-        Second signal. Default: `None`.
+        Second signal. If it is `None`, the first channel of `in1` will be
+        taken as `in2`, i.e., the "undelayed" version. Default: `None`.
     polynomial_points : int, optional
         This corresponds to the number of points taken around the root in order
         to fit a polynomial for the fractional latency. Accuracy might improve
