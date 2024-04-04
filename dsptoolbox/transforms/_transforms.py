@@ -1,6 +1,7 @@
 """
 Backend for special module
 """
+
 import numpy as np
 from scipy.signal import get_window
 
@@ -131,11 +132,12 @@ class MorletWavelet(Wavelet):
         """
         assert b is not None or h is not None, "Either b or h must be passed"
         if h is not None:
-            b = h**2 / np.log(2) / 4
-        self.b = b
+            self.b = h**2 / np.log(2) / 4
+        else:
+            self.b = b
         self.scale = scale
 
-        t = np.sqrt(b * np.log(1 / precision_bounds))
+        t = np.sqrt(self.b * np.log(1 / precision_bounds))
         self.bounds = [-t, t]
 
         self.step = step
@@ -156,7 +158,9 @@ class MorletWavelet(Wavelet):
         """Return center frequency for the complex morlet wavelet."""
         return 1 / self.scale
 
-    def get_wavelet(self, f: float | np.ndarray, fs: int) -> np.ndarray | list:
+    def get_wavelet(
+        self, f: float | np.ndarray, fs: int
+    ) -> np.ndarray | list[np.ndarray]:
         """Return wavelet scaled for a specific frequency and sampling rate.
         The wavelet values can also be linearly interpolated for a higher
         accuracy at the expense of computation time.
@@ -277,7 +281,7 @@ def _squeeze_scalogram(
 
 
 def _get_length_longest_wavelet(
-    wave: Wavelet | MorletWavelet, f: np.ndarray, fs: float
+    wave: Wavelet | MorletWavelet, f: np.ndarray, fs: int
 ):
     """Get longest wavelet for a frequency vector. This is useful information
     for zero-padding to avoid boundary effects.

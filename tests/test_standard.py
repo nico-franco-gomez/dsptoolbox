@@ -33,9 +33,9 @@ class TestStandardModule:
         # Single channel
         td = s.time_data[:, :2]
         td[:, 1] = 0
-        td[
-            : len(self.audio_multi.time_data[:, 0]), 1
-        ] = self.audio_multi.time_data[:, 0]
+        td[: len(self.audio_multi.time_data[:, 0]), 1] = (
+            self.audio_multi.time_data[:, 0]
+        )
         s = dsp.Signal(None, td, self.fs)
         value = dsp.latency(s)
         assert np.all(np.abs(value) == delay_samples)
@@ -46,13 +46,17 @@ class TestStandardModule:
             "white", length_seconds=1, sampling_rate_hz=10_000
         )
         noi_del = dsp.fractional_delay(noi, delay)
-        assert np.abs(dsp.latency(noi_del, noi, 2)[0] - delay * 10_000) < 0.9
-
-        noi = dsp.merge_signals(noi_del, noi)
         assert (
-            np.abs(dsp.latency(noi, polynomial_points=3)[0] - delay * 10_000)
+            np.abs(
+                dsp.latency(noi_del, noi, 2)[0] - delay * noi.sampling_rate_hz
+            )
             < 0.9
         )
+
+        noi = dsp.merge_signals(noi_del, noi)
+        latencies = dsp.latency(noi, polynomial_points=5)
+        assert len(latencies) == noi.number_of_channels - 1
+        assert np.abs(latencies[0] + delay * noi.sampling_rate_hz) < 0.5
 
     def test_pad_trim(self):
         # Check for signal: Trim at the end

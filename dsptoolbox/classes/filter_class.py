@@ -570,7 +570,12 @@ class Filter:
 
     def get_coefficients(
         self, mode: str = "sos"
-    ) -> list | np.ndarray | tuple[np.ndarray, np.ndarray, np.ndarray] | None:
+    ) -> (
+        list[np.ndarray]
+        | np.ndarray
+        | tuple[np.ndarray, np.ndarray, np.ndarray]
+        | None
+    ):
         """Returns the filter coefficients.
 
         Parameters
@@ -686,9 +691,7 @@ class Filter:
                 + "automatically extended."
             )
         ir = self.get_ir(length_samples=length_samples, zero_phase=zero_phase)
-        fig, ax = ir.plot_magnitude(
-            range_hz, normalize, show_info_box=False, scale=False
-        )
+        fig, ax = ir.plot_magnitude(range_hz, normalize, show_info_box=False)
         if show_info_box:
             txt = self._get_metadata_string()
             ax.text(
@@ -796,7 +799,7 @@ class Filter:
 
         """
         if self.info["order"] > length_samples:
-            length_samples = self.info["order"] + 100
+            length_samples = self.info["order"] + 1
             warn(
                 f"length_samples ({length_samples}) is shorter than the "
                 + f"""filter order {self.info['order']}. Length will be """

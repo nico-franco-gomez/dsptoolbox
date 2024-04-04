@@ -1,7 +1,9 @@
 """
 Here are methods considered as somewhat special or less common.
 """
+
 from ..classes.signal_class import Signal
+from ..classes.multibandsignal import MultiBandSignal
 from ..plots import general_matrix_plot
 from .._standard import _reconstruct_framed_signal
 from .._general_helpers import _hz2mel, _mel2hz, _pad_trim
@@ -62,12 +64,12 @@ def cepstrum(signal: Signal, mode="power") -> np.ndarray:
     _, sp = signal.get_spectrum()
 
     if mode in ("power", "real"):
-        ceps = np.abs(np.fft.irfft((2 * np.log(np.abs(sp))), axis=0)) ** 2
+        ceps = np.abs(np.fft.irfft((2 * np.log(np.abs(sp))), axis=0)) ** 2.0
     else:
         phase = np.unwrap(np.angle(sp), axis=0)
         ceps = np.fft.irfft(np.log(np.abs(sp)) + 1j * phase, axis=0).real
     if mode == "real":
-        ceps = (ceps**0.5) / 2
+        ceps = (ceps**0.5) / 2.0
     return ceps
 
 
@@ -128,7 +130,7 @@ def log_mel_spectrogram(
         s.set_spectrogram_parameters(**stft_parameters)
     time_s, f_hz, sp = s.get_spectrogram()
     mfilt, f_mel = mel_filterbank(f_hz, range_hz, n_bands, normalize=True)
-    log_mel_sp = np.tensordot(mfilt, np.abs(sp), axes=[-1, 0])
+    log_mel_sp = np.tensordot(mfilt, np.abs(sp), axes=(-1, 0))
     log_mel_sp = 20 * np.log10(np.clip(log_mel_sp, a_min=1e-20, a_max=None))
     if generate_plot:
         fig, ax = general_matrix_plot(
@@ -357,10 +359,10 @@ def mfcc(
             f"Shape of the mel filter matrix {mel_filters.shape} does "
             + f"not match the STFT {log_sp.shape}"
         )
-        f_mel = [0, mel_filters.shape[0]]
+        f_mel = np.array([0, mel_filters.shape[0]])
 
     # Convert from Hz to Mel
-    log_sp = np.tensordot(mel_filters, log_sp, axes=[-1, 0])
+    log_sp = np.tensordot(mel_filters, log_sp, axes=(-1, 0))
 
     # Discrete cosine transform
     mfcc = np.abs(dct(log_sp, type=2, axis=0))
@@ -662,12 +664,8 @@ def cwt(
     )
 
     for ind_f, f in enumerate(frequencies):
-        wv = wavelet.get_wavelet(f, signal.sampling_rate_hz)
-        # Decide if convolve, fftconvolve or oaconvolve
-        # if len(wv) > td.shape[0]*0.2:
-        #     scalogram[ind_f, ...] = convolve(
-        #         td, wv[..., None], axes=0, mode='same')
-        # else:
+        wv = np.array(wavelet.get_wavelet(f, signal.sampling_rate_hz))
+
         scalogram[ind_f, ...] = oaconvolve(
             td, wv[..., None], axes=0, mode="same"
         )
@@ -680,18 +678,18 @@ def cwt(
     return scalogram
 
 
-def hilbert(signal: Signal):
+def hilbert(signal: Signal | MultiBandSignal) -> Signal | MultiBandSignal:
     """Compute the analytic signal using the hilbert transform of the real
     signal.
 
     Parameters
     ----------
-    signal : `Signal`
+    signal : `Signal`, `MultiBandSignal`
         Signal to convert.
 
     Returns
     -------
-    analytic : `Signal`
+    analytic : `Signal`, `MultiBandSignal`
         Analytical signal.
 
     Notes
@@ -706,19 +704,27 @@ def hilbert(signal: Signal):
         complex_ts = Signal.time_data + Signal.time_data_imaginary*1j
 
     """
-    td = signal.time_data
+    if type(signal) is Signal:
+        td = signal.time_data
 
-    sp = np.fft.fft(td, axis=0)
-    if len(td) % 2 == 0:
-        nyquist = len(td) // 2
-        sp[1:nyquist, :] *= 2
-        sp[nyquist + 1 :, :] = 0
+        sp = np.fft.fft(td, axis=0)
+        if len(td) % 2 == 0:
+            nyquist = len(td) // 2
+            sp[1:nyquist, :] *= 2
+            sp[nyquist + 1 :, :] = 0
+        else:
+            sp[1 : (len(td) + 1) // 2, :] *= 2
+            sp[(len(td) + 1) // 2 :, :] = 0
+
+        analytic = signal.copy()
+        analytic.time_data = np.fft.ifft(sp, axis=0)
+    elif type(signal) is MultiBandSignal:
+        new_mb = signal.copy()
+        for ind, b in enumerate(new_mb):
+            new_mb.bands[ind] = hilbert(b)
+        return new_mb
     else:
-        sp[1 : (len(td) + 1) // 2, :] *= 2
-        sp[(len(td) + 1) // 2 :, :] = 0
-
-    analytic = signal.copy()
-    analytic.time_data = np.fft.ifft(sp, axis=0)
+        raise TypeError("Signal does not have a valid type")
     return analytic
 
 

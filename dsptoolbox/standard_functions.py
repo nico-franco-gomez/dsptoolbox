@@ -50,7 +50,7 @@ def latency(
     in1: Signal | MultiBandSignal,
     in2: Signal | MultiBandSignal | None = None,
     polynomial_points: int = 0,
-) -> np.ndarray:
+) -> np.ndarray[int | float]:
     """Computes latency between two signals using the correlation method.
     If there is no second signal, the latency between the first and the other
     channels is computed. `in1` is to be understood as a delayed version
@@ -70,7 +70,8 @@ def latency(
     in1 : `Signal` or `MultiBandSignal`
         First signal.
     in2 : `Signal` or `MultiBandSignal`, optional
-        Second signal. Default: `None`.
+        Second signal. If it is `None`, the first channel of `in1` will be
+        taken as `in2`, i.e., the "undelayed" version. Default: `None`.
     polynomial_points : int, optional
         This corresponds to the number of points taken around the root in order
         to fit a polynomial for the fractional latency. Accuracy might improve
@@ -82,7 +83,7 @@ def latency(
     -------
     lags : `np.ndarray`
         Delays. For `Signal`, the output shape is (channel).
-        In case in2 is `None`, the length is channels-1. In the case of
+        In case in2 is `None`, the length is `channels - 1`. In the case of
         `MultiBandSignal`, output shape is (band, channel).
 
     References
@@ -97,7 +98,7 @@ def latency(
     assert polynomial_points >= 0, "Polynomial points has to be at least 0"
     if polynomial_points == 0:
         latency_func = _latency
-        data_type = int
+        data_type: type[int | float] = int
     else:
         latency_func = _fractional_latency
         data_type = float
@@ -359,7 +360,10 @@ def resample(sig: Signal, desired_sampling_rate_hz: int) -> Signal:
 
 def fractional_octave_frequencies(
     num_fractions=1, frequency_range=(20, 20e3), return_cutoff=False
-) -> tuple[np.ndarray, np.ndarray, tuple] | tuple[np.ndarray, np.ndarray]:
+) -> (
+    tuple[np.ndarray, np.ndarray, tuple[np.ndarray, np.ndarray]]
+    | tuple[np.ndarray, np.ndarray]
+):
     """Return the octave center frequencies according to the IEC 61260:1:2014
     standard. This implementation has been taken from the pyfar package. See
     references.
@@ -382,7 +386,7 @@ def fractional_octave_frequencies(
     nominal : array, float
         The nominal center frequencies in Hz specified in the standard.
         Nominal frequencies are only returned for octave bands and third octave
-        bands.
+        bands. Otherwise, an empty array is returned.
     exact : array, float
         The exact center frequencies in Hz, resulting in a uniform distribution
         of frequency bands over the frequency range.
@@ -395,7 +399,7 @@ def fractional_octave_frequencies(
     - The pyfar package: https://github.com/pyfar/pyfar
 
     """
-    nominal = None
+    nominal = np.array([])
 
     f_lims = np.asarray(frequency_range)
     if f_lims.size != 2:
@@ -869,8 +873,8 @@ def activity_detector(
     pre_filter : `Filter`, optional
         Filter used for prefiltering the signal. It can be for instance a
         bandpass filter selecting the relevant frequencies in which the
-        activity might be. Pass `None` to avoid any pre filtering.
-        Default: `None`.
+        activity might be. Pass `None` to avoid any pre filtering. The filter
+        is applied using zero-phase filtering. Default: `None`.
     attack_time_ms : float, optional
         Attack time (in ms). It corresponds to a lag time for detecting
         activity after surpassing the threshold. Default: 1.
@@ -908,7 +912,7 @@ def activity_detector(
         assert isinstance(
             pre_filter, Filter
         ), "pre_filter must be of type Filter"
-        signal_filtered = pre_filter.filter_signal(signal)
+        signal_filtered = pre_filter.filter_signal(signal, zero_phase=True)
     else:
         signal_filtered = signal
 
@@ -1143,11 +1147,11 @@ class CalibrationData:
 
     def _get_rms_from_spectrum(self):
         self.calibration_signal.set_spectrum_parameters(
-            method="welch", scaling="power spectrum"
+            method="standard", scaling="amplitude spectrum"
         )
         f, sp = self.calibration_signal.get_spectrum()
         ind1k = np.argmin(np.abs(f - 1e3))
-        return sp[ind1k, :] ** 0.5
+        return np.abs(sp[ind1k, :])
 
     def calibrate_signal(
         self, signal: Signal | MultiBandSignal, force_update: bool = False

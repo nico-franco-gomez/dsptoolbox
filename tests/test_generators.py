@@ -70,7 +70,7 @@ class TestGeneratorsModule:
             peak_level_dbfs=-20,
             number_of_channels=1,
             fade="log",
-            padding_end_seconds=None,
+            padding_end_seconds=0,
         )
 
         # Peak level over 0 dBFS
@@ -126,7 +126,7 @@ class TestGeneratorsModule:
             peak_level_dbfs=-10,
             number_of_channels=1,
             fade="lin",
-            padding_end_seconds=None,
+            padding_end_seconds=0,
         )
 
         # Same as with scipy's chirp
@@ -173,7 +173,7 @@ class TestGeneratorsModule:
                 peak_level_dbfs=-10,
                 number_of_channels=1,
                 fade="lin",
-                padding_end_seconds=None,
+                padding_end_seconds=0,
             )
 
     def test_dirac(self):
@@ -208,7 +208,7 @@ class TestGeneratorsModule:
             number_of_channels=1,
             uncorrelated=False,
             fade="lin",
-            padding_end_seconds=None,
+            padding_end_seconds=0,
         )
         dsp.generators.harmonic(
             frequency_hz=1000,
@@ -218,7 +218,7 @@ class TestGeneratorsModule:
             number_of_channels=3,
             uncorrelated=True,
             fade=None,
-            padding_end_seconds=None,
+            padding_end_seconds=0,
         )
 
         with pytest.raises(AssertionError):
@@ -230,7 +230,7 @@ class TestGeneratorsModule:
                 number_of_channels=3,
                 uncorrelated=True,
                 fade=None,
-                padding_end_seconds=None,
+                padding_end_seconds=0,
             )
 
     def test_oscillator(self):

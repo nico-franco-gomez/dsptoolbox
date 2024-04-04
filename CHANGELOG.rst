@@ -14,6 +14,48 @@ adheres to `Semantic Versioning <http://semver.org/spec/v2.0.0.html>`_.
 - Validation for results from tests in every module (so far many tests are
   only regarding functionality)
 
+`0.3.4 <https://pypi.org/project/dsptoolbox/0.3.4>`_ - 
+---------------------
+
+Added
+~~~~~~~
+- added support for `MultiBandSignal` in `hilbert` in module ``transforms``
+- plot momentary spl added in `Signal`
+- `PhaseLinearizer` can now adapt to an input group delay
+- `find_modes` in ``room_acoustics`` can now find antiresonances and use a
+  prominence value in dB for finding peaks in the CMIF
+- `plot_phase` in signal class can now apply smoothing to the phase and also
+  remove the delay of the impulse response
+- `MultiBandSignal` can now return its time data
+
+Bugfix
+~~~~~~~
+- a new criterion was added to `trim_rir` to reliably find the end of aqs RIR.
+  It now looks at non-overlapping windows and expects the energy to decay
+  monotonically after the impulse has arrived
+- `window_centered_ir` fixed for certain lengths
+- `generate_synthetic_rir` has been fixed after previous refactoring changed
+  some underlying functions
+- `noise` in ``generators`` has been now fixed since its previous slopes were
+  erroneously defined in the amplitude spectrum instead of the power spectrum
+
+Misc
+~~~~~~
+- general documentation and small performance improvements
+- `window_frequency_dependent` is now optimized to be faster and can apply a
+  window-dependent scaling to its output
+- `MultiBandSignal` checks now for complex time data and ensures it is
+  consistent in every band
+- if `Signal` has `time_data_imaginary`, it is now also plotted in the
+  `plot_time` method
+- `get_spectrum` now returns the correctly scaled spectrum also when the method
+  is standard
+- updated some example notebooks
+- `group_delay` functions in ``transfer_functions`` can apply now smoothing
+- `reverb_time` now returns correlation coefficients as well
+- corrected smoothing behavior in signal class when plotting
+
+
 `0.3.3 <https://pypi.org/project/dsptoolbox/0.3.3>`_ - 
 ---------------------
 

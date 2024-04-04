@@ -74,22 +74,35 @@ class TestSignal:
         assert np.all(sp == sp_sig)
 
         # Check amplitude spectrum scaling for normal FFT
+        s.set_spectrum_parameters(method="standard", scaling="power spectrum")
+        _, sp_sig = s.get_spectrum()
+        _, sp_reference = sig.periodogram(
+            self.time_vec.squeeze(),
+            fs=self.fs,
+            detrend=False,
+            scaling="spectrum",
+            axis=0,
+        )
+        assert np.all(np.isclose(sp_reference, sp_sig.squeeze()))
+
         s.set_spectrum_parameters(
-            method="standard", scaling="amplitude spectrum"
+            method="standard", scaling="power spectral density"
         )
         _, sp_sig = s.get_spectrum()
-        sp /= self.time_vec.shape[0]
-        if self.time_vec.shape[0] % 2 == 0:
-            sp[1:-1] *= 2
-        else:
-            sp[1:] *= 2
-        assert np.all(sp == sp_sig)
+        _, sp_reference = sig.periodogram(
+            self.time_vec.squeeze(),
+            axis=0,
+            detrend=False,
+            scaling="density",
+            fs=self.fs,
+        )
+        assert np.all(np.isclose(sp_reference, sp_sig.squeeze()))
 
         # Try smoothing
         s.set_spectrum_parameters(
             method="standard", scaling="amplitude spectrum", smoothe=3
         )
-        f, sp_sig = s.get_spectrum()
+        s.get_spectrum()
 
     def test_managing_channels(self):
         # Add new channel
@@ -177,6 +190,8 @@ class TestSignal:
         s.plot_spectrogram(channel_number=0, logfreqs=True)
         s.plot_csm()
         s.plot_csm(with_phase=False)
+        s.plot_spl(False)
+        s.plot_spl(True)
 
         # Plot phase and group delay
         s.signal_type = "rir"
@@ -195,6 +210,14 @@ class TestSignal:
         with pytest.raises(AssertionError):
             s.set_spectrum_parameters(method="welch", window_length_samples=32)
             s.plot_phase()
+
+        # Plot signal with window and imaginary time data
+        d = dsp.generators.dirac(1024, 512, sampling_rate_hz=self.fs)
+        d.signal_type = "ir"
+        d, _ = dsp.transfer_functions.window_centered_ir(d, len(d))
+        d = dsp.transforms.hilbert(d)
+        d.plot_time()
+        d.plot_spl()
         close("all")
 
     def test_get_power_spectrum_welch(self):
@@ -863,6 +886,15 @@ class TestMultiBandSignal:
             mbs.swap_bands([1, 1])
         with pytest.raises(AssertionError):
             mbs.swap_bands([5, 0])
+        with pytest.raises(AssertionError):
+            # Inconsistent data in regards to complex values
+            s2 = self.s.copy()
+            s2.time_data = s2.time_data + 1j
+            mbs = dsp.MultiBandSignal(
+                bands=[self.s, s2],
+                same_sampling_rate=True,
+                info=dict(information="test filter bank"),
+            )
 
         # Create from filter bank
         mbs = self.fb.filter_signal(self.s)
@@ -889,6 +921,51 @@ class TestMultiBandSignal:
         assert type(mbs_) is dsp.Signal
         # Number of channels has to match number of bands
         assert mbs_.number_of_channels == mbs.number_of_bands
+
+    def test_get_all_time_data(self):
+        mbs = dsp.MultiBandSignal(
+            bands=[self.s, self.s],
+            same_sampling_rate=True,
+            info=dict(information="test filter bank"),
+        )
+        td, fs = mbs.get_all_time_data()
+
+        td_s = self.s.time_data
+        td_s = np.concatenate([td_s[:, None, :], td_s[:, None, :]], axis=1)
+
+        assert np.all(td == td_s)
+        assert fs == self.s.sampling_rate_hz
+
+        # Complex time data
+        s2 = self.s.copy()
+        s2.time_data = s2.time_data + 1j
+        mbs = dsp.MultiBandSignal(
+            bands=[s2, s2],
+            same_sampling_rate=True,
+            info=dict(information="test filter bank"),
+        )
+        td, fs = mbs.get_all_time_data()
+
+        td_s = s2.time_data + 1j * s2.time_data_imaginary
+        td_s = np.concatenate([td_s[:, None, :], td_s[:, None, :]], axis=1)
+
+        assert np.all(td == td_s)
+        assert fs == self.s.sampling_rate_hz
+
+        # Multirate
+        s2 = dsp.resample(self.s, self.s.sampling_rate_hz // 2)
+        mbs = dsp.MultiBandSignal(
+            bands=[self.s, s2],
+            same_sampling_rate=False,
+            info=dict(information="test filter bank"),
+        )
+        tds = mbs.get_all_time_data()
+
+        assert np.all(tds[0][0] == self.s.time_data)
+        assert np.all(tds[1][0] == s2.time_data)
+
+        assert np.all(tds[0][1] == self.s.sampling_rate_hz)
+        assert np.all(tds[1][1] == s2.sampling_rate_hz)
 
     def test_multirate(self):
         s2 = dsp.resample(self.s, self.s.sampling_rate_hz // 2)

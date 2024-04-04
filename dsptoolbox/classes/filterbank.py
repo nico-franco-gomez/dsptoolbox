@@ -531,7 +531,7 @@ class FilterBank:
             bs = self.filter_signal(d, mode="parallel", activate_zi=test_zi)
             specs = []
             for b in bs.bands:
-                b.set_spectrum_parameters(method="standard")
+                b.set_spectrum_parameters(method="standard", scaling=None)
                 f, sp = b.get_spectrum()
                 f, sp = _get_normalized_spectrum(
                     f, sp, f_range_hz=range_hz, normalize=None
@@ -554,7 +554,7 @@ class FilterBank:
             )
         elif mode == "sequential":
             bs = self.filter_signal(d, mode="sequential", activate_zi=test_zi)
-            bs.set_spectrum_parameters(method="standard")
+            bs.set_spectrum_parameters(method="standard", scaling=None)
             f, sp = bs.get_spectrum()
             f, sp = _get_normalized_spectrum(
                 f, np.squeeze(sp), f_range_hz=range_hz, normalize=None
@@ -572,7 +572,7 @@ class FilterBank:
             )
         elif mode == "summed":
             bs = self.filter_signal(d, mode="summed", activate_zi=test_zi)
-            bs.set_spectrum_parameters(method="standard")
+            bs.set_spectrum_parameters(method="standard", scaling=None)
             f, sp = bs.get_spectrum()
             f, sp = _get_normalized_spectrum(
                 f, np.squeeze(sp), f_range_hz=range_hz, normalize=None

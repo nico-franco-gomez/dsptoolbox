@@ -22,6 +22,7 @@ class PhaseLinearizer:
         phase_response: np.ndarray,
         time_data_length_samples: int,
         sampling_rate_hz: int,
+        target_group_delay_samples: np.ndarray | None = None,
     ):
         """PhaseLinearizer creates an FIR filter that can linearize a phase
         response. Use the method `set_parameters` to define specific design
@@ -38,6 +39,13 @@ class PhaseLinearizer:
         sampling_rate_hz : int
             Sampling rate corresponding to the passed phase response. It is
             also used for the designed FIR filter.
+        target_group_delay_samples : `np.ndarray` or `None`, optional
+            If passed, this overwrites the phase response and becomes the
+            target for the FIR filter. It must be given in samples for the
+            whole spectrum (only positive frequencies). For producing
+            satisfactory amplitude responses of the filter, it is recommended
+            that the target group delay be smooth and not very close to 0.
+            Default: `None`.
 
         """
         self.frequency_vector = np.fft.rfftfreq(
@@ -51,6 +59,25 @@ class PhaseLinearizer:
         self.phase_response = phase_response
         self.sampling_rate_hz = sampling_rate_hz
         self.set_parameters()
+        if target_group_delay_samples is not None:
+            self._set_target_group_delay(target_group_delay_samples)
+
+    def _set_target_group_delay(self, target_group_delay: np.ndarray):
+        """Set target group delay to use instead of phase response.
+
+        Parameters
+        ----------
+        target_group_delay : `np.ndarray`
+            Target group delay (in samples) to use.
+
+        """
+        assert (
+            target_group_delay.ndim == 1
+        ), "Target group delay can only have 1 dimension"
+        assert len(self.frequency_vector) == len(
+            target_group_delay
+        ), f"Target group delay shape {target_group_delay.shape} is invalid"
+        self.target_group_delay = target_group_delay
 
     def set_parameters(
         self,
@@ -71,6 +98,12 @@ class PhaseLinearizer:
         total_length_factor : float, optional
             The total length of the filter is based on the longest group delay.
             This factor can augment it. Default: 1.5.
+
+        Notes
+        -----
+        - If there is a target group delay, no increase is applied by
+          `delay_increase_percent`, but `total_length_factor` is still used
+          for the output filter.
 
         """
         assert (
@@ -101,63 +134,70 @@ class PhaseLinearizer:
 
     def _design(self) -> np.ndarray:
         """Compute filter."""
-        # Get initial parameters
-        if not hasattr(self, "group_delay"):
-            self.gd = self._get_group_delay()
-            self.gd_time_length_samples = self.time_data_length_samples
+        if not hasattr(self, "target_group_delay"):
+            gd = self._get_group_delay()
+            gd_time_length_samples = self.time_data_length_samples
 
-        max_delay_samples_synthesized = int(
-            np.max(self.gd)
-            * self._get_group_delay_factor_in_samples()
-            * self.group_delay_increase_factor
-            # Ceil
-            + 0.99999999999
-        )
+            max_delay_samples_synthesized = int(
+                np.max(gd)
+                * self._get_group_delay_factor_in_samples()
+                * self.group_delay_increase_factor
+                # Ceil
+                + 0.99999999999
+            )
+            target_gd = np.max(gd) * self.group_delay_increase_factor - gd
+        else:
+            target_gd = (
+                self.target_group_delay
+                / self._get_group_delay_factor_in_samples()
+            )
+            max_delay_samples_synthesized = int(
+                np.max(self.target_group_delay) + 1
+            )
+            gd_time_length_samples = self.time_data_length_samples
 
         # Interpolate if phase response is not much longer than maximum
         # expected delay
-        if max_delay_samples_synthesized * 20 > self.gd_time_length_samples:
+        if max_delay_samples_synthesized * 20 > gd_time_length_samples:
             warn(
-                f"Phase response (length {self.gd_time_length_samples}) is "
-                + "not much longer than maximum expected "
-                + f"group delay {max_delay_samples_synthesized} (less than "
-                + "20 times longer). Spectrum interpolation is triggered, "
-                + "but it is recommended to pass a phase spectrum with "
-                + "finer resolution!"
+                f"Phase response (length {gd_time_length_samples}) "
+                + "is not much longer than maximum expected "
+                + f"group delay {max_delay_samples_synthesized} (less "
+                + "than 20 times longer). Spectrum interpolation "
+                + "is triggered, but it is recommended to pass a phase "
+                + "spectrum with finer resolution!"
             )
             # Define new time length for the group delay
-            self.gd_time_length_samples = (
+            new_gd_time_length_samples = (
                 int(max_delay_samples_synthesized * 20) + 1
             )
             # Ensure even length
-            self.gd_time_length_samples += self.gd_time_length_samples % 2
+            new_gd_time_length_samples += new_gd_time_length_samples % 2
             # Interpolate
             new_freqs = np.fft.rfftfreq(
-                self.gd_time_length_samples, 1 / self.sampling_rate_hz
+                new_gd_time_length_samples, 1 / self.sampling_rate_hz
             )
-            self.gd = interp1d(
+            target_gd = interp1d(
                 self.frequency_vector,
-                self.gd,
+                target_gd,
                 "cubic",
                 assume_sorted=True,
                 # Extrapolate if nyquist goes above last frequency bin
                 bounds_error=False,
-                fill_value=(self.gd[0], self.gd[-1]),
-            )(new_freqs) * (len(self.gd) / len(new_freqs))
+                fill_value=(target_gd[0], target_gd[-1]),
+            )(new_freqs) * (gd_time_length_samples / len(new_freqs))
+            gd_time_length_samples = new_gd_time_length_samples
 
         # Get new phase using group target group delay
-        target_gd = (
-            np.max(self.gd) * self.group_delay_increase_factor - self.gd
-        )
         new_phase = -cumulative_simpson(target_gd, initial=0)
         # Correct if nyquist is given
-        if self.gd_time_length_samples % 2 == 0:
+        if gd_time_length_samples % 2 == 0:
             new_phase = _correct_for_real_phase_spectrum(
                 _wrap_phase(new_phase)
             )
 
         # Convert to time domain and trim
-        ir = np.fft.irfft(np.exp(1j * new_phase))
+        ir = np.fft.irfft(np.exp(1j * new_phase), gd_time_length_samples)
         trim_length = (
             int(max_delay_samples_synthesized * self.total_length_factor)
             if self.total_length_factor

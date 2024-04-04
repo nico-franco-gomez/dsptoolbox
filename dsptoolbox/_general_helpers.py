@@ -3,10 +3,11 @@ General functionality from helper methods
 """
 
 import numpy as np
-from scipy.signal import windows, convolve as scipy_convolve
+from scipy.signal import windows, convolve as scipy_convolve, hilbert
 from scipy.interpolate import interp1d
 from scipy.linalg import toeplitz as toeplitz_scipy
 from os import sep
+from warnings import warn
 
 
 def _find_nearest(points, vector) -> np.ndarray:
@@ -198,7 +199,11 @@ def _get_normalized_spectrum(
         id1 = 0
         id2 = len(f)
 
+    spectra = spectra[id1:id2]
+    f = f[id1:id2]
+
     mag_spectra = np.abs(spectra)
+
     if smoothe != 0 and mode == "standard":
         if mode == "standard":
             mag_spectra = _fractional_octave_smoothing(mag_spectra, smoothe)
@@ -207,7 +212,6 @@ def _get_normalized_spectrum(
                 _fractional_octave_smoothing(mag_spectra**0.5, smoothe) ** 2
             )
 
-    mag_spectra = mag_spectra[id1:id2, ...]
     epsilon = 10 ** (-400 / 10)
     mag_spectra = factor * np.log10(
         np.clip(mag_spectra, a_min=epsilon, a_max=None) / scale_factor
@@ -222,7 +226,13 @@ def _get_normalized_spectrum(
                 mag_spectra[:, i] -= np.max(mag_spectra[:, i])
 
     if phase:
-        phase_spectra = np.angle(spectra[id1:id2, ...])
+        phase_spectra = np.angle(spectra)
+        if smoothe != 0:
+            phase_spectra = _wrap_phase(
+                _fractional_octave_smoothing(
+                    np.unwrap(phase_spectra, axis=0), smoothe
+                )
+            )
 
     if one_dimensional:
         mag_spectra = np.squeeze(mag_spectra)
@@ -230,9 +240,9 @@ def _get_normalized_spectrum(
             phase_spectra = np.squeeze(phase_spectra)
 
     if phase:
-        return f[id1:id2], mag_spectra, phase_spectra
+        return f, mag_spectra, phase_spectra
 
-    return f[id1:id2], mag_spectra
+    return f, mag_spectra
 
 
 def _find_frequencies_above_threshold(
@@ -804,8 +814,7 @@ def _check_format_in_path(path: str, desired_format: str) -> str:
         Path with the desired format.
 
     """
-    format = path.split(sep)[-1]
-    format = format.split(".")
+    format = path.split(sep)[-1].split(".")
     if len(format) != 1:
         assert (
             format[-1] == desired_format
@@ -1020,10 +1029,12 @@ def _get_chirp_rate(range_hz: list, length_seconds: float) -> float:
         The chirp rate in octaves/second.
 
     """
-    range_hz = np.atleast_1d(range_hz)
-    assert range_hz.shape == (2,), "Range must contain exactly two elements."
-    range_hz = np.sort(range_hz)
-    return np.log2(range_hz[1] / range_hz[0]) / length_seconds
+    range_hz_array = np.atleast_1d(range_hz)
+    assert range_hz_array.shape == (
+        2,
+    ), "Range must contain exactly two elements."
+    range_hz_array = np.sort(range_hz_array)
+    return np.log2(range_hz_array[1] / range_hz_array[0]) / length_seconds
 
 
 def _correct_for_real_phase_spectrum(phase_spectrum: np.ndarray):
@@ -1054,3 +1065,185 @@ def _correct_for_real_phase_spectrum(phase_spectrum: np.ndarray):
         phase_spectrum
         - np.linspace(0, 1, len(phase_spectrum), endpoint=True) * factor
     )
+
+
+def _scale_spectrum(
+    spectrum: np.ndarray,
+    mode: str | None,
+    time_length_samples: int,
+    sampling_rate_hz: int,
+) -> np.ndarray:
+    """Scale the spectrum directly from the (unscaled) FFT. It is assumed that
+    the time data was not windowed.
+
+    Parameters
+    ----------
+    spectrum : `np.ndarray`
+        Spectrum to scale. It is assumed that the frequency bins are along
+        the first dimension.
+    mode : str, None
+        Type of scaling to use. `"power spectral density"`, `"power spectrum"`,
+        `"amplitude spectral density"`, `"amplitude spectrum"`. Pass `None`
+        to avoid any scaling and return the same spectrum.
+    time_length_samples : int
+        Original length of the time data.
+    sampling_rate_hz : int
+        Sampling rate.
+
+    Returns
+    -------
+    `np.ndarray`
+        Scaled spectrum
+
+    """
+    assert time_length_samples in (
+        (spectrum.shape[0] - 1) * 2,
+        spectrum.shape[0] * 2 - 1,
+    ), "Time length does not match"
+
+    if mode is None:
+        return spectrum
+
+    mode = mode.lower()
+    assert mode in (
+        "amplitude spectral density",
+        "amplitude spectrum",
+        "power spectral density",
+        "power spectrum",
+    ), f"{mode} is not a supported mode"
+
+    if "spectral density" in mode:
+        factor = (1 / time_length_samples / sampling_rate_hz) ** 0.5
+    elif "spectrum" in mode:
+        factor = 1 / time_length_samples
+
+    spectrum *= factor
+
+    if time_length_samples % 2 == 0:
+        spectrum[1:-1] *= 2**0.5
+    else:
+        spectrum[1:] *= 2**0.5
+
+    if "power" in mode:
+        spectrum = np.abs(spectrum) ** 2
+
+    return spectrum
+
+
+def _get_fractional_impulse_peak_index(
+    time_data: np.ndarray, polynomial_points: int = 1
+):
+    """
+    Obtain the index for the peak in subsample precision using the root
+    of the analytical function.
+
+    Parameters
+    ----------
+    time_data : `np.ndarray`
+        Time vector with shape (time samples, channels).
+    polynomial_points : int, optional
+        Number of points to take for the polynomial interpolation and root
+        finding of the analytic part of the time series. Default: 1.
+
+    Returns
+    -------
+    latency_samples : `np.ndarray`
+        Latency of impulses (in samples). It has shape (channels).
+
+    """
+    n_channels = time_data.shape[1]
+    delay_samples = np.argmax(np.abs(time_data), axis=0).astype(int)
+
+    # Take only the part of the time vector with the impulses and some safety
+    # samples
+    time_data = time_data[: np.max(delay_samples) + 200, :]
+
+    h = hilbert(time_data, axis=0)
+    x = np.arange(-polynomial_points + 1, polynomial_points + 1)
+
+    latency_samples = np.zeros(n_channels)
+
+    for ch in range(n_channels):
+        # ===== Ensure that delay_samples is before the peak in each channel
+        selection = h[delay_samples[ch] : delay_samples[ch] + 2, ch].imag
+        move_back_one_sample = selection[0] * selection[1] > 0
+        delay_samples[ch] -= int(move_back_one_sample)
+        if (
+            h[delay_samples[ch], ch].imag * h[delay_samples[ch] + 1, ch].imag
+            > 0
+        ):
+            latency_samples[ch] = delay_samples[ch] + int(move_back_one_sample)
+            warn(
+                f"Fractional latency detection failed for channel {ch}. "
+                + "Integer latency is"
+                + " returned"
+            )
+            continue
+        # =====
+
+        # Fit polynomial
+        pol = np.polyfit(
+            x,
+            h[
+                delay_samples[ch]
+                - polynomial_points
+                + 1 : delay_samples[ch]
+                + polynomial_points
+                + 1,
+                ch,
+            ].imag,
+            deg=2 * polynomial_points - 1,
+        )
+
+        # Find root and check it is less than one
+        roots = np.roots(pol).squeeze()
+        # Get only root between 0 and 1
+        roots = roots[
+            (roots == roots.real)  # Real roots
+            & (roots <= 1 + 1e-10)  # Range
+            & (roots >= 0)
+        ].real
+        try:
+            fractional_delay_samples = roots[0]
+        except IndexError as e:
+            print(e)
+            warn(
+                f"Fractional latency detection failed for channel {ch}. "
+                + "Integer latency is"
+                + " returned"
+            )
+            latency_samples[ch] = delay_samples[ch] + int(move_back_one_sample)
+            continue
+
+        latency_samples[ch] = delay_samples[ch] + fractional_delay_samples
+    return latency_samples
+
+
+def _remove_impulse_delay_from_phase(
+    freqs: np.ndarray,
+    phase: np.ndarray,
+    time_data: np.ndarray,
+    sampling_rate_hz: int,
+):
+    """
+    Remove the impulse delay from a phase response.
+
+    Parameters
+    ----------
+    freqs : `np.ndarray`
+        Frequency vector.
+    phase : `np.ndarray`
+        Phase vector.
+    time_data : `np.ndarray`
+        Corresponding time signal.
+    sampling_rate_hz : int
+        Sample rate.
+
+    Returns
+    -------
+    new_phase : `np.ndarray`
+        New phase response without impulse delay.
+
+    """
+    delays_s = _get_fractional_impulse_peak_index(time_data) / sampling_rate_hz
+    return _wrap_phase(phase + 2 * np.pi * freqs[:, None] * delays_s[None, :])

@@ -4,7 +4,7 @@ Methods used for acquiring and windowing transfer functions
 
 import numpy as np
 from scipy.signal import minimum_phase as min_phase_scipy
-from scipy.signal import hilbert
+from scipy.fft import rfft as rfft_scipy, next_fast_len as next_fast_length_fft
 
 from ._transfer_functions import (
     _spectral_deconvolve,
@@ -17,8 +17,20 @@ from ._transfer_functions import (
 )
 from ..classes import Signal, Filter
 from ..classes._filter import _group_delay_filter
-from .._general_helpers import _find_frequencies_above_threshold
-from .._standard import _welch, _minimum_phase, _group_delay_direct, _pad_trim
+from .._general_helpers import (
+    _remove_impulse_delay_from_phase,
+    _find_frequencies_above_threshold,
+    _fractional_octave_smoothing,
+    _correct_for_real_phase_spectrum,
+    _wrap_phase,
+    _get_fractional_impulse_peak_index,
+)
+from .._standard import (
+    _welch,
+    _minimum_phase,
+    _group_delay_direct,
+    _pad_trim,
+)
 from ..standard_functions import fractional_delay, merge_signals, normalize
 from ..generators import dirac
 from ..filterbanks import linkwitz_riley_crossovers
@@ -226,7 +238,7 @@ def window_ir(
         "ir",
     ), f"{signal.signal_type} is not a valid signal type. Use rir or ir."
     assert offset_samples >= 0, "Offset must be positive"
-    assert offset_samples < constant_percentage * total_length_samples, (
+    assert offset_samples <= constant_percentage * total_length_samples, (
         "Offset is too large for the constant part of the window and its "
         + "total length"
     )
@@ -335,7 +347,7 @@ def compute_transfer_function(
     mode="h2",
     window_length_samples: int = 1024,
     spectrum_parameters: dict | None = None,
-) -> tuple[Signal, np.ndarray]:
+) -> tuple[Signal, np.ndarray, np.ndarray]:
     r"""Gets transfer function H1, H2 or H3 (for stochastic signals).
     H1: for noise in the output signal. `Gxy/Gxx`.
     H2: for noise in the input signal. `Gyy/Gyx`.
@@ -694,6 +706,7 @@ def lin_phase_from_mag(
     # Frequency vector
     f_vec = np.fft.rfftfreq(original_length_time_data, 1 / sampling_rate_hz)
     delta_f = f_vec[1] - f_vec[0]
+    spectrum_has_nyquist = original_length_time_data % 2 == 0
 
     # New spectrum
     lin_spectrum = np.empty(spectrum.shape, dtype="cfloat")
@@ -703,19 +716,21 @@ def lin_phase_from_mag(
                 spectrum[:, n], odd_length=original_length_time_data % 2 == 1
             )
             min_gd = _group_delay_direct(min_phase, delta_f)
-            gd = np.max(min_gd) + 1e-3  # add 1 ms as safety factor
+            gd_ms = np.max(min_gd) + 1e-3  # add 1 ms as safety factor
             if check_causality and type(group_delay_ms) is not str:
-                assert gd <= group_delay_ms, (
+                assert gd_ms <= group_delay_ms, (
                     f"Given group delay {group_delay_ms * 1000} ms is lower "
-                    + f"than minimal group delay {gd * 1000} ms for "
+                    + f"than minimal group delay {gd_ms * 1000} ms for "
                     + f"channel {n}"
                 )
-                gd = group_delay_ms
+                gd_ms = group_delay_ms
         else:
-            gd = group_delay_ms
-        lin_spectrum[:, n] = spectrum[:, n] * np.exp(
-            -1j * 2 * np.pi * f_vec * gd
-        )
+            gd_ms = group_delay_ms
+
+        phase = 2 * np.pi * f_vec * gd_ms
+        if spectrum_has_nyquist:
+            phase = _correct_for_real_phase_spectrum(_wrap_phase(phase))
+        lin_spectrum[:, n] = spectrum[:, n] * np.exp(1j * phase)
     time_data = np.fft.irfft(lin_spectrum, axis=0, n=original_length_time_data)
     sig_lin_phase = Signal(
         None,
@@ -781,19 +796,28 @@ def min_phase_ir(sig: Signal, method: str = "real cepstrum") -> Signal:
 
 
 def group_delay(
-    signal: Signal, method="matlab"
+    signal: Signal,
+    method="matlab",
+    smoothing: int = 0,
+    remove_impulse_delay: bool = False,
 ) -> tuple[np.ndarray, np.ndarray]:
     """Computes and returns group delay.
 
     Parameters
     ----------
-    signal : Signal
+    signal : `Signal`
         Signal for which to compute group delay.
     method : str, optional
         `'direct'` uses gradient with unwrapped phase. `'matlab'` uses
         this implementation:
         https://www.dsprelated.com/freebooks/filters/Phase_Group_Delay.html.
         Default: `'matlab'`.
+    smoothing : int, optional
+        Octave fraction by which to apply smoothing. `0` avoids any smoothing
+        of the group delay. Default: `0`.
+    remove_impulse_delay : bool, optional
+        If the signal is of type `"ir"` or `"rir"`, the impulse delay can be
+        removed. Default: `False`.
 
     Returns
     -------
@@ -809,22 +833,46 @@ def group_delay(
         "matlab",
     ), f"{method} is not valid. Use direct or matlab"
 
-    signal.set_spectrum_parameters("standard")
-    f, sp = signal.get_spectrum()
     if method == "direct":
+        spec_parameters = signal._spectrum_parameters
+        signal.set_spectrum_parameters("standard")
+        f, sp = signal.get_spectrum()
+        signal._spectrum_parameters = spec_parameters
         group_delays = np.zeros((sp.shape[0], sp.shape[1]))
+
+        if remove_impulse_delay:
+            assert signal.signal_type in (
+                "rir",
+                "ir",
+            ), (
+                f"{signal.signal_type} is not a valid signal type. Use ir "
+                + "or rir"
+            )
+            sp = _remove_impulse_delay_from_phase(
+                f, np.angle(sp), signal.time_data, signal.sampling_rate_hz
+            )
         for n in range(signal.number_of_channels):
             group_delays[:, n] = _group_delay_direct(sp[:, n], f[1] - f[0])
     else:
         group_delays = np.zeros(
             (signal.time_data.shape[0] // 2 + 1, signal.time_data.shape[1])
         )
+        f = np.fft.rfftfreq(
+            signal.time_data.shape[0], 1 / signal.sampling_rate_hz
+        )
+
         for n in range(signal.number_of_channels):
-            b = signal.time_data[:, n].copy()
+            b = signal.time_data[:, n]
+            if remove_impulse_delay:
+                b = b[max(int(np.argmax(np.abs(b))) - 1, 0) :]
             a = [1]
             _, group_delays[:, n] = _group_delay_filter(
-                [b, a], len(b) // 2 + 1, signal.sampling_rate_hz
+                [b, a], len(f), signal.sampling_rate_hz
             )
+
+    if smoothing != 0:
+        group_delays = _fractional_octave_smoothing(group_delays, smoothing)
+
     return f, group_delays
 
 
@@ -904,7 +952,9 @@ def minimum_phase(
 
 
 def minimum_group_delay(
-    signal: Signal, method: str = "real cepstrum"
+    signal: Signal,
+    method: str = "real cepstrum",
+    smoothing: int = 0,
 ) -> tuple[np.ndarray, np.ndarray]:
     """Computes minimum group delay of given IR.
 
@@ -915,6 +965,9 @@ def minimum_group_delay(
     method : str, optional
         Select method for computing the minimum phase. It might be either
         `'real cepstrum'` or `'log hilbert'`. Default: `'real cepstrum'`.
+    smoothing : int, optional
+        Octave fraction by which to apply smoothing. `0` avoids any smoothing
+        of the group delay. Default: `0`.
 
     Returns
     -------
@@ -933,11 +986,16 @@ def minimum_group_delay(
     min_gd = np.zeros_like(min_phases)
     for n in range(signal.number_of_channels):
         min_gd[:, n] = _group_delay_direct(min_phases[:, n], f[1] - f[0])
+    if smoothing != 0:
+        min_gd = _fractional_octave_smoothing(min_gd, smoothing)
     return f, min_gd
 
 
 def excess_group_delay(
-    signal: Signal, method: str = "real cepstrum"
+    signal: Signal,
+    method: str = "real cepstrum",
+    smoothing: int = 0,
+    remove_impulse_delay: bool = False,
 ) -> tuple[np.ndarray, np.ndarray]:
     """Computes excess group delay of an IR.
 
@@ -948,6 +1006,12 @@ def excess_group_delay(
     method : str, optional
         Select method for computing the minimum phase. It might be either
         `'real cepstrum'` or `'log hilbert'`. Default: `'real cepstrum'`.
+    smoothing : int, optional
+        Octave fraction by which to apply smoothing. `0` avoids any smoothing
+        of the group delay. Default: `0`.
+    remove_impulse_delay : bool, optional
+        If the signal is of type `"ir"` or `"rir"`, the impulse delay can be
+        removed. Default: `False`.
 
     Returns
     -------
@@ -962,9 +1026,18 @@ def excess_group_delay(
 
     """
     assert signal.signal_type in ("rir", "ir"), "Only valid for rir or ir"
-    f, min_gd = minimum_group_delay(signal, method)
-    f, gd = group_delay(signal)
+    f, min_gd = minimum_group_delay(signal, method, smoothing=0)
+    f, gd = group_delay(
+        signal,
+        smoothing=0,
+        method="direct",
+        remove_impulse_delay=remove_impulse_delay,
+    )
     ex_gd = gd - min_gd
+
+    if smoothing != 0:
+        ex_gd = _fractional_octave_smoothing(ex_gd, smoothing)
+
     return f, ex_gd
 
 
@@ -1169,6 +1242,7 @@ def window_frequency_dependent(
     cycles: int,
     channel: int | None = None,
     frequency_range_hz: list | None = None,
+    scaling: str | None = None,
 ):
     """A spectrum with frequency-dependent windowing defined by cycles is
     returned. To this end, a variable gaussian window is applied.
@@ -1176,8 +1250,7 @@ def window_frequency_dependent(
     A width of 5 cycles means that there are 5 periods of each frequency
     before the window values hit 0.5, i.e., -6 dB.
 
-    This is computed only for real-valued signals (positive frequencies). No
-    scaling is applied to the spectrum.
+    This is computed only for real-valued signals (positive frequencies).
 
     Parameters
     ----------
@@ -1192,6 +1265,11 @@ def window_frequency_dependent(
     frequency_range_hz : list of length 2, optional
         Frequency range to extract spectrum. Use `None` to compute the whole
         spectrum. Default: `None`.
+    scaling : str, optional
+        Scaling for the spectrum. Choose from `"amplitude spectrum"`,
+        `"amplitude spectral density"`, `"fft"` or `None`. The first two take
+        the window into account. `"fft"` scales the forward FFT by `1/N**0.5`
+        and `None` leaves the spectrum completely unscaled. Default: `None`.
 
     Returns
     -------
@@ -1206,15 +1284,25 @@ def window_frequency_dependent(
       right-windowed using, for instance, a tukey window. However, its length
       should be somewhat larger than the longest window (this depends on the
       number of cycles and lowest frequency).
-    - The length of the IR should be a power of 2 and not very long in general
-      to speed up the computation.
+    - The length of the IR should be as short as possible for a fast
+      computation. If a large band should be computed, it is recommended to
+      divide into smaller bands with shorter lengths for higher frequencies.
     - The implemented method is a straight-forward windowing in the time domain
       for each respective frequency bin. Warping the IR is a more flexible
-      approach but not necessarily faster for IR with short lengths
-      corresponding to powers of 2.
+      approach but not necessarily faster for IR with optimal lengths.
+    - Scaling is available but leaving the spectrum unscaled seems to be the
+      correct way to obtain the spectrum.
 
     """
     assert ir.signal_type in ("rir", "ir"), "Only valid for rir or ir"
+    scaling = scaling if scaling is None else scaling.lower()
+    assert scaling in (
+        "amplitude spectrum",
+        "amplitude spectral density",
+        "fft",
+        None,
+    ), f"{scaling} is an unsupported scaling option."
+
     fs = ir.sampling_rate_hz
     if frequency_range_hz is not None:
         assert len(frequency_range_hz) == 2
@@ -1245,18 +1333,46 @@ def window_frequency_dependent(
 
     half = (td.shape[0] - 1) / 2
     alpha_factor = np.log(4) ** 0.5 * half
+    ind_max = np.argmax(np.abs(td), axis=0)
+
+    # Optimal length for FFT
+    fast_length = next_fast_length_fft(td.shape[0], True)
+    td = np.pad(td, ((0, fast_length - td.shape[0]), (0, 0)))
+
+    # Construct window vectors
+    n = np.zeros_like(td)
+    for ch in range(td.shape[1]):
+        n[:, ch] = np.arange(-ind_max[ch], td.shape[0] - ind_max[ch])
+
+    # Scaling function
+    if scaling == "amplitude spectrum":
+
+        def scaling_func(window: np.ndarray):
+            return 2**0.5 / np.sum(window, axis=0)
+
+    elif scaling == "amplitude spectral density":
+
+        def scaling_func(window: np.ndarray):
+            return (2 / np.sum(window**2, axis=0) / ir.sampling_rate_hz) ** 0.5
+
+    elif scaling == "fft":
+        scaling_value = fast_length**-0.5
+
+        def scaling_func(window: np.ndarray):
+            return scaling_value
+
+    else:
+
+        def scaling_func(window: np.ndarray):
+            return 1
+
     for ind, ind_f in enumerate(inds_f):
-        for ch in range(td.shape[1]):
-            # Construct window centered around impulse
-            ind_max = np.argmax(np.abs(td[:, ch]))
-            n = np.arange(-ind_max, td.shape[0] - ind_max)
+        # Alpha such that window is exactly 0.5 after the number of
+        # required samples for each frequency
+        alpha = alpha_factor / cycles_per_freq_samples[ind]
+        w = np.exp(-0.5 * (alpha * n / half) ** 2)
 
-            # Alpha such that window is exactly 0.5 after the number of
-            # required samples for each frequency
-            alpha = alpha_factor / cycles_per_freq_samples[ind]
-
-            w = np.exp(-0.5 * (alpha * n[: td.shape[0]] / half) ** 2)
-            spec[ind, ch] = np.fft.rfft(w * td[:, ch])[ind_f]
+        spec[ind, :] = rfft_scipy(w * td, axis=0)[ind_f] * scaling_func(w)
     return f, spec
 
 
@@ -1351,31 +1467,7 @@ def find_ir_latency(ir: Signal) -> np.ndarray:
 
     """
     assert ir.signal_type in ("rir", "ir"), "Only valid for rir or ir"
-    # Get maximum with fractional precision by finding the root of the complex
-    # part of the analytical signal
-    delay_samples = np.argmax(np.abs(ir.time_data), axis=0).astype(int)
-    h = hilbert(ir.time_data, axis=0)
-    point_around = 1
-    x = np.arange(-point_around, point_around)
-
-    latency_samples = np.zeros(ir.number_of_channels)
-
-    for ch in range(ir.number_of_channels):
-        pol = np.polyfit(
-            x,
-            np.imag(
-                h[
-                    delay_samples[ch]
-                    - point_around : delay_samples[ch]
-                    + point_around,
-                    ch,
-                ]
-            ),
-            1,
-        )
-        fractional_delay_samples = np.roots(pol).squeeze()
-        latency_samples[ch] = delay_samples[ch] + fractional_delay_samples
-    return latency_samples
+    return _get_fractional_impulse_peak_index(ir.time_data)
 
 
 def harmonics_from_chirp_ir(

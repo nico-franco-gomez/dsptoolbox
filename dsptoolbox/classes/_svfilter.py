@@ -163,7 +163,8 @@ class StateVariableFilter:
         Returns
         -------
         `MultiBandSignal`
-            Impulse responses of the filter.
+            Impulse responses of the filter in following order: lowpass,
+            highpass, bandpass and allpass.
 
         """
         d = dirac(length_samples, sampling_rate_hz=self.sampling_rate_hz)
@@ -203,7 +204,6 @@ class StateVariableFilter:
             normalize=None,
             range_db=range_db,
             smoothe=0,
-            scale=False,
         )
         ax.legend(["Lowpass", "Highpass", "Bandpass", "Allpass"])
         return fig, ax

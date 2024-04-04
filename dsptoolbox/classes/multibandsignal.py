@@ -1,4 +1,4 @@
-from numpy import zeros, array, unique, atleast_1d
+from numpy import zeros, array, unique, atleast_1d, ndarray
 from copy import deepcopy
 from pickle import dump, HIGHEST_PROTOCOL
 from warnings import warn
@@ -89,6 +89,7 @@ class MultiBandSignal:
             self.number_of_channels = new_bands[0].number_of_channels
             self.signal_type = new_bands[0].signal_type
             sr = []
+            complex_data = new_bands[0].time_data_imaginary is not None
             for s in new_bands:
                 assert type(s) is Signal, (
                     f"{type(s)} is not a valid "
@@ -101,6 +102,10 @@ class MultiBandSignal:
                 assert (
                     s.signal_type == self.signal_type
                 ), "Signal types do not match"
+                assert (s.time_data_imaginary is not None) == complex_data, (
+                    "Some bands have imaginary time data and others do "
+                    + "not. This behavior is not supported."
+                )
                 sr.append(s.sampling_rate_hz)
             if self.same_sampling_rate:
                 self.sampling_rate_hz = new_bands[0].sampling_rate_hz
@@ -285,7 +290,9 @@ class MultiBandSignal:
         return txt
 
     # ======== Getters ========================================================
-    def get_all_bands(self, channel: int = 0) -> Signal | tuple[list, list]:
+    def get_all_bands(
+        self, channel: int = 0
+    ) -> Signal | tuple[list[ndarray], list[ndarray]]:
         """Broadcasts and returns the `MultiBandSignal` as a `Signal` object
         with all bands as channels in the output. This is done only for a
         single channel of the original signal.
@@ -342,6 +349,57 @@ class MultiBandSignal:
                     sr.append(self.bands[n].sampling_rate_hz)
                 warn("Output is complex since signal data had imaginary part")
             return new_time_data, sr
+
+    def get_all_time_data(
+        self,
+    ) -> tuple[ndarray, int] | list[tuple[ndarray, int]]:
+        """
+        Get all time data saved in the MultiBandSignal. If it has consistent
+        sampling rate, a single array with shape (time samples, band, channel)
+        is returned, otherwise a list of bands with arrays with shape (time
+        samples, channel) is returned.
+
+        Returns
+        -------
+        if `same_sampling_rate` :
+            time_data : `np.ndarray`
+                Time samples.
+            int
+                Sampling rate in Hz
+        else :
+            list[tuple[`np.ndarray`, int]]
+                List with each band where time samples and sampling rate are
+                contained.
+
+        """
+        complex_data = self.bands[0].time_data_imaginary is not None
+        if self.same_sampling_rate:
+            td = zeros(
+                (
+                    self.band_length_samples,
+                    self.number_of_bands,
+                    self.number_of_channels,
+                ),
+                dtype=("cfloat" if complex_data else "float"),
+            )
+            for ind, b in enumerate(self.bands):
+                td[:, ind, :] = b.time_data + (
+                    b.time_data_imaginary * 1j if complex_data else 0.0
+                )
+            return td, self.sampling_rate_hz
+        else:
+            td = []
+            for b in self.bands:
+                td.append(
+                    (
+                        b.time_data
+                        + (
+                            b.time_data_imaginary * 1j if complex_data else 0.0
+                        ),
+                        b.sampling_rate_hz,
+                    )
+                )
+            return td
 
     # ======== Saving and copying =============================================
     def save_signal(self, path: str = "multibandsignal"):

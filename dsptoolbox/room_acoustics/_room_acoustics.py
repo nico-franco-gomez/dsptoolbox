@@ -64,27 +64,28 @@ def _reverb(
 
     # Reverb
     if mode == "TOPT":
+        time, corr = _obtain_optimal_reverb_time(time_vector, edc)
         if return_ir_start:
-            return _obtain_optimal_reverb_time(time_vector, edc)[0], ir_start
-        return _obtain_optimal_reverb_time(time_vector, edc)[0]
+            return time, corr, ir_start
+        return time, corr
 
     mode = mode.upper()
     if mode == "T20":
-        p, _ = _get_polynomial_coeffs_from_edc(time_vector, edc, -5, -25)
+        p, corr = _get_polynomial_coeffs_from_edc(time_vector, edc, -5, -25)
     elif mode == "T30":
-        p, _ = _get_polynomial_coeffs_from_edc(time_vector, edc, -5, -35)
+        p, corr = _get_polynomial_coeffs_from_edc(time_vector, edc, -5, -35)
     elif mode == "T60":
-        p, _ = _get_polynomial_coeffs_from_edc(time_vector, edc, -5, -65)
+        p, corr = _get_polynomial_coeffs_from_edc(time_vector, edc, -5, -65)
     elif mode == "EDT":
-        p, _ = _get_polynomial_coeffs_from_edc(time_vector, edc, 0, -10)
+        p, corr = _get_polynomial_coeffs_from_edc(time_vector, edc, 0, -10)
     else:
         raise ValueError("Supported modes are only T20, T30, T60 and EDT")
 
     factor = 60 if mode != "EDT" else 10
 
     if return_ir_start:
-        return (factor / np.abs(p[0])), ir_start
-    return factor / np.abs(p[0])
+        return (factor / np.abs(p[0])), corr, ir_start
+    return factor / np.abs(p[0]), corr
 
 
 def _find_ir_start(ir, threshold_dbfs: float = -20) -> int:
@@ -928,7 +929,13 @@ def _d50_from_rir(td: np.ndarray, fs: int, automatic_trimming: bool) -> float:
     td = td[ind:]
     window = int(50e-3 * fs)
     if automatic_trimming:
-        _, stop, _ = _trim_rir(td, fs, 0, 10, 0.66, 50)
+        _, stop, _ = _trim_rir(
+            td,
+            fs,
+            0,
+            0.66,
+            30e-3,
+        )
         stop = np.max([window, stop])
     else:
         stop = len(td)
@@ -961,7 +968,13 @@ def _c80_from_rir(td: np.ndarray, fs: int, automatic_trimming: bool) -> float:
     # Time window
     window = int(80e-3 * fs)
     if automatic_trimming:
-        _, stop, _ = _trim_rir(td, fs, 0, 10, 0.66, 50)
+        _, stop, _ = _trim_rir(
+            td,
+            fs,
+            0,
+            0.66,
+            30e-3,
+        )
         stop = np.max([window, stop])
     else:
         stop = len(td)
@@ -993,7 +1006,13 @@ def _ts_from_rir(td: np.ndarray, fs: int, automatic_trimming: bool) -> float:
     td = td[ind:]
 
     if automatic_trimming:
-        _, stop, _ = _trim_rir(td, fs, 0, 10, 0.66, 50)
+        _, stop, _ = _trim_rir(
+            td,
+            fs,
+            0,
+            0.66,
+            30e-3,
+        )
     else:
         stop = len(td)
 
@@ -1159,9 +1178,8 @@ def _compute_energy_decay_curve(
             time_data,
             fs_hz,
             offset_start_s=20e-3,
-            envelope_smoothing_ms=10,
             threshold_factor=0.66,
-            threshold_percentile=50,
+            window_time_s=30e-3,
         )
     else:
         start_index = 0
@@ -1180,13 +1198,15 @@ def _trim_rir(
     time_data: np.ndarray,
     fs_hz: int,
     offset_start_s: float,
-    envelope_smoothing_ms: float,
     threshold_factor: float,
-    threshold_percentile: float,
+    window_time_s: float,
 ) -> tuple[int, int, int]:
-    """Obtain the starting and stopping index for an energy decay curve using
-    the smooth (exponential) envelope of the energy time curve. The threshold
-    is the selected percentile of the trailing part of the RIR.
+    """
+    Obtain the starting and stopping index for an energy decay curve using
+    the smooth (exponential) envelope of the energy time curve. First, a
+    threshold is defined as the median of the trailing part of the RIR. Then
+    non-overlapping windows are checked, so that the first window to grow its
+    average energy after the impulse is taken as the end.
 
     This function returns the start and stop indices relative to the original
     time data, but the impulse index relative to the new vector.
@@ -1209,32 +1229,52 @@ def _trim_rir(
     )
 
     # Smoothing
-    if envelope_smoothing_ms != 0:
-        factor = _get_smoothing_factor_ema(envelope_smoothing_ms * 1e-3, fs_hz)
-        envelope = lfilter([factor], [1, -(1 - factor)], etc)
-    else:
-        envelope = etc
+    factor = _get_smoothing_factor_ema(20e-3, fs_hz)
+    envelope = lfilter([factor], [1, -(1 - factor)], etc)
 
     # Threshold
-    threshold = np.percentile(envelope[threshold_start:], threshold_percentile)
+    threshold = np.median(envelope[threshold_start:])
 
-    try:
-        stop = (
-            np.where(envelope[impulse_index:] < threshold)[0][0]
-            # Correct for impulse offset and start index
-            + impulse_index
-            + start_index
-        )
-    except Exception as e:
-        print(e)
-        stop = 0
+    stop = (
+        np.where(envelope[impulse_index:] < threshold)[0][0]
+        # Correct for impulse offset and start index
+        + impulse_index
+        + start_index
+    )
 
-    if stop - impulse_index < 10:
-        warn(
-            "Passed impulse index or RIR might be wrong, no meaningful "
-            + "trimming at the end could be done"
-        )
+    # Discard if threshold is too close to impulse (1 ms)
+    if stop - impulse_index < int(1e-3 * fs_hz):
         stop = len(envelope)
+
+    if window_time_s == 0:
+        return start_index, stop, impulse_index
+
+    # Ensure that energy is always decaying by looking at non-overlapping
+    # windows. Trim when energy grows in the next window
+    window_length = int(window_time_s * fs_hz)
+    envelope = envelope[impulse_index : stop - start_index]
+
+    # Ensure that energy prior to impulse not affect the computation
+    if impulse_index > 0:
+        envelope[: impulse_index + 1] = np.max(etc[: impulse_index + 1])
+
+    position = 0
+    current_window_mean_db = 0
+
+    for _ in range(len(envelope) // window_length):
+        new_window_mean_db = np.mean(
+            envelope[position : position + window_length]
+        )
+        if current_window_mean_db < new_window_mean_db:
+            break
+        current_window_mean_db = new_window_mean_db
+        position += window_length
+
+    end = min(
+        len(envelope), int(np.mean([position, position + window_length]))
+    )
+    stop = end + impulse_index + start_index
+
     return start_index, stop, impulse_index
 
 

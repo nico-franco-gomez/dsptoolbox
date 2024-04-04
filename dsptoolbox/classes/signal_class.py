@@ -9,6 +9,7 @@ import numpy as np
 import soundfile as sf
 from matplotlib.figure import Figure
 from matplotlib.axes import Axes
+from scipy.signal import convolve
 
 from ..plots import general_plot, general_subplots_line, general_matrix_plot
 from ._plots import _csm_plot
@@ -18,6 +19,9 @@ from .._general_helpers import (
     _find_nearest,
     _fractional_octave_smoothing,
     _check_format_in_path,
+    _scale_spectrum,
+    _wrap_phase,
+    _remove_impulse_delay_from_phase,
 )
 from .._standard import _welch, _group_delay_direct, _stft, _csm
 
@@ -46,7 +50,7 @@ class Signal:
         Parameters
         ----------
         path : str, optional
-            A path to audio files. Reading is done with the package soundfile.
+            A path to audio files. Reading is done with the soundfile library.
             Wave and Flac audio files are accepted. Default: `None`.
         time_data : array-like, `np.ndarray`, optional
             Time data of the signal. It is saved as a matrix with the form
@@ -79,7 +83,8 @@ class Signal:
         Spectrogram:
             set_spectrogram_parameters, get_spectrogram.
         Plots:
-            plot_magnitude, plot_time, plot_spectrogram, plot_phase, plot_csm.
+            plot_magnitude, plot_time, plot_spl, plot_spectrogram, plot_phase,
+            plot_csm.
         General:
             save_signal, get_stream_samples.
         Only for `signal_type in ('rir', 'ir', 'h1', 'h2', 'h3')`:
@@ -119,7 +124,7 @@ class Signal:
         self.sampling_rate_hz = sampling_rate_hz
         self.time_data = time_data
         if signal_type in ("rir", "ir", "h1", "h2", "h3", "chirp", "dirac"):
-            self.set_spectrum_parameters(method="standard")
+            self.set_spectrum_parameters(method="standard", scaling=None)
         else:
             self.set_spectrum_parameters()
         self.set_csm_parameters()
@@ -316,7 +321,7 @@ class Signal:
         overlap_percent: float = 50,
         detrend: bool = True,
         average: str = "mean",
-        scaling: str | None = "power spectral density",
+        scaling: str | None = None,
     ):
         """Sets all necessary parameters for the computation of the spectrum.
 
@@ -332,8 +337,8 @@ class Signal:
             magnitude AND phase. For accesing the smoothing algorithm, refer to
             `dsptoolbox._general_helpers._fractional_octave_smoothing()`.
             If smoothing is applied here, `Signal.get_spectrum()` returns
-            the smoothed spectrum and `Signal.plot_magnitude()` plots
-            the smoothed version, too. Default: 0 (no smoothing).
+            the smoothed spectrum, but plotting ignores this parameter.
+            Default: 0 (no smoothing).
         window_length_samples : int, optional
             Window size. Default: 1024.
         window_type : str, optional
@@ -351,9 +356,8 @@ class Signal:
             Scaling for welch's method. Use `'power spectrum'`,
             `'power spectral density'`, `'amplitude spectrum'` or
             `'amplitude spectral density'`. Pass `None` to avoid any scaling.
-            See references for details about scaling. When method is set to
-            standard, no scaling is applied unless `'amplitude spectrum'` is
-            selected. Default: `'power spectral density'`.
+            See references for details about scaling.
+            Default: `None`.
 
         References
         ----------
@@ -791,16 +795,13 @@ class Signal:
 
                 # Length of signal for frequency vector and scaling
                 time_length = self.time_data.shape[0]
-                if (
-                    self._spectrum_parameters["scaling"]
-                    == "amplitude spectrum"
-                ):
-                    spectrum /= time_length
-                    # Scale one-sided spectrum except for DC and Nyquist
-                    if time_length % 2 == 0:
-                        spectrum[1:-1] *= 2
-                    else:
-                        spectrum[1:] *= 2
+                spectrum = _scale_spectrum(
+                    spectrum,
+                    self._spectrum_parameters["scaling"],
+                    time_length,
+                    self.sampling_rate_hz,
+                )
+
             self.spectrum = []
             self.spectrum.append(
                 np.fft.rfftfreq(time_length, 1 / self.sampling_rate_hz)
@@ -918,7 +919,6 @@ class Signal:
         range_db=None,
         smoothe: int = 0,
         show_info_box: bool = False,
-        scale: bool = True,
     ) -> tuple[Figure, Axes]:
         """Plots magnitude spectrum.
         Change parameters of spectrum with set_spectrum_parameters.
@@ -931,23 +931,20 @@ class Signal:
         normalize : str, optional
             Mode for normalization, supported are `'1k'` for normalization
             with value at frequency 1 kHz or `'max'` for normalization with
-            maximal value. Use `None` for no normalization (only by the
-            sampling rate if standard method for spectrum is selected).
+            maximal value. Use `None` for no normalization. Spectrum uses
+            then scaling set in the `set_spectrum_parameters()` method.
             Default: `'1k'`.
         range_db : array-like with length 2, optional
             Range in dB for which to plot the magnitude response.
             Default: `None`.
         smoothe : int, optional
-            Smoothing across the (1/smoothe) octave band.
-            Default: 0 (no smoothing).
+            Smoothing across the (1/smoothe) octave band. It only applies to
+            the plot data and not to `get_spectrum()`. Default: 0 (no
+            smoothing).
         show_info_box : bool, optional
             Plots a info box regarding spectrum parameters and plot parameters.
             If it is str, it overwrites the standard message.
             Default: `False`.
-        scale : bool, optional
-            When `True`, spectrum gets scaled as an amplitude spectrum.
-            This only applies when `method = 'standard'` and no normalization
-            is applied. Default: `True`.
 
         Returns
         -------
@@ -964,20 +961,28 @@ class Signal:
           when no normalization is active.
 
         """
+        # Handle smoothing
+        prior_smoothing = self._spectrum_parameters["smoothe"]
+        self._spectrum_parameters["smoothe"] = 0
+
+        # Get spectrum
         f, sp = self.get_spectrum()
-        if (
-            self._spectrum_parameters["method"] == "standard"
-            and normalize is None
-            and scale
-        ):
-            sp *= 2 / self.time_data.shape[0]
-            sp[0] /= 2
-            if self.time_data.shape[0] % 2 == 0:
-                sp[-1] /= 2
+
+        self._spectrum_parameters["smoothe"] = prior_smoothing
+
+        if self._spectrum_parameters["scaling"] is not None:
+            mode = (
+                "welch"
+                if "power" in self._spectrum_parameters["scaling"]
+                else "standard"
+            )
+        else:
+            mode = self._spectrum_parameters["method"]
+
         f, mag_db = _get_normalized_spectrum(
             f=f,
             spectra=sp,
-            mode=self._spectrum_parameters["method"],
+            mode=mode,
             f_range_hz=range_hz,
             normalize=normalize,
             smoothe=smoothe,
@@ -1033,6 +1038,9 @@ class Signal:
             xlabels="Time / s",
             returns=True,
         )
+
+        plot_complex = self.time_data_imaginary is not None
+
         for n in range(self.number_of_channels):
             mx = np.max(np.abs(self.time_data[:, n])) * 1.1
             if hasattr(self, "window"):
@@ -1041,10 +1049,151 @@ class Signal:
                     self.window[:, n] * mx / 1.1,
                     alpha=0.75,
                 )
+            if plot_complex:
+                ax[n].plot(
+                    self.time_vector_s,
+                    self.time_data_imaginary[:, n],
+                    alpha=0.9,
+                    linestyle="dotted",
+                )
             ax[n].set_ylim([-mx, mx])
         return fig, ax
 
-    def plot_group_delay(self, range_hz=[20, 20000]) -> tuple[Figure, Axes]:
+    def plot_spl(
+        self,
+        normalize_at_peak: bool = False,
+        range_db: float | None = 100.0,
+        window_length_s: float = 0.0,
+    ) -> tuple[Figure, Axes]:
+        """Plots the momentary sound pressure level (dB or dBFS) of each
+        channel. If the signal is calibrated and not normalized at peak, the
+        values correspond to dB, otherwise they are dBFS.
+
+        Parameters
+        ----------
+        normalize_at_peak : bool, optional
+            When `True`, each channel gets normalize by its peak value.
+            Default: `False`.
+        range_db : float, optional
+            This is the range in dB used for plotting. Each plot will be in the
+            range [peak + 1 - range_db, peak + 1]. Pass `None` to avoid setting
+            any range. Default: 100.
+        window_length_s : float, optional
+            When different than 0, a moving average along the time axis is done
+            with the given length. Default: 0.
+
+        Returns
+        -------
+        fig : `matplotlib.figure.Figure`
+            Figure.
+        ax : `matplotlib.axes.Axes`
+            Axes.
+
+        Notes
+        -----
+        - All values are clipped to be at least -800 dBFS.
+        - No time averaging is done in this function.
+        - If it is an analytic signal and normalization is applied, the peak
+          value of the real part is used as the normalization factor.
+        - If the time window is not 0, effects at the edges of the signal might
+          be present due to zero-padding.
+
+        """
+        td_squared = self.time_data**2
+
+        if window_length_s > 0:
+            window = np.ones(
+                (int(window_length_s * self.sampling_rate_hz + 0.5), 1)
+            )
+            window /= len(window)
+            td_squared = convolve(
+                td_squared, window, mode="same", method="auto"
+            )
+
+        complex_data = self.time_data_imaginary is not None
+        if complex_data:
+            td_squared_imaginary = self.time_data_imaginary**2.0
+            if window_length_s > 0:
+                td_squared_imaginary = convolve(
+                    td_squared_imaginary,
+                    window,
+                    mode="same",
+                    method="auto",
+                )
+            complex_etc = 10 * np.log10(
+                np.clip(
+                    td_squared_imaginary,
+                    a_min=1e-80,
+                    a_max=None,
+                )
+            )
+
+        peak_values = 10 * np.log10(np.max(td_squared, axis=0))
+        etc = 10 * np.log10(np.clip(td_squared, a_min=1e-80, a_max=None))
+
+        if normalize_at_peak:
+            etc -= peak_values
+            if complex_data:
+                complex_etc -= peak_values
+
+        db_type = "dBFS"
+        if self.calibrated_signal and not normalize_at_peak:
+            # Convert to dB
+            factor = 20 * np.log10(2e-5)
+            etc -= factor
+            peak_values -= factor
+            db_type = "dB"
+            if complex_data:
+                complex_etc -= factor
+
+        fig, ax = general_subplots_line(
+            self.time_vector_s,
+            etc,
+            sharex=True,
+            ylabels=[
+                f"Channel {n} / {db_type}"
+                for n in range(self.number_of_channels)
+            ],
+            xlabels="Time / s",
+            returns=True,
+        )
+
+        add_to_peak = 1  # Add 1 dB for better plotting
+        max_values = (
+            peak_values + add_to_peak
+            if not normalize_at_peak
+            else np.ones(self.number_of_channels)
+        )
+
+        for n in range(self.number_of_channels):
+            if hasattr(self, "window"):
+                ax[n].plot(
+                    self.time_vector_s,
+                    20
+                    * np.log10(
+                        np.clip(
+                            np.abs(self.window[:, n] / 1.1),
+                            a_min=1e-40,
+                            a_max=None,
+                        )
+                    )
+                    + max_values[n],
+                    alpha=0.75,
+                )
+            if complex_data:
+                ax[n].plot(self.time_vector_s, complex_etc[:, n], alpha=0.75)
+            if range_db is not None:
+                ax[n].set_ylim(
+                    [max_values[n] - np.abs(range_db), max_values[n]]
+                )
+        return fig, ax
+
+    def plot_group_delay(
+        self,
+        range_hz=[20, 20000],
+        remove_impulse_delay: bool = False,
+        smoothing: int = 0,
+    ) -> tuple[Figure, Axes]:
         """Plots group delay of each channel.
         Only works if `signal_type in ('ir', 'h1', 'h2', 'h3', 'rir', 'chirp',
         'noise', 'dirac')`.
@@ -1054,6 +1203,13 @@ class Signal:
         range_hz : array-like with length 2, optional
             Range of frequencies for which to show group delay.
             Default: [20, 20e3].
+        remove_impulse_delay : bool, optional
+            When `True`, the delay of the impulse is removed prior to the
+            computation of the group delay. Default: `False`.
+        smoothing : int, optional
+            When different than 0, smoothing is applied to the group delay
+            along the (1/smoothing) octave band. This only affects the values
+            in the plot. Default: 0.
 
         Returns
         -------
@@ -1077,11 +1233,26 @@ class Signal:
             f"{self.signal_type} is not valid. Please set it to ir or "
             + "h1, h2, h3, rir"
         )
-        self.set_spectrum_parameters("standard")
+
+        # Handle spectrum parameters
+        prior_spectrum_parameters = self._spectrum_parameters
+        self.set_spectrum_parameters("standard", scaling=None, smoothe=0)
         f, sp = self.get_spectrum()
+        self._spectrum_parameters = prior_spectrum_parameters
+
+        sp = np.angle(sp)
+        if remove_impulse_delay:
+            sp = _remove_impulse_delay_from_phase(
+                f, sp, self.time_data, self.sampling_rate_hz
+            )
+
         gd = np.zeros((len(f), self.number_of_channels))
         for n in range(self.number_of_channels):
             gd[:, n] = _group_delay_direct(sp[:, n], f[1] - f[0])
+
+        if smoothing != 0:
+            gd = _fractional_octave_smoothing(gd, smoothing)
+
         fig, ax = general_plot(
             f,
             gd * 1e3,
@@ -1186,10 +1357,14 @@ class Signal:
         return fig, ax
 
     def plot_phase(
-        self, range_hz=[20, 20e3], unwrap: bool = False
+        self,
+        range_hz=[20, 20e3],
+        unwrap: bool = False,
+        smoothing: int = 0,
+        remove_impulse_delay: bool = False,
     ) -> tuple[Figure, Axes]:
         """Plots phase of the frequency response, only available if the method
-        for the spectrum parameters is not welch.
+        for the spectrum `"standard"`.
 
         Parameters
         ----------
@@ -1198,6 +1373,13 @@ class Signal:
             Default: [20, 20e3].
         unwrap : bool, optional
             When `True`, the unwrapped phase is plotted. Default: `False`.
+        smoothing : int, optional
+            When different than 0, the phase response is smoothed across the
+            1/smoothing-octave band. This only applies smoothing to the plot
+            data. Default: 0.
+        remove_impulse_delay : bool, optional
+            If the signal is of type `"rir"` or `"ir"`, the delay of the
+            impulse can be removed. Default: `False`.
 
         Returns
         -------
@@ -1212,10 +1394,33 @@ class Signal:
             + "welch. Please change spectrum parameters method to "
             + "standard"
         )
+
+        prior_smoothing = self._spectrum_parameters["smoothe"]
+        self._spectrum_parameters["smoothe"] = 0
+
+        # Get spectrum
         f, sp = self.get_spectrum()
         ph = np.angle(sp)
+
+        self._spectrum_parameters["smoothe"] = prior_smoothing
+
+        if remove_impulse_delay:
+            assert self.signal_type in (
+                "rir",
+                "ir",
+            ), f"{self.signal_type} is not valid, use rir or ir"
+            ph = _remove_impulse_delay_from_phase(
+                f, ph, self.time_data, self.sampling_rate_hz
+            )
+
+        if smoothing != 0:
+            ph = _wrap_phase(
+                _fractional_octave_smoothing(np.unwrap(ph, axis=0), smoothing)
+            )
+
         if unwrap:
             ph = np.unwrap(ph, axis=0)
+
         fig, ax = general_plot(
             x=f,
             matrix=ph,
@@ -1397,5 +1602,5 @@ class Signal:
             )
             # In an audio stream, welch's method for acquiring a spectrum
             # is not very logical...
-            sig.set_spectrum_parameters(method="standard")
+            sig.set_spectrum_parameters(method="standard", scaling=None)
         return sig, stop_flag

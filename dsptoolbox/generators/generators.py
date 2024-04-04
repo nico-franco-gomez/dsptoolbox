@@ -3,6 +3,7 @@ This contains signal generators that might be useful for measurements.
 See measure.py for routines where the signals that are created here can be
 used
 """
+
 import numpy as np
 from ..classes.signal_class import Signal
 from .._general_helpers import (
@@ -16,12 +17,12 @@ from ..classes._filter import _impulse
 
 def noise(
     type_of_noise: str = "white",
-    length_seconds: float = 1,
+    length_seconds: float = 1.0,
     sampling_rate_hz: int | None = None,
-    peak_level_dbfs: float = -10,
+    peak_level_dbfs: float = -10.0,
     number_of_channels: int = 1,
     fade: str = "log",
-    padding_end_seconds: float | None = None,
+    padding_end_seconds: float = 0.0,
 ) -> Signal:
     """Creates a noise signal.
 
@@ -43,11 +44,10 @@ def noise(
     fade : str, optional
         Type of fade done on the generated signal. By default, 10% of signal
         length (without the padding in the end) is faded at the beginning and
-        end. Options are `'exp'`, `'lin'`, `'log'`.
-        Pass `None` for no fading. Default: `'log'`.
+        end. Options are `'exp'`, `'lin'`, `'log'`. Pass `None` for no
+        fading. Default: `'log'`.
     padding_end_seconds : float, optional
-        Padding at the end of signal. Use `None` to avoid any padding.
-        Default: `None`.
+        Padding at the end of signal. Default: 0.
 
     Returns
     -------
@@ -70,7 +70,7 @@ def noise(
     l_samples = int(length_seconds * sampling_rate_hz + 0.5)
     f = np.fft.rfftfreq(l_samples, 1 / sampling_rate_hz)
 
-    if padding_end_seconds not in (None, 0):
+    if padding_end_seconds != 0:
         assert padding_end_seconds > 0, "Padding has to be a positive time"
         p_samples = int(padding_end_seconds * sampling_rate_hz + 0.5)
     else:
@@ -88,19 +88,26 @@ def noise(
         mag[:id_low] *= 1e-20
 
     ph = np.random.uniform(-np.pi, np.pi, (len(f), number_of_channels))
+
+    # Correct DC and Nyquist
+    ph[0, :] = 0
+    if l_samples % 2 == 0:
+        ph[-1, :] = 0
+
     if type_of_noise == "pink":
-        mag[id_low:, :] /= f[id_low:][..., None]
+        mag[id_low:, :] /= (f[id_low:] ** 0.5)[..., None]
     elif type_of_noise == "red":
-        mag[id_low:, :] /= (f[id_low:] ** 2)[..., None]
+        mag[id_low:, :] /= f[id_low:][..., None]
     elif type_of_noise == "blue":
-        mag[id_low:, :] *= f[id_low:][..., None]
+        mag[id_low:, :] *= (f[id_low:] ** 0.5)[..., None]
     elif type_of_noise == "violet":
-        mag[id_low:, :] *= (f[id_low:] ** 2)[..., None]
+        mag[id_low:, :] *= f[id_low:][..., None]
     elif type_of_noise == "grey":
         w = _frequency_weightning(f, "a", db_output=False)
         mag[id_low:, :] /= w[id_low:][..., None]
-    t_vec = np.fft.irfft(mag * np.exp(1j * ph), n=l_samples, axis=0)
-    vec = _normalize(t_vec, dbfs=peak_level_dbfs, mode="peak")
+
+    vec = np.fft.irfft(mag * np.exp(1j * ph), n=l_samples, axis=0)
+    vec = _normalize(vec, dbfs=peak_level_dbfs, mode="peak")
     if fade is not None:
         fade_length = 0.05 * length_seconds
         vec = _fade(
@@ -129,13 +136,13 @@ def noise(
 def chirp(
     type_of_chirp: str = "log",
     range_hz=None,
-    length_seconds: float = 1,
+    length_seconds: float = 1.0,
     sampling_rate_hz: int | None = None,
-    peak_level_dbfs: float = -10,
+    peak_level_dbfs: float = -10.0,
     number_of_channels: int = 1,
     fade: str = "log",
-    phase_offset: float = 0,
-    padding_end_seconds: float | None = None,
+    phase_offset: float = 0.0,
+    padding_end_seconds: float = 0.0,
 ) -> Signal:
     """Creates a sine-sweep signal.
 
@@ -163,9 +170,7 @@ def chirp(
     phase_offset : float, optional
         This is an offset in radians for the phase of the sine. Default: 0.
     padding_end_seconds : float, optional
-        Padding at the end of signal. Use `None` to avoid any padding.
-        Default: `None`.
-
+        Padding at the end of signal. Default: 0.
     Returns
     -------
     chirp_sig : `Signal`
@@ -196,7 +201,7 @@ def chirp(
         )
     else:
         range_hz = [15, sampling_rate_hz // 2]
-    if padding_end_seconds not in (None, 0):
+    if padding_end_seconds != 0:
         assert padding_end_seconds > 0, "Padding has to be a positive time"
         p_samples = int(padding_end_seconds * sampling_rate_hz)
     else:
@@ -298,14 +303,14 @@ def dirac(
 
 
 def harmonic(
-    frequency_hz: float = 1000,
-    length_seconds: float = 1,
+    frequency_hz: float = 1000.0,
+    length_seconds: float = 1.0,
     sampling_rate_hz: int | None = None,
-    peak_level_dbfs: float = -10,
+    peak_level_dbfs: float = -10.0,
     number_of_channels: int = 1,
     uncorrelated: bool = False,
     fade: str = "log",
-    padding_end_seconds: float | None = None,
+    padding_end_seconds: float = 0.0,
 ) -> Signal:
     """Creates a multi-channel harmonic (sine) tone.
 
@@ -330,8 +335,7 @@ def harmonic(
         end. Options are `'exp'`, `'lin'`, `'log'`.
         Pass `None` for no fading. Default: `'log'`.
     padding_end_seconds : float, optional
-        Padding at the end of signal. Use `None` to avoid any padding.
-        Default: `None`.
+        Padding at the end of signal. Default: 0.
 
     Returns
     -------
@@ -345,17 +349,17 @@ def harmonic(
     ), "Frequency must be beneath nyquist frequency"
     assert frequency_hz > 0, "Frequency must be bigger than 0"
 
-    if padding_end_seconds not in (None, 0):
+    if padding_end_seconds != 0:
         assert padding_end_seconds > 0, "Padding has to be a positive time"
         p_samples = int(padding_end_seconds * sampling_rate_hz)
     else:
         p_samples = 0
     l_samples = int(sampling_rate_hz * length_seconds + 0.5)
-    n_vec = np.arange(l_samples)[..., None]
+    n_vec = np.arange(l_samples, dtype=np.float64)[..., None]
     n_vec = np.repeat(n_vec, number_of_channels, axis=-1)
 
     # Frequency vector
-    n_vec = frequency_hz / sampling_rate_hz * 2 * np.pi * n_vec
+    n_vec *= frequency_hz / sampling_rate_hz * 2.0 * np.pi
     # Apply phase shift
     if uncorrelated:
         n_vec += np.random.uniform(-np.pi, np.pi, (number_of_channels))
@@ -389,16 +393,16 @@ def harmonic(
 
 
 def oscillator(
-    frequency_hz: float = 1000,
-    length_seconds: float = 1,
+    frequency_hz: float = 1000.0,
+    length_seconds: float = 1.0,
     mode: str = "harmonic",
     harmonic_cutoff_hz: float | None = None,
     sampling_rate_hz: int | None = None,
-    peak_level_dbfs: float = -10,
+    peak_level_dbfs: float = -10.0,
     number_of_channels: int = 1,
     uncorrelated: bool = False,
     fade: str = "log",
-    padding_end_seconds: float | None = None,
+    padding_end_seconds: float = 0.0,
 ) -> Signal:
     """Creates a non-aliased, multi-channel wave tone.
 
@@ -430,8 +434,7 @@ def oscillator(
         end. Options are `'exp'`, `'lin'`, `'log'`.
         Pass `None` for no fading. Default: `'log'`.
     padding_end_seconds : float, optional
-        Padding at the end of signal. Use `None` to avoid any padding.
-        Default: `None`.
+        Padding at the end of signal. Default: 0.
 
     Returns
     -------
@@ -450,7 +453,7 @@ def oscillator(
     ), "Frequency must be beneath nyquist frequency"
     assert frequency_hz > 0, "Frequency must be bigger than 0"
 
-    if padding_end_seconds not in (None, 0):
+    if padding_end_seconds != 0:
         assert padding_end_seconds > 0, "Padding has to be a positive time"
         p_samples = int(padding_end_seconds * sampling_rate_hz)
     else:

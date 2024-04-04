@@ -3,6 +3,7 @@ import pytest
 from os.path import join
 import numpy as np
 from matplotlib.pyplot import close
+from scipy.signal import hilbert
 
 
 class TestTransformsModule:
@@ -129,8 +130,8 @@ class TestTransformsModule:
 
     def test_chroma(self):
         # Only functionality
-        dsp.transforms.chroma_stft(self.speech)
-        dsp.transforms.chroma_stft(self.speech, plot_channel=0)
+        dsp.transforms.chroma_stft(self.speech.copy())
+        dsp.transforms.chroma_stft(self.speech.copy(), plot_channel=0)
 
     def test_cwt(self):
         # Only functionality
@@ -145,10 +146,24 @@ class TestTransformsModule:
         s = s.time_data + s.time_data_imaginary * 1j
         s2 = self.speech.time_data
 
-        from scipy.signal import hilbert
+        s2 = hilbert(s2, axis=0)
+        assert np.all(np.isclose(s, s2))
+
+        # Now other length (even vs. odd)
+        s = dsp.transforms.hilbert(
+            dsp.pad_trim(self.speech, len(self.speech) - 1)
+        )
+        s = s.time_data + s.time_data_imaginary * 1j
+        s2 = self.speech.time_data[:-1, ...]
 
         s2 = hilbert(s2, axis=0)
         assert np.all(np.isclose(s, s2))
+
+        # Functionality for multiband signals
+        s_mb = dsp.filterbanks.linkwitz_riley_crossovers(
+            [400], 2, self.speech.sampling_rate_hz
+        ).filter_signal(self.speech)
+        dsp.transforms.hilbert(s_mb)
 
     def test_stereo_mid_side(self):
         sp = dsp.merge_signals(self.speech, self.speech)

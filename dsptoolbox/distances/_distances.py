@@ -1,6 +1,7 @@
 """
 Backend for distance measures
 """
+
 import numpy as np
 from scipy.integrate import simpson
 from .._general_helpers import _compute_number_frames, _pad_trim
@@ -28,7 +29,7 @@ def _log_spectral_distance(
 
     """
     assert x.shape == y.shape, "Power spectra have different lengths"
-    integral = simpson((10 * np.log10(x / y)) ** 2, f)
+    integral = simpson((10 * np.log10(x / y)) ** 2, x=f)
     log_spec = np.sqrt(integral)
     return log_spec
 
@@ -54,11 +55,11 @@ def _itakura_saito_measure(
 
     """
     assert x.shape == y.shape, "Power spectra have different lengths"
-    ism = simpson(x / y - np.log10(x / y) - 1, f)
+    ism = simpson(x / y - np.log10(x / y) - 1, x=f)
     return ism
 
 
-def _snr(s: np.ndarray, n: np.ndarray) -> float:
+def _snr(s: np.ndarray, n: np.ndarray) -> float | np.ndarray:
     """Computes SNR from the passed numpy arrays.
 
     Parameters
@@ -70,8 +71,8 @@ def _snr(s: np.ndarray, n: np.ndarray) -> float:
 
     Returns
     -------
-    snr : float
-        SNR between signals.
+    snr : float or `np.ndarray`
+        SNR between signals. It can be an array if signals are multichannel.
 
     """
     return 20 * np.log10(_rms(s) / _rms(n))
