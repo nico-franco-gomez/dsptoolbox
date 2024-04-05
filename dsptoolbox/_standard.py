@@ -22,16 +22,16 @@ def _latency(
 
     """
     if in2 is None:
-        in2 = np.repeat(in1[:, 0][..., None], in1.shape[1] - 1, axis=1)
+        in2 = in1[:, 0][..., None]
         in1 = np.atleast_2d(in1[:, 1:])
-
-    latency_per_channel_samples = np.zeros(in1.shape[1], dtype=int)
-    for i in range(in1.shape[1]):
-        xcorr = correlate(in2[:, i].flatten(), in1[:, i].flatten())
-        latency_per_channel_samples[i] = int(
-            in1.shape[0] - np.argmax(np.abs(xcorr)) - 1
-        )
-    return latency_per_channel_samples
+        xcorr = correlate(in2, in1, mode="full")
+        peak_inds = np.argmax(np.abs(xcorr), axis=0)
+    else:
+        peak_inds = np.zeros(in1.shape[1], dtype=int)
+        for i in range(in1.shape[1]):
+            xcorr = correlate(in2[:, i].flatten(), in1[:, i].flatten())
+            peak_inds[i] = int(np.argmax(np.abs(xcorr)))
+    return in1.shape[0] - peak_inds - 1
 
 
 def _fractional_latency(

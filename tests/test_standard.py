@@ -20,11 +20,11 @@ class TestStandardModule:
         # Try latency
         s = dsp.Signal(None, td_del, self.fs)
         vector = dsp.latency(self.audio_multi, s)
-        assert np.all(np.abs(vector) == delay_samples)
+        assert np.all(vector == -delay_samples)
 
         # Try latency the other way around
         vector = dsp.latency(s, self.audio_multi)
-        assert np.all(np.abs(vector) == delay_samples)
+        assert np.all(vector == delay_samples)
 
         # Raise assertion when number of channels does not match
         with pytest.raises(AssertionError):
@@ -38,7 +38,7 @@ class TestStandardModule:
         )
         s = dsp.Signal(None, td, self.fs)
         value = dsp.latency(s)
-        assert np.all(np.abs(value) == delay_samples)
+        assert np.all(value == delay_samples)
 
         # ===== Fractional delays
         delay = 0.003301
