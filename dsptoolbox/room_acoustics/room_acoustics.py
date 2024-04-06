@@ -43,16 +43,12 @@ def reverb_time(
         If it is an integer, it is assumed as the start of the IR for all
         channels (and all bands). For more specific cases, pass a 1d-array
         containing the start indices for each channel or a 2d-array with
-        shape (band, channel) for a `MultiBandSignal`. When `None`, the starts
-        are automatically computed as the first point before the normalized IR
-        arrives at -20 dBFS. This is then done independently for each channel
-        and each band. Default: `None`.
+        shape (band, channel) for a `MultiBandSignal`. Default: `None`.
     automatic_trimming : bool, optional
-        When set to `True`, the IR is trimmed using `trim_rir` with offset 20
-        ms before the impulse, envelope smoothing of 10 ms and threshold
-        factor 0.66. This can influence significantly the energy decay curve
-        and, therefore, the reverberation time. See notes for details on the
-        algorithm. Default: `True`.
+        When set to `True`, the IR is trimmed using `trim_rir` independently
+        for each channel. This can influence significantly the energy decay
+        curve and, therefore, the reverberation time. See notes for details
+        on the algorithm. Default: `True`.
 
     Returns
     -------
@@ -80,8 +76,8 @@ def reverb_time(
     - In order to compare EDT to the other measures, it must be multiplied
       by 6.
     - For defining the ending of the IR automatically, `trim_rir(
-      offset_start_s = 0, threshold_factor = 0.66, window_time_s = 30e-3)` is
-      used.
+      offset_start_s = 20e-3, threshold_factor = 0.66,
+      window_time_s = 30e-3)` is used.
 
     """
     if type(signal) is Signal:
