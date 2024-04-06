@@ -1691,7 +1691,7 @@ def distortion_analysis(
         sp_thd += interp1d(
             f,
             sp_power,
-            kind="linear",
+            kind="cubic",
             bounds_error=False,
             fill_value=0,
             assume_sorted=True,
