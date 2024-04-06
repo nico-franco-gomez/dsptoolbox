@@ -36,6 +36,7 @@ Analyze TF/IR:
 - `harmonics_from_chirp_ir()`
 
 """
+
 from .transfer_functions import (
     spectral_deconvolve,
     window_ir,
@@ -56,6 +57,7 @@ from .transfer_functions import (
     warp_ir,
     find_ir_latency,
     harmonics_from_chirp_ir,
+    distortion_analysis,
 )
 
 __all__ = [
@@ -78,4 +80,5 @@ __all__ = [
     "warp_ir",
     "find_ir_latency",
     "harmonics_from_chirp_ir",
+    "distortion_analysis",
 ]

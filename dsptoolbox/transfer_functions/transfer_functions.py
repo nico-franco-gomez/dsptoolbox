@@ -5,6 +5,7 @@ Methods used for acquiring and windowing transfer functions
 import numpy as np
 from scipy.signal import minimum_phase as min_phase_scipy
 from scipy.fft import rfft as rfft_scipy, next_fast_len as next_fast_length_fft
+from scipy.interpolate import interp1d
 
 from ._transfer_functions import (
     _spectral_deconvolve,
@@ -34,7 +35,7 @@ from .._standard import (
 from ..standard_functions import fractional_delay, merge_signals, normalize
 from ..generators import dirac
 from ..filterbanks import linkwitz_riley_crossovers
-from ..room_acoustics._room_acoustics import _find_ir_start
+from ..room_acoustics._room_acoustics import _find_ir_start, _trim_rir
 
 
 def spectral_deconvolve(
@@ -727,7 +728,7 @@ def lin_phase_from_mag(
         else:
             gd_ms = group_delay_ms
 
-        phase = 2 * np.pi * f_vec * gd_ms
+        phase = -2 * np.pi * f_vec * gd_ms
         if spectrum_has_nyquist:
             phase = _correct_for_real_phase_spectrum(_wrap_phase(phase))
         lin_spectrum[:, n] = spectrum[:, n] * np.exp(1j * phase)
@@ -767,7 +768,6 @@ def min_phase_ir(sig: Signal, method: str = "real cepstrum") -> Signal:
         Minimum-phase IR as time signal.
 
     """
-    # Computation
     assert sig.signal_type in (
         "rir",
         "ir",
@@ -1348,12 +1348,16 @@ def window_frequency_dependent(
     if scaling == "amplitude spectrum":
 
         def scaling_func(window: np.ndarray):
-            return 2**0.5 / np.sum(window, axis=0)
+            return 2**0.5 / np.sum(window, axis=0, keepdims=True)
 
     elif scaling == "amplitude spectral density":
 
         def scaling_func(window: np.ndarray):
-            return (2 / np.sum(window**2, axis=0) / ir.sampling_rate_hz) ** 0.5
+            return (
+                2
+                / np.sum(window**2, axis=0, keepdims=True)
+                / ir.sampling_rate_hz
+            ) ** 0.5
 
     elif scaling == "fft":
         scaling_value = fast_length**-0.5
@@ -1517,6 +1521,9 @@ def harmonics_from_chirp_ir(
     assert (
         offset_percentage < 1 and offset_percentage >= 0
     ), "Offset must be smaller than one"
+    assert (
+        ir.number_of_channels == 1
+    ), "Only an IR with a single channel is supported"
 
     # Get offsets
     td = ir.time_data
@@ -1533,6 +1540,10 @@ def harmonics_from_chirp_ir(
 
     time_harmonics_samples = np.insert(time_harmonics_samples, 0, len(td))
 
+    # Dummy to obtain all metadata of the IR
+    ir_dummy = ir.copy()
+    ir_dummy.time_data = ir.time_data[:10]
+
     harmonics = []
     for nh in range(n_harmonics):
         max_ind = int(
@@ -1546,13 +1557,178 @@ def harmonics_from_chirp_ir(
             * offset_percentage
         )
         snippet = td[min_ind:max_ind, 0]
-        harmonics.append(
-            Signal(
-                None,
-                snippet,
-                ir.sampling_rate_hz,
-                signal_type="ir",
-                constrain_amplitude=ir.constrain_amplitude,
-            )
-        )
+
+        new_harmonic = ir_dummy.copy()
+        new_harmonic.time_data = snippet
+        harmonics.append(new_harmonic)
     return harmonics
+
+
+def distortion_analysis(
+    ir: Signal,
+    chirp_range_hz: list,
+    chirp_length_s: float,
+    n_harmonics: int = 8,
+    smoothing: int = 12,
+    generate_plot: bool = True,
+) -> dict:
+    """
+    Analyze non-linear distortion coming from an IR measured with an
+    exponential chirp. The range of the chirp and its length must be known.
+    The distortion spectra of each harmonic, as well as THD+N and THD, are
+    returned. Optionally, a plot can be generated.
+
+    Parameters
+    ----------
+    ir : `Signal`
+        Impulse response. It should only have one channel.
+    chirp_range_hz : list
+        List with length 2 containing the lowest and highest frequency of the
+        exponential chirp.
+    chirp_length_s : float
+        Length of the chirp (time from lowest to highest frequency) in seconds.
+    n_harmonics : int, optional
+        Number of harmonics to analyze. Default: 8.
+    smoothing : int, optional
+        Smoothing as fraction of an octave band to apply to all spectra.
+        Default: 12.
+    generate_plot : bool, optional
+        When `True`, a plot with all the distortion spectra is generated.
+        Default: `True`.
+
+    Returns
+    -------
+    dict
+        A dictionary containing each spectrum is returned. Each item is a list
+        with form [frequency vector, spectrum]. Its keys are:
+            - "1": spectrum of the fundamental.
+            - "2": spectrum of the second harmonic.
+            - "3": ...
+            - "thd": Total harmonic distortion.
+            - "thd_n": Total harmonic distortion + noise.
+            - "plot": a list with matplotlib's [figure, axes]. This is only
+              returned if the plot was generated.
+
+    Notes
+    -----
+    - The scaling of the spectrum is always done as set with
+      `set_spectrum_parameters()` of the original IR. THD and THD+N are always
+      returned with their quadratic (power) form. All spectra are in amplitude
+      or power values but not in dB.
+    - Distortion in percentage can be computed by dividing `thd` by the
+      spectrum of the fundamental. They have the same frequency resolution
+      but `thd` has a trimmed frequency vector.
+
+    """
+    # Get different harmonics
+    harm = harmonics_from_chirp_ir(
+        ir, chirp_range_hz, chirp_length_s, n_harmonics, 0.01
+    )
+
+    # Trim and window IR
+    ir2 = ir.copy()
+    start, stop, _ = _trim_rir(
+        ir2.time_data, ir.sampling_rate_hz, 10e-3, 0.75, 30e-3
+    )
+    ir2.time_data = ir2.time_data[start:stop]
+    ir2 = window_ir(ir2, len(ir2), constant_percentage=0.9)[0]
+    ir2._spectrum_parameters["smoothe"] = smoothing
+
+    # At least 5 Hz frequency resolution for base spectrum
+    pad_length = max(ir2.sampling_rate_hz // 5, len(ir2)) - len(ir2)
+    ir2.time_data = np.pad(ir2.time_data, ((0, pad_length), (0, 0)))
+
+    # Accumulator for THD time samples and dictionary
+    thd = np.zeros(np.sum([len(h) for h in harm]))
+    pos_thd = len(thd)
+    d: dict = {}
+
+    # Spectrum of fundamental
+    freqs, base_spectrum = ir2.get_spectrum()
+    d["1"] = [freqs, base_spectrum.squeeze()]
+
+    # Accumulator for spectrum of harmonics
+    sp_thd = np.zeros(len(freqs))
+
+    scaling = ir2._spectrum_parameters["scaling"]
+    if scaling is None:
+        quadratic_spectrum = False
+    else:
+        quadratic_spectrum = "power" in scaling
+
+    if generate_plot:
+        fig, ax = ir2.plot_magnitude(smoothe=smoothing, normalize=None)
+
+    for i in range(len(harm)):
+        harm[i] = window_ir(harm[i], len(harm[i]), constant_percentage=0.9)[0]
+        harm[i].set_spectrum_parameters(**ir2._spectrum_parameters)
+        f, sp = harm[i].get_spectrum()
+
+        # Select frequencies that really were excited by chirp and fftshift
+        # for true excitation frequency
+        inds = f < chirp_range_hz[-1]
+        f = f[inds]
+        sp = sp[inds]
+        f /= i + 2
+
+        # Get power
+        sp_power = (
+            sp.squeeze() if quadratic_spectrum else np.abs(sp.squeeze()) ** 2
+        )
+
+        # Save in dictionary
+        d[f"{i + 2}"] = [f, sp]
+
+        # Make plot
+        if generate_plot:
+            ax.plot(f, 10 * np.log10(sp_power))
+
+        # Accumulate time samples for THD+N
+        thd[pos_thd - len(harm[i]) : pos_thd] = harm[i].time_data.squeeze()
+        pos_thd -= len(harm[i])
+
+        # Sum power of each harmonic
+        sp_thd += interp1d(
+            f,
+            sp_power,
+            kind="linear",
+            bounds_error=False,
+            fill_value=0,
+            assume_sorted=True,
+        )(freqs)
+
+    # THD
+    ind_end = np.argmin(np.abs(freqs - chirp_range_hz[-1] / 2))
+    sp_thd = sp_thd[:ind_end]
+    freqs_thd = freqs[:ind_end]
+    if generate_plot:
+        sp_thd[sp_thd == 0] = np.nan
+        ax.plot(freqs_thd, 10 * np.log10(sp_thd), label="THD")
+        np.nan_to_num(sp_thd, False, 0)
+
+    # THD+N
+    thd_n = Signal(None, thd, ir2.sampling_rate_hz)
+    thd_n.set_spectrum_parameters(**ir2._spectrum_parameters)
+    f_thd_n, sp_thd_n = thd_n.get_spectrum()
+    if not quadratic_spectrum:
+        sp_thd_n = np.abs(sp_thd_n) ** 2
+
+    if generate_plot:
+        ax.plot(
+            f_thd_n,
+            10 * np.log10(sp_thd_n),
+            label="THD+N",
+        )
+        ax.legend(
+            ["Fundamental"]
+            + [f"{i + 2} Harmonic" for i in range(n_harmonics)]
+            + ["THD", "THD+N"]
+        )
+
+    d["thd_n"] = [f_thd_n, sp_thd_n]
+    d["thd"] = [freqs_thd, sp_thd]
+
+    if generate_plot:
+        d["plot"] = [fig, ax]
+
+    return d
