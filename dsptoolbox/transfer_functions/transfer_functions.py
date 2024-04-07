@@ -1564,7 +1564,7 @@ def harmonics_from_chirp_ir(
     return harmonics
 
 
-def distortion_analysis(
+def harmonic_distortion_analysis(
     ir: Signal | list[Signal],
     chirp_range_hz: list | None = None,
     chirp_length_s: float | None = None,
@@ -1584,7 +1584,8 @@ def distortion_analysis(
         Impulse response. It should only have one channel. Alternatively,
         a list containing the fundamental IR and all harmonics can be passed,
         in which case `chirp_range_hz`, `chirp_length_s` and `n_harmonics`
-        will be ignored or infered.
+        will be ignored or inferred. In the second case, no windowing or
+        trimming will be applied to either the fundamental or the harmonics.
     chirp_range_hz : list
         List with length 2 containing the lowest and highest frequency of the
         exponential chirp.
@@ -1621,11 +1622,16 @@ def distortion_analysis(
     - Distortion in percentage can be computed by dividing `thd` by the
       spectrum of the fundamental. They have the same frequency resolution
       but `thd` has a trimmed frequency vector.
+    - Passing `chirp_range_hz` with a list of IRs will still have an effect on
+      the upper limit frequency of each harmonic.
 
     """
     if type(ir) is list:
         for each_ir in ir:
             assert type(each_ir) is Signal, "Unsupported type"
+            assert (
+                each_ir.number_of_channels == 1
+            ), "Only single-channel IRs are supported"
 
         ir2 = ir.pop(0)
         ir2._spectrum_parameters["smoothe"] = smoothing
@@ -1635,11 +1641,15 @@ def distortion_analysis(
         if chirp_range_hz is None:
             chirp_range_hz = [0, ir2.sampling_rate_hz // 2]
 
+        passed_harmonics = True
+
     elif type(ir) is Signal:
         # Get different harmonics
         harm = harmonics_from_chirp_ir(
             ir, chirp_range_hz, chirp_length_s, n_harmonics, 0.01
         )
+
+        passed_harmonics = False
 
         # Trim and window IR
         ir2 = ir.copy()
@@ -1678,7 +1688,10 @@ def distortion_analysis(
         fig, ax = ir2.plot_magnitude(smoothe=smoothing, normalize=None)
 
     for i in range(len(harm)):
-        harm[i] = window_ir(harm[i], len(harm[i]), constant_percentage=0.9)[0]
+        if not passed_harmonics:
+            harm[i] = window_ir(
+                harm[i], len(harm[i]), constant_percentage=0.9
+            )[0]
         harm[i].set_spectrum_parameters(**ir2._spectrum_parameters)
         f, sp = harm[i].get_spectrum()
 

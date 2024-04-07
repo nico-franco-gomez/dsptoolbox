@@ -34,6 +34,7 @@ Analyze TF/IR:
   window)
 - `find_ir_latency()`
 - `harmonics_from_chirp_ir()`
+- `harmonic_distortion_analysis()`
 
 """
 
@@ -57,7 +58,7 @@ from .transfer_functions import (
     warp_ir,
     find_ir_latency,
     harmonics_from_chirp_ir,
-    distortion_analysis,
+    harmonic_distortion_analysis,
 )
 
 __all__ = [
@@ -80,5 +81,5 @@ __all__ = [
     "warp_ir",
     "find_ir_latency",
     "harmonics_from_chirp_ir",
-    "distortion_analysis",
+    "harmonic_distortion_analysis",
 ]
