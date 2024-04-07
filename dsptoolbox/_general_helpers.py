@@ -1154,24 +1154,24 @@ def _get_fractional_impulse_peak_index(
     n_channels = time_data.shape[1]
     delay_samples = np.argmax(np.abs(time_data), axis=0).astype(int)
 
-    # Take only the part of the time vector with the impulses and some safety
-    # samples
+    # Take only the part of the time vector with the peaks and some safety
+    # samples (±200)
     time_data = time_data[: np.max(delay_samples) + 200, :]
+    start_offset = max(np.min(delay_samples) - 200, 0)
+    time_data = time_data[start_offset:, :]
+    delay_samples -= start_offset
 
-    h = hilbert(time_data, axis=0)
+    h = hilbert(time_data, axis=0).imag
     x = np.arange(-polynomial_points + 1, polynomial_points + 1)
 
     latency_samples = np.zeros(n_channels)
 
     for ch in range(n_channels):
         # ===== Ensure that delay_samples is before the peak in each channel
-        selection = h[delay_samples[ch] : delay_samples[ch] + 2, ch].imag
+        selection = h[delay_samples[ch] : delay_samples[ch] + 2, ch]
         move_back_one_sample = selection[0] * selection[1] > 0
         delay_samples[ch] -= int(move_back_one_sample)
-        if (
-            h[delay_samples[ch], ch].imag * h[delay_samples[ch] + 1, ch].imag
-            > 0
-        ):
+        if h[delay_samples[ch], ch] * h[delay_samples[ch] + 1, ch] > 0:
             latency_samples[ch] = delay_samples[ch] + int(move_back_one_sample)
             warn(
                 f"Fractional latency detection failed for channel {ch}. "
@@ -1191,16 +1191,16 @@ def _get_fractional_impulse_peak_index(
                 + polynomial_points
                 + 1,
                 ch,
-            ].imag,
+            ],
             deg=2 * polynomial_points - 1,
         )
 
-        # Find root and check it is less than one
-        roots = np.roots(pol).squeeze()
+        # Find roots
+        roots = np.roots(pol)
         # Get only root between 0 and 1
         roots = roots[
             (roots == roots.real)  # Real roots
-            & (roots <= 1 + 1e-10)  # Range
+            & (roots <= 1)  # Range
             & (roots >= 0)
         ].real
         try:
@@ -1216,7 +1216,7 @@ def _get_fractional_impulse_peak_index(
             continue
 
         latency_samples[ch] = delay_samples[ch] + fractional_delay_samples
-    return latency_samples
+    return latency_samples + start_offset
 
 
 def _remove_impulse_delay_from_phase(

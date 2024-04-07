@@ -38,7 +38,7 @@ class TestStandardModule:
         )
         s = dsp.Signal(None, td, self.fs)
         value = dsp.latency(s)
-        assert np.all(value == delay_samples)
+        assert np.all(-value == delay_samples)
 
         # ===== Fractional delays
         delay = 0.003301
