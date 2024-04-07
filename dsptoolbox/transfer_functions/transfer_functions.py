@@ -1565,10 +1565,10 @@ def harmonics_from_chirp_ir(
 
 
 def distortion_analysis(
-    ir: Signal,
-    chirp_range_hz: list,
-    chirp_length_s: float,
-    n_harmonics: int = 8,
+    ir: Signal | list[Signal],
+    chirp_range_hz: list | None = None,
+    chirp_length_s: float | None = None,
+    n_harmonics: int | None = 8,
     smoothing: int = 12,
     generate_plot: bool = True,
 ) -> dict:
@@ -1580,8 +1580,11 @@ def distortion_analysis(
 
     Parameters
     ----------
-    ir : `Signal`
-        Impulse response. It should only have one channel.
+    ir : `Signal` or list[`Signal`]
+        Impulse response. It should only have one channel. Alternatively,
+        a list containing the fundamental IR and all harmonics can be passed,
+        in which case `chirp_range_hz`, `chirp_length_s` and `n_harmonics`
+        will be ignored or infered.
     chirp_range_hz : list
         List with length 2 containing the lowest and highest frequency of the
         exponential chirp.
@@ -1614,25 +1617,40 @@ def distortion_analysis(
     - The scaling of the spectrum is always done as set with
       `set_spectrum_parameters()` of the original IR. THD and THD+N are always
       returned with their quadratic (power) form. All spectra are in amplitude
-      or power values but not in dB.
+      or power values according to `scaling`, but not in dB.
     - Distortion in percentage can be computed by dividing `thd` by the
       spectrum of the fundamental. They have the same frequency resolution
       but `thd` has a trimmed frequency vector.
 
     """
-    # Get different harmonics
-    harm = harmonics_from_chirp_ir(
-        ir, chirp_range_hz, chirp_length_s, n_harmonics, 0.01
-    )
+    if type(ir) is list:
+        for each_ir in ir:
+            assert type(each_ir) is Signal, "Unsupported type"
 
-    # Trim and window IR
-    ir2 = ir.copy()
-    start, stop, _ = _trim_rir(
-        ir2.time_data, ir.sampling_rate_hz, 10e-3, 0.75, 30e-3
-    )
-    ir2.time_data = ir2.time_data[start:stop]
-    ir2 = window_ir(ir2, len(ir2), constant_percentage=0.9)[0]
-    ir2._spectrum_parameters["smoothe"] = smoothing
+        ir2 = ir.pop(0)
+        ir2._spectrum_parameters["smoothe"] = smoothing
+
+        harm = ir
+        n_harmonics = len(harm)
+        if chirp_range_hz is None:
+            chirp_range_hz = [0, ir2.sampling_rate_hz // 2]
+
+    elif type(ir) is Signal:
+        # Get different harmonics
+        harm = harmonics_from_chirp_ir(
+            ir, chirp_range_hz, chirp_length_s, n_harmonics, 0.01
+        )
+
+        # Trim and window IR
+        ir2 = ir.copy()
+        start, stop, _ = _trim_rir(
+            ir2.time_data, ir.sampling_rate_hz, 10e-3, 0.75, 30e-3
+        )
+        ir2.time_data = ir2.time_data[start:stop]
+        ir2 = window_ir(ir2, len(ir2), constant_percentage=0.9)[0]
+        ir2._spectrum_parameters["smoothe"] = smoothing
+    else:
+        raise TypeError("Type for ir is not supported")
 
     # At least 5 Hz frequency resolution for base spectrum
     pad_length = max(ir2.sampling_rate_hz // 5, len(ir2)) - len(ir2)
@@ -1724,11 +1742,9 @@ def distortion_analysis(
             + [f"{i + 2} Harmonic" for i in range(n_harmonics)]
             + ["THD", "THD+N"]
         )
+        d["plot"] = [fig, ax]
 
     d["thd_n"] = [f_thd_n, sp_thd_n]
     d["thd"] = [freqs_thd, sp_thd]
-
-    if generate_plot:
-        d["plot"] = [fig, ax]
 
     return d
