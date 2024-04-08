@@ -800,6 +800,7 @@ class Signal:
                     self._spectrum_parameters["scaling"],
                     time_length,
                     self.sampling_rate_hz,
+                    None if not hasattr(self, "window") else self.window,
                 )
 
             self.spectrum = []

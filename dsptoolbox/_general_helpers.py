@@ -1072,6 +1072,7 @@ def _scale_spectrum(
     mode: str | None,
     time_length_samples: int,
     sampling_rate_hz: int,
+    window: np.ndarray | None = None,
 ) -> np.ndarray:
     """Scale the spectrum directly from the (unscaled) FFT. It is assumed that
     the time data was not windowed.
@@ -1113,9 +1114,17 @@ def _scale_spectrum(
     ), f"{mode} is not a supported mode"
 
     if "spectral density" in mode:
-        factor = (1 / time_length_samples / sampling_rate_hz) ** 0.5
+        if window is None:
+            factor = (1 / time_length_samples / sampling_rate_hz) ** 0.5
+        else:
+            factor = (
+                1 / np.sum(window**2, axis=0, keepdims=True) / sampling_rate_hz
+            ) ** 0.5
     elif "spectrum" in mode:
-        factor = 1 / time_length_samples
+        if window is None:
+            factor = 1 / time_length_samples
+        else:
+            factor = 1 / np.sum(window, axis=0, keepdims=True)
 
     spectrum *= factor
 
