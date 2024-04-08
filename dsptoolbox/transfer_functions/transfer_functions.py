@@ -267,12 +267,8 @@ def window_ir(
             adaptive,
         )
 
-    new_sig = Signal(
-        None,
-        new_time_data,
-        signal.sampling_rate_hz,
-        signal_type=signal.signal_type,
-    )
+    new_sig = signal.copy()
+    new_sig.time_data = new_time_data
     new_sig.set_window(window)
     return new_sig, start_positions_samples
 
@@ -332,12 +328,8 @@ def window_centered_ir(
             signal.time_data[:, n], total_length_samples, window_type
         )
 
-    new_sig = Signal(
-        None,
-        new_time_data,
-        signal.sampling_rate_hz,
-        signal_type=signal.signal_type,
-    )
+    new_sig = signal.copy()
+    new_sig.time_data = new_time_data
     new_sig.set_window(window)
     return new_sig, start_positions_samples
 
