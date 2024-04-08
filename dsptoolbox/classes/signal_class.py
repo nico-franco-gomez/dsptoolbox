@@ -971,19 +971,15 @@ class Signal:
 
         self._spectrum_parameters["smoothe"] = prior_smoothing
 
-        if self._spectrum_parameters["scaling"] is not None:
-            mode = (
-                "welch"
-                if "power" in self._spectrum_parameters["scaling"]
-                else "standard"
-            )
-        else:
-            mode = self._spectrum_parameters["method"]
-
+        scaling = (
+            "amplitude"
+            if self._spectrum_parameters["scaling"] is None
+            else self._spectrum_parameters["scaling"]
+        )
         f, mag_db = _get_normalized_spectrum(
             f=f,
             spectra=sp,
-            mode=mode,
+            scaling=("amplitude" if "amplitude" in scaling else "power"),
             f_range_hz=range_hz,
             normalize=normalize,
             smoothe=smoothe,

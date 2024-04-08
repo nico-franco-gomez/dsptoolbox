@@ -106,7 +106,7 @@ def _calculate_window(
 def _get_normalized_spectrum(
     f,
     spectra: np.ndarray,
-    mode="standard",
+    scaling: str = "amplitude",
     f_range_hz=[20, 20000],
     normalize: str | None = None,
     smoothe: int = 0,
@@ -123,9 +123,9 @@ def _get_normalized_spectrum(
         Frequency vector.
     spectra : `np.ndarray`
         Spectrum matrix.
-    mode : str, optional
-        Mode of spectrum, needed for factor in dB respresentation.
-        Choose from `'standard'` or `'welch'`. Default: `'standard'`.
+    scaling : str, optional
+        Information about whether the spectrum is scaled as an amplitude or
+        power. Choose from `'amplitude'` or `'power'`. Default: `'amplitude'`.
     f_range_hz : array-like with length 2
         Range of frequencies to get the normalized spectrum back.
         Default: [20, 20e3].
@@ -138,7 +138,8 @@ def _get_normalized_spectrum(
         1/smoothe-fractional octave band smoothing for magnitude spectra. Pass
         `0` for no smoothing. Default: 0.
     phase : bool, optional
-        When `True`, phase spectra are also returned. Default: `False`.
+        When `True`, phase spectra are also returned. Smoothing is also
+        applied to the unwrapped phase. Default: `False`.
     calibrated_data : bool, optional
         When `True`, it is assumed that the time data has been calibrated
         to be in Pascal so that it is scaled by p0=20e-6 Pa. Default: `False`.
@@ -176,15 +177,16 @@ def _get_normalized_spectrum(
             + "possible since the spectra are not complex"
         )
     # Factor
-    if mode == "standard":
+    if scaling == "amplitude":
         scale_factor = 20e-6 if calibrated_data and normalize is None else 1
         factor = 20
-    elif mode == "welch":
+    elif scaling == "power":
         scale_factor = 4e-10 if calibrated_data and normalize is None else 1
         factor = 10
     else:
         raise ValueError(
-            f"{mode} is not supported. Please select standard " "or welch"
+            f"{scaling} is not supported. Please select amplitude or "
+            + "power scaling"
         )
 
     if f_range_hz is not None:
@@ -204,15 +206,15 @@ def _get_normalized_spectrum(
 
     mag_spectra = np.abs(spectra)
 
-    if smoothe != 0 and mode == "standard":
-        if mode == "standard":
+    if smoothe != 0:
+        if scaling == "amplitude":
             mag_spectra = _fractional_octave_smoothing(mag_spectra, smoothe)
         else:  # Welch
             mag_spectra = (
                 _fractional_octave_smoothing(mag_spectra**0.5, smoothe) ** 2
             )
 
-    epsilon = 10 ** (-400 / 10)
+    epsilon = 10 ** (-800 / 10)
     mag_spectra = factor * np.log10(
         np.clip(mag_spectra, a_min=epsilon, a_max=None) / scale_factor
     )
@@ -220,8 +222,7 @@ def _get_normalized_spectrum(
     if normalize is not None:
         for i in range(spectra.shape[1]):
             if normalize == "1k":
-                gain = _get_exact_gain_1khz(f, mag_spectra[:, i])
-                mag_spectra[:, i] -= gain
+                mag_spectra[:, i] -= _get_exact_gain_1khz(f, mag_spectra[:, i])
             else:
                 mag_spectra[:, i] -= np.max(mag_spectra[:, i])
 
