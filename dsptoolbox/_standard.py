@@ -9,6 +9,7 @@ from ._general_helpers import (
     _pad_trim,
     _compute_number_frames,
     _get_fractional_impulse_peak_index,
+    _wrap_phase,
 )
 from warnings import warn
 
@@ -355,7 +356,7 @@ def _minimum_phase(
     )[:original_length]
 
     if not unwrapped:
-        minimum_phase = np.angle(np.exp(1j * minimum_phase))
+        minimum_phase = _wrap_phase(minimum_phase)
     return minimum_phase
 
 

@@ -54,8 +54,10 @@ class TestStandardModule:
         )
 
         noi = dsp.merge_signals(noi_del, noi)
-        latencies = dsp.latency(noi, polynomial_points=5)
+        latencies = dsp.latency(noi, polynomial_points=1)
         assert len(latencies) == noi.number_of_channels - 1
+        assert np.abs(latencies[0] + delay * noi.sampling_rate_hz) < 0.5
+        latencies = dsp.latency(noi, polynomial_points=5)
         assert np.abs(latencies[0] + delay * noi.sampling_rate_hz) < 0.5
 
     def test_pad_trim(self):
