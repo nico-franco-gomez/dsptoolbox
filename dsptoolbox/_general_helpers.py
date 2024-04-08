@@ -209,7 +209,7 @@ def _get_normalized_spectrum(
     if smoothe != 0:
         if scaling == "amplitude":
             mag_spectra = _fractional_octave_smoothing(mag_spectra, smoothe)
-        else:  # Welch
+        else:  # Smoothing always in amplitude representation
             mag_spectra = (
                 _fractional_octave_smoothing(mag_spectra**0.5, smoothe) ** 2
             )

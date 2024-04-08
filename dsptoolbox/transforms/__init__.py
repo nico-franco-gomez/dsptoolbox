@@ -16,8 +16,10 @@ This module contains signal transforms.
 - `chroma_stft()` (STFT adapted to the chroma scale)
 - `hilbert()` (Hilbert Transform)
 - `vqt()` (Variable-Q Transform)
+- `stereo_mid_side()` (Mid-Side representation of stereo signal)
 
 """
+
 from .transforms import (
     cepstrum,
     log_mel_spectrogram,
