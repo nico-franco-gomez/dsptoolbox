@@ -1116,23 +1116,22 @@ def _scale_spectrum(
 
     if "spectral density" in mode:
         if window is None:
-            factor = (1 / time_length_samples / sampling_rate_hz) ** 0.5
+            factor = (2 / time_length_samples / sampling_rate_hz) ** 0.5
         else:
             factor = (
-                1 / np.sum(window**2, axis=0, keepdims=True) / sampling_rate_hz
+                2 / np.sum(window**2, axis=0, keepdims=True) / sampling_rate_hz
             ) ** 0.5
     elif "spectrum" in mode:
         if window is None:
-            factor = 1 / time_length_samples
+            factor = 2**0.5 / time_length_samples
         else:
-            factor = 1 / np.sum(window, axis=0, keepdims=True)
+            factor = 2**0.5 / np.sum(window, axis=0, keepdims=True)
 
     spectrum *= factor
 
+    spectrum[0] /= 2**0.5
     if time_length_samples % 2 == 0:
-        spectrum[1:-1] *= 2**0.5
-    else:
-        spectrum[1:] *= 2**0.5
+        spectrum[-1] /= 2**0.5
 
     if "power" in mode:
         spectrum = np.abs(spectrum) ** 2
