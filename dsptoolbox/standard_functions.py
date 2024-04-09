@@ -1046,21 +1046,22 @@ class CalibrationData:
     def __init__(
         self,
         calibration_data,
-        type_of_calibration: str = "94db",
+        calibration_spl_db: float = 94,
         high_snr: bool = True,
     ):
         """Load a calibration sound file. It is expected that it contains
-        a recorded harmonic tone of 1 kHz with either 94 dB or 114 dB SPL
-        according to [1]. This class can later be used to calibrate a signal.
+        a recorded harmonic tone of 1 kHz with the given dB(SPL) value, common
+        values are 94 dB or 114 dB SPL according to [1]. This class can later
+        be used to calibrate a signal.
 
         Parameters
         ----------
         calibration_data : str, tuple or `Signal`
             Calibration recording. It can be a path (str), a tuple with entries
             (time_data, sampling_rate) or a `Signal` object.
-        type_of_calibration : {'94db', '114db'} str, optional
-            Type of calibration data. It must be either `'94db'` or `'114db'`.
-            Default: `'94db'`.
+        calibration_spl_db : float, optional
+            dB(SPL) of calibration data. Typical values are 94 dB (1 Pa) or 114
+            dB (10 Pa). Default: 94.
         high_snr : bool, optional
             If the calibration is expected to have a high Signal-to-noise
             ratio, RMS value is computed directly through the time signal. This
@@ -1089,14 +1090,7 @@ class CalibrationData:
                 "either str, tuple or Signal"
             )
         self.calibration_signal = calibration_data
-
-        type_of_calibration = type_of_calibration.lower()
-        assert type_of_calibration in (
-            "94db",
-            "114db",
-        ), f"{type_of_calibration} is not valid. Use 94db or 114db"
-        self.calibration_type = type_of_calibration
-
+        self.calibration_spl_db = calibration_spl_db
         self.high_snr = high_snr
         # State tracker
         self.__update = True
@@ -1139,9 +1133,8 @@ class CalibrationData:
                 rms_channels = rms(self.calibration_signal, in_dbfs=False)
             else:
                 rms_channels = self._get_rms_from_spectrum()
-            factor = 94 if self.calibration_type == "94db" else 114
             p0 = 20e-6
-            p_analytical = 10 ** (factor / 20) * p0
+            p_analytical = 10 ** (self.calibration_spl_db / 20) * p0
             self.calibration_factors = p_analytical / rms_channels
             self.__update = False
 
