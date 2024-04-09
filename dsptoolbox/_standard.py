@@ -369,7 +369,7 @@ def _stft(
     fft_length_samples: int | None = None,
     detrend: bool = True,
     padding: bool = False,
-    scaling: bool = False,
+    scaling: str | None = None,
 ):
     """Computes the STFT of a signal. Output matrix has (freqs_hz, seconds_s).
 
@@ -397,9 +397,10 @@ def _stft(
         When `True`, the original signal is padded in the beginning and ending
         so that no energy is lost due to windowing when the COLA constraint is
         met. Default: `False`.
-    scaling : bool, optional
-        When `True`, the output is scaled as an amplitude spectrum, otherwise
-        no scaling is applied. See references for details. Default: `False`.
+    scaling : str, optional
+        Scale as `"amplitude spectrum"`, `"amplitude spectral density"`,
+        `"power spectrum"` or `"power spectral density"`. Pass `None`
+        to avoid any scaling. See references for details. Default: `None`.
 
     Returns
     -------
@@ -425,6 +426,21 @@ def _stft(
     assert overlap_percent >= 0 and overlap_percent < 100, (
         "overlap_percent" + " should be between 0 and 100"
     )
+    valid_scaling = [
+        "power spectrum",
+        "power spectral density",
+        "amplitude spectrum",
+        "amplitude spectral density",
+        None,
+    ]
+    assert scaling in valid_scaling, (
+        f"{scaling} is not valid. Use "
+        + "power spectrum, power spectral density, amplitude spectrum, "
+        + "amplitude spectral density or None"
+    )
+
+    if scaling is None:
+        scaling = ""
 
     # Window and step
     window = windows.get_window(
@@ -453,11 +469,21 @@ def _stft(
     # Spectra
     stft = np.fft.rfft(time_x, axis=0, n=fft_length_samples)
     # Scaling
-    if scaling:
-        factor = np.sqrt(2 / np.sum(window) ** 2)
+    if scaling in ("power spectrum", "amplitude spectrum"):
+        factor = 2**0.5 / np.sum(window)
+    elif scaling in ("power spectral density", "amplitude spectral density"):
+        factor = (2 / (window @ window) / fs_hz) ** 0.5
     else:
         factor = 1
+
     stft *= factor
+
+    if scaling:
+        stft[0, ...] /= 2**0.5
+        stft[-1, ...] /= 2**0.5
+
+    if "power" in scaling:
+        stft = np.abs(stft) ** 2
 
     time_s = np.linspace(0, len(x) / fs_hz, stft.shape[1])
     freqs_hz = np.fft.rfftfreq(len(window), 1 / fs_hz)
