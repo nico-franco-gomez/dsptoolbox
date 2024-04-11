@@ -442,11 +442,14 @@ def _stft(
     if scaling is None:
         scaling = ""
 
+    if fft_length_samples is None:
+        fft_length_samples = window_length_samples
+
     # Window and step
     window = windows.get_window(
         window_type, window_length_samples, fftbins=True
     )
-    overlap_samples = int(overlap_percent / 100 * window_length_samples)
+    overlap_samples = int(overlap_percent / 100 * window_length_samples + 0.5)
     step = window_length_samples - overlap_samples
 
     # Check COLA
@@ -480,6 +483,8 @@ def _stft(
 
     if scaling:
         stft[0, ...] /= 2**0.5
+
+    if fft_length_samples % 2 == 0:
         stft[-1, ...] /= 2**0.5
 
     if "power" in scaling:

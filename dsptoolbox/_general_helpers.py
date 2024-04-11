@@ -1097,6 +1097,13 @@ def _scale_spectrum(
     `np.ndarray`
         Scaled spectrum
 
+    Notes
+    -----
+    - The amplitude spectrum shows the RMS value of each frequency in the
+      signal.
+    - Integrating the power spectral density over the frequency spectrum
+      delivers the total energy contained in the signal (parseval's theorem).
+
     """
     assert time_length_samples in (
         (spectrum.shape[0] - 1) * 2,
