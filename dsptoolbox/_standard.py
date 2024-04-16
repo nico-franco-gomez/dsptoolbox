@@ -484,7 +484,7 @@ def _stft(
     if scaling:
         stft[0, ...] /= 2**0.5
 
-    if fft_length_samples % 2 == 0:
+    if scaling and fft_length_samples % 2 == 0:
         stft[-1, ...] /= 2**0.5
 
     if "power" in scaling:
