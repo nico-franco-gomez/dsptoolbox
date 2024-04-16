@@ -644,6 +644,10 @@ class Signal:
         self.time_data = np.concatenate(
             [self.time_data, new_time_data], axis=1
         )
+        if hasattr(self, "window"):
+            self.window = np.concatenate(
+                [self.window, np.ones(new_time_data.shape)], axis=1
+            )
         self.__update_state()
 
     def remove_channel(self, channel_number: int = -1):
