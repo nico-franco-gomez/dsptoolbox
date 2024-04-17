@@ -240,7 +240,7 @@ class TestSignal:
             fft_length_samples=4096,
             detrend=False,
             padding=False,
-            scaling=False,
+            scaling="power spectrum",
         )
         t, f, stft = s.get_spectrogram()
         s.set_spectrogram_parameters(
@@ -250,7 +250,7 @@ class TestSignal:
             fft_length_samples=None,
             detrend=False,
             padding=False,
-            scaling=False,
+            scaling=None,
         )
         t, f, stft = s.get_spectrogram()
 

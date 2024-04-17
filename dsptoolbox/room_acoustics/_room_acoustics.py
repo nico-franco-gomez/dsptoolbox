@@ -55,7 +55,7 @@ def _reverb(
 
     """
     if ir_start is None:
-        max_ind = _find_ir_start(h, threshold_dbfs=-20)
+        max_ind = np.argmax(np.abs(h))
     else:
         max_ind = ir_start
 
@@ -1210,6 +1210,13 @@ def _trim_rir(
 
     This function returns the start and stop indices relative to the original
     time data, but the impulse index relative to the new vector.
+
+    Returns
+    -------
+    start : int
+    stop : int
+    impulse : int
+
     """
     # Envelope
     envelope = np.abs(hilbert(time_data, axis=0))

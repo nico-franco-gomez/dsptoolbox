@@ -512,7 +512,7 @@ class Signal:
         fft_length_samples: int | None = None,
         detrend: bool = False,
         padding: bool = True,
-        scaling: bool = False,
+        scaling: str | None = None,
     ):
         """Sets all necessary parameters for the computation of the
         spectrogram.
@@ -535,10 +535,10 @@ class Signal:
         padding : bool, optional
             Padding signal in the beginning and end to center it in order
             to avoid losing energy because of windowing. Default: `True`.
-        scaling : bool, optional
-            When `True`, the output is scaled as an amplitude spectrum,
-            otherwise no scaling is applied. See references for details.
-            Default: `False`.
+        scaling : str, optional
+            Scale as `"amplitude spectrum"`, `"amplitude spectral density"`,
+            `"power spectrum"` or `"power spectral density"`. Pass `None`
+            to avoid any scaling. See references for details. Default: `None`.
 
         References
         ----------
@@ -644,6 +644,10 @@ class Signal:
         self.time_data = np.concatenate(
             [self.time_data, new_time_data], axis=1
         )
+        if hasattr(self, "window"):
+            self.window = np.concatenate(
+                [self.window, np.ones(new_time_data.shape)], axis=1
+            )
         self.__update_state()
 
     def remove_channel(self, channel_number: int = -1):
@@ -800,6 +804,7 @@ class Signal:
                     self._spectrum_parameters["scaling"],
                     time_length,
                     self.sampling_rate_hz,
+                    None if not hasattr(self, "window") else self.window,
                 )
 
             self.spectrum = []
@@ -970,19 +975,15 @@ class Signal:
 
         self._spectrum_parameters["smoothe"] = prior_smoothing
 
-        if self._spectrum_parameters["scaling"] is not None:
-            mode = (
-                "welch"
-                if "power" in self._spectrum_parameters["scaling"]
-                else "standard"
-            )
-        else:
-            mode = self._spectrum_parameters["method"]
-
+        scaling = (
+            "amplitude"
+            if self._spectrum_parameters["scaling"] is None
+            else self._spectrum_parameters["scaling"]
+        )
         f, mag_db = _get_normalized_spectrum(
             f=f,
             spectra=sp,
-            mode=mode,
+            scaling=("amplitude" if "amplitude" in scaling else "power"),
             f_range_hz=range_hz,
             normalize=normalize,
             smoothe=smoothe,
@@ -1305,12 +1306,23 @@ class Signal:
             ids[0] += 1
         f = f[ids[0] : ids[1]]
         stft = stft[ids[0] : ids[1], :]
-        stft_db = 20 * np.log10(np.clip(np.abs(stft), 1e-20, None))
-        stft_db = np.nan_to_num(stft_db, nan=np.min(stft_db))
+
         if self._spectrogram_parameters["scaling"]:
-            zlabel = "dB (Pa$^2$/Hz)"
+            if "power" in self._spectrogram_parameters["scaling"]:
+                factor = 10
+            else:
+                factor = 20
         else:
-            zlabel = "dB (No Scaling)"
+            factor = 20
+            zlabel = "dBFS"
+
+        stft_db = factor * np.log10(np.clip(np.abs(stft), 1e-30, None))
+
+        if self.calibrated_signal:
+            stft_db -= 20 * np.log10(2e-5)
+            zlabel = "dB"
+
+        stft_db = np.nan_to_num(stft_db, nan=np.min(stft_db))
         fig, ax = general_matrix_plot(
             matrix=stft_db,
             range_x=(t[0], t[-1]),

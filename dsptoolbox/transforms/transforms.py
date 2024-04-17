@@ -80,6 +80,9 @@ def log_mel_spectrogram(
     n_bands: int = 40,
     generate_plot: bool = True,
     stft_parameters: dict | None = None,
+) -> (
+    tuple[np.ndarray, np.ndarray, np.ndarray]
+    | tuple[np.ndarray, np.ndarray, np.ndarray, plt.Figure, plt.Axes]
 ):
     """Returns the log mel spectrogram of the specific signal and channel.
 
@@ -279,7 +282,6 @@ def plot_waterfall(
     ax.set_ylabel("Frequency / Hz")
     ax.set_zlabel("dB" + z_label_extra)
     fig.tight_layout()
-    # fig.colorbar(surface, ax=ax, shrink=0.4, aspect=10)
     return fig, ax
 
 
@@ -289,6 +291,9 @@ def mfcc(
     mel_filters: np.ndarray | None = None,
     generate_plot: bool = True,
     stft_parameters: dict | None = None,
+) -> (
+    tuple[np.ndarray, np.ndarray, np.ndarray]
+    | tuple[np.ndarray, np.ndarray, np.ndarray, plt.Figure, plt.Axes]
 ):
     """Mel-frequency cepstral coefficients for a windowed signal are computed
     and returned using the discrete cosine transform of type 2 (see
@@ -532,6 +537,9 @@ def chroma_stft(
     tuning_a_hz: float = 440,
     compression: float = 0.5,
     plot_channel: int = -1,
+) -> (
+    tuple[np.ndarray, np.ndarray, np.ndarray]
+    | tuple[np.ndarray, np.ndarray, np.ndarray, plt.Figure, plt.Axes]
 ):
     """This computes the Chroma Features and Pitch STFT. See [1] for details.
 
@@ -737,7 +745,7 @@ def vqt(
     bins_per_octave: int = 24,
     a4_tuning: int = 440,
     window: str | tuple = "hann",
-):
+) -> tuple[np.ndarray, np.ndarray]:
     """Variable-Q Transform. This is a special case of the continuous wavelet
     transform with complex morlet wavelets for the time-frequency analysis.
     Constant-Q Transform can be obtained by setting `gamma = 0`.
@@ -844,7 +852,7 @@ def vqt(
     return f, cqt
 
 
-def stereo_mid_side(signal: Signal, forward: bool):
+def stereo_mid_side(signal: Signal, forward: bool) -> Signal:
     """This function converts a left-right stereo signal to its mid-side
     representation or the other way around. It is only available for
     two-channels signals.

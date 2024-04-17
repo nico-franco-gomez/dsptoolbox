@@ -106,7 +106,7 @@ def _calculate_window(
 def _get_normalized_spectrum(
     f,
     spectra: np.ndarray,
-    mode="standard",
+    scaling: str = "amplitude",
     f_range_hz=[20, 20000],
     normalize: str | None = None,
     smoothe: int = 0,
@@ -123,9 +123,9 @@ def _get_normalized_spectrum(
         Frequency vector.
     spectra : `np.ndarray`
         Spectrum matrix.
-    mode : str, optional
-        Mode of spectrum, needed for factor in dB respresentation.
-        Choose from `'standard'` or `'welch'`. Default: `'standard'`.
+    scaling : str, optional
+        Information about whether the spectrum is scaled as an amplitude or
+        power. Choose from `'amplitude'` or `'power'`. Default: `'amplitude'`.
     f_range_hz : array-like with length 2
         Range of frequencies to get the normalized spectrum back.
         Default: [20, 20e3].
@@ -138,7 +138,8 @@ def _get_normalized_spectrum(
         1/smoothe-fractional octave band smoothing for magnitude spectra. Pass
         `0` for no smoothing. Default: 0.
     phase : bool, optional
-        When `True`, phase spectra are also returned. Default: `False`.
+        When `True`, phase spectra are also returned. Smoothing is also
+        applied to the unwrapped phase. Default: `False`.
     calibrated_data : bool, optional
         When `True`, it is assumed that the time data has been calibrated
         to be in Pascal so that it is scaled by p0=20e-6 Pa. Default: `False`.
@@ -176,15 +177,16 @@ def _get_normalized_spectrum(
             + "possible since the spectra are not complex"
         )
     # Factor
-    if mode == "standard":
+    if scaling == "amplitude":
         scale_factor = 20e-6 if calibrated_data and normalize is None else 1
         factor = 20
-    elif mode == "welch":
+    elif scaling == "power":
         scale_factor = 4e-10 if calibrated_data and normalize is None else 1
         factor = 10
     else:
         raise ValueError(
-            f"{mode} is not supported. Please select standard " "or welch"
+            f"{scaling} is not supported. Please select amplitude or "
+            + "power scaling"
         )
 
     if f_range_hz is not None:
@@ -204,15 +206,15 @@ def _get_normalized_spectrum(
 
     mag_spectra = np.abs(spectra)
 
-    if smoothe != 0 and mode == "standard":
-        if mode == "standard":
+    if smoothe != 0:
+        if scaling == "amplitude":
             mag_spectra = _fractional_octave_smoothing(mag_spectra, smoothe)
-        else:  # Welch
+        else:  # Smoothing always in amplitude representation
             mag_spectra = (
                 _fractional_octave_smoothing(mag_spectra**0.5, smoothe) ** 2
             )
 
-    epsilon = 10 ** (-400 / 10)
+    epsilon = 10 ** (-800 / 10)
     mag_spectra = factor * np.log10(
         np.clip(mag_spectra, a_min=epsilon, a_max=None) / scale_factor
     )
@@ -220,8 +222,7 @@ def _get_normalized_spectrum(
     if normalize is not None:
         for i in range(spectra.shape[1]):
             if normalize == "1k":
-                gain = _get_exact_gain_1khz(f, mag_spectra[:, i])
-                mag_spectra[:, i] -= gain
+                mag_spectra[:, i] -= _get_exact_gain_1khz(f, mag_spectra[:, i])
             else:
                 mag_spectra[:, i] -= np.max(mag_spectra[:, i])
 
@@ -1072,6 +1073,7 @@ def _scale_spectrum(
     mode: str | None,
     time_length_samples: int,
     sampling_rate_hz: int,
+    window: np.ndarray | None = None,
 ) -> np.ndarray:
     """Scale the spectrum directly from the (unscaled) FFT. It is assumed that
     the time data was not windowed.
@@ -1095,6 +1097,13 @@ def _scale_spectrum(
     `np.ndarray`
         Scaled spectrum
 
+    Notes
+    -----
+    - The amplitude spectrum shows the RMS value of each frequency in the
+      signal.
+    - Integrating the power spectral density over the frequency spectrum
+      delivers the total energy contained in the signal (parseval's theorem).
+
     """
     assert time_length_samples in (
         (spectrum.shape[0] - 1) * 2,
@@ -1113,16 +1122,23 @@ def _scale_spectrum(
     ), f"{mode} is not a supported mode"
 
     if "spectral density" in mode:
-        factor = (1 / time_length_samples / sampling_rate_hz) ** 0.5
+        if window is None:
+            factor = (2 / time_length_samples / sampling_rate_hz) ** 0.5
+        else:
+            factor = (
+                2 / np.sum(window**2, axis=0, keepdims=True) / sampling_rate_hz
+            ) ** 0.5
     elif "spectrum" in mode:
-        factor = 1 / time_length_samples
+        if window is None:
+            factor = 2**0.5 / time_length_samples
+        else:
+            factor = 2**0.5 / np.sum(window, axis=0, keepdims=True)
 
     spectrum *= factor
 
+    spectrum[0] /= 2**0.5
     if time_length_samples % 2 == 0:
-        spectrum[1:-1] *= 2**0.5
-    else:
-        spectrum[1:] *= 2**0.5
+        spectrum[-1] /= 2**0.5
 
     if "power" in mode:
         spectrum = np.abs(spectrum) ** 2
@@ -1154,24 +1170,24 @@ def _get_fractional_impulse_peak_index(
     n_channels = time_data.shape[1]
     delay_samples = np.argmax(np.abs(time_data), axis=0).astype(int)
 
-    # Take only the part of the time vector with the impulses and some safety
-    # samples
+    # Take only the part of the time vector with the peaks and some safety
+    # samples (±200)
     time_data = time_data[: np.max(delay_samples) + 200, :]
+    start_offset = max(np.min(delay_samples) - 200, 0)
+    time_data = time_data[start_offset:, :]
+    delay_samples -= start_offset
 
-    h = hilbert(time_data, axis=0)
+    h = hilbert(time_data, axis=0).imag
     x = np.arange(-polynomial_points + 1, polynomial_points + 1)
 
     latency_samples = np.zeros(n_channels)
 
     for ch in range(n_channels):
         # ===== Ensure that delay_samples is before the peak in each channel
-        selection = h[delay_samples[ch] : delay_samples[ch] + 2, ch].imag
+        selection = h[delay_samples[ch] : delay_samples[ch] + 2, ch]
         move_back_one_sample = selection[0] * selection[1] > 0
         delay_samples[ch] -= int(move_back_one_sample)
-        if (
-            h[delay_samples[ch], ch].imag * h[delay_samples[ch] + 1, ch].imag
-            > 0
-        ):
+        if h[delay_samples[ch], ch] * h[delay_samples[ch] + 1, ch] > 0:
             latency_samples[ch] = delay_samples[ch] + int(move_back_one_sample)
             warn(
                 f"Fractional latency detection failed for channel {ch}. "
@@ -1191,16 +1207,16 @@ def _get_fractional_impulse_peak_index(
                 + polynomial_points
                 + 1,
                 ch,
-            ].imag,
+            ],
             deg=2 * polynomial_points - 1,
         )
 
-        # Find root and check it is less than one
-        roots = np.roots(pol).squeeze()
+        # Find roots
+        roots = np.roots(pol)
         # Get only root between 0 and 1
         roots = roots[
             (roots == roots.real)  # Real roots
-            & (roots <= 1 + 1e-10)  # Range
+            & (roots <= 1)  # Range
             & (roots >= 0)
         ].real
         try:
@@ -1216,7 +1232,7 @@ def _get_fractional_impulse_peak_index(
             continue
 
         latency_samples[ch] = delay_samples[ch] + fractional_delay_samples
-    return latency_samples
+    return latency_samples + start_offset
 
 
 def _remove_impulse_delay_from_phase(
