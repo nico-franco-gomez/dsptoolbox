@@ -1714,7 +1714,7 @@ def harmonic_distortion_analysis(
         sp_thd += interp1d(
             f,
             sp_power,
-            kind="cubic",
+            kind="linear",
             bounds_error=False,
             fill_value=0,
             assume_sorted=True,

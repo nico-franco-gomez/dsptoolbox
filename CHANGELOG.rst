@@ -14,6 +14,26 @@ adheres to `Semantic Versioning <http://semver.org/spec/v2.0.0.html>`_.
 - Validation for results from tests in every module (so far many tests are
   only regarding functionality)
 
+`0.3.5 <https://pypi.org/project/dsptoolbox/0.3.5>`_ - 
+---------------------
+
+Added
+~~~~~~~
+- `harmonic_distortion_analysis` in ``transfer_functions``
+- added possibility of scaling the spectrogram
+- calibration using any dBSPL value
+
+Bugfix
+~~~~~~~
+- `reverb_time` now uses indices of peaks instead of -20 dBFS threshold since
+  it delivers more accurate results
+- now scaling a spectrum of a signal with a window is done correctly (taking
+  the window into account)
+
+Misc
+~~~~~~
+- general documentation and small performance improvements
+
 `0.3.4 <https://pypi.org/project/dsptoolbox/0.3.4>`_ - 
 ---------------------
 
