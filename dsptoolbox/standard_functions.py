@@ -20,12 +20,6 @@ from .classes import (
     FilterBank,
     Filter,
 )
-from .classes._lattice_ladder_filter import (
-    LatticeLadderFilter,
-    _get_lattice_ladder_coefficients_iir,
-    _get_lattice_coefficients_fir,
-    _get_lattice_ladder_coefficients_iir_sos,
-)
 from ._standard import (
     _latency,
     _center_frequencies_fractional_octaves_iec,
@@ -1282,46 +1276,15 @@ def envelope(
         raise TypeError("Signal must be type Signal or MultiBandSignal")
 
 
-def convert_into_lattice_filter(filt: Filter) -> LatticeLadderFilter:
-    """Convert an IIR or FIR filter into its lattice-ladder filter
-    representation. Filtering is then done using the lattice coefficients.
-    If the filter uses second-order sections, the lattice-ladder coefficients
-    are also computed and used in second-order sections.
 
     Parameters
     ----------
-    filt: `Filter`
-        Filter to convert into its lattice filter representation.
 
     Returns
     -------
-    new_filt : `LatticeLadderFilter`
-        New filter representation.
 
     Notes
     -----
-    - Linear phase FIR filters produce unstable reflection coefficients and
-      can therefore not be converted into lattice filters. When trying to do
-      this, an assertion error is raised.
 
     """
-    if filt.filter_type in ("iir", "biquad"):
-        if hasattr(filt, "sos"):
-            sos = filt.get_coefficients("sos")
-            k, c = _get_lattice_ladder_coefficients_iir_sos(sos)
-        else:
-            b, a = filt.get_coefficients("ba")
-            k, c = _get_lattice_ladder_coefficients_iir(b, a)
-        new_filt = LatticeLadderFilter(k, c, filt.sampling_rate_hz)
-    elif filt.filter_type == "fir":
-        b, a = filt.get_coefficients("ba")
-        b /= b[0]
-        k = _get_lattice_coefficients_fir(b)
-        assert np.all(np.abs(k) < 1), (
-            "Some reflection coefficient was "
-            + "equal or larger than zero, this is not supported"
         )
-        new_filt = LatticeLadderFilter(k, None, filt.sampling_rate_hz)
-    else:
-        raise ValueError(f"Unsupported filter type: {filt.filter_type}")
-    return new_filt
