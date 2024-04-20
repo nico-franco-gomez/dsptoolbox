@@ -1281,7 +1281,7 @@ def dither(
     mode: str = "triangular",
     epsilon: float = float(np.finfo(np.float16).smallest_subnormal),
     noise_shaping_filterbank: FilterBank | None = None,
-    apply_rounding_time_samples: bool = True,
+    apply_rounding: bool = True,
 ) -> Signal:
     """
     This function applies dither to the signal and then rounds the time samples
@@ -1302,10 +1302,10 @@ def dither(
     noise_shaping_filterbank : `FilterBank`, `None`, optional
         Noise can be arbitrarily shaped using a filter bank (in sequential
         mode). Pass `None` to avoid any noise-shaping. Default: `None`.
-    apply_rounding_time_samples : bool, optional
-        When `True`, the time samples are quantized using rounding to
-        np.float16. `False` only applies noise to the signal without
-        quantization. Default: `True`.
+    apply_rounding : bool, optional
+        When `True`, the time samples are rounded to np.float16 resolution.
+        `False` only applies noise to the signal without rounding.
+        Default: `True`.
 
     Returns
     -------
@@ -1330,21 +1330,12 @@ def dither(
     mode = mode.lower()
     shape = s.time_data.shape
 
-    # Theoretically, dither comes from the uniform distribution [-epsilon/2,
-    # epsilon/2], but since later rounding (instead of truncation) will be
-    # applied to the time samples, the distribution can be shifted to [0,
-    # epsilon]
-    min_value_dist = 0 if apply_rounding_time_samples else -epsilon / 2
     if mode == "rectangular":
-        noise = np.random.uniform(
-            min_value_dist, min_value_dist + epsilon, size=shape
-        )
+        noise = np.random.uniform(-epsilon / 2, epsilon / 2, size=shape)
     elif mode == "triangular":
         noise = np.random.uniform(
-            min_value_dist, min_value_dist + epsilon, size=shape
-        ) + np.random.uniform(
-            min_value_dist, min_value_dist + epsilon, size=shape
-        )
+            -epsilon / 2, epsilon / 2, size=shape
+        ) + np.random.uniform(-epsilon / 2, epsilon / 2, size=shape)
     else:
         raise ValueError(f"{mode} is not supported.")
 
@@ -1357,9 +1348,13 @@ def dither(
 
     new_s = s.copy()
 
-    # Rounding (through truncation with prior +epsilon/2)
-    if apply_rounding_time_samples:
+    # Rounding (through truncation with prior + epsilon/2)
+    if apply_rounding:
         new_s.time_data = (
-            (new_s.time_data + noise).astype(np.float16)
+            (
+                new_s.time_data
+                + noise
+                + np.sign(new_s.time_data) * epsilon / 2
+            ).astype(np.float16)
         ).astype(np.float64)
     return new_s
