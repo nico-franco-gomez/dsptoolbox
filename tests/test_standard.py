@@ -344,3 +344,14 @@ class TestStandardModule:
     def test_dither(self):
         # Functionality
         dsp.dither(self.audio_multi)
+
+        fb = dsp.FilterBank(
+            [
+                dsp.Filter(
+                    "biquad",
+                    {"freqs": 500, "q": 1, "gain": 2, "eq_type": "peaking"},
+                    self.audio_multi.sampling_rate_hz,
+                )
+            ]
+        )
+        dsp.dither(self.audio_multi, noise_shaping_filterbank=fb)

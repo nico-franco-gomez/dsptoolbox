@@ -1276,15 +1276,82 @@ def envelope(
         raise TypeError("Signal must be type Signal or MultiBandSignal")
 
 
+def dither(
+    s: Signal,
+    mode: str = "triangular",
+    epsilon: float = float(np.finfo(np.float16).smallest_subnormal),
+    noise_shaping_filterbank: FilterBank | None = None,
+) -> Signal:
+    """
+    This function applies dither to the signal and then rounds the time samples
+    to 16-bit floating point representation.
 
     Parameters
     ----------
+    s : `Signal`
+        Signal to apply dither to.
+    mode : str, optional
+        Type of probability distribution to use noise from. Choose from
+        `"rectangular"`, `"triangular"`, `"triangular2"`. See notes and
+        references for details. Default: `"triangular2"`.
+    epsilon : float, optional
+        Value that represents the quantization step in the 16-bit floating
+        point representation. It is obtained through numpy's smallest subnormal
+        for np.float16. Default: 6e-08.
+    noise_shaping_filterbank : `FilterBank`, `None`, optional
+        Noise can be arbitrarily shaped using a filter bank (in sequential
+        mode). Pass `None` to avoid any noise-shaping. Default: `None`.
 
     Returns
     -------
+    new_s : `Signal`
+        Signal with dither.
 
     Notes
     -----
+    - The output signal has time samples with 16-bit precision, but the data
+      type of the array is `np.float64`.
+    - `"rectangular"` mode applies noise with samples coming from a uniform
+      distribution [-epsilon/2, epsilon/2]. `"triangular"` has a triangle shape
+      for the noise distribution with values between [-epsilon, epsilon].
+      `"triangular2"` has also a triangle shape, but the noise is also colored
+      with a highpass character.
+    - Dither might be only necessary when lowering the bit-depth down to 16
+      bits. Dither for 24 bits is not supported in this function.
+
+    References
+    ----------
+    - Lerch, Weinzierl. Handbuch der Audiotechnik: Chapter 14.
 
     """
+    mode = mode.lower()
+    shape = s.time_data.shape
+
+    # Theoretically, dither comes from the uniform distribution [-epsilon/2,
+    # epsilon/2], but since later rounding (instead of truncation) will be
+    # applied to the time samples, the distribution can be shifted to [0,
+    # epsilon]
+    if mode == "rectangular":
+        noise = np.random.uniform(0, epsilon, size=shape)
+    elif mode == "triangular":
+        noise = np.random.uniform(0, epsilon, size=shape) + np.random.uniform(
+            0, epsilon, size=shape
         )
+    elif mode == "triangular2":
+        noise = np.random.uniform(0, epsilon, size=shape) - np.random.uniform(
+            0, epsilon, size=shape
+        )
+
+    if noise_shaping_filterbank is not None:
+        noise = Signal(None, noise, s.sampling_rate_hz)
+        noise = noise_shaping_filterbank.filter_signal(
+            noise, mode="sequential"
+        )
+        noise = noise.time_data
+
+    new_s = s.copy()
+    # Rounding (through truncation with prior +epsilon/2)
+    new_s.time_data = ((new_s.time_data + noise).astype(np.float16)).astype(
+        np.float64
+    )
+    return new_s
