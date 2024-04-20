@@ -355,3 +355,4 @@ class TestStandardModule:
             ]
         )
         dsp.dither(self.audio_multi, noise_shaping_filterbank=fb)
+        dsp.dither(self.audio_multi, apply_rounding_time_samples=False)

@@ -1281,10 +1281,11 @@ def dither(
     mode: str = "triangular",
     epsilon: float = float(np.finfo(np.float16).smallest_subnormal),
     noise_shaping_filterbank: FilterBank | None = None,
+    apply_rounding_time_samples: bool = True,
 ) -> Signal:
     """
     This function applies dither to the signal and then rounds the time samples
-    to 16-bit floating point representation.
+    to 16 or 24-bits floating point representation.
 
     Parameters
     ----------
@@ -1295,12 +1296,16 @@ def dither(
         `"rectangular"`, `"triangular"`. See notes and references for details.
         Default: `"triangular"`.
     epsilon : float, optional
-        Value that represents the quantization step in the 16-bit floating
-        point representation. It is obtained through numpy's smallest subnormal
-        for np.float16. Default: 6e-08.
+        Value that represents the quantization step. The default value supposes
+        quantization to 16-bit floating point. It is obtained through numpy's
+        smallest subnormal for np.float16. Default: 6e-08.
     noise_shaping_filterbank : `FilterBank`, `None`, optional
         Noise can be arbitrarily shaped using a filter bank (in sequential
         mode). Pass `None` to avoid any noise-shaping. Default: `None`.
+    apply_rounding_time_samples : bool, optional
+        When `True`, the time samples are quantized using rounding to
+        np.float16. `False` only applies noise to the signal without
+        quantization. Default: `True`.
 
     Returns
     -------
@@ -1315,7 +1320,7 @@ def dither(
       distribution [-epsilon/2, epsilon/2]. `"triangular"` has a triangle shape
       for the noise distribution with values between [-epsilon, epsilon].
     - Dither might be only necessary when lowering the bit-depth down to 16
-      bits. Dither for 24 bits is not supported in this function.
+      bits.
 
     References
     ----------
@@ -1329,11 +1334,16 @@ def dither(
     # epsilon/2], but since later rounding (instead of truncation) will be
     # applied to the time samples, the distribution can be shifted to [0,
     # epsilon]
+    min_value_dist = 0 if apply_rounding_time_samples else -epsilon / 2
     if mode == "rectangular":
-        noise = np.random.uniform(0, epsilon, size=shape)
+        noise = np.random.uniform(
+            min_value_dist, min_value_dist + epsilon, size=shape
+        )
     elif mode == "triangular":
-        noise = np.random.uniform(0, epsilon, size=shape) + np.random.uniform(
-            0, epsilon, size=shape
+        noise = np.random.uniform(
+            min_value_dist, min_value_dist + epsilon, size=shape
+        ) + np.random.uniform(
+            min_value_dist, min_value_dist + epsilon, size=shape
         )
     else:
         raise ValueError(f"{mode} is not supported.")
@@ -1346,8 +1356,10 @@ def dither(
         noise = noise.time_data
 
     new_s = s.copy()
+
     # Rounding (through truncation with prior +epsilon/2)
-    new_s.time_data = ((new_s.time_data + noise).astype(np.float16)).astype(
-        np.float64
-    )
+    if apply_rounding_time_samples:
+        new_s.time_data = (
+            (new_s.time_data + noise).astype(np.float16)
+        ).astype(np.float64)
     return new_s
