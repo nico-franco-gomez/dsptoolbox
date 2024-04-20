@@ -1292,8 +1292,8 @@ def dither(
         Signal to apply dither to.
     mode : str, optional
         Type of probability distribution to use noise from. Choose from
-        `"rectangular"`, `"triangular"`, `"triangular2"`. See notes and
-        references for details. Default: `"triangular2"`.
+        `"rectangular"`, `"triangular"`. See notes and references for details.
+        Default: `"triangular"`.
     epsilon : float, optional
         Value that represents the quantization step in the 16-bit floating
         point representation. It is obtained through numpy's smallest subnormal
@@ -1314,8 +1314,6 @@ def dither(
     - `"rectangular"` mode applies noise with samples coming from a uniform
       distribution [-epsilon/2, epsilon/2]. `"triangular"` has a triangle shape
       for the noise distribution with values between [-epsilon, epsilon].
-      `"triangular2"` has also a triangle shape, but the noise is also colored
-      with a highpass character.
     - Dither might be only necessary when lowering the bit-depth down to 16
       bits. Dither for 24 bits is not supported in this function.
 
@@ -1337,10 +1335,8 @@ def dither(
         noise = np.random.uniform(0, epsilon, size=shape) + np.random.uniform(
             0, epsilon, size=shape
         )
-    elif mode == "triangular2":
-        noise = np.random.uniform(0, epsilon, size=shape) - np.random.uniform(
-            0, epsilon, size=shape
-        )
+    else:
+        raise ValueError(f"{mode} is not supported.")
 
     if noise_shaping_filterbank is not None:
         noise = Signal(None, noise, s.sampling_rate_hz)
