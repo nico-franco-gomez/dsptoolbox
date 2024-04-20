@@ -1093,7 +1093,6 @@ class Signal:
         Notes
         -----
         - All values are clipped to be at least -800 dBFS.
-        - No time averaging is done in this function.
         - If it is an analytic signal and normalization is applied, the peak
           value of the real part is used as the normalization factor.
         - If the time window is not 0, effects at the edges of the signal might

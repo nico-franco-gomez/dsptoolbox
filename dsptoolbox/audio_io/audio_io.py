@@ -104,7 +104,7 @@ def set_device(
 def play_and_record(
     signal: Signal,
     duration_seconds: float | None = None,
-    normalized_dbfs: float = -6,
+    normalized_dbfs: float | None = -6,
     device: str | None = None,
     play_channels=None,
     rec_channels=[1],
