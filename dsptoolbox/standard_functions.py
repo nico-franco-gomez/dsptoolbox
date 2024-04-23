@@ -1281,11 +1281,11 @@ def dither(
     mode: str = "triangular",
     epsilon: float = float(np.finfo(np.float16).smallest_subnormal),
     noise_shaping_filterbank: FilterBank | None = None,
-    apply_rounding: bool = True,
+    truncate: bool = False,
 ) -> Signal:
     """
-    This function applies dither to the signal and then rounds the time samples
-    to 16 or 24-bits floating point representation.
+    This function applies dither to the signal and, optionally, truncates the
+    time samples to 16-bits floating point representation.
 
     Parameters
     ----------
@@ -1298,14 +1298,15 @@ def dither(
     epsilon : float, optional
         Value that represents the quantization step. The default value supposes
         quantization to 16-bit floating point. It is obtained through numpy's
-        smallest subnormal for np.float16. Default: 6e-08.
+        smallest subnormal for np.float16. See notes for the value concerning
+        the 24-bit case. Default: 6e-08.
     noise_shaping_filterbank : `FilterBank`, `None`, optional
         Noise can be arbitrarily shaped using a filter bank (in sequential
         mode). Pass `None` to avoid any noise-shaping. Default: `None`.
-    apply_rounding : bool, optional
-        When `True`, the time samples are rounded to np.float16 resolution.
-        `False` only applies noise to the signal without rounding.
-        Default: `True`.
+    truncate : bool, optional
+        When `True`, the time samples are truncated to np.float16 resolution.
+        `False` only applies dither noise to the signal without truncating.
+        Default: `False`.
 
     Returns
     -------
@@ -1315,16 +1316,20 @@ def dither(
     Notes
     -----
     - The output signal has time samples with 16-bit precision, but the data
-      type of the array is `np.float64`.
+      type of the array is `np.float64` for consistency.
     - `"rectangular"` mode applies noise with samples coming from a uniform
       distribution [-epsilon/2, epsilon/2]. `"triangular"` has a triangle shape
-      for the noise distribution with values between [-epsilon, epsilon].
+      for the noise distribution with values between [-epsilon, epsilon]. See
+      [1] for more details on this.
     - Dither might be only necessary when lowering the bit-depth down to 16
-      bits.
+      bits, though the 24-bit case might be relevant if the there are signal
+      components with very low volumes.
+    - 24-bit signed integers range from -8388608 to 8388607. The quantization
+      step is therefore `1/8388608=1.1920928955078125e-07`.
 
     References
     ----------
-    - Lerch, Weinzierl. Handbuch der Audiotechnik: Chapter 14.
+    - [1]: Lerch, Weinzierl. Handbuch der Audiotechnik: Chapter 14.
 
     """
     mode = mode.lower()
@@ -1340,21 +1345,18 @@ def dither(
         raise ValueError(f"{mode} is not supported.")
 
     if noise_shaping_filterbank is not None:
-        noise = Signal(None, noise, s.sampling_rate_hz)
-        noise = noise_shaping_filterbank.filter_signal(
-            noise, mode="sequential"
+        noise_s = Signal(None, noise, s.sampling_rate_hz)
+        noise_s = noise_shaping_filterbank.filter_signal(
+            noise_s, mode="sequential"
         )
-        noise = noise.time_data
+        noise = noise_s.time_data
 
     new_s = s.copy()
 
-    # Rounding (through truncation with prior + epsilon/2)
-    if apply_rounding:
+    if truncate:
         new_s.time_data = (
-            (
-                new_s.time_data
-                + noise
-                + np.sign(new_s.time_data) * epsilon / 2
-            ).astype(np.float16)
+            (new_s.time_data + noise).astype(np.float16)
         ).astype(np.float64)
+    else:
+        new_s.time_data = new_s.time_data + noise
     return new_s
