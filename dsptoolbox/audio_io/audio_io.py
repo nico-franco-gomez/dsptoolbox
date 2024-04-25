@@ -40,7 +40,7 @@ def print_device_info(device_number: int | None = None):
 
 
 def set_device(
-    device_numbers: list | int | None = None,
+    device: list[int] | list[str] | str | int | None = None,
     sampling_rate_hz: int | None = None,
 ):
     """Takes in a device number to set it as the default for the input and the
@@ -50,10 +50,14 @@ def set_device(
 
     Parameters
     ----------
-    device_number : list with length 2, optional
+    device : list[int | str] with length 2, str, int, optional
         Sets the input and output devices from two integers, e.g. [1, 2].
-        Use `None` to be prompted with the options and pass only two values
-        separated by a comma, e.g., `1, 2`. Default: `None`.
+        Alternatively, two strings contained in the interface's name (or the
+        name itself) can be passed. The first interface to match will be taken.
+        If passing only one string or integer, the interface will be taken for
+        both input and output. Use `None` to be prompted with the options and
+        pass only two values separated by a comma, e.g., `1, 2`.
+        Default: `None`.
     sampling_rate_hz : int, optional
         Pass a default sampling rate to the devices. Pass `None` to ignore.
         Default: `None`.
@@ -62,43 +66,93 @@ def set_device(
     -------
     device_list : `sounddevice.DeviceList`
         Device List with dictionaries containing information about each
-        available device.
+        available device if `device=None`.
 
     """
-    if device_numbers is None:
+    if device is None:
         txt = "List of available devices"
         print(txt + "\n" + "-" * len(txt))
         print(sd.query_devices())
         print("-" * len(txt))
-        device_numbers = input(
+        device = input(
             "Which device should be set as default? Between "
             + f"0 and {len(sd.query_devices()) - 1}: "
         )
-        device_numbers = [int(d) for d in device_numbers.split(",")]
-        if len(device_numbers) == 1:
-            device_numbers = device_numbers[0]
+        device = [int(d) for d in device.split(",")]
+        if len(device) == 1:
+            device = device[0]
     device_list = sd.query_devices()
-    if type(device_numbers) is int:
-        d = device_list[device_numbers]["name"]
+    if type(device) is int:
+        d = device_list[device]["name"]
         print(f"""{d} will be used for input and output!""")
-        sd.default.device = device_numbers
-    elif type(device_numbers) is list:
-        assert (
-            len(device_numbers) == 2
-        ), "List with device numbers must be exactly 2"
-        d = device_list[device_numbers[0]]["name"]
-        print(f"""{d} will be used for input!""")
+        sd.default.device = device
+    elif type(device) is str:
+        d_id, d_name = get_interface_number_by_name(device, device_list)
+        print(f"{d_name} will be used for input and output!")
+        sd.default.device = d_id
+    elif type(device) is list:
+        assert len(device) == 2, "List with device numbers must be exactly 2"
 
-        d = device_list[device_numbers[1]]["name"]
-        print(f"""{d} will be used for output!""")
-        sd.default.device = device_numbers
+        if type(device[0]) is int and type(device[1]) is int:
+            d = device_list[device[0]]["name"]
+            print(f"{d} will be used for input!")
+
+            d = device_list[device[1]]["name"]
+            print(f"{d} will be used for output!")
+            sd.default.device = device
+        elif type(device[0]) is str and type(device[1]) is str:
+            d_id_in, d_name_in = get_interface_number_by_name(
+                device[0], device_list
+            )
+            print(f"{d_name_in} will be used for input!")
+
+            d_id_out, d_name_out = get_interface_number_by_name(
+                device[1], device_list
+            )
+            print(f"{d_name_out} will be used for output!")
+            sd.default.device = [d_id_in, d_id_out]
+        else:
+            raise TypeError(
+                "device must be either a homogenouos list of int and "
+                + "str, or an int or a str"
+            )
     else:
-        raise TypeError("device_number must be either a list or an int")
+        raise TypeError(
+            "device must be either a homogenouos list of int and "
+            + "str, or an int or a str"
+        )
 
     # Sampling rate
     if sampling_rate_hz is not None:
         sd.default.samplerate = sampling_rate_hz
     return sd.query_devices()
+
+
+def get_interface_number_by_name(
+    name: str, device_list: sd.DeviceList
+) -> tuple[int, str]:
+    """
+    Return the interface ID (number) by looking at its name.
+
+    Parameters
+    ----------
+    name : str
+        Name of the interface or string contained in the name (the first
+        interface to match will be returned). The comparison is case-invariant.
+
+    Returns
+    -------
+    ind : int
+        Interface ID
+    full_name : str
+        Interface's full name
+
+    """
+    for ind, d in enumerate(device_list):
+        full_name: str = d["name"]
+        if name.lower() in full_name.lower():
+            return ind, full_name
+    raise ValueError(f"No device was found with name {name}")
 
 
 def play_and_record(
