@@ -16,7 +16,7 @@ from .standard_functions import (
     rms,
     CalibrationData,
     envelope,
-    convert_into_lattice_filter,
+    dither,
 )
 from .classes import (
     Filter,
@@ -59,7 +59,7 @@ __all__ = [
     "rms",
     "CalibrationData",
     "envelope",
-    "convert_into_lattice_filter",
+    "dither",
     # Modules
     "transfer_functions",
     "distances",
@@ -73,4 +73,4 @@ __all__ = [
     "effects",
 ]
 
-__version__ = "0.3.5"
+__version__ = "0.3.6"

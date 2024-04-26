@@ -14,6 +14,18 @@ adheres to `Semantic Versioning <http://semver.org/spec/v2.0.0.html>`_.
 - Validation for results from tests in every module (so far many tests are
   only regarding functionality)
 
+`0.3.6 <https://pypi.org/project/dsptoolbox/0.3.6>`_ - 
+---------------------
+
+Added
+~~~~~~~
+- `set_latency` and `set_blocksize` in ``audio_io``
+- `dither` in ``standard``
+
+Misc
+~~~~~~
+- general documentation and small performance improvements
+
 `0.3.5 <https://pypi.org/project/dsptoolbox/0.3.5>`_ - 
 ---------------------
 

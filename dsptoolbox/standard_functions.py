@@ -20,12 +20,6 @@ from .classes import (
     FilterBank,
     Filter,
 )
-from .classes._lattice_ladder_filter import (
-    LatticeLadderFilter,
-    _get_lattice_ladder_coefficients_iir,
-    _get_lattice_coefficients_fir,
-    _get_lattice_ladder_coefficients_iir_sos,
-)
 from ._standard import (
     _latency,
     _center_frequencies_fractional_octaves_iec,
@@ -1282,46 +1276,87 @@ def envelope(
         raise TypeError("Signal must be type Signal or MultiBandSignal")
 
 
-def convert_into_lattice_filter(filt: Filter) -> LatticeLadderFilter:
-    """Convert an IIR or FIR filter into its lattice-ladder filter
-    representation. Filtering is then done using the lattice coefficients.
-    If the filter uses second-order sections, the lattice-ladder coefficients
-    are also computed and used in second-order sections.
+def dither(
+    s: Signal,
+    mode: str = "triangular",
+    epsilon: float = float(np.finfo(np.float16).smallest_subnormal),
+    noise_shaping_filterbank: FilterBank | None = None,
+    truncate: bool = False,
+) -> Signal:
+    """
+    This function applies dither to the signal and, optionally, truncates the
+    time samples to 16-bits floating point representation.
 
     Parameters
     ----------
-    filt: `Filter`
-        Filter to convert into its lattice filter representation.
+    s : `Signal`
+        Signal to apply dither to.
+    mode : str, optional
+        Type of probability distribution to use noise from. Choose from
+        `"rectangular"`, `"triangular"`. See notes and references for details.
+        Default: `"triangular"`.
+    epsilon : float, optional
+        Value that represents the quantization step. The default value supposes
+        quantization to 16-bit floating point. It is obtained through numpy's
+        smallest subnormal for np.float16. See notes for the value concerning
+        the 24-bit case. Default: 6e-08.
+    noise_shaping_filterbank : `FilterBank`, `None`, optional
+        Noise can be arbitrarily shaped using a filter bank (in sequential
+        mode). Pass `None` to avoid any noise-shaping. Default: `None`.
+    truncate : bool, optional
+        When `True`, the time samples are truncated to np.float16 resolution.
+        `False` only applies dither noise to the signal without truncating.
+        Default: `False`.
 
     Returns
     -------
-    new_filt : `LatticeLadderFilter`
-        New filter representation.
+    new_s : `Signal`
+        Signal with dither.
 
     Notes
     -----
-    - Linear phase FIR filters produce unstable reflection coefficients and
-      can therefore not be converted into lattice filters. When trying to do
-      this, an assertion error is raised.
+    - The output signal has time samples with 16-bit precision, but the data
+      type of the array is `np.float64` for consistency.
+    - `"rectangular"` mode applies noise with samples coming from a uniform
+      distribution [-epsilon/2, epsilon/2]. `"triangular"` has a triangle shape
+      for the noise distribution with values between [-epsilon, epsilon]. See
+      [1] for more details on this.
+    - Dither might be only necessary when lowering the bit-depth down to 16
+      bits, though the 24-bit case might be relevant if the there are signal
+      components with very low volumes.
+    - 24-bit signed integers range from -8388608 to 8388607. The quantization
+      step is therefore `1/8388608=1.1920928955078125e-07`.
+
+    References
+    ----------
+    - [1]: Lerch, Weinzierl. Handbuch der Audiotechnik: Chapter 14.
 
     """
-    if filt.filter_type in ("iir", "biquad"):
-        if hasattr(filt, "sos"):
-            sos = filt.get_coefficients("sos")
-            k, c = _get_lattice_ladder_coefficients_iir_sos(sos)
-        else:
-            b, a = filt.get_coefficients("ba")
-            k, c = _get_lattice_ladder_coefficients_iir(b, a)
-        new_filt = LatticeLadderFilter(k, c, filt.sampling_rate_hz)
-    elif filt.filter_type == "fir":
-        b, a = filt.get_coefficients("ba")
-        b /= b[0]
-        k = _get_lattice_coefficients_fir(b)
-        assert np.all(np.abs(k) < 1), (
-            "Some reflection coefficient was "
-            + "equal or larger than zero, this is not supported"
-        )
-        new_filt = LatticeLadderFilter(k, None, filt.sampling_rate_hz)
+    mode = mode.lower()
+    shape = s.time_data.shape
+
+    if mode == "rectangular":
+        noise = np.random.uniform(-epsilon / 2, epsilon / 2, size=shape)
+    elif mode == "triangular":
+        noise = np.random.uniform(
+            -epsilon / 2, epsilon / 2, size=shape
+        ) + np.random.uniform(-epsilon / 2, epsilon / 2, size=shape)
     else:
-        raise ValueError(f"Unsupported filter type: {filt.filter_type}")
-    return new_filt
+        raise ValueError(f"{mode} is not supported.")
+
+    if noise_shaping_filterbank is not None:
+        noise_s = Signal(None, noise, s.sampling_rate_hz)
+        noise_s = noise_shaping_filterbank.filter_signal(
+            noise_s, mode="sequential"
+        )
+        noise = noise_s.time_data
+
+    new_s = s.copy()
+
+    if truncate:
+        new_s.time_data = (
+            (new_s.time_data + noise).astype(np.float16)
+        ).astype(np.float64)
+    else:
+        new_s.time_data = new_s.time_data + noise
+    return new_s

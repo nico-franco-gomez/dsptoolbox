@@ -78,9 +78,9 @@ class Filter:
               'bandstop'.
             - filter_design_method (str): Default: 'butter'. Supported methods
               are: 'butter', 'bessel', 'ellip', 'cheby1', 'cheby2'.
-            - bandpass ripple (float): maximum bandpass ripple in dB for
+            - bandpass_ripple (float): maximum bandpass ripple in dB for
               'ellip' and 'cheby1'.
-            - stopband ripple (float): maximum stopband ripple in dB for
+            - stopband_ripple (float): maximum stopband ripple in dB for
               'ellip' and 'cheby2'.
 
         For `fir`:

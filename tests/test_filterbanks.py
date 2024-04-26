@@ -178,7 +178,7 @@ class TestFilterbanksModule:
         pl.get_filter_as_ir()
         pl.get_filter()
 
-    def test_VSFilter(self):
+    def test_SVFilter(self):
         fs_hz = 10_000
         f = dsp.filterbanks.StateVariableFilter(500, np.sqrt(2), fs_hz)
 
@@ -229,3 +229,42 @@ class TestLatticeLadderFilter:
         out = f.filter_signal(n)
         out = out.time_data.squeeze()
         assert np.all(np.isclose(expected, out))
+
+    def test_convert_lattice_filter(self):
+        fs = 44100
+        # Second-order sections
+        n = dsp.generators.noise(sampling_rate_hz=fs)
+        f = dsp.Filter(
+            "iir",
+            {
+                "filter_design_method": "bessel",
+                "order": 9,
+                "type_of_pass": "lowpass",
+                "freqs": 1000,
+            },
+            sampling_rate_hz=fs,
+        )
+        new_f = dsp.filterbanks.convert_into_lattice_filter(f)
+        n1 = f.filter_signal(n).time_data.squeeze()
+        n2 = new_f.filter_signal(n).time_data.squeeze()
+        assert np.all(np.isclose(n1, n2))
+
+        # BA
+        b, a = f.get_coefficients("ba")
+        f2 = dsp.Filter("other", {"ba": [b, a]}, f.sampling_rate_hz)
+        new_f = dsp.filterbanks.convert_into_lattice_filter(f2)
+        n1 = f2.filter_signal(n).time_data.squeeze()
+        n2 = new_f.filter_signal(n).time_data.squeeze()
+        assert np.all(np.isclose(n1, n2))
+
+        # FIR
+        n = dsp.generators.noise(sampling_rate_hz=fs)
+        f = dsp.Filter(
+            "other",
+            {"ba": [[1, 13 / 24, 5 / 8, 1 / 3], [1]]},
+            sampling_rate_hz=fs,
+        )
+        new_f = dsp.filterbanks.convert_into_lattice_filter(f)
+        n1 = f.filter_signal(n).time_data.squeeze()
+        n2 = new_f.filter_signal(n).time_data.squeeze()
+        assert np.all(np.isclose(n1, n2))

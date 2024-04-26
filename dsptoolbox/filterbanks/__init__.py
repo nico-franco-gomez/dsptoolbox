@@ -21,10 +21,15 @@ Other:
 - `fractional_octave_bands()`: Butterworth bandpass filter bank with signal
   energy conservation.
 - `weightning_filter()`: A- or C-Weightning filter.
-- `fir_complementary()`: Create a complementary FIR filter from a linear-phase
-  FIR prototype.
+- `complementary_fir_filter()`: Create a complementary FIR filter from a
+  linear-phase FIR prototype.
 - `LatticeLadderFilter()`: Filter with lattice-ladder topology.
-- `PhaseLinearizer()`: Design FIR that linearize a phase spectrum.
+- `PhaseLinearizer()`: Design an FIR filter that linearizes a phase spectrum
+  or matches a target group delay.
+- `StateVariableFilter()`: SV-Filter discretized with a topology-preserving
+  transform.
+- `convert_into_lattice_filter()`: Turns a conventional filter into its
+  lattice/ladder representation.
 
 """
 
@@ -36,6 +41,7 @@ from .filterbanks import (
     qmf_crossover,
     weightning_filter,
     complementary_fir_filter,
+    convert_into_lattice_filter,
 )
 
 from ..classes._lattice_ladder_filter import LatticeLadderFilter
@@ -50,6 +56,7 @@ __all__ = [
     "qmf_crossover",
     "weightning_filter",
     "complementary_fir_filter",
+    "convert_into_lattice_filter",
     "LatticeLadderFilter",
     "PhaseLinearizer",
     "StateVariableFilter",
