@@ -39,6 +39,43 @@ def print_device_info(device_number: int | None = None):
         return d
 
 
+def set_latency(input_low: bool, output_low: bool):
+    """
+    Set the desired latency (Default is high). This can vary for each device
+    and host. Sounddevice only allows for setting a low or a high latency.
+    High latency is more robust, but it might be too large for some
+    applications.
+
+    Parameters
+    ----------
+    input_low : bool
+        When `True`, low latency will be requested to the host for input
+        streams.
+    output_low : bool
+        When `True`, low latency will be requested to the host for output
+        streams.
+
+    """
+    sd.default.latency = (
+        "low" if input_low else "high",
+        "low" if output_low else "high",
+    )
+
+
+def set_blocksize(blocksize: int):
+    """
+    Set a default blocksize for any stream. This can lead to a stable latency
+    for most interfaces. Not setting it will lead to a default value.
+
+    Parameters
+    ----------
+    blocksize : int
+        Desired block size.
+
+    """
+    sd.default.blocksize = blocksize
+
+
 def set_device(
     device: list[int] | list[str] | str | int | None = None,
     sampling_rate_hz: int | None = None,
@@ -239,8 +276,8 @@ def play_and_record(
         samplerate=signal.sampling_rate_hz,
         input_mapping=rec_channels,
         output_mapping=play_channels,
+        blocking=True,
     )
-    sd.wait()
     print("Playback and recording have ended\n")
 
     rec_sig = Signal(None, rec_time_data, signal.sampling_rate_hz)
@@ -290,8 +327,8 @@ def record(
         frames=int(duration_seconds * sampling_rate_hz),
         samplerate=sampling_rate_hz,
         mapping=rec_channels,
+        blocking=True,
     )
-    sd.wait()
     print("Recording has ended\n")
 
     rec_sig = Signal(None, rec_time_data, sampling_rate_hz)
@@ -356,8 +393,8 @@ def play(
         data=play_data,
         samplerate=signal.sampling_rate_hz,
         mapping=play_channels,
+        blocking=True,
     )
-    sd.wait()
     print("Playback has ended\n")
 
 

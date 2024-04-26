@@ -10,6 +10,8 @@ Setting audio device:
 - `set_device()`
 - `print_device_info()`
 - `default_config`
+- `set_latency()`
+- `set_blocksize()`
 
 Playing audio:
 
@@ -33,6 +35,7 @@ References
 - https://pypi.org/project/sounddevice/
 
 """
+
 from .audio_io import (
     play,
     play_and_record,
@@ -45,6 +48,8 @@ from .audio_io import (
     sleep,
     output_stream,
     default_config,
+    set_latency,
+    set_blocksize,
 )
 
 __all__ = [
@@ -59,4 +64,6 @@ __all__ = [
     "sleep",
     "output_stream",
     "default_config",
+    "set_latency",
+    "set_blocksize",
 ]
