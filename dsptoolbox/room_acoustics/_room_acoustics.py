@@ -1230,10 +1230,16 @@ def _trim_rir(
     # Ensure that energy is always decaying by checking it in non-overlapping
     # windows. When the energy of a window is larger than the previous one,
     # the end of the IR has been surpassed. Do this for different window sizes
-    # and build the weighted average. The best linear fit (pearson correlation)
-    # is weighted 10 times stronger than others.
+    # and check the different correlation coefficients of energy decay with
+    # time for the selected ending points. If one is below -0.95, then take it
+    # as the final one. If not, then look for all the ones below -0.9 and
+    # average them. If None, then take the ones below -0.7 and average them
+    # with the highest weight. If all are above -0.7, method failed -> no
+    # trimming
 
-    window_lengths = (np.array([10, 30, 50, 100]) * 1e-3 * fs_hz).astype(int)
+    window_lengths = (np.array([10, 30, 50, 80, 100]) * 1e-3 * fs_hz).astype(
+        int
+    )
     end = np.zeros(len(window_lengths))
     x = np.arange(len(envelope))
     corr_coeff = np.zeros(len(window_lengths))
@@ -1259,9 +1265,20 @@ def _trim_rir(
         )[0]
         end[ind] = current_start_position
 
-    # Weight best linear fit 10x stronger in mean
     select = np.argmin(corr_coeff)
-    end_point = int(np.mean(np.hstack([np.ones(10) * end[select], end])))
+    if corr_coeff[select] <= -0.95:
+        end_point = int(end[select])
+    elif np.any(corr_coeff <= -0.9):
+        inds = corr_coeff <= -0.9
+        end_point = int(np.mean(end[inds]))
+    elif np.any(corr_coeff <= -0.7):
+        inds = corr_coeff <= -0.7
+        end_point = int(
+            np.mean(np.hstack([np.ones(9) * end[select], end[inds]]))
+        )
+    else:
+        warn("No satisfactory estimation for trimming the rir could be made")
+        end_point = int(np.mean(np.hstack([np.ones(5) * len(envelope), end])))
 
     stop = end_point + start_index + impulse_index
 

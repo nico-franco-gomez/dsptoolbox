@@ -617,9 +617,17 @@ def trim_rir(
         - Non-overlapping windows with lengths 10, 30, 50 and 100 ms are
           checked. The first window to contain more energy than the previous
           one is regarded as the end.
-        - Pearson correlation coefficient for each window size is computed.
-          An average of all end points with the best linear fit being weighted
-          10 stronger than the others is built. That is the final result.
+        - Pearson correlation coefficients (cc) of the energy decay for the
+          segments obtained with each window size are computed. The final end
+          point is selected following criteria:
+            - If a good linear fit is obtained (cc < -0.95), it is used as
+              the final point.
+            - Else, if there are acceptable fits (cc < -0.9), the ending
+              point is the averaged from these.
+            - Else, if there are any fits with cc < -0.7, they are all averaged
+              but the best one is weighted significantly stronger.
+            - If no fit has cc < -0.7, all are averaged together with the
+              total length of the IR weighted stronger than the other values.
 
     """
     assert start_offset_s >= 0, "Offset must be at least 0"
