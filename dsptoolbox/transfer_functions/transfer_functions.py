@@ -1645,9 +1645,7 @@ def harmonic_distortion_analysis(
 
         # Trim and window IR
         ir2 = ir.copy()
-        start, stop, _ = _trim_rir(
-            ir2.time_data, ir.sampling_rate_hz, 10e-3, 0.75, 30e-3
-        )
+        start, stop, _ = _trim_rir(ir2.time_data, ir.sampling_rate_hz, 10e-3)
         ir2.time_data = ir2.time_data[start:stop]
         ir2 = window_ir(ir2, len(ir2), constant_percentage=0.9)[0]
         ir2._spectrum_parameters["smoothe"] = smoothing

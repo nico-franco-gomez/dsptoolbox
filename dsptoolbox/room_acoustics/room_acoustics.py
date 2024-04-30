@@ -47,8 +47,8 @@ def reverb_time(
     automatic_trimming : bool, optional
         When set to `True`, the IR is trimmed using `trim_rir` independently
         for each channel. This can influence significantly the energy decay
-        curve and, therefore, the reverberation time. See notes for details
-        on the algorithm. Default: `True`.
+        curve and, therefore, the reverberation time. Refer to the
+        documentation for more details. Default: `True`.
 
     Returns
     -------
@@ -75,9 +75,6 @@ def reverb_time(
       valid.
     - In order to compare EDT to the other measures, it must be multiplied
       by 6.
-    - For defining the ending of the IR automatically, `trim_rir(
-      offset_start_s = 20e-3, threshold_factor = 0.66,
-      window_time_s = 30e-3)` is used.
 
     """
     if type(signal) is Signal:
@@ -583,15 +580,13 @@ def trim_rir(
     rir: Signal,
     channel: int = 0,
     start_offset_s: float = 20e-3,
-    window_time_s: float = 30e-3,
-    threshold_length_factor: float = 0.66,
 ) -> tuple[Signal, int, int]:
     """
-    Trim a RIR in the beginning and end following certain parameters. This
-    methods acts only on one channel and returns it trimmed. For defining the
-    ending, a smooth envelope of the energy time curve (ETC) is used and the
-    assumption that the energy always has to decay after the impulse arrives.
-    See notes for details.
+    Trim a RIR in the beginning and end. This method acts only on one channel
+    and returns it trimmed. For defining the ending, a smooth envelope of the
+    energy time curve (ETC) is used, as well as the assumption that the energy
+    should decay monotonically after the impulse arrives. See notes for
+    details.
 
     Parameters
     ----------
@@ -604,15 +599,6 @@ def trim_rir(
         Pass 0 to start the RIR one sample prior to peak value or a very big
         offset to avoid any trimming at the beginning. Default: 20e-3
         (20 milliseconds).
-    window_time_s : float, optional
-        This defines the length of non-overlapping windows in which the energy
-        is observed. The first window that has more energy than a previous one
-        is regarded as the end. If a window time of 0 is passed, this step
-        of the computation is ignored. Default: 30e-3.
-    threshold_length_factor : float, optional
-        Percentage of the total length from which to start the median
-        computation for defining the threshold. See notes for more details.
-        Default: 0.66.
 
     Returns
     -------
@@ -625,32 +611,26 @@ def trim_rir(
 
     Notes
     -----
-    - This method works as follows:
+    - The method employed for finding the ending of the RIR is iterative. It
+      works as follows:
         - A (hilbert) envelope is computed in dB (energy time curve). This is
           smoothed by exponential averaging with 20 ms.
-        - A threshold is defined using from `threshold_length_factor` up until
-          the end of the envelope. When the median value of this part is
-          surpassed for the first time, the envelope is trimmed. This ensures
-          trimming to a sensible length.
-        - Non-overlapping windows with length `window_time_s` are checked
-          for decaying energy. The first window to contain more energy than
-          the previous one is regarded as the end. Trimming is done in the
-          middle of this window.
+        - Non-overlapping windows with initial length of 25% of the total
+          length are checked. The first window to contain more energy than
+          the previous one is regarded as the end.
+        - The last step is done iteratively with diminishing window lengths.
+          Convergence criterion is when the stop point was found 1 ms or closer
+          to the one found with the last window size.
+        - If this scheme is unsuccesful, the RIR is left untrimmed.
 
     """
     assert start_offset_s >= 0, "Offset must be at least 0"
-    assert (
-        threshold_length_factor > 0 and threshold_length_factor < 1
-    ), "Threshold factor must be in ]0 and 1["
-    assert window_time_s >= 0, "Time window should be longer than 0 seconds"
     trimmed_rir = rir.get_channels(channel)
     td = trimmed_rir.time_data.squeeze()
     start, stop, _ = _trim_rir(
         td,
         rir.sampling_rate_hz,
         start_offset_s,
-        threshold_length_factor,
-        window_time_s,
     )
     trimmed_rir.time_data = td[start:stop]
     if hasattr(trimmed_rir, "window"):

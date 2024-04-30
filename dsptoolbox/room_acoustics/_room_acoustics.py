@@ -933,8 +933,6 @@ def _d50_from_rir(td: np.ndarray, fs: int, automatic_trimming: bool) -> float:
             td,
             fs,
             0,
-            0.66,
-            30e-3,
         )
         stop = np.max([window, stop])
     else:
@@ -972,8 +970,6 @@ def _c80_from_rir(td: np.ndarray, fs: int, automatic_trimming: bool) -> float:
             td,
             fs,
             0,
-            0.66,
-            30e-3,
         )
         stop = np.max([window, stop])
     else:
@@ -1010,8 +1006,6 @@ def _ts_from_rir(td: np.ndarray, fs: int, automatic_trimming: bool) -> float:
             td,
             fs,
             0,
-            0.66,
-            30e-3,
         )
     else:
         stop = len(td)
@@ -1178,8 +1172,6 @@ def _compute_energy_decay_curve(
             time_data,
             fs_hz,
             offset_start_s=20e-3,
-            threshold_factor=0.66,
-            window_time_s=30e-3,
         )
     else:
         start_index = 0
@@ -1198,15 +1190,12 @@ def _trim_rir(
     time_data: np.ndarray,
     fs_hz: int,
     offset_start_s: float,
-    threshold_factor: float,
-    window_time_s: float,
 ) -> tuple[int, int, int]:
     """
-    Obtain the starting and stopping index for an energy decay curve using
-    the smooth (exponential) envelope of the energy time curve. First, a
-    threshold is defined as the median of the trailing part of the RIR. Then
-    non-overlapping windows are checked, so that the first window to grow its
-    average energy after the impulse is taken as the end.
+    Obtain the starting and stopping index curve using the smooth (exponential)
+    envelope of the energy time curve. Non-overlapping windows are checked, so
+    that the first window to grow its average energy after the impulse is
+    taken as the end.
 
     This function returns the start and stop indices relative to the original
     time data, but the impulse index relative to the new vector.
@@ -1218,69 +1207,93 @@ def _trim_rir(
     impulse : int
 
     """
-    # Envelope
-    envelope = np.abs(hilbert(time_data, axis=0))
 
     # Start index
-    impulse_index = int(np.argmax(envelope))
+    impulse_index = int(np.argmax(np.abs(time_data)))
     offset_start_samples = int(offset_start_s * fs_hz + 0.5)
     start_index = int(np.max([0, impulse_index - 1 - offset_start_samples]))
     impulse_index -= start_index
 
-    # Index for finding threshold
-    threshold_start = int(len(envelope) * threshold_factor + 0.5) - start_index
-
-    # ETC
+    # ETC (from impulse until end)
     etc = 20 * np.log10(
-        np.clip(envelope[start_index:], a_min=1e-50, a_max=None)
-    )
-
-    # Smoothing
-    factor = _get_smoothing_factor_ema(20e-3, fs_hz)
-    envelope = lfilter([factor], [1, -(1 - factor)], etc)
-
-    # Threshold
-    threshold = np.median(envelope[threshold_start:])
-
-    stop = (
-        np.where(envelope[impulse_index:] < threshold)[0][0]
-        # Correct for impulse offset and start index
-        + impulse_index
-        + start_index
-    )
-
-    # Discard if threshold is too close to impulse (1 ms)
-    if stop - impulse_index < int(1e-3 * fs_hz):
-        stop = len(envelope)
-
-    if window_time_s == 0:
-        return start_index, stop, impulse_index
-
-    # Ensure that energy is always decaying by looking at non-overlapping
-    # windows. Trim when energy grows in the next window
-    window_length = int(window_time_s * fs_hz)
-    envelope = envelope[impulse_index : stop - start_index]
-
-    # Ensure that energy prior to impulse not affect the computation
-    if impulse_index > 0:
-        envelope[: impulse_index + 1] = np.max(etc[: impulse_index + 1])
-
-    position = 0
-    current_window_mean_db = 0
-
-    for _ in range(len(envelope) // window_length):
-        new_window_mean_db = np.mean(
-            envelope[position : position + window_length]
+        np.clip(
+            np.abs(hilbert(time_data[start_index + impulse_index :])),
+            a_min=1e-50,
+            a_max=None,
         )
-        if current_window_mean_db < new_window_mean_db:
+    )
+
+    # Smoothing of ETC
+    smoothing_factor = _get_smoothing_factor_ema(20e-3, fs_hz)
+    envelope = lfilter([smoothing_factor], [1, -(1 - smoothing_factor)], etc)
+
+    # Ensure that energy is always decaying by checking it in non-overlapping
+    # windows. When the energy of a window is larger than the previous one,
+    # the end of the IR has been surpassed. Do this iteratively for smaller
+    # window sizes to approach an optimal point to cut
+
+    # Start with 25% of total length for the first window length
+    window_length = int(len(envelope) / 4 + 0.5)
+
+    # Convergence criterion: when new position has only changed by 1 ms or less
+    stop_change_samples = int(1e-3 * fs_hz)
+
+    # Max number of iterations
+    max_iter = int(np.log2(window_length / stop_change_samples)) + 1
+    window_length = int(fs_hz * 100e-3)
+
+    current_start_position = 0
+    for _ in range(max_iter):
+        current_window_mean_db = 0
+        initial_start = current_start_position
+
+        for _ in range(
+            (len(envelope) - current_start_position) // window_length
+        ):
+            new_window_mean_db = np.mean(
+                envelope[
+                    current_start_position : current_start_position
+                    + window_length
+                ]
+            )
+
+            # Stop if energy has increased in new window or decreased by less
+            # than 10% compared to last window
+            # current_energy = 10 ** (current_window_mean_db / 10)
+            # new_energy = 10 ** (new_window_mean_db / 10)
+            # if (current_energy - new_energy) / current_energy <= 0.1:
+
+            # Stop if energy has increased in the new window (or remained the
+            # same)
+            if current_window_mean_db <= new_window_mean_db:
+                # Move back one window to start search from there
+                current_start_position = max(
+                    initial_start,
+                    current_start_position - int(window_length * 1.5),
+                )
+                break
+            current_window_mean_db = new_window_mean_db
+            current_start_position += window_length
+
+        # Stop if change is less than 1 ms
+        if stop_change_samples > current_start_position - initial_start:
             break
-        current_window_mean_db = new_window_mean_db
-        position += window_length
+
+        # Continue loop with smaller window
+        window_length //= 2
 
     end = min(
-        len(envelope), int(np.mean([position, position + window_length]))
+        len(envelope),
+        int(
+            np.mean(
+                [
+                    current_start_position,
+                    current_start_position + window_length,
+                ]
+            )
+        ),
     )
-    stop = end + impulse_index + start_index
+    stop = end + start_index + impulse_index
 
     return start_index, stop, impulse_index
 

@@ -161,8 +161,6 @@ class TestRoomAcousticsModule:
     def test_trim_rir(self):
         # Only functionality
         dsp.room_acoustics.trim_rir(self.rir)
-        # No smoothing
-        dsp.room_acoustics.trim_rir(self.rir, window_time_s=50e-3)
         # Start offset way longer than rir (should be clipped to 0)
         assert (
             self.rir.time_data[0, 0]
