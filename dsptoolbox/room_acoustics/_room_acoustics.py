@@ -1229,71 +1229,41 @@ def _trim_rir(
 
     # Ensure that energy is always decaying by checking it in non-overlapping
     # windows. When the energy of a window is larger than the previous one,
-    # the end of the IR has been surpassed. Do this iteratively for smaller
-    # window sizes to approach an optimal point to cut
+    # the end of the IR has been surpassed. Do this for different window sizes
+    # and build the weighted average. The best linear fit (pearson correlation)
+    # is weighted 10 times stronger than others.
 
-    # Start with 25% of total length for the first window length
-    window_length = int(len(envelope) / 4 + 0.5)
-
-    # Convergence criterion: when new position has only changed by 1 ms or less
-    stop_change_samples = int(1e-3 * fs_hz)
-
-    # Max number of iterations
-    max_iter = int(np.log2(window_length / stop_change_samples)) + 1
-    window_length = int(fs_hz * 100e-3)
-
-    current_start_position = 0
-    for _ in range(max_iter):
+    window_lengths = (np.array([10, 30, 50, 100]) * 1e-3 * fs_hz).astype(int)
+    end = np.zeros(len(window_lengths))
+    x = np.arange(len(envelope))
+    corr_coeff = np.zeros(len(window_lengths))
+    for ind, window_length in enumerate(window_lengths):
+        current_start_position = 0
         current_window_mean_db = 0
-        initial_start = current_start_position
 
-        for _ in range(
-            (len(envelope) - current_start_position) // window_length
-        ):
+        for _ in range(len(envelope) // window_length):
             new_window_mean_db = np.mean(
                 envelope[
                     current_start_position : current_start_position
                     + window_length
                 ]
             )
-
-            # Stop if energy has increased in new window or decreased by less
-            # than 10% compared to last window
-            # current_energy = 10 ** (current_window_mean_db / 10)
-            # new_energy = 10 ** (new_window_mean_db / 10)
-            # if (current_energy - new_energy) / current_energy <= 0.1:
-
-            # Stop if energy has increased in the new window (or remained the
-            # same)
             if current_window_mean_db <= new_window_mean_db:
-                # Move back one window to start search from there
-                current_start_position = max(
-                    initial_start,
-                    current_start_position - int(window_length * 1.5),
-                )
                 break
             current_window_mean_db = new_window_mean_db
             current_start_position += window_length
 
-        # Stop if change is less than 1 ms
-        if stop_change_samples > current_start_position - initial_start:
-            break
+        corr_coeff[ind] = pearsonr(
+            x[:current_start_position],
+            envelope[:current_start_position],
+        )[0]
+        end[ind] = current_start_position
 
-        # Continue loop with smaller window
-        window_length //= 2
+    # Weight best linear fit 10x stronger in mean
+    select = np.argmin(corr_coeff)
+    end_point = int(np.mean(np.hstack([np.ones(10) * end[select], end])))
 
-    end = min(
-        len(envelope),
-        int(
-            np.mean(
-                [
-                    current_start_position,
-                    current_start_position + window_length,
-                ]
-            )
-        ),
-    )
-    stop = end + start_index + impulse_index
+    stop = end_point + start_index + impulse_index
 
     return start_index, stop, impulse_index
 
