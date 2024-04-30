@@ -508,9 +508,8 @@ def descriptors(
 
     Notes
     -----
-    - For defining the ending of the IR automatically, `trim_rir(
-      offset_start_s = 0, threshold_factor = 0.66, window_time_s = 30e-3)` is
-      used.
+    - For defining the ending of the IR automatically, `trim_rir` is used.
+      Refer to the documentation for more details.
 
     """
     mode = mode.lower()
@@ -615,13 +614,12 @@ def trim_rir(
       works as follows:
         - A (hilbert) envelope is computed in dB (energy time curve). This is
           smoothed by exponential averaging with 20 ms.
-        - Non-overlapping windows with initial length of 25% of the total
-          length are checked. The first window to contain more energy than
-          the previous one is regarded as the end.
-        - The last step is done iteratively with diminishing window lengths.
-          Convergence criterion is when the stop point was found 1 ms or closer
-          to the one found with the last window size.
-        - If this scheme is unsuccesful, the RIR is left untrimmed.
+        - Non-overlapping windows with lengths 10, 30, 50 and 100 ms are
+          checked. The first window to contain more energy than the previous
+          one is regarded as the end.
+        - Pearson correlation coefficient for each window size is computed.
+          An average of all end points with the best linear fit being weighted
+          10 stronger than the others is built. That is the final result.
 
     """
     assert start_offset_s >= 0, "Offset must be at least 0"
