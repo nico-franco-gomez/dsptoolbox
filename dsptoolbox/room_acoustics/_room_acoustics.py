@@ -1259,11 +1259,15 @@ def _trim_rir(
             current_window_mean_db = new_window_mean_db
             current_start_position += window_length
 
+        # End in the center of the next window
+        end_with_current_window = min(
+            (current_start_position * 2 + window_length) // 2, len(envelope)
+        )
         corr_coeff[ind] = pearsonr(
-            x[:current_start_position],
-            envelope[:current_start_position],
+            x[:end_with_current_window],
+            envelope[:end_with_current_window],
         )[0]
-        end[ind] = current_start_position
+        end[ind] = end_with_current_window
 
     select = np.argmin(corr_coeff)
     if corr_coeff[select] <= -0.95:
