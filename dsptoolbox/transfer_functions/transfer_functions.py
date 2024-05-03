@@ -1519,7 +1519,7 @@ def harmonics_from_chirp_ir(
 
     # Get offsets
     td = ir.time_data
-    offsets = -np.argmax(td, axis=0) + 1
+    offsets = -np.argmax(np.abs(td), axis=0) + 1
     td = np.roll(td, offsets, axis=0)
 
     # Get times of each harmonic
