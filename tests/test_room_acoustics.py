@@ -157,14 +157,3 @@ class TestRoomAcousticsModule:
 
         with pytest.raises(AssertionError):
             dsp.room_acoustics.descriptors(rir_filt, mode="br")
-
-    def test_trim_rir(self):
-        # Only functionality
-        dsp.room_acoustics.trim_rir(self.rir)
-        # Start offset way longer than rir (should be clipped to 0)
-        assert (
-            self.rir.time_data[0, 0]
-            == dsp.room_acoustics.trim_rir(self.rir, start_offset_s=3)[
-                0
-            ].time_data[0, 0]
-        )

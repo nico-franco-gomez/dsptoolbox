@@ -489,3 +489,15 @@ class TestTransferFunctionsModule:
             chirp_length_seconds=2,
             n_harmonics=2,
         )
+
+    def test_trim_rir(self):
+        # Only functionality
+        ir = dsp.Signal(join("examples", "data", "rir.wav"), signal_type="rir")
+        dsp.transfer_functions.trim_ir(ir)
+        # Start offset way longer than rir (should be clipped to 0)
+        assert (
+            ir.time_data[0, 0]
+            == dsp.transfer_functions.trim_ir(ir, start_offset_s=3)[
+                0
+            ].time_data[0, 0]
+        )
