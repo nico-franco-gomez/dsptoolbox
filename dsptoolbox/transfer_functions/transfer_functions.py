@@ -1498,7 +1498,8 @@ def harmonics_from_chirp_ir(
     Returns
     -------
     harmonics : list[Signal]
-        List containing the IRs of each harmonic in ascending order.
+        List containing the IRs of each harmonic in ascending order. The
+        fundamental is not in the list.
 
     Notes
     -----
