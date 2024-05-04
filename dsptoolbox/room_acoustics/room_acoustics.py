@@ -17,7 +17,6 @@ from ._room_acoustics import (
     _d50_from_rir,
     _c80_from_rir,
     _ts_from_rir,
-    _trim_rir,
 )
 from .._general_helpers import _find_nearest, _normalize, _pad_trim
 from ..standard_functions import pad_trim
@@ -573,75 +572,6 @@ def _bass_ratio(rir: Signal) -> np.ndarray:
     for ch in range(rir.number_of_channels):
         br[ch] = (rt[0, ch] + rt[1, ch]) / (rt[2, ch] + rt[3, ch])
     return br
-
-
-def trim_rir(
-    rir: Signal,
-    channel: int = 0,
-    start_offset_s: float = 20e-3,
-) -> tuple[Signal, int, int]:
-    """
-    Trim a RIR in the beginning and end. This method acts only on one channel
-    and returns it trimmed. For defining the ending, a smooth envelope of the
-    energy time curve (ETC) is used, as well as the assumption that the energy
-    should decay monotonically after the impulse arrives. See notes for
-    details.
-
-    Parameters
-    ----------
-    rir : `Signal`
-        Room impulse response to trim.
-    channel : int, optional
-        Channel to take from `rir`. Default: 0.
-    start_offset_s : float, optional
-        This is the time prior to the peak value that is left after trimming.
-        Pass 0 to start the RIR one sample prior to peak value or a very big
-        offset to avoid any trimming at the beginning. Default: 20e-3
-        (20 milliseconds).
-
-    Returns
-    -------
-    trimmed_rir : `Signal`
-        RIR with the new length.
-    start : int
-        Start index of the trimmed RIR in the original vector.
-    stop : int
-        Stop index of the trimmed RIR in the original vector.
-
-    Notes
-    -----
-    - The method employed for finding the ending of the RIR is iterative. It
-      works as follows:
-        - A (hilbert) envelope is computed in dB (energy time curve). This is
-          smoothed by exponential averaging with 20 ms.
-        - Non-overlapping windows with lengths 10, 30, 50 and 100 ms are
-          checked. The first window to contain more energy than the previous
-          one is regarded as the end.
-        - Pearson correlation coefficients (cc) of the energy decay for the
-          segments obtained with each window size are computed. The final end
-          point is selected following criteria:
-            - If a good linear fit is obtained (cc < -0.95), it is used as
-              the final point.
-            - Else, if there are acceptable fits (cc < -0.9), the ending
-              point is the averaged from these.
-            - Else, if there are any fits with cc < -0.7, they are all averaged
-              but the best one is weighted significantly stronger.
-            - If no fit has cc < -0.7, all are averaged together with the
-              total length of the IR weighted stronger than the other values.
-
-    """
-    assert start_offset_s >= 0, "Offset must be at least 0"
-    trimmed_rir = rir.get_channels(channel)
-    td = trimmed_rir.time_data.squeeze()
-    start, stop, _ = _trim_rir(
-        td,
-        rir.sampling_rate_hz,
-        start_offset_s,
-    )
-    trimmed_rir.time_data = td[start:stop]
-    if hasattr(trimmed_rir, "window"):
-        del trimmed_rir.window
-    return trimmed_rir, start, stop
 
 
 def _check_ir_start_reverb(

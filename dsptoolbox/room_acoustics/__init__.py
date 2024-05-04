@@ -11,9 +11,9 @@ Here are contained some functions that are related to room acoustics.
 - `descriptors()`
 - `ShoeboxRoom`: class for shoebox rooms. It can be passed to
   `generate_synthetic_rir`.
-- `trim_rir()`
 
 """
+
 from .room_acoustics import (
     reverb_time,
     find_modes,
@@ -22,7 +22,6 @@ from .room_acoustics import (
     generate_synthetic_rir,
     ShoeboxRoom,
     descriptors,
-    trim_rir
 )
 
 __all__ = [
@@ -33,5 +32,4 @@ __all__ = [
     "generate_synthetic_rir",
     "ShoeboxRoom",
     "descriptors",
-    "trim_rir"
 ]
