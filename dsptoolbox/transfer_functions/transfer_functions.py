@@ -15,6 +15,7 @@ from ._transfer_functions import (
     _get_minimum_phase_spectrum_from_real_cepstrum,
     _warp_time_series,
     _get_harmonic_times,
+    _trim_ir,
 )
 from ..classes import Signal, Filter
 from ..classes._filter import _group_delay_filter
@@ -35,7 +36,7 @@ from .._standard import (
 from ..standard_functions import fractional_delay, merge_signals, normalize
 from ..generators import dirac
 from ..filterbanks import linkwitz_riley_crossovers
-from ..room_acoustics._room_acoustics import _find_ir_start, _trim_rir
+from ..room_acoustics._room_acoustics import _find_ir_start
 
 
 def spectral_deconvolve(
@@ -1497,7 +1498,8 @@ def harmonics_from_chirp_ir(
     Returns
     -------
     harmonics : list[Signal]
-        List containing the IRs of each harmonic in ascending order.
+        List containing the IRs of each harmonic in ascending order. The
+        fundamental is not in the list.
 
     Notes
     -----
@@ -1519,7 +1521,7 @@ def harmonics_from_chirp_ir(
 
     # Get offsets
     td = ir.time_data
-    offsets = -np.argmax(td, axis=0) + 1
+    offsets = -np.argmax(np.abs(td), axis=0) + 1
     td = np.roll(td, offsets, axis=0)
 
     # Get times of each harmonic
@@ -1645,9 +1647,7 @@ def harmonic_distortion_analysis(
 
         # Trim and window IR
         ir2 = ir.copy()
-        start, stop, _ = _trim_rir(
-            ir2.time_data, ir.sampling_rate_hz, 10e-3, 0.75, 30e-3
-        )
+        start, stop, _ = _trim_ir(ir2.time_data, ir.sampling_rate_hz, 10e-3)
         ir2.time_data = ir2.time_data[start:stop]
         ir2 = window_ir(ir2, len(ir2), constant_percentage=0.9)[0]
         ir2._spectrum_parameters["smoothe"] = smoothing
@@ -1753,3 +1753,72 @@ def harmonic_distortion_analysis(
     d["thd"] = [freqs_thd, sp_thd]
 
     return d
+
+
+def trim_ir(
+    ir: Signal,
+    channel: int = 0,
+    start_offset_s: float = 20e-3,
+) -> tuple[Signal, int, int]:
+    """
+    Trim an IR in the beginning and end. This method acts only on one channel
+    and returns it trimmed. For defining the ending, a smooth envelope of the
+    energy time curve (ETC) is used, as well as the assumption that the energy
+    should decay monotonically after the impulse arrives. See notes for
+    details.
+
+    Parameters
+    ----------
+    ir : `Signal`
+        Impulse response to trim.
+    channel : int, optional
+        Channel to take from `rir`. Default: 0.
+    start_offset_s : float, optional
+        This is the time prior to the peak value that is left after trimming.
+        Pass 0 to start the IR one sample prior to peak value or a very big
+        offset to avoid any trimming at the beginning. Default: 20e-3
+        (20 milliseconds).
+
+    Returns
+    -------
+    trimmed_ir : `Signal`
+        IR with the new length.
+    start : int
+        Start index of the trimmed IR in the original vector.
+    stop : int
+        Stop index of the trimmed IR in the original vector.
+
+    Notes
+    -----
+    - The method employed for finding the ending of the IR works as follows:
+        - A (hilbert) envelope is computed in dB (energy time curve). This is
+          smoothed by exponential averaging with 20 ms.
+        - Non-overlapping windows with lengths 10, 30, 50, 80 and 100 ms are
+          checked starting from the impulse and going forwards. The first
+          window to contain more energy than the previous one is regarded as
+          the end of the IR.
+        - Pearson correlation coefficients (cc) of the energy decay for the
+          segments obtained with each window size are computed. The final end
+          point is selected following criteria:
+            - If a good linear fit is obtained (cc < -0.95), it is used as
+              the final point.
+            - Else, if there are acceptable fits (cc < -0.9), the ending
+              point is the averaged from these.
+            - Else, if there are any fits with cc < -0.7, they are all averaged
+              but the best one is weighted significantly stronger.
+            - If no fit has cc < -0.7, all are averaged together with the
+              total length of the IR weighted stronger than the other values.
+
+    """
+    assert start_offset_s >= 0, "Offset must be at least 0"
+    trimmed_rir = ir.get_channels(channel)
+    td = trimmed_rir.time_data.squeeze()
+    start, stop, _ = _trim_ir(
+        td,
+        ir.sampling_rate_hz,
+        start_offset_s,
+    )
+    trimmed_rir.time_data = td[start:stop]
+    if hasattr(trimmed_rir, "window"):
+        del trimmed_rir.window
+    return trimmed_rir, start, stop

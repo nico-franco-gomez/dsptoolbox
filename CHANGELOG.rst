@@ -14,6 +14,19 @@ adheres to `Semantic Versioning <http://semver.org/spec/v2.0.0.html>`_.
 - Validation for results from tests in every module (so far many tests are
   only regarding functionality)
 
+`0.3.7 <https://pypi.org/project/dsptoolbox/0.3.7>`_ - 
+---------------------
+
+Misc
+~~~~~~~
+- `trim_rir` has an improved approach where users do not need to set any
+  parameters. It was also migrated to the ``transfer_functions`` module
+
+Bugfix
+~~~~~~
+- `harmonics_from_chirp_ir` was fixed since it only searched for positive peaks
+  in the IR to determine the impulse
+
 `0.3.6 <https://pypi.org/project/dsptoolbox/0.3.6>`_ - 
 ---------------------
 

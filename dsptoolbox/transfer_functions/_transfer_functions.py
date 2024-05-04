@@ -3,12 +3,15 @@ Backend for transfer functions methods
 """
 
 import numpy as np
-from scipy.signal import get_window, lfilter
+from scipy.signal import get_window, lfilter, hilbert
+from scipy.stats import pearsonr
+from warnings import warn
 from .._general_helpers import (
     _find_nearest,
     _calculate_window,
     _pad_trim,
     _get_chirp_rate,
+    _get_smoothing_factor_ema,
 )
 
 
@@ -359,3 +362,106 @@ def _get_harmonic_times(
     """
     rate = _get_chirp_rate(chirp_range_hz, chirp_length_seconds)
     return time_offset_seconds - np.log2(np.arange(n_harmonics) + 2) / rate
+
+
+def _trim_ir(
+    time_data: np.ndarray,
+    fs_hz: int,
+    offset_start_s: float,
+) -> tuple[int, int, int]:
+    """
+    Obtain the starting and stopping index curve using the smooth (exponential)
+    envelope of the energy time curve. Non-overlapping windows are checked, so
+    that the first window to grow its average energy after the impulse is
+    taken as the end.
+
+    This function returns the start and stop indices relative to the original
+    time data, but the impulse index relative to the new vector.
+
+    Returns
+    -------
+    start : int
+    stop : int
+    impulse : int
+
+    """
+
+    # Start index
+    impulse_index = int(np.argmax(np.abs(time_data)))
+    offset_start_samples = int(offset_start_s * fs_hz + 0.5)
+    start_index = int(np.max([0, impulse_index - 1 - offset_start_samples]))
+    impulse_index -= start_index
+
+    # ETC (from impulse until end)
+    etc = 20 * np.log10(
+        np.clip(
+            np.abs(hilbert(time_data[start_index + impulse_index :])),
+            a_min=1e-50,
+            a_max=None,
+        )
+    )
+
+    # Smoothing of ETC
+    smoothing_factor = _get_smoothing_factor_ema(20e-3, fs_hz)
+    envelope = lfilter([smoothing_factor], [1, -(1 - smoothing_factor)], etc)
+
+    # Ensure that energy is always decaying by checking it in non-overlapping
+    # windows. When the energy of a window is larger than the previous one,
+    # the end of the IR has been surpassed. Do this for different window sizes
+    # and check the different correlation coefficients of energy decay with
+    # time for the selected ending points. If one is below -0.95, then take it
+    # as the final one. If not, then look for all the ones below -0.9 and
+    # average them. If None, then take the ones below -0.7 and average them
+    # with the highest weight. If all are above -0.7, method failed -> no
+    # trimming
+
+    window_lengths = (np.array([10, 30, 50, 80, 100]) * 1e-3 * fs_hz).astype(
+        int
+    )
+    end = np.zeros(len(window_lengths))
+    x = np.arange(len(envelope))
+    corr_coeff = np.zeros(len(window_lengths))
+    for ind, window_length in enumerate(window_lengths):
+        current_start_position = 0
+        current_window_mean_db = 0
+
+        for _ in range(len(envelope) // window_length):
+            new_window_mean_db = np.mean(
+                envelope[
+                    current_start_position : current_start_position
+                    + window_length
+                ]
+            )
+            if current_window_mean_db <= new_window_mean_db:
+                break
+            current_window_mean_db = new_window_mean_db
+            current_start_position += window_length
+
+        # End in the center of the next window
+        end_with_current_window = min(
+            (current_start_position * 2 + window_length) // 2, len(envelope)
+        )
+        corr_coeff[ind] = pearsonr(
+            x[:end_with_current_window],
+            envelope[:end_with_current_window],
+        )[0]
+        end[ind] = end_with_current_window
+
+    select = np.argmin(corr_coeff)
+    if corr_coeff[select] <= -0.95:
+        end_point = int(end[select])
+    elif np.any(corr_coeff <= -0.9):
+        inds = corr_coeff <= -0.9
+        end_point = int(np.mean(end[inds]))
+    elif np.any(corr_coeff <= -0.7):
+        inds = corr_coeff <= -0.7
+        end_point = int(
+            np.mean(np.hstack([np.ones(9) * end[select], end[inds]]))
+        )
+    else:
+        warn("No satisfactory estimation for trimming the rir could be made")
+        end_point = int(np.mean(np.hstack([np.ones(5) * len(envelope), end])))
+
+    stop = end_point + start_index + impulse_index
+
+    return start_index, stop, impulse_index

@@ -16,12 +16,14 @@ Modify TF/IR:
 - `min_phase_ir()` (returns a minimum-phase version of the IR)
 - `combine_ir_with_dirac()` (combines an IR with a time-aligned dirac impulse)
 - `average_irs()` (averages all channels into a single IR)
+- `trim_ir()` (trims the IR pruning it from noise samples before and after the
+  impulse)
 
 Generate TF/IR from magnitude spectrum:
 
-- `min_phase_from_mag()` (generate a signal with minimum phase from a
+- `min_phase_from_mag()` (generate an IR with minimum phase from a
   magnitude spectrum using the distcrete hilbert transform)
-- `lin_phase_from_mag()` (generate a signal with linear phase from a
+- `lin_phase_from_mag()` (generate an IR with linear phase from a
   magnitude spectrum)
 
 Analyze TF/IR:
@@ -59,6 +61,7 @@ from .transfer_functions import (
     find_ir_latency,
     harmonics_from_chirp_ir,
     harmonic_distortion_analysis,
+    trim_ir,
 )
 
 __all__ = [
@@ -82,4 +85,5 @@ __all__ = [
     "find_ir_latency",
     "harmonics_from_chirp_ir",
     "harmonic_distortion_analysis",
+    "trim_ir",
 ]

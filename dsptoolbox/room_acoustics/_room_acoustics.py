@@ -5,9 +5,8 @@ Low-level methods for room acoustics
 import numpy as np
 from scipy.stats import pearsonr
 from warnings import warn
-from scipy.signal import hilbert, lfilter
 from ..plots import general_plot
-from .._general_helpers import _get_smoothing_factor_ema
+from ..transfer_functions._transfer_functions import _trim_ir
 
 
 def _reverb(
@@ -929,12 +928,10 @@ def _d50_from_rir(td: np.ndarray, fs: int, automatic_trimming: bool) -> float:
     td = td[ind:]
     window = int(50e-3 * fs)
     if automatic_trimming:
-        _, stop, _ = _trim_rir(
+        _, stop, _ = _trim_ir(
             td,
             fs,
             0,
-            0.66,
-            30e-3,
         )
         stop = np.max([window, stop])
     else:
@@ -968,12 +965,10 @@ def _c80_from_rir(td: np.ndarray, fs: int, automatic_trimming: bool) -> float:
     # Time window
     window = int(80e-3 * fs)
     if automatic_trimming:
-        _, stop, _ = _trim_rir(
+        _, stop, _ = _trim_ir(
             td,
             fs,
             0,
-            0.66,
-            30e-3,
         )
         stop = np.max([window, stop])
     else:
@@ -1006,12 +1001,10 @@ def _ts_from_rir(td: np.ndarray, fs: int, automatic_trimming: bool) -> float:
     td = td[ind:]
 
     if automatic_trimming:
-        _, stop, _ = _trim_rir(
+        _, stop, _ = _trim_ir(
             td,
             fs,
             0,
-            0.66,
-            30e-3,
         )
     else:
         stop = len(td)
@@ -1174,12 +1167,10 @@ def _compute_energy_decay_curve(
 ) -> np.ndarray:
     """Get the energy decay curve from an energy time curve."""
     if trim_automatically:
-        start_index, stopping_index, impulse_index = _trim_rir(
+        start_index, stopping_index, impulse_index = _trim_ir(
             time_data,
             fs_hz,
             offset_start_s=20e-3,
-            threshold_factor=0.66,
-            window_time_s=30e-3,
         )
     else:
         start_index = 0
@@ -1192,97 +1183,6 @@ def _compute_energy_decay_curve(
         np.clip(edc / edc[impulse_index], a_min=epsilon, a_max=None)
     )
     return edc
-
-
-def _trim_rir(
-    time_data: np.ndarray,
-    fs_hz: int,
-    offset_start_s: float,
-    threshold_factor: float,
-    window_time_s: float,
-) -> tuple[int, int, int]:
-    """
-    Obtain the starting and stopping index for an energy decay curve using
-    the smooth (exponential) envelope of the energy time curve. First, a
-    threshold is defined as the median of the trailing part of the RIR. Then
-    non-overlapping windows are checked, so that the first window to grow its
-    average energy after the impulse is taken as the end.
-
-    This function returns the start and stop indices relative to the original
-    time data, but the impulse index relative to the new vector.
-
-    Returns
-    -------
-    start : int
-    stop : int
-    impulse : int
-
-    """
-    # Envelope
-    envelope = np.abs(hilbert(time_data, axis=0))
-
-    # Start index
-    impulse_index = int(np.argmax(envelope))
-    offset_start_samples = int(offset_start_s * fs_hz + 0.5)
-    start_index = int(np.max([0, impulse_index - 1 - offset_start_samples]))
-    impulse_index -= start_index
-
-    # Index for finding threshold
-    threshold_start = int(len(envelope) * threshold_factor + 0.5) - start_index
-
-    # ETC
-    etc = 20 * np.log10(
-        np.clip(envelope[start_index:], a_min=1e-50, a_max=None)
-    )
-
-    # Smoothing
-    factor = _get_smoothing_factor_ema(20e-3, fs_hz)
-    envelope = lfilter([factor], [1, -(1 - factor)], etc)
-
-    # Threshold
-    threshold = np.median(envelope[threshold_start:])
-
-    stop = (
-        np.where(envelope[impulse_index:] < threshold)[0][0]
-        # Correct for impulse offset and start index
-        + impulse_index
-        + start_index
-    )
-
-    # Discard if threshold is too close to impulse (1 ms)
-    if stop - impulse_index < int(1e-3 * fs_hz):
-        stop = len(envelope)
-
-    if window_time_s == 0:
-        return start_index, stop, impulse_index
-
-    # Ensure that energy is always decaying by looking at non-overlapping
-    # windows. Trim when energy grows in the next window
-    window_length = int(window_time_s * fs_hz)
-    envelope = envelope[impulse_index : stop - start_index]
-
-    # Ensure that energy prior to impulse not affect the computation
-    if impulse_index > 0:
-        envelope[: impulse_index + 1] = np.max(etc[: impulse_index + 1])
-
-    position = 0
-    current_window_mean_db = 0
-
-    for _ in range(len(envelope) // window_length):
-        new_window_mean_db = np.mean(
-            envelope[position : position + window_length]
-        )
-        if current_window_mean_db < new_window_mean_db:
-            break
-        current_window_mean_db = new_window_mean_db
-        position += window_length
-
-    end = min(
-        len(envelope), int(np.mean([position, position + window_length]))
-    )
-    stop = end + impulse_index + start_index
-
-    return start_index, stop, impulse_index
 
 
 if __name__ == "__main__":
