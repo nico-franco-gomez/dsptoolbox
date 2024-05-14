@@ -239,6 +239,9 @@ def window_ir(
         "rir",
         "ir",
     ), f"{signal.signal_type} is not a valid signal type. Use rir or ir."
+    assert (
+        constant_percentage < 1 and constant_percentage >= 0
+    ), "Constant percentage can not be larger than 1 or smaller than 0"
     assert offset_samples >= 0, "Offset must be positive"
     assert offset_samples <= constant_percentage * total_length_samples, (
         "Offset is too large for the constant part of the window and its "
