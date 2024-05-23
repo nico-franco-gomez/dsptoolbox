@@ -1018,14 +1018,14 @@ class Signal:
         )
         return fig, ax
 
-    def plot_time(self) -> tuple[Figure, Axes]:
+    def plot_time(self) -> tuple[Figure, list[Axes]]:
         """Plots time signals.
 
         Returns
         -------
         fig : `matplotlib.figure.Figure`
             Figure.
-        ax : `matplotlib.axes.Axes`
+        ax : list of `matplotlib.axes.Axes`
             Axes.
 
         """
@@ -1065,7 +1065,7 @@ class Signal:
         normalize_at_peak: bool = False,
         range_db: float | None = 100.0,
         window_length_s: float = 0.0,
-    ) -> tuple[Figure, Axes]:
+    ) -> tuple[Figure, list[Axes]]:
         """Plots the momentary sound pressure level (dB or dBFS) of each
         channel. If the signal is calibrated and not normalized at peak, the
         values correspond to dB, otherwise they are dBFS.
@@ -1087,7 +1087,7 @@ class Signal:
         -------
         fig : `matplotlib.figure.Figure`
             Figure.
-        ax : `matplotlib.axes.Axes`
+        ax : list of `matplotlib.axes.Axes`
             Axes.
 
         Notes
@@ -1337,14 +1337,14 @@ class Signal:
         )
         return fig, ax
 
-    def plot_coherence(self) -> tuple[Figure, Axes]:
+    def plot_coherence(self) -> tuple[Figure, list[Axes]]:
         """Plots coherence measurements if there are any.
 
         Returns
         -------
         fig : `matplotlib.figure.Figure`
             Figure.
-        ax : `matplotlib.axes.Axes`
+        ax : list of `matplotlib.axes.Axes`
             Axes.
 
         """
