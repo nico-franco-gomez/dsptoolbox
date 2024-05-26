@@ -11,8 +11,6 @@ from ._transfer_functions import (
     _spectral_deconvolve,
     _window_this_ir_tukey,
     _window_this_ir,
-    _min_phase_ir_from_real_cepstrum,
-    _get_minimum_phase_spectrum_from_real_cepstrum,
     _warp_time_series,
     _get_harmonic_times,
     _trim_ir,
@@ -20,12 +18,13 @@ from ._transfer_functions import (
 from ..classes import Signal, Filter
 from ..classes._filter import _group_delay_filter
 from .._general_helpers import (
-    _remove_impulse_delay_from_phase,
+    _remove_ir_latency_from_phase,
+    _min_phase_ir_from_real_cepstrum,
+    _get_minimum_phase_spectrum_from_real_cepstrum,
     _find_frequencies_above_threshold,
     _fractional_octave_smoothing,
     _correct_for_real_phase_spectrum,
     _wrap_phase,
-    _get_fractional_impulse_peak_index,
 )
 from .._standard import (
     _welch,
@@ -33,7 +32,12 @@ from .._standard import (
     _group_delay_direct,
     _pad_trim,
 )
-from ..standard_functions import fractional_delay, merge_signals, normalize
+from ..standard_functions import (
+    fractional_delay,
+    merge_signals,
+    normalize,
+    latency,
+)
 from ..generators import dirac
 from ..filterbanks import linkwitz_riley_crossovers
 from ..room_acoustics._room_acoustics import _find_ir_start
@@ -239,6 +243,9 @@ def window_ir(
         "rir",
         "ir",
     ), f"{signal.signal_type} is not a valid signal type. Use rir or ir."
+    assert (
+        constant_percentage < 1 and constant_percentage >= 0
+    ), "Constant percentage can not be larger than 1 or smaller than 0"
     assert offset_samples >= 0, "Offset must be positive"
     assert offset_samples <= constant_percentage * total_length_samples, (
         "Offset is too large for the constant part of the window and its "
@@ -792,7 +799,7 @@ def group_delay(
     signal: Signal,
     method="matlab",
     smoothing: int = 0,
-    remove_impulse_delay: bool = False,
+    remove_ir_latency: bool = False,
 ) -> tuple[np.ndarray, np.ndarray]:
     """Computes and returns group delay.
 
@@ -808,7 +815,7 @@ def group_delay(
     smoothing : int, optional
         Octave fraction by which to apply smoothing. `0` avoids any smoothing
         of the group delay. Default: `0`.
-    remove_impulse_delay : bool, optional
+    remove_ir_latency : bool, optional
         If the signal is of type `"ir"` or `"rir"`, the impulse delay can be
         removed. Default: `False`.
 
@@ -833,7 +840,7 @@ def group_delay(
         signal._spectrum_parameters = spec_parameters
         group_delays = np.zeros((sp.shape[0], sp.shape[1]))
 
-        if remove_impulse_delay:
+        if remove_ir_latency:
             assert signal.signal_type in (
                 "rir",
                 "ir",
@@ -841,7 +848,7 @@ def group_delay(
                 f"{signal.signal_type} is not a valid signal type. Use ir "
                 + "or rir"
             )
-            sp = _remove_impulse_delay_from_phase(
+            sp = _remove_ir_latency_from_phase(
                 f, np.angle(sp), signal.time_data, signal.sampling_rate_hz
             )
         for n in range(signal.number_of_channels):
@@ -856,7 +863,7 @@ def group_delay(
 
         for n in range(signal.number_of_channels):
             b = signal.time_data[:, n]
-            if remove_impulse_delay:
+            if remove_ir_latency:
                 b = b[max(int(np.argmax(np.abs(b))) - 1, 0) :]
             a = [1]
             _, group_delays[:, n] = _group_delay_filter(
@@ -988,7 +995,7 @@ def excess_group_delay(
     signal: Signal,
     method: str = "real cepstrum",
     smoothing: int = 0,
-    remove_impulse_delay: bool = False,
+    remove_ir_latency: bool = False,
 ) -> tuple[np.ndarray, np.ndarray]:
     """Computes excess group delay of an IR.
 
@@ -1002,7 +1009,7 @@ def excess_group_delay(
     smoothing : int, optional
         Octave fraction by which to apply smoothing. `0` avoids any smoothing
         of the group delay. Default: `0`.
-    remove_impulse_delay : bool, optional
+    remove_ir_latency : bool, optional
         If the signal is of type `"ir"` or `"rir"`, the impulse delay can be
         removed. Default: `False`.
 
@@ -1024,7 +1031,7 @@ def excess_group_delay(
         signal,
         smoothing=0,
         method="direct",
-        remove_impulse_delay=remove_impulse_delay,
+        remove_ir_latency=remove_ir_latency,
     )
     ex_gd = gd - min_gd
 
@@ -1448,9 +1455,8 @@ def warp_ir(
 
 
 def find_ir_latency(ir: Signal) -> np.ndarray:
-    """Find the subsample maximum of each channel of the IR using the root of
-    the analytical function. This value can be associated with the latency
-    of the impulse response.
+    """Find the subsample maximum of each channel of the IR using the its
+    minimum phase equivalent.
 
     Parameters
     ----------
@@ -1464,13 +1470,14 @@ def find_ir_latency(ir: Signal) -> np.ndarray:
 
     """
     assert ir.signal_type in ("rir", "ir"), "Only valid for rir or ir"
-    return _get_fractional_impulse_peak_index(ir.time_data)
+    min_ir = min_phase_ir(ir)
+    return latency(ir, min_ir, 1)
 
 
 def harmonics_from_chirp_ir(
     ir: Signal,
     chirp_range_hz: list,
-    chirp_length_seconds: float,
+    chirp_length_s: float,
     n_harmonics: int = 5,
     offset_percentage: float = 0.05,
 ) -> list[Signal]:
@@ -1484,7 +1491,7 @@ def harmonics_from_chirp_ir(
         chirp.
     chirp_range_hz : list of length 2
         The frequency range of the chirp.
-    chirp_length_seconds : float
+    chirp_length_s : float
         Length of chirp in seconds (without zero-padding).
     n_harmonics : int, optional
         Number of harmonics to analyze. Default: 5.
@@ -1525,9 +1532,7 @@ def harmonics_from_chirp_ir(
     td = np.roll(td, offsets, axis=0)
 
     # Get times of each harmonic
-    ts = _get_harmonic_times(
-        chirp_range_hz, chirp_length_seconds, n_harmonics + 1
-    )
+    ts = _get_harmonic_times(chirp_range_hz, chirp_length_s, n_harmonics + 1)
     time_harmonics_samples = len(td) + (ts * ir.sampling_rate_hz + 0.5).astype(
         int
     )
@@ -1636,21 +1641,28 @@ def harmonic_distortion_analysis(
             chirp_range_hz = [0, ir2.sampling_rate_hz // 2]
 
         passed_harmonics = True
-
     elif type(ir) is Signal:
+        assert (
+            chirp_length_s is not None
+            and chirp_range_hz is not None
+            and n_harmonics is not None
+        ), "Chirp parameters and number of harmonics cannot be None"
+
         # Get different harmonics
         harm = harmonics_from_chirp_ir(
             ir, chirp_range_hz, chirp_length_s, n_harmonics, 0.01
         )
 
-        passed_harmonics = False
-
         # Trim and window IR
         ir2 = ir.copy()
-        start, stop, _ = _trim_ir(ir2.time_data, ir.sampling_rate_hz, 10e-3)
+        start, stop, _ = _trim_ir(
+            ir2.time_data[:, 0], ir.sampling_rate_hz, 10e-3
+        )
         ir2.time_data = ir2.time_data[start:stop]
         ir2 = window_ir(ir2, len(ir2), constant_percentage=0.9)[0]
         ir2._spectrum_parameters["smoothe"] = smoothing
+
+        passed_harmonics = False
     else:
         raise TypeError("Type for ir is not supported")
 

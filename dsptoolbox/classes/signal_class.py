@@ -21,7 +21,7 @@ from .._general_helpers import (
     _check_format_in_path,
     _scale_spectrum,
     _wrap_phase,
-    _remove_impulse_delay_from_phase,
+    _remove_ir_latency_from_phase,
 )
 from .._standard import _welch, _group_delay_direct, _stft, _csm
 
@@ -1018,14 +1018,14 @@ class Signal:
         )
         return fig, ax
 
-    def plot_time(self) -> tuple[Figure, Axes]:
+    def plot_time(self) -> tuple[Figure, list[Axes]]:
         """Plots time signals.
 
         Returns
         -------
         fig : `matplotlib.figure.Figure`
             Figure.
-        ax : `matplotlib.axes.Axes`
+        ax : list of `matplotlib.axes.Axes`
             Axes.
 
         """
@@ -1065,7 +1065,7 @@ class Signal:
         normalize_at_peak: bool = False,
         range_db: float | None = 100.0,
         window_length_s: float = 0.0,
-    ) -> tuple[Figure, Axes]:
+    ) -> tuple[Figure, list[Axes]]:
         """Plots the momentary sound pressure level (dB or dBFS) of each
         channel. If the signal is calibrated and not normalized at peak, the
         values correspond to dB, otherwise they are dBFS.
@@ -1087,7 +1087,7 @@ class Signal:
         -------
         fig : `matplotlib.figure.Figure`
             Figure.
-        ax : `matplotlib.axes.Axes`
+        ax : list of `matplotlib.axes.Axes`
             Axes.
 
         Notes
@@ -1191,7 +1191,7 @@ class Signal:
     def plot_group_delay(
         self,
         range_hz=[20, 20000],
-        remove_impulse_delay: bool = False,
+        remove_ir_latency: bool = False,
         smoothing: int = 0,
     ) -> tuple[Figure, Axes]:
         """Plots group delay of each channel.
@@ -1203,7 +1203,7 @@ class Signal:
         range_hz : array-like with length 2, optional
             Range of frequencies for which to show group delay.
             Default: [20, 20e3].
-        remove_impulse_delay : bool, optional
+        remove_ir_latency : bool, optional
             When `True`, the delay of the impulse is removed prior to the
             computation of the group delay. Default: `False`.
         smoothing : int, optional
@@ -1241,8 +1241,8 @@ class Signal:
         self._spectrum_parameters = prior_spectrum_parameters
 
         sp = np.angle(sp)
-        if remove_impulse_delay:
-            sp = _remove_impulse_delay_from_phase(
+        if remove_ir_latency:
+            sp = _remove_ir_latency_from_phase(
                 f, sp, self.time_data, self.sampling_rate_hz
             )
 
@@ -1337,14 +1337,14 @@ class Signal:
         )
         return fig, ax
 
-    def plot_coherence(self) -> tuple[Figure, Axes]:
+    def plot_coherence(self) -> tuple[Figure, list[Axes]]:
         """Plots coherence measurements if there are any.
 
         Returns
         -------
         fig : `matplotlib.figure.Figure`
             Figure.
-        ax : `matplotlib.axes.Axes`
+        ax : list of `matplotlib.axes.Axes`
             Axes.
 
         """
@@ -1372,7 +1372,7 @@ class Signal:
         range_hz=[20, 20e3],
         unwrap: bool = False,
         smoothing: int = 0,
-        remove_impulse_delay: bool = False,
+        remove_ir_latency: bool = False,
     ) -> tuple[Figure, Axes]:
         """Plots phase of the frequency response, only available if the method
         for the spectrum `"standard"`.
@@ -1388,7 +1388,7 @@ class Signal:
             When different than 0, the phase response is smoothed across the
             1/smoothing-octave band. This only applies smoothing to the plot
             data. Default: 0.
-        remove_impulse_delay : bool, optional
+        remove_ir_latency : bool, optional
             If the signal is of type `"rir"` or `"ir"`, the delay of the
             impulse can be removed. Default: `False`.
 
@@ -1415,12 +1415,12 @@ class Signal:
 
         self._spectrum_parameters["smoothe"] = prior_smoothing
 
-        if remove_impulse_delay:
+        if remove_ir_latency:
             assert self.signal_type in (
                 "rir",
                 "ir",
             ), f"{self.signal_type} is not valid, use rir or ir"
-            ph = _remove_impulse_delay_from_phase(
+            ph = _remove_ir_latency_from_phase(
                 f, ph, self.time_data, self.sampling_rate_hz
             )
 

@@ -3,7 +3,12 @@ General functionality from helper methods
 """
 
 import numpy as np
-from scipy.signal import windows, convolve as scipy_convolve, hilbert
+from scipy.signal import (
+    windows,
+    convolve as scipy_convolve,
+    hilbert,
+    correlate,
+)
 from scipy.interpolate import interp1d
 from scipy.linalg import toeplitz as toeplitz_scipy
 from os import sep
@@ -1235,7 +1240,7 @@ def _get_fractional_impulse_peak_index(
     return latency_samples + start_offset
 
 
-def _remove_impulse_delay_from_phase(
+def _remove_ir_latency_from_phase(
     freqs: np.ndarray,
     phase: np.ndarray,
     time_data: np.ndarray,
@@ -1261,5 +1266,112 @@ def _remove_impulse_delay_from_phase(
         New phase response without impulse delay.
 
     """
-    delays_s = _get_fractional_impulse_peak_index(time_data) / sampling_rate_hz
+    min_ir = _min_phase_ir_from_real_cepstrum(time_data)
+    delays_s = _fractional_latency(time_data, min_ir) / sampling_rate_hz
     return _wrap_phase(phase + 2 * np.pi * freqs[:, None] * delays_s[None, :])
+
+
+def _min_phase_ir_from_real_cepstrum(time_data: np.ndarray):
+    """Returns minimum-phase version of a time series using the real cepstrum
+    method.
+
+    Parameters
+    ----------
+    time_data : `np.ndarray`
+        Time series to compute the minimum phase version from. It is assumed
+        to have shape (time samples, channels).
+
+    Returns
+    -------
+    min_phase_time_data : `np.ndarray`
+        New time series.
+
+    """
+    return np.real(
+        np.fft.ifft(
+            _get_minimum_phase_spectrum_from_real_cepstrum(time_data), axis=0
+        )
+    )
+
+
+def _get_minimum_phase_spectrum_from_real_cepstrum(time_data: np.ndarray):
+    """Returns minimum-phase version of a time series using the real cepstrum
+    method.
+
+    Parameters
+    ----------
+    time_data : `np.ndarray`
+        Time series to compute the minimum phase version from. It is assumed
+        to have shape (time samples, channels).
+
+    Returns
+    -------
+    `np.ndarray`
+        New spectrum with minimum phase.
+
+    """
+    # Real cepstrum
+    y = np.real(
+        np.fft.ifft(np.log(np.abs(np.fft.fft(time_data, axis=0))), axis=0)
+    )
+
+    # Window in the cepstral domain, like obtaining hilbert transform
+    w = np.zeros(y.shape[0])
+    w[0] = 1
+    w[: len(w) // 2 - 1] = 2
+    # If length is even, nyquist is exactly in the middle
+    if len(w) % 2 == 0:
+        w[len(w) // 2] = 1
+
+    # Windowing in cepstral domain and back to spectral domain
+    return np.exp(np.fft.fft(y * w[..., None], axis=0))
+
+
+def _fractional_latency(
+    td1: np.ndarray, td2: np.ndarray | None = None, polynomial_points: int = 1
+):
+    """This function computes the sub-sample latency between two signals using
+    Zero-Crossing of the analytic (hilbert transformed) correlation function.
+    The number of polynomial points taken around the correlation maximum can be
+    set, although some polynomial orders might fail to compute the root. In
+    that case, integer latency will be returned for the respective channel.
+
+    Parameters
+    ----------
+    td1 : `np.ndaray`
+        Delayed version of the signal.
+    td2 : `np.ndarray`, optional
+        Original version of the signal. If `None` is passed, the latencies
+        are computed between the first channel of td1 and every other.
+        Default: `None`.
+    polynomial_points : int, optional
+        This corresponds to the number of points taken around the root in order
+        to fit a polynomial. Accuracy might improve with higher orders but
+        it could also lead to ill-conditioned polynomials. In case root finding
+        is not successful, integer latency values are returned. Default: 1.
+
+    Returns
+    -------
+    lags : `np.ndarray`
+        Fractional delays. It has shape (channel). In case td2 was `None`, its
+        length is `channels - 1`.
+
+    References
+    ----------
+    - N. S. M. Tamim and F. Ghani, "Hilbert transform of FFT pruned cross
+      correlation function for optimization in time delay estimation," 2009
+      IEEE 9th Malaysia International Conference on Communications (MICC),
+      Kuala Lumpur, Malaysia, 2009, pp. 809-814,
+      doi: 10.1109/MICC.2009.5431382.
+
+    """
+    if td2 is None:
+        td2 = td1[:, 0][..., None]
+        td1 = np.atleast_2d(td1[:, 1:])
+        xcor = correlate(td2, td1)
+    else:
+        xcor = np.zeros((td1.shape[0] + td2.shape[0] - 1, td2.shape[1]))
+        for i in range(td2.shape[1]):
+            xcor[:, i] = correlate(td2[:, i], td1[:, i])
+    inds = _get_fractional_impulse_peak_index(xcor, polynomial_points)
+    return td1.shape[0] - inds - 1

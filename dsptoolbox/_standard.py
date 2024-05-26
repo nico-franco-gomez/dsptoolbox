@@ -8,7 +8,6 @@ from scipy.special import iv as bessel_first_mod
 from ._general_helpers import (
     _pad_trim,
     _compute_number_frames,
-    _get_fractional_impulse_peak_index,
     _wrap_phase,
 )
 from warnings import warn
@@ -33,56 +32,6 @@ def _latency(
             xcorr = correlate(in2[:, i].flatten(), in1[:, i].flatten())
             peak_inds[i] = int(np.argmax(np.abs(xcorr)))
     return in1.shape[0] - peak_inds - 1
-
-
-def _fractional_latency(
-    td1: np.ndarray, td2: np.ndarray | None = None, polynomial_points: int = 1
-):
-    """This function computes the sub-sample latency between two signals using
-    Zero-Crossing of the analytic (hilbert transformed) correlation function.
-    The number of polynomial points taken around the correlation maximum can be
-    set, although some polynomial orders might fail to compute the root. In
-    that case, integer latency will be returned for the respective channel.
-
-    Parameters
-    ----------
-    td1 : `np.ndaray`
-        Delayed version of the signal.
-    td2 : `np.ndarray`, optional
-        Original version of the signal. If `None` is passed, the latencies
-        are computed between the first channel of td1 and every other.
-        Default: `None`.
-    polynomial_points : int, optional
-        This corresponds to the number of points taken around the root in order
-        to fit a polynomial. Accuracy might improve with higher orders but
-        it could also lead to ill-conditioned polynomials. In case root finding
-        is not successful, integer latency values are returned. Default: 1.
-
-    Returns
-    -------
-    lags : `np.ndarray`
-        Fractional delays. It has shape (channel). In case td2 was `None`, its
-        length is `channels - 1`.
-
-    References
-    ----------
-    - N. S. M. Tamim and F. Ghani, "Hilbert transform of FFT pruned cross
-      correlation function for optimization in time delay estimation," 2009
-      IEEE 9th Malaysia International Conference on Communications (MICC),
-      Kuala Lumpur, Malaysia, 2009, pp. 809-814,
-      doi: 10.1109/MICC.2009.5431382.
-
-    """
-    if td2 is None:
-        td2 = td1[:, 0][..., None]
-        td1 = np.atleast_2d(td1[:, 1:])
-        xcor = correlate(td2, td1)
-    else:
-        xcor = np.zeros((td1.shape[0] + td2.shape[0] - 1, td2.shape[1]))
-        for i in range(td2.shape[1]):
-            xcor[:, i] = correlate(td2[:, i], td1[:, i])
-    inds = _get_fractional_impulse_peak_index(xcor, polynomial_points)
-    return td1.shape[0] - inds - 1
 
 
 def _welch(

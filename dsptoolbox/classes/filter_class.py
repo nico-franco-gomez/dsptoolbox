@@ -589,7 +589,7 @@ class Filter:
         coefficients : array-like
             Array with filter coefficients with shape depending on mode:
             - `'ba'`: list(b, a) with b and a of type `np.ndarray`.
-            - `'sos'`: `np.ndarray`
+            - `'sos'`: `np.ndarray` with shape (n_sections, 6).
             - `'zpk'`: tuple(z, p, k) with z, p, k of type `np.ndarray`
             - Return `None` if user decides that ba->sos is too costly. The
               threshold is for filters with order > 500.

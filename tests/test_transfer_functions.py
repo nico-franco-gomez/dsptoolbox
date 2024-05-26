@@ -352,7 +352,7 @@ class TestTransferFunctionsModule:
 
         dsp.transfer_functions.group_delay(ir, method="matlab", smoothing=4)
         dsp.transfer_functions.group_delay(
-            ir, method="direct", smoothing=4, remove_impulse_delay=True
+            ir, method="direct", smoothing=4, remove_ir_latency=True
         )
 
         # Single-channel plausibility check
@@ -429,7 +429,7 @@ class TestTransferFunctionsModule:
         # Only works for some signal types
         dsp.transfer_functions.excess_group_delay(ir)
         dsp.transfer_functions.excess_group_delay(
-            ir, smoothing=3, remove_impulse_delay=True
+            ir, smoothing=3, remove_ir_latency=True
         )
         with pytest.raises(AssertionError):
             s1 = dsp.Signal(None, ir.time_data, ir.sampling_rate_hz)
@@ -464,6 +464,9 @@ class TestTransferFunctionsModule:
 
         assert np.isclose(delay_samples, output, atol=0.4)
 
+        ir = dsp.Signal(join("examples", "data", "rir.wav"), signal_type="rir")
+        assert dsp.transfer_functions.find_ir_latency(ir) > 0
+
     def test_window_frequency_dependent(self):
         s = dsp.Signal(join("examples", "data", "rir.wav"), signal_type="rir")
         f, sp = dsp.transfer_functions.window_frequency_dependent(
@@ -486,7 +489,7 @@ class TestTransferFunctionsModule:
         dsp.transfer_functions.harmonics_from_chirp_ir(
             ir,
             chirp_range_hz=[20, 20e3],
-            chirp_length_seconds=2,
+            chirp_length_s=2,
             n_harmonics=2,
         )
 
@@ -496,21 +499,21 @@ class TestTransferFunctionsModule:
         dsp.transfer_functions.harmonic_distortion_analysis(
             ir,
             chirp_range_hz=[20, 20e3],
-            chirp_length_seconds=2,
+            chirp_length_s=2,
             n_harmonics=7,
         )
 
         harm = dsp.transfer_functions.harmonics_from_chirp_ir(
             ir,
             chirp_range_hz=[20, 20e3],
-            chirp_length_seconds=2,
+            chirp_length_s=2,
             n_harmonics=2,
         )
         harm.insert(0, dsp.transfer_functions.trim_ir(ir)[0])
         dsp.transfer_functions.harmonic_distortion_analysis(
             harm,
             chirp_range_hz=None,
-            chirp_length_seconds=None,
+            chirp_length_s=None,
             n_harmonics=None,
         )
 

@@ -82,7 +82,7 @@ class PhaseLinearizer:
     def set_parameters(
         self,
         delay_increase_percent: float = 100.0,
-        total_length_factor: float = 1.5,
+        total_length_factor: float = 1.0,
     ):
         """Set parameters for the FIR filter.
 
@@ -97,7 +97,7 @@ class PhaseLinearizer:
             Default: 100.
         total_length_factor : float, optional
             The total length of the filter is based on the longest group delay.
-            This factor can augment it. Default: 1.5.
+            This factor can augment it. Default: 1.
 
         Notes
         -----
