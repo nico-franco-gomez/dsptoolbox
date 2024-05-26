@@ -489,7 +489,7 @@ class TestTransferFunctionsModule:
         dsp.transfer_functions.harmonics_from_chirp_ir(
             ir,
             chirp_range_hz=[20, 20e3],
-            chirp_length_seconds=2,
+            chirp_length_s=2,
             n_harmonics=2,
         )
 
@@ -499,21 +499,21 @@ class TestTransferFunctionsModule:
         dsp.transfer_functions.harmonic_distortion_analysis(
             ir,
             chirp_range_hz=[20, 20e3],
-            chirp_length_seconds=2,
+            chirp_length_s=2,
             n_harmonics=7,
         )
 
         harm = dsp.transfer_functions.harmonics_from_chirp_ir(
             ir,
             chirp_range_hz=[20, 20e3],
-            chirp_length_seconds=2,
+            chirp_length_s=2,
             n_harmonics=2,
         )
         harm.insert(0, dsp.transfer_functions.trim_ir(ir)[0])
         dsp.transfer_functions.harmonic_distortion_analysis(
             harm,
             chirp_range_hz=None,
-            chirp_length_seconds=None,
+            chirp_length_s=None,
             n_harmonics=None,
         )
 

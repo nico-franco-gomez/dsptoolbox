@@ -273,7 +273,7 @@ def _warp_time_series(td: np.ndarray, warping_factor: float):
 
 def _get_harmonic_times(
     chirp_range_hz: list,
-    chirp_length_seconds: float,
+    chirp_length_s: float,
     n_harmonics: int,
     time_offset_seconds: float = 0.0,
 ) -> np.ndarray:
@@ -286,7 +286,7 @@ def _get_harmonic_times(
     ----------
     chirp_range_hz : list of length 2
         The frequency range of the chirp.
-    chirp_length_seconds : float
+    chirp_length_s : float
         Length of chirp in seconds (without zero-padding).
     n_harmonics : int
         Number of harmonics to analyze.
@@ -304,7 +304,7 @@ def _get_harmonic_times(
     - [1]: Weinzierl, S. Handbuch der Audiotechnik. Chapter 21.
 
     """
-    rate = _get_chirp_rate(chirp_range_hz, chirp_length_seconds)
+    rate = _get_chirp_rate(chirp_range_hz, chirp_length_s)
     return time_offset_seconds - np.log2(np.arange(n_harmonics) + 2) / rate
 
 

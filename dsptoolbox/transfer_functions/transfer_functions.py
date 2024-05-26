@@ -1477,7 +1477,7 @@ def find_ir_latency(ir: Signal) -> np.ndarray:
 def harmonics_from_chirp_ir(
     ir: Signal,
     chirp_range_hz: list,
-    chirp_length_seconds: float,
+    chirp_length_s: float,
     n_harmonics: int = 5,
     offset_percentage: float = 0.05,
 ) -> list[Signal]:
@@ -1491,7 +1491,7 @@ def harmonics_from_chirp_ir(
         chirp.
     chirp_range_hz : list of length 2
         The frequency range of the chirp.
-    chirp_length_seconds : float
+    chirp_length_s : float
         Length of chirp in seconds (without zero-padding).
     n_harmonics : int, optional
         Number of harmonics to analyze. Default: 5.
@@ -1532,9 +1532,7 @@ def harmonics_from_chirp_ir(
     td = np.roll(td, offsets, axis=0)
 
     # Get times of each harmonic
-    ts = _get_harmonic_times(
-        chirp_range_hz, chirp_length_seconds, n_harmonics + 1
-    )
+    ts = _get_harmonic_times(chirp_range_hz, chirp_length_s, n_harmonics + 1)
     time_harmonics_samples = len(td) + (ts * ir.sampling_rate_hz + 0.5).astype(
         int
     )
