@@ -14,6 +14,22 @@ adheres to `Semantic Versioning <http://semver.org/spec/v2.0.0.html>`_.
 - Validation for results from tests in every module (so far many tests are
   only regarding functionality)
 
+`0.3.8 <https://pypi.org/project/dsptoolbox/0.3.8>`_ - 
+---------------------
+
+Misc
+~~~~~~~
+- renamed paramater `remove_impulse_delay` to `remove_ir_latency`
+- changed default values in `PhaseLinearizer`
+- general documentation improvements
+
+Bugfix
+~~~~~~
+- `find_ir_latency` now searches for the latency in comparison to the minimum
+  phase ir
+- `harmonic_distortion_analysis` was fixed so that it can succesfully trim
+  the fundamental ir
+
 `0.3.7 <https://pypi.org/project/dsptoolbox/0.3.7>`_ - 
 ---------------------
 
