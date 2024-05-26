@@ -11,8 +11,6 @@ from ._transfer_functions import (
     _spectral_deconvolve,
     _window_this_ir_tukey,
     _window_this_ir,
-    _min_phase_ir_from_real_cepstrum,
-    _get_minimum_phase_spectrum_from_real_cepstrum,
     _warp_time_series,
     _get_harmonic_times,
     _trim_ir,
@@ -20,12 +18,13 @@ from ._transfer_functions import (
 from ..classes import Signal, Filter
 from ..classes._filter import _group_delay_filter
 from .._general_helpers import (
-    _remove_impulse_delay_from_phase,
+    _remove_ir_latency_from_phase,
+    _min_phase_ir_from_real_cepstrum,
+    _get_minimum_phase_spectrum_from_real_cepstrum,
     _find_frequencies_above_threshold,
     _fractional_octave_smoothing,
     _correct_for_real_phase_spectrum,
     _wrap_phase,
-    _get_fractional_impulse_peak_index,
 )
 from .._standard import (
     _welch,
@@ -33,7 +32,12 @@ from .._standard import (
     _group_delay_direct,
     _pad_trim,
 )
-from ..standard_functions import fractional_delay, merge_signals, normalize
+from ..standard_functions import (
+    fractional_delay,
+    merge_signals,
+    normalize,
+    latency,
+)
 from ..generators import dirac
 from ..filterbanks import linkwitz_riley_crossovers
 from ..room_acoustics._room_acoustics import _find_ir_start
@@ -795,7 +799,7 @@ def group_delay(
     signal: Signal,
     method="matlab",
     smoothing: int = 0,
-    remove_impulse_delay: bool = False,
+    remove_ir_latency: bool = False,
 ) -> tuple[np.ndarray, np.ndarray]:
     """Computes and returns group delay.
 
@@ -811,7 +815,7 @@ def group_delay(
     smoothing : int, optional
         Octave fraction by which to apply smoothing. `0` avoids any smoothing
         of the group delay. Default: `0`.
-    remove_impulse_delay : bool, optional
+    remove_ir_latency : bool, optional
         If the signal is of type `"ir"` or `"rir"`, the impulse delay can be
         removed. Default: `False`.
 
@@ -836,7 +840,7 @@ def group_delay(
         signal._spectrum_parameters = spec_parameters
         group_delays = np.zeros((sp.shape[0], sp.shape[1]))
 
-        if remove_impulse_delay:
+        if remove_ir_latency:
             assert signal.signal_type in (
                 "rir",
                 "ir",
@@ -844,7 +848,7 @@ def group_delay(
                 f"{signal.signal_type} is not a valid signal type. Use ir "
                 + "or rir"
             )
-            sp = _remove_impulse_delay_from_phase(
+            sp = _remove_ir_latency_from_phase(
                 f, np.angle(sp), signal.time_data, signal.sampling_rate_hz
             )
         for n in range(signal.number_of_channels):
@@ -859,7 +863,7 @@ def group_delay(
 
         for n in range(signal.number_of_channels):
             b = signal.time_data[:, n]
-            if remove_impulse_delay:
+            if remove_ir_latency:
                 b = b[max(int(np.argmax(np.abs(b))) - 1, 0) :]
             a = [1]
             _, group_delays[:, n] = _group_delay_filter(
@@ -991,7 +995,7 @@ def excess_group_delay(
     signal: Signal,
     method: str = "real cepstrum",
     smoothing: int = 0,
-    remove_impulse_delay: bool = False,
+    remove_ir_latency: bool = False,
 ) -> tuple[np.ndarray, np.ndarray]:
     """Computes excess group delay of an IR.
 
@@ -1005,7 +1009,7 @@ def excess_group_delay(
     smoothing : int, optional
         Octave fraction by which to apply smoothing. `0` avoids any smoothing
         of the group delay. Default: `0`.
-    remove_impulse_delay : bool, optional
+    remove_ir_latency : bool, optional
         If the signal is of type `"ir"` or `"rir"`, the impulse delay can be
         removed. Default: `False`.
 
@@ -1027,7 +1031,7 @@ def excess_group_delay(
         signal,
         smoothing=0,
         method="direct",
-        remove_impulse_delay=remove_impulse_delay,
+        remove_ir_latency=remove_ir_latency,
     )
     ex_gd = gd - min_gd
 
@@ -1451,9 +1455,8 @@ def warp_ir(
 
 
 def find_ir_latency(ir: Signal) -> np.ndarray:
-    """Find the subsample maximum of each channel of the IR using the root of
-    the analytical function. This value can be associated with the latency
-    of the impulse response.
+    """Find the subsample maximum of each channel of the IR using the its
+    minimum phase equivalent.
 
     Parameters
     ----------
@@ -1467,7 +1470,8 @@ def find_ir_latency(ir: Signal) -> np.ndarray:
 
     """
     assert ir.signal_type in ("rir", "ir"), "Only valid for rir or ir"
-    return _get_fractional_impulse_peak_index(ir.time_data)
+    min_ir = min_phase_ir(ir)
+    return latency(ir, min_ir, 1)
 
 
 def harmonics_from_chirp_ir(

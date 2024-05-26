@@ -28,7 +28,6 @@ from ._standard import (
     _indices_above_threshold_dbfs,
     _detrend,
     _rms,
-    _fractional_latency,
     _fractional_delay_filter,
 )
 from ._general_helpers import (
@@ -37,6 +36,7 @@ from ._general_helpers import (
     _fade,
     _check_format_in_path,
     _get_smoothing_factor_ema,
+    _fractional_latency,
 )
 
 
