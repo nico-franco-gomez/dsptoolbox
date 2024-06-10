@@ -13,6 +13,7 @@ from scipy.interpolate import interp1d
 from scipy.linalg import toeplitz as toeplitz_scipy
 from os import sep
 from warnings import warn
+from scipy.fft import next_fast_len
 
 
 def _find_nearest(points, vector) -> np.ndarray:
@@ -1245,6 +1246,7 @@ def _remove_ir_latency_from_phase(
     phase: np.ndarray,
     time_data: np.ndarray,
     sampling_rate_hz: int,
+    padding_factor: int,
 ):
     """
     Remove the impulse delay from a phase response.
@@ -1259,6 +1261,8 @@ def _remove_ir_latency_from_phase(
         Corresponding time signal.
     sampling_rate_hz : int
         Sample rate.
+    padding_factor : int
+        Padding factor used to obtain the minimum phase equivalent.
 
     Returns
     -------
@@ -1266,12 +1270,14 @@ def _remove_ir_latency_from_phase(
         New phase response without impulse delay.
 
     """
-    min_ir = _min_phase_ir_from_real_cepstrum(time_data)
+    min_ir = _min_phase_ir_from_real_cepstrum(time_data, padding_factor)
     delays_s = _fractional_latency(time_data, min_ir) / sampling_rate_hz
     return _wrap_phase(phase + 2 * np.pi * freqs[:, None] * delays_s[None, :])
 
 
-def _min_phase_ir_from_real_cepstrum(time_data: np.ndarray):
+def _min_phase_ir_from_real_cepstrum(
+    time_data: np.ndarray, padding_factor: int
+):
     """Returns minimum-phase version of a time series using the real cepstrum
     method.
 
@@ -1280,6 +1286,10 @@ def _min_phase_ir_from_real_cepstrum(time_data: np.ndarray):
     time_data : `np.ndarray`
         Time series to compute the minimum phase version from. It is assumed
         to have shape (time samples, channels).
+    padding_factor : int, optional
+        Zero-padding to a length corresponding to
+        `current_length * padding_factor` can be done, in order to avoid time
+        aliasing errors. Default: 8.
 
     Returns
     -------
@@ -1289,12 +1299,17 @@ def _min_phase_ir_from_real_cepstrum(time_data: np.ndarray):
     """
     return np.real(
         np.fft.ifft(
-            _get_minimum_phase_spectrum_from_real_cepstrum(time_data), axis=0
+            _get_minimum_phase_spectrum_from_real_cepstrum(
+                time_data, padding_factor
+            ),
+            axis=0,
         )
     )
 
 
-def _get_minimum_phase_spectrum_from_real_cepstrum(time_data: np.ndarray):
+def _get_minimum_phase_spectrum_from_real_cepstrum(
+    time_data: np.ndarray, padding_factor: int
+):
     """Returns minimum-phase version of a time series using the real cepstrum
     method.
 
@@ -1303,6 +1318,10 @@ def _get_minimum_phase_spectrum_from_real_cepstrum(time_data: np.ndarray):
     time_data : `np.ndarray`
         Time series to compute the minimum phase version from. It is assumed
         to have shape (time samples, channels).
+    padding_factor : int, optional
+        Zero-padding to a length corresponding to
+        `current_length * padding_factor` can be done, in order to avoid time
+        aliasing errors. Default: 8.
 
     Returns
     -------
@@ -1310,9 +1329,12 @@ def _get_minimum_phase_spectrum_from_real_cepstrum(time_data: np.ndarray):
         New spectrum with minimum phase.
 
     """
+    fft_length = next_fast_len(time_data.shape[0] * padding_factor)
     # Real cepstrum
     y = np.real(
-        np.fft.ifft(np.log(np.abs(np.fft.fft(time_data, axis=0))), axis=0)
+        np.fft.ifft(
+            np.log(np.abs(np.fft.fft(time_data, n=fft_length, axis=0))), axis=0
+        )
     )
 
     # Window in the cepstral domain, like obtaining hilbert transform
