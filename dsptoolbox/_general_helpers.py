@@ -309,7 +309,7 @@ def _pad_trim(
 
 
 def _compute_number_frames(
-    window_length: int, step: int, signal_length: int
+    window_length: int, step: int, signal_length: int, zero_padding: bool
 ) -> tuple[int, int]:
     """Gives back the number of frames that will be computed.
 
@@ -321,6 +321,10 @@ def _compute_number_frames(
         Step size in samples. It is defined as `window_length - overlap`.
     signal_length : int
         Total signal length.
+    zero_padding : bool
+        When `True`, it is assumed that the signal will be zero padded in the
+        end to make use of all time samples. `False` will effectively discard
+        the blocks where zero-padding would be needed.
 
     Returns
     -------
@@ -330,8 +334,12 @@ def _compute_number_frames(
         Number of samples with which the signal should be padded.
 
     """
-    n_frames = int(np.floor(signal_length / step)) + 1
-    padding_samples = window_length - int(signal_length % step)
+    if zero_padding:
+        n_frames = int(np.ceil(signal_length / step))
+        padding_samples = window_length - int(signal_length % step)
+    else:
+        padding_samples = 0
+        n_frames = int(np.ceil((signal_length - window_length) / step))
     return n_frames, padding_samples
 
 

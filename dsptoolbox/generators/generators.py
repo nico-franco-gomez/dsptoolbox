@@ -21,7 +21,7 @@ def noise(
     sampling_rate_hz: int | None = None,
     peak_level_dbfs: float = -10.0,
     number_of_channels: int = 1,
-    fade: str = "log",
+    fade: str | None = "log",
     padding_end_seconds: float = 0.0,
 ) -> Signal:
     """Creates a noise signal.
@@ -140,7 +140,7 @@ def chirp(
     sampling_rate_hz: int | None = None,
     peak_level_dbfs: float = -10.0,
     number_of_channels: int = 1,
-    fade: str = "log",
+    fade: str | None = "log",
     phase_offset: float = 0.0,
     padding_end_seconds: float = 0.0,
 ) -> Signal:
@@ -309,7 +309,7 @@ def harmonic(
     peak_level_dbfs: float = -10.0,
     number_of_channels: int = 1,
     uncorrelated: bool = False,
-    fade: str = "log",
+    fade: str | None = "log",
     padding_end_seconds: float = 0.0,
 ) -> Signal:
     """Creates a multi-channel harmonic (sine) tone.
@@ -401,7 +401,7 @@ def oscillator(
     peak_level_dbfs: float = -10.0,
     number_of_channels: int = 1,
     uncorrelated: bool = False,
-    fade: str = "log",
+    fade: str | None = "log",
     padding_end_seconds: float = 0.0,
 ) -> Signal:
     """Creates a non-aliased, multi-channel wave tone.

@@ -148,7 +148,7 @@ def _fw_snr_seg_per_channel(
     length_signal = len(x)
     length_window = len(time_window)
     n_frames, pad_samples = _compute_number_frames(
-        length_window, step_samples, length_signal
+        length_window, step_samples, length_signal, True
     )
     x = _pad_trim(x, length_signal + pad_samples)
     xhat = _pad_trim(xhat, length_signal + pad_samples)

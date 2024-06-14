@@ -859,7 +859,7 @@ def _get_framed_signal(
     td: np.ndarray,
     window_length_samples: int,
     step_size: int,
-    keep_last_frame: bool = True,
+    keep_last_frames: bool = True,
 ) -> np.ndarray:
     """This method computes a framed version of a signal and returns it.
 
@@ -871,10 +871,9 @@ def _get_framed_signal(
         Window length in samples.
     step_size : int
         Step size (also called hop length) in samples.
-    keep_last_frame : bool, optional
-        When `True`, the last frame (probably with padded zeroes) is kept.
-        Otherwise, it is not returned and hence the signal is cropped.
-        Default: `True`.
+    keep_last_frames : bool, optional
+        When `True`, the last frames (probably with zero-padding) are kept.
+        Otherwise, no frames with zero padding are included. Default: `True`.
 
     Returns
     -------
@@ -890,7 +889,10 @@ def _get_framed_signal(
 
     # Start Parameters
     n_frames, padding_samp = _compute_number_frames(
-        window_length_samples, step_size, td.shape[0]
+        window_length_samples,
+        step_size,
+        td.shape[0],
+        zero_padding=keep_last_frames,
     )
     td = _pad_trim(td, td.shape[0] + padding_samp)
     td_framed = np.zeros(
@@ -905,8 +907,6 @@ def _get_framed_signal(
         ].copy()
         start += step_size
 
-    if not keep_last_frame:
-        td_framed = td_framed[:, :-1, :]
     return td_framed
 
 
