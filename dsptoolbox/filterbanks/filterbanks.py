@@ -4,7 +4,7 @@ object
 """
 
 import numpy as np
-from scipy.signal import windows, bilinear_zpk
+from scipy.signal import windows, bilinear_zpk, freqz_zpk
 import warnings
 from .. import (
     Filter,
@@ -529,3 +529,44 @@ def convert_into_lattice_filter(filt: Filter) -> LatticeLadderFilter:
     else:
         raise ValueError(f"Unsupported filter type: {filt.filter_type}")
     return new_filt
+
+
+def pinking_filter(frequency_0_db: float, sampling_rate_hz: int) -> Filter:
+    """Return a filter with approximately -3 dB/octave roll-off. Usually used
+    to turn white noise into pink noise. This is designed as an IIR filter
+    with 4 zeros and 5 poles and implemented with second-order sections. See
+    notes for details.
+
+    Parameters
+    ----------
+    frequency_0_db : float
+        Frequency [Hz] that should have 0 dB amplification by the filter.
+    sampling_rate_hz : int
+        Sampling rate in Hz.
+
+    Returns
+    -------
+    `Filter`
+        IIR filter.
+
+    Notes
+    -----
+    - This filter approximates a -3 dB/octave roll-off, though its frequency
+      response might be slightly distorted for very low or high frequencies.
+    - The zeros and poles were taken from
+    https://dsp.stackexchange.com/questions/27520/filter-to-add-3db-per-octave
+
+    """
+    assert (
+        frequency_0_db < sampling_rate_hz / 2
+    ), "Frequency should not be above nyquist"
+    z = np.array([0.698258, 0.937174, 0.985792, 0.996652])
+    p = np.array([0.378332, 0.862595, 0.970548, 0.993022, 0.998655])
+    k = 1
+
+    # Obtain desired gain from response at frequency point
+    h = freqz_zpk(z, p, k, [frequency_0_db], fs=sampling_rate_hz)[1]
+    k /= np.abs(h)
+    return Filter(
+        "other", {"zpk": [z, p, k]}, sampling_rate_hz=sampling_rate_hz
+    )

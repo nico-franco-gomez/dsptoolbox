@@ -30,6 +30,7 @@ Other:
   transform.
 - `convert_into_lattice_filter()`: Turns a conventional filter into its
   lattice/ladder representation.
+- `pinking_filter()`: Get a -3 dB/octave filter.
 
 """
 
@@ -42,6 +43,7 @@ from .filterbanks import (
     weightning_filter,
     complementary_fir_filter,
     convert_into_lattice_filter,
+    pinking_filter,
 )
 
 from ..classes._lattice_ladder_filter import LatticeLadderFilter
@@ -60,4 +62,5 @@ __all__ = [
     "LatticeLadderFilter",
     "PhaseLinearizer",
     "StateVariableFilter",
+    "pinking_filter",
 ]
