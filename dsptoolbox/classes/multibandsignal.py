@@ -331,7 +331,12 @@ class MultiBandSignal:
                         self.bands[n].time_data[:, channel]
                         + self.bands[n].time_data_imaginary[:, channel] * 1j
                     )
-            sig = Signal(None, new_time_data, self.sampling_rate_hz)
+            sig = Signal(
+                None,
+                new_time_data,
+                self.sampling_rate_hz,
+                signal_type=self.signal_type,
+            )
             return sig
         else:
             new_time_data = []
