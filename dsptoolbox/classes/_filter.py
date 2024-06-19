@@ -89,8 +89,8 @@ def _biquad_coefficients(
     sn = np.sin(Omega)
     cs = np.cos(Omega)
     alpha = sn / (2.0 * q)
-    a = np.ones(3, dtype=np.float64)
-    b = np.ones(3, dtype=np.float64)
+    a = np.ones(3)
+    b = np.ones(3)
     if eq_type == 0:  # Peaking
         b[0] = 1 + alpha * A
         b[1] = -2 * cs
