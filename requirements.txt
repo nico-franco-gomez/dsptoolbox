@@ -1,12 +1,12 @@
 # use:
-scipy>=1.12
+scipy~=1.12
 numpy~=2.0
-soundfile>=0.12
-sounddevice>=0.4
+soundfile~=0.12
+sounddevice~=0.4
 
 # plotting:
-matplotlib>=3.8
-seaborn>=0.12
+matplotlib~=3.8
+seaborn~=0.12
 
 # dev:
 hatch # build
