@@ -511,7 +511,7 @@ def _csm(
             number_of_channels,
             number_of_channels,
         ),
-        dtype="cfloat",
+        dtype=np.complex128,
     )
     for ind1 in range(number_of_channels):
         for ind2 in range(ind1, number_of_channels):

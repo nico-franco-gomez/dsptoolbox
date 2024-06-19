@@ -419,7 +419,7 @@ def compute_transfer_function(
     )
     tf = np.zeros(
         (window_length_samples // 2 + 1, output.number_of_channels),
-        dtype="cfloat",
+        dtype=np.complex128,
     )
     if multichannel:
         G_xx = _welch(
@@ -710,7 +710,7 @@ def lin_phase_from_mag(
     spectrum_has_nyquist = original_length_time_data % 2 == 0
 
     # New spectrum
-    lin_spectrum = np.empty(spectrum.shape, dtype="cfloat")
+    lin_spectrum = np.empty(spectrum.shape, dtype=np.complex128)
     for n in range(spectrum.shape[1]):
         if check_causality or minimum_group_delay:
             min_phase = _minimum_phase(
@@ -1333,7 +1333,7 @@ def window_frequency_dependent(
     if f[0] == f[1]:
         f[0] = 0
 
-    spec = np.zeros((len(f), td.shape[1]), dtype="cfloat")
+    spec = np.zeros((len(f), td.shape[1]), dtype=np.complex128)
 
     half = (td.shape[0] - 1) / 2
     alpha_factor = np.log(4) ** 0.5 * half

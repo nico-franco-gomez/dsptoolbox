@@ -668,7 +668,7 @@ def cwt(
     td = signal.time_data[:, channel]
 
     scalogram = np.zeros(
-        (len(frequencies), td.shape[0], td.shape[1]), dtype="cfloat"
+        (len(frequencies), td.shape[0], td.shape[1]), dtype=np.complex128
     )
 
     for ind_f, f in enumerate(frequencies):
@@ -819,12 +819,12 @@ def vqt(
     octs = octaves[1] - octaves[0] + 1
     cqt = np.zeros(
         (0, signal.time_data.shape[0], signal.number_of_channels),
-        dtype="cfloat",
+        dtype=np.complex128,
     )
 
     for oc in np.arange(octs):
         # Accumulator for octave
-        acc = np.zeros((0, td.shape[0], td.shape[1]), dtype="cfloat")
+        acc = np.zeros((0, td.shape[0], td.shape[1]), dtype=np.complex128)
 
         for k in kernels:
             out = oaconvolve(td, k[..., None], mode="same", axes=0)
