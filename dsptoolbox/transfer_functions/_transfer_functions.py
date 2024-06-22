@@ -4,6 +4,7 @@ Backend for transfer functions methods
 
 import numpy as np
 from scipy.signal import get_window, lfilter, hilbert
+from scipy.fft import next_fast_len
 from scipy.stats import pearsonr
 from warnings import warn
 from .._general_helpers import (
@@ -337,9 +338,17 @@ def _trim_ir(
     impulse_index -= start_index
 
     # ETC (from impulse until end)
+
     etc = 20 * np.log10(
         np.clip(
-            np.abs(hilbert(time_data[start_index + impulse_index :])),
+            np.abs(
+                hilbert(
+                    time_data[start_index + impulse_index :],
+                    N=next_fast_len(
+                        len(time_data) - start_index - impulse_index, False
+                    ),
+                )
+            ),
             a_min=1e-50,
             a_max=None,
         )

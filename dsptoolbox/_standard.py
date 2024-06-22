@@ -3,7 +3,7 @@ Backend for standard functions
 """
 
 import numpy as np
-from scipy.signal import correlate, check_COLA, windows, hilbert, convolve
+from scipy.signal import correlate, check_COLA, windows, hilbert
 from scipy.special import iv as bessel_first_mod
 from ._general_helpers import (
     _pad_trim,

@@ -787,12 +787,17 @@ def min_phase_ir(
             new_time_data, padding_factor
         )
     else:
+        length_fft = next_fast_length_fft(
+            max(
+                new_time_data.shape[0] * padding_factor,
+                new_time_data.shape[0],
+            ),
+            False,
+        )
         for ch in range(new_time_data.shape[1]):
             new_time_data[:, ch] = min_phase_scipy(
-                sig.time_data[:, ch],
-                method="hilbert",
-                n_fft=new_time_data.shape[0] * padding_factor,
-            )
+                sig.time_data[:, ch], method="hilbert", n_fft=length_fft
+            )[: new_time_data.shape[0]]
 
     min_phase_sig = sig.copy()
     min_phase_sig.time_data = new_time_data[: len(sig)]
@@ -841,7 +846,7 @@ def group_delay(
     ), f"{method} is not valid. Use direct or matlab"
 
     length_time_signal = (
-        next_fast_length_fft(signal.time_data.shape[0] * 8)
+        next_fast_length_fft(signal.time_data.shape[0] * 8, True)
         if remove_ir_latency
         else signal.time_data.shape[0]
     )
@@ -852,7 +857,7 @@ def group_delay(
     if method == "direct":
         spec_parameters = signal._spectrum_parameters
         signal.set_spectrum_parameters("standard")
-        sp = np.fft.rfft(td, axis=0)
+        sp = rfft_scipy(td, axis=0)
         signal._spectrum_parameters = spec_parameters
 
         if remove_ir_latency:
@@ -869,7 +874,6 @@ def group_delay(
         for n in range(signal.number_of_channels):
             group_delays[:, n] = _group_delay_direct(sp[:, n], f[1] - f[0])
     else:
-        td = _pad_trim(signal.time_data, length_time_signal)
         for n in range(signal.number_of_channels):
             b = td[:, n]
             if remove_ir_latency:

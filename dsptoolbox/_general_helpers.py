@@ -9,6 +9,7 @@ from scipy.signal import (
     hilbert,
     correlate,
 )
+from scipy.fft import fft, ifft
 from scipy.interpolate import interp1d
 from scipy.linalg import toeplitz as toeplitz_scipy
 from os import sep
@@ -1337,24 +1338,24 @@ def _get_minimum_phase_spectrum_from_real_cepstrum(
         New spectrum with minimum phase.
 
     """
-    fft_length = next_fast_len(time_data.shape[0] * padding_factor)
+    fft_length = next_fast_len(
+        max(time_data.shape[0] * padding_factor, time_data.shape[0])
+    )
     # Real cepstrum
     y = np.real(
-        np.fft.ifft(
-            np.log(np.abs(np.fft.fft(time_data, n=fft_length, axis=0))), axis=0
-        )
+        ifft(np.log(np.abs(fft(time_data, n=fft_length, axis=0))), axis=0)
     )
 
     # Window in the cepstral domain, like obtaining hilbert transform
     w = np.zeros(y.shape[0])
+    w[1 : len(w) // 2 - 1] = 2
     w[0] = 1
-    w[: len(w) // 2 - 1] = 2
     # If length is even, nyquist is exactly in the middle
     if len(w) % 2 == 0:
         w[len(w) // 2] = 1
 
     # Windowing in cepstral domain and back to spectral domain
-    return np.exp(np.fft.fft(y * w[..., None], axis=0))
+    return np.exp(fft(y * w[..., None], axis=0))
 
 
 def _fractional_latency(
