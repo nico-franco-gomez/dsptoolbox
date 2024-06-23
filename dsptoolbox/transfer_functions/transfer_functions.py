@@ -1325,6 +1325,10 @@ def window_frequency_dependent(
 
     td = ir.time_data[:, channel]
 
+    # Optimal length for FFT
+    fast_length = next_fast_length_fft(td.shape[0], True)
+    td = np.pad(td, ((0, fast_length - td.shape[0]), (0, 0)))
+
     f = np.fft.rfftfreq(td.shape[0], 1 / fs)
     inds = (f >= frequency_range_hz[0]) & (f <= frequency_range_hz[1])
     inds_f = np.arange(len(f))[inds]
@@ -1342,10 +1346,6 @@ def window_frequency_dependent(
     half = (td.shape[0] - 1) / 2
     alpha_factor = np.log(4) ** 0.5 * half
     ind_max = np.argmax(np.abs(td), axis=0)
-
-    # Optimal length for FFT
-    fast_length = next_fast_length_fft(td.shape[0], True)
-    td = np.pad(td, ((0, fast_length - td.shape[0]), (0, 0)))
 
     # Construct window vectors
     n = np.zeros_like(td)
@@ -1378,12 +1378,13 @@ def window_frequency_dependent(
         def scaling_func(window: np.ndarray):
             return 1
 
+    # Precompute window factors:
+    # Alpha such that window is exactly 0.5 after the number of
+    # required samples for each frequency
+    n = -0.5 * (n / half) ** 2
+    alpha = (alpha_factor / cycles_per_freq_samples) ** 2
     for ind, ind_f in enumerate(inds_f):
-        # Alpha such that window is exactly 0.5 after the number of
-        # required samples for each frequency
-        alpha = alpha_factor / cycles_per_freq_samples[ind]
-        w = np.exp(-0.5 * (alpha * n / half) ** 2)
-
+        w = np.exp(alpha[ind] * n)
         spec[ind, :] = rfft_scipy(w * td, axis=0)[ind_f] * scaling_func(w)
     return f, spec
 
