@@ -5,6 +5,8 @@ Includes some basic plotting templates
 import matplotlib.pyplot as plt
 from matplotlib.ticker import ScalarFormatter
 from matplotlib import colormaps as cm
+from matplotlib.figure import Figure
+from matplotlib.axes import Axes
 from numpy import array, max, min, arange
 
 try:
@@ -33,7 +35,7 @@ def general_plot(
     info_box: str | None = None,
     tight_layout: bool = True,
     returns: bool = False,
-):
+) -> tuple[Figure, Axes] | None:
     """Generic plot template.
 
     Parameters
@@ -129,7 +131,7 @@ def general_subplots_line(
     range_x=None,
     range_y=None,
     returns: bool = False,
-):
+) -> tuple[Figure, list[Axes]] | None:
     """Generic plot template with subplots in one column or row.
 
     Parameters
@@ -229,7 +231,7 @@ def general_matrix_plot(
     cmap: str = "magma",
     lower_origin: bool = True,
     returns: bool = False,
-):
+) -> tuple[Figure, Axes] | None:
     """Generic plot template for a matrix's heatmap.
 
     Parameters

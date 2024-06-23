@@ -835,7 +835,7 @@ class GammaToneFilterBank(FilterBank):
             signal.number_of_channels,
         )
         # (bands, time samples, channels)
-        time = np.empty(shape, dtype="cfloat")
+        time = np.empty(shape, dtype=np.complex128)
         for ind, b in enumerate(signal.bands):
             time[ind, :, :] = b.time_data + b.time_data_imaginary * 1j
 

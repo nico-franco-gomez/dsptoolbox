@@ -74,7 +74,8 @@ class TestBeamformingModule:
         k = np.array([1000, 1200]) * np.pi * 2 / 343
         rt0 = g.get_distances_to_point(r0)
         h = np.zeros(
-            (len(k), ma.number_of_points, g.number_of_points), dtype="cfloat"
+            (len(k), ma.number_of_points, g.number_of_points),
+            dtype=np.complex128,
         )
         N = ma.number_of_points
         for i0, kn in enumerate(k):

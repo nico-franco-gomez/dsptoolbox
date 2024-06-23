@@ -1,4 +1,4 @@
-from numpy import zeros, array, unique, atleast_1d, ndarray
+from numpy import zeros, array, unique, atleast_1d, ndarray, complex128
 from copy import deepcopy
 from pickle import dump, HIGHEST_PROTOCOL
 from warnings import warn
@@ -259,7 +259,7 @@ class MultiBandSignal:
             for n in range(1, len(self.bands)):
                 initial += self.bands[n].time_data
         else:
-            initial = zeros(self.bands[0].time_data.shape, dtype="cfloat")
+            initial = zeros(self.bands[0].time_data.shape, dtype=complex128)
             for n in range(len(self.bands)):
                 initial += self.bands[n].time_data
                 initial += self.bands[n].time_data_imaginary * 1j
@@ -324,14 +324,19 @@ class MultiBandSignal:
             else:
                 new_time_data = zeros(
                     (self.bands[0].time_data.shape[0], len(self.bands)),
-                    dtype="cfloat",
+                    dtype=complex128,
                 )
                 for n in range(len(self.bands)):
                     new_time_data[:, n] = (
                         self.bands[n].time_data[:, channel]
                         + self.bands[n].time_data_imaginary[:, channel] * 1j
                     )
-            sig = Signal(None, new_time_data, self.sampling_rate_hz)
+            sig = Signal(
+                None,
+                new_time_data,
+                self.sampling_rate_hz,
+                signal_type=self.signal_type,
+            )
             return sig
         else:
             new_time_data = []
@@ -380,7 +385,7 @@ class MultiBandSignal:
                     self.number_of_bands,
                     self.number_of_channels,
                 ),
-                dtype=("cfloat" if complex_data else "float"),
+                dtype=(complex128 if complex_data else "float"),
             )
             for ind, b in enumerate(self.bands):
                 td[:, ind, :] = b.time_data + (

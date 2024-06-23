@@ -1243,7 +1243,7 @@ class Signal:
         sp = np.angle(sp)
         if remove_ir_latency:
             sp = _remove_ir_latency_from_phase(
-                f, sp, self.time_data, self.sampling_rate_hz
+                f, sp, self.time_data, self.sampling_rate_hz, 8
             )
 
         gd = np.zeros((len(f), self.number_of_channels))
@@ -1421,7 +1421,7 @@ class Signal:
                 "ir",
             ), f"{self.signal_type} is not valid, use rir or ir"
             ph = _remove_ir_latency_from_phase(
-                f, ph, self.time_data, self.sampling_rate_hz
+                f, ph, self.time_data, self.sampling_rate_hz, 8
             )
 
         if smoothing != 0:

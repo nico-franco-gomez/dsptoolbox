@@ -145,7 +145,7 @@ def _complex_mode_identification(
     if n_rir == 1:
         return np.abs(spectra.squeeze()) ** 2
 
-    H = np.zeros((n_rir, n_rir, spectra.shape[0]), dtype="cfloat")
+    H = np.zeros((n_rir, n_rir, spectra.shape[0]), dtype=np.complex128)
     for n in range(n_rir):
         H[0, n, :] = spectra[:, n]
         H[n, 0, :] = spectra[:, n]
@@ -638,7 +638,7 @@ class ShoeboxRoom(Room):
         # Maximum order
         max_mode_order += 1
 
-        p = np.zeros(len(omega), dtype="cfloat")
+        p = np.zeros(len(omega), dtype=np.complex128)
         counter = 0
         modes = np.zeros((max_mode_order**3, 4))
 

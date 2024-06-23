@@ -89,8 +89,8 @@ def _biquad_coefficients(
     sn = np.sin(Omega)
     cs = np.cos(Omega)
     alpha = sn / (2.0 * q)
-    a = np.ones(3, dtype=np.float32)
-    b = np.ones(3, dtype=np.float32)
+    a = np.ones(3)
+    b = np.ones(3)
     if eq_type == 0:  # Peaking
         b[0] = 1 + alpha * A
         b[1] = -2 * cs
@@ -288,7 +288,7 @@ def _filter_on_signal(
                 "Filter output is complex. Imaginary part is saved in "
                 + "Signal as time_data_imaginary"
             )
-        new_time_data = new_time_data.astype("cfloat")
+        new_time_data = new_time_data.astype(np.complex128)
 
     # Create new signal
     new_time_data[:, channels] = y
@@ -395,7 +395,7 @@ def _filter_on_signal_ba(
                 "Filter output is complex. Imaginary part is saved in "
                 + "Signal as time_data_imaginary"
             )
-        new_time_data = new_time_data.astype("cfloat")
+        new_time_data = new_time_data.astype(np.complex128)
 
     # Create new signal
     new_time_data[:, channels] = y

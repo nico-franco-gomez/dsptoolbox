@@ -24,7 +24,6 @@ from ._standard import (
     _latency,
     _center_frequencies_fractional_octaves_iec,
     _exact_center_frequencies_fractional_octaves,
-    # _kaiser_window_beta,
     _indices_above_threshold_dbfs,
     _detrend,
     _rms,

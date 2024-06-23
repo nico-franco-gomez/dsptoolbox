@@ -194,6 +194,18 @@ class TestFilterbanksModule:
         f.plot_group_delay(4096)
         f.plot_phase(4096)
 
+    def test_pinking_filter(self):
+        # Only functionality
+        fs_hz = 44100
+        n = dsp.generators.noise(sampling_rate_hz=fs_hz)
+        n.set_spectrum_parameters(window_length_samples=1024)
+        f = dsp.filterbanks.pinking_filter(3000, fs_hz)
+        n2 = f.filter_signal(n)
+        n2 = dsp.merge_signals(
+            n2, dsp.generators.noise("pink", sampling_rate_hz=fs_hz)
+        )
+        n2 = dsp.merge_signals(n2, n)
+
 
 class TestLatticeLadderFilter:
     b = np.array([1, 3, 3, 1])

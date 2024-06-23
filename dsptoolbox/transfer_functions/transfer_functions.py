@@ -419,7 +419,7 @@ def compute_transfer_function(
     )
     tf = np.zeros(
         (window_length_samples // 2 + 1, output.number_of_channels),
-        dtype="cfloat",
+        dtype=np.complex128,
     )
     if multichannel:
         G_xx = _welch(
@@ -710,7 +710,7 @@ def lin_phase_from_mag(
     spectrum_has_nyquist = original_length_time_data % 2 == 0
 
     # New spectrum
-    lin_spectrum = np.empty(spectrum.shape, dtype="cfloat")
+    lin_spectrum = np.empty(spectrum.shape, dtype=np.complex128)
     for n in range(spectrum.shape[1]):
         if check_causality or minimum_group_delay:
             min_phase = _minimum_phase(
@@ -742,11 +742,12 @@ def lin_phase_from_mag(
     return sig_lin_phase
 
 
-def min_phase_ir(sig: Signal, method: str = "real cepstrum") -> Signal:
+def min_phase_ir(
+    sig: Signal, method: str = "real cepstrum", padding_factor: int = 8
+) -> Signal:
     """Returns same IR with minimum phase. Three methods are available for
     computing the minimum phase version of the IR: `'real cepstrum'` (using
-    filtering the real-cepstral domain), `'log hilbert'` (obtaining the phase
-    from the hilbert transformed magnitude response) and `'equiripple'` (for
+    filtering the real-cepstral domain) and `'equiripple'` (for
     symmetric IR, uses `scipy.signal.minimum_phase`).
 
     For general cases, `'real cepstrum'` and `'log hilbert'` deliver similar
@@ -757,10 +758,13 @@ def min_phase_ir(sig: Signal, method: str = "real cepstrum") -> Signal:
     sig : `Signal`
         IR for which to compute minimum phase IR.
     method : str, optional
-        For general cases, `'real cepstrum'` and `'log hilbert'` can be used
-        and render similar results. If the IR is symmetric (like a
+        For general cases, `'real cepstrum'`. If the IR is symmetric (like a
         linear-phase filter), `'equiripple'` is recommended.
         Default: `'real cepstrum'`.
+    padding_factor : int, optional
+        Zero-padding to a length corresponding to
+        `current_length * padding_factor` can be done, in order to avoid time
+        aliasing errors. Default: 8.
 
     Returns
     -------
@@ -773,23 +777,30 @@ def min_phase_ir(sig: Signal, method: str = "real cepstrum") -> Signal:
         "ir",
     ), "Signal type must be either rir or ir"
     method = method.lower()
-    assert method in ("real cepstrum", "log hilbert", "equiripple"), (
-        f"{method} is not valid. Use either real cepstrum, log hilbert or "
-        + "equiripple"
+    assert method in ("real cepstrum", "equiripple"), (
+        f"{method} is not valid. Use either real cepstrum or " + "equiripple"
     )
-    new_time_data = np.zeros_like(sig.time_data)
+    new_time_data = sig.time_data
 
     if method == "real cepstrum":
-        new_time_data = _min_phase_ir_from_real_cepstrum(sig.time_data)
-    else:
-        _, min_phases = minimum_phase(sig, method=method)
-        _, sp = sig.get_spectrum()
-        new_time_data = np.fft.irfft(
-            np.abs(sp) * np.exp(1j * min_phases), axis=0, n=len(sig)
+        new_time_data = _min_phase_ir_from_real_cepstrum(
+            new_time_data, padding_factor
         )
+    else:
+        length_fft = next_fast_length_fft(
+            max(
+                new_time_data.shape[0] * padding_factor,
+                new_time_data.shape[0],
+            ),
+            False,
+        )
+        for ch in range(new_time_data.shape[1]):
+            new_time_data[:, ch] = min_phase_scipy(
+                sig.time_data[:, ch], method="hilbert", n_fft=length_fft
+            )[: new_time_data.shape[0]]
 
     min_phase_sig = sig.copy()
-    min_phase_sig.time_data = new_time_data
+    min_phase_sig.time_data = new_time_data[: len(sig)]
     if hasattr(min_phase_sig, "window"):
         del min_phase_sig.window
     return min_phase_sig
@@ -817,7 +828,8 @@ def group_delay(
         of the group delay. Default: `0`.
     remove_ir_latency : bool, optional
         If the signal is of type `"ir"` or `"rir"`, the impulse delay can be
-        removed. Default: `False`.
+        removed by analizing the minimum phase equivalent. This uses the
+        padding factor 8 by default. Default: `False`.
 
     Returns
     -------
@@ -833,12 +845,20 @@ def group_delay(
         "matlab",
     ), f"{method} is not valid. Use direct or matlab"
 
+    length_time_signal = (
+        next_fast_length_fft(signal.time_data.shape[0] * 8, True)
+        if remove_ir_latency
+        else signal.time_data.shape[0]
+    )
+    td = _pad_trim(signal.time_data, length_time_signal)
+    f = np.fft.rfftfreq(td.shape[0], 1 / signal.sampling_rate_hz)
+    group_delays = np.zeros((length_time_signal // 2 + 1, td.shape[1]))
+
     if method == "direct":
         spec_parameters = signal._spectrum_parameters
         signal.set_spectrum_parameters("standard")
-        f, sp = signal.get_spectrum()
+        sp = rfft_scipy(td, axis=0)
         signal._spectrum_parameters = spec_parameters
-        group_delays = np.zeros((sp.shape[0], sp.shape[1]))
 
         if remove_ir_latency:
             assert signal.signal_type in (
@@ -849,20 +869,13 @@ def group_delay(
                 + "or rir"
             )
             sp = _remove_ir_latency_from_phase(
-                f, np.angle(sp), signal.time_data, signal.sampling_rate_hz
+                f, np.angle(sp), signal.time_data, signal.sampling_rate_hz, 1
             )
         for n in range(signal.number_of_channels):
             group_delays[:, n] = _group_delay_direct(sp[:, n], f[1] - f[0])
     else:
-        group_delays = np.zeros(
-            (signal.time_data.shape[0] // 2 + 1, signal.time_data.shape[1])
-        )
-        f = np.fft.rfftfreq(
-            signal.time_data.shape[0], 1 / signal.sampling_rate_hz
-        )
-
         for n in range(signal.number_of_channels):
-            b = signal.time_data[:, n]
+            b = td[:, n]
             if remove_ir_latency:
                 b = b[max(int(np.argmax(np.abs(b))) - 1, 0) :]
             a = [1]
@@ -877,22 +890,26 @@ def group_delay(
 
 
 def minimum_phase(
-    signal: Signal, method: str = "real cepstrum"
+    signal: Signal,
+    method: str = "real cepstrum",
+    padding_factor: int = 8,
 ) -> tuple[np.ndarray, np.ndarray]:
     """Gives back a matrix containing the minimum phase signal for each
-    channel. Three methods are available for computing the minimum phase of a
-    system: `'real cepstrum'` (windowing in the cepstral domain),
-    `'log hilbert'` (from the magnitude response of a system), `'equiripple'`
-    (for symmetric IR's, uses `scipy.signal.minimum_phase`).
+    channel. Two methods are available for computing the minimum phase of a
+    system: `'real cepstrum'` (windowing in the cepstral domain) or
+    `'equiripple'` (for symmetric IR's, uses `scipy.signal.minimum_phase`).
 
     Parameters
     ----------
     signal : `Signal`
         IR for which to compute the minimum phase.
     method : str, optional
-        Selects the method to use. `'real cepstrum'` and `'log hilbert'` are
-        of general use and render similar results. `'equiripple'` is for
-        symmetric IR (e.g. linear-phase FIR filters).
+        Selects the method to use. `'real cepstrum'` is of general use.
+        `'equiripple'` is for symmetric IR (e.g. linear-phase FIR filters).
+    padding_factor : int, optional
+        Zero-padding to a length corresponding to at least
+        `current_length * padding_factor` can be done in order to avoid time
+        aliasing errors. Default: 8.
 
     Returns
     -------
@@ -912,9 +929,8 @@ def minimum_phase(
     method = method.lower()
     assert method in (
         "real cepstrum",
-        "log hilbert",
         "equiripple",
-    ), f"{method} is not valid. Use real cepstrum, log hilbert or equiripple"
+    ), f"{method} is not valid. Use real cepstrum or equiripple"
 
     if method == "equiripple":
         f = np.fft.rfftfreq(
@@ -925,24 +941,18 @@ def minimum_phase(
         )
         for n in range(signal.number_of_channels):
             temp = min_phase_scipy(
-                signal.time_data[:, n], method="hilbert", n_fft=None
+                signal.time_data[:, n],
+                method="hilbert",
+                n_fft=padding_factor * len(signal),
             )
             min_phases[:, n] = np.angle(
                 np.fft.rfft(_pad_trim(temp, signal.time_data.shape[0]))
             )
-    elif method == "log hilbert":
-        signal.set_spectrum_parameters("standard")
-        f, sp = signal.get_spectrum()
-        min_phases = _minimum_phase(
-            np.abs(sp),
-            unwrapped=False,
-            odd_length=signal.time_data.shape[0] % 2 == 1,
-        )
     else:
-        sp = _get_minimum_phase_spectrum_from_real_cepstrum(signal.time_data)
-        f = np.fft.fftfreq(
-            signal.time_data.shape[0], 1 / signal.sampling_rate_hz
+        sp = _get_minimum_phase_spectrum_from_real_cepstrum(
+            signal.time_data, padding_factor
         )
+        f = np.fft.fftfreq(sp.shape[0], 1 / signal.sampling_rate_hz)
         if sp.shape[0] % 2 == 0:
             f[sp.shape[0] // 2] *= -1
         inds = f >= 0
@@ -953,21 +963,22 @@ def minimum_phase(
 
 def minimum_group_delay(
     signal: Signal,
-    method: str = "real cepstrum",
     smoothing: int = 0,
+    padding_factor: int = 8,
 ) -> tuple[np.ndarray, np.ndarray]:
-    """Computes minimum group delay of given IR.
+    """Computes minimum group delay of given IR using the real cepstrum method.
 
     Parameters
     ----------
     signal : `Signal`
         IR for which to compute minimal group delay.
-    method : str, optional
-        Select method for computing the minimum phase. It might be either
-        `'real cepstrum'` or `'log hilbert'`. Default: `'real cepstrum'`.
     smoothing : int, optional
         Octave fraction by which to apply smoothing. `0` avoids any smoothing
         of the group delay. Default: `0`.
+    padding_factor : int, optional
+        Zero-padding to a length corresponding to at least
+        `current_length * padding_factor` can be done in order to avoid time
+        aliasing errors. Default: 8.
 
     Returns
     -------
@@ -982,7 +993,7 @@ def minimum_group_delay(
 
     """
     assert signal.signal_type in ("rir", "ir"), "Only valid for rir or ir"
-    f, min_phases = minimum_phase(signal, method=method)
+    f, min_phases = minimum_phase(signal, padding_factor=padding_factor)
     min_gd = np.zeros_like(min_phases)
     for n in range(signal.number_of_channels):
         min_gd[:, n] = _group_delay_direct(min_phases[:, n], f[1] - f[0])
@@ -993,7 +1004,6 @@ def minimum_group_delay(
 
 def excess_group_delay(
     signal: Signal,
-    method: str = "real cepstrum",
     smoothing: int = 0,
     remove_ir_latency: bool = False,
 ) -> tuple[np.ndarray, np.ndarray]:
@@ -1003,15 +1013,12 @@ def excess_group_delay(
     ----------
     signal : `Signal`
         IR for which to compute minimal group delay.
-    method : str, optional
-        Select method for computing the minimum phase. It might be either
-        `'real cepstrum'` or `'log hilbert'`. Default: `'real cepstrum'`.
     smoothing : int, optional
         Octave fraction by which to apply smoothing. `0` avoids any smoothing
         of the group delay. Default: `0`.
     remove_ir_latency : bool, optional
         If the signal is of type `"ir"` or `"rir"`, the impulse delay can be
-        removed. Default: `False`.
+        removed. It uses `padding_factor = 8` by default. Default: `False`.
 
     Returns
     -------
@@ -1026,7 +1033,9 @@ def excess_group_delay(
 
     """
     assert signal.signal_type in ("rir", "ir"), "Only valid for rir or ir"
-    f, min_gd = minimum_group_delay(signal, method, smoothing=0)
+    f, min_gd = minimum_group_delay(
+        signal, smoothing=0, padding_factor=8 if remove_ir_latency else 1
+    )
     f, gd = group_delay(
         signal,
         smoothing=0,
@@ -1050,8 +1059,8 @@ def combine_ir_with_dirac(
 ) -> Signal:
     """Combine an IR with a perfect impulse at a given crossover frequency
     using a linkwitz-riley crossover. Forward-Backward filtering is done so
-    that no phase distortion occurs and the given filter order is doubled.
-    They can optionally be energy matched using RMS or peak value.
+    that no phase distortion occurs. They can optionally be energy matched
+    using RMS or peak value.
 
     Parameters
     ----------
@@ -1065,8 +1074,7 @@ def combine_ir_with_dirac(
         passed impulse response and above corresponds to the perfect impulse.
         `False` delivers the opposite result.
     order : int, optional
-        Crossover order. This is doubled due to forward-backward filtering.
-        Default: 8.
+        Crossover order. Default: 8.
     normalization : str, optional
         `'energy'` means that the band of the perfect dirac impulse is
         normalized so that it matches the energy contained in the band of the
@@ -1317,6 +1325,10 @@ def window_frequency_dependent(
 
     td = ir.time_data[:, channel]
 
+    # Optimal length for FFT
+    fast_length = next_fast_length_fft(td.shape[0], True)
+    td = np.pad(td, ((0, fast_length - td.shape[0]), (0, 0)))
+
     f = np.fft.rfftfreq(td.shape[0], 1 / fs)
     inds = (f >= frequency_range_hz[0]) & (f <= frequency_range_hz[1])
     inds_f = np.arange(len(f))[inds]
@@ -1329,15 +1341,11 @@ def window_frequency_dependent(
     if f[0] == f[1]:
         f[0] = 0
 
-    spec = np.zeros((len(f), td.shape[1]), dtype="cfloat")
+    spec = np.zeros((len(f), td.shape[1]), dtype=np.complex128)
 
     half = (td.shape[0] - 1) / 2
     alpha_factor = np.log(4) ** 0.5 * half
     ind_max = np.argmax(np.abs(td), axis=0)
-
-    # Optimal length for FFT
-    fast_length = next_fast_length_fft(td.shape[0], True)
-    td = np.pad(td, ((0, fast_length - td.shape[0]), (0, 0)))
 
     # Construct window vectors
     n = np.zeros_like(td)
@@ -1370,12 +1378,13 @@ def window_frequency_dependent(
         def scaling_func(window: np.ndarray):
             return 1
 
+    # Precompute window factors:
+    # Alpha such that window is exactly 0.5 after the number of
+    # required samples for each frequency
+    n = -0.5 * (n / half) ** 2
+    alpha = (alpha_factor / cycles_per_freq_samples) ** 2
     for ind, ind_f in enumerate(inds_f):
-        # Alpha such that window is exactly 0.5 after the number of
-        # required samples for each frequency
-        alpha = alpha_factor / cycles_per_freq_samples[ind]
-        w = np.exp(-0.5 * (alpha * n / half) ** 2)
-
+        w = np.exp(alpha[ind] * n)
         spec[ind, :] = rfft_scipy(w * td, axis=0)[ind_f] * scaling_func(w)
     return f, spec
 

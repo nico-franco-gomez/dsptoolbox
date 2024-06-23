@@ -9,10 +9,12 @@ from scipy.signal import (
     hilbert,
     correlate,
 )
+from scipy.fft import fft, ifft
 from scipy.interpolate import interp1d
 from scipy.linalg import toeplitz as toeplitz_scipy
 from os import sep
 from warnings import warn
+from scipy.fft import next_fast_len
 
 
 def _find_nearest(points, vector) -> np.ndarray:
@@ -308,7 +310,7 @@ def _pad_trim(
 
 
 def _compute_number_frames(
-    window_length: int, step: int, signal_length: int
+    window_length: int, step: int, signal_length: int, zero_padding: bool
 ) -> tuple[int, int]:
     """Gives back the number of frames that will be computed.
 
@@ -320,6 +322,10 @@ def _compute_number_frames(
         Step size in samples. It is defined as `window_length - overlap`.
     signal_length : int
         Total signal length.
+    zero_padding : bool
+        When `True`, it is assumed that the signal will be zero padded in the
+        end to make use of all time samples. `False` will effectively discard
+        the blocks where zero-padding would be needed.
 
     Returns
     -------
@@ -329,8 +335,12 @@ def _compute_number_frames(
         Number of samples with which the signal should be padded.
 
     """
-    n_frames = int(np.floor(signal_length / step)) + 1
-    padding_samples = window_length - int(signal_length % step)
+    if zero_padding:
+        n_frames = int(np.ceil(signal_length / step))
+        padding_samples = window_length - int(signal_length % step)
+    else:
+        padding_samples = 0
+        n_frames = int(np.ceil((signal_length - window_length) / step))
     return n_frames, padding_samples
 
 
@@ -1245,6 +1255,7 @@ def _remove_ir_latency_from_phase(
     phase: np.ndarray,
     time_data: np.ndarray,
     sampling_rate_hz: int,
+    padding_factor: int,
 ):
     """
     Remove the impulse delay from a phase response.
@@ -1259,6 +1270,8 @@ def _remove_ir_latency_from_phase(
         Corresponding time signal.
     sampling_rate_hz : int
         Sample rate.
+    padding_factor : int
+        Padding factor used to obtain the minimum phase equivalent.
 
     Returns
     -------
@@ -1266,12 +1279,14 @@ def _remove_ir_latency_from_phase(
         New phase response without impulse delay.
 
     """
-    min_ir = _min_phase_ir_from_real_cepstrum(time_data)
+    min_ir = _min_phase_ir_from_real_cepstrum(time_data, padding_factor)
     delays_s = _fractional_latency(time_data, min_ir) / sampling_rate_hz
     return _wrap_phase(phase + 2 * np.pi * freqs[:, None] * delays_s[None, :])
 
 
-def _min_phase_ir_from_real_cepstrum(time_data: np.ndarray):
+def _min_phase_ir_from_real_cepstrum(
+    time_data: np.ndarray, padding_factor: int
+):
     """Returns minimum-phase version of a time series using the real cepstrum
     method.
 
@@ -1280,6 +1295,10 @@ def _min_phase_ir_from_real_cepstrum(time_data: np.ndarray):
     time_data : `np.ndarray`
         Time series to compute the minimum phase version from. It is assumed
         to have shape (time samples, channels).
+    padding_factor : int, optional
+        Zero-padding to a length corresponding to
+        `current_length * padding_factor` can be done, in order to avoid time
+        aliasing errors. Default: 8.
 
     Returns
     -------
@@ -1289,12 +1308,17 @@ def _min_phase_ir_from_real_cepstrum(time_data: np.ndarray):
     """
     return np.real(
         np.fft.ifft(
-            _get_minimum_phase_spectrum_from_real_cepstrum(time_data), axis=0
+            _get_minimum_phase_spectrum_from_real_cepstrum(
+                time_data, padding_factor
+            ),
+            axis=0,
         )
     )
 
 
-def _get_minimum_phase_spectrum_from_real_cepstrum(time_data: np.ndarray):
+def _get_minimum_phase_spectrum_from_real_cepstrum(
+    time_data: np.ndarray, padding_factor: int
+):
     """Returns minimum-phase version of a time series using the real cepstrum
     method.
 
@@ -1303,6 +1327,10 @@ def _get_minimum_phase_spectrum_from_real_cepstrum(time_data: np.ndarray):
     time_data : `np.ndarray`
         Time series to compute the minimum phase version from. It is assumed
         to have shape (time samples, channels).
+    padding_factor : int, optional
+        Zero-padding to a length corresponding to
+        `current_length * padding_factor` can be done, in order to avoid time
+        aliasing errors. Default: 8.
 
     Returns
     -------
@@ -1310,21 +1338,24 @@ def _get_minimum_phase_spectrum_from_real_cepstrum(time_data: np.ndarray):
         New spectrum with minimum phase.
 
     """
+    fft_length = next_fast_len(
+        max(time_data.shape[0] * padding_factor, time_data.shape[0])
+    )
     # Real cepstrum
     y = np.real(
-        np.fft.ifft(np.log(np.abs(np.fft.fft(time_data, axis=0))), axis=0)
+        ifft(np.log(np.abs(fft(time_data, n=fft_length, axis=0))), axis=0)
     )
 
     # Window in the cepstral domain, like obtaining hilbert transform
     w = np.zeros(y.shape[0])
+    w[1 : len(w) // 2 - 1] = 2
     w[0] = 1
-    w[: len(w) // 2 - 1] = 2
     # If length is even, nyquist is exactly in the middle
     if len(w) % 2 == 0:
         w[len(w) // 2] = 1
 
     # Windowing in cepstral domain and back to spectral domain
-    return np.exp(np.fft.fft(y * w[..., None], axis=0))
+    return np.exp(fft(y * w[..., None], axis=0))
 
 
 def _fractional_latency(
