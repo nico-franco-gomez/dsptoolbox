@@ -14,6 +14,24 @@ adheres to `Semantic Versioning <http://semver.org/spec/v2.0.0.html>`_.
 - Validation for results from tests in every module (so far many tests are
   only regarding functionality)
 
+`0.3.9 <https://pypi.org/project/dsptoolbox/0.3.9>`_ - 
+---------------------
+Added
+~~~~~~
+- `pinking_filter` in ``filterbanks`` module
+
+Bugfix
+~~~~~~
+- fixed framed signal representation such that the last frames that need zero-padding
+  can be left out
+- biquad filter coefficients now use double precision by default
+- minor fix in `window_frequency_dependent`
+
+Misc
+~~~~~~~
+- added zero-padding while computing minimum phase ir for better results
+- compatibility with numpy v2.0 has been ensured
+
 `0.3.8 <https://pypi.org/project/dsptoolbox/0.3.8>`_ - 
 ---------------------
 
