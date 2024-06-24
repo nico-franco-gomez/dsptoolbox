@@ -1251,12 +1251,13 @@ def window_frequency_dependent(
     channel: int | None = None,
     frequency_range_hz: list | None = None,
     scaling: str | None = None,
+    end_window_value: float = 0.5,
 ):
     """A spectrum with frequency-dependent windowing defined by cycles is
     returned. To this end, a variable gaussian window is applied.
 
     A width of 5 cycles means that there are 5 periods of each frequency
-    before the window values hit 0.5, i.e., -6 dB.
+    before the window values hit `end_window_value`.
 
     This is computed only for real-valued signals (positive frequencies).
 
@@ -1278,6 +1279,9 @@ def window_frequency_dependent(
         `"amplitude spectral density"`, `"fft"` or `None`. The first two take
         the window into account. `"fft"` scales the forward FFT by `1/N**0.5`
         and `None` leaves the spectrum completely unscaled. Default: `None`.
+    end_window_value : float, optional
+        This is the value that the gaussian window should have at its width.
+        Default: 0.5.
 
     Returns
     -------
@@ -1343,11 +1347,13 @@ def window_frequency_dependent(
 
     spec = np.zeros((len(f), td.shape[1]), dtype=np.complex128)
 
+    # Alpha such that window is exactly end_window_value after the number of
+    # required samples for each frequency
     half = (td.shape[0] - 1) / 2
-    alpha_factor = np.log(4) ** 0.5 * half
-    ind_max = np.argmax(np.abs(td), axis=0)
+    alpha_factor = np.log(1 / (end_window_value) ** 2) ** 0.5 * half
 
     # Construct window vectors
+    ind_max = np.argmax(np.abs(td), axis=0)
     n = np.zeros_like(td)
     for ch in range(td.shape[1]):
         n[:, ch] = np.arange(-ind_max[ch], td.shape[0] - ind_max[ch])
@@ -1378,9 +1384,7 @@ def window_frequency_dependent(
         def scaling_func(window: np.ndarray):
             return 1
 
-    # Precompute window factors:
-    # Alpha such that window is exactly 0.5 after the number of
-    # required samples for each frequency
+    # Precompute some window factors
     n = -0.5 * (n / half) ** 2
     alpha = (alpha_factor / cycles_per_freq_samples) ** 2
     for ind, ind_f in enumerate(inds_f):
