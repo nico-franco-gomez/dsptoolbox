@@ -1340,10 +1340,12 @@ def window_frequency_dependent(
 
     # Samples for each frequency according to number of cycles
     if f[0] == 0:
-        f[0] = f[1]
+        if len(f) > 1:
+            f[0] = f[1]
     cycles_per_freq_samples = np.round(fs / f * cycles).astype(int)
-    if f[0] == f[1]:
-        f[0] = 0
+    if len(f) > 1:
+        if f[0] == f[1]:
+            f[0] = 0
 
     spec = np.zeros((len(f), td.shape[1]), dtype=np.complex128)
 
