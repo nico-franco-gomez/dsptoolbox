@@ -1406,3 +1406,129 @@ def _fractional_latency(
             xcor[:, i] = correlate(td2[:, i], td1[:, i])
     inds = _get_fractional_impulse_peak_index(xcor, polynomial_points)
     return td1.shape[0] - inds - 1
+
+
+def _interpolate_fr(
+    f_interp: NDArray[np.float64],
+    fr_interp: NDArray[np.float64],
+    f_target: NDArray[np.float64],
+    mode: str | None = None,
+    interpolation_scheme: str = "linear",
+) -> NDArray[np.float64]:
+    """Interpolate one frequency response to a new frequency vector.
+
+    Parameters
+    ----------
+    f_interp : NDArray[np.float64]
+        Frequency vector of the frequency response that should be interpolated.
+    fr_interp : NDArray[np.float64]
+        Frequency response to be interpolated.
+    f_target : NDArray[np.float64]
+        Target frequency vector.
+    mode : str, optional
+        Convert to amplitude or power representation from dB during
+        interpolation (or the other way around) using the modes `"db2power"`
+        (input in dB, interpolation in power spectrum, output in dB),
+        `"db2amplitude"`, `"amplitude2db"`, `"power2db"`. Pass `None` to avoid
+        any conversion. Default: `None`.
+    interpolation_scheme : str, optional
+        Type of interpolation to use. See `scipy.interpolation.interp1d` for
+        details. Choose from `"quadratic"` or `"cubic"` splines, or `"linear"`.
+        Default: `"linear"`.
+
+    Returns
+    -------
+    NDArray[np.float64]
+        New interpolated frequency response corresponding to `f_target` vector.
+
+    Notes
+    -----
+    - The input is always assumed to be already sorted.
+    - In case `f_target` has values outside the boundaries of `f_interp`,
+      the first and last values of `fr_interp` are used for extrapolation. This
+      also applies if interpolation is done in dB. If done in amplitude or
+      power units, the fill value outside the boundaries is 0.
+    - The interpolation is always done along the first (outer) axis or the
+      vector.
+    - Theoretical thoughts on interpolating an amplitude or power
+      frequency response:
+        - Using complex and dB values during interpolation are not very precise
+          when comparing the results in terms of the amplitude or power
+          spectrum.
+        - Interpolation can be done with amplitude or power representation with
+          similar precision.
+        - Changing the frequency resolution in a linear scale means zero-
+          padding or trimming the underlying time series. For an amplitude
+          representation , i.e. spectrum or spectral density, the values must
+          be scaled using the factor `old_length/new_length`. This ensures that
+          the RMS values (amplitude spectrum) are still correct, and that
+          integrating the new power spectral density still renders the total
+          signal's energy truthfully, i.e. parseval's theorem would still hold.
+          For the power representation, it also applies with the same squared
+          factor.
+        - A direct FFT-result which is not in physical units needs rescaling
+          depending on the normalization scheme used during the FFT -> IFFT (in
+          the complex/amplitude representation):
+              - Forward: scaling factor `old_length/new_length`.
+              - Backward: no rescaling.
+              - Orthogonal: scaling factor `(old_length/new_length)**0.5`
+        - Interpolating the (amplitude or power) spectrum to a logarithmic-
+          spaced frequency vector can be done without rescaling (the underlying
+          transformation in the time domain would be warping). Doing so for the
+          (amplitude or power) spectral density only retains its validity if
+          the new spectrum is weighted exponentially with increasing frequency
+          since each bin contains the energy of a larger “frequency band”
+          (this changes the physical units of the spectral density). Doing so
+          ensures that integrating the power spectral density over frequency
+          still retains the energy of the signal (parseval).
+        - Assuming a different time window in each frequency resolution would
+          require knowing the specific windows in order to rescale correctly.
+          Assuming the same time window while zero-padding in the time domain
+          would mean that no rescaling has to be applied.
+
+    """
+
+    fill_value = (fr_interp[0], fr_interp[-1])
+
+    # Conversion if necessary
+    if mode is not None:
+        mode = mode.lower()
+        factor = 20 if "amplitude" in mode else 10
+        if mode[:3] == "db2":
+            fr_interp = 10 ** (fr_interp / factor)
+            fill_value = (0.0, 0.0)
+        elif mode[-3:] == "2db":
+            fr_interp = factor * np.log10(
+                np.clip(
+                    np.abs(fr_interp),
+                    a_min=np.finfo(np.float64).smallest_normal,
+                    a_max=None,
+                )
+            )
+        else:
+            raise ValueError(f"Unsupported interpolation mode: {mode}")
+
+    interpolated = interp1d(
+        f_interp,
+        fr_interp,
+        kind=interpolation_scheme,
+        bounds_error=False,
+        assume_sorted=True,
+        fill_value=fill_value,
+        axis=0,
+    )(f_target)
+
+    # Back conversion if activated
+    if mode is not None:
+        if mode[:3] == "db2":
+            interpolated = factor * np.log10(
+                np.clip(
+                    np.abs(interpolated),
+                    a_min=np.finfo(np.float64).smallest_normal,
+                    a_max=None,
+                )
+            )
+        elif mode[-3:] == "2db":
+            interpolated = 10 ** (interpolated / factor)
+
+    return interpolated
