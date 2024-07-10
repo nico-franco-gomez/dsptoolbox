@@ -3,6 +3,7 @@ General functionality from helper methods
 """
 
 import numpy as np
+from numpy.typing import NDArray
 from scipy.signal import (
     windows,
     convolve as scipy_convolve,
@@ -979,7 +980,7 @@ def _get_exact_gain_1khz(f: np.ndarray, sp_db: np.ndarray) -> float:
         + "given frequency vector"
     )
     # Get nearest value just before
-    ind = _find_nearest(1e3, f)
+    ind = _find_nearest(1e3, f).squeeze()
     if f[ind] > 1e3:
         ind -= 1
     return (sp_db[ind + 1] - sp_db[ind]) / (f[ind + 1] - f[ind]) * (
