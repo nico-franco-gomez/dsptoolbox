@@ -195,7 +195,7 @@ def find_modes(
     id_cmif, _ = find_peaks(
         10 * np.log10(cmif),
         distance=dist_samp,
-        width=dist_samp,
+        # width=dist_samp,  # Is width here a good idea?
         prominence=prominence_db,
     )
     f_modes = f[id_cmif]
