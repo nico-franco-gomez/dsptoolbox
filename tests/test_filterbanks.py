@@ -280,3 +280,42 @@ class TestLatticeLadderFilter:
         n1 = f.filter_signal(n).time_data.squeeze()
         n2 = new_f.filter_signal(n).time_data.squeeze()
         assert np.all(np.isclose(n1, n2))
+
+    def test_matched_biquads(self):
+        # Only functionality and plausibility
+        # Parameters
+        fs_hz = 48000
+        freq = 10e3
+        gain_db = -20
+        q = 2**0.5 / 2
+
+        for eq_type in [
+            "peaking",
+            "lowpass",
+            "highpass",
+            "lowshelf",
+            "highshelf",
+            "bandpass",
+        ]:
+            dsp.filterbanks.matched_biquad(eq_type, freq, gain_db, q, fs_hz)
+
+            # For comparison with usual biquads
+        #     f = dsp.filterbanks.matched_biquad(
+        #         eq_type, freq, gain_db, q, fs_hz
+        #     )
+        #     f2 = dsp.Filter(
+        #         "biquad",
+        #         {
+        #             "eq_type": eq_type
+        #             + ("_peak" if eq_type == "bandpass" else ""),
+        #             "freqs": freq,
+        #             "gain": gain_db,
+        #             "q": q,
+        #         },
+        #         fs_hz,
+        #     )
+        #     fb = dsp.FilterBank([f, f2])
+        #     fig, ax = fb.plot_magnitude(length_samples=2**13)
+        #     fig.suptitle(eq_type.capitalize())
+        #     ax.legend(["Matched", "Standard"])
+        # dsp.plots.show()

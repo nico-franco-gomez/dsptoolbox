@@ -18,7 +18,16 @@ from ..classes._lattice_ladder_filter import (
     _get_lattice_coefficients_fir,
     _get_lattice_ladder_coefficients_iir_sos,
 )
-from ._filterbank import LRFilterBank, GammaToneFilterBank, QMFCrossover
+from ._filterbank import (
+    LRFilterBank,
+    GammaToneFilterBank,
+    QMFCrossover,
+    _get_matched_peaking_eq,
+    _get_matched_lowpass_eq,
+    _get_matched_highpass_eq,
+    _get_matched_bandpass_eq,
+    _get_matched_shelving_eq,
+)
 from .._standard import _kaiser_window_fractional
 
 
@@ -569,4 +578,122 @@ def pinking_filter(frequency_0_db: float, sampling_rate_hz: int) -> Filter:
     k /= np.abs(h)
     return Filter(
         "other", {"zpk": [z, p, k]}, sampling_rate_hz=sampling_rate_hz
+    )
+
+
+def matched_biquad(
+    eq_type: str,
+    freq_hz: float,
+    gain_db: float,
+    q: float,
+    sampling_rate_hz: int,
+    q_factor: float | None = None,
+) -> Filter:
+    """This returns a biquad digital filter (EQ) that is matched to better
+    fit an analog prototype than the standard biquad implementation as defined
+    in [1]. This is due to the frequency warping that occurs when the frequency
+    approaches nyquist. See notes for details.
+
+    Parameters
+    ----------
+    eq_type : str
+        Type of biquad filter to create. Choose from "peaking", "lowpass",
+        "highpass", "bandpass", "lowshelf", "highshelf".
+    freq_hz : float
+        Characteristic frequency in Hz.
+    gain_db : float
+        Characteristic gain in dB.
+    q : float
+        Quality factor. The frequency response differs in its bandwidth from
+        the standard biquad implementation due to frequency warping. This
+        is specially clear for normalized frequencies higher than 0.2.
+        Beware that the implemented shelving filters do not support setting
+        a quality factor. Analyzing the resulting magnitude response carefully
+        is advised.
+    sampling_rate_hz : int
+        Sampling rate for the digital filter.
+    q_factor : float, None, optional
+        Factor by which to scale `q` for peaking filters. This is useful for
+        attempting to obtain similar bandwidths as the standard biquad
+        implementation in [1]. If None, an approximation formula is used, which
+        works well in the gain range [-20, 20] dB and normalized frequency
+        [0, 0.2]. With increasing frequency, the warping of the standard
+        implementation produces larger errors, so approximating the bandwidth
+        there would defeat the purpose of the matching biquad. It always should
+        be greater than 0. Default: None.
+
+    Returns
+    -------
+    `Filter`
+        Matched biquad filter.
+
+    Notes
+    -----
+    Frequency warping generates significant deformations of the frequency
+    response of a digital filter near nyquist when compared to the analog
+    prototype. These filters alleviate for this at the expense of a more
+    involved computation. Using matched biquads is only useful when
+    designing filters or filter banks that have normalized frequencies above
+    0.15 or 0.2, e.g., above 7.2 kHz for 48 kHz sampling rate.
+
+    The approach used here comes from [2], though there are others. See
+    references.
+
+    For shelving filters, [5] is implemented. This implementation does not
+    support selecting a quality factor, i.e., q is fixed to `sqrt(2)/2`.
+
+    References
+    ----------
+    - [1]: R. Bristow-Johnson, Cookbook formulae for audio EQ biquad filter
+      coefficients.
+    - [2]: M. Vicanek. Matched Second Order Digital Filters. 2016.
+    - [3]: S. J. Orfanidis, Digital Parametric Equalizer Design With Prescribed
+      Nyquist-Frequency Gain. 1997.
+    - [4]: M. Massberg, Digital Low-Pass Filter Design with Analog-Matched
+      Magnitude Response. 2011.
+    - [5]: M. Vicanek. Matched Two-Pole Digital Shelving Filters. 2024.
+
+    """
+    eq_type = eq_type.lower()
+    assert eq_type in (
+        "peaking",
+        "lowpass",
+        "highpass",
+        "lowshelf",
+        "highshelf",
+        "bandpass",
+    ), f"{eq_type} is not valid as eq type"
+    assert (
+        freq_hz > 0 and freq_hz < sampling_rate_hz / 2
+    ), f"{freq_hz} is not a valid frequency"
+    assert q > 0, "Quality factor must be greater than zero"
+
+    match eq_type:
+        case "peaking":
+            ba = _get_matched_peaking_eq(
+                freq_hz, gain_db, q, q_factor, sampling_rate_hz
+            )
+        case "lowpass":
+            ba = _get_matched_lowpass_eq(freq_hz, gain_db, q, sampling_rate_hz)
+        case "highpass":
+            ba = _get_matched_highpass_eq(
+                freq_hz, gain_db, q, sampling_rate_hz
+            )
+        case "bandpass":
+            ba = _get_matched_bandpass_eq(
+                freq_hz, gain_db, q, sampling_rate_hz
+            )
+        case "lowshelf":
+            ba = _get_matched_shelving_eq(
+                freq_hz, gain_db, sampling_rate_hz, True
+            )
+        case "highshelf":
+            ba = _get_matched_shelving_eq(
+                freq_hz, gain_db, sampling_rate_hz, False
+            )
+
+    return Filter(
+        "other",
+        {"ba": ba},
+        sampling_rate_hz,
     )
