@@ -1166,6 +1166,8 @@ def _compute_energy_decay_curve(
     fs_hz: int,
 ) -> np.ndarray:
     """Get the energy decay curve from an energy time curve."""
+    # start_index might be the last index below -20 dB relative to peak value.
+    # If so, the normalization of the edc should be done with the beginning
     if trim_automatically:
         start_index, stopping_index, impulse_index = _trim_ir(
             time_data,
@@ -1179,9 +1181,8 @@ def _compute_energy_decay_curve(
     signal_power = time_data[start_index:stopping_index] ** 2
     edc = np.sum(signal_power) - np.cumsum(signal_power)
     epsilon = 1e-50
-    edc = 10 * np.log10(
-        np.clip(edc / edc[impulse_index], a_min=epsilon, a_max=None)
-    )
+    edc = 10 * np.log10(np.clip(edc, a_min=epsilon, a_max=None))
+    edc -= edc[impulse_index]
     return edc
 
 
