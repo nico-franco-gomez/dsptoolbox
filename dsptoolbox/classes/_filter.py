@@ -60,7 +60,7 @@ def _biquad_coefficients(
     eq_type: int | str = 0,
     fs_hz: int = 48000,
     frequency_hz: float | list | tuple | np.ndarray = 1000,
-    gain_db: float = 1,
+    gain_db: float = 0,
     q: float = 1,
 ):
     """Creates the filter coefficients for biquad filters.
@@ -84,7 +84,7 @@ def _biquad_coefficients(
             + "not supported. A mean of passed frequencies was used for the "
             + "design but this might not give the intended result!"
         )
-    A = np.sqrt(10 ** (gain_db / 20.0))
+    A = 10 ** (gain_db / 40) if eq_type in (0, 7, 8) else 10 ** (gain_db / 20)
     Omega = 2.0 * np.pi * (frequency_hz / fs_hz)
     sn = np.sin(Omega)
     cs = np.cos(Omega)
@@ -99,44 +99,44 @@ def _biquad_coefficients(
         a[1] = -2 * cs
         a[2] = 1 - alpha / A
     elif eq_type == 1:  # Lowpass
-        b[0] = (1 - cs) / 2
-        b[1] = 1 - cs
+        b[0] = (1 - cs) / 2 * A
+        b[1] = (1 - cs) * A
         b[2] = b[0]
         a[0] = 1 + alpha
         a[1] = -2 * cs
         a[2] = 1 - alpha
     elif eq_type == 2:  # Highpass
-        b[0] = (1 + cs) / 2.0
-        b[1] = -1 * (1 + cs)
+        b[0] = (1 + cs) / 2.0 * A
+        b[1] = -1 * (1 + cs) * A
         b[2] = b[0]
         a[0] = 1 + alpha
         a[1] = -2 * cs
         a[2] = 1 - alpha
     elif eq_type == 3:  # Bandpass skirt
-        b[0] = sn / 2
+        b[0] = sn / 2 * A
         b[1] = 0
         b[2] = -b[0]
         a[0] = 1 + alpha
         a[1] = -2 * cs
         a[2] = 1 - alpha
     elif eq_type == 4:  # Bandpass peak
-        b[0] = alpha
+        b[0] = alpha * A
         b[1] = 0
         b[2] = -b[0]
         a[0] = 1 + alpha
         a[1] = -2 * cs
         a[2] = 1 - alpha
     elif eq_type == 5:  # Notch
-        b[0] = 1
-        b[1] = -2 * cs
+        b[0] = 1 * A
+        b[1] = -2 * cs * A
         b[2] = b[0]
         a[0] = 1 + alpha
         a[1] = -2 * cs
         a[2] = 1 - alpha
     elif eq_type == 6:  # Allpass
-        b[0] = 1 - alpha
-        b[1] = -2 * cs
-        b[2] = 1 + alpha
+        b[0] = (1 - alpha) * A
+        b[1] = -2 * cs * A
+        b[2] = (1 + alpha) * A
         a[0] = 1 + alpha
         a[1] = -2 * cs
         a[2] = 1 - alpha
