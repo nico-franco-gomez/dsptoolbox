@@ -44,6 +44,7 @@ from .filterbanks import (
     complementary_fir_filter,
     convert_into_lattice_filter,
     pinking_filter,
+    matched_biquad,
 )
 
 from ..classes._lattice_ladder_filter import LatticeLadderFilter
@@ -63,4 +64,5 @@ __all__ = [
     "PhaseLinearizer",
     "StateVariableFilter",
     "pinking_filter",
+    "matched_biquad",
 ]
