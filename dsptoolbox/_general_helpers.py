@@ -9,6 +9,8 @@ from scipy.signal import (
     convolve as scipy_convolve,
     hilbert,
     correlate,
+    lfilter,
+    lfilter_zi,
 )
 from scipy.fft import fft, ifft
 from scipy.interpolate import interp1d
@@ -1533,3 +1535,89 @@ def _interpolate_fr(
             interpolated = 10 ** (interpolated / factor)
 
     return interpolated
+
+
+def _time_smoothing(
+    x: NDArray[np.float64],
+    sampling_rate_hz: int,
+    ascending_time_s: float,
+    descending_time_s: float | None = None,
+) -> NDArray[np.float64]:
+    """Smoothing for a time series with independent ascending and descending
+    times. The smoothing is always applied along the longest axis. It works on
+    1D and 2D arrays.
+
+    If no descending time is provided, `ascending_time_s` is used for both
+    increasing and decreasing values.
+
+    Parameters
+    ----------
+    x : NDArray[np.float64]
+        Vector to apply smoothing to.
+    sampling_rate_hz : int
+        Sampling rate of the time series `x`.
+    ascending_time_s : float
+        Corresponds to the needed time for achieving a 95% accuracy of the
+        step response when the samples are increasing in value.
+    descending_time_s : float, None, optional
+        Analogous for descending values. If None, `ascending_time_s` is
+        applied. Default: None.
+
+    Returns
+    -------
+    NDArray[np.float64]
+        Smoothed time vector.
+
+    """
+    onedim = x.ndim == 1
+    x = np.atleast_2d(x)
+    if x.shape[0] < x.shape[1]:
+        reverse_axis = True
+        x = x.T
+    else:
+        reverse_axis = False
+
+    assert x.ndim < 3, "This function is only available for 2D arrays"
+    assert ascending_time_s > 0.0, "Attack time must be greater than 0"
+    ascending_factor = 1 - np.exp(
+        np.log(0.05) / ascending_time_s / sampling_rate_hz
+    )
+
+    if descending_time_s is None:
+        b, a = [ascending_factor], [1, -(1 - ascending_factor)]
+        zi = lfilter_zi(b, a)
+        y = lfilter(
+            b,
+            a,
+            x,
+            axis=0,
+            zi=np.asarray([zi * x[0, ch] for ch in range(x.shape[1])]).T,
+        )[0]
+        if reverse_axis:
+            y = y.T
+        if onedim:
+            return y.squeeze()
+        return y
+
+    assert descending_time_s > 0.0, "Release time must be greater than 0"
+
+    descending_factor = 1 - np.exp(
+        np.log(0.05) / descending_time_s / sampling_rate_hz
+    )
+
+    y = np.zeros_like(x)
+    y[0, :] = x[0, :]
+    for n in np.arange(1, x.shape[0]):
+        for ch in range(x.shape[1]):
+            val = (
+                ascending_factor
+                if x[n, ch] > x[n - 1, ch]
+                else descending_factor
+            )
+            y[n, ch] = val * x[n, ch] + (1.0 - val) * y[n - 1, ch]
+
+    if reverse_axis:
+        y = y.T
+    if onedim:
+        return y.squeeze()
+    return y
