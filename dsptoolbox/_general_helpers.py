@@ -1508,6 +1508,7 @@ def _interpolate_fr(
                     a_max=None,
                 )
             )
+            fill_value = (fr_interp[0], fr_interp[-1])
         else:
             raise ValueError(f"Unsupported interpolation mode: {mode}")
 
