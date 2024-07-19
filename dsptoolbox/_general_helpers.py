@@ -1545,8 +1545,8 @@ def _time_smoothing(
     descending_time_s: float | None = None,
 ) -> NDArray[np.float64]:
     """Smoothing for a time series with independent ascending and descending
-    times. The smoothing is always applied along the longest axis. It works on
-    1D and 2D arrays.
+    times using an exponential moving average. It works on 1D and 2D arrays.
+    The smoothing is always applied along the longest axis.
 
     If no descending time is provided, `ascending_time_s` is used for both
     increasing and decreasing values.
@@ -1559,15 +1559,16 @@ def _time_smoothing(
         Sampling rate of the time series `x`.
     ascending_time_s : float
         Corresponds to the needed time for achieving a 95% accuracy of the
-        step response when the samples are increasing in value.
+        step response when the samples are increasing in value. Pass 0. in
+        order to avoid any smoothing for rising values.
     descending_time_s : float, None, optional
-        Analogous for descending values. If None, `ascending_time_s` is
-        applied. Default: None.
+        As `ascending_time_s` but for descending values. If None,
+        `ascending_time_s` is applied. Default: None.
 
     Returns
     -------
     NDArray[np.float64]
-        Smoothed time vector.
+        Smoothed time series.
 
     """
     onedim = x.ndim == 1
@@ -1579,9 +1580,11 @@ def _time_smoothing(
         reverse_axis = False
 
     assert x.ndim < 3, "This function is only available for 2D arrays"
-    assert ascending_time_s > 0.0, "Attack time must be greater than 0"
-    ascending_factor = 1 - np.exp(
-        np.log(0.05) / ascending_time_s / sampling_rate_hz
+    assert ascending_time_s >= 0.0, "Attack time must be at least 0"
+    ascending_factor = (
+        _get_smoothing_factor_ema(ascending_time_s, sampling_rate_hz)
+        if ascending_time_s > 0.0
+        else 1.0
     )
 
     if descending_time_s is None:
@@ -1600,22 +1603,31 @@ def _time_smoothing(
             return y.squeeze()
         return y
 
-    assert descending_time_s > 0.0, "Release time must be greater than 0"
+    assert descending_time_s >= 0.0, "Release time must at least 0"
+    assert not (
+        ascending_time_s == 0.0 and descending_time_s == ascending_time_s
+    ), "These times will not apply any smoothing"
 
-    descending_factor = 1 - np.exp(
-        np.log(0.05) / descending_time_s / sampling_rate_hz
+    descending_factor = (
+        _get_smoothing_factor_ema(descending_time_s, sampling_rate_hz)
+        if descending_time_s > 0.0
+        else 1.0
     )
 
     y = np.zeros_like(x)
     y[0, :] = x[0, :]
+
     for n in np.arange(1, x.shape[0]):
         for ch in range(x.shape[1]):
-            val = (
+            smoothing_factor = (
                 ascending_factor
-                if x[n, ch] > x[n - 1, ch]
+                if x[n, ch] > y[n - 1, ch]
                 else descending_factor
             )
-            y[n, ch] = val * x[n, ch] + (1.0 - val) * y[n - 1, ch]
+            y[n, ch] = (
+                smoothing_factor * x[n, ch]
+                + (1.0 - smoothing_factor) * y[n - 1, ch]
+            )
 
     if reverse_axis:
         y = y.T
