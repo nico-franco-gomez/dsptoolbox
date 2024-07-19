@@ -444,6 +444,52 @@ class FilterBank:
         )
         return ir
 
+    def get_transfer_function(
+        self, frequency_vector_hz: np.ndarray, mode: str = "parallel"
+    ):
+        """Compute the complex transfer function of the filter bank for
+        specified frequencies. The output is based on the filter bank filtering
+        mode.
+
+        Parameters
+        ----------
+        frequency_vector_hz : np.ndarray
+            Frequency vector to evaluate frequencies at.
+        mode : str, optional
+            Way of applying the filter bank. If `"parallel"`, the resulting
+            transfer function will have shape (frequency, filter). In the cases
+            of `"sequential"` and `"summed"`, it will have shape (frequency).
+
+        Returns
+        -------
+        np.ndarray
+            Complex transfer function of the filter bank.
+
+        """
+        mode = mode.lower()
+        assert mode in (
+            "parallel",
+            "sequential",
+            "summed",
+        ), f"{mode} is not a valid mode. Use parallel, sequential or summed"
+        match mode:
+            case "parallel":
+                h = np.zeros(
+                    (len(frequency_vector_hz), self.number_of_filters),
+                    dtype=np.complex128,
+                )
+                for ind, f in enumerate(self.filters):
+                    h[:, ind] = f.get_transfer_function(frequency_vector_hz)
+            case "sequential":
+                h = np.ones(len(frequency_vector_hz), dtype=np.complex128)
+                for ind, f in enumerate(self.filters):
+                    h *= f.get_transfer_function(frequency_vector_hz)
+            case "summed":
+                h = np.ones(len(frequency_vector_hz), dtype=np.complex128)
+                for ind, f in enumerate(self.filters):
+                    h += f.get_transfer_function(frequency_vector_hz)
+        return h
+
     # ======== Prints and plots ===============================================
     def show_info(self):
         """Show information about the filter bank."""

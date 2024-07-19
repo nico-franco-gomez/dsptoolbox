@@ -568,6 +568,50 @@ class Filter:
         )
         return self.filter_signal(ir_filt, zero_phase=zero_phase)
 
+    def get_transfer_function(self, frequency_vector_hz: np.ndarray):
+        """Obtain the complex transfer function of the filter analytically
+        evaluated for a given frequency vector.
+
+        Parameters
+        ----------
+        frequency_vector_hz : `np.ndarray`
+            Frequency vector for which to compute the transfer function
+
+        Returns
+        -------
+        np.ndarray
+            Complex transfer function
+
+        Notes
+        -----
+        - This method uses scipy's freqz to compute the transfer function. In
+          the case of FIR filters, it might be significantly faster and more
+          precise to use a direct FFT approach.
+
+        """
+        assert (
+            frequency_vector_hz.ndim == 1
+        ), "Frequency vector can only have one dimension"
+        assert (
+            frequency_vector_hz.max() <= self.sampling_rate_hz / 2
+        ), "Queried frequency vector has values larger than nyquist"
+        if self.filter_type in ("iir", "biquad"):
+            if hasattr(self, "sos"):
+                return sig.sosfreqz(
+                    self.sos, frequency_vector_hz, fs=self.sampling_rate_hz
+                )[1]
+            return sig.freqz(
+                self.ba[0],
+                self.ba[1],
+                frequency_vector_hz,
+                fs=self.sampling_rate_hz,
+            )[1]
+
+        # FIR
+        return sig.freqz(
+            self.ba[0], [1], frequency_vector_hz, self.sampling_rate_hz
+        )[1]
+
     def get_coefficients(
         self, mode: str = "sos"
     ) -> (
