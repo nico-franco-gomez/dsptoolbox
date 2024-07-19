@@ -463,6 +463,42 @@ class TestFilterClass:
         with pytest.raises(AssertionError):
             f.initialize_zi(0)
 
+    def test_get_transfer_function(self):
+        # Functionality
+        f = dsp.Filter(
+            "other",
+            filter_configuration=dict(sos=self.iir),
+            sampling_rate_hz=self.fs,
+        )
+        freqs = np.linspace(1, 4e3, 200)
+        f.get_transfer_function(freqs)
+
+        b = sig.firwin(
+            1500,
+            (self.fs // 2 // 2),
+            pass_zero="lowpass",
+            fs=self.fs,
+            window="flattop",
+        )
+        f = dsp.Filter(
+            "other",
+            filter_configuration=dict(ba=[b, 1]),
+            sampling_rate_hz=self.fs,
+        )
+        f.get_transfer_function(freqs)
+
+        f = dsp.Filter(
+            "biquad",
+            filter_configuration={
+                "eq_type": "peaking",
+                "freqs": 200,
+                "gain": 3,
+                "q": 0.7,
+            },
+            sampling_rate_hz=self.fs,
+        )
+        f.get_transfer_function(freqs)
+
     def test_filter_and_resampling_IIR(self):
         f = dsp.Filter(
             "other",
@@ -847,6 +883,28 @@ class TestFilterBankClass:
         fb.add_filter(dsp.Filter("fir", config, self.fs // 2))
         for n in fb:
             assert dsp.Filter == type(n)
+
+    def test_transfer_function(self):
+        # Create
+        fb = dsp.FilterBank()
+        config = dict(
+            order=5,
+            freqs=[1500, 2000],
+            type_of_pass="bandpass",
+            filter_design_method="bessel",
+        )
+        fb.add_filter(dsp.Filter("iir", config, sampling_rate_hz=self.fs))
+        config = dict(order=150, freqs=[1500, 2000], type_of_pass="bandpass")
+        fb.add_filter(dsp.Filter("fir", config, self.fs))
+
+        freqs = np.linspace(1, 2e3, 400)
+        fb.get_transfer_function(freqs, mode="parallel")
+        fb.get_transfer_function(freqs, mode="sequential")
+        fb.get_transfer_function(freqs, mode="summed")
+
+        with pytest.raises(AssertionError):
+            freqs = np.linspace(1, self.fs, 40)
+            fb.get_transfer_function(freqs, mode="parallel")
 
 
 class TestMultiBandSignal:
