@@ -34,6 +34,7 @@ from . import transforms
 from . import audio_io
 from . import beamforming
 from . import effects
+from . import tools
 
 __all__ = [
     # Basic classes
@@ -71,6 +72,7 @@ __all__ = [
     "audio_io",
     "beamforming",
     "effects",
+    "tools",
 ]
 
 __version__ = "0.3.9"
