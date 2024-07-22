@@ -245,6 +245,26 @@ class TestFilterbanksModule:
         #     ax.legend(["Matched", "Standard"])
         # dsp.plots.show()
 
+    def test_gaussian_kernel(self):
+        # Only functionality
+        fs_hz = 44100
+        n = dsp.generators.noise(sampling_rate_hz=fs_hz)
+
+        # Get kernel and apply filtering
+        f = dsp.filterbanks.gaussian_kernel(0.02, sampling_rate_hz=fs_hz)
+        n1 = f.filter_signal(n, zero_phase=True)
+
+        # Compare to normal gaussian window
+        length = int(0.02 * fs_hz + 0.5)
+        sigma = length / (2.0 * np.log(1 / 1e-2)) ** 0.5
+        w = sig.windows.gaussian(length, sigma, True)
+        w /= w.sum()
+        f = dsp.Filter("other", {"ba": [w, [1]]}, fs_hz)
+        n1 = dsp.merge_signals(n1, f.filter_signal(n, zero_phase=False))
+
+        # n1.plot_time()
+        # dsp.plots.show()
+
 
 class TestLatticeLadderFilter:
     b = np.array([1, 3, 3, 1])

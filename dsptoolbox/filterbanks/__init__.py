@@ -31,6 +31,8 @@ Other:
 - `convert_into_lattice_filter()`: Turns a conventional filter into its
   lattice/ladder representation.
 - `pinking_filter()`: Get a -3 dB/octave filter.
+- `matched_biquad()`: Analog-matched biquad filters.
+- `gaussian_kernel()`: IIR first-order approximation of a gaussian window.
 
 """
 
@@ -45,6 +47,7 @@ from .filterbanks import (
     convert_into_lattice_filter,
     pinking_filter,
     matched_biquad,
+    gaussian_kernel,
 )
 
 from ..classes._lattice_ladder_filter import LatticeLadderFilter
@@ -65,4 +68,5 @@ __all__ = [
     "StateVariableFilter",
     "pinking_filter",
     "matched_biquad",
+    "gaussian_kernel",
 ]
