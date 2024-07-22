@@ -4,7 +4,7 @@ object
 """
 
 import numpy as np
-from scipy.signal import windows, bilinear_zpk, freqz_zpk
+from scipy.signal import windows, bilinear_zpk, freqz_zpk, tf2sos
 import warnings
 from .. import (
     Filter,
@@ -697,3 +697,72 @@ def matched_biquad(
         {"ba": ba},
         sampling_rate_hz,
     )
+
+
+def gaussian_kernel(
+    kernel_length_seconds: float,
+    kernel_boundary_value: float = 1e-2,
+    approximation_order: int = 12,
+    sampling_rate_hz: int = None,
+):
+    """Approximate a gaussian FIR window with a first-order IIR approximation
+    kernel according to [1]. The resulting filter must be applied using
+    zero-phase filtering.
+
+    Parameters
+    ----------
+    kernel_length_seconds : float
+        Kernel length in seconds used to define the width of the gaussian
+        bell in relation to time. It corresponds to the time between `t=0` and
+        `t=t0` where `y(t0)=kernel_boundary_value`.
+    kernel_boundary_value : float, optional
+        Value that the gaussian window should reach after
+        `kernel_length_seconds`. Default: 1e-2.
+    approximation_order : int, optional
+        Order of the approximation. This corresponds to the number of times
+        that the filter will be applied (when using zero-phase filtering). The
+        higher this number, the better the approximation. This should be
+        an even number. Values around 10 will be sufficient in most cases.
+        Default: 12.
+    sampling_rate_hz : int
+        Sampling rate in Hz for the filter.
+
+    Returns
+    -------
+    Filter
+        IIR filter with the approximation kernel. It should always be applied
+        using zero-phase filtering!
+
+    References
+    ----------
+    - [1]: Alvarez, Mazorra, "Signal and Image Restoration using Shock Filters
+      and Anisotropic Diffusion," SIAM J. on Numerical Analysis, vol. 31, no.
+      2, pp. 590-605, 1994. http://www.jstor.org/stable/2158018
+
+    """
+    assert approximation_order % 2 == 0, "Approximation order must be even"
+    assert sampling_rate_hz is not None, "Sampling rate should not be None"
+
+    K = approximation_order // 2
+
+    # Obtain sigma from kernel width definition in regards to time
+    kernel_length_samples = kernel_length_seconds * sampling_rate_hz
+    sigma = (
+        kernel_length_samples
+        / (2.0 * np.log(1 / kernel_boundary_value)) ** 0.5
+    )
+
+    # Before eq. (6)
+    lambdaa = sigma**2.0 / (2.0 * K)
+
+    # Below eq. (9)
+    mu = (1.0 + 2.0 * lambdaa - (1.0 + 4.0 * lambdaa) ** 0.5) / (2.0 * lambdaa)
+
+    # Eq. (7)
+    b = np.array([1.0]) * (mu / lambdaa) ** 0.5
+    a = np.array([1.0, -mu])
+
+    sos = tf2sos(b, a)
+    sos = np.repeat(sos, K, axis=0)
+
+    return Filter("other", {"sos": sos}, sampling_rate_hz)
