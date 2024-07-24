@@ -36,6 +36,7 @@ from ._general_helpers import (
     _check_format_in_path,
     _get_smoothing_factor_ema,
     _fractional_latency,
+    _get_correlation_of_latencies,
 )
 
 
@@ -43,7 +44,7 @@ def latency(
     in1: Signal | MultiBandSignal,
     in2: Signal | MultiBandSignal | None = None,
     polynomial_points: int = 0,
-) -> np.ndarray[int | float]:
+) -> tuple[np.ndarray[int | float], np.ndarray[float]]:
     """Computes latency between two signals using the correlation method.
     If there is no second signal, the latency between the first and the other
     channels is computed. `in1` is to be understood as a delayed version
@@ -57,6 +58,10 @@ def latency(
     might fail to compute the root. In that case, integer latency will be
     returned for the respective channel. To avoid fractional latency, use
     `polynomial_points = 0`.
+
+    The quality of the estimation is assessed by computing the pearson
+    correlation coefficient between the two time series after compensating the
+    delay. See notes for details.
 
     Parameters
     ----------
@@ -75,9 +80,17 @@ def latency(
     Returns
     -------
     lags : `np.ndarray`
-        Delays. For `Signal`, the output shape is (channel).
+        Delays in samples. For `Signal`, the output shape is (channel).
         In case in2 is `None`, the length is `channels - 1`. In the case of
         `MultiBandSignal`, output shape is (band, channel).
+    correlations : `np.ndarray`
+        Correlation for computed delays with the same shape as lags.
+
+    Notes
+    -----
+    - The correlation coefficients have values between [-1, 1]. The closer the
+      absolute value is to 1, the better the latency estimation. This is always
+      computed using the integer latency for performance.
 
     References
     ----------
@@ -113,9 +126,15 @@ def latency(
                 in1.number_of_channels > 1
             ), "Signal must have at least 2 channels to compare"
             td2 = None
-        return latency_func(
+        latencies = latency_func(
             in1.time_data, td2, polynomial_points=polynomial_points
         )
+        return latencies, _get_correlation_of_latencies(
+            td2 if td2 is not None else in1.time_data[:, 0][..., None],
+            in1.time_data if td2 is not None else in1.time_data[:, 1:],
+            np.round(latencies, 0).astype(np.int_),
+        )
+
     elif isinstance(in1, MultiBandSignal):
         if in2 is not None:
             assert isinstance(
@@ -132,8 +151,11 @@ def latency(
             lags = np.zeros(
                 (in1.number_of_bands, in1.number_of_channels), dtype=data_type
             )
+            correlations = np.zeros(
+                (in1.number_of_bands, in1.number_of_channels), dtype=np.float64
+            )
             for band in range(in1.number_of_bands):
-                lags[band, :] = latency(
+                lags[band, :], correlations[band, :] = latency(
                     in1.bands[band],
                     in2.bands[band],
                     polynomial_points=polynomial_points,
@@ -143,8 +165,12 @@ def latency(
                 (in1.number_of_bands, in1.number_of_channels - 1),
                 dtype=data_type,
             )
+            correlations = np.zeros(
+                (in1.number_of_bands, in1.number_of_channels - 1),
+                dtype=np.float64,
+            )
             for band in range(in1.number_of_bands):
-                lags[band, :] = latency(
+                lags[band, :], correlations[band, :] = latency(
                     in1.bands[band], None, polynomial_points=polynomial_points
                 )
         return lags

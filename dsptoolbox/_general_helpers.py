@@ -15,6 +15,7 @@ from scipy.signal import (
 from scipy.fft import fft, ifft
 from scipy.interpolate import interp1d
 from scipy.linalg import toeplitz as toeplitz_scipy
+from scipy.stats import pearsonr
 from os import sep
 from warnings import warn
 from scipy.fft import next_fast_len
@@ -1634,3 +1635,53 @@ def _time_smoothing(
     if onedim:
         return y.squeeze()
     return y
+
+
+def _get_correlation_of_latencies(
+    time_data: NDArray[np.float64],
+    other_time_data: NDArray[np.float64],
+    latencies: NDArray[np.int_],
+) -> NDArray[np.float64]:
+    """Compute the pearson correlation coefficient of each channel between
+    `time_data` and `other_time_data` in order to obtain an estimation on the
+    quality of the latency computation.
+
+    Parameters
+    ----------
+    time_data : NDArray[np.float64]
+        Original time data. This is the "undelayed" version if the latency
+        is positive. It must have either one channel or a matching number
+        of channels with `other_time_data`.
+    other_time_data : NDArray[np.float64]
+        "Delayed" time data, when the latency is positive.
+    latencies : NDArray[np.int_]
+        Computed latencies for each channel.
+
+    Returns
+    -------
+    NDArray[np.float64]
+        Correlation coefficient for each channel.
+
+    """
+    one_channel = time_data.shape[1] == 1
+
+    correlations = np.zeros(len(latencies))
+
+    for ch in range(len(latencies)):
+        if latencies[ch] > 0:
+            undelayed = time_data[:, 0] if one_channel else time_data[:, ch]
+            delayed = other_time_data[:, ch]
+        else:
+            undelayed = other_time_data[:, ch]
+            delayed = time_data[:, 0] if one_channel else time_data[:, ch]
+
+        # Remove delay samples
+        delayed = delayed[abs(latencies[ch]) :]
+
+        # Get effective length
+        length_to_check = min(len(delayed), len(undelayed))
+
+        delayed = delayed[:length_to_check]
+        undelayed = undelayed[:length_to_check]
+        correlations[ch] = pearsonr(delayed, undelayed)[0]
+    return correlations
