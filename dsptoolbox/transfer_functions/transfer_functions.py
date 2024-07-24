@@ -1486,7 +1486,7 @@ def find_ir_latency(ir: Signal) -> np.ndarray:
     """
     assert ir.signal_type in ("rir", "ir"), "Only valid for rir or ir"
     min_ir = min_phase_ir(ir)
-    return latency(ir, min_ir, 1)
+    return latency(ir, min_ir, 1)[0]
 
 
 def harmonics_from_chirp_ir(
