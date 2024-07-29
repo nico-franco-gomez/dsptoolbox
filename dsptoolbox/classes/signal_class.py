@@ -10,6 +10,7 @@ import soundfile as sf
 from matplotlib.figure import Figure
 from matplotlib.axes import Axes
 from scipy.signal import convolve
+from numpy.typing import NDArray
 
 from ..plots import general_plot, general_subplots_line, general_matrix_plot
 from ._plots import _csm_plot
@@ -52,7 +53,7 @@ class Signal:
         path : str, optional
             A path to audio files. Reading is done with the soundfile library.
             Wave and Flac audio files are accepted. Default: `None`.
-        time_data : array-like, `np.ndarray`, optional
+        time_data : array-like, NDArray[np.float64], optional
             Time data of the signal. It is saved as a matrix with the form
             (time samples, channel number). Default: `None`.
         sampling_rate_hz : int, optional
@@ -167,13 +168,13 @@ class Signal:
 
     # ======== Properties and setters =========================================
     @property
-    def time_data(self) -> np.ndarray:
+    def time_data(self) -> NDArray[np.float64]:
         return self.__time_data.copy()
 
     @time_data.setter
     def time_data(self, new_time_data):
         # Shape of Time Data array
-        if not type(new_time_data) is np.ndarray:
+        if not type(new_time_data) is NDArray[np.float64]:
             new_time_data = np.asarray(new_time_data)
         if new_time_data.ndim > 2:
             new_time_data = new_time_data.squeeze()
@@ -263,13 +264,13 @@ class Signal:
         self.__number_of_channels = new_number
 
     @property
-    def time_vector_s(self) -> np.ndarray:
+    def time_vector_s(self) -> NDArray[np.float64]:
         if self.__time_vector_update:
             self._generate_time_vector()
         return self.__time_vector_s
 
     @property
-    def time_data_imaginary(self) -> np.ndarray | None:
+    def time_data_imaginary(self) -> NDArray[np.float64] | None:
         if self.__time_data_imaginary is None:
             # warn('Imaginary part of time data was called, but there is ' +
             #      'None. None is returned.')
@@ -277,7 +278,7 @@ class Signal:
         return self.__time_data_imaginary.copy()
 
     @time_data_imaginary.setter
-    def time_data_imaginary(self, new_imag: np.ndarray):
+    def time_data_imaginary(self, new_imag: NDArray[np.float64]):
         if new_imag is not None:
             assert (
                 new_imag.shape == self.__time_data.shape
@@ -401,13 +402,13 @@ class Signal:
                 self._spectrum_parameters = _new_spectrum_parameters
                 self.__spectrum_state_update = True
 
-    def set_window(self, window: np.ndarray):
+    def set_window(self, window: NDArray[np.float64]):
         """Sets the window used for the IR. It only works for
         `signal_type in ('ir', 'h1', 'h2', 'h3', 'rir')`.
 
         Parameters
         ----------
-        window : `np.ndarray`
+        window : NDArray[np.float64]
             Window used for the IR.
 
         """
@@ -421,13 +422,13 @@ class Signal:
         ), f"{window.shape} does not match shape {self.time_data.shape}"
         self.window = window
 
-    def set_coherence(self, coherence: np.ndarray):
+    def set_coherence(self, coherence: NDArray[np.float64]):
         """Sets the coherence measurements of the transfer function.
         It only works for `signal_type = ('ir', 'h1', 'h2', 'h3', 'rir')`.
 
         Parameters
         ----------
-        coherence : `np.ndarray`
+        coherence : NDArray[np.float64]
             Coherence matrix.
 
         """
@@ -574,7 +575,7 @@ class Signal:
     def add_channel(
         self,
         path: str | None = None,
-        new_time_data: np.ndarray | None = None,
+        new_time_data: NDArray[np.float64] | None = None,
         sampling_rate_hz: int | None = None,
         padding_trimming: bool = True,
     ):
@@ -584,7 +585,7 @@ class Signal:
         ----------
         path : str, optional
             Path to the file containing new channel information.
-        new_time_data : `np.ndarray`, optional
+        new_time_data : NDArray[np.float64], optional
             np.array with new channel data.
         sampling_rate_hz : int, optional
             Sampling rate for the new data
@@ -607,7 +608,7 @@ class Signal:
             f"{sampling_rate_hz} does not match {self.sampling_rate_hz} "
             + "as the sampling rate"
         )
-        if not type(new_time_data) is np.ndarray:
+        if not type(new_time_data) is NDArray[np.float64]:
             new_time_data = np.array(new_time_data)
         if new_time_data.ndim > 2:
             new_time_data = new_time_data.squeeze()
@@ -731,7 +732,7 @@ class Signal:
     # ======== Getters ========================================================
     def get_spectrum(
         self, force_computation=False
-    ) -> tuple[np.ndarray, np.ndarray]:
+    ) -> tuple[NDArray[np.float64], NDArray[np.complex128]]:
         """Returns spectrum.
 
         Parameters
@@ -741,9 +742,9 @@ class Signal:
 
         Returns
         -------
-        spectrum_freqs : `np.ndarray`
+        spectrum_freqs : NDArray[np.float64]
             Frequency vector.
-        spectrum : `np.ndarray`
+        spectrum : NDArray[np.complex128]
             Spectrum matrix for each channel.
 
         """
@@ -820,15 +821,15 @@ class Signal:
 
     def get_csm(
         self, force_computation=False
-    ) -> tuple[np.ndarray, np.ndarray]:
+    ) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
         """Get Cross spectral matrix for all channels with the shape
         (frequencies, channels, channels).
 
         Returns
         -------
-        f_csm : `np.ndarray`
+        f_csm : NDArray[np.float64]
             Frequency vector.
-        csm : `np.ndarray`
+        csm : NDArray[np.float64]
             Cross spectral matrix with shape (frequency, channels, channels).
 
         """
@@ -851,7 +852,9 @@ class Signal:
 
     def get_spectrogram(
         self, force_computation: bool = False
-    ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    ) -> tuple[
+        NDArray[np.float64], NDArray[np.float64], NDArray[np.complex128]
+    ]:
         """Returns a matrix containing the STFT of a specific channel.
 
         Parameters
@@ -861,11 +864,11 @@ class Signal:
 
         Returns
         -------
-        t_s : `np.ndarray`
+        t_s : NDArray[np.float64]
             Time vector.
-        f_hz : `np.ndarray`
+        f_hz : NDArray[np.float64]
             Frequency vector.
-        spectrogram : `np.ndarray`
+        spectrogram : NDArray[np.complex128]
             Complex spectrogram with shape (frequency, time, channel).
 
         Notes
@@ -899,14 +902,14 @@ class Signal:
         )
         return t_s, f_hz, spectrogram
 
-    def get_coherence(self) -> tuple[np.ndarray, np.ndarray]:
+    def get_coherence(self) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
         """Returns the coherence matrix.
 
         Returns
         -------
-        f : `np.ndarray`
+        f : NDArray[np.float64]
             Frequency vector.
-        coherence : `np.ndarray`
+        coherence : NDArray[np.float64]
             Coherence matrix.
 
         """
@@ -1585,7 +1588,7 @@ class Signal:
 
         Returns
         -------
-        sig : `np.ndarray` or `Signal`
+        sig : NDArray[np.float64] or `Signal`
             Numpy array with samples used for reproduction with shape
             (time_samples, channels) or `Signal` object.
         stop_flag : bool

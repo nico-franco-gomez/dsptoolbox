@@ -4,6 +4,7 @@ High-level methods for room acoustics functions
 
 import numpy as np
 from scipy.signal import find_peaks, convolve
+from numpy.typing import NDArray
 
 from ..classes import Signal, MultiBandSignal, Filter
 from ..filterbanks import fractional_octave_bands, linkwitz_riley_crossovers
@@ -25,9 +26,9 @@ from ..standard_functions import pad_trim
 def reverb_time(
     signal: Signal | MultiBandSignal,
     mode: str = "T20",
-    ir_start: int | np.ndarray | None = None,
+    ir_start: int | NDArray[np.int_] | None = None,
     automatic_trimming: bool = True,
-) -> tuple[np.ndarray, np.ndarray]:
+) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
     """Computes reverberation time. Topt, T20, T30, T60 and EDT.
 
     Parameters
@@ -38,7 +39,7 @@ def reverb_time(
     mode : str, optional
         Reverberation time mode. Options are `'Topt'`, `'T20'`, `'T30'`,
         `'T60'` or `'EDT'`. Default: `'Topt'`.
-    ir_start : int or array-like, optional
+    ir_start : int or array-like, NDArray[np.int_], optional
         If it is an integer, it is assumed as the start of the IR for all
         channels (and all bands). For more specific cases, pass a 1d-array
         containing the start indices for each channel or a 2d-array with
@@ -51,10 +52,10 @@ def reverb_time(
 
     Returns
     -------
-    reverberation_times : `np.ndarray`
+    reverberation_times : NDArray[np.float64]
         Reverberation times for each channel. Shape is (band, channel)
         if `MultiBandSignal` object is passed.
-    correlation_coefficient : `np.ndarray`
+    correlation_coefficient : NDArray[np.float64]
         Pearson correlation coefficient to determine the accuracy of the
         reverberation time estimation. It has shape (channels) or
         (band, channels) if `MultiBandSignal` object is passed. See notes
@@ -130,7 +131,7 @@ def find_modes(
     dist_hz: float = 5,
     prominence_db: float | None = None,
     antiresonances: bool = False,
-) -> np.ndarray:
+) -> NDArray[np.float64]:
     """Finds the room modes of a set of RIR using the peaks of the complex
     mode indicator function (CMIF).
 
@@ -151,7 +152,7 @@ def find_modes(
 
     Returns
     -------
-    f_modes : `np.ndarray`
+    f_modes : NDArray[np.float64]
         Vector containing frequencies where modes have been localized.
 
     References
@@ -272,7 +273,9 @@ def convolve_rir_on_signal(
     return new_sig
 
 
-def find_ir_start(signal: Signal, threshold_dbfs: float = -20) -> np.ndarray:
+def find_ir_start(
+    signal: Signal, threshold_dbfs: float = -20
+) -> NDArray[np.int_]:
     """This function finds the start of an IR defined as the first sample
     before a certain threshold is surpassed. For room impulse responses, -20
     dB relative to peak level is recommended according to [1].
@@ -286,7 +289,7 @@ def find_ir_start(signal: Signal, threshold_dbfs: float = -20) -> np.ndarray:
 
     Returns
     -------
-    start_index : `np.ndarray`
+    start_index : NDArray[np.int_]
         Index of IR start for each channel.
 
     References
@@ -299,7 +302,7 @@ def find_ir_start(signal: Signal, threshold_dbfs: float = -20) -> np.ndarray:
     start_index = np.empty(signal.number_of_channels, dtype=int)
     for n in range(signal.number_of_channels):
         start_index[n] = _find_ir_start(signal.time_data[:, n], threshold_dbfs)
-    return start_index.astype(int)
+    return start_index.astype(np.int_)
 
 
 def generate_synthetic_rir(
@@ -500,7 +503,7 @@ def descriptors(
 
     Returns
     -------
-    output_descriptor : `np.ndarray`
+    output_descriptor : NDArray[np.float64]
         Array containing the output descriptor. If RIR is a `Signal`,
         it has shape (channel). If RIR is a `MultiBandSignal`, the array has
         shape (band, channel).
@@ -549,7 +552,7 @@ def descriptors(
     return desc
 
 
-def _bass_ratio(rir: Signal) -> np.ndarray:
+def _bass_ratio(rir: Signal) -> NDArray[np.float64]:
     """Core computation of bass ratio.
 
     Parameters
@@ -559,7 +562,7 @@ def _bass_ratio(rir: Signal) -> np.ndarray:
 
     Returns
     -------
-    br : `np.ndarray`
+    br : NDArray[np.float64]
         Bass ratio per channel.
 
     """
@@ -575,8 +578,9 @@ def _bass_ratio(rir: Signal) -> np.ndarray:
 
 
 def _check_ir_start_reverb(
-    sig: Signal | MultiBandSignal, ir_start: int | np.ndarray | list | tuple
-) -> np.ndarray | list | None:
+    sig: Signal | MultiBandSignal,
+    ir_start: int | NDArray[np.int_] | list | tuple | None,
+) -> NDArray[np.float64] | list | None:
     """This method checks `ir_start` and parses it into the necessary form
     if relevant. For a `Signal`, it is a vector with the same number of
     elements as channels of `sig`. For `MultiBandSignal`, it is a 2d-array
@@ -588,8 +592,8 @@ def _check_ir_start_reverb(
 
     """
     if ir_start is not None:
-        if type(ir_start) in (list, tuple, np.ndarray):
-            ir_start = np.atleast_1d(ir_start).astype(int)
+        if type(ir_start) in (list, tuple, NDArray[np.float64]):
+            ir_start = np.atleast_1d(ir_start).astype(np.int_)
         assert (
             np.issubdtype(type(ir_start), np.integer)
             or type(ir_start) is np.ndarray
@@ -597,7 +601,9 @@ def _check_ir_start_reverb(
 
     if type(sig) is Signal:
         if np.issubdtype(type(ir_start), np.integer):
-            ir_start = np.ones(sig.number_of_channels, dtype=int) * ir_start
+            ir_start = (
+                np.ones(sig.number_of_channels, dtype=np.int_) * ir_start
+            )
         elif ir_start is None:
             return [None] * sig.number_of_channels
         assert (
@@ -608,7 +614,7 @@ def _check_ir_start_reverb(
             ir_start = (
                 np.ones(
                     (sig.number_of_bands, sig.number_of_channels),
-                    dtype=int,
+                    dtype=np.int_,
                 )
                 * ir_start
             )
@@ -624,5 +630,5 @@ def _check_ir_start_reverb(
                 sig.number_of_channels,
             ), "Shape of ir_start is not valid for the passed signal"
     if ir_start.dtype not in (int, np.intp):
-        ir_start = ir_start.astype(int)
+        ir_start = ir_start.astype(np.int_)
     return ir_start

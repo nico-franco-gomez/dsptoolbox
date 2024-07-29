@@ -11,10 +11,13 @@ from ._general_helpers import (
     _wrap_phase,
 )
 from warnings import warn
+from numpy.typing import NDArray
 
 
 def _latency(
-    in1: np.ndarray, in2: np.ndarray | None = None, polynomial_points: int = 0
+    in1: NDArray[np.float64],
+    in2: NDArray[np.float64] | None = None,
+    polynomial_points: int = 0,
 ):
     """Computes the latency between two functions using the correlation method.
     The variable polynomial_points is only a dummy to share the same function
@@ -35,8 +38,8 @@ def _latency(
 
 
 def _welch(
-    x: np.ndarray,
-    y: np.ndarray | None,
+    x: NDArray[np.float64],
+    y: NDArray[np.float64] | None,
     fs_hz: int,
     window_type: str = "hann",
     window_length_samples: int = 1024,
@@ -44,14 +47,14 @@ def _welch(
     detrend: bool = True,
     average: str = "mean",
     scaling: str | None = "power spectral density",
-) -> np.ndarray:
+) -> NDArray[np.float64]:
     """Cross spectral density computation with Welch's method.
 
     Parameters
     ----------
-    x : `np.ndarray`
+    x : NDArray[np.float64]
         First signal with shape (time samples, channel).
-    y : `np.ndarray` or `None`
+    y : NDArray[np.float64] or `None`
         Second signal with shape (time samples, channel). If `None`, the auto-
         spectrum of `x` will be computed.
     fs_hz : int
@@ -77,7 +80,7 @@ def _welch(
 
     Returns
     -------
-    csd : `np.ndarray`
+    csd : NDArray[np.float64]
         Complex cross spectral density vector if x and y are different.
         Alternatively, the (real) autocorrelation power spectral density when
         x and y are the same. If density or spectrum depends on scaling.
@@ -97,11 +100,11 @@ def _welch(
     """
     autospectrum = y is None
 
-    if type(x) is not np.ndarray:
+    if type(x) is not NDArray[np.float64]:
         x = np.asarray(x).squeeze()
 
     if not autospectrum:
-        if type(y) is not np.ndarray:
+        if type(y) is not NDArray[np.float64]:
             y = np.asarray(y).squeeze()
         assert x.shape == y.shape, "Shapes of data do not match"
         # NOTE: Computing the spectrum in a vectorized manner for all channels
@@ -229,12 +232,12 @@ def _welch(
     return csd
 
 
-def _group_delay_direct(phase: np.ndarray, delta_f: float = 1):
+def _group_delay_direct(phase: NDArray[np.float64], delta_f: float = 1):
     """Computes group delay by differentiation of the unwrapped phase.
 
     Parameters
     ----------
-    phase : `np.ndarray`
+    phase : NDArray[np.float64]
         Complex spectrum or phase for the direct method
     delta_f : float, optional
         Frequency step for the phase. If it equals 1, group delay is computed
@@ -242,7 +245,7 @@ def _group_delay_direct(phase: np.ndarray, delta_f: float = 1):
 
     Returns
     -------
-    gd : `np.ndarray`
+    gd : NDArray[np.float64]
         Group delay vector either in s or in samples if no
         frequency step is given.
 
@@ -257,16 +260,16 @@ def _group_delay_direct(phase: np.ndarray, delta_f: float = 1):
 
 
 def _minimum_phase(
-    magnitude: np.ndarray,
+    magnitude: NDArray[np.float64],
     whole_spectrum: bool = False,
     unwrapped: bool = True,
     odd_length: bool = False,
-) -> np.ndarray:
+) -> NDArray[np.float64]:
     """Computes minimum phase system from magnitude spectrum.
 
     Parameters
     ----------
-    magnitude : `np.ndarray`
+    magnitude : NDArray[np.float64]
         Spectrum for which to compute the minimum phase. If real, it is assumed
         to be already the magnitude.
     whole_spectrum : bool, optional
@@ -281,7 +284,7 @@ def _minimum_phase(
 
     Returns
     -------
-    minimum_phase : `np.ndarray`
+    minimum_phase : NDArray[np.float64]
         Minimal phase of the system.
 
     """
@@ -310,7 +313,7 @@ def _minimum_phase(
 
 
 def _stft(
-    x: np.ndarray,
+    x: NDArray[np.float64],
     fs_hz: int,
     window_length_samples: int = 2048,
     window_type: str = "hann",
@@ -324,7 +327,7 @@ def _stft(
 
     Parameters
     ----------
-    x : `np.ndarray`
+    x : NDArray[np.float64]
         First signal
     fs_hz : int
         Sampling rate in Hz.
@@ -353,11 +356,11 @@ def _stft(
 
     Returns
     -------
-    time_s : `np.ndarray`
+    time_s : NDArray[np.float64]
         Time vector in seconds for each frame.
-    freqs_hz : `np.ndarray`
+    freqs_hz : NDArray[np.float64]
         Frequency vector.
-    stft : `np.ndarray`
+    stft : NDArray[np.float64]
         STFT matrix with shape (frequency, time, channel).
 
     References
@@ -445,7 +448,7 @@ def _stft(
 
 
 def _csm(
-    time_data: np.ndarray,
+    time_data: NDArray[np.float64],
     sampling_rate_hz: int,
     window_length_samples: int = 1024,
     window_type: str = "hann",
@@ -459,7 +462,7 @@ def _csm(
 
     Parameters
     ----------
-    time_data : `np.ndarray`
+    time_data : NDArray[np.float64]
         Signal
     sampling_rate_hz : int
         Sampling rate in Hz.
@@ -484,9 +487,9 @@ def _csm(
 
     Returns
     -------
-    f : `np.ndarray`
+    f : NDArray[np.float64]
         Frequency vector
-    csm : `np.ndarray`
+    csm : NDArray[np.float64]
         Cross spectral matrix with shape (frequency, channels, channels).
 
     References
@@ -537,7 +540,7 @@ def _csm(
 
 def _center_frequencies_fractional_octaves_iec(
     nominal, num_fractions
-) -> tuple[np.ndarray, np.ndarray]:
+) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
     """Returns the exact center frequencies for fractional octave bands
     according to the IEC 61260:1:2014 standard.
     octave ratio
@@ -642,7 +645,7 @@ def _center_frequencies_fractional_octaves_iec(
 
 def _exact_center_frequencies_fractional_octaves(
     num_fractions, frequency_range
-) -> np.ndarray:
+) -> NDArray[np.float64]:
     """Calculate the center frequencies of arbitrary fractional octave bands.
 
     Parameters
@@ -707,7 +710,7 @@ def _kaiser_window_beta(A):
 
 def _kaiser_window_fractional(
     length: int, side_lobe_suppression_db: float, fractional_delay: float
-) -> np.ndarray:
+) -> NDArray[np.float64]:
     """Create a kaiser window with a fractional offset.
 
     Parameters
@@ -721,7 +724,7 @@ def _kaiser_window_fractional(
 
     Returns
     -------
-    `np.ndarray`
+    NDArray[np.float64]
         Kaiser window.
 
     """
@@ -742,7 +745,7 @@ def _kaiser_window_fractional(
 
 
 def _indices_above_threshold_dbfs(
-    time_vec: np.ndarray,
+    time_vec: NDArray[np.float64],
     threshold_dbfs: float,
     attack_smoothing_coeff: int,
     release_smoothing_coeff: int,
@@ -753,7 +756,7 @@ def _indices_above_threshold_dbfs(
 
     Parameters
     ----------
-    time_vec : `np.ndarray`
+    time_vec : NDArray[np.float64]
         Time series for which to find indices above power threshold. Can only
         take one channel.
     threshold_dbfs : float
@@ -768,7 +771,7 @@ def _indices_above_threshold_dbfs(
 
     Returns
     -------
-    indices_above : `np.ndarray`
+    indices_above : NDArray[np.float64]
         Array of type boolean with length of time_vec indicating indices
         above threshold with `True` and below with `False`.
 
@@ -801,12 +804,14 @@ def _indices_above_threshold_dbfs(
     return indices_above
 
 
-def _detrend(time_data: np.ndarray, polynomial_order: int) -> np.ndarray:
+def _detrend(
+    time_data: NDArray[np.float64], polynomial_order: int
+) -> NDArray[np.float64]:
     """Compute and return detrended signal.
 
     Parameters
     ----------
-    time_data : np.ndarray
+    time_data : NDArray[np.float64]
         Time data of the signal with shape (time samples, channels).
     polynomial_order : int
         Polynomial order of the fitted polynomial that will be removed
@@ -814,7 +819,7 @@ def _detrend(time_data: np.ndarray, polynomial_order: int) -> np.ndarray:
 
     Returns
     -------
-    new_time_data : np.ndarray
+    new_time_data : NDArray[np.float64]
         Detrended time data with shape (time samples, channels).
 
     """
@@ -825,18 +830,19 @@ def _detrend(time_data: np.ndarray, polynomial_order: int) -> np.ndarray:
     return time_data
 
 
-def _rms(x: np.ndarray) -> float | np.ndarray:
+def _rms(x: NDArray[np.float64]) -> float | NDArray[np.float64]:
     """Root mean squared value of a discrete time series.
 
     Parameters
     ----------
-    x : `np.ndarray`
+    x : NDArray[np.float64]
         Time series.
 
     Returns
     -------
-    rms : float or `np.ndarray`
-        Root mean squared of a signal. Float or np.ndarray depending on input.
+    rms : float or NDArray[np.float64]
+        Root mean squared of a signal. Float or NDArray[np.float64] depending
+        on input.
 
     """
     single_dim = False
@@ -856,16 +862,16 @@ def _rms(x: np.ndarray) -> float | np.ndarray:
 
 
 def _get_framed_signal(
-    td: np.ndarray,
+    td: NDArray[np.float64],
     window_length_samples: int,
     step_size: int,
     keep_last_frames: bool = True,
-) -> np.ndarray:
+) -> NDArray[np.float64]:
     """This method computes a framed version of a signal and returns it.
 
     Parameters
     ----------
-    td : `np.ndarray`
+    td : NDArray[np.float64]
         Signal with shape (time samples, channels).
     window_length_samples : int
         Window length in samples.
@@ -877,7 +883,7 @@ def _get_framed_signal(
 
     Returns
     -------
-    td_framed : `np.ndarray`
+    td_framed : NDArray[np.float64]
         Framed signal with shape (time samples, frames, channels).
 
     """
@@ -911,21 +917,21 @@ def _get_framed_signal(
 
 
 def _reconstruct_framed_signal(
-    td_framed: np.ndarray,
+    td_framed: NDArray[np.float64],
     step_size: int,
-    window: str | np.ndarray | None = None,
+    window: str | NDArray[np.float64] | None = None,
     original_signal_length: int | None = None,
     safety_threshold: float = 1e-4,
-) -> np.ndarray:
+) -> NDArray[np.float64]:
     """Gets and returns a framed signal into its vector representation.
 
     Parameters
     ----------
-    td_framed : `np.ndarray`
+    td_framed : NDArray[np.float64]
         Framed signal with shape (time samples, frame, channel).
     step_size : int
         Step size in samples between frames (also known as hop length).
-    window : str, `np.ndarray`, optional
+    window : str, NDArray[np.float64], optional
         Window (if applies). Pass `None` to avoid using a window during
         reconstruction. Default: `None`.
     original_signal_length : int, optional
@@ -940,7 +946,7 @@ def _reconstruct_framed_signal(
 
     Returns
     -------
-    td : `np.ndarray`
+    td : NDArray[np.float64]
         Reconstructed signal.
 
     """
@@ -950,7 +956,7 @@ def _reconstruct_framed_signal(
     if window is not None:
         if type(window) is str:
             window = windows.get_window(window, td_framed.shape[0])
-        elif type(window) is np.ndarray:
+        elif type(window) is NDArray[np.float64]:
             assert window.ndim == 1, "Window must be a 1D-array"
             assert (
                 window.shape[0] == td_framed.shape[0]
@@ -983,7 +989,7 @@ def _reconstruct_framed_signal(
 
 
 def _get_window_envelope(
-    window: np.ndarray,
+    window: NDArray[np.float64],
     total_length_samples: int,
     step_size_samples: int,
     number_frames: int,
@@ -1008,7 +1014,7 @@ def _fractional_delay_filter(
     delay_samples: float,
     filter_order: int,
     side_lobe_suppression_db: float,
-) -> tuple[int, np.ndarray]:
+) -> tuple[int, NDArray[np.float64]]:
     """This function delivers fractional delay filters according to
     specifications. Besides, additional integer delay, that might be necessary
     to compute the output, is returned as well.
@@ -1033,7 +1039,7 @@ def _fractional_delay_filter(
     -------
     integer_delay : int
         Additional integer delay necessary to achieve total desired delay.
-    h : `np.ndarray`
+    h : NDArray[np.float64]
         Filter's impulse response for fractional delay.
 
     References

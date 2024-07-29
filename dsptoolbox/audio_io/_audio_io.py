@@ -23,7 +23,8 @@ def standard_callback(signal: Signal):
         Function to be used as callback for the output stream. The signature
         must be valid for sounddevice's callback::
 
-            call(outdata: np.ndarray, frames: int, time, status) -> None
+            call(outdata: NDArray[np.float64], frames: int, time, status)\
+                -> None
 
     """
     # Normalize
@@ -36,7 +37,7 @@ def standard_callback(signal: Signal):
 
         Parameters
         ----------
-        outdata : `np.ndarray`
+        outdata : NDArray[np.float64]
             Samples as numpy array with shape (samples, channels).
         frames : int
             Block size in samples.

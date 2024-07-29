@@ -4,22 +4,23 @@ Backend for distance measures
 
 import numpy as np
 from scipy.integrate import simpson
+from numpy.typing import NDArray
 from .._general_helpers import _compute_number_frames, _pad_trim
 from .._standard import _rms
 
 
 def _log_spectral_distance(
-    x: np.ndarray, y: np.ndarray, f: np.ndarray
+    x: NDArray[np.float64], y: NDArray[np.float64], f: NDArray[np.float64]
 ) -> float:
     """Computes log spectral distance between two signals.
 
     Parameters
     ----------
-    x : `np.ndarray`
+    x : NDArray[np.float64]
         First power spectrum.
-    y : `np.ndarray`
+    y : NDArray[np.float64]
         Second power spectrum.
-    f : `np.ndarray`
+    f : NDArray[np.float64]
         Frequency vector.
 
     Returns
@@ -35,17 +36,17 @@ def _log_spectral_distance(
 
 
 def _itakura_saito_measure(
-    x: np.ndarray, y: np.ndarray, f: np.ndarray
+    x: NDArray[np.float64], y: NDArray[np.float64], f: NDArray[np.float64]
 ) -> float:
     """Computes log spectral distance between two signals.
 
     Parameters
     ----------
-    x : `np.ndarray`
+    x : NDArray[np.float64]
         First power spectrum.
-    y : `np.ndarray`
+    y : NDArray[np.float64]
         Second power spectrum.
-    f : `np.ndarray`
+    f : NDArray[np.float64]
         Frequency vector.
 
     Returns
@@ -59,33 +60,35 @@ def _itakura_saito_measure(
     return ism
 
 
-def _snr(s: np.ndarray, n: np.ndarray) -> float | np.ndarray:
+def _snr(
+    s: NDArray[np.float64], n: NDArray[np.float64]
+) -> float | NDArray[np.float64]:
     """Computes SNR from the passed numpy arrays.
 
     Parameters
     ----------
-    s : `np.ndarray`
+    s : NDArray[np.float64]
         Signal
-    n : `np.ndarray`
+    n : NDArray[np.float64]
         Noise
 
     Returns
     -------
-    snr : float or `np.ndarray`
+    snr : float or NDArray[np.float64]
         SNR between signals. It can be an array if signals are multichannel.
 
     """
     return 20 * np.log10(_rms(s) / _rms(n))
 
 
-def _sisdr(s: np.ndarray, shat: np.ndarray) -> float:
+def _sisdr(s: NDArray[np.float64], shat: NDArray[np.float64]) -> float:
     """Scale-invariant signal-to-distortion ratio
 
     Parameters
     ----------
-    s : `np.ndarray`
+    s : NDArray[np.float64]
         Target signal.
-    shat : `np.ndarray`
+    shat : NDArray[np.float64]
         Modified or approximated signal.
 
     Returns
@@ -102,11 +105,11 @@ def _sisdr(s: np.ndarray, shat: np.ndarray) -> float:
 
 
 def _fw_snr_seg_per_channel(
-    x: np.ndarray,
-    xhat: np.ndarray,
-    snr_range_db: np.ndarray,
+    x: NDArray[np.float64],
+    xhat: NDArray[np.float64],
+    snr_range_db: NDArray[np.float64],
     gamma: float,
-    time_window: np.ndarray,
+    time_window: NDArray[np.float64],
     step_samples: int,
 ) -> float:
     """This function gets an original signal x and a modified signal xhat
@@ -117,15 +120,15 @@ def _fw_snr_seg_per_channel(
 
     Parameters
     ----------
-    x : `np.ndarray`
+    x : NDArray[np.float64]
         Original signal with shape (time_samples, bands).
-    xhat : `np.ndarray`
+    xhat : NDArray[np.float64]
         Modified signal with shape (time_samples, bands).
-    snr_range_db : `np.ndarray` with length 2
+    snr_range_db : NDArray[np.float64] with length 2
         SNR range in dB.
     gamma : float
         Gamma exponent for the weighting function. See reference for details.
-    time_window : `np.ndarray`
+    time_window : NDArray[np.float64]
         Time window to be used.
     step : int
         Hop length between each time frame.

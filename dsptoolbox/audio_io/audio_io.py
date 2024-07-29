@@ -429,7 +429,7 @@ def play_through_stream(
 
             audio_callback(signal: Signal) -> callable
 
-            callback(outdata: np.ndarray, frames: int,
+            callback(outdata: NDArray[np.float64], frames: int,
                      time: CData, status: CallbackFlags) -> None
 
         See `sounddevice`'s examples of callbacks for more general
@@ -513,7 +513,7 @@ def output_stream(
     callback : callable
         Function that defines the audio callback::
 
-            callback(outdata: np.ndarray, frames: int,
+            callback(outdata: NDArray[np.float64], frames: int,
                      time: CData, status: CallbackFlags) -> None
 
     finished_callback : callable

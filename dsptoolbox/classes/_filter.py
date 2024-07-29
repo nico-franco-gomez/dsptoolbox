@@ -6,6 +6,7 @@ import numpy as np
 from warnings import warn
 from enum import Enum
 import scipy.signal as sig
+from numpy.typing import NDArray
 from .signal_class import Signal
 from .multibandsignal import MultiBandSignal
 from .._general_helpers import _polyphase_decomposition
@@ -59,7 +60,7 @@ def _get_biquad_type(number: int | None = None, name: str | None = None):
 def _biquad_coefficients(
     eq_type: int | str = 0,
     fs_hz: int = 48000,
-    frequency_hz: float | list | tuple | np.ndarray = 1000,
+    frequency_hz: float | list | tuple | NDArray[np.float64] = 1000,
     gain_db: float = 0,
     q: float = 1,
 ):
@@ -171,7 +172,7 @@ def _impulse(length_samples: int = 512, delay_samples: int = 0):
 
     Returns
     -------
-    imp : `np.ndarray`
+    imp : NDArray[np.float64]
         Impulse.
 
     """
@@ -196,9 +197,9 @@ def _group_delay_filter(ba, length_samples: int = 512, fs_hz: int = 48000):
 
     Returns
     -------
-    f : `np.ndarray`
+    f : NDArray[np.float64]
         Frequency vector.
-    gd : `np.ndarray`
+    gd : NDArray[np.float64]
         Group delay in seconds.
 
     """
@@ -321,7 +322,7 @@ def _filter_on_signal_ba(
         Signal to be filtered.
     ba : list
         List with ba coefficients of filter. Form ba=[b, a] where b and a
-        are of type `np.ndarray`.
+        are of type NDArray[np.float64].
     channels : array-like, optional
         Channel or array of channels to be filtered. When `None`, all
         channels are filtered. Default: `None`.
@@ -477,10 +478,10 @@ def _filterbank_on_signal(
 
 
 def _lfilter_fir(
-    b: np.ndarray,
-    a: np.ndarray,
-    x: np.ndarray,
-    zi: np.ndarray | None = None,
+    b: NDArray[np.float64],
+    a: NDArray[np.float64],
+    x: NDArray[np.float64],
+    zi: NDArray[np.float64] | None = None,
     axis: int = 0,
 ):
     """Variant to the `scipy.signal.lfilter` that uses `scipy.signal.convolve`
@@ -529,11 +530,11 @@ def _lfilter_fir(
 
 
 def _filter_and_downsample(
-    time_data: np.ndarray,
+    time_data: NDArray[np.float64],
     down_factor: int,
     ba_coefficients: list,
     polyphase: bool,
-) -> np.ndarray:
+) -> NDArray[np.float64]:
     """Filters and downsamples time data. If polyphase is `True`, it is
     assumed that the filter is FIR and only b-coefficients are used. In
     that case, an efficient downsampling is done, otherwise standard filtering
@@ -541,7 +542,7 @@ def _filter_and_downsample(
 
     Parameters
     ----------
-    time_data : `np.ndarray`
+    time_data : NDArray[np.float64]
         Time data to be filtered and resampled. Shape should be (time samples,
         channels).
     down_factor : int
@@ -554,7 +555,7 @@ def _filter_and_downsample(
 
     Returns
     -------
-    new_time_data : `np.ndarray`
+    new_time_data : NDArray[np.float64]
         New time data with downsampling.
 
     """
@@ -598,7 +599,7 @@ def _filter_and_downsample(
 
 
 def _filter_and_upsample(
-    time_data: np.ndarray,
+    time_data: NDArray[np.float64],
     up_factor: int,
     ba_coefficients: list,
     polyphase: bool,
@@ -614,7 +615,7 @@ def _filter_and_upsample(
 
     Parameters
     ----------
-    time_data : `np.ndarray`
+    time_data : NDArray[np.float64]
         Time data to be filtered and resampled. Shape should be (time samples,
         channels).
     up_factor : int
@@ -627,7 +628,7 @@ def _filter_and_upsample(
 
     Returns
     -------
-    new_time_data : `np.ndarray`
+    new_time_data : NDArray[np.float64]
         New time data with downsampling.
 
     """

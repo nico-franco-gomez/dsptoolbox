@@ -3,6 +3,7 @@ Methods used for acquiring and windowing transfer functions
 """
 
 import numpy as np
+from numpy.typing import NDArray
 from scipy.signal import minimum_phase as min_phase_scipy
 from scipy.fft import rfft as rfft_scipy, next_fast_len as next_fast_length_fft
 from scipy.interpolate import interp1d
@@ -177,7 +178,7 @@ def window_ir(
     at_start: bool = True,
     offset_samples: int = 0,
     left_to_right_flank_length_ratio: float = 1.0,
-) -> tuple[Signal, np.ndarray]:
+) -> tuple[Signal, NDArray[np.float64]]:
     """Windows an IR with trimming and selection of constant valued length.
     This is equivalent to a tukey window whose flanks can be selected to be
     any type. The peak of the impulse response is aligned to correspond to
@@ -220,7 +221,7 @@ def window_ir(
     -------
     new_sig : `Signal`
         Windowed signal. The used window is also saved under `new_sig.window`.
-    start_positions_samples : `np.ndarray`
+    start_positions_samples : NDArray[np.float64]
         This array contains the position index of the start of the IR in
         each channel of the original IR (relative to the possibly padded
         windowed IR).
@@ -285,7 +286,7 @@ def window_centered_ir(
     signal: Signal,
     total_length_samples: int,
     window_type: str | tuple = "hann",
-) -> tuple[Signal, np.ndarray]:
+) -> tuple[Signal, NDArray[np.float64]]:
     """This function windows an IR placing its peak in the middle. It trims
     it to the total length of the window or pads it to the desired length
     (padding in the end, window has `total_length`).
@@ -307,7 +308,7 @@ def window_centered_ir(
     -------
     new_sig : `Signal`
         Windowed signal. The used window is also saved under `new_sig.window`.
-    start_positions_samples : `np.ndarray`
+    start_positions_samples : NDArray[np.float64]
         This array contains the position index of the start of the IR in
         each channel of the original IR.
 
@@ -348,7 +349,7 @@ def compute_transfer_function(
     mode="h2",
     window_length_samples: int = 1024,
     spectrum_parameters: dict | None = None,
-) -> tuple[Signal, np.ndarray, np.ndarray]:
+) -> tuple[Signal, NDArray[np.complex128], NDArray[np.float64]]:
     r"""Gets transfer function H1, H2 or H3 (for stochastic signals).
     H1: for noise in the output signal. `Gxy/Gxx`.
     H2: for noise in the input signal. `Gyy/Gyx`.
@@ -378,10 +379,10 @@ def compute_transfer_function(
     tf_sig : `Signal`
         Transfer functions as `Signal` object. Coherences are also computed
         and saved in the `Signal` object.
-    tf : `np.ndarray`
-        Complex transfer function as type `np.ndarray` with shape (frequency,
-        channel).
-    coherence : `np.ndarray`
+    tf : NDArray[np.complex128]
+        Complex transfer function as type NDArray[np.complex128] with shape
+        (frequency, channel).
+    coherence : NDArray[np.float64]
         Coherence of the measurement with shape (frequency, channel).
 
     Notes
@@ -566,7 +567,7 @@ def average_irs(
 
 
 def min_phase_from_mag(
-    spectrum: np.ndarray,
+    spectrum: NDArray[np.float64],
     sampling_rate_hz: int,
     original_length_time_data: int | None = None,
     signal_type: str = "ir",
@@ -576,7 +577,7 @@ def min_phase_from_mag(
 
     Parameters
     ----------
-    spectrum : `np.ndarray`
+    spectrum : NDArray[np.float64]
         Spectrum (no scaling) with only positive frequencies.
     sampling_rate_hz : int
         Signal's sampling rate in Hz.
@@ -629,7 +630,7 @@ def min_phase_from_mag(
 
 
 def lin_phase_from_mag(
-    spectrum: np.ndarray,
+    spectrum: NDArray[np.float64],
     sampling_rate_hz: int,
     original_length_time_data: int | None = None,
     group_delay_ms: str | float = "minimum",
@@ -647,7 +648,7 @@ def lin_phase_from_mag(
 
     Parameters
     ----------
-    spectrum : `np.ndarray`
+    spectrum : NDArray[np.float64]
         Spectrum with only positive frequencies and 0.
     sampling_rate_hz : int
         Signal's sampling rate in Hz.
@@ -811,7 +812,7 @@ def group_delay(
     method="matlab",
     smoothing: int = 0,
     remove_ir_latency: bool = False,
-) -> tuple[np.ndarray, np.ndarray]:
+) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
     """Computes and returns group delay.
 
     Parameters
@@ -833,9 +834,9 @@ def group_delay(
 
     Returns
     -------
-    freqs : `np.ndarray`
+    freqs : NDArray[np.float64]
         Frequency vector in Hz.
-    group_delays : `np.ndarray`
+    group_delays : NDArray[np.float64]
         Matrix containing group delays in seconds with shape (gd, channel).
 
     """
@@ -893,7 +894,7 @@ def minimum_phase(
     signal: Signal,
     method: str = "real cepstrum",
     padding_factor: int = 8,
-) -> tuple[np.ndarray, np.ndarray]:
+) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
     """Gives back a matrix containing the minimum phase signal for each
     channel. Two methods are available for computing the minimum phase of a
     system: `'real cepstrum'` (windowing in the cepstral domain) or
@@ -913,9 +914,9 @@ def minimum_phase(
 
     Returns
     -------
-    f : `np.ndarray`
+    f : NDArray[np.float64]
         Frequency vector.
-    min_phases : `np.ndarray`
+    min_phases : NDArray[np.float64]
         Minimum phases as matrix with shape (phase, channel).
 
     """
@@ -965,7 +966,7 @@ def minimum_group_delay(
     signal: Signal,
     smoothing: int = 0,
     padding_factor: int = 8,
-) -> tuple[np.ndarray, np.ndarray]:
+) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
     """Computes minimum group delay of given IR using the real cepstrum method.
 
     Parameters
@@ -982,9 +983,9 @@ def minimum_group_delay(
 
     Returns
     -------
-    f : `np.ndarray`
+    f : NDArray[np.float64]
         Frequency vector.
-    min_gd : `np.ndarray`
+    min_gd : NDArray[np.float64]
         Minimum group delays in seconds as matrix with shape (gd, channel).
 
     References
@@ -1006,7 +1007,7 @@ def excess_group_delay(
     signal: Signal,
     smoothing: int = 0,
     remove_ir_latency: bool = False,
-) -> tuple[np.ndarray, np.ndarray]:
+) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
     """Computes excess group delay of an IR.
 
     Parameters
@@ -1022,9 +1023,9 @@ def excess_group_delay(
 
     Returns
     -------
-    f : `np.ndarray`
+    f : NDArray[np.float64]
         Frequency vector.
-    ex_gd : `np.ndarray`
+    ex_gd : NDArray[np.float64]
         Excess group delays in seconds with shape (excess_gd, channel).
 
     References
@@ -1285,10 +1286,10 @@ def window_frequency_dependent(
 
     Returns
     -------
-    f : `np.ndarray`
+    f : NDArray[np.float64]
         Frequency vector.
-    spec : `np.ndarray`
-        Spectrum with shape (frequency, channel).
+    spec : NDArray[np.complex128]
+        Complex spectrum with shape (frequency, channel).
 
     Notes
     -----
@@ -1363,12 +1364,12 @@ def window_frequency_dependent(
     # Scaling function
     if scaling == "amplitude spectrum":
 
-        def scaling_func(window: np.ndarray):
+        def scaling_func(window: NDArray[np.float64]):
             return 2**0.5 / np.sum(window, axis=0, keepdims=True)
 
     elif scaling == "amplitude spectral density":
 
-        def scaling_func(window: np.ndarray):
+        def scaling_func(window: NDArray[np.float64]):
             return (
                 2
                 / np.sum(window**2, axis=0, keepdims=True)
@@ -1378,12 +1379,12 @@ def window_frequency_dependent(
     elif scaling == "fft":
         scaling_value = fast_length**-0.5
 
-        def scaling_func(window: np.ndarray):
+        def scaling_func(window: NDArray[np.float64]):
             return scaling_value
 
     else:
 
-        def scaling_func(window: np.ndarray):
+        def scaling_func(window: NDArray[np.float64]):
             return 1
 
     # Precompute some window factors
@@ -1469,7 +1470,7 @@ def warp_ir(
     return f_unwarped, warped_ir
 
 
-def find_ir_latency(ir: Signal) -> np.ndarray:
+def find_ir_latency(ir: Signal) -> NDArray[np.float64]:
     """Find the subsample maximum of each channel of the IR using the its
     minimum phase equivalent.
 
@@ -1480,7 +1481,7 @@ def find_ir_latency(ir: Signal) -> np.ndarray:
 
     Returns
     -------
-    latency_samples : `np.ndarray`
+    latency_samples : NDArray[np.float64]
         Array with the position of each channel's maximum in samples.
 
     """

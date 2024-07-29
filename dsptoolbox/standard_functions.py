@@ -7,6 +7,7 @@ under a same category.
 """
 
 import numpy as np
+from numpy.typing import NDArray
 import pickle
 from scipy.signal import resample_poly, convolve, hilbert
 
@@ -44,7 +45,7 @@ def latency(
     in1: Signal | MultiBandSignal,
     in2: Signal | MultiBandSignal | None = None,
     polynomial_points: int = 0,
-) -> tuple[np.ndarray[int | float], np.ndarray[float]]:
+) -> tuple[NDArray[np.float64] | NDArray[np.int_], NDArray[np.float64]]:
     """Computes latency between two signals using the correlation method.
     If there is no second signal, the latency between the first and the other
     channels is computed. `in1` is to be understood as a delayed version
@@ -79,11 +80,11 @@ def latency(
 
     Returns
     -------
-    lags : `np.ndarray`
+    lags : NDArray[np.float64]
         Delays in samples. For `Signal`, the output shape is (channel).
         In case in2 is `None`, the length is `channels - 1`. In the case of
         `MultiBandSignal`, output shape is (band, channel).
-    correlations : `np.ndarray`
+    correlations : NDArray[np.float64]
         Correlation for computed delays with the same shape as lags.
 
     Notes
@@ -380,8 +381,12 @@ def resample(sig: Signal, desired_sampling_rate_hz: int) -> Signal:
 def fractional_octave_frequencies(
     num_fractions=1, frequency_range=(20, 20e3), return_cutoff=False
 ) -> (
-    tuple[np.ndarray, np.ndarray, tuple[np.ndarray, np.ndarray]]
-    | tuple[np.ndarray, np.ndarray]
+    tuple[
+        NDArray[np.float64],
+        NDArray[np.float64],
+        tuple[NDArray[np.float64], NDArray[np.float64]],
+    ]
+    | tuple[NDArray[np.float64], NDArray[np.float64]]
 ):
     """Return the octave center frequencies according to the IEC 61260:1:2014
     standard. This implementation has been taken from the pyfar package. See
@@ -591,7 +596,7 @@ def erb_frequencies(
     freq_range_hz=[20, 20000],
     resolution: float = 1,
     reference_frequency_hz: float = 1000,
-) -> np.ndarray:
+) -> NDArray[np.float64]:
     """Get frequencies that are linearly spaced on the ERB frequency scale.
     This implementation was taken and adapted from the pyfar package. See
     references.
@@ -611,7 +616,7 @@ def erb_frequencies(
 
     Returns
     -------
-    frequencies : `np.ndarray`
+    frequencies : NDArray[np.float64]
         The frequencies in Hz that are linearly distributed on the ERB scale
         with a spacing given by `resolution` ERB units.
 
@@ -674,7 +679,7 @@ def erb_frequencies(
 
 def true_peak_level(
     signal: Signal | MultiBandSignal,
-) -> tuple[np.ndarray, np.ndarray]:
+) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
     """Computes true-peak level of a signal using the standardized method
     by the Rec. ITU-R BS.1770-4. See references.
 
@@ -685,10 +690,10 @@ def true_peak_level(
 
     Returns
     -------
-    true_peak_levels : `np.ndarray`
+    true_peak_levels : NDArray[np.float64]
         True-peak levels (in dBTP) as an array with shape (channels) or
         (band, channels) in case that the input signal is `MultiBandSignal`.
-    peak_levels : `np.ndarray`
+    peak_levels : NDArray[np.float64]
         Peak levels (in dBFS) as an array with shape (channels) or
         (band, channels) in case that the input signal is `MultiBandSignal`.
 
@@ -1021,7 +1026,9 @@ def detrend(
         raise TypeError("Pass either a Signal or a MultiBandSignal")
 
 
-def rms(sig: Signal | MultiBandSignal, in_dbfs: bool = True) -> np.ndarray:
+def rms(
+    sig: Signal | MultiBandSignal, in_dbfs: bool = True
+) -> NDArray[np.float64]:
     """Returns Root Mean Squared (RMS) value for each channel.
 
     Parameters
@@ -1034,7 +1041,7 @@ def rms(sig: Signal | MultiBandSignal, in_dbfs: bool = True) -> np.ndarray:
 
     Returns
     -------
-    rms_values : `np.ndarray`
+    rms_values : NDArray[np.float64]
         Array with RMS values. If a `Signal` is passed, it has shape
         (channel). If a `MultiBandSignal` is passed, its shape is
         (bands, channel).
@@ -1247,7 +1254,7 @@ def envelope(
 
     Returns
     -------
-    `np.ndarray`
+    NDArray[np.float64]
         Signal envelope. It has the shape (time sample, channel) or
         (time sample, band, channel) in case of `MultiBandSignal`.
 

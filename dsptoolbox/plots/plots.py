@@ -42,7 +42,7 @@ def general_plot(
     ----------
     x : array-like
         Vector for x axis. Pass `None` to ignore.
-    matrix : `np.ndarray`
+    matrix : NDArray[np.float64]
         Matrix with data to plot.
     range_x : array-like, optional
         Range to show for x axis. Default: None.
@@ -138,7 +138,7 @@ def general_subplots_line(
     ----------
     x : array-like
         Vector for x axis.
-    matrix : `np.ndarray`
+    matrix : NDArray[np.float64]
         Matrix with data to plot.
     column : bool, optional
         When `True`, the subplots are organized in one column. Default: `True`.
@@ -236,7 +236,7 @@ def general_matrix_plot(
 
     Parameters
     ----------
-    matrix : `np.ndarray`
+    matrix : NDArray[np.float64]
         Matrix with data to plot.
     range_x : array-like, optional
         Range to show for x axis. Default: `None`.
