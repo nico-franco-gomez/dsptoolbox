@@ -1,4 +1,6 @@
-from numpy import zeros, array, unique, atleast_1d, ndarray, complex128
+from numpy import zeros, array, unique, atleast_1d, complex128
+import numpy as np
+from numpy.typing import NDArray
 from copy import deepcopy
 from pickle import dump, HIGHEST_PROTOCOL
 from warnings import warn
@@ -292,7 +294,7 @@ class MultiBandSignal:
     # ======== Getters ========================================================
     def get_all_bands(
         self, channel: int = 0
-    ) -> Signal | tuple[list[ndarray], list[ndarray]]:
+    ) -> Signal | tuple[list[NDArray[np.float64]], list[NDArray[np.float64]]]:
         """Broadcasts and returns the `MultiBandSignal` as a `Signal` object
         with all bands as channels in the output. This is done only for a
         single channel of the original signal.
@@ -304,7 +306,7 @@ class MultiBandSignal:
 
         Returns
         -------
-        sig : `Signal` or list of `np.ndarray` and list of int
+        sig : `Signal` or list of NDArray[np.float64] and list of int
             Multichannel signal with all the bands. If the `MultiBandSignal`
             does not have the same sampling rate for all signals, a list with
             the time data vectors and a list containing their sampling
@@ -357,7 +359,9 @@ class MultiBandSignal:
 
     def get_all_time_data(
         self,
-    ) -> tuple[ndarray, int] | list[tuple[ndarray, int]]:
+    ) -> (
+        tuple[NDArray[np.float64], int] | list[tuple[NDArray[np.float64], int]]
+    ):
         """
         Get all time data saved in the MultiBandSignal. If it has consistent
         sampling rate, a single array with shape (time samples, band, channel)
@@ -367,12 +371,12 @@ class MultiBandSignal:
         Returns
         -------
         if `same_sampling_rate` :
-            time_data : `np.ndarray`
+            time_data : NDArray[np.float64]
                 Time samples.
             int
                 Sampling rate in Hz
         else :
-            list[tuple[`np.ndarray`, int]]
+            list[tuple[NDArray[np.float64], int]]
                 List with each band where time samples and sampling rate are
                 contained.
 

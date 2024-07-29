@@ -7,6 +7,7 @@ from scipy.signal import get_window, lfilter, hilbert
 from scipy.fft import next_fast_len
 from scipy.stats import pearsonr
 from warnings import warn
+from numpy.typing import NDArray
 from .._general_helpers import (
     _find_nearest,
     _calculate_window,
@@ -17,13 +18,13 @@ from .._general_helpers import (
 
 
 def _spectral_deconvolve(
-    num_fft: np.ndarray,
-    denum_fft: np.ndarray,
+    num_fft: NDArray[np.complex128],
+    denum_fft: NDArray[np.complex128],
     freqs_hz,
     time_signal_length: int,
     mode="regularized",
     start_stop_hz=None,
-) -> np.ndarray:
+) -> NDArray[np.complex128]:
     assert num_fft.shape == denum_fft.shape, "Shapes do not match"
     assert len(freqs_hz) == len(num_fft), "Frequency vector does not match"
 
@@ -64,7 +65,7 @@ def _window_this_ir_tukey(
     offset_samples: int = 0,
     left_to_right_flank_ratio: float = 1.0,
     adaptive_window: bool = True,
-) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+) -> tuple[NDArray[np.float64], NDArray[np.float64], int]:
     """This function finds the index of the impulse and trims or windows it
     accordingly. Window used and the start sample are returned.
 
@@ -163,16 +164,16 @@ def _window_this_ir_tukey(
 
 def _window_this_ir(
     vec, total_length: int, window_type: str = "hann", window_parameter=None
-) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+) -> tuple[NDArray[np.float64], NDArray[np.float64], int]:
     """This function windows an impulse response by placing the peak exactly
     in the middle of the window. It trims or pads at the end if needed. The
     windowed IR, window and the start sample are passed.
 
     Returns
     -------
-    td : `np.ndarray`
+    td : NDArray[np.float64]
         Windowed vector.
-    w : `np.ndarray`
+    w : NDArray[np.float64]
         Generated window.
     ind_low_td : int
         Sample position of the start.
@@ -231,19 +232,19 @@ def _window_this_ir(
     return td, w, ind_low_td
 
 
-def _warp_time_series(td: np.ndarray, warping_factor: float):
+def _warp_time_series(td: NDArray[np.float64], warping_factor: float):
     """Warp or unwarp a time series.
 
     Parameters
     ----------
-    td : `np.ndarray`
+    td : NDArray[np.float64]
         Time series with shape (time samples, channels).
     warping_factor : float
         The warping factor to use.
 
     Returns
     -------
-    warped_td : `np.ndarray`
+    warped_td : NDArray[np.float64]
         Time series in the (un)warped domain.
 
     """
@@ -277,7 +278,7 @@ def _get_harmonic_times(
     chirp_length_s: float,
     n_harmonics: int,
     time_offset_seconds: float = 0.0,
-) -> np.ndarray:
+) -> NDArray[np.float64]:
     """Get the time at which each harmonic IR occur relative to the fundamental
     IR in a measurement with an exponential chirp. This is computed according
     to [1]. If the fundamental happens at time `t=0`, all harmonics will be at
@@ -296,7 +297,7 @@ def _get_harmonic_times(
 
     Returns
     -------
-    np.ndarray
+    NDArray[np.float64]
         Array with the times for each harmonic in ascending order. The values
         are given in seconds.
 
@@ -310,7 +311,7 @@ def _get_harmonic_times(
 
 
 def _trim_ir(
-    time_data: np.ndarray,
+    time_data: NDArray[np.float64],
     fs_hz: int,
     offset_start_s: float,
 ) -> tuple[int, int, int]:

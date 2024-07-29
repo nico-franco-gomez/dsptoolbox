@@ -3,6 +3,7 @@ Low-level methods for room acoustics
 """
 
 import numpy as np
+from numpy.typing import NDArray
 from scipy.stats import pearsonr
 from warnings import warn
 from ..plots import general_plot
@@ -10,7 +11,7 @@ from ..transfer_functions._transfer_functions import _trim_ir
 
 
 def _reverb(
-    h,
+    h: NDArray[np.float64],
     fs_hz,
     mode,
     ir_start: int | None = None,
@@ -21,7 +22,7 @@ def _reverb(
 
     Parameters
     ----------
-    h : `np.ndarray`
+    h : NDArray[np.float64]
         Time series.
     fs_hz : int
         Sampling rate in Hz.
@@ -87,12 +88,14 @@ def _reverb(
     return factor / np.abs(p[0]), corr
 
 
-def _find_ir_start(ir, threshold_dbfs: float = -20) -> int:
+def _find_ir_start(
+    ir: NDArray[np.float64], threshold_dbfs: float = -20
+) -> int:
     """Find start of an IR using a threshold. Done for 1D-arrays.
 
     Parameters
     ----------
-    ir : `np.ndarray`
+    ir : NDArray[np.float64]
         IR as a 1D-array.
     threshold_dbfs : float, optional
         Threshold that should be surpassed at the start of the IR in dBFS.
@@ -116,14 +119,14 @@ def _find_ir_start(ir, threshold_dbfs: float = -20) -> int:
 
 
 def _complex_mode_identification(
-    spectra: np.ndarray, maximum_singular_value: bool = True
-) -> np.ndarray:
+    spectra: NDArray[np.complex128], maximum_singular_value: bool = True
+) -> NDArray[np.float64]:
     """Complex transfer matrix and CMIF from:
     http://papers.vibetech.com/Paper17-CMIF.pdf
 
     Parameters
     ----------
-    spectra : `np.ndarray`
+    spectra : NDArray[np.complex128]
         Matrix containing spectra of the necessary IR.
     maximum_singular_value : bool, optional
         When `True`, the maximum singular value at each frequency line is
@@ -131,7 +134,7 @@ def _complex_mode_identification(
 
     Returns
     -------
-    cmif : `np.ndarray`
+    cmif : NDArray[np.float64]
         Complex mode identificator function.
 
     References
@@ -159,20 +162,22 @@ def _complex_mode_identification(
     return cmif
 
 
-def _generate_rir(room_dim, alpha, s_pos, r_pos, rt, mo, sr) -> np.ndarray:
+def _generate_rir(
+    room_dim, alpha, s_pos, r_pos, rt, mo, sr
+) -> NDArray[np.float64]:
     """Generate RIR using image source model according to Brinkmann, et al.
 
     Parameters
     ----------
-    room_dim : `np.ndarray`
+    room_dim : NDArray[np.float64]
         Room dimensions in meters.
-    alpha : float or `np.ndarray`
+    alpha : float or NDArray[np.float64]
         Mean absorption coefficient of the room or array with the absorption
         coefficient for each wall (length 6. Ordered as north, south, east,
         west, floor, ceiling).
-    s_pos : `np.ndarray`
+    s_pos : NDArray[np.float64]
         Source position.
-    r_pos : `np.ndarray`
+    r_pos : NDArray[np.float64]
         Receiver position.
     rt : float
         Desired reverberation time to achieve in RIR.
@@ -183,7 +188,7 @@ def _generate_rir(room_dim, alpha, s_pos, r_pos, rt, mo, sr) -> np.ndarray:
 
     Returns
     -------
-    rir : `np.ndarray`
+    rir : NDArray[np.float64]
         Time vector of the RIR.
 
     References
@@ -363,21 +368,21 @@ class Room:
         self.__area = new_area
 
     def modal_density(
-        self, f_hz: float | np.ndarray, c: float = 343
-    ) -> float | np.ndarray:
+        self, f_hz: float | NDArray[np.float64], c: float = 343
+    ) -> float | NDArray[np.float64]:
         """Compute and return the modal density for a given cut-off frequency
         and speed of sound.
 
         Parameters
         ----------
-        f_hz : float or `np.ndarray`
+        f_hz : float or NDArray[np.float64]
             Frequency or array of frequencies.
         c : float, optional
             Speed of sound in m/s. Default: 343.
 
         Returns
         -------
-        float or `np.ndarray`
+        float or NDArray[np.float64]
             Modal density.
 
         """
@@ -515,7 +520,9 @@ class ShoeboxRoom(Room):
         self.mixing_time_s = mixing_time_s
         return self.mixing_time_s
 
-    def get_room_modes(self, max_order: int = 6, c: float = 343) -> np.ndarray:
+    def get_room_modes(
+        self, max_order: int = 6, c: float = 343.0
+    ) -> NDArray[np.float64]:
         """Computes and returns room modes for a shoebox room assuming
         hard reflecting walls.
 
@@ -531,7 +538,7 @@ class ShoeboxRoom(Room):
 
         Returns
         -------
-        modes : np.ndarray
+        modes : NDArray[np.float64]
             Array containing the frequencies of the room modes as well as
             their characteristics (orders in each room dimension. This is
             necessary to know if it is an axial, a tangential or oblique mode).
@@ -580,7 +587,7 @@ class ShoeboxRoom(Room):
         receiver_pos : array-like
             Receiver position in meters. It must be inside the room, otherwise
             an assertion error is raised.
-        freqs : `np.ndarray`
+        freqs : NDArray[np.float64]
             Frequency vector for which to compute the transfer function.
         max_mode_order : int, optional
             Maximum mode order to be regarded. It should be high enough to
@@ -594,9 +601,9 @@ class ShoeboxRoom(Room):
 
         Returns
         -------
-        p : `np.ndarray`
+        p : NDArray[np.float64]
             Complex transfer function, non-normalized.
-        modes : `np.ndarray`
+        modes : NDArray[np.float64]
             Modes for which the transfer function was computed. It has shape
             (mode, frequency and order xyz) and it is sorted by
             frequency.
@@ -859,13 +866,13 @@ index_wall_dictionary.
 
 
 def _add_reverberant_tail_noise(
-    rir: np.ndarray, mixing_time_s: int, t60: float, sr: int
-) -> np.ndarray:
+    rir: NDArray[np.float64], mixing_time_s: int, t60: float, sr: int
+) -> NDArray[np.float64]:
     """Adds a reverberant tail as noise to an IR.
 
     Parameters
     ----------
-    rir : `np.ndarray`
+    rir : NDArray[np.float64]
         Impulse response as 1D-array.
     mixing_time_s : int
         Mixing time in samples.
@@ -876,7 +883,7 @@ def _add_reverberant_tail_noise(
 
     Returns
     -------
-    rir_late : `np.ndarray`
+    rir_late : NDArray[np.float64]
         RIR with added decaying noise as late reverberant tail.
 
     """
@@ -905,12 +912,14 @@ def _add_reverberant_tail_noise(
     return rir
 
 
-def _d50_from_rir(td: np.ndarray, fs: int, automatic_trimming: bool) -> float:
+def _d50_from_rir(
+    td: NDArray[np.float64], fs: int, automatic_trimming: bool
+) -> float:
     """Compute definition D50 from a given RIR (1D-Array).
 
     Parameters
     ----------
-    td : `np.ndarray`
+    td : NDArray[np.float64]
         IR.
     fs : int
         Sampling rate in Hz.
@@ -940,12 +949,14 @@ def _d50_from_rir(td: np.ndarray, fs: int, automatic_trimming: bool) -> float:
     return np.sum(td[:window]) / np.sum(td[:stop])
 
 
-def _c80_from_rir(td: np.ndarray, fs: int, automatic_trimming: bool) -> float:
+def _c80_from_rir(
+    td: NDArray[np.float64], fs: int, automatic_trimming: bool
+) -> float:
     """Compute clarity C80 from a given RIR (1D-Array).
 
     Parameters
     ----------
-    td : `np.ndarray`
+    td : NDArray[np.float64]
         IR.
     fs : int
         Sampling rate in Hz.
@@ -977,12 +988,14 @@ def _c80_from_rir(td: np.ndarray, fs: int, automatic_trimming: bool) -> float:
     return 10 * np.log10(np.sum(td[:window]) / np.sum(td[window:stop]))
 
 
-def _ts_from_rir(td: np.ndarray, fs: int, automatic_trimming: bool) -> float:
+def _ts_from_rir(
+    td: NDArray[np.float64], fs: int, automatic_trimming: bool
+) -> float:
     """Compute center time from a given RIR (1D-Array).
 
     Parameters
     ----------
-    td : `np.ndarray`
+    td : NDArray[np.float64]
         IR.
     fs : int
         Sampling rate in Hz.
@@ -1016,7 +1029,7 @@ def _ts_from_rir(td: np.ndarray, fs: int, automatic_trimming: bool) -> float:
 
 
 def _obtain_optimal_reverb_time(
-    time_vector: np.ndarray, edc: np.ndarray
+    time_vector: NDArray[np.float64], edc: NDArray[np.float64]
 ) -> tuple[float, float]:
     """Compute the optimal reverberation time by analyzing the best linear
     fit (with the smallest least-squares error) from T10 until T60. If EDT
@@ -1025,9 +1038,9 @@ def _obtain_optimal_reverb_time(
 
     Parameters
     ----------
-    time_vector : `np.ndarray`
+    time_vector : NDArray[np.float64]
         Time vector corresponding to the edc.
-    edc : `np.ndarray`
+    edc : NDArray[np.float64]
         Energy decay curve in dB and normalized so that 0 dB corresponds to
         the impulse.
 
@@ -1061,7 +1074,7 @@ def _obtain_optimal_reverb_time(
     else:
         start = -5.0
 
-    steps: np.ndarray = np.arange(start - 20, start - 60, -1)
+    steps: NDArray[np.float64] = np.arange(start - 20, start - 60, -1)
     end, r = _get_best_linear_fit_for_edc(time_vector, edc, start, steps)
     if r > -0.95:
         warn(
@@ -1076,10 +1089,10 @@ def _obtain_optimal_reverb_time(
 
 
 def _get_best_linear_fit_for_edc(
-    time_vector: np.ndarray,
-    edc: np.ndarray,
+    time_vector: NDArray[np.float64],
+    edc: NDArray[np.float64],
     start_value: float,
-    steps: np.ndarray,
+    steps: NDArray[np.float64],
 ):
     """Obtain the best end value for a linear regression of the EDC based on
     the lowest pearson correlation coefficient, i.e., with the maximum of
@@ -1087,13 +1100,13 @@ def _get_best_linear_fit_for_edc(
 
     Parameters
     ----------
-    time_vector : `np.ndarray`
+    time_vector : NDArray[np.float64]
         Time vector.
-    edc : `np.ndarray`
+    edc : NDArray[np.float64]
         Energy decay curve.
     start_value : float
         Start value of the EDC in dB for the regression.
-    steps : `np.ndarray`
+    steps : NDArray[np.float64]
         Array of all ending values of the EDC in dB to take into account.
 
     Returns
@@ -1117,20 +1130,20 @@ def _get_best_linear_fit_for_edc(
 
 
 def _get_polynomial_coeffs_from_edc(
-    time_vector: np.ndarray,
-    edc: np.ndarray,
+    time_vector: NDArray[np.float64],
+    edc: NDArray[np.float64],
     start_value: float,
     end_value: float,
-) -> tuple[np.ndarray, float]:
+) -> tuple[NDArray[np.float64], float]:
     """Return the polynomial coefficients from the energy decay curve for
     given starting and ending values. This can be used for all reverberation
     time computations.
 
     Parameters
     ----------
-    time_vector : `np.ndarray`
+    time_vector : NDArray[np.float64]
         Time vector in seconds corresponding to the energy decay curve.
-    edc : `np.ndarray`
+    edc : NDArray[np.float64]
         Energy decay curve in dB normalized to 0 dB at the point of the
         impulse.
     start_value : float
@@ -1140,7 +1153,7 @@ def _get_polynomial_coeffs_from_edc(
 
     Returns
     -------
-    coeff : `np.ndarray`
+    coeff : NDArray[np.float64]
         Polynomial coefficients for x^1 and x^0, respectively.
     r_coefficient : float
         Pearson's correlation coefficient r. It takes values between [-1, 1]
@@ -1160,11 +1173,11 @@ def _get_polynomial_coeffs_from_edc(
 
 
 def _compute_energy_decay_curve(
-    time_data: np.ndarray,
+    time_data: NDArray[np.float64],
     impulse_index: int,
     trim_automatically: bool,
     fs_hz: int,
-) -> np.ndarray:
+) -> NDArray[np.float64]:
     """Get the energy decay curve from an energy time curve."""
     # start_index might be the last index below -20 dB relative to peak value.
     # If so, the normalization of the edc should be done with the beginning

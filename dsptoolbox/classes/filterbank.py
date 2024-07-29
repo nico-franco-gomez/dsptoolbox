@@ -4,6 +4,7 @@ import numpy as np
 from warnings import warn
 from matplotlib.figure import Figure
 from matplotlib.axes import Axes
+from numpy.typing import NDArray
 
 from .signal_class import Signal
 from .multibandsignal import MultiBandSignal
@@ -86,7 +87,7 @@ class FilterBank:
             f.initialize_zi(number_of_channels)
 
     @property
-    def sampling_rate_hz(self) -> int | np.ndarray:
+    def sampling_rate_hz(self) -> int | NDArray[np.int_]:
         return self.__sampling_rate_hz
 
     @sampling_rate_hz.setter
@@ -445,15 +446,15 @@ class FilterBank:
         return ir
 
     def get_transfer_function(
-        self, frequency_vector_hz: np.ndarray, mode: str = "parallel"
-    ):
+        self, frequency_vector_hz: NDArray[np.float64], mode: str = "parallel"
+    ) -> NDArray[np.complex128]:
         """Compute the complex transfer function of the filter bank for
         specified frequencies. The output is based on the filter bank filtering
         mode.
 
         Parameters
         ----------
-        frequency_vector_hz : np.ndarray
+        frequency_vector_hz : NDArray[np.float64]
             Frequency vector to evaluate frequencies at.
         mode : str, optional
             Way of applying the filter bank. If `"parallel"`, the resulting
@@ -462,7 +463,7 @@ class FilterBank:
 
         Returns
         -------
-        np.ndarray
+        NDArray[np.complex128]
             Complex transfer function of the filter bank.
 
         """

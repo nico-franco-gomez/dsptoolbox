@@ -5,14 +5,15 @@ Backend for the effects module
 from .._general_helpers import _get_smoothing_factor_ema
 from ..plots import general_plot
 import numpy as np
+from numpy.typing import NDArray
 
 # import matplotlib.pyplot as plt
 
 
 # ========= Distortion ========================================================
 def _arctan_distortion(
-    inp: np.ndarray, distortion_level_db: float, offset_db: float
-) -> np.ndarray:
+    inp: NDArray[np.float64], distortion_level_db: float, offset_db: float
+) -> NDArray[np.float64]:
     """Applies arctan distortion."""
     offset_linear = 10 ** (offset_db / 20)
     distortion_level_linear = 10 ** (distortion_level_db / 20)
@@ -24,8 +25,8 @@ def _arctan_distortion(
 
 
 def _hard_clip_distortion(
-    inp: np.ndarray, distortion_level_db: float, offset_db: float
-) -> np.ndarray:
+    inp: NDArray[np.float64], distortion_level_db: float, offset_db: float
+) -> NDArray[np.float64]:
     """Applies hard clipping distortion."""
     offset_linear = 10 ** (offset_db / 20)
     distortion_level_linear = 10 ** (distortion_level_db / 20)
@@ -37,8 +38,8 @@ def _hard_clip_distortion(
 
 
 def _soft_clip_distortion(
-    inp: np.ndarray, distortion_level_db: float, offset_db: float
-) -> np.ndarray:
+    inp: NDArray[np.float64], distortion_level_db: float, offset_db: float
+) -> NDArray[np.float64]:
     """Applies non-linear cubic distortion."""
     offset_linear = 10 ** (offset_db / 20)
     distortion_level_linear = 10 ** (distortion_level_db / 20)
@@ -51,15 +52,15 @@ def _soft_clip_distortion(
 
 
 def _clean_signal(
-    inp: np.ndarray, distortion_level_db: float, offset_db: float
-) -> np.ndarray:
+    inp: NDArray[np.float64], distortion_level_db: float, offset_db: float
+) -> NDArray[np.float64]:
     """Returns the unchanged clean signal."""
     return inp
 
 
 # ========= Compressor ========================================================
 def _compressor(
-    x: np.ndarray,
+    x: NDArray[np.float64],
     threshold_db: float,
     ratio: float,
     knee_factor_db: float,
@@ -67,12 +68,12 @@ def _compressor(
     release_samples: int,
     mix_compressed: float,
     downward_compression: bool,
-) -> np.ndarray:
+) -> NDArray[np.float64]:
     """Compresses the dynamic range of a signal.
 
     Parameters
     ----------
-    x : `np.ndarray`
+    x : NDArray[np.float64]
         Signal to compress.
     threshold_db : float
         Threshold level.
@@ -93,7 +94,7 @@ def _compressor(
 
     Returns
     -------
-    x_ : `np.ndarray`
+    x_ : NDArray[np.float64]
         Compressed signal.
 
     """
@@ -167,7 +168,7 @@ def _get_knee_func(
 
     if downward_compression:
 
-        def compress_in_db(x: np.ndarray | float):
+        def compress_in_db(x: NDArray[np.float64] | float):
             if type(x) is float:
                 if x - T < -W / 2:
                     return x
@@ -192,7 +193,7 @@ def _get_knee_func(
 
     else:
 
-        def compress_in_db(x: np.ndarray | float):
+        def compress_in_db(x: NDArray[np.float64] | float):
             if type(x) is float:
                 if x - T < -W / 2:
                     return T + (x - T) / R
@@ -219,14 +220,14 @@ def _get_knee_func(
 
 
 def _find_attack_hold_release(
-    x: np.ndarray,
+    x: NDArray[np.float64],
     threshold_db: float,
     attack_samples: int,
     hold_samples: int,
     release_samples: int,
-    side_chain: np.ndarray,
+    side_chain: NDArray[np.float64],
     indices_above: bool,
-) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+) -> tuple[NDArray[np.float64], NDArray[np.float64], NDArray[np.float64]]:
     """This function finds the indices corresponding to attack, hold and
     release. It returns boolean arrays. It can only handle 1D-arrays as input!
 

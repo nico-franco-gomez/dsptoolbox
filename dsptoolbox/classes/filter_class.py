@@ -10,6 +10,7 @@ from fractions import Fraction
 from matplotlib.figure import Figure
 from matplotlib.axes import Axes
 import scipy.signal as sig
+from numpy.typing import NDArray
 
 from .signal_class import Signal
 from ._filter import (
@@ -568,18 +569,20 @@ class Filter:
         )
         return self.filter_signal(ir_filt, zero_phase=zero_phase)
 
-    def get_transfer_function(self, frequency_vector_hz: np.ndarray):
+    def get_transfer_function(
+        self, frequency_vector_hz: NDArray[np.float64]
+    ) -> NDArray[np.complex128]:
         """Obtain the complex transfer function of the filter analytically
         evaluated for a given frequency vector.
 
         Parameters
         ----------
-        frequency_vector_hz : `np.ndarray`
+        frequency_vector_hz : NDArray[np.float64]
             Frequency vector for which to compute the transfer function
 
         Returns
         -------
-        np.ndarray
+        NDArray[np.complex128]
             Complex transfer function
 
         Notes
@@ -615,9 +618,9 @@ class Filter:
     def get_coefficients(
         self, mode: str = "sos"
     ) -> (
-        list[np.ndarray]
-        | np.ndarray
-        | tuple[np.ndarray, np.ndarray, np.ndarray]
+        list[NDArray[np.float64]]
+        | NDArray[np.float64]
+        | tuple[NDArray[np.float64], NDArray[np.float64], NDArray[np.float64]]
         | None
     ):
         """Returns the filter coefficients.
@@ -632,9 +635,9 @@ class Filter:
         -------
         coefficients : array-like
             Array with filter coefficients with shape depending on mode:
-            - `'ba'`: list(b, a) with b and a of type `np.ndarray`.
-            - `'sos'`: `np.ndarray` with shape (n_sections, 6).
-            - `'zpk'`: tuple(z, p, k) with z, p, k of type `np.ndarray`
+            - `'ba'`: list(b, a) with b and a of type NDArray[np.float64].
+            - `'sos'`: NDArray[np.float64] with shape (n_sections, 6).
+            - `'zpk'`: tuple(z, p, k) with z, p, k of type NDArray[np.float64]
             - Return `None` if user decides that ba->sos is too costly. The
               threshold is for filters with order > 500.
 

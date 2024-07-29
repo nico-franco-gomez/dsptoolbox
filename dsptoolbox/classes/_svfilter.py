@@ -6,6 +6,7 @@ State variable filter topology-Preserving (trapezoidal integrators)
 import numpy as np
 from matplotlib.figure import Figure
 from matplotlib.axes import Axes
+from numpy.typing import NDArray
 from .signal_class import Signal
 from .multibandsignal import MultiBandSignal
 from ..generators import dirac
@@ -101,7 +102,9 @@ class StateVariableFilter:
 
         return yl, yh, yb, yl - self.resonance * yb + yh
 
-    def _process_vector(self, input: np.ndarray) -> np.ndarray:
+    def _process_vector(
+        self, input: NDArray[np.float64]
+    ) -> NDArray[np.float64]:
         """Process a whole multichannel array. The outputs are a 3d-array with
         shape (time sample, band, channel). There are 4 bands: lowpass,
         highpass, bandpass and allpass. They are returned in this order.

@@ -7,6 +7,7 @@ from warnings import warn
 from os import sep
 from pickle import dump, HIGHEST_PROTOCOL
 from copy import deepcopy
+from numpy.typing import NDArray
 
 from scipy.signal import (
     sosfilt,
@@ -690,9 +691,9 @@ class GammaToneFilterBank(FilterBank):
         self,
         filters: list,
         info: dict,
-        frequencies: np.ndarray,
-        coefficients: np.ndarray,
-        normalizations: np.ndarray,
+        frequencies: NDArray[np.float64],
+        coefficients: NDArray[np.float64],
+        normalizations: NDArray[np.float64],
     ):
         """Constructor for the Gamma Tone Filter Bank. It is only available as
         a constant sampling rate filter bank.
@@ -703,11 +704,11 @@ class GammaToneFilterBank(FilterBank):
             List with gamma tone filters.
         info : dict
             Dictionary containing basic information about the filter bank.
-        frequencies : `np.ndarray`
+        frequencies : NDArray[np.float64]
             Frequencies used for the filters.
-        coefficients : `np.ndarray`
+        coefficients : NDArray[np.float64]
             Filter coefficients.
-        normalizations : `np.ndarray`
+        normalizations : NDArray[np.float64]
             Normalizations.
 
         """
@@ -1391,7 +1392,7 @@ def _reconstruct_from_crossover_upsample(
 
 def _get_2nd_order_linkwitz_riley(
     f0: float, sampling_rate_hz: int
-) -> tuple[np.ndarray, np.ndarray]:
+) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
     """Return filters (SOS representation) for a 2nd-order linkwitz-riley
     crossover. These are based on sallen-key filters (with Q=0.5). In order to
     obtain an allpass sum response, one band must be phase-inverted. Here,
@@ -1406,9 +1407,9 @@ def _get_2nd_order_linkwitz_riley(
 
     Returns
     -------
-    low_sos : `np.ndarray`
+    low_sos : NDArray[np.float64]
         SOS for low band.
-    high_sos : `np.ndarray`
+    high_sos : NDArray[np.float64]
         SOS for high band.
 
     """

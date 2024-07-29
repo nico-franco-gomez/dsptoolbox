@@ -3,9 +3,10 @@ Backend for beamforming module
 """
 
 import numpy as np
-from .._general_helpers import _euclidean_distance_matrix
 import matplotlib.pyplot as plt
 from seaborn import set_style
+from numpy.typing import NDArray
+from .._general_helpers import _euclidean_distance_matrix
 
 set_style("whitegrid")
 
@@ -56,7 +57,7 @@ class BasePoints:
         return self.coordinates.shape[0]
 
     @property
-    def coordinates(self) -> np.ndarray:
+    def coordinates(self) -> NDArray[np.float64]:
         return self._coordinates.copy()
 
     @coordinates.setter
@@ -87,23 +88,25 @@ class BasePoints:
         return extent
 
     # ======== distances ======================================================
-    def get_distances_to_point(self, point: np.ndarray) -> np.ndarray:
+    def get_distances_to_point(
+        self, point: NDArray[np.float64]
+    ) -> NDArray[np.float64]:
         """Compute distances (euclidean) from given point to all points of the
         object efficiently.
 
         Parameters
         ----------
-        point : `np.ndarray`
+        point : NDArray[np.float64]
             Point or points to which to compute the distances from all other
             points. Its shape should be (point, coordinate).
 
         Returns
         -------
-        distances : `np.ndarray`
+        distances : NDArray[np.float64]
             Distances with shape (points, new_points).
 
         """
-        if type(point) is not np.ndarray:
+        if type(point) is not NDArray[np.float64]:
             point = np.asarray(point)
         if point.ndim == 1:
             point = point[None, ...]
@@ -164,7 +167,7 @@ class BasePoints:
         fig.tight_layout()
         return fig, ax
 
-    def find_nearest_point(self, point) -> tuple[int, np.ndarray]:
+    def find_nearest_point(self, point) -> tuple[int, NDArray[np.float64]]:
         """This method returns the coordinates and index of the nearest point
         to a given point using euclidean distance.
 
@@ -177,7 +180,7 @@ class BasePoints:
         -------
         index : int
             Index of the nearest point.
-        coord : `np.ndarray`
+        coord : NDArray[np.float64]
             Position vector with shape (x, y, z) of the nearest point.
 
         """
@@ -195,26 +198,26 @@ class BasePoints:
 
 
 def _clean_sc_deconvolve(
-    map: np.ndarray,
-    csm: np.ndarray,
-    h: np.ndarray,
-    h_H: np.ndarray,
+    map: NDArray[np.float64],
+    csm: NDArray[np.float64],
+    h: NDArray[np.float64],
+    h_H: NDArray[np.float64],
     maximum_iterations: int,
     remove_diagonal_csm: bool,
     safety_factor: float,
-) -> np.ndarray:
+) -> NDArray[np.float64]:
     """Computes and returns the degraded csm.
 
     Parameters
     ----------
-    map : `np.ndarray`
+    map : NDArray[np.float64]
         Initial beamforming map to be deconvolved for a single frequency
         with shape (point).
-    csm : `np.ndarray`
+    csm : NDArray[np.float64]
         Cross-spectral matrix for a single frequency with shape (mic, mic).
-    h : `np.ndarray`
+    h : NDArray[np.float64]
         Steering vector for a single frequency with shape (mic, grid point).
-    h_H : `np.ndarray`
+    h_H : NDArray[np.float64]
         Steering vector (hermitian transposed) for a single frequency with
         shape (grid point, mic).
     maximum_iterations : int
@@ -228,7 +231,7 @@ def _clean_sc_deconvolve(
 
     Returns
     -------
-    `np.ndarray`
+    NDArray[np.float64]
         Deconvolved beamforming map.
 
     References
