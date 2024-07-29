@@ -23,8 +23,6 @@ from .classes import (
 )
 from ._standard import (
     _latency,
-    _center_frequencies_fractional_octaves_iec,
-    _exact_center_frequencies_fractional_octaves,
     _indices_above_threshold_dbfs,
     _detrend,
     _rms,
@@ -378,87 +376,6 @@ def resample(sig: Signal, desired_sampling_rate_hz: int) -> Signal:
     return new_sig
 
 
-def fractional_octave_frequencies(
-    num_fractions=1, frequency_range=(20, 20e3), return_cutoff=False
-) -> (
-    tuple[
-        NDArray[np.float64],
-        NDArray[np.float64],
-        tuple[NDArray[np.float64], NDArray[np.float64]],
-    ]
-    | tuple[NDArray[np.float64], NDArray[np.float64]]
-):
-    """Return the octave center frequencies according to the IEC 61260:1:2014
-    standard. This implementation has been taken from the pyfar package. See
-    references.
-
-    For numbers of fractions other than `1` and `3`, only the
-    exact center frequencies are returned, since nominal frequencies are not
-    specified by corresponding standards.
-
-    Parameters
-    ----------
-    num_fractions : int, optional
-        The number of bands an octave is divided into. Eg., ``1`` refers to
-        octave bands and ``3`` to third octave bands. The default is ``1``.
-    frequency_range : array, tuple
-        The lower and upper frequency limits, the default is
-        ``frequency_range=(20, 20e3)``.
-
-    Returns
-    -------
-    nominal : array, float
-        The nominal center frequencies in Hz specified in the standard.
-        Nominal frequencies are only returned for octave bands and third octave
-        bands. Otherwise, an empty array is returned.
-    exact : array, float
-        The exact center frequencies in Hz, resulting in a uniform distribution
-        of frequency bands over the frequency range.
-    cutoff_freq : tuple, array, float
-        The lower and upper critical frequencies in Hz of the bandpass filters
-        for each band as a tuple corresponding to `(f_lower, f_upper)`.
-
-    References
-    ----------
-    - The pyfar package: https://github.com/pyfar/pyfar
-
-    """
-    nominal = np.array([])
-
-    f_lims = np.asarray(frequency_range)
-    if f_lims.size != 2:
-        raise ValueError(
-            "You need to specify a lower and upper limit frequency."
-        )
-    if f_lims[0] > f_lims[1]:
-        raise ValueError(
-            "The second frequency needs to be higher than the first."
-        )
-
-    if num_fractions in [1, 3]:
-        nominal, exact = _center_frequencies_fractional_octaves_iec(
-            nominal, num_fractions
-        )
-
-        mask = (nominal >= f_lims[0]) & (nominal <= f_lims[1])
-        nominal = nominal[mask]
-        exact = exact[mask]
-
-    else:
-        exact = _exact_center_frequencies_fractional_octaves(
-            num_fractions, f_lims
-        )
-
-    if return_cutoff:
-        octave_ratio = 10 ** (3 / 10)
-        freqs_upper = exact * octave_ratio ** (1 / 2 / num_fractions)
-        freqs_lower = exact * octave_ratio ** (-1 / 2 / num_fractions)
-        f_crit = (freqs_lower, freqs_upper)
-        return nominal, exact, f_crit
-    else:
-        return nominal, exact
-
-
 def normalize(
     sig: Signal | MultiBandSignal,
     peak_dbfs: float = -6,
@@ -590,91 +507,6 @@ def fade(
     new_sig = sig.copy()
     new_sig.time_data = new_time_data
     return new_sig
-
-
-def erb_frequencies(
-    freq_range_hz=[20, 20000],
-    resolution: float = 1,
-    reference_frequency_hz: float = 1000,
-) -> NDArray[np.float64]:
-    """Get frequencies that are linearly spaced on the ERB frequency scale.
-    This implementation was taken and adapted from the pyfar package. See
-    references.
-
-    Parameters
-    ----------
-    freq_range : array-like, optional
-        The upper and lower frequency limits in Hz between which the frequency
-        vector is computed. Default: [20, 20e3].
-    resolution : float, optional
-        The frequency resolution in ERB units. 1 returns frequencies that are
-        spaced by 1 ERB unit, a value of 0.5 would return frequencies that are
-        spaced by 0.5 ERB units. Default: 1.
-    reference_frequency : float, optional
-        The reference frequency in Hz relative to which the frequency vector
-        is constructed. Default: 1000.
-
-    Returns
-    -------
-    frequencies : NDArray[np.float64]
-        The frequencies in Hz that are linearly distributed on the ERB scale
-        with a spacing given by `resolution` ERB units.
-
-    References
-    ----------
-    - The pyfar package: https://github.com/pyfar/pyfar
-    - B. C. J. Moore, An introduction to the psychology of hearing,
-      (Leiden, Boston, Brill, 2013), 6th ed.
-    - V. Hohmann, “Frequency analysis and synthesis using a gammatone
-      filterbank,” Acta Acust. united Ac. 88, 433-442 (2002).
-    - P. L. Søndergaard, and P. Majdak, “The auditory modeling toolbox,”
-      in The technology of binaural listening, edited by J. Blauert
-      (Heidelberg et al., Springer, 2013) pp. 33-56.
-
-    """
-
-    # check input
-    if (
-        not isinstance(freq_range_hz, (list, tuple, np.ndarray))
-        or len(freq_range_hz) != 2
-    ):
-        raise ValueError("freq_range must be an array like of length 2")
-    if freq_range_hz[0] > freq_range_hz[1]:
-        freq_range_hz = [freq_range_hz[1], freq_range_hz[0]]
-    if resolution <= 0:
-        raise ValueError("Resolution must be larger than zero")
-
-    # convert the frequency range and reference to ERB scale
-    # (Hohmann 2002, Eq. 16)
-    erb_range = (
-        9.2645
-        * np.sign(freq_range_hz)
-        * np.log(1 + np.abs(freq_range_hz) * 0.00437)
-    )
-    erb_ref = (
-        9.2645
-        * np.sign(reference_frequency_hz)
-        * np.log(1 + np.abs(reference_frequency_hz) * 0.00437)
-    )
-
-    # get the referenced range
-    erb_ref_range = np.array([erb_ref - erb_range[0], erb_range[1] - erb_ref])
-
-    # construct the frequencies on the ERB scale
-    n_points = np.floor(erb_ref_range / resolution).astype(int)
-    erb_points = (
-        np.arange(-n_points[0], n_points[1] + 1) * resolution + erb_ref
-    )
-
-    # convert to frequencies in Hz
-    frequencies = (
-        1
-        / 0.00437
-        * np.sign(erb_points)
-        * (np.exp(np.abs(erb_points) / 9.2645) - 1)
-    )
-
-    return frequencies
 
 
 def true_peak_level(

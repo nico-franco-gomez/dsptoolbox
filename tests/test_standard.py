@@ -156,10 +156,6 @@ class TestStandardModule:
         # necessary to check...
         dsp.resample(self.audio_multi, desired_sampling_rate_hz=22050)
 
-    def test_fractional_octave_frequencies(self):
-        # Only functionality and not result is checked here
-        dsp.fractional_octave_frequencies()
-
     def test_normalize(self):
         td = self.audio_multi.time_data
         n = dsp.normalize(self.audio_multi, peak_dbfs=-20)
@@ -195,10 +191,6 @@ class TestStandardModule:
         td = self.audio_multi.time_data
         td[-fade_le:] *= np.linspace(1, 0, fade_le)[..., None]
         assert np.all(np.isclose(f_end.time_data, td))
-
-    def test_erb_frequencies(self):
-        # Only functionality tested here
-        dsp.erb_frequencies()
 
     def test_true_peak_level(self):
         # Only functionality is tested here

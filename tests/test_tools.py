@@ -13,3 +13,5 @@ class TestTools:
         dsp.tools.from_db(x, True)
         dsp.tools.time_smoothing(x, 200, 0.1, None)
         dsp.tools.time_smoothing(x, 200, 0.1, 0.2)
+        dsp.tools.fractional_octave_frequencies()
+        dsp.tools.erb_frequencies()
