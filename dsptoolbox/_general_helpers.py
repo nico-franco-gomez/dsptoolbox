@@ -6,14 +6,14 @@ import numpy as np
 from numpy.typing import NDArray
 from scipy.signal import (
     windows,
-    convolve as scipy_convolve,
+    oaconvolve,
     hilbert,
     correlate,
     lfilter,
     lfilter_zi,
 )
 from scipy.fft import fft, ifft
-from scipy.interpolate import interp1d
+from scipy.interpolate import interp1d, PchipInterpolator
 from scipy.linalg import toeplitz as toeplitz_scipy
 from scipy.stats import pearsonr
 from os import sep
@@ -532,8 +532,9 @@ def _fractional_octave_smoothing(
         )
     # Linear and logarithmic frequency vector
     N = len(vector)
-    l1 = np.arange(N)
+    l1 = np.arange(N, dtype=np.float64)
     k_log = (N) ** (l1 / (N - 1))
+    l1 += 1.0
     beta = np.log2(k_log[1])
 
     # Window length always odd, so that delay can be easily compensated
@@ -566,20 +567,25 @@ def _fractional_octave_smoothing(
     window /= window.sum()
 
     # Interpolate to logarithmic scale
-    vec_int = interp1d(
-        l1 + 1, vector, kind="cubic", copy=False, assume_sorted=True, axis=0
-    )
-    vec_log = vec_int(k_log)
+    vec_log = PchipInterpolator(l1, vector, axis=0)(k_log)
+
     # Smoothe by convolving with window (output is centered)
-    smoothed = scipy_convolve(
-        vec_log, window[..., None], mode="same", method="auto"
-    )
-    # Interpolate back to linear scale
-    smoothed = interp1d(
-        k_log, smoothed, kind="cubic", copy=False, assume_sorted=True, axis=0
+    n_window_half = n_window // 2
+    smoothed = oaconvolve(
+        np.pad(
+            vec_log,
+            ((n_window_half, n_window_half - (1 - n_window % 2)), (0, 0)),
+            mode="edge",
+        ),
+        window[..., None],
+        mode="valid",
+        axes=0,
     )
 
-    vec_final = smoothed(l1 + 1)
+    # Interpolate back to linear scale
+    vec_final = interp1d(
+        k_log, smoothed, kind="linear", copy=False, assume_sorted=True, axis=0
+    )(l1)
     if one_dim:
         vec_final = vec_final.squeeze()
 
