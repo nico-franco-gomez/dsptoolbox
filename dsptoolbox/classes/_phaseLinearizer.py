@@ -57,6 +57,9 @@ class PhaseLinearizer:
             f"Phase response with length {len(phase_response)} and "
             + f"length {time_data_length_samples} do not match."
         )
+        assert (
+            phase_response.ndim == 1
+        ), "Phase response should have only one dimension"
         self.phase_response = phase_response
         self.sampling_rate_hz = sampling_rate_hz
         self.set_parameters()
