@@ -1107,32 +1107,38 @@ def _correct_for_real_phase_spectrum(phase_spectrum: NDArray[np.float64]):
 
 
 def _scale_spectrum(
-    spectrum: NDArray[np.float64],
+    spectrum: NDArray[np.float64] | NDArray[np.complex128],
     mode: str | None,
     time_length_samples: int,
     sampling_rate_hz: int,
     window: NDArray[np.float64] | None = None,
 ) -> NDArray[np.float64]:
-    """Scale the spectrum directly from the (unscaled) FFT. It is assumed that
-    the time data was not windowed.
+    """Scale the spectrum directly from the unscaled ("backward" normalization)
+    (R)FFT. If a window was applied, it is necessary to compute the right
+    scaling factor.
 
     Parameters
     ----------
-    spectrum : NDArray[np.float64]
+    spectrum : NDArray[np.float64] | NDArray[np.complex128]
         Spectrum to scale. It is assumed that the frequency bins are along
         the first dimension.
     mode : str, None
         Type of scaling to use. `"power spectral density"`, `"power spectrum"`,
         `"amplitude spectral density"`, `"amplitude spectrum"`. Pass `None`
-        to avoid any scaling and return the same spectrum.
+        to avoid any scaling and return the same spectrum. Using a power
+        representation will returned the squared spectrum.
     time_length_samples : int
         Original length of the time data.
     sampling_rate_hz : int
         Sampling rate.
+    window : NDArray[np.float64], None, optional
+        Applied window when obtaining the spectrum. It is necessary to compute
+        the correct scaling factor. In case of None, "boxcar" window is
+        assumed. Default: None.
 
     Returns
     -------
-    NDArray[np.float64]
+    NDArray[np.float64] | NDArray[np.complex128]
         Scaled spectrum
 
     Notes
