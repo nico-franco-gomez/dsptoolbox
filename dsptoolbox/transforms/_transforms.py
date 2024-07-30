@@ -229,6 +229,7 @@ def _squeeze_scalogram(
     freqs: NDArray[np.float64],
     fs: int,
     delta_w: float = 0.05,
+    apply_frequency_normalization: bool = False,
 ) -> NDArray[np.float64]:
     """Synchrosqueeze a scalogram.
 
@@ -245,6 +246,10 @@ def _squeeze_scalogram(
         Maximum relative difference in frequency allowed in the phase
         transform for taking summing the result of the scalogram. If it's
         too small, it might lead to significant energy leaks. Default: 0.05.
+    apply_frequency_normalization : bool, optional
+        When `True`, each scale is scaled by taking into account the
+        normalization as shown in Eq. (2.4) of [1]. `False` does not apply
+        any normalization. Default: `False`.
 
     Returns
     -------
@@ -255,6 +260,8 @@ def _squeeze_scalogram(
     ----------
     - https://dsp.stackexchange.com/questions/71398/synchrosqueezing-wavelet
       -transform-explanation
+    - [1]: Ingrid Daubechies, Jianfeng Lu, Hau-Tieng Wu. Synchrosqueezed
+      wavelet transforms: An empirical mode decomposition-like tool. 2011.
 
     """
     scalpow = np.abs(scalogram) ** 2
@@ -270,8 +277,9 @@ def _squeeze_scalogram(
     ph *= fs  # Scale to represent physical frequencies
 
     # Normalization factor
-    normalizations = 1 / (freqs / fs)  # Scales
-    normalizations **= -3 / 2
+    if apply_frequency_normalization:
+        normalizations = 1 / (freqs / fs)  # Scales
+        normalizations **= -3 / 2
 
     # Thresholds
     delta_f = delta_w * freqs
@@ -284,7 +292,11 @@ def _squeeze_scalogram(
                 ind = np.argmin(diff)
                 if diff[ind] > delta_f[f]:
                     continue
-                sync[ind, t, ch] += scalogram[f, t, ch] * normalizations[f]
+                if apply_frequency_normalization:
+                    sync[ind, t, ch] += scalogram[f, t, ch] * normalizations[f]
+                    continue
+
+                sync[ind, t, ch] += scalogram[f, t, ch]
     return sync
 
 

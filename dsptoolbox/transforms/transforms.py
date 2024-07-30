@@ -656,6 +656,7 @@ def cwt(
     wavelet: Wavelet | MorletWavelet,
     channel: NDArray[np.float64] | None = None,
     synchrosqueezed: bool = False,
+    apply_synchrosqueezed_normalization: bool = False,
 ) -> NDArray[np.complex128]:
     """Returns a scalogram by means of the continuous wavelet transform.
 
@@ -674,6 +675,11 @@ def cwt(
     synchrosqueezed : bool, optional
         When `True`, the scalogram is synchrosqueezed using the phase
         transform. Default: `False`.
+    apply_synchrosqueezed_normalization : bool, optional
+        When `True`, each scale is scaled by taking into account the
+        normalization as shown in Eq. (2.4) of [1]. `False` does not apply
+        any normalization. This is only done for synchrosqueezed scalograms.
+        Default: `False`.
 
     Returns
     -------
@@ -684,6 +690,14 @@ def cwt(
     Notes
     -----
     - Zero-padding in the beginning is done for reducing boundary effects.
+
+    References
+    ----------
+    - [1]: Ingrid Daubechies, Jianfeng Lu, Hau-Tieng Wu. Synchrosqueezed
+      wavelet transforms: An empirical mode decomposition-like tool. 2011.
+    - General information about synchrosqueezing:
+      https://dsp.stackexchange.com/questions/71398/synchrosqueezing-wavelet
+      -transform-explanation
 
     """
     if channel is None:
@@ -697,6 +711,7 @@ def cwt(
 
     for ind_f, f in enumerate(frequencies):
         wv = np.array(wavelet.get_wavelet(f, signal.sampling_rate_hz))
+        wv /= np.abs(wv).sum()
 
         scalogram[ind_f, ...] = oaconvolve(
             td, wv[..., None], axes=0, mode="same"
@@ -704,7 +719,10 @@ def cwt(
 
     if synchrosqueezed:
         scalogram = _squeeze_scalogram(
-            scalogram, frequencies, signal.sampling_rate_hz
+            scalogram,
+            frequencies,
+            signal.sampling_rate_hz,
+            apply_frequency_normalization=apply_synchrosqueezed_normalization,
         )
 
     return scalogram
