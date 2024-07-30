@@ -14,6 +14,7 @@ from ._general_helpers import (
     _get_smoothing_factor_ema as get_smoothing_factor_ema,
     _interpolate_fr as interpolate_fr,
     _time_smoothing as time_smoothing,
+    _scale_spectrum as scale_spectrum,
 )
 
 from ._standard import (
@@ -414,4 +415,5 @@ __all__ = [
     "frequency_crossover",
     "erb_frequencies",
     "fractional_octave_frequencies",
+    "scale_spectrum",
 ]
