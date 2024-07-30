@@ -79,10 +79,10 @@ class Filter:
               "bandstop".
             - filter_design_method (str): Default: "butter". Supported methods
               are: "butter", "bessel", "ellip", "cheby1", "cheby2".
-            - passband_ripple (float): maximum bandpass ripple in dB for
+            - passband_ripple (float): maximum passband ripple in dB for
               "ellip" and "cheby1".
-            - stopband_ripple (float): maximum stopband ripple in dB for
-              "ellip" and "cheby2".
+            - stopband_attenuation (float): minimum stopband attenuation in dB
+              for "ellip" and "cheby2".
 
         For `fir`:
             Keys: order, freqs, type_of_pass, filter_design_method (optional),
@@ -140,21 +140,21 @@ class Filter:
     @staticmethod
     def iir_design(
         order: int,
-        frequency_hz: float | ArrayLike[np.float64 | float],
+        frequency_hz: float | ArrayLike,
         type_of_pass: str,
         filter_design_method: str,
         passband_ripple_db: float | None = None,
-        stopband_ripple_db: float | None = None,
+        stopband_attenuation_db: float | None = None,
         sampling_rate_hz: int | None = None,
     ):
-        """Return an IIR filter using `scipy.signal.iirfilter`. IIR are
+        """Return an IIR filter using `scipy.signal.iirfilter`. IIR filters are
         always implemented as SOS by default.
 
         Parameters
         ----------
         order : int
             Filter order.
-        frequency_hz : float | ArrayLike[np.float64 | float]
+        frequency_hz : float | ArrayLike
             Frequency or frequencies of the filter in Hz.
         type_of_pass : str, {"lowpass", "highpass", "bandpass", "bandstop"}
             Type of filter.
@@ -163,7 +163,7 @@ class Filter:
             Design method for the IIR filter.
         passband_ripple_db : float, None, optional
             Passband ripple in dB for "cheby1" and "ellip". Default: None.
-        stopband_ripple_db : float, None, optional
+        stopband_attenuation_db : float, None, optional
             Passband ripple in dB for "cheby2" and "ellip". Default: None.
         sampling_rate_hz : int
             Sampling rate in Hz.
@@ -181,7 +181,7 @@ class Filter:
                 "type_of_pass": type_of_pass,
                 "filter_design_method": filter_design_method,
                 "passband_ripple": passband_ripple_db,
-                "stopband_ripple": stopband_ripple_db,
+                "stopband_attenuation": stopband_attenuation_db,
             },
             sampling_rate_hz,
         )
@@ -189,7 +189,7 @@ class Filter:
     @staticmethod
     def biquad(
         eq_type: str,
-        frequency_hz: float | ArrayLike[np.float64 | float],
+        frequency_hz: float | ArrayLike,
         gain_db: float,
         q: float,
         sampling_rate_hz: int,
@@ -234,7 +234,7 @@ class Filter:
     @staticmethod
     def fir_design(
         order: int,
-        frequency_hz: float | ArrayLike[np.float64 | float],
+        frequency_hz: float | ArrayLike,
         type_of_pass: str,
         filter_design_method: str,
         width_hz: float | None = None,
@@ -246,7 +246,7 @@ class Filter:
         ----------
         order : int
             Filter order. It corresponds to the number of taps - 1.
-        frequency_hz : float | ArrayLike[np.float64 | float]
+        frequency_hz : float | ArrayLike
             Frequency or frequencies of the filter in Hz.
         type_of_pass : str, {"lowpass", "highpass", "bandpass", "bandstop"}
             Type of filter.
@@ -280,8 +280,8 @@ class Filter:
 
     @staticmethod
     def from_ba(
-        b: ArrayLike[np.float64 | float],
-        a: ArrayLike[np.float64 | float],
+        b: ArrayLike,
+        a: ArrayLike,
         sampling_rate_hz: int,
     ):
         """Create a filter from some b (numerator) and a (denominator)
@@ -289,9 +289,9 @@ class Filter:
 
         Parameters
         ----------
-        b : ArrayLike[np.float64 | float]
+        b : ArrayLike
             Numerator coefficients.
-        a : ArrayLike[np.float64 | float]
+        a : ArrayLike
             Denominator coefficients.
         sampling_rate_hz : int
             Sampling rate in Hz.
@@ -577,8 +577,8 @@ class Filter:
                 filter_configuration["filter_design_method"] = "butter"
             if "passband_ripple" not in filter_configuration:
                 filter_configuration["passband_ripple"] = None
-            if "stopband_ripple" not in filter_configuration:
-                filter_configuration["stopband_ripple"] = None
+            if "stopband_attenuation" not in filter_configuration:
+                filter_configuration["stopband_attenuation"] = None
             self.sos = sig.iirfilter(
                 N=filter_configuration["order"],
                 Wn=filter_configuration["freqs"],
@@ -587,7 +587,7 @@ class Filter:
                 fs=self.sampling_rate_hz,
                 ftype=filter_configuration["filter_design_method"],
                 rp=filter_configuration["passband_ripple"],
-                rs=filter_configuration["stopband_ripple"],
+                rs=filter_configuration["stopband_attenuation"],
                 output="sos",
             )
             self.filter_type = filter_type

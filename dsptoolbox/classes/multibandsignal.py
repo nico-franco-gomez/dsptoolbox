@@ -370,12 +370,15 @@ class MultiBandSignal:
 
         Returns
         -------
-        if `same_sampling_rate` :
+        if `self.same_sampling_rate=True` :
+
             time_data : NDArray[np.float64]
                 Time samples.
             int
                 Sampling rate in Hz
+
         else :
+
             list[tuple[NDArray[np.float64], int]]
                 List with each band where time samples and sampling rate are
                 contained.
