@@ -1314,6 +1314,7 @@ class Signal:
                 factor = 10
             else:
                 factor = 20
+            zlabel = "dBFS"
         else:
             factor = 20
             zlabel = "dBFS"
@@ -1322,7 +1323,7 @@ class Signal:
 
         if self.calibrated_signal:
             stft_db -= 20 * np.log10(2e-5)
-            zlabel = "dB"
+            zlabel = "dB(SPL)"
 
         stft_db = np.nan_to_num(stft_db, nan=np.min(stft_db))
         fig, ax = general_matrix_plot(
