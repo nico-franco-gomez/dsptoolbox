@@ -269,7 +269,6 @@ def convolve_rir_on_signal(
 
     new_sig = signal.copy()
     new_sig.time_data = new_time_data
-    new_sig.signal_id += " (convolved with RIR)"
     return new_sig
 
 
@@ -447,13 +446,7 @@ def generate_synthetic_rir(
             rir, room.mixing_time_s, room.t60_s, sr=sampling_rate_hz
         )
 
-    rir_output = Signal(
-        None,
-        rir,
-        sampling_rate_hz,
-        signal_type="rir",
-        signal_id="Synthetized RIR using the image source method",
-    )
+    rir_output = Signal(None, rir, sampling_rate_hz, signal_type="rir")
 
     # Bandpass signal in order to have a realistic audio signal representation
     if apply_bandpass:

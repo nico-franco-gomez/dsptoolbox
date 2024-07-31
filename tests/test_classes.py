@@ -165,15 +165,6 @@ class TestSignal:
         with pytest.raises(AssertionError):
             s.signal_type = 15
 
-        # Signal ID
-        typ = "test signal"
-        s.signal_id = typ
-        assert s.signal_id == typ
-
-        # Setting a wrong signal id
-        with pytest.raises(AssertionError):
-            s.signal_id = True
-
         # Number of channels is generated right
         assert s.number_of_channels == self.channels
 
