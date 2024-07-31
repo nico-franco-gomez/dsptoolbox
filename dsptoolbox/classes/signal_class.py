@@ -42,7 +42,6 @@ class Signal:
         time_data=None,
         sampling_rate_hz: int | None = None,
         signal_type: str = "general",
-        signal_id: str = "",
         constrain_amplitude: bool = True,
     ):
         """Signal class that saves time data, channel and sampling rate
@@ -62,9 +61,6 @@ class Signal:
             A generic signal type. Some functionalities are only unlocked for
             signal types `'ir'`, `'h1'`, `'h2'`, `'h3'`, `'rir'`, `'chirp'`,
             `'noise'` or `'dirac'`. Default: `'general'`.
-        signal_id : str, optional
-            An even more generic signal id that can be set by the user.
-            Default: `''`.
         constrain_amplitude : bool, optional
             When `True`, audio is normalized to 0 dBFS peak level in case that
             there are amplitude values greater than 1. Otherwise, there is no
@@ -92,7 +88,6 @@ class Signal:
             set_window, set_coherence, plot_group_delay, plot_coherence.
 
         """
-        self.signal_id = signal_id
         self.signal_type = signal_type
         # Handling amplitude
         self.constrain_amplitude = constrain_amplitude
@@ -132,6 +127,22 @@ class Signal:
         self.set_spectrogram_parameters()
         self._generate_metadata()
 
+    @staticmethod
+    def from_file(path: str):
+        """Create a signal from a path to a wav or flac audio file.
+
+        Parameters
+        ----------
+        path : str
+            Path to file.
+
+        Returns
+        -------
+        Signal
+
+        """
+        return Signal(path)
+
     def __update_state(self):
         """Internal update of object state. If for instance time data gets
         added, new spectrum, csm or stft has to be computed.
@@ -157,7 +168,6 @@ class Signal:
             self.time_data.shape[0] / self.sampling_rate_hz
         )
         self.info["signal_type"] = self.signal_type
-        self.info["signal_id"] = self.signal_id
 
     def _generate_time_vector(self):
         """Internal method to generate a time vector on demand."""
@@ -240,15 +250,6 @@ class Signal:
     def signal_type(self, new_signal_type):
         assert type(new_signal_type) is str, "Signal type must be a string"
         self.__signal_type = new_signal_type.lower()
-
-    @property
-    def signal_id(self) -> str:
-        return self.__signal_id
-
-    @signal_id.setter
-    def signal_id(self, new_signal_id: str):
-        assert type(new_signal_id) is str, "Signal ID must be a string"
-        self.__signal_id = new_signal_id.lower()
 
     @property
     def number_of_channels(self) -> int:
@@ -1534,14 +1535,11 @@ class Signal:
 
     def _get_metadata_string(self) -> str:
         """Helper for creating a string containing all signal info."""
-        txt = f"""Signal – ID: {self.info['signal_id']}\n"""
         temp = ""
         for n in range(len(txt)):
             temp += "-"
         txt += temp + "\n"
         for k in self.info.keys():
-            if k == "signal_id":
-                continue
             txt += f"""{str(k).replace('_', ' ').
                         capitalize()}: {self.info[k]}\n"""
         return txt
@@ -1613,7 +1611,6 @@ class Signal:
                 sig,
                 self.sampling_rate_hz,
                 self.signal_type,
-                self.signal_id,
             )
             # In an audio stream, welch's method for acquiring a spectrum
             # is not very logical...

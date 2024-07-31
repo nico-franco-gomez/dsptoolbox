@@ -1043,7 +1043,6 @@ class CalibrationData:
 
         if isinstance(signal, Signal):
             calibrated_signal = signal.copy()
-            calibrated_signal.signal_id += " – Calibrated (time data in Pa)"
             calibrated_signal.constrain_amplitude = False
             calibrated_signal.time_data *= calibration_factors
             calibrated_signal.calibrated_signal = True
@@ -1052,7 +1051,6 @@ class CalibrationData:
             for b in calibrated_signal:
                 b.constrain_amplitude = False
                 b.time_data *= calibration_factors
-                b.signal_id += " – Calibrated (time data in Pa)"
                 b.calibrated_signal = True
         else:
             raise TypeError(

@@ -126,10 +126,7 @@ def noise(
         )
     time_data[:l_samples, :] = vec
 
-    id = type_of_noise.lower() + " noise"
-    noise_sig = Signal(
-        None, time_data, sampling_rate_hz, signal_type="noise", signal_id=id
-    )
+    noise_sig = Signal(None, time_data, sampling_rate_hz, signal_type="noise")
     return noise_sig
 
 
@@ -250,7 +247,6 @@ def chirp(
         chirp_n,
         sampling_rate_hz,
         signal_type="chirp",
-        signal_id=type_of_chirp,
     )
     return chirp_sig
 

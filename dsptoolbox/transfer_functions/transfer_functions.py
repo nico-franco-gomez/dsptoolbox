@@ -1237,11 +1237,7 @@ def filter_to_ir(fir: Filter) -> Signal:
     ), "This is only valid is only available for FIR filters"
     b, _ = fir.get_coefficients(mode="ba")
     new_sig = Signal(
-        None,
-        b,
-        sampling_rate_hz=fir.sampling_rate_hz,
-        signal_type="ir",
-        signal_id="IR from FIR filter",
+        None, b, sampling_rate_hz=fir.sampling_rate_hz, signal_type="ir"
     )
     return new_sig
 
