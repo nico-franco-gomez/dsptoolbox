@@ -24,7 +24,7 @@ from ..standard_functions import pad_trim
 
 
 def reverb_time(
-    signal: Signal | MultiBandSignal,
+    signal: ImpulseResponse | MultiBandSignal,
     mode: str = "T20",
     ir_start: int | NDArray[np.int_] | None = None,
     automatic_trimming: bool = True,
@@ -33,9 +33,8 @@ def reverb_time(
 
     Parameters
     ----------
-    signal : `Signal` or `MultiBandSignal`
-        Signal for which to compute reverberation times. It must be type
-        `'ir'` or `'rir'`.
+    signal : `ImpulseResponse` or `MultiBandSignal`
+        IR for which to compute reverberation times.
     mode : str, optional
         Reverberation time mode. Options are `'Topt'`, `'T20'`, `'T30'`,
         `'T60'` or `'EDT'`. Default: `'Topt'`.
@@ -123,7 +122,7 @@ def reverb_time(
 
 
 def find_modes(
-    signal: Signal,
+    signal: ImpulseResponse,
     f_range_hz=[50, 200],
     dist_hz: float = 5,
     prominence_db: float | None = None,
@@ -134,7 +133,7 @@ def find_modes(
 
     Parameters
     ----------
-    signal : `Signal`
+    signal : `ImpulseResponse`
         Signal containing the RIR'S from which to find the modes.
     f_range_hz : array-like, optional
         Vector setting range for mode search. Default: [50, 200].
@@ -216,7 +215,7 @@ def convolve_rir_on_signal(
     signal : Signal
         Signal to which the RIR is applied. All channels are affected.
     rir : ImpulseResponse
-        Single-channel Signal object containing the RIR.
+        Single-channel impulse response containing the RIR.
     keep_peak_level : bool, optional
         When `True`, output signal is normalized to the peak level of
         the original signal. Default: `True`.
@@ -268,7 +267,7 @@ def convolve_rir_on_signal(
 
 
 def find_ir_start(
-    signal: Signal, threshold_dbfs: float = -20
+    signal: ImpulseResponse, threshold_dbfs: float = -20
 ) -> NDArray[np.int_]:
     """This function finds the start of an IR defined as the first sample
     before a certain threshold is surpassed. For room impulse responses, -20
@@ -276,8 +275,8 @@ def find_ir_start(
 
     Parameters
     ----------
-    signal : `Signal`
-        IR signal.
+    signal : `ImpulseResponse`
+        IR.
     threshold_dbfs : float, optional
         Threshold that should be passed (in dBFS). Default: -20.
 
@@ -309,7 +308,7 @@ def generate_synthetic_rir(
     apply_bandpass: bool = False,
     use_detailed_absorption: bool = False,
     max_order: int | None = None,
-) -> Signal:
+) -> ImpulseResponse:
     """This function returns a synthetized RIR in a shoebox-room using the
     image source model. The implementation is based on Brinkmann,
     et al. See References for limitations and advantages of this method.
@@ -347,7 +346,7 @@ def generate_synthetic_rir(
 
     Returns
     -------
-    rir : `Signal`
+    rir : `ImpulseResponse`
         Newly generated RIR.
 
     References
@@ -427,7 +426,7 @@ def generate_synthetic_rir(
             rir_band = _pad_trim(rir_band, total_length_samples)
             # Prune possible nan values
             np.nan_to_num(rir_band, copy=False, nan=0)
-            rir0 = Signal(None, rir_band, sampling_rate_hz)
+            rir0 = ImpulseResponse(None, rir_band, sampling_rate_hz)
             rir_multi = fb.filter_signal(rir0, zero_phase=True)
             rir += rir_multi.bands[ind].time_data[:, 0]
 
@@ -441,7 +440,7 @@ def generate_synthetic_rir(
             rir, room.mixing_time_s, room.t60_s, sr=sampling_rate_hz
         )
 
-    rir_output = Signal(None, rir, sampling_rate_hz)
+    rir_output = ImpulseResponse(None, rir, sampling_rate_hz)
 
     # Bandpass signal in order to have a realistic audio signal representation
     if apply_bandpass:
@@ -461,7 +460,7 @@ def generate_synthetic_rir(
 
 
 def descriptors(
-    rir: Signal | MultiBandSignal,
+    rir: ImpulseResponse | MultiBandSignal,
     mode: str = "d50",
     automatic_trimming_rir: bool = True,
 ):
@@ -469,7 +468,7 @@ def descriptors(
 
     Parameters
     ----------
-    rir : `Signal` or `MultiBandSignal`
+    rir : `ImpulseResponse` or `MultiBandSignal`
         Room impulse response. If it is a multi-channel signal, the descriptor
         given back has the shape (channel). If it is a `MultiBandSignal`,
         the descriptor has shape (band, channel).
@@ -540,12 +539,12 @@ def descriptors(
     return desc
 
 
-def _bass_ratio(rir: Signal) -> NDArray[np.float64]:
+def _bass_ratio(rir: ImpulseResponse) -> NDArray[np.float64]:
     """Core computation of bass ratio.
 
     Parameters
     ----------
-    rir : `Signal`
+    rir : `ImpulseResponse`
         RIR.
 
     Returns
@@ -566,7 +565,7 @@ def _bass_ratio(rir: Signal) -> NDArray[np.float64]:
 
 
 def _check_ir_start_reverb(
-    sig: Signal | MultiBandSignal,
+    sig: ImpulseResponse | MultiBandSignal,
     ir_start: int | NDArray[np.int_] | list | tuple | None,
 ) -> NDArray[np.float64] | list | None:
     """This method checks `ir_start` and parses it into the necessary form
