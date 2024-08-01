@@ -62,7 +62,7 @@ class AudioEffect:
             Modified signal.
 
         """
-        if type(signal) is Signal:
+        if isinstance(signal, Signal):
             return self._apply_this_effect(signal)
         elif type(signal) is MultiBandSignal:
             new_mbs = signal.copy()

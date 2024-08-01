@@ -5,7 +5,8 @@ used
 """
 
 import numpy as np
-from ..classes import Signal, ImpulseResponse
+from ..classes.signal import Signal
+from ..classes.impulse_response import ImpulseResponse
 from .._general_helpers import (
     _normalize,
     _fade,
@@ -252,8 +253,8 @@ def dirac(
     number_of_channels: int = 1,
     sampling_rate_hz: int | None = None,
 ) -> ImpulseResponse:
-    """Generates a dirac impulse Signal with the specified length and
-    sampling rate.
+    """Generates a dirac impulse (ImpulseResponse) with the specified length
+    and sampling rate.
 
     Parameters
     ----------

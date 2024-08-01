@@ -1064,3 +1064,12 @@ class TestMultiBandSignal:
         )
         for n in mbs:
             assert dsp.Signal == type(n)
+
+
+class TestImpulseResponse:
+    fs_hz = 10_000
+    seconds = 2
+    d = dsp.generators.dirac(seconds * fs_hz, sampling_rate_hz=fs_hz)
+
+    def test_different_things(self):
+        assert False

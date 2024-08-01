@@ -92,7 +92,7 @@ class MultiBandSignal:
             sr = []
             complex_data = new_bands[0].time_data_imaginary is not None
             for s in new_bands:
-                assert type(s) is Signal, (
+                assert isinstance(s, Signal), (
                     f"{type(s)} is not a valid "
                     + "band type. Use Signal objects"
                 )

@@ -3,6 +3,7 @@ Here are methods considered as somewhat special or less common.
 """
 
 from ..classes.signal import Signal
+from ..classes.impulse_response import ImpulseResponse
 from ..classes.multibandsignal import MultiBandSignal
 from ..plots import general_matrix_plot
 from .._standard import _reconstruct_framed_signal
@@ -728,7 +729,9 @@ def cwt(
     return scalogram
 
 
-def hilbert(signal: Signal | MultiBandSignal) -> Signal | MultiBandSignal:
+def hilbert(
+    signal: Signal | ImpulseResponse | MultiBandSignal,
+) -> Signal | ImpulseResponse | MultiBandSignal:
     """Compute the analytic signal using the hilbert transform of the real
     signal.
 
@@ -754,7 +757,7 @@ def hilbert(signal: Signal | MultiBandSignal) -> Signal | MultiBandSignal:
         complex_ts = Signal.time_data + Signal.time_data_imaginary*1j
 
     """
-    if type(signal) is Signal:
+    if isinstance(signal, Signal):
         td = signal.time_data
 
         sp = np.fft.fft(td, axis=0)

@@ -52,7 +52,7 @@ def spectral_deconvolve(
     threshold_db=-30,
     padding: bool = False,
     keep_original_length: bool = False,
-) -> Signal:
+) -> ImpulseResponse:
     """Deconvolution by spectral division of two signals. If the denominator
     signal only has one channel, the deconvolution is done using that channel
     for all channels of the numerator.
@@ -160,7 +160,7 @@ def spectral_deconvolve(
             start_stop_hz=start_stop_hz,
             mode=mode,
         )
-    new_sig = Signal(None, new_time_data, num.sampling_rate_hz)
+    new_sig = ImpulseResponse(None, new_time_data, num.sampling_rate_hz)
     if padding:
         if keep_original_length:
             new_sig.time_data = _pad_trim(new_sig.time_data, original_length)
@@ -168,7 +168,7 @@ def spectral_deconvolve(
 
 
 def window_ir(
-    signal: Signal,
+    signal: ImpulseResponse,
     total_length_samples: int,
     adaptive: bool = True,
     constant_percentage: float = 0.75,
@@ -176,7 +176,7 @@ def window_ir(
     at_start: bool = True,
     offset_samples: int = 0,
     left_to_right_flank_length_ratio: float = 1.0,
-) -> tuple[Signal, NDArray[np.float64]]:
+) -> tuple[ImpulseResponse, NDArray[np.float64]]:
     """Windows an IR with trimming and selection of constant valued length.
     This is equivalent to a tukey window whose flanks can be selected to be
     any type. The peak of the impulse response is aligned to correspond to
@@ -184,7 +184,7 @@ def window_ir(
 
     Parameters
     ----------
-    signal : `Signal`
+    signal : `ImpulseResponse`
         Signal to window
     total_length_samples : int
         Total window length in samples.
@@ -217,7 +217,7 @@ def window_ir(
 
     Returns
     -------
-    new_sig : `Signal`
+    new_sig : `ImpulseResponse`
         Windowed signal. The used window is also saved under `new_sig.window`.
     start_positions_samples : NDArray[np.float64]
         This array contains the position index of the start of the IR in
@@ -280,17 +280,17 @@ def window_ir(
 
 
 def window_centered_ir(
-    signal: Signal,
+    signal: ImpulseResponse,
     total_length_samples: int,
     window_type: str | tuple = "hann",
-) -> tuple[Signal, NDArray[np.float64]]:
+) -> tuple[ImpulseResponse, NDArray[np.float64]]:
     """This function windows an IR placing its peak in the middle. It trims
     it to the total length of the window or pads it to the desired length
     (padding in the end, window has `total_length`).
 
     Parameters
     ----------
-    signal: `Signal`
+    signal: `ImpulseResponse`
         Signal to window
     total_length_samples: int
         Total window length in samples.
@@ -303,7 +303,7 @@ def window_centered_ir(
 
     Returns
     -------
-    new_sig : `Signal`
+    new_sig : `ImpulseResponse`
         Windowed signal. The used window is also saved under `new_sig.window`.
     start_positions_samples : NDArray[np.float64]
         This array contains the position index of the start of the IR in
@@ -345,7 +345,7 @@ def compute_transfer_function(
     mode="h2",
     window_length_samples: int = 1024,
     spectrum_parameters: dict | None = None,
-) -> tuple[Signal, NDArray[np.complex128], NDArray[np.float64]]:
+) -> tuple[ImpulseResponse, NDArray[np.complex128], NDArray[np.float64]]:
     r"""Gets transfer function H1, H2 or H3 (for stochastic signals).
     H1: for noise in the output signal. `Gxy/Gxx`.
     H2: for noise in the input signal. `Gyy/Gyx`.
@@ -372,9 +372,9 @@ def compute_transfer_function(
 
     Returns
     -------
-    tf_sig : `Signal`
-        Transfer functions as `Signal` object. Coherences are also computed
-        and saved in the `Signal` object.
+    tf_sig : `ImpulseResponse`
+        Transfer functions as `ImpulseResponse` object. Coherences are also
+        computed and saved in the `ImpulseResponse` object.
     tf : NDArray[np.complex128]
         Complex transfer function as type NDArray[np.complex128] with shape
         (frequency, channel).
@@ -468,7 +468,7 @@ def compute_transfer_function(
         elif mode == "h3".casefold():
             tf[:, n] = G_xy / np.abs(G_xy) * (G_yy / G_xx) ** 0.5
         coherence[:, n] = np.abs(G_xy) ** 2 / G_xx / G_yy
-    tf_sig = Signal(
+    tf_sig = ImpulseResponse(
         None,
         np.fft.irfft(tf, axis=0, n=window_length_samples),
         output.sampling_rate_hz,
@@ -478,19 +478,19 @@ def compute_transfer_function(
 
 
 def average_irs(
-    signal: Signal, mode: str = "time", normalize_energy: bool = True
-) -> Signal:
+    signal: ImpulseResponse, mode: str = "time", normalize_energy: bool = True
+) -> ImpulseResponse:
     """Averages all channels of a given IR. It can either use a time domain
     average while time-aligning all channels to the one with the longest
     latency, or average directly their magnitude and phase responses.
 
     Parameters
     ----------
-    signal : `Signal`
+    signal : `ImpulseResponse`
         Signal with channels to be averaged over.
     mode : str, optional
         It can be either `"time"` or `"spectral"`. When `"time"` is selected,
-        the IRs are time-aligned to the channel with the biggest latency
+        the IRs are time-aligned to the channel with the largest latency
         and then averaged in the time domain. `"spectral"` averages directly
         the magnitude and phase of each IR. Default: `"time"`.
     normalize_energy : bool, optional
@@ -501,8 +501,8 @@ def average_irs(
 
     Returns
     -------
-    avg_sig : `Signal`
-        Averaged signal.
+    avg_sig : `ImpulseResponse`
+        Averaged impulse response.
 
     """
     assert (
@@ -726,8 +726,10 @@ def lin_phase_from_mag(
 
 
 def min_phase_ir(
-    sig: Signal, method: str = "real cepstrum", padding_factor: int = 8
-) -> Signal:
+    sig: ImpulseResponse,
+    method: str = "real cepstrum",
+    padding_factor: int = 8,
+) -> ImpulseResponse:
     """Returns same IR with minimum phase. Three methods are available for
     computing the minimum phase version of the IR: `'real cepstrum'` (using
     filtering the real-cepstral domain) and `'equiripple'` (for
@@ -738,7 +740,7 @@ def min_phase_ir(
 
     Parameters
     ----------
-    sig : `Signal`
+    sig : `ImpulseResponse`
         IR for which to compute minimum phase IR.
     method : str, optional
         For general cases, `'real cepstrum'`. If the IR is symmetric (like a
@@ -868,7 +870,7 @@ def group_delay(
 
 
 def minimum_phase(
-    signal: Signal,
+    signal: ImpulseResponse,
     method: str = "real cepstrum",
     padding_factor: int = 8,
 ) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
@@ -936,7 +938,7 @@ def minimum_phase(
 
 
 def minimum_group_delay(
-    signal: Signal,
+    signal: ImpulseResponse,
     smoothing: int = 0,
     padding_factor: int = 8,
 ) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
@@ -944,7 +946,7 @@ def minimum_group_delay(
 
     Parameters
     ----------
-    signal : `Signal`
+    signal : `ImpulseResponse`
         IR for which to compute minimal group delay.
     smoothing : int, optional
         Octave fraction by which to apply smoothing. `0` avoids any smoothing
@@ -979,7 +981,7 @@ def minimum_group_delay(
 
 
 def excess_group_delay(
-    signal: Signal,
+    signal: ImpulseResponse,
     smoothing: int = 0,
     remove_ir_latency: bool = False,
 ) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
@@ -987,7 +989,7 @@ def excess_group_delay(
 
     Parameters
     ----------
-    signal : `Signal`
+    signal : `ImpulseResponse`
         IR for which to compute minimal group delay.
     smoothing : int, optional
         Octave fraction by which to apply smoothing. `0` avoids any smoothing
@@ -1029,12 +1031,12 @@ def excess_group_delay(
 
 
 def combine_ir_with_dirac(
-    ir: Signal,
+    ir: ImpulseResponse,
     crossover_frequency: float,
     take_lower_band: bool,
     order: int = 8,
     normalization: str | None = None,
-) -> Signal:
+) -> ImpulseResponse:
     """Combine an IR with a perfect impulse at a given crossover frequency
     using a linkwitz-riley crossover. Forward-Backward filtering is done so
     that no phase distortion occurs. They can optionally be energy matched
@@ -1141,10 +1143,10 @@ def combine_ir_with_dirac(
 
 
 def ir_to_filter(
-    signal: Signal, channel: int = 0, phase_mode: str = "direct"
+    signal: ImpulseResponse, channel: int = 0, phase_mode: str = "direct"
 ) -> Filter:
-    """This function takes in a signal with type `'ir'` or `'rir'` and turns
-    the selected channel into an FIR filter. With `phase_mode` it is possible
+    """This function takes in an impulse response and turns the selected
+    channel into an FIR filter. With `phase_mode` it is possible
     to use minimum phase or minimum linear phase.
 
     Parameters
@@ -1219,7 +1221,7 @@ def filter_to_ir(fir: Filter) -> ImpulseResponse:
 
 
 def window_frequency_dependent(
-    ir: Signal,
+    ir: ImpulseResponse,
     cycles: int,
     channel: int | None = None,
     frequency_range_hz: list | None = None,
@@ -1236,7 +1238,7 @@ def window_frequency_dependent(
 
     Parameters
     ----------
-    ir : `Signal`
+    ir : `ImpulseResponse`
         Impulse response from which to extract the spectrum.
     cycles : int
         Number of cycles to include for each frequency bin. It defines
@@ -1371,7 +1373,7 @@ def window_frequency_dependent(
 
 
 def warp_ir(
-    ir: Signal,
+    ir: ImpulseResponse,
     warping_factor: float,
     shift_ir: bool = True,
     total_length: int | None = None,
@@ -1383,7 +1385,7 @@ def warp_ir(
 
     Parameters
     ----------
-    ir : `Signal`
+    ir : `ImpulseResponse`
         Impulse response to (un)warp.
     warping_factor : float
         Warping factor. It has to be in the range ]-1; 1[.
@@ -1564,8 +1566,7 @@ def harmonic_distortion_analysis(
     smoothing: int = 12,
     generate_plot: bool = True,
 ) -> dict:
-    """
-    Analyze non-linear distortion coming from an IR measured with an
+    """Analyze non-linear distortion coming from an IR measured with an
     exponential chirp. The range of the chirp and its length must be known.
     The distortion spectra of each harmonic, as well as THD+N and THD, are
     returned. Optionally, a plot can be generated.
@@ -1620,7 +1621,7 @@ def harmonic_distortion_analysis(
     """
     if type(ir) is list:
         for each_ir in ir:
-            assert type(each_ir) is Signal, "Unsupported type"
+            assert isinstance(each_ir, ImpulseResponse), "Unsupported type"
             assert (
                 each_ir.number_of_channels == 1
             ), "Only single-channel IRs are supported"
@@ -1634,7 +1635,7 @@ def harmonic_distortion_analysis(
             chirp_range_hz = [0, ir2.sampling_rate_hz // 2]
 
         passed_harmonics = True
-    elif type(ir) is Signal:
+    elif isinstance(ir, ImpulseResponse):
         assert (
             chirp_length_s is not None
             and chirp_range_hz is not None
@@ -1761,20 +1762,19 @@ def harmonic_distortion_analysis(
 
 
 def trim_ir(
-    ir: Signal,
+    ir: ImpulseResponse,
     channel: int = 0,
     start_offset_s: float = 20e-3,
-) -> tuple[Signal, int, int]:
-    """
-    Trim an IR in the beginning and end. This method acts only on one channel
-    and returns it trimmed. For defining the ending, a smooth envelope of the
-    energy time curve (ETC) is used, as well as the assumption that the energy
-    should decay monotonically after the impulse arrives. See notes for
+) -> tuple[ImpulseResponse, int, int]:
+    """Trim an IR in the beginning and end. This method acts only on one
+    channel and returns it trimmed. For defining the ending, a smooth envelope
+    of the energy time curve (ETC) is used, as well as the assumption that the
+    energy should decay monotonically after the impulse arrives. See notes for
     details.
 
     Parameters
     ----------
-    ir : `Signal`
+    ir : `ImpulseResponse`
         Impulse response to trim.
     channel : int, optional
         Channel to take from `rir`. Default: 0.
@@ -1786,7 +1786,7 @@ def trim_ir(
 
     Returns
     -------
-    trimmed_ir : `Signal`
+    trimmed_ir : `ImpulseResponse`
         IR with the new length.
     start : int
         Start index of the trimmed IR in the original vector.

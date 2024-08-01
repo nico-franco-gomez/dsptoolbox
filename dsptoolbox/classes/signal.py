@@ -1232,8 +1232,8 @@ class Signal:
             1/smoothing-octave band. This only applies smoothing to the plot
             data. Default: 0.
         remove_ir_latency : bool, optional
-            If the signal is of type `"rir"` or `"ir"`, the delay of the
-            impulse can be removed. Default: `False`.
+            If the signal is an impulse response, the delay of the impulse can
+            be removed. Default: `False`.
 
         Returns
         -------
