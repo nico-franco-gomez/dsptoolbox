@@ -7,7 +7,7 @@ import numpy as np
 from matplotlib.figure import Figure
 from matplotlib.axes import Axes
 from numpy.typing import NDArray
-from .signal_class import Signal
+from .signal import Signal
 from .multibandsignal import MultiBandSignal
 from ..generators import dirac
 
@@ -146,10 +146,7 @@ class StateVariableFilter:
         return MultiBandSignal(
             [
                 Signal(
-                    None,
-                    td[:, i, :],
-                    sampling_rate_hz=self.sampling_rate_hz,
-                    signal_type=signal.signal_type,
+                    None, td[:, i, :], sampling_rate_hz=self.sampling_rate_hz
                 )
                 for i in range(4)
             ]
@@ -171,7 +168,6 @@ class StateVariableFilter:
 
         """
         d = dirac(length_samples, sampling_rate_hz=self.sampling_rate_hz)
-        d.signal_type = "ir"
         self._reset_state()
         return self.filter_signal(d)
 
@@ -200,7 +196,6 @@ class StateVariableFilter:
 
         """
         d = self.get_ir(length_samples).get_all_bands()
-        d.signal_type = "ir"
         d.set_spectrum_parameters(method="standard")
         fig, ax = d.plot_magnitude(
             range_hz=range_hz,
@@ -232,7 +227,6 @@ class StateVariableFilter:
 
         """
         d = self.get_ir(length_samples).get_all_bands()
-        d.signal_type = "ir"
         d.set_spectrum_parameters(method="standard")
         fig, ax = d.plot_group_delay(range_hz=range_hz)
         ax.legend(["Lowpass", "Highpass", "Bandpass", "Allpass"])
@@ -262,7 +256,6 @@ class StateVariableFilter:
 
         """
         d = self.get_ir(length_samples).get_all_bands()
-        d.signal_type = "ir"
         d.set_spectrum_parameters(method="standard")
         fig, ax = d.plot_phase(range_hz=range_hz, unwrap=unwrap)
         ax.legend(["Lowpass", "Highpass", "Bandpass", "Allpass"])

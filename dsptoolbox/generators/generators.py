@@ -5,14 +5,14 @@ used
 """
 
 import numpy as np
-from ..classes.signal_class import Signal
+from ..classes import Signal, ImpulseResponse
 from .._general_helpers import (
     _normalize,
     _fade,
     _pad_trim,
     _frequency_weightning,
 )
-from ..classes._filter import _impulse
+from ..classes.filter import _impulse
 
 
 def noise(
@@ -126,7 +126,7 @@ def noise(
         )
     time_data[:l_samples, :] = vec
 
-    noise_sig = Signal(None, time_data, sampling_rate_hz, signal_type="noise")
+    noise_sig = Signal(None, time_data, sampling_rate_hz)
     return noise_sig
 
 
@@ -242,12 +242,7 @@ def chirp(
     if number_of_channels != 1:
         chirp_n = np.repeat(chirp_n, repeats=number_of_channels, axis=1)
     # Signal
-    chirp_sig = Signal(
-        None,
-        chirp_n,
-        sampling_rate_hz,
-        signal_type="chirp",
-    )
+    chirp_sig = Signal(None, chirp_n, sampling_rate_hz)
     return chirp_sig
 
 
@@ -256,7 +251,7 @@ def dirac(
     delay_samples: int = 0,
     number_of_channels: int = 1,
     sampling_rate_hz: int | None = None,
-) -> Signal:
+) -> ImpulseResponse:
     """Generates a dirac impulse Signal with the specified length and
     sampling rate.
 
@@ -273,7 +268,7 @@ def dirac(
 
     Returns
     -------
-    imp : `Signal`
+    imp : `ImpulseResponse`
         Signal with dirac impulse.
 
     """
@@ -294,7 +289,7 @@ def dirac(
         td[:, n] = _impulse(
             length_samples=length_samples, delay_samples=delay_samples
         )
-    imp = Signal(None, td, sampling_rate_hz, signal_type="dirac")
+    imp = ImpulseResponse(None, td, sampling_rate_hz)
     return imp
 
 
@@ -384,7 +379,7 @@ def harmonic(
     td = _pad_trim(td, l_samples + p_samples)
 
     # Signal
-    harmonic_sig = Signal(None, td, sampling_rate_hz, signal_type="general")
+    harmonic_sig = Signal(None, td, sampling_rate_hz)
     return harmonic_sig
 
 
@@ -538,5 +533,5 @@ def oscillator(
     td = _pad_trim(td, l_samples + p_samples)
 
     # Signal
-    harmonic_sig = Signal(None, td, sampling_rate_hz, signal_type="general")
+    harmonic_sig = Signal(None, td, sampling_rate_hz)
     return harmonic_sig

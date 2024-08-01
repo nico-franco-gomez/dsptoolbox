@@ -274,7 +274,7 @@ class TestLatticeLadderFilter:
         # Example values taken from Oppenheim, A. V., Schafer, R. W.,,
         # Buck, J. R. (1999). Discrete-Time Signal Processing.
         # Prentice-hall Englewood Cliffs.
-        from dsptoolbox.classes._lattice_ladder_filter import (
+        from dsptoolbox.classes.lattice_ladder_filter import (
             _get_lattice_ladder_coefficients_iir,
         )
 
@@ -290,7 +290,7 @@ class TestLatticeLadderFilter:
         n = dsp.generators.noise(sampling_rate_hz=200)
         expected = sig.lfilter(self.b / 10, self.a, n.time_data.squeeze())
 
-        from dsptoolbox.classes._lattice_ladder_filter import (
+        from dsptoolbox.classes.lattice_ladder_filter import (
             _get_lattice_ladder_coefficients_iir,
         )
 

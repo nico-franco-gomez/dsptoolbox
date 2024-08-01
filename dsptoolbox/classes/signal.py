@@ -9,11 +9,11 @@ import numpy as np
 import soundfile as sf
 from matplotlib.figure import Figure
 from matplotlib.axes import Axes
-from scipy.signal import convolve
+from scipy.signal import oaconvolve
 from numpy.typing import NDArray
 
 from ..plots import general_plot, general_subplots_line, general_matrix_plot
-from ._plots import _csm_plot
+from .plots import _csm_plot
 from .._general_helpers import (
     _get_normalized_spectrum,
     _pad_trim,
@@ -41,7 +41,6 @@ class Signal:
         path: str | None = None,
         time_data=None,
         sampling_rate_hz: int | None = None,
-        signal_type: str = "general",
         constrain_amplitude: bool = True,
     ):
         """Signal class that saves time data, channel and sampling rate
@@ -57,10 +56,6 @@ class Signal:
             (time samples, channel number). Default: `None`.
         sampling_rate_hz : int, optional
             Sampling rate of the signal in Hz. Default: `None`.
-        signal_type : str, optional
-            A generic signal type. Some functionalities are only unlocked for
-            signal types `'ir'`, `'h1'`, `'h2'`, `'h3'`, `'rir'`, `'chirp'`,
-            `'noise'` or `'dirac'`. Default: `'general'`.
         constrain_amplitude : bool, optional
             When `True`, audio is normalized to 0 dBFS peak level in case that
             there are amplitude values greater than 1. Otherwise, there is no
@@ -84,11 +79,8 @@ class Signal:
             plot_csm.
         General:
             save_signal, get_stream_samples.
-        Only for `signal_type in ('rir', 'ir', 'h1', 'h2', 'h3')`:
-            set_window, set_coherence, plot_group_delay, plot_coherence.
 
         """
-        self.signal_type = signal_type
         # Handling amplitude
         self.constrain_amplitude = constrain_amplitude
         self.scale_factor = None
@@ -119,10 +111,7 @@ class Signal:
             ), "A sampling rate should be passed!"
         self.sampling_rate_hz = sampling_rate_hz
         self.time_data = time_data
-        if signal_type in ("rir", "ir", "h1", "h2", "h3", "chirp", "dirac"):
-            self.set_spectrum_parameters(method="standard", scaling=None)
-        else:
-            self.set_spectrum_parameters()
+        self.set_spectrum_parameters()
         self.set_csm_parameters()
         self.set_spectrogram_parameters()
         self._generate_metadata()
@@ -167,7 +156,6 @@ class Signal:
         self.info["signal_length_seconds"] = (
             self.time_data.shape[0] / self.sampling_rate_hz
         )
-        self.info["signal_type"] = self.signal_type
 
     def _generate_time_vector(self):
         """Internal method to generate a time vector on demand."""
@@ -241,15 +229,6 @@ class Signal:
             type(new_sampling_rate_hz) is int
         ), "Sampling rate can only be an integer"
         self.__sampling_rate_hz = new_sampling_rate_hz
-
-    @property
-    def signal_type(self) -> str:
-        return self.__signal_type
-
-    @signal_type.setter
-    def signal_type(self, new_signal_type):
-        assert type(new_signal_type) is str, "Signal type must be a string"
-        self.__signal_type = new_signal_type.lower()
 
     @property
     def number_of_channels(self) -> int:
@@ -373,14 +352,6 @@ class Signal:
             "welch",
             "standard",
         ), f"{method} is not a valid method. Use welch or standard"
-        if self.signal_type in ("h1", "h2", "h3", "rir", "ir"):
-            if method != "standard":
-                method = "standard"
-                warn(
-                    f"For a signal of type {self.signal_type} "
-                    + "the spectrum has to be the standard one and not welch."
-                    + " This has been automatically changed."
-                )
         _new_spectrum_parameters = dict(
             method=method,
             smoothe=smoothe,
@@ -402,50 +373,6 @@ class Signal:
             if not all(handler):
                 self._spectrum_parameters = _new_spectrum_parameters
                 self.__spectrum_state_update = True
-
-    def set_window(self, window: NDArray[np.float64]):
-        """Sets the window used for the IR. It only works for
-        `signal_type in ('ir', 'h1', 'h2', 'h3', 'rir')`.
-
-        Parameters
-        ----------
-        window : NDArray[np.float64]
-            Window used for the IR.
-
-        """
-        valid_signal_types = ("ir", "h1", "h2", "h3", "rir")
-        assert self.signal_type in valid_signal_types, (
-            f"{self.signal_type} is not valid. Please set it to ir or "
-            + "h1, h2, h3, rir"
-        )
-        assert (
-            window.shape == self.time_data.shape
-        ), f"{window.shape} does not match shape {self.time_data.shape}"
-        self.window = window
-
-    def set_coherence(self, coherence: NDArray[np.float64]):
-        """Sets the coherence measurements of the transfer function.
-        It only works for `signal_type = ('ir', 'h1', 'h2', 'h3', 'rir')`.
-
-        Parameters
-        ----------
-        coherence : NDArray[np.float64]
-            Coherence matrix.
-
-        """
-        valid_signal_types = ("ir", "h1", "h2", "h3", "rir")
-        assert self.signal_type in valid_signal_types, (
-            f"{self.signal_type} is not valid. Please set it to ir or "
-            + "h1, h2, h3, rir"
-        )
-        assert coherence.shape[0] == (
-            self.time_data.shape[0] // 2 + 1
-        ), "Length of signals and given coherence do not match"
-        assert coherence.shape[1] == self.number_of_channels, (
-            "Number of channels between given coherence and signal "
-            + "does not match"
-        )
-        self.coherence = coherence
 
     def set_csm_parameters(
         self,
@@ -903,23 +830,6 @@ class Signal:
         )
         return t_s, f_hz, spectrogram
 
-    def get_coherence(self) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
-        """Returns the coherence matrix.
-
-        Returns
-        -------
-        f : NDArray[np.float64]
-            Frequency vector.
-        coherence : NDArray[np.float64]
-            Coherence matrix.
-
-        """
-        assert hasattr(
-            self, "coherence"
-        ), "There is no coherence data saved in the Signal object"
-        f, _ = self.get_spectrum()
-        return f, self.coherence
-
     # ======== Plots ==========================================================
     def plot_magnitude(
         self,
@@ -1048,12 +958,6 @@ class Signal:
 
         for n in range(self.number_of_channels):
             mx = np.max(np.abs(self.time_data[:, n])) * 1.1
-            if hasattr(self, "window"):
-                ax[n].plot(
-                    self.time_vector_s,
-                    self.window[:, n] * mx / 1.1,
-                    alpha=0.75,
-                )
             if plot_complex:
                 ax[n].plot(
                     self.time_vector_s,
@@ -1110,19 +1014,14 @@ class Signal:
                 (int(window_length_s * self.sampling_rate_hz + 0.5), 1)
             )
             window /= len(window)
-            td_squared = convolve(
-                td_squared, window, mode="same", method="auto"
-            )
+            td_squared = oaconvolve(td_squared, window, mode="same", axes=0)
 
         complex_data = self.time_data_imaginary is not None
         if complex_data:
             td_squared_imaginary = self.time_data_imaginary**2.0
             if window_length_s > 0:
-                td_squared_imaginary = convolve(
-                    td_squared_imaginary,
-                    window,
-                    mode="same",
-                    method="auto",
+                td_squared_imaginary = oaconvolve(
+                    td_squared_imaginary, window, mode="same", axes=0
                 )
             complex_etc = 10 * np.log10(
                 np.clip(
@@ -1170,20 +1069,6 @@ class Signal:
         )
 
         for n in range(self.number_of_channels):
-            if hasattr(self, "window"):
-                ax[n].plot(
-                    self.time_vector_s,
-                    20
-                    * np.log10(
-                        np.clip(
-                            np.abs(self.window[:, n] / 1.1),
-                            a_min=1e-40,
-                            a_max=None,
-                        )
-                    )
-                    + max_values[n],
-                    alpha=0.75,
-                )
             if complex_data:
                 ax[n].plot(self.time_vector_s, complex_etc[:, n], alpha=0.75)
             if range_db is not None:
@@ -1199,8 +1084,6 @@ class Signal:
         smoothing: int = 0,
     ) -> tuple[Figure, Axes]:
         """Plots group delay of each channel.
-        Only works if `signal_type in ('ir', 'h1', 'h2', 'h3', 'rir', 'chirp',
-        'noise', 'dirac')`.
 
         Parameters
         ----------
@@ -1223,21 +1106,6 @@ class Signal:
             Axes.
 
         """
-        valid_signal_types = (
-            "rir",
-            "ir",
-            "h1",
-            "h2",
-            "h3",
-            "chirp",
-            "noise",
-            "dirac",
-        )
-        assert self.signal_type in valid_signal_types, (
-            f"{self.signal_type} is not valid. Please set it to ir or "
-            + "h1, h2, h3, rir"
-        )
-
         # Handle spectrum parameters
         prior_spectrum_parameters = self._spectrum_parameters
         self.set_spectrum_parameters("standard", scaling=None, smoothe=0)
@@ -1342,36 +1210,6 @@ class Signal:
         )
         return fig, ax
 
-    def plot_coherence(self) -> tuple[Figure, list[Axes]]:
-        """Plots coherence measurements if there are any.
-
-        Returns
-        -------
-        fig : `matplotlib.figure.Figure`
-            Figure.
-        ax : list of `matplotlib.axes.Axes`
-            Axes.
-
-        """
-        if not hasattr(self, "coherence"):
-            raise AttributeError("There is no coherence data saved")
-        f, coh = self.get_coherence()
-        fig, ax = general_subplots_line(
-            x=f,
-            matrix=coh,
-            column=True,
-            sharey=True,
-            log=True,
-            ylabels=[
-                rf"$\gamma^2$ Coherence {n}"
-                for n in range(self.number_of_channels)
-            ],
-            xlabels="Frequency / Hz",
-            range_y=[-0.1, 1.1],
-            returns=True,
-        )
-        return fig, ax
-
     def plot_phase(
         self,
         range_hz=[20, 20e3],
@@ -1421,10 +1259,6 @@ class Signal:
         self._spectrum_parameters["smoothe"] = prior_smoothing
 
         if remove_ir_latency:
-            assert self.signal_type in (
-                "rir",
-                "ir",
-            ), f"{self.signal_type} is not valid, use rir or ir"
             ph = _remove_ir_latency_from_phase(
                 f, ph, self.time_data, self.sampling_rate_hz, 8
             )
@@ -1535,6 +1369,7 @@ class Signal:
 
     def _get_metadata_string(self) -> str:
         """Helper for creating a string containing all signal info."""
+        txt = ""
         temp = ""
         for n in range(len(txt)):
             temp += "-"
@@ -1606,12 +1441,7 @@ class Signal:
             self.streaming_position + blocksize_samples
         )
         if signal_mode:
-            sig = Signal(
-                None,
-                sig,
-                self.sampling_rate_hz,
-                self.signal_type,
-            )
+            sig = Signal(None, sig, self.sampling_rate_hz)
             # In an audio stream, welch's method for acquiring a spectrum
             # is not very logical...
             sig.set_spectrum_parameters(method="standard", scaling=None)

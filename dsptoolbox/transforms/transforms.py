@@ -2,7 +2,7 @@
 Here are methods considered as somewhat special or less common.
 """
 
-from ..classes.signal_class import Signal
+from ..classes.signal import Signal
 from ..classes.multibandsignal import MultiBandSignal
 from ..plots import general_matrix_plot
 from .._standard import _reconstruct_framed_signal

@@ -20,6 +20,7 @@ from .classes import (
     Filter,
     FilterBank,
     Signal,
+    ImpulseResponse,
     MultiBandSignal,
 )
 from . import transfer_functions
@@ -37,6 +38,7 @@ from . import tools
 __all__ = [
     # Basic classes
     "Signal",
+    "ImpulseResponse",
     "MultiBandSignal",
     "Filter",
     "FilterBank",

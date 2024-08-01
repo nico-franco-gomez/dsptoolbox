@@ -12,8 +12,8 @@ from matplotlib.axes import Axes
 import scipy.signal as sig
 from numpy.typing import NDArray, ArrayLike
 
-from .signal_class import Signal
-from ._filter import (
+from .signal import Signal
+from .filter import (
     _biquad_coefficients,
     _impulse,
     _group_delay_filter,
@@ -23,7 +23,7 @@ from ._filter import (
     _filter_and_downsample,
     _filter_and_upsample,
 )
-from ._plots import _zp_plot
+from .plots import _zp_plot
 from ..plots import general_plot
 from .._general_helpers import _check_format_in_path, _pad_trim
 
