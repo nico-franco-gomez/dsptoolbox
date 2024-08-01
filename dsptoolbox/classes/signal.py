@@ -132,6 +132,36 @@ class Signal:
         """
         return Signal(path)
 
+    @staticmethod
+    def from_time_data(
+        time_data: NDArray[np.float64],
+        sampling_rate_hz: int,
+        constrain_amplitude: bool = True,
+    ):
+        """Create a signal from an array of PCM samples.
+
+        Parameters
+        ----------
+        time_data : array-like, NDArray[np.float64], optional
+            Time data of the signal. It is saved as a matrix with the form
+            (time samples, channel number). Default: `None`.
+        sampling_rate_hz : int, optional
+            Sampling rate of the signal in Hz. Default: `None`.
+        constrain_amplitude : bool, optional
+            When `True`, audio is normalized to 0 dBFS peak level in case that
+            there are amplitude values greater than 1. Otherwise, there is no
+            normalization and the audio data is not constrained to [-1, 1].
+            A warning is always shown when audio gets normalized and the used
+            normalization factor is saved as `amplitude_scale_factor`.
+            Default: `True`.
+
+        Returns
+        -------
+        Signal
+
+        """
+        return Signal(None, time_data, sampling_rate_hz, constrain_amplitude)
+
     def __update_state(self):
         """Internal update of object state. If for instance time data gets
         added, new spectrum, csm or stft has to be computed.
@@ -252,8 +282,6 @@ class Signal:
     @property
     def time_data_imaginary(self) -> NDArray[np.float64] | None:
         if self.__time_data_imaginary is None:
-            # warn('Imaginary part of time data was called, but there is ' +
-            #      'None. None is returned.')
             return None
         return self.__time_data_imaginary.copy()
 
