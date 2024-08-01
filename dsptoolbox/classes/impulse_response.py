@@ -15,7 +15,31 @@ class ImpulseResponse(Signal):
         sampling_rate_hz: int | None = None,
         constrain_amplitude: bool = True,
     ):
-        """Impulse response."""
+        """Instantiate impulse response.
+
+        Parameters
+        ----------
+        path : str, optional
+            A path to audio files. Reading is done with the soundfile library.
+            Wave and Flac audio files are accepted. Default: `None`.
+        time_data : array-like, NDArray[np.float64], optional
+            Time data of the signal. It is saved as a matrix with the form
+            (time samples, channel number). Default: `None`.
+        sampling_rate_hz : int, optional
+            Sampling rate of the signal in Hz. Default: `None`.
+        constrain_amplitude : bool, optional
+            When `True`, audio is normalized to 0 dBFS peak level in case that
+            there are amplitude values greater than 1. Otherwise, there is no
+            normalization and the audio data is not constrained to [-1, 1].
+            A warning is always shown when audio gets normalized and the used
+            normalization factor is saved as `amplitude_scale_factor`.
+            Default: `True`.
+
+        Returns
+        -------
+        ImpulseResponse
+
+        """
         super().__init__(
             path,
             time_data,
@@ -23,6 +47,79 @@ class ImpulseResponse(Signal):
             constrain_amplitude=constrain_amplitude,
         )
         self.set_spectrum_parameters(method="standard")
+
+    @staticmethod
+    def from_signal(signal: Signal):
+        """Create an impulse response from a signal.
+
+        Parameters
+        ----------
+        signal : `Signal`
+
+        Returns
+        -------
+        ImpulseResponse
+
+        """
+        ir = ImpulseResponse(
+            None,
+            signal.time_data,
+            signal.sampling_rate_hz,
+            signal.constrain_amplitude,
+        )
+        ir.amplitude_scale_factor = signal.amplitude_scale_factor
+        ir.time_data_imaginary = signal.time_data_imaginary
+        return ir
+
+    @staticmethod
+    def from_file(path: str):
+        """Create an impulse response from a path to a wav or flac audio file.
+
+        Parameters
+        ----------
+        path : str
+            Path to file.
+
+        Returns
+        -------
+        ImpulseResponse
+
+        """
+        s = Signal.from_file(path)
+        return ImpulseResponse.from_signal(s)
+
+    @staticmethod
+    def from_time_data(
+        time_data: NDArray[np.float64],
+        sampling_rate_hz: int,
+        constrain_amplitude: bool = True,
+    ):
+        """Create an impulse response from an array of PCM samples.
+
+        Parameters
+        ----------
+        time_data : array-like, NDArray[np.float64], optional
+            Time data of the signal. It is saved as a matrix with the form
+            (time samples, channel number). Default: `None`.
+        sampling_rate_hz : int, optional
+            Sampling rate of the signal in Hz. Default: `None`.
+        constrain_amplitude : bool, optional
+            When `True`, audio is normalized to 0 dBFS peak level in case that
+            there are amplitude values greater than 1. Otherwise, there is no
+            normalization and the audio data is not constrained to [-1, 1].
+            A warning is always shown when audio gets normalized and the used
+            normalization factor is saved as `amplitude_scale_factor`.
+            Default: `True`.
+
+        Returns
+        -------
+        ImpulseResponse
+
+        """
+        s = Signal.from_time_data(
+            time_data, sampling_rate_hz, constrain_amplitude
+        )
+        return ImpulseResponse.from_signal(s)
 
     def set_window(self, window: NDArray[np.float64]):
         """Sets the window used for the IR.
