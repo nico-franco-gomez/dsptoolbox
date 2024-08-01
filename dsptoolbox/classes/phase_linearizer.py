@@ -1,4 +1,4 @@
-from .filter_class import Filter
+from .filter import Filter
 from .impulse_response import ImpulseResponse
 import numpy as np
 from scipy.integrate import cumulative_trapezoid
