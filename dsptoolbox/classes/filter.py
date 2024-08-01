@@ -7,7 +7,7 @@ from warnings import warn
 from enum import Enum
 import scipy.signal as sig
 from numpy.typing import NDArray
-from .signal_class import Signal
+from .signal import Signal
 from .multibandsignal import MultiBandSignal
 from .._general_helpers import _polyphase_decomposition
 

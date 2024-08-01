@@ -156,15 +156,6 @@ class TestSignal:
         with pytest.raises(AssertionError):
             s.sampling_rate_hz = 44100.5
 
-        # Signal type
-        typ = "test signal"
-        s.signal_type = typ
-        assert s.signal_type == typ
-
-        # Setting a wrong signal type
-        with pytest.raises(AssertionError):
-            s.signal_type = 15
-
         # Number of channels is generated right
         assert s.number_of_channels == self.channels
 
@@ -173,7 +164,9 @@ class TestSignal:
             s.number_of_channels = 10
 
     def test_plot_generation(self):
-        s = dsp.Signal(time_data=self.time_vec, sampling_rate_hz=self.fs)
+        s = dsp.ImpulseResponse(
+            time_data=self.time_vec, sampling_rate_hz=self.fs
+        )
         # Test that all plots are generated without problems
         s.plot_magnitude()
         s.plot_magnitude(show_info_box=True)
@@ -185,7 +178,6 @@ class TestSignal:
         s.plot_spl(True)
 
         # Plot phase and group delay
-        s.signal_type = "rir"
         s.set_spectrum_parameters(method="standard")
         s.plot_phase()
         s.plot_group_delay()
@@ -193,10 +185,6 @@ class TestSignal:
         # Try to plot coherence
         with pytest.raises(AttributeError):
             s.plot_coherence()
-        # Try to plot group delay without having the correct signal type
-        with pytest.raises(AssertionError):
-            s.signal_type = "wrong type for group delay"
-            s.plot_group_delay()
         # Try to plot phase having welch's method for magnitude
         with pytest.raises(AssertionError):
             s.set_spectrum_parameters(method="welch", window_length_samples=32)
@@ -204,7 +192,6 @@ class TestSignal:
 
         # Plot signal with window and imaginary time data
         d = dsp.generators.dirac(1024, 512, sampling_rate_hz=self.fs)
-        d.signal_type = "ir"
         d, _ = dsp.transfer_functions.window_centered_ir(d, len(d))
         d = dsp.transforms.hilbert(d)
         d.plot_time()

@@ -300,14 +300,7 @@ class LRFilterBank:
 
         b = []
         for n in range(self.number_of_bands):
-            b.append(
-                Signal(
-                    None,
-                    new_time_data[:, :, n],
-                    s.sampling_rate_hz,
-                    signal_type=s.signal_type,
-                )
-            )
+            b.append(Signal(None, new_time_data[:, :, n], s.sampling_rate_hz))
         d = dict(
             readme="MultiBandSignal made using Linkwitz-Riley filter bank",
             filterbank_freqs=self.freqs,

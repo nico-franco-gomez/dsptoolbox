@@ -11,7 +11,6 @@ from numpy.typing import NDArray
 import pickle
 from scipy.signal import resample_poly, convolve, hilbert
 
-# from scipy.special import iv as bessel_first_mod
 from fractions import Fraction
 from warnings import warn
 

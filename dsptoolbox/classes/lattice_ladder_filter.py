@@ -2,7 +2,7 @@
 This file contains alternative filter implementations.
 """
 
-from .signal_class import Signal
+from .signal import Signal
 from warnings import warn
 import numpy as np
 from numpy.typing import NDArray

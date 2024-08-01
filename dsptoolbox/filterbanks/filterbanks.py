@@ -11,7 +11,7 @@ from .. import (
     FilterBank,
 )
 from ..tools import fractional_octave_frequencies, erb_frequencies
-from ..classes._lattice_ladder_filter import (
+from ..classes.lattice_ladder_filter import (
     LatticeLadderFilter,
     _get_lattice_ladder_coefficients_iir,
     _get_lattice_coefficients_fir,

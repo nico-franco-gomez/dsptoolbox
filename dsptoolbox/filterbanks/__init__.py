@@ -50,9 +50,9 @@ from .filterbanks import (
     gaussian_kernel,
 )
 
-from ..classes._lattice_ladder_filter import LatticeLadderFilter
-from ..classes._phaseLinearizer import PhaseLinearizer
-from ..classes._svfilter import StateVariableFilter
+from ..classes.lattice_ladder_filter import LatticeLadderFilter
+from ..classes.phase_linearizer import PhaseLinearizer
+from ..classes.sv_filter import StateVariableFilter
 
 __all__ = [
     "linkwitz_riley_crossovers",

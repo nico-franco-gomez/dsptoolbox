@@ -1,5 +1,5 @@
 from .filter_class import Filter
-from .signal_class import Signal
+from .impulse_response import ImpulseResponse
 import numpy as np
 from scipy.integrate import cumulative_trapezoid
 from scipy.interpolate import interp1d
@@ -131,10 +131,8 @@ class PhaseLinearizer:
             sampling_rate_hz=self.sampling_rate_hz,
         )
 
-    def get_filter_as_ir(self) -> Signal:
-        return Signal(
-            None, self._design(), self.sampling_rate_hz, signal_type="ir"
-        )
+    def get_filter_as_ir(self) -> ImpulseResponse:
+        return ImpulseResponse(None, self._design(), self.sampling_rate_hz)
 
     def _design(self) -> NDArray[np.float64]:
         """Compute filter."""

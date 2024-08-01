@@ -5,7 +5,7 @@ from copy import deepcopy
 from pickle import dump, HIGHEST_PROTOCOL
 from warnings import warn
 
-from .signal_class import Signal
+from .signal import Signal
 from .._general_helpers import _check_format_in_path
 
 
@@ -89,7 +89,6 @@ class MultiBandSignal:
         if new_bands:
             # Check length and number of channels
             self.number_of_channels = new_bands[0].number_of_channels
-            self.signal_type = new_bands[0].signal_type
             sr = []
             complex_data = new_bands[0].time_data_imaginary is not None
             for s in new_bands:
@@ -101,9 +100,6 @@ class MultiBandSignal:
                     "Signals have different number of channels. This "
                     + "behaviour is not supported"
                 )
-                assert (
-                    s.signal_type == self.signal_type
-                ), "Signal types do not match"
                 assert (s.time_data_imaginary is not None) == complex_data, (
                     "Some bands have imaginary time data and others do "
                     + "not. This behavior is not supported."
@@ -164,7 +160,6 @@ class MultiBandSignal:
         self.info["number_of_bands"] = self.number_of_bands
         if self.bands:
             self.info["same_sampling_rate"] = self.same_sampling_rate
-            self.info["signal_type"] = self.signal_type
             if self.same_sampling_rate:
                 if hasattr(self, "sampling_rate_hz"):
                     self.info["sampling_rate_hz"] = self.sampling_rate_hz
@@ -333,12 +328,7 @@ class MultiBandSignal:
                         self.bands[n].time_data[:, channel]
                         + self.bands[n].time_data_imaginary[:, channel] * 1j
                     )
-            sig = Signal(
-                None,
-                new_time_data,
-                self.sampling_rate_hz,
-                signal_type=self.signal_type,
-            )
+            sig = Signal(None, new_time_data, self.sampling_rate_hz)
             return sig
         else:
             new_time_data = []

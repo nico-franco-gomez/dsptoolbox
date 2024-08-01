@@ -6,7 +6,7 @@ import numpy as np
 from scipy.signal import find_peaks, convolve
 from numpy.typing import NDArray
 
-from ..classes import Signal, MultiBandSignal, Filter
+from ..classes import Signal, MultiBandSignal, Filter, ImpulseResponse
 from ..filterbanks import fractional_octave_bands, linkwitz_riley_crossovers
 from ._room_acoustics import (
     _reverb,
@@ -79,10 +79,6 @@ def reverb_time(
     """
     if type(signal) is Signal:
         ir_start = _check_ir_start_reverb(signal, ir_start)
-        assert signal.signal_type in ("ir", "rir"), (
-            f"{signal.signal_type} is not a valid signal type for "
-            + "reverb_time. It should be ir or rir"
-        )
         mode = mode.upper()
         valid_modes = ("TOPT", "T20", "T30", "T60", "EDT")
         assert mode in valid_modes, (
@@ -167,12 +163,11 @@ def find_modes(
     assert len(f_range_hz) == 2, (
         "Range of frequencies must have a " + "minimum and a maximum value"
     )
-
-    assert signal.signal_type in ("rir", "ir"), (
-        f"{signal.signal_type} is not a valid signal type. It should "
-        + "be either rir or ir"
-    )
+    assert (
+        type(signal) is ImpulseResponse
+    ), "This is only valid for an impulse response"
     signal.set_spectrum_parameters("standard")
+
     # Pad signal to have a resolution of around 1 Hz
     length = signal.sampling_rate_hz
     signal = pad_trim(signal, length)
@@ -234,10 +229,9 @@ def convolve_rir_on_signal(
         Convolved signal with RIR.
 
     """
-    assert rir.signal_type in (
-        "rir",
-        "ir",
-    ), f"{rir.signal_type} is not a valid signal type. Set it to rir or ir."
+    assert (
+        type(signal) is ImpulseResponse
+    ), "This is only valid for an impulse response"
     assert (
         signal.time_data.shape[0] > rir.time_data.shape[0]
     ), "The RIR is longer than the signal to convolve it with."
@@ -446,7 +440,7 @@ def generate_synthetic_rir(
             rir, room.mixing_time_s, room.t60_s, sr=sampling_rate_hz
         )
 
-    rir_output = Signal(None, rir, sampling_rate_hz, signal_type="rir")
+    rir_output = Signal(None, rir, sampling_rate_hz)
 
     # Bandpass signal in order to have a realistic audio signal representation
     if apply_bandpass:
