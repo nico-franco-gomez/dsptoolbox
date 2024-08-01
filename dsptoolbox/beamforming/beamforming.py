@@ -719,8 +719,8 @@ class BaseBeamformer:
           object.
 
         """
-        assert (
-            type(multi_channel_signal) is Signal
+        assert isinstance(
+            multi_channel_signal, Signal
         ), "Multi-channel signal must be of type Signal"
         assert (
             type(mic_array) is MicArray

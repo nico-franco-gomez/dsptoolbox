@@ -17,7 +17,13 @@ from scipy.signal import (
     bilinear,
     tf2sos,
 )
-from ..classes import Signal, MultiBandSignal, FilterBank, Filter
+from ..classes import (
+    Signal,
+    MultiBandSignal,
+    FilterBank,
+    Filter,
+    ImpulseResponse,
+)
 
 from ..generators import dirac
 from ..plots import general_plot
@@ -365,7 +371,7 @@ class LRFilterBank:
         length_samples: int = 1024,
         mode: str = "parallel",
         zero_phase: bool = False,
-    ) -> Signal | MultiBandSignal:
+    ) -> ImpulseResponse | MultiBandSignal:
         """Returns impulse response from the filter bank. For this filter
         bank only `mode='parallel'` is valid and there is no zero phase
         filtering.
@@ -383,7 +389,7 @@ class LRFilterBank:
 
         Returns
         -------
-        ir : `MultiBandSignal` or `Signal`
+        ir : `ImpulseResponse`, `MultiBandSignal`
             Impulse response of the filter bank.
 
         """

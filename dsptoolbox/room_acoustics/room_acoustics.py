@@ -77,7 +77,7 @@ def reverb_time(
       by 6.
 
     """
-    if type(signal) is Signal:
+    if type(signal) is ImpulseResponse:
         ir_start = _check_ir_start_reverb(signal, ir_start)
         mode = mode.upper()
         valid_modes = ("TOPT", "T20", "T30", "T60", "EDT")
@@ -116,7 +116,8 @@ def reverb_time(
             )
     else:
         raise TypeError(
-            "Passed signal should be of type Signal or MultiBandSignal"
+            f"Passed signal has type {type(signal)}. It should be of type"
+            + " ImpulseResponse or MultiBandSignal"
         )
     return reverberation_times, correlation_coefficients
 
@@ -201,7 +202,7 @@ def find_modes(
 
 def convolve_rir_on_signal(
     signal: Signal,
-    rir: Signal,
+    rir: ImpulseResponse,
     keep_peak_level: bool = True,
     keep_length: bool = True,
 ) -> Signal:
@@ -214,7 +215,7 @@ def convolve_rir_on_signal(
     ----------
     signal : Signal
         Signal to which the RIR is applied. All channels are affected.
-    rir : Signal
+    rir : ImpulseResponse
         Single-channel Signal object containing the RIR.
     keep_peak_level : bool, optional
         When `True`, output signal is normalized to the peak level of
@@ -229,8 +230,8 @@ def convolve_rir_on_signal(
         Convolved signal with RIR.
 
     """
-    assert (
-        type(signal) is ImpulseResponse
+    assert isinstance(
+        rir, ImpulseResponse
     ), "This is only valid for an impulse response"
     assert (
         signal.time_data.shape[0] > rir.time_data.shape[0]
@@ -508,7 +509,7 @@ def descriptors(
         "br",
         "ts",
     ), "Given mode is not in the available descriptors"
-    if type(rir) is Signal:
+    if isinstance(rir, ImpulseResponse):
         if mode == "d50":
             func = _d50_from_rir
         elif mode == "c80":
@@ -586,7 +587,7 @@ def _check_ir_start_reverb(
             or type(ir_start) is np.ndarray
         ), "Unsupported type for ir_start"
 
-    if type(sig) is Signal:
+    if isinstance(sig, ImpulseResponse):
         if np.issubdtype(type(ir_start), np.integer):
             ir_start = (
                 np.ones(sig.number_of_channels, dtype=np.int_) * ir_start

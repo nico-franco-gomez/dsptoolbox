@@ -10,9 +10,9 @@ from ..plots import general_subplots_line
 class ImpulseResponse(Signal):
     def __init__(
         self,
-        path: str,
-        time_data: NDArray[np.float64],
-        sampling_rate_hz: int,
+        path: str | None = None,
+        time_data: NDArray[np.float64] | None = None,
+        sampling_rate_hz: int | None = None,
         constrain_amplitude: bool = True,
     ):
         """Impulse response."""
@@ -113,7 +113,9 @@ class ImpulseResponse(Signal):
           be present due to zero-padding.
 
         """
-        fig, ax = super().plot_spl()
+        fig, ax = super().plot_spl(
+            normalize_at_peak, range_db, window_length_s
+        )
 
         peak_values = 10 * np.log10(np.max(self.time_data**2.0, axis=0))
 

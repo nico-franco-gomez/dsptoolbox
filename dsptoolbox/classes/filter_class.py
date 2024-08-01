@@ -13,6 +13,7 @@ import scipy.signal as sig
 from numpy.typing import NDArray, ArrayLike
 
 from .signal import Signal
+from .impulse_response import ImpulseResponse
 from .filter import (
     _biquad_coefficients,
     _impulse,
@@ -717,7 +718,7 @@ class Filter:
 
     def get_ir(
         self, length_samples: int = 512, zero_phase: bool = False
-    ) -> Signal:
+    ) -> ImpulseResponse:
         """Gets an impulse response of the filter with given length.
 
         Parameters
@@ -727,7 +728,7 @@ class Filter:
 
         Returns
         -------
-        ir_filt : `Signal`
+        ir_filt : `ImpulseResponse`
             Impulse response of the filter.
 
         """
@@ -741,17 +742,16 @@ class Filter:
                 )
                 length_samples = len(b)
             b = _pad_trim(b, length_samples)
-            return Signal(
-                None, b, self.sampling_rate_hz, "ir", constrain_amplitude=False
+            return ImpulseResponse(
+                None, b, self.sampling_rate_hz, constrain_amplitude=False
             )
 
         # IIR or zero phase IR
         ir_filt = _impulse(length_samples)
-        ir_filt = Signal(
+        ir_filt = ImpulseResponse(
             None,
             ir_filt,
             self.sampling_rate_hz,
-            "ir",
             constrain_amplitude=False,
         )
         return self.filter_signal(ir_filt, zero_phase=zero_phase)
