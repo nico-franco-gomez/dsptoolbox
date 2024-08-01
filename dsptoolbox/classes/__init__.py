@@ -13,7 +13,7 @@ Here are the classes of the dsptoolbox:
 
 """
 
-from .filter_class import Filter
+from .filter import Filter
 from .filterbank import FilterBank
 from .signal import Signal
 from .impulse_response import ImpulseResponse

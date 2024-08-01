@@ -13,7 +13,7 @@ from .._general_helpers import (
     _pad_trim,
     _frequency_weightning,
 )
-from ..classes.filter import _impulse
+from ..classes.filter_helpers import _impulse
 
 
 def noise(

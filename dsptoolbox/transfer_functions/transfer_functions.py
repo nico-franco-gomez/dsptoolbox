@@ -17,7 +17,7 @@ from ._transfer_functions import (
     _trim_ir,
 )
 from ..classes import Signal, Filter, ImpulseResponse
-from ..classes.filter import _group_delay_filter
+from ..classes.filter_helpers import _group_delay_filter
 from .._general_helpers import (
     _remove_ir_latency_from_phase,
     _min_phase_ir_from_real_cepstrum,

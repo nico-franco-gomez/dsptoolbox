@@ -8,8 +8,8 @@ from numpy.typing import NDArray
 
 from .signal import Signal
 from .multibandsignal import MultiBandSignal
-from .filter_class import Filter
-from .filter import _filterbank_on_signal
+from .filter import Filter
+from .filter_helpers import _filterbank_on_signal
 from ..generators import dirac
 from ..plots import general_plot
 from .._general_helpers import _get_normalized_spectrum, _check_format_in_path
