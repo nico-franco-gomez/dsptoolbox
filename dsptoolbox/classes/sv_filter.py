@@ -145,7 +145,7 @@ class StateVariableFilter:
         td = self._process_vector(signal.time_data)
         return MultiBandSignal(
             [
-                Signal(
+                type(signal)(
                     None, td[:, i, :], sampling_rate_hz=self.sampling_rate_hz
                 )
                 for i in range(4)

@@ -141,6 +141,10 @@ class MultiBandSignal:
     def number_of_bands(self) -> int:
         return len(self.bands)
 
+    def __get_type_of_signal_bands(self):
+        """Return type of saved bands (either Signal or ImpulseResponse)."""
+        return type(self.bands[0])
+
     def __len__(self):
         return len(self.bands)
 
@@ -328,8 +332,9 @@ class MultiBandSignal:
                         self.bands[n].time_data[:, channel]
                         + self.bands[n].time_data_imaginary[:, channel] * 1j
                     )
-            sig = Signal(None, new_time_data, self.sampling_rate_hz)
-            return sig
+            return self.__get_type_of_signal_bands()(
+                None, new_time_data, self.sampling_rate_hz
+            )
         else:
             new_time_data = []
             sr = []
