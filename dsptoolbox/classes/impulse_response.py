@@ -121,6 +121,91 @@ class ImpulseResponse(Signal):
         )
         return ImpulseResponse.from_signal(s)
 
+    def add_channel(
+        self,
+        path: str | None = None,
+        new_time_data: NDArray[np.float64] | None = None,
+        sampling_rate_hz: int | None = None,
+        padding_trimming: bool = True,
+    ):
+        """Adds new channels to this signal object.
+
+        Parameters
+        ----------
+        path : str, optional
+            Path to the file containing new channel information.
+        new_time_data : NDArray[np.float64], optional
+            np.array with new channel data.
+        sampling_rate_hz : int, optional
+            Sampling rate for the new data
+        padding_trimming : bool, optional
+            Activates padding or trimming at the end of signal in case the
+            new data does not match previous data. Default: `True`.
+
+        """
+        super().add_channel(
+            path, new_time_data, sampling_rate_hz, padding_trimming
+        )
+        if hasattr(self, "window"):
+            current_shape = self.time_data.shape
+            self.window = np.concatenate(
+                [
+                    self.window,
+                    np.ones(
+                        (
+                            current_shape[0],
+                            current_shape[1] - self.window.shape[1],
+                        )
+                    ),
+                ],
+                axis=1,
+            )
+
+    def remove_channel(self, channel_number: int = -1):
+        """Removes a channel.
+
+        Parameters
+        ----------
+        channel_number : int, optional
+            Channel number to be removed. Default: -1 (last).
+
+        """
+        super().remove_channel(channel_number)
+        if hasattr(self, "window"):
+            self.window = np.delete(self.window, channel_number, axis=1)
+
+    def swap_channels(self, new_order):
+        """Rearranges the channels in the new given order.
+
+        Parameters
+        ----------
+        new_order : array-like
+            New rearrangement of channels.
+
+        """
+        super().swap_channels(new_order)
+        if hasattr(self, "window"):
+            self.window = self.window[:, np.asarray(new_order)]
+
+    def get_channels(self, channels):
+        """Returns a signal object with the selected channels. Beware that
+        first channel index is 0!
+
+        Parameters
+        ----------
+        channels : array-like or int
+            Channels to be returned as a new Signal object.
+
+        Returns
+        -------
+        new_sig : `Signal`
+            New signal object with selected channels.
+
+        """
+        super().swap_channels(channels)
+        if hasattr(self, "window"):
+            self.window = self.window[:, np.asarray(channels)]
+
     def set_window(self, window: NDArray[np.float64]):
         """Sets the window used for the IR.
 
@@ -274,8 +359,6 @@ class ImpulseResponse(Signal):
             Axes.
 
         """
-        if not hasattr(self, "coherence"):
-            raise AttributeError("There is no coherence data saved")
         f, coh = self.get_coherence()
         fig, ax = general_subplots_line(
             x=f,

@@ -601,10 +601,6 @@ class Signal:
         self.time_data = np.concatenate(
             [self.time_data, new_time_data], axis=1
         )
-        if hasattr(self, "window"):
-            self.window = np.concatenate(
-                [self.window, np.ones(new_time_data.shape)], axis=1
-            )
         self.__update_state()
 
     def remove_channel(self, channel_number: int = -1):
@@ -681,8 +677,6 @@ class Signal:
         )
         new_sig = self.copy()
         new_sig.time_data = self.time_data[:, channels]
-        if hasattr(new_sig, "window"):
-            new_sig.window = new_sig.window[:, channels]
         return new_sig
 
     # ======== Getters ========================================================
