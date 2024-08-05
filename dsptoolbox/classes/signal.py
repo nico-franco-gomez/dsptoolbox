@@ -623,7 +623,7 @@ class Signal:
         self.__update_state()
 
     def swap_channels(self, new_order):
-        """Rearranges the channels in the new given order.
+        """Rearranges the channels (inplace) in the new given order.
 
         Parameters
         ----------
@@ -631,7 +631,7 @@ class Signal:
             New rearrangement of channels.
 
         """
-        new_order = np.array(new_order).squeeze()
+        new_order = np.atleast_1d(np.asarray(new_order).squeeze())
         assert new_order.ndim == 1, (
             "Too many or too few dimensions are given in the new "
             + "arrangement vector"
