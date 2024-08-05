@@ -37,6 +37,7 @@ from ._general_helpers import (
     _fractional_latency,
     _get_correlation_of_latencies,
 )
+from .tools import from_db
 
 
 def latency(
@@ -1222,3 +1223,46 @@ def dither(
     else:
         new_s.time_data = new_s.time_data + noise
     return new_s
+
+
+def apply_gain(
+    signal: Signal | MultiBandSignal, gain_db: float | NDArray[np.float64]
+) -> Signal | MultiBandSignal:
+    """Apply some gain to a signal. It can be done to the signal as a whole
+    or per channel.
+
+    Parameters
+    ----------
+    signal : Signal, MultiBandSignal
+        Signal to apply gain to.
+    gain_db : float, NDArray[np.float64]
+        Gain in dB to be applied. If it is an array, it should have as many
+        elements as there are channels in the signal.
+
+    Returns
+    -------
+    Signal, MultiBandSignal
+        Signal with new gains.
+
+    Notes
+    -----
+    If `constrain_amplitude=True` in the signal, the resulting time data might
+    get rescaled after applying the gain.
+
+    """
+    if isinstance(signal, Signal):
+        gain_linear = from_db(gain_db, True)
+        new_sig = signal.copy()
+        new_sig.time_data = new_sig.time_data * gain_linear
+        if new_sig.time_data_imaginary is not None:
+            new_sig.time_data_imaginary = (
+                new_sig.time_data_imaginary * gain_linear
+            )
+        return new_sig
+    elif isinstance(signal, MultiBandSignal):
+        new_mb = signal.copy()
+        for ind in range(new_mb.number_of_bands):
+            new_mb.bands[ind] = apply_gain(new_mb.bands[ind], gain_db)
+        return new_mb
+    else:
+        raise TypeError("No valid type was passed")

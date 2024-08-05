@@ -15,6 +15,7 @@ from .standard_functions import (
     CalibrationData,
     envelope,
     dither,
+    apply_gain,
 )
 from .classes import (
     Filter,
@@ -59,6 +60,7 @@ __all__ = [
     "CalibrationData",
     "envelope",
     "dither",
+    "apply_gain",
     # Modules
     "transfer_functions",
     "distances",

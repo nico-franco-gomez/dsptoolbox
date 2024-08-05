@@ -8,6 +8,10 @@ class TestStandardModule:
     fs = 44100
     audio_multi = dsp.generators.noise("white", 2, fs, number_of_channels=3)
 
+    def get_multiband_signal(self):
+        fb = dsp.filterbanks.linkwitz_riley_crossovers([1e3], [4], self.fs)
+        return fb.filter_signal(self.audio_multi)
+
     def test_latency(self):
         # Create delayed version of signal
         td = self.audio_multi.time_data
@@ -350,3 +354,41 @@ class TestStandardModule:
         )
         dsp.dither(self.audio_multi, noise_shaping_filterbank=fb)
         dsp.dither(self.audio_multi, truncate=False)
+
+    def test_apply_gain(self):
+        # Signal
+        audio_multi = dsp.apply_gain(self.audio_multi, 5)
+        np.testing.assert_array_equal(
+            audio_multi.time_data,
+            self.audio_multi.time_data * dsp.tools.from_db(5, True),
+        )
+
+        gains = np.linspace(1, 5, self.audio_multi.number_of_channels)
+        audio_multi = dsp.apply_gain(self.audio_multi, gains)
+        np.testing.assert_array_equal(
+            audio_multi.time_data,
+            self.audio_multi.time_data * dsp.tools.from_db(gains, True),
+        )
+
+        audio_multi = dsp.apply_gain(self.audio_multi, gains)
+        np.testing.assert_array_equal(
+            audio_multi.time_data,
+            self.audio_multi.time_data * dsp.tools.from_db(gains, True),
+        )
+
+        # MultiBandSignal
+        audio_multi_mb = self.get_multiband_signal()
+        previous = audio_multi_mb.get_all_time_data()[0]
+        audio_multi_mb = dsp.apply_gain(audio_multi_mb, 5)
+        np.testing.assert_array_equal(
+            previous * dsp.tools.from_db(5, True),
+            audio_multi_mb.get_all_time_data()[0],
+        )
+
+        previous = audio_multi_mb.get_all_time_data()[0]
+        gains = np.linspace(1, 5, self.audio_multi.number_of_channels)
+        audio_multi_mb = dsp.apply_gain(audio_multi_mb, gains)
+        np.testing.assert_array_equal(
+            previous * dsp.tools.from_db(gains, True),
+            audio_multi_mb.get_all_time_data()[0],
+        )
