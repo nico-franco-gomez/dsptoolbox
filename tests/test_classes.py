@@ -183,7 +183,7 @@ class TestSignal:
         s.plot_group_delay()
 
         # Try to plot coherence
-        with pytest.raises(AttributeError):
+        with pytest.raises(AssertionError):
             s.plot_coherence()
         # Try to plot phase having welch's method for magnitude
         with pytest.raises(AssertionError):

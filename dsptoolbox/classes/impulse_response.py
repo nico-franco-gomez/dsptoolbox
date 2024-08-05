@@ -175,7 +175,7 @@ class ImpulseResponse(Signal):
             self.window = np.delete(self.window, channel_number, axis=1)
 
     def swap_channels(self, new_order):
-        """Rearranges the channels in the new given order.
+        """Rearranges the channels (inplace) in the new given order.
 
         Parameters
         ----------
@@ -202,9 +202,10 @@ class ImpulseResponse(Signal):
             New signal object with selected channels.
 
         """
-        super().swap_channels(channels)
+        new_ir = super().get_channels(channels)
         if hasattr(self, "window"):
-            self.window = self.window[:, np.asarray(channels)]
+            new_ir.window = self.window[:, np.asarray(channels)]
+        return new_ir
 
     def set_window(self, window: NDArray[np.float64]):
         """Sets the window used for the IR.
