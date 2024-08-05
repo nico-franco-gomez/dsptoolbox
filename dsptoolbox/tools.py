@@ -1,6 +1,9 @@
 """
-This module contains general math and dsp utilities. These functions are solely
-based on arrays and primitive data types.
+Tools
+-----
+This module contains general dsp utilities. These functions use exclusively
+arrays and primitive data types instead of custom classes.
+
 """
 
 import numpy as np

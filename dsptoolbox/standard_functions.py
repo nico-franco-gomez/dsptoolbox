@@ -2,7 +2,8 @@
 Standard functions
 ------------------
 This module contains a general collection of DSP functions that do not fall
-under a same category.
+under a same category. This functions act on the custom classes of `dsptoolbox`
+and not on primitive data types such as arrays.
 
 """
 

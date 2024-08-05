@@ -7,7 +7,16 @@ as for the main FilterBank class.
 Signal
 -------------------------------------
 
-.. automodule:: dsptoolbox.classes.signal_class
+.. automodule:: dsptoolbox.classes.signal
+   :members:
+   :special-members: [, __init__, ]
+   :undoc-members:
+   :show-inheritance:
+
+ImpulseResponse
+-------------------------------------
+
+.. automodule:: dsptoolbox.classes.impulse_response
    :members:
    :special-members: [, __init__, ]
    :undoc-members:
@@ -25,7 +34,7 @@ MultiBandSignal
 Filter
 ----------
 
-.. automodule:: dsptoolbox.classes.filter_class
+.. automodule:: dsptoolbox.classes.filter
    :members:
    :special-members: [, __init__, ]
    :undoc-members:
