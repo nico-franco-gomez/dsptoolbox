@@ -1071,5 +1071,50 @@ class TestImpulseResponse:
     seconds = 2
     d = dsp.generators.dirac(seconds * fs_hz, sampling_rate_hz=fs_hz)
 
-    def test_different_things(self):
-        assert False
+    path_rir = join("examples", "data", "rir.wav")
+
+    def get_ir(self):
+        return dsp.ImpulseResponse.from_file(self.path_rir)
+
+    def test_constructors(self):
+        rir = self.get_ir()
+        dsp.ImpulseResponse.from_time_data(rir.time_data, rir.sampling_rate_hz)
+        dsp.ImpulseResponse.from_signal(dsp.Signal.from_file(self.path_rir))
+
+    def test_channel_handling_with_window(self):
+        rir = self.get_ir()
+        rir = dsp.transfer_functions.window_centered_ir(rir, len(rir))[0]
+
+        # Add channel
+        window_previous = rir.window[:, 0]
+        rir.add_channel(self.path_rir)
+        assert rir.window.shape == rir.time_data.shape
+        np.testing.assert_array_equal(rir.window[:, 0], window_previous)
+        np.testing.assert_array_equal(rir.window[:, 1], 1.0)
+
+        # Remove channel
+        rir.remove_channel(1)
+        assert rir.window.shape == rir.time_data.shape
+        np.testing.assert_array_equal(rir.window[:, 0], window_previous)
+
+        # Swap channels
+        rir.add_channel(self.path_rir)
+        rir.add_channel(self.path_rir)
+        rir.swap_channels([2, 1, 0])
+        assert rir.window.shape == rir.time_data.shape
+        np.testing.assert_array_equal(rir.window[:, -1], window_previous)
+
+    def test_plotting_with_window(self):
+        rir = self.get_ir()
+        rir = dsp.transfer_functions.window_centered_ir(rir, len(rir))[0]
+        rir.plot_time()
+        rir.plot_spl()
+
+        # Expect no coherence saved
+        with pytest.raises(AssertionError):
+            rir.plot_coherence()
+
+        rir.add_channel(self.path_rir)
+        rir.plot_time()
+        rir.plot_spl()
+        # dsp.plots.show()
