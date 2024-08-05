@@ -303,6 +303,8 @@ class TestTransferFunctionsModule:
         )
         # Check that coherence is saved
         h.get_coherence()
+        h.plot_coherence()
+        # dsp.plots.show()
 
     def test_average_irs(self):
         # Only functionality is tested
