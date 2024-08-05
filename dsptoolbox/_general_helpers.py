@@ -3,21 +3,25 @@ General functionality from helper methods
 """
 
 import numpy as np
+from numpy.typing import NDArray
 from scipy.signal import (
     windows,
-    convolve as scipy_convolve,
+    oaconvolve,
     hilbert,
     correlate,
+    lfilter,
+    lfilter_zi,
 )
 from scipy.fft import fft, ifft
-from scipy.interpolate import interp1d
+from scipy.interpolate import interp1d, PchipInterpolator
 from scipy.linalg import toeplitz as toeplitz_scipy
+from scipy.stats import pearsonr
 from os import sep
 from warnings import warn
 from scipy.fft import next_fast_len
 
 
-def _find_nearest(points, vector) -> np.ndarray:
+def _find_nearest(points, vector) -> NDArray[np.int_]:
     """Gives back the indexes with the nearest points in vector
 
     Parameters
@@ -29,14 +33,14 @@ def _find_nearest(points, vector) -> np.ndarray:
 
     Returns
     -------
-    indexes : `np.ndarray`
+    indexes : `NDArray[np.int_]`
         Indexes of the points.
 
     """
     points = np.array(points)
     if np.ndim(points) == 0:
         points = points[..., None]
-    indexes = np.zeros(len(points), dtype=int)
+    indexes = np.zeros(len(points), dtype=np.int_)
     for ind, p in enumerate(points):
         indexes[ind] = np.argmin(np.abs(p - vector))
     return indexes
@@ -48,7 +52,7 @@ def _calculate_window(
     window_type: str | tuple | list = "hann",
     at_start: bool = True,
     inverse=False,
-) -> np.ndarray:
+) -> NDArray[np.float64]:
     """Creates a custom window with given indexes
 
     Parameters
@@ -70,7 +74,7 @@ def _calculate_window(
 
     Returns
     -------
-    window_full: np.ndarray
+    window_full: NDArray[np.float64]
         Custom window.
 
     """
@@ -112,23 +116,26 @@ def _calculate_window(
 
 def _get_normalized_spectrum(
     f,
-    spectra: np.ndarray,
+    spectra: NDArray[np.float64],
     scaling: str = "amplitude",
     f_range_hz=[20, 20000],
     normalize: str | None = None,
     smoothe: int = 0,
     phase=False,
     calibrated_data: bool = False,
-) -> tuple[np.ndarray, np.ndarray] | tuple[np.ndarray, np.ndarray, np.ndarray]:
+) -> (
+    tuple[NDArray[np.float64], NDArray[np.float64]]
+    | tuple[NDArray[np.float64], NDArray[np.float64], NDArray[np.float64]]
+):
     """This function gives a normalized magnitude spectrum in dB with frequency
     vector for a given range. It is also smoothed. Use `None` for the
     spectrum without f_range_hz.
 
     Parameters
     ----------
-    f : `np.ndarray`
+    f : NDArray[np.float64]
         Frequency vector.
-    spectra : `np.ndarray`
+    spectra : NDArray[np.float64]
         Spectrum matrix.
     scaling : str, optional
         Information about whether the spectrum is scaled as an amplitude or
@@ -153,11 +160,11 @@ def _get_normalized_spectrum(
 
     Returns
     -------
-    f : `np.ndarray`
+    f : NDArray[np.float64]
         Frequency vector.
-    mag_spectra : `np.ndarray`
+    mag_spectra : NDArray[np.float64]
         Magnitude spectrum matrix.
-    phase_spectra : `np.ndarray`
+    phase_spectra : NDArray[np.float64]
         Phase spectrum matrix, only returned when `phase=True`.
 
     Notes
@@ -265,11 +272,11 @@ def _find_frequencies_above_threshold(
 
 
 def _pad_trim(
-    vector: np.ndarray,
+    vector: NDArray[np.float64],
     desired_length: int,
     axis: int = 0,
     in_the_end: bool = True,
-) -> np.ndarray:
+) -> NDArray[np.float64]:
     """Pads (with zeros) or trim (depending on size and desired length)."""
     throw_axis = False
     if vector.ndim < 2:
@@ -344,12 +351,14 @@ def _compute_number_frames(
     return n_frames, padding_samples
 
 
-def _normalize(s: np.ndarray, dbfs: float, mode="peak") -> np.ndarray:
+def _normalize(
+    s: NDArray[np.float64], dbfs: float, mode="peak"
+) -> NDArray[np.float64]:
     """Normalizes a signal.
 
     Parameters
     ----------
-    s: `np.ndarray`
+    s: NDArray[np.float64]
         Signal to normalize.
     dbfs: float
         dbfs value to normalize to.
@@ -359,7 +368,7 @@ def _normalize(s: np.ndarray, dbfs: float, mode="peak") -> np.ndarray:
 
     Returns
     -------
-    s_out: `np.ndarray`
+    s_out: NDArray[np.float64]
         Normalized signal.
 
     """
@@ -376,28 +385,28 @@ def _normalize(s: np.ndarray, dbfs: float, mode="peak") -> np.ndarray:
     return s
 
 
-def _rms(x: np.ndarray) -> np.ndarray:
+def _rms(x: NDArray[np.float64]) -> NDArray[np.float64]:
     """Root mean square computation."""
     return np.sqrt(np.sum(x**2) / len(x))
 
 
-def _amplify_db(s: np.ndarray, db: float) -> np.ndarray:
+def _amplify_db(s: NDArray[np.float64], db: float) -> NDArray[np.float64]:
     """Amplify by dB."""
     return s * 10 ** (db / 20)
 
 
 def _fade(
-    s: np.ndarray,
+    s: NDArray[np.float64],
     length_seconds: float = 0.1,
     mode: str = "exp",
     sampling_rate_hz: int = 48000,
     at_start: bool = True,
-) -> np.ndarray:
+) -> NDArray[np.float64]:
     """Create a fade in signal.
 
     Parameters
     ----------
-    s : `np.ndarray`
+    s : NDArray[np.float64]
         np.array to be faded.
     length_seconds : float, optional
         Length of fade in seconds. Default: 0.1.
@@ -412,7 +421,7 @@ def _fade(
 
     Returns
     -------
-    s : `np.ndarray`
+    s : NDArray[np.float64]
         Faded vector.
 
     """
@@ -475,19 +484,19 @@ def _gaussian_window_sigma(window_length: int, alpha: float = 2.5) -> float:
 
 
 def _fractional_octave_smoothing(
-    vector: np.ndarray,
+    vector: NDArray[np.float64],
     num_fractions: int = 3,
     window_type="hann",
-    window_vec: np.ndarray | None = None,
+    window_vec: NDArray[np.float64] | None = None,
     clip_values: bool = False,
-) -> np.ndarray:
+) -> NDArray[np.float64]:
     """Smoothes a vector using interpolation to a logarithmic scale. Usually
     done for smoothing of frequency data. This implementation is taken from
     the pyfar package, see references.
 
     Parameters
     ----------
-    vector : `np.ndarray`
+    vector : NDArray[np.float64]
         Vector to be smoothed. It is assumed that the first axis is to
         be smoothed.
     num_fractions : int, optional
@@ -496,7 +505,7 @@ def _fractional_octave_smoothing(
         Type of window to be used. See `scipy.signal.windows.get_window` for
         valid types. If the window is `'gaussian'`, the parameter passed will
         be interpreted as alpha and not sigma. Default: `'hann'`.
-    window_vec : `np.ndarray`, optional
+    window_vec : NDArray[np.float64], optional
         Window vector to be used as a window. `window_type` should be set to
         `None` if this direct window is going to be used. Default: `None`.
     clip_values : bool, optional
@@ -504,7 +513,7 @@ def _fractional_octave_smoothing(
 
     Returns
     -------
-    vec_final : `np.ndarray`
+    vec_final : NDArray[np.float64]
         Vector after smoothing.
 
     References
@@ -528,8 +537,9 @@ def _fractional_octave_smoothing(
         )
     # Linear and logarithmic frequency vector
     N = len(vector)
-    l1 = np.arange(N)
+    l1 = np.arange(N, dtype=np.float64)
     k_log = (N) ** (l1 / (N - 1))
+    l1 += 1.0
     beta = np.log2(k_log[1])
 
     # Window length always odd, so that delay can be easily compensated
@@ -562,20 +572,25 @@ def _fractional_octave_smoothing(
     window /= window.sum()
 
     # Interpolate to logarithmic scale
-    vec_int = interp1d(
-        l1 + 1, vector, kind="cubic", copy=False, assume_sorted=True, axis=0
-    )
-    vec_log = vec_int(k_log)
+    vec_log = PchipInterpolator(l1, vector, axis=0)(k_log)
+
     # Smoothe by convolving with window (output is centered)
-    smoothed = scipy_convolve(
-        vec_log, window[..., None], mode="same", method="auto"
-    )
-    # Interpolate back to linear scale
-    smoothed = interp1d(
-        k_log, smoothed, kind="cubic", copy=False, assume_sorted=True, axis=0
+    n_window_half = n_window // 2
+    smoothed = oaconvolve(
+        np.pad(
+            vec_log,
+            ((n_window_half, n_window_half - (1 - n_window % 2)), (0, 0)),
+            mode="edge",
+        ),
+        window[..., None],
+        mode="valid",
+        axes=0,
     )
 
-    vec_final = smoothed(l1 + 1)
+    # Interpolate back to linear scale
+    vec_final = interp1d(
+        k_log, smoothed, kind="linear", copy=False, assume_sorted=True, axis=0
+    )(l1)
     if one_dim:
         vec_final = vec_final.squeeze()
 
@@ -586,13 +601,13 @@ def _fractional_octave_smoothing(
 
 
 def _frequency_weightning(
-    f: np.ndarray, weightning_mode: str = "a", db_output: bool = True
-) -> np.ndarray:
+    f: NDArray[np.float64], weightning_mode: str = "a", db_output: bool = True
+) -> NDArray[np.float64]:
     """Returns the weights for frequency-weightning.
 
     Parameters
     ----------
-    f : `np.ndarray`
+    f : NDArray[np.float64]
         Frequency vector.
     weightning_mode : str, optional
         Type of weightning. Choose from `'a'` or `'c'`. Default: `'a'`.
@@ -601,7 +616,7 @@ def _frequency_weightning(
 
     Returns
     -------
-    weights : `np.ndarray`
+    weights : NDArray[np.float64]
         Weightning values.
 
     References
@@ -635,15 +650,17 @@ def _frequency_weightning(
 
 
 def _polyphase_decomposition(
-    in_sig: np.ndarray, number_polyphase_components: int, flip: bool = False
-) -> tuple[np.ndarray, int]:
+    in_sig: NDArray[np.float64],
+    number_polyphase_components: int,
+    flip: bool = False,
+) -> tuple[NDArray[np.float64], int]:
     """Converts input signal array with shape (time samples, channels) into
     its polyphase representation with shape (time samples, polyphase
     components, channels).
 
     Parameters
     ----------
-    in_sig : `np.ndarray`
+    in_sig : NDArray[np.float64]
         Input signal array to be rearranged in polyphase representation. It
         should have the shape (time samples, channels).
     number_polyphase_components : int
@@ -655,7 +672,7 @@ def _polyphase_decomposition(
 
     Returns
     -------
-    poly : `np.ndarray`
+    poly : NDArray[np.float64]
         Rearranged vector with polyphase representation. New shape is
         (time samples, polyphase components, channels).
     padding : int
@@ -686,7 +703,9 @@ def _polyphase_decomposition(
     return poly, padding
 
 
-def _polyphase_reconstruction(poly: np.ndarray) -> np.ndarray:
+def _polyphase_reconstruction(
+    poly: NDArray[np.float64],
+) -> NDArray[np.float64]:
     """Returns the reconstructed input signal array from its polyphase
     representation, possibly with a different length if padded was needed for
     reconstruction. Polyphase representation shape is assumed to be
@@ -694,13 +713,13 @@ def _polyphase_reconstruction(poly: np.ndarray) -> np.ndarray:
 
     Parameters
     ----------
-    poly : `np.ndarray`
+    poly : NDArray[np.float64]
         Array with 3 dimensions (time samples, polyphase components, channels)
         as polyphase respresentation of signal.
 
     Returns
     -------
-    in_sig : `np.ndarray`
+    in_sig : NDArray[np.float64]
         Rearranged vector with shape (time samples, channels).
 
     """
@@ -718,7 +737,7 @@ def _polyphase_reconstruction(poly: np.ndarray) -> np.ndarray:
     return in_sig
 
 
-def _hz2mel(f: np.ndarray) -> np.ndarray:
+def _hz2mel(f: NDArray[np.float64]) -> NDArray[np.float64]:
     """Convert frequency in Hz into mel.
 
     Parameters
@@ -739,7 +758,7 @@ def _hz2mel(f: np.ndarray) -> np.ndarray:
     return 2595 * np.log10(1 + f / 700)
 
 
-def _mel2hz(mel: np.ndarray) -> np.ndarray:
+def _mel2hz(mel: NDArray[np.float64]) -> NDArray[np.float64]:
     """Convert frequency in mel into Hz.
 
     Parameters
@@ -762,7 +781,7 @@ def _mel2hz(mel: np.ndarray) -> np.ndarray:
 
 def _get_fractional_octave_bandwidth(
     f_c: float, fraction: int = 1
-) -> np.ndarray:
+) -> NDArray[np.float64]:
     """Returns an array with lower and upper bounds for a given center
     frequency with (1/fraction)-octave width.
 
@@ -776,7 +795,7 @@ def _get_fractional_octave_bandwidth(
 
     Returns
     -------
-    f_bounds : `np.ndarray`
+    f_bounds : NDArray[np.float64]
         Array of length 2 with lower and upper bounds.
 
     """
@@ -787,19 +806,21 @@ def _get_fractional_octave_bandwidth(
     )
 
 
-def _toeplitz(h: np.ndarray, length_of_input: int) -> np.ndarray:
+def _toeplitz(
+    h: NDArray[np.float64], length_of_input: int
+) -> NDArray[np.float64]:
     """Creates a toeplitz matrix from a system response given an input length.
 
     Parameters
     ----------
-    h : `np.ndarray`
+    h : NDArray[np.float64]
         System's impulse response.
     length_of_input : int
         Input length needed for the shape of the toeplitz matrix.
 
     Returns
     -------
-    `np.ndarray`
+    NDArray[np.float64]
         Toeplitz matrix with shape (len(h)+length_of_input-1, length_of_input).
         Convolution is done by using dot product from the right::
 
@@ -876,19 +897,19 @@ def _get_next_power_2(number, mode: str = "closest") -> int:
     return int(2**p)
 
 
-def _euclidean_distance_matrix(x: np.ndarray, y: np.ndarray):
+def _euclidean_distance_matrix(x: NDArray[np.float64], y: NDArray[np.float64]):
     """Compute the euclidean distance matrix between two vectors efficiently.
 
     Parameters
     ----------
-    x : `np.ndarray`
+    x : NDArray[np.float64]
         First vector or matrix with shape (Point x, Dimensions).
-    y : `np.ndarray`
+    y : NDArray[np.float64]
         Second vector or matrix with shape (Point y, Dimensions).
 
     Returns
     -------
-    dist : `np.ndarray`
+    dist : NDArray[np.float64]
         Euclidean distance matrix with shape (Point x, Point y).
 
     """
@@ -940,32 +961,34 @@ def _get_smoothing_factor_ema(
     return 1 - np.exp(factor / relaxation_time_s / sampling_rate_hz)
 
 
-def _wrap_phase(phase_vector: np.ndarray) -> np.ndarray:
+def _wrap_phase(phase_vector: NDArray[np.float64]) -> NDArray[np.float64]:
     """Wraps phase between [-np.pi, np.pi[ after it has been unwrapped.
     This works for 1D and 2D arrays, more dimensions have not been tested.
 
     Parameters
     ----------
-    phase_vector : `np.ndarray`
+    phase_vector : NDArray[np.float64]
         Phase vector for which to wrap the phase.
 
     Returns
     -------
-    `np.ndarray`
+    NDArray[np.float64]
         Wrapped phase vector.
 
     """
     return (phase_vector + np.pi) % (2 * np.pi) - np.pi
 
 
-def _get_exact_gain_1khz(f: np.ndarray, sp_db: np.ndarray) -> float:
+def _get_exact_gain_1khz(
+    f: NDArray[np.float64], sp_db: NDArray[np.float64]
+) -> float:
     """Uses linear interpolation to get the exact gain value at 1 kHz.
 
     Parameters
     ----------
-    f : `np.ndarray`
+    f : NDArray[np.float64]
         Frequency vector.
-    sp : `np.ndarray`
+    sp : NDArray[np.float64]
         Spectrum. It can be in dB or not.
 
     Returns
@@ -979,7 +1002,7 @@ def _get_exact_gain_1khz(f: np.ndarray, sp_db: np.ndarray) -> float:
         + "given frequency vector"
     )
     # Get nearest value just before
-    ind = _find_nearest(1e3, f)
+    ind = _find_nearest(1e3, f).squeeze()
     if f[ind] > 1e3:
         ind -= 1
     return (sp_db[ind + 1] - sp_db[ind]) / (f[ind + 1] - f[ind]) * (
@@ -1007,7 +1030,7 @@ def gaussian_window(
 
     Returns
     -------
-    w : `np.ndarray`
+    w : NDArray[np.float64]
         Gaussian window.
 
     References
@@ -1053,7 +1076,7 @@ def _get_chirp_rate(range_hz: list, length_seconds: float) -> float:
     return np.log2(range_hz_array[1] / range_hz_array[0]) / length_seconds
 
 
-def _correct_for_real_phase_spectrum(phase_spectrum: np.ndarray):
+def _correct_for_real_phase_spectrum(phase_spectrum: NDArray[np.float64]):
     """This function takes in a wrapped phase spectrum and corrects it to
     be for a real signal (assuming the last frequency bin corresponds to
     nyquist, i.e., time data had an even length). This effectively adds a
@@ -1062,13 +1085,13 @@ def _correct_for_real_phase_spectrum(phase_spectrum: np.ndarray):
 
     Parameters
     ----------
-    phase_spectrum : np.ndarray
+    phase_spectrum : NDArray[np.float64]
         Wrapped phase to be corrected. It is assumed that its last element
         corresponds to the nyquist frequency.
 
     Returns
     -------
-    np.ndarray
+    NDArray[np.float64]
         Phase spectrum that can correspond to a real signal.
 
     """
@@ -1084,32 +1107,38 @@ def _correct_for_real_phase_spectrum(phase_spectrum: np.ndarray):
 
 
 def _scale_spectrum(
-    spectrum: np.ndarray,
+    spectrum: NDArray[np.float64] | NDArray[np.complex128],
     mode: str | None,
     time_length_samples: int,
     sampling_rate_hz: int,
-    window: np.ndarray | None = None,
-) -> np.ndarray:
-    """Scale the spectrum directly from the (unscaled) FFT. It is assumed that
-    the time data was not windowed.
+    window: NDArray[np.float64] | None = None,
+) -> NDArray[np.float64]:
+    """Scale the spectrum directly from the unscaled ("backward" normalization)
+    (R)FFT. If a window was applied, it is necessary to compute the right
+    scaling factor.
 
     Parameters
     ----------
-    spectrum : `np.ndarray`
+    spectrum : NDArray[np.float64] | NDArray[np.complex128]
         Spectrum to scale. It is assumed that the frequency bins are along
         the first dimension.
     mode : str, None
         Type of scaling to use. `"power spectral density"`, `"power spectrum"`,
         `"amplitude spectral density"`, `"amplitude spectrum"`. Pass `None`
-        to avoid any scaling and return the same spectrum.
+        to avoid any scaling and return the same spectrum. Using a power
+        representation will returned the squared spectrum.
     time_length_samples : int
         Original length of the time data.
     sampling_rate_hz : int
         Sampling rate.
+    window : NDArray[np.float64], None, optional
+        Applied window when obtaining the spectrum. It is necessary to compute
+        the correct scaling factor. In case of None, "boxcar" window is
+        assumed. Default: None.
 
     Returns
     -------
-    `np.ndarray`
+    NDArray[np.float64] | NDArray[np.complex128]
         Scaled spectrum
 
     Notes
@@ -1162,7 +1191,7 @@ def _scale_spectrum(
 
 
 def _get_fractional_impulse_peak_index(
-    time_data: np.ndarray, polynomial_points: int = 1
+    time_data: NDArray[np.float64], polynomial_points: int = 1
 ):
     """
     Obtain the index for the peak in subsample precision using the root
@@ -1170,7 +1199,7 @@ def _get_fractional_impulse_peak_index(
 
     Parameters
     ----------
-    time_data : `np.ndarray`
+    time_data : NDArray[np.float64]
         Time vector with shape (time samples, channels).
     polynomial_points : int, optional
         Number of points to take for the polynomial interpolation and root
@@ -1178,7 +1207,7 @@ def _get_fractional_impulse_peak_index(
 
     Returns
     -------
-    latency_samples : `np.ndarray`
+    latency_samples : NDArray[np.float64]
         Latency of impulses (in samples). It has shape (channels).
 
     """
@@ -1251,9 +1280,9 @@ def _get_fractional_impulse_peak_index(
 
 
 def _remove_ir_latency_from_phase(
-    freqs: np.ndarray,
-    phase: np.ndarray,
-    time_data: np.ndarray,
+    freqs: NDArray[np.float64],
+    phase: NDArray[np.float64],
+    time_data: NDArray[np.float64],
     sampling_rate_hz: int,
     padding_factor: int,
 ):
@@ -1262,11 +1291,11 @@ def _remove_ir_latency_from_phase(
 
     Parameters
     ----------
-    freqs : `np.ndarray`
+    freqs : NDArray[np.float64]
         Frequency vector.
-    phase : `np.ndarray`
+    phase : NDArray[np.float64]
         Phase vector.
-    time_data : `np.ndarray`
+    time_data : NDArray[np.float64]
         Corresponding time signal.
     sampling_rate_hz : int
         Sample rate.
@@ -1275,7 +1304,7 @@ def _remove_ir_latency_from_phase(
 
     Returns
     -------
-    new_phase : `np.ndarray`
+    new_phase : NDArray[np.float64]
         New phase response without impulse delay.
 
     """
@@ -1285,14 +1314,14 @@ def _remove_ir_latency_from_phase(
 
 
 def _min_phase_ir_from_real_cepstrum(
-    time_data: np.ndarray, padding_factor: int
+    time_data: NDArray[np.float64], padding_factor: int
 ):
     """Returns minimum-phase version of a time series using the real cepstrum
     method.
 
     Parameters
     ----------
-    time_data : `np.ndarray`
+    time_data : NDArray[np.float64]
         Time series to compute the minimum phase version from. It is assumed
         to have shape (time samples, channels).
     padding_factor : int, optional
@@ -1302,7 +1331,7 @@ def _min_phase_ir_from_real_cepstrum(
 
     Returns
     -------
-    min_phase_time_data : `np.ndarray`
+    min_phase_time_data : NDArray[np.float64]
         New time series.
 
     """
@@ -1317,14 +1346,14 @@ def _min_phase_ir_from_real_cepstrum(
 
 
 def _get_minimum_phase_spectrum_from_real_cepstrum(
-    time_data: np.ndarray, padding_factor: int
+    time_data: NDArray[np.float64], padding_factor: int
 ):
     """Returns minimum-phase version of a time series using the real cepstrum
     method.
 
     Parameters
     ----------
-    time_data : `np.ndarray`
+    time_data : NDArray[np.float64]
         Time series to compute the minimum phase version from. It is assumed
         to have shape (time samples, channels).
     padding_factor : int, optional
@@ -1334,7 +1363,7 @@ def _get_minimum_phase_spectrum_from_real_cepstrum(
 
     Returns
     -------
-    `np.ndarray`
+    NDArray[np.float64]
         New spectrum with minimum phase.
 
     """
@@ -1359,7 +1388,9 @@ def _get_minimum_phase_spectrum_from_real_cepstrum(
 
 
 def _fractional_latency(
-    td1: np.ndarray, td2: np.ndarray | None = None, polynomial_points: int = 1
+    td1: NDArray[np.float64],
+    td2: NDArray[np.float64] | None = None,
+    polynomial_points: int = 1,
 ):
     """This function computes the sub-sample latency between two signals using
     Zero-Crossing of the analytic (hilbert transformed) correlation function.
@@ -1371,7 +1402,7 @@ def _fractional_latency(
     ----------
     td1 : `np.ndaray`
         Delayed version of the signal.
-    td2 : `np.ndarray`, optional
+    td2 : NDArray[np.float64], optional
         Original version of the signal. If `None` is passed, the latencies
         are computed between the first channel of td1 and every other.
         Default: `None`.
@@ -1383,7 +1414,7 @@ def _fractional_latency(
 
     Returns
     -------
-    lags : `np.ndarray`
+    lags : NDArray[np.float64]
         Fractional delays. It has shape (channel). In case td2 was `None`, its
         length is `channels - 1`.
 
@@ -1406,3 +1437,278 @@ def _fractional_latency(
             xcor[:, i] = correlate(td2[:, i], td1[:, i])
     inds = _get_fractional_impulse_peak_index(xcor, polynomial_points)
     return td1.shape[0] - inds - 1
+
+
+def _interpolate_fr(
+    f_interp: NDArray[np.float64],
+    fr_interp: NDArray[np.float64],
+    f_target: NDArray[np.float64],
+    mode: str | None = None,
+    interpolation_scheme: str = "linear",
+) -> NDArray[np.float64]:
+    """Interpolate one frequency response to a new frequency vector.
+
+    Parameters
+    ----------
+    f_interp : NDArray[np.float64]
+        Frequency vector of the frequency response that should be interpolated.
+    fr_interp : NDArray[np.float64]
+        Frequency response to be interpolated.
+    f_target : NDArray[np.float64]
+        Target frequency vector.
+    mode : str, optional
+        Convert to amplitude or power representation from dB during
+        interpolation (or the other way around) using the modes `"db2power"`
+        (input in dB, interpolation in power spectrum, output in dB),
+        `"db2amplitude"`, `"amplitude2db"`, `"power2db"`. Pass `None` to avoid
+        any conversion. Default: `None`.
+    interpolation_scheme : str, optional
+        Type of interpolation to use. See `scipy.interpolation.interp1d` for
+        details. Choose from `"quadratic"` or `"cubic"` splines, or `"linear"`.
+        Default: `"linear"`.
+
+    Returns
+    -------
+    NDArray[np.float64]
+        New interpolated frequency response corresponding to `f_target` vector.
+
+    Notes
+    -----
+    - The input is always assumed to be already sorted.
+    - In case `f_target` has values outside the boundaries of `f_interp`,
+      the first and last values of `fr_interp` are used for extrapolation. This
+      also applies if interpolation is done in dB. If done in amplitude or
+      power units, the fill value outside the boundaries is 0.
+    - The interpolation is always done along the first (outer) axis or the
+      vector.
+    - Theoretical thoughts on interpolating an amplitude or power
+      frequency response:
+        - Using complex and dB values during interpolation are not very precise
+          when comparing the results in terms of the amplitude or power
+          spectrum.
+        - Interpolation can be done with amplitude or power representation with
+          similar precision.
+        - Changing the frequency resolution in a linear scale means zero-
+          padding or trimming the underlying time series. For an amplitude
+          representation , i.e. spectrum or spectral density, the values must
+          be scaled using the factor `old_length/new_length`. This ensures that
+          the RMS values (amplitude spectrum) are still correct, and that
+          integrating the new power spectral density still renders the total
+          signal's energy truthfully, i.e. parseval's theorem would still hold.
+          For the power representation, it also applies with the same squared
+          factor.
+        - A direct FFT-result which is not in physical units needs rescaling
+          depending on the normalization scheme used during the FFT -> IFFT (in
+          the complex/amplitude representation):
+              - Forward: scaling factor `old_length/new_length`.
+              - Backward: no rescaling.
+              - Orthogonal: scaling factor `(old_length/new_length)**0.5`
+        - Interpolating the (amplitude or power) spectrum to a logarithmic-
+          spaced frequency vector can be done without rescaling (the underlying
+          transformation in the time domain would be warping). Doing so for the
+          (amplitude or power) spectral density only retains its validity if
+          the new spectrum is weighted exponentially with increasing frequency
+          since each bin contains the energy of a larger “frequency band”
+          (this changes the physical units of the spectral density). Doing so
+          ensures that integrating the power spectral density over frequency
+          still retains the energy of the signal (parseval).
+        - Assuming a different time window in each frequency resolution would
+          require knowing the specific windows in order to rescale correctly.
+          Assuming the same time window while zero-padding in the time domain
+          would mean that no rescaling has to be applied.
+
+    """
+
+    fill_value = (fr_interp[0], fr_interp[-1])
+
+    # Conversion if necessary
+    if mode is not None:
+        mode = mode.lower()
+        factor = 20 if "amplitude" in mode else 10
+        if mode[:3] == "db2":
+            fr_interp = 10 ** (fr_interp / factor)
+            fill_value = (0.0, 0.0)
+        elif mode[-3:] == "2db":
+            fr_interp = factor * np.log10(
+                np.clip(
+                    np.abs(fr_interp),
+                    a_min=np.finfo(np.float64).smallest_normal,
+                    a_max=None,
+                )
+            )
+            fill_value = (fr_interp[0], fr_interp[-1])
+        else:
+            raise ValueError(f"Unsupported interpolation mode: {mode}")
+
+    interpolated = interp1d(
+        f_interp,
+        fr_interp,
+        kind=interpolation_scheme,
+        bounds_error=False,
+        assume_sorted=True,
+        fill_value=fill_value,
+        axis=0,
+    )(f_target)
+
+    # Back conversion if activated
+    if mode is not None:
+        if mode[:3] == "db2":
+            interpolated = factor * np.log10(
+                np.clip(
+                    np.abs(interpolated),
+                    a_min=np.finfo(np.float64).smallest_normal,
+                    a_max=None,
+                )
+            )
+        elif mode[-3:] == "2db":
+            interpolated = 10 ** (interpolated / factor)
+
+    return interpolated
+
+
+def _time_smoothing(
+    x: NDArray[np.float64],
+    sampling_rate_hz: int,
+    ascending_time_s: float,
+    descending_time_s: float | None = None,
+) -> NDArray[np.float64]:
+    """Smoothing for a time series with independent ascending and descending
+    times using an exponential moving average. It works on 1D and 2D arrays.
+    The smoothing is always applied along the longest axis.
+
+    If no descending time is provided, `ascending_time_s` is used for both
+    increasing and decreasing values.
+
+    Parameters
+    ----------
+    x : NDArray[np.float64]
+        Vector to apply smoothing to.
+    sampling_rate_hz : int
+        Sampling rate of the time series `x`.
+    ascending_time_s : float
+        Corresponds to the needed time for achieving a 95% accuracy of the
+        step response when the samples are increasing in value. Pass 0. in
+        order to avoid any smoothing for rising values.
+    descending_time_s : float, None, optional
+        As `ascending_time_s` but for descending values. If None,
+        `ascending_time_s` is applied. Default: None.
+
+    Returns
+    -------
+    NDArray[np.float64]
+        Smoothed time series.
+
+    """
+    onedim = x.ndim == 1
+    x = np.atleast_2d(x)
+    if x.shape[0] < x.shape[1]:
+        reverse_axis = True
+        x = x.T
+    else:
+        reverse_axis = False
+
+    assert x.ndim < 3, "This function is only available for 2D arrays"
+    assert ascending_time_s >= 0.0, "Attack time must be at least 0"
+    ascending_factor = (
+        _get_smoothing_factor_ema(ascending_time_s, sampling_rate_hz)
+        if ascending_time_s > 0.0
+        else 1.0
+    )
+
+    if descending_time_s is None:
+        b, a = [ascending_factor], [1, -(1 - ascending_factor)]
+        zi = lfilter_zi(b, a)
+        y = lfilter(
+            b,
+            a,
+            x,
+            axis=0,
+            zi=np.asarray([zi * x[0, ch] for ch in range(x.shape[1])]).T,
+        )[0]
+        if reverse_axis:
+            y = y.T
+        if onedim:
+            return y.squeeze()
+        return y
+
+    assert descending_time_s >= 0.0, "Release time must at least 0"
+    assert not (
+        ascending_time_s == 0.0 and descending_time_s == ascending_time_s
+    ), "These times will not apply any smoothing"
+
+    descending_factor = (
+        _get_smoothing_factor_ema(descending_time_s, sampling_rate_hz)
+        if descending_time_s > 0.0
+        else 1.0
+    )
+
+    y = np.zeros_like(x)
+    y[0, :] = x[0, :]
+
+    for n in np.arange(1, x.shape[0]):
+        for ch in range(x.shape[1]):
+            smoothing_factor = (
+                ascending_factor
+                if x[n, ch] > y[n - 1, ch]
+                else descending_factor
+            )
+            y[n, ch] = (
+                smoothing_factor * x[n, ch]
+                + (1.0 - smoothing_factor) * y[n - 1, ch]
+            )
+
+    if reverse_axis:
+        y = y.T
+    if onedim:
+        return y.squeeze()
+    return y
+
+
+def _get_correlation_of_latencies(
+    time_data: NDArray[np.float64],
+    other_time_data: NDArray[np.float64],
+    latencies: NDArray[np.int_],
+) -> NDArray[np.float64]:
+    """Compute the pearson correlation coefficient of each channel between
+    `time_data` and `other_time_data` in order to obtain an estimation on the
+    quality of the latency computation.
+
+    Parameters
+    ----------
+    time_data : NDArray[np.float64]
+        Original time data. This is the "undelayed" version if the latency
+        is positive. It must have either one channel or a matching number
+        of channels with `other_time_data`.
+    other_time_data : NDArray[np.float64]
+        "Delayed" time data, when the latency is positive.
+    latencies : NDArray[np.int_]
+        Computed latencies for each channel.
+
+    Returns
+    -------
+    NDArray[np.float64]
+        Correlation coefficient for each channel.
+
+    """
+    one_channel = time_data.shape[1] == 1
+
+    correlations = np.zeros(len(latencies))
+
+    for ch in range(len(latencies)):
+        if latencies[ch] > 0:
+            undelayed = time_data[:, 0] if one_channel else time_data[:, ch]
+            delayed = other_time_data[:, ch]
+        else:
+            undelayed = other_time_data[:, ch]
+            delayed = time_data[:, 0] if one_channel else time_data[:, ch]
+
+        # Remove delay samples
+        delayed = delayed[abs(latencies[ch]) :]
+
+        # Get effective length
+        length_to_check = min(len(delayed), len(undelayed))
+
+        delayed = delayed[:length_to_check]
+        undelayed = undelayed[:length_to_check]
+        correlations[ch] = pearsonr(delayed, undelayed)[0]
+    return correlations

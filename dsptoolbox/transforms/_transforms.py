@@ -3,6 +3,7 @@ Backend for special module
 """
 
 import numpy as np
+from numpy.typing import NDArray
 from scipy.signal import get_window
 
 
@@ -17,7 +18,7 @@ def _pitch2frequency(tuning_a_hz: float = 440):
 
     Returns
     -------
-    freqs : `np.ndarray`
+    freqs : NDArray[np.float64]
         Frequencies for each pitch. It always has length 128.
 
     """
@@ -60,19 +61,19 @@ class Wavelet:
         domain = x[-1] - x[0]
         return ind / domain
 
-    def get_scale_lengths(self, frequencies: np.ndarray, fs: int):
+    def get_scale_lengths(self, frequencies: NDArray[np.float64], fs: int):
         """Returns the lengths of the queried frequencies.
 
         Parameters
         ----------
-        frequencies : `np.ndarray`
+        frequencies : NDArray[np.float64]
             Frequencies for which to scale the wavelet.
         fs : int
             Sampling rate in Hz.
 
         Returns
         -------
-        `np.ndarray`
+        NDArray[np.float64]
             Lengths of wavelets in samples.
 
         """
@@ -143,11 +144,13 @@ class MorletWavelet(Wavelet):
         self.step = step
         self.interpolation = interpolation
 
-    def _get_x(self) -> np.ndarray:
+    def _get_x(self) -> NDArray[np.float64]:
         """Returns x vector for the mother wavelet."""
         return np.arange(self.bounds[0], self.bounds[1] + self.step, self.step)
 
-    def get_base_wavelet(self) -> tuple[np.ndarray, np.ndarray]:
+    def get_base_wavelet(
+        self,
+    ) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
         """Return complex morlet wavelet."""
         x = self._get_x()
         return x, 1 / np.sqrt(np.pi * self.b) * np.exp(
@@ -159,22 +162,22 @@ class MorletWavelet(Wavelet):
         return 1 / self.scale
 
     def get_wavelet(
-        self, f: float | np.ndarray, fs: int
-    ) -> np.ndarray | list[np.ndarray]:
+        self, f: float | NDArray[np.float64], fs: int
+    ) -> NDArray[np.float64] | list[NDArray[np.float64]]:
         """Return wavelet scaled for a specific frequency and sampling rate.
         The wavelet values can also be linearly interpolated for a higher
         accuracy at the expense of computation time.
 
         Parameters
         ----------
-        f : float or `np.ndarray`
+        f : float or NDArray[np.float64]
             Queried frequency or array of frequencies.
         fs : int
             Sampling rate in Hz.
 
         Returns
         -------
-        wave : `np.ndarray` or list of `np.ndarray`
+        wave : NDArray[np.float64] or list of NDArray[np.float64]
             Wavelet function. It is either a 1d-array for a single frequency
             or a list of arrays for multiple frequencies.
 
@@ -200,7 +203,9 @@ class MorletWavelet(Wavelet):
                 wave.append(wavef)
         return wave
 
-    def _get_interpolated_wave(self, base: np.ndarray, inds: np.ndarray):
+    def _get_interpolated_wave(
+        self, base: NDArray[np.float64], inds: NDArray[np.float64]
+    ):
         """Return the wavelet function for a selection of index using
         linear interpolation.
 
@@ -220,16 +225,20 @@ class MorletWavelet(Wavelet):
 
 
 def _squeeze_scalogram(
-    scalogram: np.ndarray, freqs: np.ndarray, fs: int, delta_w: float = 0.05
-) -> np.ndarray:
+    scalogram: NDArray[np.float64],
+    freqs: NDArray[np.float64],
+    fs: int,
+    delta_w: float = 0.05,
+    apply_frequency_normalization: bool = False,
+) -> NDArray[np.float64]:
     """Synchrosqueeze a scalogram.
 
     Parameters
     ----------
-    scalogram : `np.ndarray`
+    scalogram : NDArray[np.float64]
         Complex scalogram from the CWT with shape (frequency, time sample,
         channel).
-    freqs : `np.ndarray`
+    freqs : NDArray[np.float64]
         Frequency vector.
     fs : int
         Sampling rate in Hz.
@@ -237,16 +246,22 @@ def _squeeze_scalogram(
         Maximum relative difference in frequency allowed in the phase
         transform for taking summing the result of the scalogram. If it's
         too small, it might lead to significant energy leaks. Default: 0.05.
+    apply_frequency_normalization : bool, optional
+        When `True`, each scale is scaled by taking into account the
+        normalization as shown in Eq. (2.4) of [1]. `False` does not apply
+        any normalization. Default: `False`.
 
     Returns
     -------
-    sync : `np.ndarray`
+    sync : NDArray[np.float64]
         Synchrosqueezed scalogram.
 
     References
     ----------
     - https://dsp.stackexchange.com/questions/71398/synchrosqueezing-wavelet
       -transform-explanation
+    - [1]: Ingrid Daubechies, Jianfeng Lu, Hau-Tieng Wu. Synchrosqueezed
+      wavelet transforms: An empirical mode decomposition-like tool. 2011.
 
     """
     scalpow = np.abs(scalogram) ** 2
@@ -262,8 +277,9 @@ def _squeeze_scalogram(
     ph *= fs  # Scale to represent physical frequencies
 
     # Normalization factor
-    normalizations = 1 / (freqs / fs)  # Scales
-    normalizations **= -3 / 2
+    if apply_frequency_normalization:
+        normalizations = 1 / (freqs / fs)  # Scales
+        normalizations **= -3 / 2
 
     # Thresholds
     delta_f = delta_w * freqs
@@ -276,12 +292,16 @@ def _squeeze_scalogram(
                 ind = np.argmin(diff)
                 if diff[ind] > delta_f[f]:
                     continue
-                sync[ind, t, ch] += scalogram[f, t, ch] * normalizations[f]
+                if apply_frequency_normalization:
+                    sync[ind, t, ch] += scalogram[f, t, ch] * normalizations[f]
+                    continue
+
+                sync[ind, t, ch] += scalogram[f, t, ch]
     return sync
 
 
 def _get_length_longest_wavelet(
-    wave: Wavelet | MorletWavelet, f: np.ndarray, fs: int
+    wave: Wavelet | MorletWavelet, f: NDArray[np.float64], fs: int
 ):
     """Get longest wavelet for a frequency vector. This is useful information
     for zero-padding to avoid boundary effects.
@@ -290,7 +310,7 @@ def _get_length_longest_wavelet(
     ----------
     wave : `Wavelet` or `MorletWavelet`
         Wavelet object.
-    f : `np.ndarray`
+    f : NDArray[np.float64]
         Frequency vector.
     fs : int
         Sampling rate in Hz.

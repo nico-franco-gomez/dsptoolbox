@@ -19,16 +19,18 @@ class TestStandardModule:
 
         # Try latency
         s = dsp.Signal(None, td_del, self.fs)
-        vector = dsp.latency(self.audio_multi, s)
+        vector, corr = dsp.latency(self.audio_multi, s)
+        assert np.allclose(corr, 1.0)
         assert np.all(vector == -delay_samples)
 
         # Try latency the other way around
-        vector = dsp.latency(s, self.audio_multi)
+        vector, corr = dsp.latency(s, self.audio_multi)
+        assert np.allclose(corr, 1.0)
         assert np.all(vector == delay_samples)
 
         # Raise assertion when number of channels does not match
         with pytest.raises(AssertionError):
-            vector = dsp.latency(s.get_channels(0), self.audio_multi)
+            vector, corr = dsp.latency(s.get_channels(0), self.audio_multi)
 
         # Single channel
         td = s.time_data[:, :2]
@@ -37,7 +39,8 @@ class TestStandardModule:
             self.audio_multi.time_data[:, 0]
         )
         s = dsp.Signal(None, td, self.fs)
-        value = dsp.latency(s)
+        value, corr = dsp.latency(s)
+        assert np.allclose(corr, 1.0)
         assert np.all(-value == delay_samples)
 
         # ===== Fractional delays
@@ -46,18 +49,17 @@ class TestStandardModule:
             "white", length_seconds=1, sampling_rate_hz=10_000
         )
         noi_del = dsp.fractional_delay(noi, delay)
-        assert (
-            np.abs(
-                dsp.latency(noi_del, noi, 2)[0] - delay * noi.sampling_rate_hz
-            )
-            < 0.9
-        )
+        lat, corr = dsp.latency(noi_del, noi, 2)
+        assert np.allclose(corr, 1.0, atol=1e-2)
+        assert np.abs(lat[0] - delay * noi.sampling_rate_hz) < 0.9
 
         noi = dsp.merge_signals(noi_del, noi)
-        latencies = dsp.latency(noi, polynomial_points=1)
+        latencies, corr = dsp.latency(noi, polynomial_points=1)
         assert len(latencies) == noi.number_of_channels - 1
+        assert np.allclose(corr, 1.0, atol=1e-2)
         assert np.abs(latencies[0] + delay * noi.sampling_rate_hz) < 0.5
-        latencies = dsp.latency(noi, polynomial_points=5)
+        latencies, corr = dsp.latency(noi, polynomial_points=5)
+        assert np.allclose(corr, 1.0, atol=1e-2)
         assert np.abs(latencies[0] + delay * noi.sampling_rate_hz) < 0.5
 
     def test_pad_trim(self):
@@ -154,10 +156,6 @@ class TestStandardModule:
         # necessary to check...
         dsp.resample(self.audio_multi, desired_sampling_rate_hz=22050)
 
-    def test_fractional_octave_frequencies(self):
-        # Only functionality and not result is checked here
-        dsp.fractional_octave_frequencies()
-
     def test_normalize(self):
         td = self.audio_multi.time_data
         n = dsp.normalize(self.audio_multi, peak_dbfs=-20)
@@ -194,10 +192,6 @@ class TestStandardModule:
         td[-fade_le:] *= np.linspace(1, 0, fade_le)[..., None]
         assert np.all(np.isclose(f_end.time_data, td))
 
-    def test_erb_frequencies(self):
-        # Only functionality tested here
-        dsp.erb_frequencies()
-
     def test_true_peak_level(self):
         # Only functionality is tested here
         dsp.true_peak_level(self.audio_multi)
@@ -214,12 +208,12 @@ class TestStandardModule:
 
         # All channels
         s = dsp.fractional_delay(self.audio_multi, delay_s)
-        lat = dsp.latency(s, self.audio_multi)
+        lat = dsp.latency(s, self.audio_multi)[0]
         assert np.all(np.isclose(np.abs(lat), 150))
 
         # Selected channels only
         s = dsp.fractional_delay(self.audio_multi, delay_s, channels=0)
-        lat = dsp.latency(s, self.audio_multi)
+        lat = dsp.latency(s, self.audio_multi)[0]
         assert np.all(np.isclose(np.abs(lat), [150, 0, 0]))
 
     def test_activity_detector(self):

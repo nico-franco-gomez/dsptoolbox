@@ -5,7 +5,7 @@ from os.path import join
 
 
 class TestRoomAcousticsModule:
-    rir = dsp.Signal(join("examples", "data", "rir.wav"), signal_type="rir")
+    rir = dsp.ImpulseResponse(join("examples", "data", "rir.wav"))
 
     def test_reverb_time(self):
         # Only functionality

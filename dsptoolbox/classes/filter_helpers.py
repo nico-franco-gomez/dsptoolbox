@@ -6,7 +6,9 @@ import numpy as np
 from warnings import warn
 from enum import Enum
 import scipy.signal as sig
-from .signal_class import Signal
+from numpy.typing import NDArray
+
+from .signal import Signal
 from .multibandsignal import MultiBandSignal
 from .._general_helpers import _polyphase_decomposition
 
@@ -25,12 +27,16 @@ def _get_biquad_type(number: int | None = None, name: str | None = None):
             "allpass",
             "lowshelf",
             "highshelf",
+            "lowpass_first_order",
+            "highpass_first_order",
+            "inverter",
         )
         assert name in valid_names, (
             f"{name} is not a valid name. Please "
             + """select from the ('peaking', 'lowpass', 'highpass',
             'bandpass_skirt', 'bandpass_peak', 'notch', 'allpass', 'lowshelf',
-            'highshelf')"""
+            'highshelf', 'lowpass_first_order', 'highpass_first_order',
+            'inverter')"""
         )
 
     class biquad(Enum):
@@ -43,6 +49,9 @@ def _get_biquad_type(number: int | None = None, name: str | None = None):
         allpass = 6
         lowshelf = 7
         highshelf = 8
+        lowpass_first_order = 9
+        highpass_first_order = 10
+        inverter = 11
 
     if number is None:
         assert (
@@ -59,8 +68,8 @@ def _get_biquad_type(number: int | None = None, name: str | None = None):
 def _biquad_coefficients(
     eq_type: int | str = 0,
     fs_hz: int = 48000,
-    frequency_hz: float | list | tuple | np.ndarray = 1000,
-    gain_db: float = 1,
+    frequency_hz: float | list | tuple | NDArray[np.float64] = 1000,
+    gain_db: float = 0,
     q: float = 1,
 ):
     """Creates the filter coefficients for biquad filters.
@@ -84,7 +93,7 @@ def _biquad_coefficients(
             + "not supported. A mean of passed frequencies was used for the "
             + "design but this might not give the intended result!"
         )
-    A = np.sqrt(10 ** (gain_db / 20.0))
+    A = 10 ** (gain_db / 40) if eq_type in (0, 7, 8) else 10 ** (gain_db / 20)
     Omega = 2.0 * np.pi * (frequency_hz / fs_hz)
     sn = np.sin(Omega)
     cs = np.cos(Omega)
@@ -99,44 +108,44 @@ def _biquad_coefficients(
         a[1] = -2 * cs
         a[2] = 1 - alpha / A
     elif eq_type == 1:  # Lowpass
-        b[0] = (1 - cs) / 2
-        b[1] = 1 - cs
+        b[0] = (1 - cs) / 2 * A
+        b[1] = (1 - cs) * A
         b[2] = b[0]
         a[0] = 1 + alpha
         a[1] = -2 * cs
         a[2] = 1 - alpha
     elif eq_type == 2:  # Highpass
-        b[0] = (1 + cs) / 2.0
-        b[1] = -1 * (1 + cs)
+        b[0] = (1 + cs) / 2.0 * A
+        b[1] = -1 * (1 + cs) * A
         b[2] = b[0]
         a[0] = 1 + alpha
         a[1] = -2 * cs
         a[2] = 1 - alpha
     elif eq_type == 3:  # Bandpass skirt
-        b[0] = sn / 2
+        b[0] = sn / 2 * A
         b[1] = 0
         b[2] = -b[0]
         a[0] = 1 + alpha
         a[1] = -2 * cs
         a[2] = 1 - alpha
     elif eq_type == 4:  # Bandpass peak
-        b[0] = alpha
+        b[0] = alpha * A
         b[1] = 0
         b[2] = -b[0]
         a[0] = 1 + alpha
         a[1] = -2 * cs
         a[2] = 1 - alpha
     elif eq_type == 5:  # Notch
-        b[0] = 1
-        b[1] = -2 * cs
+        b[0] = 1 * A
+        b[1] = -2 * cs * A
         b[2] = b[0]
         a[0] = 1 + alpha
         a[1] = -2 * cs
         a[2] = 1 - alpha
     elif eq_type == 6:  # Allpass
-        b[0] = 1 - alpha
-        b[1] = -2 * cs
-        b[2] = 1 + alpha
+        b[0] = (1 - alpha) * A
+        b[1] = -2 * cs * A
+        b[2] = (1 + alpha) * A
         a[0] = 1 + alpha
         a[1] = -2 * cs
         a[2] = 1 - alpha
@@ -154,6 +163,29 @@ def _biquad_coefficients(
         a[0] = (A + 1) - (A - 1) * cs + 2 * np.sqrt(A) * alpha
         a[1] = 2 * ((A - 1) - (A + 1) * cs)
         a[2] = (A + 1) - (A - 1) * cs - 2 * np.sqrt(A) * alpha
+    elif eq_type == 9:  # Lowpass first order
+        K = 1.0 / np.tan(Omega / 2.0)
+        b[0] = A
+        b[1] = A
+        b[2] = 0.0
+        a[0] = 1.0 + K
+        a[1] = 1.0 - K
+        a[2] = 0.0
+    elif eq_type == 10:  # Highpass first order
+        K = 1.0 / np.tan(Omega / 2.0)
+        b[0] = K * A
+        b[1] = -K * A
+        b[2] = 0.0
+        a[0] = 1.0 + K
+        a[1] = 1.0 - K
+        a[2] = 0.0
+    elif eq_type == 11:  # Inverter
+        b[0] = A
+        b[1] = 0.0
+        b[2] = 0.0
+        a[0] = 1.0
+        a[1] = 0.0
+        a[2] = 0.0
     else:
         raise Exception("eq_type not supported")
     return b, a
@@ -171,7 +203,7 @@ def _impulse(length_samples: int = 512, delay_samples: int = 0):
 
     Returns
     -------
-    imp : `np.ndarray`
+    imp : NDArray[np.float64]
         Impulse.
 
     """
@@ -196,9 +228,9 @@ def _group_delay_filter(ba, length_samples: int = 512, fs_hz: int = 48000):
 
     Returns
     -------
-    f : `np.ndarray`
+    f : NDArray[np.float64]
         Frequency vector.
-    gd : `np.ndarray`
+    gd : NDArray[np.float64]
         Group delay in seconds.
 
     """
@@ -321,7 +353,7 @@ def _filter_on_signal_ba(
         Signal to be filtered.
     ba : list
         List with ba coefficients of filter. Form ba=[b, a] where b and a
-        are of type `np.ndarray`.
+        are of type NDArray[np.float64].
     channels : array-like, optional
         Channel or array of channels to be filtered. When `None`, all
         channels are filtered. Default: `None`.
@@ -477,10 +509,10 @@ def _filterbank_on_signal(
 
 
 def _lfilter_fir(
-    b: np.ndarray,
-    a: np.ndarray,
-    x: np.ndarray,
-    zi: np.ndarray | None = None,
+    b: NDArray[np.float64],
+    a: NDArray[np.float64],
+    x: NDArray[np.float64],
+    zi: NDArray[np.float64] | None = None,
     axis: int = 0,
 ):
     """Variant to the `scipy.signal.lfilter` that uses `scipy.signal.convolve`
@@ -529,11 +561,11 @@ def _lfilter_fir(
 
 
 def _filter_and_downsample(
-    time_data: np.ndarray,
+    time_data: NDArray[np.float64],
     down_factor: int,
     ba_coefficients: list,
     polyphase: bool,
-) -> np.ndarray:
+) -> NDArray[np.float64]:
     """Filters and downsamples time data. If polyphase is `True`, it is
     assumed that the filter is FIR and only b-coefficients are used. In
     that case, an efficient downsampling is done, otherwise standard filtering
@@ -541,7 +573,7 @@ def _filter_and_downsample(
 
     Parameters
     ----------
-    time_data : `np.ndarray`
+    time_data : NDArray[np.float64]
         Time data to be filtered and resampled. Shape should be (time samples,
         channels).
     down_factor : int
@@ -554,7 +586,7 @@ def _filter_and_downsample(
 
     Returns
     -------
-    new_time_data : `np.ndarray`
+    new_time_data : NDArray[np.float64]
         New time data with downsampling.
 
     """
@@ -598,7 +630,7 @@ def _filter_and_downsample(
 
 
 def _filter_and_upsample(
-    time_data: np.ndarray,
+    time_data: NDArray[np.float64],
     up_factor: int,
     ba_coefficients: list,
     polyphase: bool,
@@ -614,7 +646,7 @@ def _filter_and_upsample(
 
     Parameters
     ----------
-    time_data : `np.ndarray`
+    time_data : NDArray[np.float64]
         Time data to be filtered and resampled. Shape should be (time samples,
         channels).
     up_factor : int
@@ -627,7 +659,7 @@ def _filter_and_upsample(
 
     Returns
     -------
-    new_time_data : `np.ndarray`
+    new_time_data : NDArray[np.float64]
         New time data with downsampling.
 
     """

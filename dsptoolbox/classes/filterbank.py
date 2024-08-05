@@ -4,11 +4,12 @@ import numpy as np
 from warnings import warn
 from matplotlib.figure import Figure
 from matplotlib.axes import Axes
+from numpy.typing import NDArray
 
-from .signal_class import Signal
+from .signal import Signal
 from .multibandsignal import MultiBandSignal
-from .filter_class import Filter
-from ._filter import _filterbank_on_signal
+from .filter import Filter
+from .filter_helpers import _filterbank_on_signal
 from ..generators import dirac
 from ..plots import general_plot
 from .._general_helpers import _get_normalized_spectrum, _check_format_in_path
@@ -86,7 +87,7 @@ class FilterBank:
             f.initialize_zi(number_of_channels)
 
     @property
-    def sampling_rate_hz(self) -> int | np.ndarray:
+    def sampling_rate_hz(self) -> int | NDArray[np.int_]:
         return self.__sampling_rate_hz
 
     @sampling_rate_hz.setter
@@ -443,6 +444,52 @@ class FilterBank:
             d, mode, activate_zi=test_zi, zero_phase=zero_phase
         )
         return ir
+
+    def get_transfer_function(
+        self, frequency_vector_hz: NDArray[np.float64], mode: str = "parallel"
+    ) -> NDArray[np.complex128]:
+        """Compute the complex transfer function of the filter bank for
+        specified frequencies. The output is based on the filter bank filtering
+        mode.
+
+        Parameters
+        ----------
+        frequency_vector_hz : NDArray[np.float64]
+            Frequency vector to evaluate frequencies at.
+        mode : str, optional
+            Way of applying the filter bank. If `"parallel"`, the resulting
+            transfer function will have shape (frequency, filter). In the cases
+            of `"sequential"` and `"summed"`, it will have shape (frequency).
+
+        Returns
+        -------
+        NDArray[np.complex128]
+            Complex transfer function of the filter bank.
+
+        """
+        mode = mode.lower()
+        assert mode in (
+            "parallel",
+            "sequential",
+            "summed",
+        ), f"{mode} is not a valid mode. Use parallel, sequential or summed"
+        match mode:
+            case "parallel":
+                h = np.zeros(
+                    (len(frequency_vector_hz), self.number_of_filters),
+                    dtype=np.complex128,
+                )
+                for ind, f in enumerate(self.filters):
+                    h[:, ind] = f.get_transfer_function(frequency_vector_hz)
+            case "sequential":
+                h = np.ones(len(frequency_vector_hz), dtype=np.complex128)
+                for ind, f in enumerate(self.filters):
+                    h *= f.get_transfer_function(frequency_vector_hz)
+            case "summed":
+                h = np.ones(len(frequency_vector_hz), dtype=np.complex128)
+                for ind, f in enumerate(self.filters):
+                    h += f.get_transfer_function(frequency_vector_hz)
+        return h
 
     # ======== Prints and plots ===============================================
     def show_info(self):

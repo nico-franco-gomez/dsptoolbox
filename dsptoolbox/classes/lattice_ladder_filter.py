@@ -2,9 +2,10 @@
 This file contains alternative filter implementations.
 """
 
-from .signal_class import Signal
+from .signal import Signal
 from warnings import warn
 import numpy as np
+from numpy.typing import NDArray
 
 
 class LatticeLadderFilter:
@@ -24,8 +25,8 @@ class LatticeLadderFilter:
 
     def __init__(
         self,
-        k_coefficients: np.ndarray,
-        c_coefficients: np.ndarray | None = None,
+        k_coefficients: NDArray[np.float64],
+        c_coefficients: NDArray[np.float64] | None = None,
         sampling_rate_hz: int | None = None,
     ):
         """Constructs a lattice or lattice/ladder filter. If `k_coefficients`
@@ -38,10 +39,10 @@ class LatticeLadderFilter:
 
         Parameters
         ----------
-        k_coefficients : `np.ndarray`
+        k_coefficients : NDArray[np.float64]
             Reflection coefficients. It can be a 1d array or a 2d-array for
             second-order sections with shape (section, coefficients).
-        c_coefficients : `np.ndarray`, optional
+        c_coefficients : NDArray[np.float64], optional
             Feedforward coefficients. It can be a 1d-array or a 2d-array for
             second-order sections. Default: `None`.
         sampling_rate_hz : int
@@ -95,7 +96,7 @@ class LatticeLadderFilter:
                 self.iir_filter = False
         self.k = k_coefficients
         self.c = c_coefficients
-        self.state: np.ndarray | None = None
+        self.state: NDArray[np.float64] | None = None
         self.sampling_rate_hz = sampling_rate_hz
 
     def initialize_zi(self, n_channels: int):
@@ -118,7 +119,7 @@ class LatticeLadderFilter:
         ----------
         signal : `Signal`
             Signal to filter.
-        channels : `np.ndarray`, int, optional
+        channels : NDArray[np.float64], int, optional
             Channels to filter. If `None`, all channels of the signal are
             filtered.
         activate_zi : bool, optional
@@ -177,11 +178,11 @@ class LatticeLadderFilter:
 
 
 def _lattice_ladder_filtering_sos(
-    k: np.ndarray,
-    c: np.ndarray,
-    td: np.ndarray,
-    state: np.ndarray | None = None,
-) -> tuple[np.ndarray, np.ndarray | None]:
+    k: NDArray[np.float64],
+    c: NDArray[np.float64],
+    td: NDArray[np.float64],
+    state: NDArray[np.float64] | None = None,
+) -> tuple[NDArray[np.float64], NDArray[np.float64] | None]:
     """Filtering using a lattice/ladder structure of second-order sections. See
     `_lattice_ladder_filtering` for the parameter explanation.
 
@@ -223,8 +224,10 @@ def _lattice_ladder_filtering_sos(
 
 
 def _lattice_filtering_fir(
-    k: np.ndarray, td: np.ndarray, state: np.ndarray | None = None
-) -> tuple[np.ndarray, np.ndarray | None]:
+    k: NDArray[np.float64],
+    td: NDArray[np.float64],
+    state: NDArray[np.float64] | None = None,
+) -> tuple[NDArray[np.float64], NDArray[np.float64] | None]:
     """Filtering using a lattice structure."""
     passed_state = True
     if state is None:
@@ -251,23 +254,23 @@ def _lattice_filtering_fir(
 
 
 def _lattice_ladder_filtering_iir(
-    k: np.ndarray,
-    c: np.ndarray,
-    td: np.ndarray,
-    state: np.ndarray | None = None,
-) -> tuple[np.ndarray, np.ndarray | None]:
+    k: NDArray[np.float64],
+    c: NDArray[np.float64],
+    td: NDArray[np.float64],
+    state: NDArray[np.float64] | None = None,
+) -> tuple[NDArray[np.float64], NDArray[np.float64] | None]:
     """Filtering using a lattice ladder structure (general IIR filter). The
     implementation follows [1].
 
     Parameters
     ----------
-    k : `np.ndarray`
+    k : NDArray[np.float64]
         Reflection coefficients.
-    c : `np.ndarray`
+    c : NDArray[np.float64]
         Feedforward coefficients.
-    td : `np.ndarray`
+    td : NDArray[np.float64]
         Time data assumed to have shape (time samples, channel).
-    state : `np.ndarray`, optional
+    state : NDArray[np.float64], optional
         Initial state for each channel as a 2D-matrix with shape
         (filter order, channel). State of the filter in the beginning. The last
         state corresponds to the last reflection coefficient (furthest to the
@@ -275,9 +278,9 @@ def _lattice_ladder_filtering_iir(
 
     Returns
     -------
-    new_td : `np.ndarray`
+    new_td : NDArray[np.float64]
         Filtered time data.
-    state : `np.ndarray`
+    state : NDArray[np.float64]
         Filter's state after filtering. It can be `None` if `None` was
         originally passed for `state`.
 
@@ -312,24 +315,24 @@ def _lattice_ladder_filtering_iir(
 
 
 def _get_lattice_ladder_coefficients_iir(
-    b: np.ndarray, a: np.ndarray
-) -> tuple[np.ndarray, np.ndarray]:
+    b: NDArray[np.float64], a: NDArray[np.float64]
+) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
     """Compute reflection coefficients `k` and ladder coefficients `c` from
     feedforward `b` and feedbackward `a` coefficients according to the
     equations presented in [1].
 
     Parameters
     ----------
-    b : `np.ndarray`
+    b : NDArray[np.float64]
         Feedforward coefficients of a filter.
-    a : `np.ndarray`
+    a : NDArray[np.float64]
         Feedbackward coefficients.
 
     Returns
     -------
-    k : `np.ndarray`
+    k : NDArray[np.float64]
         Reflection coefficients with the length of the order .
-    c : `np.ndarray`
+    c : NDArray[np.float64]
         Ladder coefficients.
 
     References
@@ -361,20 +364,20 @@ def _get_lattice_ladder_coefficients_iir(
 
 
 def _get_lattice_ladder_coefficients_iir_sos(
-    sos: np.ndarray,
-) -> tuple[np.ndarray, np.ndarray]:
+    sos: NDArray[np.float64],
+) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
     """Compute the lattice/ladder coefficients for second-order IIR sections.
 
     Parameters
     ----------
-    sos : `np.ndarray`
+    sos : NDArray[np.float64]
         Second-order sections with shape (..., 6) as used by `scipy.signal`.
 
     Returns
     -------
-    k_sos : `np.ndarray`
+    k_sos : NDArray[np.float64]
         Reflection coefficients for second-order sections.
-    c_sos : `np.ndarray`
+    c_sos : NDArray[np.float64]
         Ladder coefficients for second-order sections.
 
     """
@@ -396,18 +399,20 @@ def _get_lattice_ladder_coefficients_iir_sos(
     return k, c
 
 
-def _get_lattice_coefficients_fir(b: np.ndarray) -> np.ndarray:
+def _get_lattice_coefficients_fir(
+    b: NDArray[np.float64],
+) -> NDArray[np.float64]:
     """Compute reflection coefficients `k` for an FIR filter according to the
     equations presented in [1].
 
     Parameters
     ----------
-    b : `np.ndarray`
+    b : NDArray[np.float64]
         Feedforward coefficients of a filter.
 
     Returns
     -------
-    k : `np.ndarray`
+    k : NDArray[np.float64]
         Reflection coefficients.
 
     References

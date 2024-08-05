@@ -22,6 +22,7 @@ from ..plots import general_plot
 
 from scipy.signal.windows import get_window
 import numpy as np
+from numpy.typing import NDArray
 from warnings import warn
 
 __all__ = [
@@ -61,7 +62,7 @@ class AudioEffect:
             Modified signal.
 
         """
-        if type(signal) is Signal:
+        if isinstance(signal, Signal):
             return self._apply_this_effect(signal)
         elif type(signal) is MultiBandSignal:
             new_mbs = signal.copy()
@@ -82,20 +83,20 @@ class AudioEffect:
         return signal
 
     def _add_gain_in_db(
-        self, time_data: np.ndarray, gain_db: float
-    ) -> np.ndarray:
+        self, time_data: NDArray[np.float64], gain_db: float
+    ) -> NDArray[np.float64]:
         """General gain stage.
 
         Parameters
         ----------
-        time_data : `np.ndarray`
+        time_data : NDArray[np.float64]
             Time samples of the signal.
         gain_db : float
             Gain in dB.
 
         Returns
         -------
-        new_time_data : `np.ndarray`
+        new_time_data : NDArray[np.float64]
             Time data with new gain.
 
         """
@@ -103,11 +104,13 @@ class AudioEffect:
             return time_data
         return time_data * 10 ** (gain_db / 20)
 
-    def _save_peak_values(self, inp: np.ndarray):
+    def _save_peak_values(self, inp: NDArray[np.float64]):
         """Save the peak values of an input."""
         self._peak_values = np.max(np.abs(inp), axis=0)
 
-    def _restore_peak_values(self, inp: np.ndarray) -> np.ndarray:
+    def _restore_peak_values(
+        self, inp: NDArray[np.float64]
+    ) -> NDArray[np.float64]:
         """Restore saved peak values of a signal."""
         if not hasattr(self, "_peak_values"):
             return inp
@@ -119,11 +122,13 @@ class AudioEffect:
             return inp
         return inp * (self._peak_values / np.max(np.abs(inp), axis=0))
 
-    def _save_rms_values(self, inp: np.ndarray):
+    def _save_rms_values(self, inp: NDArray[np.float64]):
         """Save the RMS values of a signal."""
         self._rms_values = _rms(inp)
 
-    def _restore_rms_values(self, inp: np.ndarray) -> np.ndarray:
+    def _restore_rms_values(
+        self, inp: NDArray[np.float64]
+    ) -> NDArray[np.float64]:
         """Restore the RMS values of a signal."""
         if not hasattr(self, "_rms_values"):
             return inp
@@ -149,7 +154,7 @@ class SpectralSubtractor(AudioEffect):
         adaptive_mode: bool = True,
         threshold_rms_dbfs: float = -40,
         block_length_s: float = 0.1,
-        spectrum_to_subtract: np.ndarray | bool = False,
+        spectrum_to_subtract: NDArray[np.float64] | bool = False,
     ):
         """Constructor for a spectral subtractor denoising effect. More
         parameters can be passed using the method `set_advanced_parameters`.
@@ -173,7 +178,7 @@ class SpectralSubtractor(AudioEffect):
             blocks of the signal. The real block length in samples is always
             clipped to the closest power of 2 for efficiency of the FFT.
             Default: 0.1.
-        spectrum_to_subtract : np.ndarray or `False`, optional
+        spectrum_to_subtract : NDArray[np.float64] or `False`, optional
             If a spectrum is passed, it is used as the one to subtract and
             all other parameters are ignored. This should be the result of the
             squared magnitude of the FFT without any scaling in order to avoid
@@ -361,7 +366,7 @@ class SpectralSubtractor(AudioEffect):
         adaptive_mode: bool | None = None,
         threshold_rms_dbfs: float | None = None,
         block_length_s: float | None = None,
-        spectrum_to_subtract: np.ndarray = False,
+        spectrum_to_subtract: NDArray[np.float64] = False,
     ):
         """Sets the audio effects parameters. Pass `None` to leave the
         previously selected value for each parameter unchanged.
@@ -385,7 +390,7 @@ class SpectralSubtractor(AudioEffect):
             blocks of the signal. The real block length in samples is always
             clipped to the closest power of 2 for efficiency of the FFT.
             Default: 0.1.
-        spectrum_to_subtract : np.ndarray, optional
+        spectrum_to_subtract : NDArray[np.float64], optional
             If a spectrum is passed, it is used as the one to subtract and
             all other parameters are ignored. This should be the result of the
             squared magnitude of the FFT without any scaling in order to avoid
@@ -634,9 +639,9 @@ class Distortion(AudioEffect):
     def set_advanced_parameters(
         self,
         type_of_distortion="arctan",
-        distortion_levels_db: np.ndarray = 20,
-        mix_percent: np.ndarray = 100,
-        offset_db: np.ndarray = -np.inf,
+        distortion_levels_db: NDArray[np.float64] = 20,
+        mix_percent: NDArray[np.float64] = 100,
+        offset_db: NDArray[np.float64] = -np.inf,
         post_gain_db: float = 0,
     ):
         r"""This sets the parameters of the distortion. Multiple
@@ -655,20 +660,21 @@ class Distortion(AudioEffect):
             (`'arctan'`, `'hard clip'`, `'soft clip'`, `'clean'`) or a callable
             containing a user-defined distortion. Its signature must be::
 
-                func(time_data: np.ndarray, distortion_level_db: float,
-                     offset_db: float) -> np.ndarray
+                func(time_data: NDArray[np.float64],
+                     distortion_level_db: float, offset_db: float) \
+                        -> NDArray[np.float64]
 
             The output data is assumed to have shape (time samples, channels)
             as the input data. If a list is passed, `distortion_levels_db`,
             `mix_percent` and `offset_db` must have the same length as the
             list. Default: `'arctan'`.
-        distortion_levels : `np.ndarray`, optional
+        distortion_levels : NDArray[np.float64], optional
             This defines how strong the distortion effect is applied. It can
             vary according to the non-linear function. Usually, a range
             between 0 and 50 should be reasonable, though any value is
             possible. If multiple types of distortion are being used, this
             should be an array corresponding to each distortion. Default: 20.
-        mix_percent : `np.ndarray`, optional
+        mix_percent : NDArray[np.float64], optional
             This defines how much of each distortion is used in the final
             mix. If `type_of_distortion` is only one string or callable,
             mix_percent is its amount in the final mix with the clean signal.
@@ -676,7 +682,7 @@ class Distortion(AudioEffect):
             40 leads to 40% distorted, 60% clean. If multiple types of
             distortion are being used, this should be an array corresponding
             to each distortion and its sum must be 100. Default: 100.
-        offset_db : `np.ndarray`, optional
+        offset_db : NDArray[np.float64], optional
             This offset corresponds to the offset shown in [1]. It must be a
             value between -np.inf and 0. The bigger this value, the more even
             harmonics are caused by the distortion. Pass -np.inf to avoid any
@@ -1083,7 +1089,9 @@ class Tremolo(AudioEffect):
     """
 
     def __init__(
-        self, depth: float = 0.5, modulator: LFO | np.ndarray | None = None
+        self,
+        depth: float = 0.5,
+        modulator: LFO | NDArray[np.float64] | None = None,
     ):
         """Constructor for a tremolo effect.
 
@@ -1092,7 +1100,7 @@ class Tremolo(AudioEffect):
         depth : float, optional
             Depth of the amplitude variation. This must be a positive value.
             Default: 0.5.
-        modulator : `LFO` or `np.ndarray`
+        modulator : `LFO` or NDArray[np.float64]
             This is the modulator signal that modifies the amplitude of the
             carrier signal. It can either be a LFO or a numpy array. If the
             length of the numpy array is different to that of the carrier
@@ -1106,14 +1114,16 @@ class Tremolo(AudioEffect):
             modulator = LFO(1, "harmonic")
         self.__set_parameters(depth, modulator)
 
-    def __set_parameters(self, depth: float, modulator: LFO | np.ndarray):
+    def __set_parameters(
+        self, depth: float, modulator: LFO | NDArray[np.float64]
+    ):
         """Internal method to change parameters."""
         if modulator is not None:
             assert type(modulator) in (
                 LFO,
-                np.ndarray,
+                NDArray[np.float64],
             ), "Unsupported modulator type. Use LFO or numpy.ndarray"
-            if type(modulator) is np.ndarray:
+            if type(modulator) is NDArray[np.float64]:
                 modulator = modulator.squeeze()
                 assert (
                     modulator.ndim == 1
@@ -1128,7 +1138,7 @@ class Tremolo(AudioEffect):
     def set_parameters(
         self,
         depth: float | None = None,
-        modulator: LFO | np.ndarray | None = None,
+        modulator: LFO | NDArray[np.float64] | None = None,
     ):
         """Set the parameters for the tremolo effect. Passing `None` in this
         function leaves them unchanged.
@@ -1138,7 +1148,7 @@ class Tremolo(AudioEffect):
         depth : float, optional
             Depth of the amplitude variation. This must be a positive value.
             Default: `None`.
-        modulator : `LFO` or `np.ndarray`, optional
+        modulator : `LFO` or NDArray[np.float64], optional
             This is the modulator signal that modifies the amplitude of the
             carrier signal. It can either be a LFO or a numpy array. If the
             length of the numpy array is different to that of the carrier
@@ -1170,9 +1180,9 @@ class Chorus(AudioEffect):
 
     def __init__(
         self,
-        depths_ms: float | np.ndarray = 5,
-        base_delays_ms: float | np.ndarray = 15,
-        modulators: LFO | list | tuple | np.ndarray | None = None,
+        depths_ms: float | NDArray[np.float64] = 5,
+        base_delays_ms: float | NDArray[np.float64] = 15,
+        modulators: LFO | list | tuple | NDArray[np.float64] | None = None,
         mix_percent: float = 100,
     ):
         """Constructor for a chorus effect. Multiple voices with modulated
@@ -1186,11 +1196,11 @@ class Chorus(AudioEffect):
             around the base delay. The bigger, the more dramatic the effect.
             Each voice can have a different depth. If a single value
             is passed, it is used for all voices. Default: 5.
-        base_delays_ms : `np.ndarray`, optional
+        base_delays_ms : NDArray[np.float64], optional
             Base delays for each voice. By default, 15 ms are used for all
             voices but different values can be passed per voice.
             Default: 15.
-        modulators : `LFO` or list or tuple or `np.ndarray`, optional
+        modulators : `LFO` or list or tuple or NDArray[np.float64], optional
             This is the modulators signal that modifies the delay of the
             carrier signal. It can either be an LFO, a list or tuple of LFOs or
             a numpy array with delay values in milliseconds. If the length of
@@ -1221,9 +1231,9 @@ class Chorus(AudioEffect):
 
     def __set_parameters(
         self,
-        depths_ms: float | np.ndarray,
-        base_delays_ms: float | np.ndarray,
-        modulators: LFO | list | tuple | np.ndarray,
+        depths_ms: float | NDArray[np.float64],
+        base_delays_ms: float | NDArray[np.float64],
+        modulators: LFO | list | tuple | NDArray[np.float64],
         mix_percent: float,
     ):
         """Internal method to change parameters."""
@@ -1245,7 +1255,7 @@ class Chorus(AudioEffect):
         if modulators is not None:
             if type(modulators) in (list, tuple):
                 nv_mod = len(modulators)
-            elif type(modulators) is np.ndarray:
+            elif type(modulators) is NDArray[np.float64]:
                 modulators = np.atleast_2d(modulators)
                 nv_mod = modulators.shape[1]
             else:
@@ -1274,9 +1284,9 @@ class Chorus(AudioEffect):
                 LFO,
                 list,
                 tuple,
-                np.ndarray,
+                NDArray[np.float64],
             ), "Unsupported modulators type. Use LFO or numpy.ndarray"
-            if type(modulators) is np.ndarray:
+            if type(modulators) is NDArray[np.float64]:
                 modulators = np.atleast_2d(modulators)
                 modulators.shape[1] == self.number_of_voices, (
                     "The modulators signal must "
@@ -1322,9 +1332,9 @@ class Chorus(AudioEffect):
 
     def set_parameters(
         self,
-        depths_ms: float | np.ndarray | None = None,
-        base_delays_ms: float | np.ndarray | None = None,
-        modulators: LFO | list | tuple | np.ndarray | None = None,
+        depths_ms: float | NDArray[np.float64] | None = None,
+        base_delays_ms: float | NDArray[np.float64] | None = None,
+        modulators: LFO | list | tuple | NDArray[np.float64] | None = None,
         mix_percent: float | None = None,
     ):
         """Sets the advanced parameters for the chorus effect. By passing
@@ -1337,7 +1347,7 @@ class Chorus(AudioEffect):
         depths_ms : float, optional
             Depth of the delay variation in ms. This must be a positive value.
             Default: `None`.
-        modulators : LFO or list or tuple or `np.ndarray`, optional
+        modulators : LFO or list or tuple or NDArray[np.float64], optional
             This defines the modulators signal. It can be a single LFO object
             or a list containing an LFO for each voice. Alternatively, a
             numpy.ndarray with shape (time samples, voice) can be passed. If
@@ -1361,7 +1371,7 @@ class Chorus(AudioEffect):
         le = len(signal)
 
         # Get valid modulation signals
-        if type(self.modulators) is not np.ndarray:
+        if type(self.modulators) is not NDArray[np.float64]:
             modulation = np.zeros((le, self.number_of_voices))
             for ind, m in enumerate(self.modulators):
                 modulation[:, ind] = (

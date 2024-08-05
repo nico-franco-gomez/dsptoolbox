@@ -5,6 +5,7 @@ Beware that these distances have not been yet validated with other tools.
 
 import numpy as np
 from scipy.signal import windows
+from numpy.typing import NDArray
 
 from .. import Signal
 from ..filterbanks import auditory_filters_gammatone
@@ -25,7 +26,7 @@ def log_spectral(
     f_range_hz=[20, 20000],
     energy_normalization: bool = True,
     spectrum_parameters: dict | None = None,
-) -> np.ndarray:
+) -> NDArray[np.float64]:
     """Computes log spectral distance between two signals.
 
     Parameters
@@ -50,7 +51,7 @@ def log_spectral(
 
     Returns
     -------
-    distances : `np.ndarray`
+    distances : NDArray[np.float64]
         Log spectral distance per channel for the given signals.
 
     References
@@ -114,7 +115,7 @@ def itakura_saito(
     f_range_hz=[20, 20000],
     energy_normalization: bool = True,
     spectrum_parameters: dict | None = None,
-) -> np.ndarray:
+) -> NDArray[np.float64]:
     """Computes itakura-saito measure between two signals. Beware that this
     measure is not symmetric (x, y) != (y, x).
 
@@ -140,7 +141,7 @@ def itakura_saito(
 
     Returns
     -------
-    distances : `np.ndarray`
+    distances : NDArray[np.float64]
         Itakura-saito measure for the given signals.
 
     References
@@ -197,7 +198,7 @@ def itakura_saito(
     return distances
 
 
-def snr(signal: Signal, noise: Signal) -> np.ndarray:
+def snr(signal: Signal, noise: Signal) -> NDArray[np.float64]:
     """Classical Signal-to-noise ratio. If noise only has one channel,
     it is assumed to be the noise for all channels of signal.
 
@@ -210,7 +211,7 @@ def snr(signal: Signal, noise: Signal) -> np.ndarray:
 
     Returns
     -------
-    snr_per_channel : `np.ndarray`
+    snr_per_channel : NDArray[np.float64]
         SNR value per channel
 
     References
@@ -228,7 +229,9 @@ def snr(signal: Signal, noise: Signal) -> np.ndarray:
     return np.atleast_1d(_snr(signal.time_data, noise.time_data))
 
 
-def si_sdr(target_signal: Signal, modified_signal: Signal) -> np.ndarray:
+def si_sdr(
+    target_signal: Signal, modified_signal: Signal
+) -> NDArray[np.float64]:
     """Computes scale-invariant signal to distortion ratio from a target
     and a modified signal. If target signal only has one channel, it is
     assumed to be the target for all the channels in the modified signal.
@@ -244,7 +247,7 @@ def si_sdr(target_signal: Signal, modified_signal: Signal) -> np.ndarray:
 
     Returns
     -------
-    sdr : `np.ndarray`
+    sdr : NDArray[np.float64]
         SI-SDR per channel.
 
     References
@@ -285,7 +288,7 @@ def fw_snr_seg(
     f_range_hz=[20, 10e3],
     snr_range_db=[-10, 35],
     gamma: float = 0.2,
-) -> np.ndarray:
+) -> NDArray[np.float64]:
     """Frequency-weighted segmental SNR (fwSNRseg) computation between two
     signals.
 
@@ -319,7 +322,7 @@ def fw_snr_seg(
 
     Returns
     -------
-    snr_per_channel : `np.ndarray`
+    snr_per_channel : NDArray[np.float64]
         Frequency-weighted, time-segmented SNR per channel.
 
     References

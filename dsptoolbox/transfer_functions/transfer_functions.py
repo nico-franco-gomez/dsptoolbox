@@ -3,6 +3,7 @@ Methods used for acquiring and windowing transfer functions
 """
 
 import numpy as np
+from numpy.typing import NDArray
 from scipy.signal import minimum_phase as min_phase_scipy
 from scipy.fft import rfft as rfft_scipy, next_fast_len as next_fast_length_fft
 from scipy.interpolate import interp1d
@@ -15,8 +16,8 @@ from ._transfer_functions import (
     _get_harmonic_times,
     _trim_ir,
 )
-from ..classes import Signal, Filter
-from ..classes._filter import _group_delay_filter
+from ..classes import Signal, Filter, ImpulseResponse
+from ..classes.filter_helpers import _group_delay_filter
 from .._general_helpers import (
     _remove_ir_latency_from_phase,
     _min_phase_ir_from_real_cepstrum,
@@ -51,7 +52,7 @@ def spectral_deconvolve(
     threshold_db=-30,
     padding: bool = False,
     keep_original_length: bool = False,
-) -> Signal:
+) -> ImpulseResponse:
     """Deconvolution by spectral division of two signals. If the denominator
     signal only has one channel, the deconvolution is done using that channel
     for all channels of the numerator.
@@ -159,9 +160,7 @@ def spectral_deconvolve(
             start_stop_hz=start_stop_hz,
             mode=mode,
         )
-    new_sig = Signal(
-        None, new_time_data, num.sampling_rate_hz, signal_type="ir"
-    )
+    new_sig = ImpulseResponse(None, new_time_data, num.sampling_rate_hz)
     if padding:
         if keep_original_length:
             new_sig.time_data = _pad_trim(new_sig.time_data, original_length)
@@ -169,7 +168,7 @@ def spectral_deconvolve(
 
 
 def window_ir(
-    signal: Signal,
+    signal: ImpulseResponse,
     total_length_samples: int,
     adaptive: bool = True,
     constant_percentage: float = 0.75,
@@ -177,7 +176,7 @@ def window_ir(
     at_start: bool = True,
     offset_samples: int = 0,
     left_to_right_flank_length_ratio: float = 1.0,
-) -> tuple[Signal, np.ndarray]:
+) -> tuple[ImpulseResponse, NDArray[np.float64]]:
     """Windows an IR with trimming and selection of constant valued length.
     This is equivalent to a tukey window whose flanks can be selected to be
     any type. The peak of the impulse response is aligned to correspond to
@@ -185,7 +184,7 @@ def window_ir(
 
     Parameters
     ----------
-    signal : `Signal`
+    signal : `ImpulseResponse`
         Signal to window
     total_length_samples : int
         Total window length in samples.
@@ -218,9 +217,9 @@ def window_ir(
 
     Returns
     -------
-    new_sig : `Signal`
+    new_sig : `ImpulseResponse`
         Windowed signal. The used window is also saved under `new_sig.window`.
-    start_positions_samples : `np.ndarray`
+    start_positions_samples : NDArray[np.float64]
         This array contains the position index of the start of the IR in
         each channel of the original IR (relative to the possibly padded
         windowed IR).
@@ -239,10 +238,9 @@ def window_ir(
       parts of the window are set to 0 in order to make them visible.
 
     """
-    assert signal.signal_type in (
-        "rir",
-        "ir",
-    ), f"{signal.signal_type} is not a valid signal type. Use rir or ir."
+    assert (
+        type(signal) is ImpulseResponse
+    ), "This is only valid for an impulse response"
     assert (
         constant_percentage < 1 and constant_percentage >= 0
     ), "Constant percentage can not be larger than 1 or smaller than 0"
@@ -282,17 +280,17 @@ def window_ir(
 
 
 def window_centered_ir(
-    signal: Signal,
+    signal: ImpulseResponse,
     total_length_samples: int,
     window_type: str | tuple = "hann",
-) -> tuple[Signal, np.ndarray]:
+) -> tuple[ImpulseResponse, NDArray[np.float64]]:
     """This function windows an IR placing its peak in the middle. It trims
     it to the total length of the window or pads it to the desired length
     (padding in the end, window has `total_length`).
 
     Parameters
     ----------
-    signal: `Signal`
+    signal: `ImpulseResponse`
         Signal to window
     total_length_samples: int
         Total window length in samples.
@@ -305,9 +303,9 @@ def window_centered_ir(
 
     Returns
     -------
-    new_sig : `Signal`
+    new_sig : `ImpulseResponse`
         Windowed signal. The used window is also saved under `new_sig.window`.
-    start_positions_samples : `np.ndarray`
+    start_positions_samples : NDArray[np.float64]
         This array contains the position index of the start of the IR in
         each channel of the original IR.
 
@@ -318,10 +316,9 @@ def window_centered_ir(
       given length.
 
     """
-    assert signal.signal_type in (
-        "rir",
-        "ir",
-    ), f"{signal.signal_type} is not a valid signal type. Use rir or ir."
+    assert (
+        type(signal) is ImpulseResponse
+    ), "This is only valid for an impulse response"
 
     new_time_data = np.zeros((total_length_samples, signal.number_of_channels))
     start_positions_samples = np.zeros(signal.number_of_channels, dtype=int)
@@ -348,7 +345,7 @@ def compute_transfer_function(
     mode="h2",
     window_length_samples: int = 1024,
     spectrum_parameters: dict | None = None,
-) -> tuple[Signal, np.ndarray, np.ndarray]:
+) -> tuple[ImpulseResponse, NDArray[np.complex128], NDArray[np.float64]]:
     r"""Gets transfer function H1, H2 or H3 (for stochastic signals).
     H1: for noise in the output signal. `Gxy/Gxx`.
     H2: for noise in the input signal. `Gyy/Gyx`.
@@ -375,13 +372,13 @@ def compute_transfer_function(
 
     Returns
     -------
-    tf_sig : `Signal`
-        Transfer functions as `Signal` object. Coherences are also computed
-        and saved in the `Signal` object.
-    tf : `np.ndarray`
-        Complex transfer function as type `np.ndarray` with shape (frequency,
-        channel).
-    coherence : `np.ndarray`
+    tf_sig : `ImpulseResponse`
+        Transfer functions as `ImpulseResponse` object. Coherences are also
+        computed and saved in the `ImpulseResponse` object.
+    tf : NDArray[np.complex128]
+        Complex transfer function as type NDArray[np.complex128] with shape
+        (frequency, channel).
+    coherence : NDArray[np.float64]
         Coherence of the measurement with shape (frequency, channel).
 
     Notes
@@ -471,30 +468,29 @@ def compute_transfer_function(
         elif mode == "h3".casefold():
             tf[:, n] = G_xy / np.abs(G_xy) * (G_yy / G_xx) ** 0.5
         coherence[:, n] = np.abs(G_xy) ** 2 / G_xx / G_yy
-    tf_sig = Signal(
+    tf_sig = ImpulseResponse(
         None,
         np.fft.irfft(tf, axis=0, n=window_length_samples),
         output.sampling_rate_hz,
-        signal_type=mode.lower(),
     )
     tf_sig.set_coherence(coherence)
     return tf_sig, tf, coherence
 
 
 def average_irs(
-    signal: Signal, mode: str = "time", normalize_energy: bool = True
-) -> Signal:
+    signal: ImpulseResponse, mode: str = "time", normalize_energy: bool = True
+) -> ImpulseResponse:
     """Averages all channels of a given IR. It can either use a time domain
     average while time-aligning all channels to the one with the longest
     latency, or average directly their magnitude and phase responses.
 
     Parameters
     ----------
-    signal : `Signal`
+    signal : `ImpulseResponse`
         Signal with channels to be averaged over.
     mode : str, optional
         It can be either `"time"` or `"spectral"`. When `"time"` is selected,
-        the IRs are time-aligned to the channel with the biggest latency
+        the IRs are time-aligned to the channel with the largest latency
         and then averaged in the time domain. `"spectral"` averages directly
         the magnitude and phase of each IR. Default: `"time"`.
     normalize_energy : bool, optional
@@ -505,14 +501,13 @@ def average_irs(
 
     Returns
     -------
-    avg_sig : `Signal`
-        Averaged signal.
+    avg_sig : `ImpulseResponse`
+        Averaged impulse response.
 
     """
-    assert signal.signal_type in ("rir", "ir"), (
-        "Averaging is valid for signal types rir or ir and not "
-        + f"{signal.signal_type}"
-    )
+    assert (
+        type(signal) is ImpulseResponse
+    ), "This is only valid for an impulse response"
     mode = mode.lower()
     assert mode in (
         "time",
@@ -566,17 +561,16 @@ def average_irs(
 
 
 def min_phase_from_mag(
-    spectrum: np.ndarray,
+    spectrum: NDArray[np.float64],
     sampling_rate_hz: int,
     original_length_time_data: int | None = None,
-    signal_type: str = "ir",
-):
+) -> ImpulseResponse:
     """Returns a minimum-phase signal from a magnitude spectrum using
     the discrete hilbert transform.
 
     Parameters
     ----------
-    spectrum : `np.ndarray`
+    spectrum : NDArray[np.float64]
         Spectrum (no scaling) with only positive frequencies.
     sampling_rate_hz : int
         Signal's sampling rate in Hz.
@@ -585,12 +579,10 @@ def min_phase_from_mag(
         necessary for reconstruction of the time data since the first half
         of the spectrum (only positive frequencies) is ambiguous. Pass `None`
         to assume an even length. Default: `None`.
-    signal_type : str, optional
-        Type of signal to be returned. Default: `'ir'`.
 
     Returns
     -------
-    sig_min_phase : `Signal`
+    sig_min_phase : `ImpulseResponse`
         Signal with same magnitude spectrum but minimum phase.
 
     References
@@ -619,23 +611,19 @@ def min_phase_from_mag(
     time_data = np.fft.irfft(
         spectrum * np.exp(1j * phase), axis=0, n=original_length_time_data
     )
-    sig_min_phase = Signal(
-        None,
-        time_data=time_data,
-        sampling_rate_hz=sampling_rate_hz,
-        signal_type=signal_type,
+    sig_min_phase = ImpulseResponse(
+        None, time_data=time_data, sampling_rate_hz=sampling_rate_hz
     )
     return sig_min_phase
 
 
 def lin_phase_from_mag(
-    spectrum: np.ndarray,
+    spectrum: NDArray[np.float64],
     sampling_rate_hz: int,
     original_length_time_data: int | None = None,
     group_delay_ms: str | float = "minimum",
     check_causality: bool = True,
-    signal_type: str = "ir",
-) -> Signal:
+) -> ImpulseResponse:
     """Returns a linear phase signal from a magnitude spectrum. It is possible
     to return the smallest causal group delay by checking the minimum phase
     version of the signal and choosing a constant group delay that is never
@@ -647,7 +635,7 @@ def lin_phase_from_mag(
 
     Parameters
     ----------
-    spectrum : `np.ndarray`
+    spectrum : NDArray[np.float64]
         Spectrum with only positive frequencies and 0.
     sampling_rate_hz : int
         Signal's sampling rate in Hz.
@@ -664,8 +652,6 @@ def lin_phase_from_mag(
     check_causality : bool, optional
         When `True`, it is assessed for each channel that the given group
         delay is not lower than the minimum group delay. Default: `True`.
-    signal_type : str, optional
-        Type of signal to be returned. Default: `'ir'`.
 
     Returns
     -------
@@ -733,18 +719,17 @@ def lin_phase_from_mag(
             phase = _correct_for_real_phase_spectrum(_wrap_phase(phase))
         lin_spectrum[:, n] = spectrum[:, n] * np.exp(1j * phase)
     time_data = np.fft.irfft(lin_spectrum, axis=0, n=original_length_time_data)
-    sig_lin_phase = Signal(
-        None,
-        time_data=time_data,
-        sampling_rate_hz=sampling_rate_hz,
-        signal_type=signal_type,
+    sig_lin_phase = ImpulseResponse(
+        None, time_data=time_data, sampling_rate_hz=sampling_rate_hz
     )
     return sig_lin_phase
 
 
 def min_phase_ir(
-    sig: Signal, method: str = "real cepstrum", padding_factor: int = 8
-) -> Signal:
+    sig: ImpulseResponse,
+    method: str = "real cepstrum",
+    padding_factor: int = 8,
+) -> ImpulseResponse:
     """Returns same IR with minimum phase. Three methods are available for
     computing the minimum phase version of the IR: `'real cepstrum'` (using
     filtering the real-cepstral domain) and `'equiripple'` (for
@@ -755,7 +740,7 @@ def min_phase_ir(
 
     Parameters
     ----------
-    sig : `Signal`
+    sig : `ImpulseResponse`
         IR for which to compute minimum phase IR.
     method : str, optional
         For general cases, `'real cepstrum'`. If the IR is symmetric (like a
@@ -768,14 +753,13 @@ def min_phase_ir(
 
     Returns
     -------
-    min_phase_sig : `Signal`
+    min_phase_sig : `ImpulseResponse`
         Minimum-phase IR as time signal.
 
     """
-    assert sig.signal_type in (
-        "rir",
-        "ir",
-    ), "Signal type must be either rir or ir"
+    assert (
+        type(sig) is ImpulseResponse
+    ), "This is only valid for an impulse response"
     method = method.lower()
     assert method in ("real cepstrum", "equiripple"), (
         f"{method} is not valid. Use either real cepstrum or " + "equiripple"
@@ -811,7 +795,7 @@ def group_delay(
     method="matlab",
     smoothing: int = 0,
     remove_ir_latency: bool = False,
-) -> tuple[np.ndarray, np.ndarray]:
+) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
     """Computes and returns group delay.
 
     Parameters
@@ -833,9 +817,9 @@ def group_delay(
 
     Returns
     -------
-    freqs : `np.ndarray`
+    freqs : NDArray[np.float64]
         Frequency vector in Hz.
-    group_delays : `np.ndarray`
+    group_delays : NDArray[np.float64]
         Matrix containing group delays in seconds with shape (gd, channel).
 
     """
@@ -861,13 +845,9 @@ def group_delay(
         signal._spectrum_parameters = spec_parameters
 
         if remove_ir_latency:
-            assert signal.signal_type in (
-                "rir",
-                "ir",
-            ), (
-                f"{signal.signal_type} is not a valid signal type. Use ir "
-                + "or rir"
-            )
+            assert (
+                type(signal) is ImpulseResponse
+            ), "This is only valid for an impulse response"
             sp = _remove_ir_latency_from_phase(
                 f, np.angle(sp), signal.time_data, signal.sampling_rate_hz, 1
             )
@@ -890,10 +870,10 @@ def group_delay(
 
 
 def minimum_phase(
-    signal: Signal,
+    signal: ImpulseResponse,
     method: str = "real cepstrum",
     padding_factor: int = 8,
-) -> tuple[np.ndarray, np.ndarray]:
+) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
     """Gives back a matrix containing the minimum phase signal for each
     channel. Two methods are available for computing the minimum phase of a
     system: `'real cepstrum'` (windowing in the cepstral domain) or
@@ -913,19 +893,15 @@ def minimum_phase(
 
     Returns
     -------
-    f : `np.ndarray`
+    f : NDArray[np.float64]
         Frequency vector.
-    min_phases : `np.ndarray`
+    min_phases : NDArray[np.float64]
         Minimum phases as matrix with shape (phase, channel).
 
     """
-    assert signal.signal_type in (
-        "rir",
-        "ir",
-        "h1",
-        "h2",
-        "h3",
-    ), "Signal type must be rir or ir"
+    assert (
+        type(signal) is ImpulseResponse
+    ), "This is only valid for an impulse response"
     method = method.lower()
     assert method in (
         "real cepstrum",
@@ -962,15 +938,15 @@ def minimum_phase(
 
 
 def minimum_group_delay(
-    signal: Signal,
+    signal: ImpulseResponse,
     smoothing: int = 0,
     padding_factor: int = 8,
-) -> tuple[np.ndarray, np.ndarray]:
+) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
     """Computes minimum group delay of given IR using the real cepstrum method.
 
     Parameters
     ----------
-    signal : `Signal`
+    signal : `ImpulseResponse`
         IR for which to compute minimal group delay.
     smoothing : int, optional
         Octave fraction by which to apply smoothing. `0` avoids any smoothing
@@ -982,9 +958,9 @@ def minimum_group_delay(
 
     Returns
     -------
-    f : `np.ndarray`
+    f : NDArray[np.float64]
         Frequency vector.
-    min_gd : `np.ndarray`
+    min_gd : NDArray[np.float64]
         Minimum group delays in seconds as matrix with shape (gd, channel).
 
     References
@@ -992,7 +968,9 @@ def minimum_group_delay(
     - https://www.roomeqwizard.com/help/help_en-GB/html/minimumphase.html
 
     """
-    assert signal.signal_type in ("rir", "ir"), "Only valid for rir or ir"
+    assert (
+        type(signal) is ImpulseResponse
+    ), "This is only valid for an impulse response"
     f, min_phases = minimum_phase(signal, padding_factor=padding_factor)
     min_gd = np.zeros_like(min_phases)
     for n in range(signal.number_of_channels):
@@ -1003,15 +981,15 @@ def minimum_group_delay(
 
 
 def excess_group_delay(
-    signal: Signal,
+    signal: ImpulseResponse,
     smoothing: int = 0,
     remove_ir_latency: bool = False,
-) -> tuple[np.ndarray, np.ndarray]:
+) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
     """Computes excess group delay of an IR.
 
     Parameters
     ----------
-    signal : `Signal`
+    signal : `ImpulseResponse`
         IR for which to compute minimal group delay.
     smoothing : int, optional
         Octave fraction by which to apply smoothing. `0` avoids any smoothing
@@ -1022,9 +1000,9 @@ def excess_group_delay(
 
     Returns
     -------
-    f : `np.ndarray`
+    f : NDArray[np.float64]
         Frequency vector.
-    ex_gd : `np.ndarray`
+    ex_gd : NDArray[np.float64]
         Excess group delays in seconds with shape (excess_gd, channel).
 
     References
@@ -1032,7 +1010,9 @@ def excess_group_delay(
     - https://www.roomeqwizard.com/help/help_en-GB/html/minimumphase.html
 
     """
-    assert signal.signal_type in ("rir", "ir"), "Only valid for rir or ir"
+    assert (
+        type(signal) is ImpulseResponse
+    ), "This is only valid for an impulse response"
     f, min_gd = minimum_group_delay(
         signal, smoothing=0, padding_factor=8 if remove_ir_latency else 1
     )
@@ -1051,12 +1031,12 @@ def excess_group_delay(
 
 
 def combine_ir_with_dirac(
-    ir: Signal,
+    ir: ImpulseResponse,
     crossover_frequency: float,
     take_lower_band: bool,
     order: int = 8,
     normalization: str | None = None,
-) -> Signal:
+) -> ImpulseResponse:
     """Combine an IR with a perfect impulse at a given crossover frequency
     using a linkwitz-riley crossover. Forward-Backward filtering is done so
     that no phase distortion occurs. They can optionally be energy matched
@@ -1095,7 +1075,9 @@ def combine_ir_with_dirac(
       added dirac impulse has time to grow smoothly.
 
     """
-    assert ir.signal_type in ("rir", "ir"), "Only valid for rir or ir"
+    assert (
+        type(ir) is ImpulseResponse
+    ), "This is only valid for an impulse response"
     if normalization is not None:
         normalization = normalization.lower()
     assert normalization in (
@@ -1161,10 +1143,10 @@ def combine_ir_with_dirac(
 
 
 def ir_to_filter(
-    signal: Signal, channel: int = 0, phase_mode: str = "direct"
+    signal: ImpulseResponse, channel: int = 0, phase_mode: str = "direct"
 ) -> Filter:
-    """This function takes in a signal with type `'ir'` or `'rir'` and turns
-    the selected channel into an FIR filter. With `phase_mode` it is possible
+    """This function takes in an impulse response and turns the selected
+    channel into an FIR filter. With `phase_mode` it is possible
     to use minimum phase or minimum linear phase.
 
     Parameters
@@ -1184,10 +1166,9 @@ def ir_to_filter(
         FIR filter object.
 
     """
-    assert signal.signal_type in ("ir", "rir", "h1", "h2", "h3"), (
-        f"{signal.signal_type} is not valid. Use one of "
-        + """('ir', 'rir', 'h1', 'h2', 'h3')"""
-    )
+    assert (
+        type(signal) is ImpulseResponse
+    ), "This is only valid for an impulse response"
     assert (
         channel < signal.number_of_channels
     ), f"Signal does not have a channel {channel}"
@@ -1216,7 +1197,7 @@ def ir_to_filter(
     return filt
 
 
-def filter_to_ir(fir: Filter) -> Signal:
+def filter_to_ir(fir: Filter) -> ImpulseResponse:
     """Takes in an FIR filter and converts it into an IR by taking its
     b coefficients.
 
@@ -1235,34 +1216,29 @@ def filter_to_ir(fir: Filter) -> Signal:
         fir.filter_type == "fir"
     ), "This is only valid is only available for FIR filters"
     b, _ = fir.get_coefficients(mode="ba")
-    new_sig = Signal(
-        None,
-        b,
-        sampling_rate_hz=fir.sampling_rate_hz,
-        signal_type="ir",
-        signal_id="IR from FIR filter",
-    )
+    new_sig = ImpulseResponse(None, b, sampling_rate_hz=fir.sampling_rate_hz)
     return new_sig
 
 
 def window_frequency_dependent(
-    ir: Signal,
+    ir: ImpulseResponse,
     cycles: int,
     channel: int | None = None,
     frequency_range_hz: list | None = None,
     scaling: str | None = None,
+    end_window_value: float = 0.5,
 ):
     """A spectrum with frequency-dependent windowing defined by cycles is
     returned. To this end, a variable gaussian window is applied.
 
     A width of 5 cycles means that there are 5 periods of each frequency
-    before the window values hit 0.5, i.e., -6 dB.
+    before the window values hit `end_window_value`.
 
     This is computed only for real-valued signals (positive frequencies).
 
     Parameters
     ----------
-    ir : `Signal`
+    ir : `ImpulseResponse`
         Impulse response from which to extract the spectrum.
     cycles : int
         Number of cycles to include for each frequency bin. It defines
@@ -1278,13 +1254,16 @@ def window_frequency_dependent(
         `"amplitude spectral density"`, `"fft"` or `None`. The first two take
         the window into account. `"fft"` scales the forward FFT by `1/N**0.5`
         and `None` leaves the spectrum completely unscaled. Default: `None`.
+    end_window_value : float, optional
+        This is the value that the gaussian window should have at its width.
+        Default: 0.5.
 
     Returns
     -------
-    f : `np.ndarray`
+    f : NDArray[np.float64]
         Frequency vector.
-    spec : `np.ndarray`
-        Spectrum with shape (frequency, channel).
+    spec : NDArray[np.complex128]
+        Complex spectrum with shape (frequency, channel).
 
     Notes
     -----
@@ -1302,7 +1281,9 @@ def window_frequency_dependent(
       correct way to obtain the spectrum.
 
     """
-    assert ir.signal_type in ("rir", "ir"), "Only valid for rir or ir"
+    assert (
+        type(ir) is ImpulseResponse
+    ), "This is only valid for an impulse response"
     scaling = scaling if scaling is None else scaling.lower()
     assert scaling in (
         "amplitude spectrum",
@@ -1336,18 +1317,22 @@ def window_frequency_dependent(
 
     # Samples for each frequency according to number of cycles
     if f[0] == 0:
-        f[0] = f[1]
+        if len(f) > 1:
+            f[0] = f[1]
     cycles_per_freq_samples = np.round(fs / f * cycles).astype(int)
-    if f[0] == f[1]:
-        f[0] = 0
+    if len(f) > 1:
+        if f[0] == f[1]:
+            f[0] = 0
 
     spec = np.zeros((len(f), td.shape[1]), dtype=np.complex128)
 
+    # Alpha such that window is exactly end_window_value after the number of
+    # required samples for each frequency
     half = (td.shape[0] - 1) / 2
-    alpha_factor = np.log(4) ** 0.5 * half
-    ind_max = np.argmax(np.abs(td), axis=0)
+    alpha_factor = np.log(1 / (end_window_value) ** 2) ** 0.5 * half
 
     # Construct window vectors
+    ind_max = np.argmax(np.abs(td), axis=0)
     n = np.zeros_like(td)
     for ch in range(td.shape[1]):
         n[:, ch] = np.arange(-ind_max[ch], td.shape[0] - ind_max[ch])
@@ -1355,12 +1340,12 @@ def window_frequency_dependent(
     # Scaling function
     if scaling == "amplitude spectrum":
 
-        def scaling_func(window: np.ndarray):
+        def scaling_func(window: NDArray[np.float64]):
             return 2**0.5 / np.sum(window, axis=0, keepdims=True)
 
     elif scaling == "amplitude spectral density":
 
-        def scaling_func(window: np.ndarray):
+        def scaling_func(window: NDArray[np.float64]):
             return (
                 2
                 / np.sum(window**2, axis=0, keepdims=True)
@@ -1370,17 +1355,15 @@ def window_frequency_dependent(
     elif scaling == "fft":
         scaling_value = fast_length**-0.5
 
-        def scaling_func(window: np.ndarray):
+        def scaling_func(window: NDArray[np.float64]):
             return scaling_value
 
     else:
 
-        def scaling_func(window: np.ndarray):
+        def scaling_func(window: NDArray[np.float64]):
             return 1
 
-    # Precompute window factors:
-    # Alpha such that window is exactly 0.5 after the number of
-    # required samples for each frequency
+    # Precompute some window factors
     n = -0.5 * (n / half) ** 2
     alpha = (alpha_factor / cycles_per_freq_samples) ** 2
     for ind, ind_f in enumerate(inds_f):
@@ -1390,7 +1373,7 @@ def window_frequency_dependent(
 
 
 def warp_ir(
-    ir: Signal,
+    ir: ImpulseResponse,
     warping_factor: float,
     shift_ir: bool = True,
     total_length: int | None = None,
@@ -1402,7 +1385,7 @@ def warp_ir(
 
     Parameters
     ----------
-    ir : `Signal`
+    ir : `ImpulseResponse`
         Impulse response to (un)warp.
     warping_factor : float
         Warping factor. It has to be in the range ]-1; 1[.
@@ -1442,7 +1425,9 @@ def warp_ir(
       NY, USA, 2001, pp. 35-38, doi: 10.1109/ASPAA.2001.969536.
 
     """
-    assert ir.signal_type in ("rir", "ir"), "Signal has to be an IR or a RIR"
+    assert (
+        type(ir) is ImpulseResponse
+    ), "This is only valid for an impulse response"
     assert np.abs(warping_factor) < 1, "Warping factor has to be in ]-1; 1["
 
     td = ir.time_data
@@ -1463,39 +1448,41 @@ def warp_ir(
     return f_unwarped, warped_ir
 
 
-def find_ir_latency(ir: Signal) -> np.ndarray:
+def find_ir_latency(ir: ImpulseResponse) -> NDArray[np.float64]:
     """Find the subsample maximum of each channel of the IR using the its
     minimum phase equivalent.
 
     Parameters
     ----------
-    ir : `Signal`
+    ir : `ImpulseResponse`
         Impulse response to find the maximum.
 
     Returns
     -------
-    latency_samples : `np.ndarray`
+    latency_samples : NDArray[np.float64]
         Array with the position of each channel's maximum in samples.
 
     """
-    assert ir.signal_type in ("rir", "ir"), "Only valid for rir or ir"
+    assert (
+        type(ir) is ImpulseResponse
+    ), "This is only valid for an impulse response"
     min_ir = min_phase_ir(ir)
-    return latency(ir, min_ir, 1)
+    return latency(ir, min_ir, 1)[0]
 
 
 def harmonics_from_chirp_ir(
-    ir: Signal,
+    ir: ImpulseResponse,
     chirp_range_hz: list,
     chirp_length_s: float,
     n_harmonics: int = 5,
     offset_percentage: float = 0.05,
-) -> list[Signal]:
+) -> list[ImpulseResponse]:
     """Get the individual harmonics (distortion) IRs of an IR computed with
     an exponential chirp.
 
     Parameters
     ----------
-    ir : `Signal`
+    ir : `ImpulseResponse`
         Impulse response obtained through deconvolution with an exponential
         chirp.
     chirp_range_hz : list of length 2
@@ -1513,7 +1500,7 @@ def harmonics_from_chirp_ir(
 
     Returns
     -------
-    harmonics : list[Signal]
+    harmonics : list[ImpulseResponse]
         List containing the IRs of each harmonic in ascending order. The
         fundamental is not in the list.
 
@@ -1524,10 +1511,9 @@ def harmonics_from_chirp_ir(
       not be checked in this function.
 
     """
-    assert ir.signal_type in (
-        "ir",
-        "rir",
-    ), "Signal type has to be either ir or rir"
+    assert (
+        type(ir) is ImpulseResponse
+    ), "This is only valid for an impulse response"
     assert (
         offset_percentage < 1 and offset_percentage >= 0
     ), "Offset must be smaller than one"
@@ -1573,22 +1559,21 @@ def harmonics_from_chirp_ir(
 
 
 def harmonic_distortion_analysis(
-    ir: Signal | list[Signal],
+    ir: ImpulseResponse | list[ImpulseResponse],
     chirp_range_hz: list | None = None,
     chirp_length_s: float | None = None,
     n_harmonics: int | None = 8,
     smoothing: int = 12,
     generate_plot: bool = True,
 ) -> dict:
-    """
-    Analyze non-linear distortion coming from an IR measured with an
+    """Analyze non-linear distortion coming from an IR measured with an
     exponential chirp. The range of the chirp and its length must be known.
     The distortion spectra of each harmonic, as well as THD+N and THD, are
     returned. Optionally, a plot can be generated.
 
     Parameters
     ----------
-    ir : `Signal` or list[`Signal`]
+    ir : `ImpulseResponse` or list[`ImpulseResponse`]
         Impulse response. It should only have one channel. Alternatively,
         a list containing the fundamental IR and all harmonics can be passed,
         in which case `chirp_range_hz`, `chirp_length_s` and `n_harmonics`
@@ -1636,7 +1621,7 @@ def harmonic_distortion_analysis(
     """
     if type(ir) is list:
         for each_ir in ir:
-            assert type(each_ir) is Signal, "Unsupported type"
+            assert isinstance(each_ir, ImpulseResponse), "Unsupported type"
             assert (
                 each_ir.number_of_channels == 1
             ), "Only single-channel IRs are supported"
@@ -1650,7 +1635,7 @@ def harmonic_distortion_analysis(
             chirp_range_hz = [0, ir2.sampling_rate_hz // 2]
 
         passed_harmonics = True
-    elif type(ir) is Signal:
+    elif isinstance(ir, ImpulseResponse):
         assert (
             chirp_length_s is not None
             and chirp_range_hz is not None
@@ -1777,20 +1762,19 @@ def harmonic_distortion_analysis(
 
 
 def trim_ir(
-    ir: Signal,
+    ir: ImpulseResponse,
     channel: int = 0,
     start_offset_s: float = 20e-3,
-) -> tuple[Signal, int, int]:
-    """
-    Trim an IR in the beginning and end. This method acts only on one channel
-    and returns it trimmed. For defining the ending, a smooth envelope of the
-    energy time curve (ETC) is used, as well as the assumption that the energy
-    should decay monotonically after the impulse arrives. See notes for
+) -> tuple[ImpulseResponse, int, int]:
+    """Trim an IR in the beginning and end. This method acts only on one
+    channel and returns it trimmed. For defining the ending, a smooth envelope
+    of the energy time curve (ETC) is used, as well as the assumption that the
+    energy should decay monotonically after the impulse arrives. See notes for
     details.
 
     Parameters
     ----------
-    ir : `Signal`
+    ir : `ImpulseResponse`
         Impulse response to trim.
     channel : int, optional
         Channel to take from `rir`. Default: 0.
@@ -1802,7 +1786,7 @@ def trim_ir(
 
     Returns
     -------
-    trimmed_ir : `Signal`
+    trimmed_ir : `ImpulseResponse`
         IR with the new length.
     start : int
         Start index of the trimmed IR in the original vector.

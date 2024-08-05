@@ -1,8 +1,9 @@
-from .filter_class import Filter
-from .signal_class import Signal
+from .filter import Filter
+from .impulse_response import ImpulseResponse
 import numpy as np
-from scipy.integrate import cumulative_simpson
+from scipy.integrate import cumulative_trapezoid
 from scipy.interpolate import interp1d
+from numpy.typing import NDArray
 from .._general_helpers import (
     _correct_for_real_phase_spectrum,
     _pad_trim,
@@ -19,10 +20,10 @@ class PhaseLinearizer:
 
     def __init__(
         self,
-        phase_response: np.ndarray,
+        phase_response: NDArray[np.float64],
         time_data_length_samples: int,
         sampling_rate_hz: int,
-        target_group_delay_samples: np.ndarray | None = None,
+        target_group_delay_samples: NDArray[np.float64] | None = None,
     ):
         """PhaseLinearizer creates an FIR filter that can linearize a phase
         response. Use the method `set_parameters` to define specific design
@@ -30,16 +31,16 @@ class PhaseLinearizer:
 
         Parameters
         ----------
-        phase_response : `np.ndarray`
+        phase_response : NDArray[np.float64]
             Wrapped phase response that should be linearized. It is expected
             to contain only the positive frequencies (including dc and
             eventually nyquist).
-        time_data_length_samples : `np.ndarray`
+        time_data_length_samples : NDArray[np.float64]
             Length of the time signal that gave the phase response.
         sampling_rate_hz : int
             Sampling rate corresponding to the passed phase response. It is
             also used for the designed FIR filter.
-        target_group_delay_samples : `np.ndarray` or `None`, optional
+        target_group_delay_samples : NDArray[np.float64] or `None`, optional
             If passed, this overwrites the phase response and becomes the
             target for the FIR filter. It must be given in samples for the
             whole spectrum (only positive frequencies). For producing
@@ -56,18 +57,21 @@ class PhaseLinearizer:
             f"Phase response with length {len(phase_response)} and "
             + f"length {time_data_length_samples} do not match."
         )
+        assert (
+            phase_response.ndim == 1
+        ), "Phase response should have only one dimension"
         self.phase_response = phase_response
         self.sampling_rate_hz = sampling_rate_hz
         self.set_parameters()
         if target_group_delay_samples is not None:
             self._set_target_group_delay(target_group_delay_samples)
 
-    def _set_target_group_delay(self, target_group_delay: np.ndarray):
+    def _set_target_group_delay(self, target_group_delay: NDArray[np.float64]):
         """Set target group delay to use instead of phase response.
 
         Parameters
         ----------
-        target_group_delay : `np.ndarray`
+        target_group_delay : NDArray[np.float64]
             Target group delay (in samples) to use.
 
         """
@@ -127,12 +131,10 @@ class PhaseLinearizer:
             sampling_rate_hz=self.sampling_rate_hz,
         )
 
-    def get_filter_as_ir(self) -> Signal:
-        return Signal(
-            None, self._design(), self.sampling_rate_hz, signal_type="ir"
-        )
+    def get_filter_as_ir(self) -> ImpulseResponse:
+        return ImpulseResponse(None, self._design(), self.sampling_rate_hz)
 
-    def _design(self) -> np.ndarray:
+    def _design(self) -> NDArray[np.float64]:
         """Compute filter."""
         if not hasattr(self, "target_group_delay"):
             gd = self._get_group_delay()
@@ -189,7 +191,7 @@ class PhaseLinearizer:
             gd_time_length_samples = new_gd_time_length_samples
 
         # Get new phase using group target group delay
-        new_phase = -cumulative_simpson(target_gd, initial=0)
+        new_phase = -cumulative_trapezoid(target_gd, initial=0)
         # Correct if nyquist is given
         if gd_time_length_samples % 2 == 0:
             new_phase = _correct_for_real_phase_spectrum(
@@ -207,7 +209,7 @@ class PhaseLinearizer:
         ir = _pad_trim(ir, trim_length)
         return ir
 
-    def _get_group_delay(self) -> np.ndarray:
+    def _get_group_delay(self) -> NDArray[np.float64]:
         """Return the unscaled group delay."""
         return -np.gradient(np.unwrap(self.phase_response))
 

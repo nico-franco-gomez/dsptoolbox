@@ -9,10 +9,11 @@ import numpy as np
 import soundfile as sf
 from matplotlib.figure import Figure
 from matplotlib.axes import Axes
-from scipy.signal import convolve
+from scipy.signal import oaconvolve
+from numpy.typing import NDArray
 
 from ..plots import general_plot, general_subplots_line, general_matrix_plot
-from ._plots import _csm_plot
+from .plots import _csm_plot
 from .._general_helpers import (
     _get_normalized_spectrum,
     _pad_trim,
@@ -40,8 +41,6 @@ class Signal:
         path: str | None = None,
         time_data=None,
         sampling_rate_hz: int | None = None,
-        signal_type: str = "general",
-        signal_id: str = "",
         constrain_amplitude: bool = True,
     ):
         """Signal class that saves time data, channel and sampling rate
@@ -52,18 +51,11 @@ class Signal:
         path : str, optional
             A path to audio files. Reading is done with the soundfile library.
             Wave and Flac audio files are accepted. Default: `None`.
-        time_data : array-like, `np.ndarray`, optional
+        time_data : array-like, NDArray[np.float64], optional
             Time data of the signal. It is saved as a matrix with the form
             (time samples, channel number). Default: `None`.
         sampling_rate_hz : int, optional
             Sampling rate of the signal in Hz. Default: `None`.
-        signal_type : str, optional
-            A generic signal type. Some functionalities are only unlocked for
-            signal types `'ir'`, `'h1'`, `'h2'`, `'h3'`, `'rir'`, `'chirp'`,
-            `'noise'` or `'dirac'`. Default: `'general'`.
-        signal_id : str, optional
-            An even more generic signal id that can be set by the user.
-            Default: `''`.
         constrain_amplitude : bool, optional
             When `True`, audio is normalized to 0 dBFS peak level in case that
             there are amplitude values greater than 1. Otherwise, there is no
@@ -87,12 +79,8 @@ class Signal:
             plot_csm.
         General:
             save_signal, get_stream_samples.
-        Only for `signal_type in ('rir', 'ir', 'h1', 'h2', 'h3')`:
-            set_window, set_coherence, plot_group_delay, plot_coherence.
 
         """
-        self.signal_id = signal_id
-        self.signal_type = signal_type
         # Handling amplitude
         self.constrain_amplitude = constrain_amplitude
         self.scale_factor = None
@@ -123,13 +111,56 @@ class Signal:
             ), "A sampling rate should be passed!"
         self.sampling_rate_hz = sampling_rate_hz
         self.time_data = time_data
-        if signal_type in ("rir", "ir", "h1", "h2", "h3", "chirp", "dirac"):
-            self.set_spectrum_parameters(method="standard", scaling=None)
-        else:
-            self.set_spectrum_parameters()
+        self.set_spectrum_parameters()
         self.set_csm_parameters()
         self.set_spectrogram_parameters()
         self._generate_metadata()
+
+    @staticmethod
+    def from_file(path: str):
+        """Create a signal from a path to a wav or flac audio file.
+
+        Parameters
+        ----------
+        path : str
+            Path to file.
+
+        Returns
+        -------
+        Signal
+
+        """
+        return Signal(path)
+
+    @staticmethod
+    def from_time_data(
+        time_data: NDArray[np.float64],
+        sampling_rate_hz: int,
+        constrain_amplitude: bool = True,
+    ):
+        """Create a signal from an array of PCM samples.
+
+        Parameters
+        ----------
+        time_data : array-like, NDArray[np.float64], optional
+            Time data of the signal. It is saved as a matrix with the form
+            (time samples, channel number). Default: `None`.
+        sampling_rate_hz : int, optional
+            Sampling rate of the signal in Hz. Default: `None`.
+        constrain_amplitude : bool, optional
+            When `True`, audio is normalized to 0 dBFS peak level in case that
+            there are amplitude values greater than 1. Otherwise, there is no
+            normalization and the audio data is not constrained to [-1, 1].
+            A warning is always shown when audio gets normalized and the used
+            normalization factor is saved as `amplitude_scale_factor`.
+            Default: `True`.
+
+        Returns
+        -------
+        Signal
+
+        """
+        return Signal(None, time_data, sampling_rate_hz, constrain_amplitude)
 
     def __update_state(self):
         """Internal update of object state. If for instance time data gets
@@ -155,8 +186,6 @@ class Signal:
         self.info["signal_length_seconds"] = (
             self.time_data.shape[0] / self.sampling_rate_hz
         )
-        self.info["signal_type"] = self.signal_type
-        self.info["signal_id"] = self.signal_id
 
     def _generate_time_vector(self):
         """Internal method to generate a time vector on demand."""
@@ -167,13 +196,13 @@ class Signal:
 
     # ======== Properties and setters =========================================
     @property
-    def time_data(self) -> np.ndarray:
+    def time_data(self) -> NDArray[np.float64]:
         return self.__time_data.copy()
 
     @time_data.setter
     def time_data(self, new_time_data):
         # Shape of Time Data array
-        if not type(new_time_data) is np.ndarray:
+        if not type(new_time_data) is NDArray[np.float64]:
             new_time_data = np.asarray(new_time_data)
         if new_time_data.ndim > 2:
             new_time_data = new_time_data.squeeze()
@@ -232,24 +261,6 @@ class Signal:
         self.__sampling_rate_hz = new_sampling_rate_hz
 
     @property
-    def signal_type(self) -> str:
-        return self.__signal_type
-
-    @signal_type.setter
-    def signal_type(self, new_signal_type):
-        assert type(new_signal_type) is str, "Signal type must be a string"
-        self.__signal_type = new_signal_type.lower()
-
-    @property
-    def signal_id(self) -> str:
-        return self.__signal_id
-
-    @signal_id.setter
-    def signal_id(self, new_signal_id: str):
-        assert type(new_signal_id) is str, "Signal ID must be a string"
-        self.__signal_id = new_signal_id.lower()
-
-    @property
     def number_of_channels(self) -> int:
         return self.__number_of_channels
 
@@ -263,21 +274,19 @@ class Signal:
         self.__number_of_channels = new_number
 
     @property
-    def time_vector_s(self) -> np.ndarray:
+    def time_vector_s(self) -> NDArray[np.float64]:
         if self.__time_vector_update:
             self._generate_time_vector()
         return self.__time_vector_s
 
     @property
-    def time_data_imaginary(self) -> np.ndarray | None:
+    def time_data_imaginary(self) -> NDArray[np.float64] | None:
         if self.__time_data_imaginary is None:
-            # warn('Imaginary part of time data was called, but there is ' +
-            #      'None. None is returned.')
             return None
         return self.__time_data_imaginary.copy()
 
     @time_data_imaginary.setter
-    def time_data_imaginary(self, new_imag: np.ndarray):
+    def time_data_imaginary(self, new_imag: NDArray[np.float64]):
         if new_imag is not None:
             assert (
                 new_imag.shape == self.__time_data.shape
@@ -371,14 +380,6 @@ class Signal:
             "welch",
             "standard",
         ), f"{method} is not a valid method. Use welch or standard"
-        if self.signal_type in ("h1", "h2", "h3", "rir", "ir"):
-            if method != "standard":
-                method = "standard"
-                warn(
-                    f"For a signal of type {self.signal_type} "
-                    + "the spectrum has to be the standard one and not welch."
-                    + " This has been automatically changed."
-                )
         _new_spectrum_parameters = dict(
             method=method,
             smoothe=smoothe,
@@ -400,50 +401,6 @@ class Signal:
             if not all(handler):
                 self._spectrum_parameters = _new_spectrum_parameters
                 self.__spectrum_state_update = True
-
-    def set_window(self, window: np.ndarray):
-        """Sets the window used for the IR. It only works for
-        `signal_type in ('ir', 'h1', 'h2', 'h3', 'rir')`.
-
-        Parameters
-        ----------
-        window : `np.ndarray`
-            Window used for the IR.
-
-        """
-        valid_signal_types = ("ir", "h1", "h2", "h3", "rir")
-        assert self.signal_type in valid_signal_types, (
-            f"{self.signal_type} is not valid. Please set it to ir or "
-            + "h1, h2, h3, rir"
-        )
-        assert (
-            window.shape == self.time_data.shape
-        ), f"{window.shape} does not match shape {self.time_data.shape}"
-        self.window = window
-
-    def set_coherence(self, coherence: np.ndarray):
-        """Sets the coherence measurements of the transfer function.
-        It only works for `signal_type = ('ir', 'h1', 'h2', 'h3', 'rir')`.
-
-        Parameters
-        ----------
-        coherence : `np.ndarray`
-            Coherence matrix.
-
-        """
-        valid_signal_types = ("ir", "h1", "h2", "h3", "rir")
-        assert self.signal_type in valid_signal_types, (
-            f"{self.signal_type} is not valid. Please set it to ir or "
-            + "h1, h2, h3, rir"
-        )
-        assert coherence.shape[0] == (
-            self.time_data.shape[0] // 2 + 1
-        ), "Length of signals and given coherence do not match"
-        assert coherence.shape[1] == self.number_of_channels, (
-            "Number of channels between given coherence and signal "
-            + "does not match"
-        )
-        self.coherence = coherence
 
     def set_csm_parameters(
         self,
@@ -574,7 +531,7 @@ class Signal:
     def add_channel(
         self,
         path: str | None = None,
-        new_time_data: np.ndarray | None = None,
+        new_time_data: NDArray[np.float64] | None = None,
         sampling_rate_hz: int | None = None,
         padding_trimming: bool = True,
     ):
@@ -584,7 +541,7 @@ class Signal:
         ----------
         path : str, optional
             Path to the file containing new channel information.
-        new_time_data : `np.ndarray`, optional
+        new_time_data : NDArray[np.float64], optional
             np.array with new channel data.
         sampling_rate_hz : int, optional
             Sampling rate for the new data
@@ -607,7 +564,7 @@ class Signal:
             f"{sampling_rate_hz} does not match {self.sampling_rate_hz} "
             + "as the sampling rate"
         )
-        if not type(new_time_data) is np.ndarray:
+        if not type(new_time_data) is NDArray[np.float64]:
             new_time_data = np.array(new_time_data)
         if new_time_data.ndim > 2:
             new_time_data = new_time_data.squeeze()
@@ -644,10 +601,6 @@ class Signal:
         self.time_data = np.concatenate(
             [self.time_data, new_time_data], axis=1
         )
-        if hasattr(self, "window"):
-            self.window = np.concatenate(
-                [self.window, np.ones(new_time_data.shape)], axis=1
-            )
         self.__update_state()
 
     def remove_channel(self, channel_number: int = -1):
@@ -724,14 +677,12 @@ class Signal:
         )
         new_sig = self.copy()
         new_sig.time_data = self.time_data[:, channels]
-        if hasattr(new_sig, "window"):
-            new_sig.window = new_sig.window[:, channels]
         return new_sig
 
     # ======== Getters ========================================================
     def get_spectrum(
         self, force_computation=False
-    ) -> tuple[np.ndarray, np.ndarray]:
+    ) -> tuple[NDArray[np.float64], NDArray[np.complex128]]:
         """Returns spectrum.
 
         Parameters
@@ -741,9 +692,9 @@ class Signal:
 
         Returns
         -------
-        spectrum_freqs : `np.ndarray`
+        spectrum_freqs : NDArray[np.float64]
             Frequency vector.
-        spectrum : `np.ndarray`
+        spectrum : NDArray[np.complex128]
             Spectrum matrix for each channel.
 
         """
@@ -820,15 +771,15 @@ class Signal:
 
     def get_csm(
         self, force_computation=False
-    ) -> tuple[np.ndarray, np.ndarray]:
+    ) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
         """Get Cross spectral matrix for all channels with the shape
         (frequencies, channels, channels).
 
         Returns
         -------
-        f_csm : `np.ndarray`
+        f_csm : NDArray[np.float64]
             Frequency vector.
-        csm : `np.ndarray`
+        csm : NDArray[np.float64]
             Cross spectral matrix with shape (frequency, channels, channels).
 
         """
@@ -851,7 +802,9 @@ class Signal:
 
     def get_spectrogram(
         self, force_computation: bool = False
-    ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    ) -> tuple[
+        NDArray[np.float64], NDArray[np.float64], NDArray[np.complex128]
+    ]:
         """Returns a matrix containing the STFT of a specific channel.
 
         Parameters
@@ -861,11 +814,11 @@ class Signal:
 
         Returns
         -------
-        t_s : `np.ndarray`
+        t_s : NDArray[np.float64]
             Time vector.
-        f_hz : `np.ndarray`
+        f_hz : NDArray[np.float64]
             Frequency vector.
-        spectrogram : `np.ndarray`
+        spectrogram : NDArray[np.complex128]
             Complex spectrogram with shape (frequency, time, channel).
 
         Notes
@@ -898,23 +851,6 @@ class Signal:
             self.spectrogram[2],
         )
         return t_s, f_hz, spectrogram
-
-    def get_coherence(self) -> tuple[np.ndarray, np.ndarray]:
-        """Returns the coherence matrix.
-
-        Returns
-        -------
-        f : `np.ndarray`
-            Frequency vector.
-        coherence : `np.ndarray`
-            Coherence matrix.
-
-        """
-        assert hasattr(
-            self, "coherence"
-        ), "There is no coherence data saved in the Signal object"
-        f, _ = self.get_spectrum()
-        return f, self.coherence
 
     # ======== Plots ==========================================================
     def plot_magnitude(
@@ -1044,12 +980,6 @@ class Signal:
 
         for n in range(self.number_of_channels):
             mx = np.max(np.abs(self.time_data[:, n])) * 1.1
-            if hasattr(self, "window"):
-                ax[n].plot(
-                    self.time_vector_s,
-                    self.window[:, n] * mx / 1.1,
-                    alpha=0.75,
-                )
             if plot_complex:
                 ax[n].plot(
                     self.time_vector_s,
@@ -1106,19 +1036,14 @@ class Signal:
                 (int(window_length_s * self.sampling_rate_hz + 0.5), 1)
             )
             window /= len(window)
-            td_squared = convolve(
-                td_squared, window, mode="same", method="auto"
-            )
+            td_squared = oaconvolve(td_squared, window, mode="same", axes=0)
 
         complex_data = self.time_data_imaginary is not None
         if complex_data:
             td_squared_imaginary = self.time_data_imaginary**2.0
             if window_length_s > 0:
-                td_squared_imaginary = convolve(
-                    td_squared_imaginary,
-                    window,
-                    mode="same",
-                    method="auto",
+                td_squared_imaginary = oaconvolve(
+                    td_squared_imaginary, window, mode="same", axes=0
                 )
             complex_etc = 10 * np.log10(
                 np.clip(
@@ -1166,20 +1091,6 @@ class Signal:
         )
 
         for n in range(self.number_of_channels):
-            if hasattr(self, "window"):
-                ax[n].plot(
-                    self.time_vector_s,
-                    20
-                    * np.log10(
-                        np.clip(
-                            np.abs(self.window[:, n] / 1.1),
-                            a_min=1e-40,
-                            a_max=None,
-                        )
-                    )
-                    + max_values[n],
-                    alpha=0.75,
-                )
             if complex_data:
                 ax[n].plot(self.time_vector_s, complex_etc[:, n], alpha=0.75)
             if range_db is not None:
@@ -1195,8 +1106,6 @@ class Signal:
         smoothing: int = 0,
     ) -> tuple[Figure, Axes]:
         """Plots group delay of each channel.
-        Only works if `signal_type in ('ir', 'h1', 'h2', 'h3', 'rir', 'chirp',
-        'noise', 'dirac')`.
 
         Parameters
         ----------
@@ -1219,21 +1128,6 @@ class Signal:
             Axes.
 
         """
-        valid_signal_types = (
-            "rir",
-            "ir",
-            "h1",
-            "h2",
-            "h3",
-            "chirp",
-            "noise",
-            "dirac",
-        )
-        assert self.signal_type in valid_signal_types, (
-            f"{self.signal_type} is not valid. Please set it to ir or "
-            + "h1, h2, h3, rir"
-        )
-
         # Handle spectrum parameters
         prior_spectrum_parameters = self._spectrum_parameters
         self.set_spectrum_parameters("standard", scaling=None, smoothe=0)
@@ -1311,6 +1205,7 @@ class Signal:
                 factor = 10
             else:
                 factor = 20
+            zlabel = "dBFS"
         else:
             factor = 20
             zlabel = "dBFS"
@@ -1319,7 +1214,7 @@ class Signal:
 
         if self.calibrated_signal:
             stft_db -= 20 * np.log10(2e-5)
-            zlabel = "dB"
+            zlabel = "dB(SPL)"
 
         stft_db = np.nan_to_num(stft_db, nan=np.min(stft_db))
         fig, ax = general_matrix_plot(
@@ -1333,36 +1228,6 @@ class Signal:
             xlog=False,
             ylog=logfreqs,
             colorbar=True,
-            returns=True,
-        )
-        return fig, ax
-
-    def plot_coherence(self) -> tuple[Figure, list[Axes]]:
-        """Plots coherence measurements if there are any.
-
-        Returns
-        -------
-        fig : `matplotlib.figure.Figure`
-            Figure.
-        ax : list of `matplotlib.axes.Axes`
-            Axes.
-
-        """
-        if not hasattr(self, "coherence"):
-            raise AttributeError("There is no coherence data saved")
-        f, coh = self.get_coherence()
-        fig, ax = general_subplots_line(
-            x=f,
-            matrix=coh,
-            column=True,
-            sharey=True,
-            log=True,
-            ylabels=[
-                rf"$\gamma^2$ Coherence {n}"
-                for n in range(self.number_of_channels)
-            ],
-            xlabels="Frequency / Hz",
-            range_y=[-0.1, 1.1],
             returns=True,
         )
         return fig, ax
@@ -1389,8 +1254,8 @@ class Signal:
             1/smoothing-octave band. This only applies smoothing to the plot
             data. Default: 0.
         remove_ir_latency : bool, optional
-            If the signal is of type `"rir"` or `"ir"`, the delay of the
-            impulse can be removed. Default: `False`.
+            If the signal is an impulse response, the delay of the impulse can
+            be removed. Default: `False`.
 
         Returns
         -------
@@ -1416,10 +1281,6 @@ class Signal:
         self._spectrum_parameters["smoothe"] = prior_smoothing
 
         if remove_ir_latency:
-            assert self.signal_type in (
-                "rir",
-                "ir",
-            ), f"{self.signal_type} is not valid, use rir or ir"
             ph = _remove_ir_latency_from_phase(
                 f, ph, self.time_data, self.sampling_rate_hz, 8
             )
@@ -1530,14 +1391,12 @@ class Signal:
 
     def _get_metadata_string(self) -> str:
         """Helper for creating a string containing all signal info."""
-        txt = f"""Signal – ID: {self.info['signal_id']}\n"""
+        txt = ""
         temp = ""
         for n in range(len(txt)):
             temp += "-"
         txt += temp + "\n"
         for k in self.info.keys():
-            if k == "signal_id":
-                continue
             txt += f"""{str(k).replace('_', ' ').
                         capitalize()}: {self.info[k]}\n"""
         return txt
@@ -1585,7 +1444,7 @@ class Signal:
 
         Returns
         -------
-        sig : `np.ndarray` or `Signal`
+        sig : NDArray[np.float64] or `Signal`
             Numpy array with samples used for reproduction with shape
             (time_samples, channels) or `Signal` object.
         stop_flag : bool
@@ -1604,13 +1463,7 @@ class Signal:
             self.streaming_position + blocksize_samples
         )
         if signal_mode:
-            sig = Signal(
-                None,
-                sig,
-                self.sampling_rate_hz,
-                self.signal_type,
-                self.signal_id,
-            )
+            sig = Signal(None, sig, self.sampling_rate_hz)
             # In an audio stream, welch's method for acquiring a spectrum
             # is not very logical...
             sig.set_spectrum_parameters(method="standard", scaling=None)

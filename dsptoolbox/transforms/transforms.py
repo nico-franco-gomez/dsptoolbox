@@ -2,7 +2,8 @@
 Here are methods considered as somewhat special or less common.
 """
 
-from ..classes.signal_class import Signal
+from ..classes.signal import Signal
+from ..classes.impulse_response import ImpulseResponse
 from ..classes.multibandsignal import MultiBandSignal
 from ..plots import general_matrix_plot
 from .._standard import _reconstruct_framed_signal
@@ -16,6 +17,7 @@ from ..transforms._transforms import (
 )
 
 import numpy as np
+from numpy.typing import NDArray
 from scipy.signal.windows import get_window
 from scipy.fft import dct
 from scipy.signal import oaconvolve, resample_poly
@@ -32,7 +34,9 @@ except ModuleNotFoundError as e:
     pass
 
 
-def cepstrum(signal: Signal, mode="power") -> np.ndarray:
+def cepstrum(
+    signal: Signal, mode="power"
+) -> NDArray[np.float64] | NDArray[np.complex128]:
     """Returns the cepstrum of a given signal in the Quefrency domain.
 
     Parameters
@@ -45,7 +49,7 @@ def cepstrum(signal: Signal, mode="power") -> np.ndarray:
 
     Returns
     -------
-    ceps : `np.ndarray`
+    ceps : NDArray[np.float64] or NDArray[np.complex128]
         Cepstrum.
 
     References
@@ -81,8 +85,14 @@ def log_mel_spectrogram(
     generate_plot: bool = True,
     stft_parameters: dict | None = None,
 ) -> (
-    tuple[np.ndarray, np.ndarray, np.ndarray]
-    | tuple[np.ndarray, np.ndarray, np.ndarray, plt.Figure, plt.Axes]
+    tuple[NDArray[np.float64], NDArray[np.float64], NDArray[np.float64]]
+    | tuple[
+        NDArray[np.float64],
+        NDArray[np.float64],
+        NDArray[np.float64],
+        plt.Figure,
+        plt.Axes,
+    ]
 ):
     """Returns the log mel spectrogram of the specific signal and channel.
 
@@ -108,20 +118,20 @@ def log_mel_spectrogram(
 
     Returns
     -------
-    time_s : `np.ndarray`
+    time_s : NDArray[np.float64]
         Time vector.
-    f_mel : `np.ndarray`
+    f_mel : NDArray[np.float64]
         Frequency vector in Mel.
-    log_mel_sp : `np.ndarray`
+    log_mel_sp : NDArray[np.float64]
         Log mel spectrogram with shape (frequency, time frame, channel).
 
     When `generate_plot=True`:
 
-    time_s : `np.ndarray`
+    time_s : NDArray[np.float64]
         Time vector.
-    f_mel : `np.ndarray`
+    f_mel : NDArray[np.float64]
         Frequency vector in Mel.
-    log_mel_sp : `np.ndarray`
+    log_mel_sp : NDArray[np.float64]
         Log mel spectrogram with shape (frequency, time frame, channel).
     fig : `matplotlib.figure.Figure`
         Figure.
@@ -151,8 +161,11 @@ def log_mel_spectrogram(
 
 
 def mel_filterbank(
-    f_hz: np.ndarray, range_hz=None, n_bands: int = 40, normalize: bool = True
-) -> tuple[np.ndarray, np.ndarray]:
+    f_hz: NDArray[np.float64],
+    range_hz=None,
+    n_bands: int = 40,
+    normalize: bool = True,
+) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
     """Creates equidistant mel triangle filters in a given range. The returned
     matrix can be used to convert Hz into Mel in a spectrogram.
 
@@ -162,7 +175,7 @@ def mel_filterbank(
 
     Parameters
     ----------
-    f_hz : `np.ndarray`
+    f_hz : NDArray[np.float64]
         Frequency vector.
     range_hz : array-like with length 2, optional
         Range (in Hz) in which to create the filters. If `None`, the whole
@@ -175,9 +188,9 @@ def mel_filterbank(
 
     Returns
     -------
-    mel_filters : `np.ndarray`
+    mel_filters : NDArray[np.float64]
         Mel filters matrix with shape (bands, frequency).
-    mel_center_freqs : `np.ndarray`
+    mel_center_freqs : NDArray[np.float64]
         Vector containing mel center frequencies.
 
     """
@@ -288,12 +301,18 @@ def plot_waterfall(
 def mfcc(
     signal: Signal,
     channel: int = 0,
-    mel_filters: np.ndarray | None = None,
+    mel_filters: NDArray[np.float64] | None = None,
     generate_plot: bool = True,
     stft_parameters: dict | None = None,
 ) -> (
-    tuple[np.ndarray, np.ndarray, np.ndarray]
-    | tuple[np.ndarray, np.ndarray, np.ndarray, plt.Figure, plt.Axes]
+    tuple[NDArray[np.float64], NDArray[np.float64], NDArray[np.float64]]
+    | tuple[
+        NDArray[np.float64],
+        NDArray[np.float64],
+        NDArray[np.float64],
+        plt.Figure,
+        plt.Axes,
+    ]
 ):
     """Mel-frequency cepstral coefficients for a windowed signal are computed
     and returned using the discrete cosine transform of type 2 (see
@@ -307,7 +326,7 @@ def mfcc(
     channel : int, optional
         Channel of the signal for which to plot the MFCC when
         `generate_plot=True`. Default: 0.
-    mel_filters : `np.ndarray`, optional
+    mel_filters : NDArray[np.float64], optional
         Hz-to-Mel transformation matrix with shape (mel band, frequency Hz).
         It can be created using `mel_filterbank`. If `None` is passed, the
         filters are automatically computed regarding the whole
@@ -324,23 +343,23 @@ def mfcc(
 
     Returns
     -------
-    time_s : `np.ndarray`
+    time_s : NDArray[np.float64]
         Time vector.
-    f_mel : `np.ndarray`
+    f_mel : NDArray[np.float64]
         Frequency vector in mel. If `mel_filters` is passed, this is only a
         list with entries [0, n_mel_filters].
-    mfcc : `np.ndarray`
+    mfcc : NDArray[np.float64]
         Mel-frequency cepstral coefficients with shape (cepstral coefficients,
         time frame, channel).
 
     When `generate_plot=True`:
 
-    time_s : `np.ndarray`
+    time_s : NDArray[np.float64]
         Time vector.
-    f_mel : `np.ndarray`
+    f_mel : NDArray[np.float64]
         Frequency vector in mel. If `mel_filters` is passed, this is only a
         list with entries [0, n_mel_filters].
-    mfcc : `np.ndarray`
+    mfcc : NDArray[np.float64]
         Mel-frequency cepstral coefficients with shape (cepstral coefficients,
         time frame, channel).
     fig : `matplotlib.figure.Figure`
@@ -390,7 +409,7 @@ def mfcc(
 
 
 def istft(
-    stft: np.ndarray,
+    stft: NDArray[np.complex128],
     original_signal: Signal | None = None,
     parameters: dict | None = None,
     sampling_rate_hz: int | None = None,
@@ -411,7 +430,7 @@ def istft(
 
     Parameters
     ----------
-    stft : `np.ndarray`
+    stft : NDArray[np.complex128]
         Complex STFT with shape (frequency, time frame, channel). It is assumed
         that only positive frequencies (including 0) are present.
     original_signal : `Signal`, optional
@@ -538,8 +557,14 @@ def chroma_stft(
     compression: float = 0.5,
     plot_channel: int = -1,
 ) -> (
-    tuple[np.ndarray, np.ndarray, np.ndarray]
-    | tuple[np.ndarray, np.ndarray, np.ndarray, plt.Figure, plt.Axes]
+    tuple[NDArray[np.float64], NDArray[np.float64], NDArray[np.float64]]
+    | tuple[
+        NDArray[np.float64],
+        NDArray[np.float64],
+        NDArray[np.float64],
+        plt.Figure,
+        plt.Axes,
+    ]
 ):
     """This computes the Chroma Features and Pitch STFT. See [1] for details.
 
@@ -558,12 +583,12 @@ def chroma_stft(
 
     Returns
     -------
-    t : `np.ndarray`
+    t : NDArray[np.float64]
         Time vector corresponding to each time frame.
-    chroma_stft : `np.ndarray`
+    chroma_stft : NDArray[np.float64]
         Chroma Features with shape (note, time frame, channel). First index
         is C, second C#, etc. (Until B).
-    pitch_stft : `np.ndarray`
+    pitch_stft : NDArray[np.float64]
         Pitch log-STFT with shape (pitch, time frame, channel). First index
         is note 0 (MIDI), i.e., C0.
     When `plot_channel != -1`:
@@ -628,38 +653,52 @@ def chroma_stft(
 
 def cwt(
     signal: Signal,
-    frequencies: np.ndarray,
+    frequencies: NDArray[np.float64],
     wavelet: Wavelet | MorletWavelet,
-    channel: np.ndarray | None = None,
+    channel: NDArray[np.float64] | None = None,
     synchrosqueezed: bool = False,
-) -> np.ndarray:
+    apply_synchrosqueezed_normalization: bool = False,
+) -> NDArray[np.complex128]:
     """Returns a scalogram by means of the continuous wavelet transform.
 
     Parameters
     ----------
     signal : `Signal`
         Signal for which to compute the cwt.
-    frequencies : `np.ndarray`
+    frequencies : NDArray[np.float64]
         Frequencies to query with the wavelet.
     wavelet : `Wavelet` or `MorletWavelet`
         Type of wavelet to use. It must be a class inherited from the
         `Wavelet` class.
-    channel : `np.ndarray`, optional
+    channel : NDArray[np.float64], optional
         Channel for which to compute the cwt. If `None`, all channels are
         computed. Default: `None`.
     synchrosqueezed : bool, optional
         When `True`, the scalogram is synchrosqueezed using the phase
         transform. Default: `False`.
+    apply_synchrosqueezed_normalization : bool, optional
+        When `True`, each scale is scaled by taking into account the
+        normalization as shown in Eq. (2.4) of [1]. `False` does not apply
+        any normalization. This is only done for synchrosqueezed scalograms.
+        Default: `False`.
 
     Returns
     -------
-    scalogram : `np.ndarray`
+    scalogram : NDArray[np.complex128]
         Complex scalogram scalogram with shape (frequency, time sample,
         channel).
 
     Notes
     -----
     - Zero-padding in the beginning is done for reducing boundary effects.
+
+    References
+    ----------
+    - [1]: Ingrid Daubechies, Jianfeng Lu, Hau-Tieng Wu. Synchrosqueezed
+      wavelet transforms: An empirical mode decomposition-like tool. 2011.
+    - General information about synchrosqueezing:
+      https://dsp.stackexchange.com/questions/71398/synchrosqueezing-wavelet
+      -transform-explanation
 
     """
     if channel is None:
@@ -673,6 +712,7 @@ def cwt(
 
     for ind_f, f in enumerate(frequencies):
         wv = np.array(wavelet.get_wavelet(f, signal.sampling_rate_hz))
+        wv /= np.abs(wv).sum()
 
         scalogram[ind_f, ...] = oaconvolve(
             td, wv[..., None], axes=0, mode="same"
@@ -680,13 +720,18 @@ def cwt(
 
     if synchrosqueezed:
         scalogram = _squeeze_scalogram(
-            scalogram, frequencies, signal.sampling_rate_hz
+            scalogram,
+            frequencies,
+            signal.sampling_rate_hz,
+            apply_frequency_normalization=apply_synchrosqueezed_normalization,
         )
 
     return scalogram
 
 
-def hilbert(signal: Signal | MultiBandSignal) -> Signal | MultiBandSignal:
+def hilbert(
+    signal: Signal | ImpulseResponse | MultiBandSignal,
+) -> Signal | ImpulseResponse | MultiBandSignal:
     """Compute the analytic signal using the hilbert transform of the real
     signal.
 
@@ -712,7 +757,7 @@ def hilbert(signal: Signal | MultiBandSignal) -> Signal | MultiBandSignal:
         complex_ts = Signal.time_data + Signal.time_data_imaginary*1j
 
     """
-    if type(signal) is Signal:
+    if isinstance(signal, Signal):
         td = signal.time_data
 
         sp = np.fft.fft(td, axis=0)
@@ -738,14 +783,14 @@ def hilbert(signal: Signal | MultiBandSignal) -> Signal | MultiBandSignal:
 
 def vqt(
     signal: Signal,
-    channel: np.ndarray | None = None,
+    channel: NDArray[np.int_] | None = None,
     q: float = 1,
     gamma: float = 50,
     octaves: list = [1, 5],
     bins_per_octave: int = 24,
     a4_tuning: int = 440,
     window: str | tuple = "hann",
-) -> tuple[np.ndarray, np.ndarray]:
+) -> tuple[NDArray[np.float64], NDArray[np.complex128]]:
     """Variable-Q Transform. This is a special case of the continuous wavelet
     transform with complex morlet wavelets for the time-frequency analysis.
     Constant-Q Transform can be obtained by setting `gamma = 0`.
@@ -754,7 +799,7 @@ def vqt(
     ----------
     signal : `Signal`
         Signal for which to compute the cqt coefficients.
-    channel : `np.ndarray` or int, optional
+    channel : NDArray[np.float64] or int, optional
         Channel(s) for which to compute the cqt coefficients. If `None`,
         all channels are computed. Default: `None`.
     q : float, optional
@@ -781,9 +826,9 @@ def vqt(
 
     Returns
     -------
-    f : `np.ndarray`
+    f : NDArray[np.float64]
         Frequency vector.
-    vqt : `np.ndarray`
+    vqt : NDArray[np.complex128]
         VQT coefficients with shape (frequency, time samples, channel).
 
     References

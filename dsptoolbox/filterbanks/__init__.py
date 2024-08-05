@@ -31,6 +31,8 @@ Other:
 - `convert_into_lattice_filter()`: Turns a conventional filter into its
   lattice/ladder representation.
 - `pinking_filter()`: Get a -3 dB/octave filter.
+- `matched_biquad()`: Analog-matched biquad filters.
+- `gaussian_kernel()`: IIR first-order approximation of a gaussian window.
 
 """
 
@@ -44,11 +46,13 @@ from .filterbanks import (
     complementary_fir_filter,
     convert_into_lattice_filter,
     pinking_filter,
+    matched_biquad,
+    gaussian_kernel,
 )
 
-from ..classes._lattice_ladder_filter import LatticeLadderFilter
-from ..classes._phaseLinearizer import PhaseLinearizer
-from ..classes._svfilter import StateVariableFilter
+from ..classes.lattice_ladder_filter import LatticeLadderFilter
+from ..classes.phase_linearizer import PhaseLinearizer
+from ..classes.sv_filter import StateVariableFilter
 
 __all__ = [
     "linkwitz_riley_crossovers",
@@ -63,4 +67,6 @@ __all__ = [
     "PhaseLinearizer",
     "StateVariableFilter",
     "pinking_filter",
+    "matched_biquad",
+    "gaussian_kernel",
 ]

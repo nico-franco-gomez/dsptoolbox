@@ -7,10 +7,10 @@ under a same category.
 """
 
 import numpy as np
+from numpy.typing import NDArray
 import pickle
 from scipy.signal import resample_poly, convolve, hilbert
 
-# from scipy.special import iv as bessel_first_mod
 from fractions import Fraction
 from warnings import warn
 
@@ -22,8 +22,6 @@ from .classes import (
 )
 from ._standard import (
     _latency,
-    _center_frequencies_fractional_octaves_iec,
-    _exact_center_frequencies_fractional_octaves,
     _indices_above_threshold_dbfs,
     _detrend,
     _rms,
@@ -36,6 +34,7 @@ from ._general_helpers import (
     _check_format_in_path,
     _get_smoothing_factor_ema,
     _fractional_latency,
+    _get_correlation_of_latencies,
 )
 
 
@@ -43,7 +42,7 @@ def latency(
     in1: Signal | MultiBandSignal,
     in2: Signal | MultiBandSignal | None = None,
     polynomial_points: int = 0,
-) -> np.ndarray[int | float]:
+) -> tuple[NDArray[np.float64] | NDArray[np.int_], NDArray[np.float64]]:
     """Computes latency between two signals using the correlation method.
     If there is no second signal, the latency between the first and the other
     channels is computed. `in1` is to be understood as a delayed version
@@ -57,6 +56,10 @@ def latency(
     might fail to compute the root. In that case, integer latency will be
     returned for the respective channel. To avoid fractional latency, use
     `polynomial_points = 0`.
+
+    The quality of the estimation is assessed by computing the pearson
+    correlation coefficient between the two time series after compensating the
+    delay. See notes for details.
 
     Parameters
     ----------
@@ -74,10 +77,18 @@ def latency(
 
     Returns
     -------
-    lags : `np.ndarray`
-        Delays. For `Signal`, the output shape is (channel).
+    lags : NDArray[np.float64]
+        Delays in samples. For `Signal`, the output shape is (channel).
         In case in2 is `None`, the length is `channels - 1`. In the case of
         `MultiBandSignal`, output shape is (band, channel).
+    correlations : NDArray[np.float64]
+        Correlation for computed delays with the same shape as lags.
+
+    Notes
+    -----
+    - The correlation coefficients have values between [-1, 1]. The closer the
+      absolute value is to 1, the better the latency estimation. This is always
+      computed using the integer latency for performance.
 
     References
     ----------
@@ -113,9 +124,15 @@ def latency(
                 in1.number_of_channels > 1
             ), "Signal must have at least 2 channels to compare"
             td2 = None
-        return latency_func(
+        latencies = latency_func(
             in1.time_data, td2, polynomial_points=polynomial_points
         )
+        return latencies, _get_correlation_of_latencies(
+            td2 if td2 is not None else in1.time_data[:, 0][..., None],
+            in1.time_data if td2 is not None else in1.time_data[:, 1:],
+            np.round(latencies, 0).astype(np.int_),
+        )
+
     elif isinstance(in1, MultiBandSignal):
         if in2 is not None:
             assert isinstance(
@@ -132,8 +149,11 @@ def latency(
             lags = np.zeros(
                 (in1.number_of_bands, in1.number_of_channels), dtype=data_type
             )
+            correlations = np.zeros(
+                (in1.number_of_bands, in1.number_of_channels), dtype=np.float64
+            )
             for band in range(in1.number_of_bands):
-                lags[band, :] = latency(
+                lags[band, :], correlations[band, :] = latency(
                     in1.bands[band],
                     in2.bands[band],
                     polynomial_points=polynomial_points,
@@ -143,8 +163,12 @@ def latency(
                 (in1.number_of_bands, in1.number_of_channels - 1),
                 dtype=data_type,
             )
+            correlations = np.zeros(
+                (in1.number_of_bands, in1.number_of_channels - 1),
+                dtype=np.float64,
+            )
             for band in range(in1.number_of_bands):
-                lags[band, :] = latency(
+                lags[band, :], correlations[band, :] = latency(
                     in1.bands[band], None, polynomial_points=polynomial_points
                 )
         return lags
@@ -351,83 +375,6 @@ def resample(sig: Signal, desired_sampling_rate_hz: int) -> Signal:
     return new_sig
 
 
-def fractional_octave_frequencies(
-    num_fractions=1, frequency_range=(20, 20e3), return_cutoff=False
-) -> (
-    tuple[np.ndarray, np.ndarray, tuple[np.ndarray, np.ndarray]]
-    | tuple[np.ndarray, np.ndarray]
-):
-    """Return the octave center frequencies according to the IEC 61260:1:2014
-    standard. This implementation has been taken from the pyfar package. See
-    references.
-
-    For numbers of fractions other than `1` and `3`, only the
-    exact center frequencies are returned, since nominal frequencies are not
-    specified by corresponding standards.
-
-    Parameters
-    ----------
-    num_fractions : int, optional
-        The number of bands an octave is divided into. Eg., ``1`` refers to
-        octave bands and ``3`` to third octave bands. The default is ``1``.
-    frequency_range : array, tuple
-        The lower and upper frequency limits, the default is
-        ``frequency_range=(20, 20e3)``.
-
-    Returns
-    -------
-    nominal : array, float
-        The nominal center frequencies in Hz specified in the standard.
-        Nominal frequencies are only returned for octave bands and third octave
-        bands. Otherwise, an empty array is returned.
-    exact : array, float
-        The exact center frequencies in Hz, resulting in a uniform distribution
-        of frequency bands over the frequency range.
-    cutoff_freq : tuple, array, float
-        The lower and upper critical frequencies in Hz of the bandpass filters
-        for each band as a tuple corresponding to `(f_lower, f_upper)`.
-
-    References
-    ----------
-    - The pyfar package: https://github.com/pyfar/pyfar
-
-    """
-    nominal = np.array([])
-
-    f_lims = np.asarray(frequency_range)
-    if f_lims.size != 2:
-        raise ValueError(
-            "You need to specify a lower and upper limit frequency."
-        )
-    if f_lims[0] > f_lims[1]:
-        raise ValueError(
-            "The second frequency needs to be higher than the first."
-        )
-
-    if num_fractions in [1, 3]:
-        nominal, exact = _center_frequencies_fractional_octaves_iec(
-            nominal, num_fractions
-        )
-
-        mask = (nominal >= f_lims[0]) & (nominal <= f_lims[1])
-        nominal = nominal[mask]
-        exact = exact[mask]
-
-    else:
-        exact = _exact_center_frequencies_fractional_octaves(
-            num_fractions, f_lims
-        )
-
-    if return_cutoff:
-        octave_ratio = 10 ** (3 / 10)
-        freqs_upper = exact * octave_ratio ** (1 / 2 / num_fractions)
-        freqs_lower = exact * octave_ratio ** (-1 / 2 / num_fractions)
-        f_crit = (freqs_lower, freqs_upper)
-        return nominal, exact, f_crit
-    else:
-        return nominal, exact
-
-
 def normalize(
     sig: Signal | MultiBandSignal,
     peak_dbfs: float = -6,
@@ -561,94 +508,9 @@ def fade(
     return new_sig
 
 
-def erb_frequencies(
-    freq_range_hz=[20, 20000],
-    resolution: float = 1,
-    reference_frequency_hz: float = 1000,
-) -> np.ndarray:
-    """Get frequencies that are linearly spaced on the ERB frequency scale.
-    This implementation was taken and adapted from the pyfar package. See
-    references.
-
-    Parameters
-    ----------
-    freq_range : array-like, optional
-        The upper and lower frequency limits in Hz between which the frequency
-        vector is computed. Default: [20, 20e3].
-    resolution : float, optional
-        The frequency resolution in ERB units. 1 returns frequencies that are
-        spaced by 1 ERB unit, a value of 0.5 would return frequencies that are
-        spaced by 0.5 ERB units. Default: 1.
-    reference_frequency : float, optional
-        The reference frequency in Hz relative to which the frequency vector
-        is constructed. Default: 1000.
-
-    Returns
-    -------
-    frequencies : `np.ndarray`
-        The frequencies in Hz that are linearly distributed on the ERB scale
-        with a spacing given by `resolution` ERB units.
-
-    References
-    ----------
-    - The pyfar package: https://github.com/pyfar/pyfar
-    - B. C. J. Moore, An introduction to the psychology of hearing,
-      (Leiden, Boston, Brill, 2013), 6th ed.
-    - V. Hohmann, “Frequency analysis and synthesis using a gammatone
-      filterbank,” Acta Acust. united Ac. 88, 433-442 (2002).
-    - P. L. Søndergaard, and P. Majdak, “The auditory modeling toolbox,”
-      in The technology of binaural listening, edited by J. Blauert
-      (Heidelberg et al., Springer, 2013) pp. 33-56.
-
-    """
-
-    # check input
-    if (
-        not isinstance(freq_range_hz, (list, tuple, np.ndarray))
-        or len(freq_range_hz) != 2
-    ):
-        raise ValueError("freq_range must be an array like of length 2")
-    if freq_range_hz[0] > freq_range_hz[1]:
-        freq_range_hz = [freq_range_hz[1], freq_range_hz[0]]
-    if resolution <= 0:
-        raise ValueError("Resolution must be larger than zero")
-
-    # convert the frequency range and reference to ERB scale
-    # (Hohmann 2002, Eq. 16)
-    erb_range = (
-        9.2645
-        * np.sign(freq_range_hz)
-        * np.log(1 + np.abs(freq_range_hz) * 0.00437)
-    )
-    erb_ref = (
-        9.2645
-        * np.sign(reference_frequency_hz)
-        * np.log(1 + np.abs(reference_frequency_hz) * 0.00437)
-    )
-
-    # get the referenced range
-    erb_ref_range = np.array([erb_ref - erb_range[0], erb_range[1] - erb_ref])
-
-    # construct the frequencies on the ERB scale
-    n_points = np.floor(erb_ref_range / resolution).astype(int)
-    erb_points = (
-        np.arange(-n_points[0], n_points[1] + 1) * resolution + erb_ref
-    )
-
-    # convert to frequencies in Hz
-    frequencies = (
-        1
-        / 0.00437
-        * np.sign(erb_points)
-        * (np.exp(np.abs(erb_points) / 9.2645) - 1)
-    )
-
-    return frequencies
-
-
 def true_peak_level(
     signal: Signal | MultiBandSignal,
-) -> tuple[np.ndarray, np.ndarray]:
+) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
     """Computes true-peak level of a signal using the standardized method
     by the Rec. ITU-R BS.1770-4. See references.
 
@@ -659,10 +521,10 @@ def true_peak_level(
 
     Returns
     -------
-    true_peak_levels : `np.ndarray`
+    true_peak_levels : NDArray[np.float64]
         True-peak levels (in dBTP) as an array with shape (channels) or
         (band, channels) in case that the input signal is `MultiBandSignal`.
-    peak_levels : `np.ndarray`
+    peak_levels : NDArray[np.float64]
         Peak levels (in dBFS) as an array with shape (channels) or
         (band, channels) in case that the input signal is `MultiBandSignal`.
 
@@ -995,7 +857,9 @@ def detrend(
         raise TypeError("Pass either a Signal or a MultiBandSignal")
 
 
-def rms(sig: Signal | MultiBandSignal, in_dbfs: bool = True) -> np.ndarray:
+def rms(
+    sig: Signal | MultiBandSignal, in_dbfs: bool = True
+) -> NDArray[np.float64]:
     """Returns Root Mean Squared (RMS) value for each channel.
 
     Parameters
@@ -1008,7 +872,7 @@ def rms(sig: Signal | MultiBandSignal, in_dbfs: bool = True) -> np.ndarray:
 
     Returns
     -------
-    rms_values : `np.ndarray`
+    rms_values : NDArray[np.float64]
         Array with RMS values. If a `Signal` is passed, it has shape
         (channel). If a `MultiBandSignal` is passed, its shape is
         (bands, channel).
@@ -1178,7 +1042,6 @@ class CalibrationData:
 
         if isinstance(signal, Signal):
             calibrated_signal = signal.copy()
-            calibrated_signal.signal_id += " – Calibrated (time data in Pa)"
             calibrated_signal.constrain_amplitude = False
             calibrated_signal.time_data *= calibration_factors
             calibrated_signal.calibrated_signal = True
@@ -1187,7 +1050,6 @@ class CalibrationData:
             for b in calibrated_signal:
                 b.constrain_amplitude = False
                 b.time_data *= calibration_factors
-                b.signal_id += " – Calibrated (time data in Pa)"
                 b.calibrated_signal = True
         else:
             raise TypeError(
@@ -1221,7 +1083,7 @@ def envelope(
 
     Returns
     -------
-    `np.ndarray`
+    NDArray[np.float64]
         Signal envelope. It has the shape (time sample, channel) or
         (time sample, band, channel) in case of `MultiBandSignal`.
 

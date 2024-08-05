@@ -10,9 +10,11 @@ from fractions import Fraction
 from matplotlib.figure import Figure
 from matplotlib.axes import Axes
 import scipy.signal as sig
+from numpy.typing import NDArray, ArrayLike
 
-from .signal_class import Signal
-from ._filter import (
+from .signal import Signal
+from .impulse_response import ImpulseResponse
+from .filter_helpers import (
     _biquad_coefficients,
     _impulse,
     _group_delay_filter,
@@ -22,7 +24,7 @@ from ._filter import (
     _filter_and_downsample,
     _filter_and_upsample,
 )
-from ._plots import _zp_plot
+from .plots import _zp_plot
 from ..plots import general_plot
 from .._general_helpers import _check_format_in_path, _pad_trim
 
@@ -50,13 +52,13 @@ class Filter:
         `scipy.signal.firwin` and `_biquad_coefficients`. See down below for
         the parameters needed for creating the filters. Alternatively, you can
         pass directly the filter coefficients while setting
-        `filter_type = 'other'`.
+        `filter_type = "other"`.
 
         Parameters
         ----------
         filter_type : str, optional
-            String defining the filter type. Options are `'iir'`, `'fir'`,
-            `'biquad'` or `'other'`. Default: creates a dummy biquad bell
+            String defining the filter type. Options are `"iir"`, `"fir"`,
+            `"biquad"` or `"other"`. Default: creates a dummy biquad bell
             filter with no gain.
         filter_configuration : dict, optional
             Dictionary containing configuration for the filter.
@@ -72,31 +74,31 @@ class Filter:
             filter_id (optional).
 
             - order (int): Filter order
-            - freqs (float, array-like): array with len 2 when 'bandpass'
-              or 'bandstop'.
-            - type_of_pass (str): 'bandpass', 'lowpass', 'highpass',
-              'bandstop'.
-            - filter_design_method (str): Default: 'butter'. Supported methods
-              are: 'butter', 'bessel', 'ellip', 'cheby1', 'cheby2'.
-            - bandpass_ripple (float): maximum bandpass ripple in dB for
-              'ellip' and 'cheby1'.
-            - stopband_ripple (float): maximum stopband ripple in dB for
-              'ellip' and 'cheby2'.
+            - freqs (float, array-like): array with len 2 when "bandpass"
+              or "bandstop".
+            - type_of_pass (str): "bandpass", "lowpass", "highpass",
+              "bandstop".
+            - filter_design_method (str): Default: "butter". Supported methods
+              are: "butter", "bessel", "ellip", "cheby1", "cheby2".
+            - passband_ripple (float): maximum passband ripple in dB for
+              "ellip" and "cheby1".
+            - stopband_attenuation (float): minimum stopband attenuation in dB
+              for "ellip" and "cheby2".
 
         For `fir`:
             Keys: order, freqs, type_of_pass, filter_design_method (optional),
-            width (optional, necessary for 'kaiser'), filter_id (optional).
+            width (optional, necessary for "kaiser"), filter_id (optional).
 
             - order (int): Filter order, i.e., number of taps - 1.
-            - freqs (float, array-like): array with len 2 when 'bandpass'
-              or 'bandstop'.
-            - type_of_pass (str): 'bandpass', 'lowpass', 'highpass',
-              'bandstop'.
+            - freqs (float, array-like): array with len 2 when "bandpass"
+              or "bandstop".
+            - type_of_pass (str): "bandpass", "lowpass", "highpass",
+              "bandstop".
             - filter_design_method (str): Window to be used. Default:
-              'hamming'. Supported types are: 'boxcar', 'triang',
-              'blackman', 'hamming', 'hann', 'bartlett', 'flattop',
-              'parzen', 'bohman', 'blackmanharris', 'nuttall', 'barthann',
-              'cosine', 'exponential', 'tukey', 'taylor'.
+              "hamming". Supported types are: "boxcar", "triang",
+              "blackman", "hamming", "hann", "bartlett", "flattop",
+              "parzen", "bohman", "blackmanharris", "nuttall", "barthann",
+              "cosine", "exponential", "tukey", "taylor".
             - width (float): estimated width of transition region in Hz for
               kaiser window. Default: `None`.
 
@@ -105,7 +107,8 @@ class Filter:
 
             - eq_type (int or str): 0 = Peaking, 1 = Lowpass, 2 = Highpass,
               3 = Bandpass_skirt, 4 = Bandpass_peak, 5 = Notch, 6 = Allpass,
-              7 = Lowshelf, 8 = Highshelf.
+              7 = Lowshelf, 8 = Highshelf, 9 = Lowpass_first_order,
+              10 = Highpass_first_order.
             - freqs: float or array-like with length 2 (depending on eq_type).
             - gain (float): in dB.
             - q (float): Q-factor.
@@ -135,6 +138,194 @@ class Filter:
                 "filter_id": "dummy",
             }
         self.set_filter_parameters(filter_type.lower(), filter_configuration)
+
+    @staticmethod
+    def iir_design(
+        order: int,
+        frequency_hz: float | ArrayLike,
+        type_of_pass: str,
+        filter_design_method: str,
+        passband_ripple_db: float | None = None,
+        stopband_attenuation_db: float | None = None,
+        sampling_rate_hz: int | None = None,
+    ):
+        """Return an IIR filter using `scipy.signal.iirfilter`. IIR filters are
+        always implemented as SOS by default.
+
+        Parameters
+        ----------
+        order : int
+            Filter order.
+        frequency_hz : float | ArrayLike
+            Frequency or frequencies of the filter in Hz.
+        type_of_pass : str, {"lowpass", "highpass", "bandpass", "bandstop"}
+            Type of filter.
+        filter_design_method : str, {"butter", "bessel", "ellip", "cheby1",\
+            "cheby2"}
+            Design method for the IIR filter.
+        passband_ripple_db : float, None, optional
+            Passband ripple in dB for "cheby1" and "ellip". Default: None.
+        stopband_attenuation_db : float, None, optional
+            Passband ripple in dB for "cheby2" and "ellip". Default: None.
+        sampling_rate_hz : int
+            Sampling rate in Hz.
+
+        Returns
+        -------
+        Filter
+
+        """
+        return Filter(
+            "iir",
+            {
+                "order": order,
+                "freqs": frequency_hz,
+                "type_of_pass": type_of_pass,
+                "filter_design_method": filter_design_method,
+                "passband_ripple": passband_ripple_db,
+                "stopband_attenuation": stopband_attenuation_db,
+            },
+            sampling_rate_hz,
+        )
+
+    @staticmethod
+    def biquad(
+        eq_type: str,
+        frequency_hz: float | ArrayLike,
+        gain_db: float,
+        q: float,
+        sampling_rate_hz: int,
+    ):
+        """Return a biquad filter according to [1].
+
+        Parameters
+        ----------
+        eq_type : str, {"peaking", "lowpass", "highpass", "bandpass_skirt",\
+            "bandpass_peak", "notch", "allpass", "lowshelf", "highshelf", \
+            "lowpass_first_order", "highpass_first_order", "inverter"}
+            EQ type.
+        frequency_hz : float
+            Frequency of the biquad in Hz.
+        gain_db : float
+            Gain of biquad in dB.
+        q : float
+            Quality factor.
+        sampling_rate_hz : int
+            Sampling rate in Hz.
+
+        Returns
+        -------
+        Filter
+
+        Reference
+        ---------
+        - [1]: https://webaudio.github.io/Audio-EQ-Cookbook/audio-eq-
+            cookbook.html.
+
+        """
+        return Filter(
+            "biquad",
+            {
+                "eq_type": eq_type,
+                "freqs": frequency_hz,
+                "gain": gain_db,
+                "q": q,
+            },
+            sampling_rate_hz,
+        )
+
+    @staticmethod
+    def fir_design(
+        order: int,
+        frequency_hz: float | ArrayLike,
+        type_of_pass: str,
+        filter_design_method: str,
+        width_hz: float | None = None,
+        sampling_rate_hz: int | None = None,
+    ):
+        """Design an FIR filter using `scipy.signal.firwin`.
+
+        Parameters
+        ----------
+        order : int
+            Filter order. It corresponds to the number of taps - 1.
+        frequency_hz : float | ArrayLike
+            Frequency or frequencies of the filter in Hz.
+        type_of_pass : str, {"lowpass", "highpass", "bandpass", "bandstop"}
+            Type of filter.
+        filter_design_method : str, {"boxcar", "triang",\
+              "blackman", "hamming", "hann", "bartlett", "flattop",\
+              "parzen", "bohman", "blackmanharris", "nuttall", "barthann",\
+              "cosine", "exponential", "tukey", "taylor"}
+            Design method for the FIR filter.
+        width_hz : float, None, optional
+            estimated width of transition region in Hz for kaiser window.
+            Default: `None`.
+        sampling_rate_hz : int
+            Sampling rate in Hz.
+
+        Returns
+        -------
+        Filter
+
+        """
+        return Filter(
+            "fir",
+            {
+                "order": order,
+                "freqs": frequency_hz,
+                "type_of_pass": type_of_pass,
+                "filter_design_method": filter_design_method,
+                "width": width_hz,
+            },
+            sampling_rate_hz,
+        )
+
+    @staticmethod
+    def from_ba(
+        b: ArrayLike,
+        a: ArrayLike,
+        sampling_rate_hz: int,
+    ):
+        """Create a filter from some b (numerator) and a (denominator)
+        coefficients.
+
+        Parameters
+        ----------
+        b : ArrayLike
+            Numerator coefficients.
+        a : ArrayLike
+            Denominator coefficients.
+        sampling_rate_hz : int
+            Sampling rate in Hz.
+
+        Returns
+        -------
+        Filter
+
+        """
+        return Filter("other", {"ba": [b, a]}, sampling_rate_hz)
+
+    @staticmethod
+    def from_sos(
+        sos: NDArray[np.float64],
+        sampling_rate_hz: int,
+    ):
+        """Create a filter from second-order sections.
+
+        Parameters
+        ----------
+        sos : NDArray[np.float64]
+            Second-order sections.
+        sampling_rate_hz : int
+            Sampling rate in Hz.
+
+        Returns
+        -------
+        Filter
+
+        """
+        return Filter("other", {"sos": sos}, sampling_rate_hz)
 
     def initialize_zi(self, number_of_channels: int = 1):
         """Initializes zi for steady-state filtering. The number of parallel
@@ -387,10 +578,10 @@ class Filter:
         if filter_type == "iir":
             if "filter_design_method" not in filter_configuration:
                 filter_configuration["filter_design_method"] = "butter"
-            if "bandpass_ripple" not in filter_configuration:
-                filter_configuration["bandpass_ripple"] = None
-            if "stopband_ripple" not in filter_configuration:
-                filter_configuration["stopband_ripple"] = None
+            if "passband_ripple" not in filter_configuration:
+                filter_configuration["passband_ripple"] = None
+            if "stopband_attenuation" not in filter_configuration:
+                filter_configuration["stopband_attenuation"] = None
             self.sos = sig.iirfilter(
                 N=filter_configuration["order"],
                 Wn=filter_configuration["freqs"],
@@ -398,8 +589,8 @@ class Filter:
                 analog=False,
                 fs=self.sampling_rate_hz,
                 ftype=filter_configuration["filter_design_method"],
-                rp=filter_configuration["bandpass_ripple"],
-                rs=filter_configuration["stopband_ripple"],
+                rp=filter_configuration["passband_ripple"],
+                rs=filter_configuration["stopband_attenuation"],
                 output="sos",
             )
             self.filter_type = filter_type
@@ -515,7 +706,7 @@ class Filter:
 
     def _get_metadata_string(self):
         """Helper for creating a string containing all filter info."""
-        txt = f"""Filter – ID: {self.info['filter_id']}\n"""
+        txt = f"""Filter – ID: {self.info["filter_id"]}\n"""
         temp = ""
         for n in range(len(txt)):
             temp += "-"
@@ -523,13 +714,13 @@ class Filter:
         for k in self.info.keys():
             if k == "ba":
                 continue
-            txt += f"""{str(k).replace('_', ' ').
+            txt += f"""{str(k).replace("_", " ").
                         capitalize()}: {self.info[k]}\n"""
         return txt
 
     def get_ir(
         self, length_samples: int = 512, zero_phase: bool = False
-    ) -> Signal:
+    ) -> ImpulseResponse:
         """Gets an impulse response of the filter with given length.
 
         Parameters
@@ -539,7 +730,7 @@ class Filter:
 
         Returns
         -------
-        ir_filt : `Signal`
+        ir_filt : `ImpulseResponse`
             Impulse response of the filter.
 
         """
@@ -553,27 +744,72 @@ class Filter:
                 )
                 length_samples = len(b)
             b = _pad_trim(b, length_samples)
-            return Signal(
-                None, b, self.sampling_rate_hz, "ir", constrain_amplitude=False
+            return ImpulseResponse(
+                None, b, self.sampling_rate_hz, constrain_amplitude=False
             )
 
         # IIR or zero phase IR
         ir_filt = _impulse(length_samples)
-        ir_filt = Signal(
+        ir_filt = ImpulseResponse(
             None,
             ir_filt,
             self.sampling_rate_hz,
-            "ir",
             constrain_amplitude=False,
         )
         return self.filter_signal(ir_filt, zero_phase=zero_phase)
 
+    def get_transfer_function(
+        self, frequency_vector_hz: NDArray[np.float64]
+    ) -> NDArray[np.complex128]:
+        """Obtain the complex transfer function of the filter analytically
+        evaluated for a given frequency vector.
+
+        Parameters
+        ----------
+        frequency_vector_hz : NDArray[np.float64]
+            Frequency vector for which to compute the transfer function
+
+        Returns
+        -------
+        NDArray[np.complex128]
+            Complex transfer function
+
+        Notes
+        -----
+        - This method uses scipy's freqz to compute the transfer function. In
+          the case of FIR filters, it might be significantly faster and more
+          precise to use a direct FFT approach.
+
+        """
+        assert (
+            frequency_vector_hz.ndim == 1
+        ), "Frequency vector can only have one dimension"
+        assert (
+            frequency_vector_hz.max() <= self.sampling_rate_hz / 2
+        ), "Queried frequency vector has values larger than nyquist"
+        if self.filter_type in ("iir", "biquad"):
+            if hasattr(self, "sos"):
+                return sig.sosfreqz(
+                    self.sos, frequency_vector_hz, fs=self.sampling_rate_hz
+                )[1]
+            return sig.freqz(
+                self.ba[0],
+                self.ba[1],
+                frequency_vector_hz,
+                fs=self.sampling_rate_hz,
+            )[1]
+
+        # FIR
+        return sig.freqz(
+            self.ba[0], [1], frequency_vector_hz, self.sampling_rate_hz
+        )[1]
+
     def get_coefficients(
         self, mode: str = "sos"
     ) -> (
-        list[np.ndarray]
-        | np.ndarray
-        | tuple[np.ndarray, np.ndarray, np.ndarray]
+        list[NDArray[np.float64]]
+        | NDArray[np.float64]
+        | tuple[NDArray[np.float64], NDArray[np.float64], NDArray[np.float64]]
         | None
     ):
         """Returns the filter coefficients.
@@ -581,16 +817,16 @@ class Filter:
         Parameters
         ----------
         mode : str, optional
-            Type of filter coefficients to be returned. Choose from `'sos'`,
-            `'ba'` or `'zpk'`. Default: `'sos'`.
+            Type of filter coefficients to be returned. Choose from `"sos"`,
+            `"ba"` or `"zpk"`. Default: `"sos"`.
 
         Returns
         -------
         coefficients : array-like
             Array with filter coefficients with shape depending on mode:
-            - `'ba'`: list(b, a) with b and a of type `np.ndarray`.
-            - `'sos'`: `np.ndarray` with shape (n_sections, 6).
-            - `'zpk'`: tuple(z, p, k) with z, p, k of type `np.ndarray`
+            - `"ba"`: list(b, a) with b and a of type NDArray[np.float64].
+            - `"sos"`: NDArray[np.float64] with shape (n_sections, 6).
+            - `"zpk"`: tuple(z, p, k) with z, p, k of type NDArray[np.float64]
             - Return `None` if user decides that ba->sos is too costly. The
               threshold is for filters with order > 500.
 
@@ -667,8 +903,8 @@ class Filter:
             Range for which to plot the magnitude response.
             Default: [20, 20000].
         normalize : str, optional
-            Mode for normalization, supported are `'1k'` for normalization
-            with value at frequency 1 kHz or `'max'` for normalization with
+            Mode for normalization, supported are `"1k"` for normalization
+            with value at frequency 1 kHz or `"max"` for normalization with
             maximal value. Use `None` for no normalization. Default: `None`.
         show_info_box : bool, optional
             Shows an information box on the plot. Default: `True`.
@@ -887,7 +1123,7 @@ class Filter:
         path : str, optional
             Path for the filter to be saved. Use only folder1/folder2/name
             (it can be passed with .pkl at the end or without it).
-            Default: `'filter'` (local folder, object named filter).
+            Default: `"filter"` (local folder, object named filter).
 
         """
         path = _check_format_in_path(path, "pkl")

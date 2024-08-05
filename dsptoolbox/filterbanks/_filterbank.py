@@ -7,6 +7,7 @@ from warnings import warn
 from os import sep
 from pickle import dump, HIGHEST_PROTOCOL
 from copy import deepcopy
+from numpy.typing import NDArray
 
 from scipy.signal import (
     sosfilt,
@@ -16,7 +17,13 @@ from scipy.signal import (
     bilinear,
     tf2sos,
 )
-from ..classes import Signal, MultiBandSignal, FilterBank, Filter
+from ..classes import (
+    Signal,
+    MultiBandSignal,
+    FilterBank,
+    Filter,
+    ImpulseResponse,
+)
 
 from ..generators import dirac
 from ..plots import general_plot
@@ -299,14 +306,9 @@ class LRFilterBank:
 
         b = []
         for n in range(self.number_of_bands):
-            b.append(
-                Signal(
-                    None,
-                    new_time_data[:, :, n],
-                    s.sampling_rate_hz,
-                    signal_type=s.signal_type,
-                )
-            )
+            # Extract if signal is ImpulseResponse or Signal and create
+            # accordingly
+            b.append(type(s)(None, new_time_data[:, :, n], s.sampling_rate_hz))
         d = dict(
             readme="MultiBandSignal made using Linkwitz-Riley filter bank",
             filterbank_freqs=self.freqs,
@@ -371,7 +373,7 @@ class LRFilterBank:
         length_samples: int = 1024,
         mode: str = "parallel",
         zero_phase: bool = False,
-    ) -> Signal | MultiBandSignal:
+    ) -> ImpulseResponse | MultiBandSignal:
         """Returns impulse response from the filter bank. For this filter
         bank only `mode='parallel'` is valid and there is no zero phase
         filtering.
@@ -389,7 +391,7 @@ class LRFilterBank:
 
         Returns
         -------
-        ir : `MultiBandSignal` or `Signal`
+        ir : `ImpulseResponse`, `MultiBandSignal`
             Impulse response of the filter bank.
 
         """
@@ -690,9 +692,9 @@ class GammaToneFilterBank(FilterBank):
         self,
         filters: list,
         info: dict,
-        frequencies: np.ndarray,
-        coefficients: np.ndarray,
-        normalizations: np.ndarray,
+        frequencies: NDArray[np.float64],
+        coefficients: NDArray[np.float64],
+        normalizations: NDArray[np.float64],
     ):
         """Constructor for the Gamma Tone Filter Bank. It is only available as
         a constant sampling rate filter bank.
@@ -703,11 +705,11 @@ class GammaToneFilterBank(FilterBank):
             List with gamma tone filters.
         info : dict
             Dictionary containing basic information about the filter bank.
-        frequencies : `np.ndarray`
+        frequencies : NDArray[np.float64]
             Frequencies used for the filters.
-        coefficients : `np.ndarray`
+        coefficients : NDArray[np.float64]
             Filter coefficients.
-        normalizations : `np.ndarray`
+        normalizations : NDArray[np.float64]
             Normalizations.
 
         """
@@ -1391,7 +1393,7 @@ def _reconstruct_from_crossover_upsample(
 
 def _get_2nd_order_linkwitz_riley(
     f0: float, sampling_rate_hz: int
-) -> tuple[np.ndarray, np.ndarray]:
+) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
     """Return filters (SOS representation) for a 2nd-order linkwitz-riley
     crossover. These are based on sallen-key filters (with Q=0.5). In order to
     obtain an allpass sum response, one band must be phase-inverted. Here,
@@ -1406,9 +1408,9 @@ def _get_2nd_order_linkwitz_riley(
 
     Returns
     -------
-    low_sos : `np.ndarray`
+    low_sos : NDArray[np.float64]
         SOS for low band.
-    high_sos : `np.ndarray`
+    high_sos : NDArray[np.float64]
         SOS for high band.
 
     """
@@ -1428,3 +1430,164 @@ def _get_2nd_order_linkwitz_riley(
     b, a = bilinear(b_s, a_s, warped)
     high_sos = tf2sos(b, a)
     return low_sos, high_sos
+
+
+def _get_matched_peaking_eq(f, g_db, q, q_factor, fs):
+    """Analog-matched peaking eq coefficients."""
+    if q_factor is None:
+        # Manually extracted approximation for gains between -20 and 20
+        # at normalized frequency = 0.02
+        q_factor = np.max([np.abs(0.0868 * g_db + 1.264), 0.55])
+    assert q_factor > 0, "Q-factor should be greater than 0"
+
+    omega0 = 2 * np.pi * f / fs
+    g = 10 ** (g_db / 20)
+    q *= q_factor
+
+    a, A, phi = __get_matched_eq_helpers(omega0, q)
+
+    R1 = g**2 * (A @ phi)
+    R2 = g**2 * (-A[0] + A[1] + 4 * (phi[0] - phi[1]) * A[2])
+    B0 = A[0]
+    B2 = (R1 - R2 * phi[1] - B0) / (4 * phi[1] ** 2)
+    B1 = R2 + B0 + 4 * (phi[1] - phi[0]) * B2
+    W = 0.5 * (B0**0.5 + B1**0.5)
+
+    # b coefficients
+    b0 = 0.5 * (W + (W**2 + B2) ** 0.5)
+    b1 = 0.5 * (B0**0.5 - B1**0.5)
+    b2 = -B2 / (4 * b0)
+    return np.array([b0, b1, b2]), a
+
+
+def _get_matched_lowpass_eq(f, g_db, q, fs):
+    """Analog-matched lowpass eq coefficents."""
+    omega0 = 2 * np.pi * f / fs
+    Q = q
+
+    a, A, phi = __get_matched_eq_helpers(omega0, q)
+
+    R1 = Q**2 * (A @ phi)
+    B0 = A[0]
+    B1 = (R1 - B0 * phi[0]) / phi[1]
+    b0 = 0.5 * (np.sum(a) + B1**0.5)
+    b1 = np.sum(a) - b0
+    b2 = 0
+
+    b = np.array([b0, b1, b2]) * 10 ** (g_db / 20)
+    return b, a
+
+
+def _get_matched_highpass_eq(f, g_db, q, fs):
+    """Analog-matched highpass eq coefficents."""
+    omega0 = 2 * np.pi * f / fs
+    Q = q
+    a, A, phi = __get_matched_eq_helpers(omega0, q)
+
+    b0 = (A @ phi) ** 0.5 / 4 / phi[1] * Q * 10 ** (g_db / 20)
+    b1 = -2 * b0
+    b2 = b0
+    return np.array([b0, b1, b2]), a
+
+
+def _get_matched_bandpass_eq(f, g_db, q, fs):
+    """Analog-matched bandpass eq coefficents."""
+    omega0 = 2 * np.pi * f / fs
+
+    a, A, phi = __get_matched_eq_helpers(omega0, q)
+
+    R1 = A @ phi
+    R2 = -A[0] + A[1] + 4 * (phi[0] - phi[1]) * A[2]
+    B2 = (R1 - R2 * phi[1]) / 4 / phi[1] ** 2
+    B1 = R2 + 4 * (phi[1] - phi[0]) * B2
+    b1 = -0.5 * B1**0.5
+    b0 = 0.5 * ((B2 + b1**2) ** 0.5 - b1)
+    b2 = -b0 - b1
+    b = np.array([b0, b1, b2]) * 10 ** (g_db / 20)
+    return b, a
+
+
+def _get_matched_shelving_eq(f, g_db, fs, lowshelf):
+    """Analog-matched low/highshelf eq coefficients with fixed
+    `q=np.sqrt(2)/2`.
+
+    """
+    fc = f / (fs / 2)
+
+    G = 10 ** (g_db / 20)
+
+    if lowshelf:
+        G = 1 / G
+
+    if np.abs(1 - G) < 1e-6:
+        G = 1 + 1e-6
+
+    f1 = fc / (0.16 + 1.543 * fc**2) ** 0.5
+    f2 = fc / (0.947 + 3.806 * fc**2) ** 0.5
+    hny = (fc**4 + G) / (fc**4 + 1 / G)
+
+    phi1 = np.sin(np.pi / 2 * f1) ** 2
+    phi2 = np.sin(np.pi / 2 * f2) ** 2
+    h1 = (fc**4 + f1**4 * G) / (fc**4 + f1**4 / G)
+    h2 = (fc**4 + f2**4 * G) / (fc**4 + f2**4 / G)
+
+    d1 = (h1 - 1) * (1 - phi1)
+    c11 = -phi1 * d1
+    c12 = (hny - h1) * phi1**2
+
+    d2 = (h2 - 1) * (1 - phi2)
+    c21 = -phi2 * d2
+    c22 = (hny - h2) * phi2**2
+
+    alpha1 = (c22 * d1 - c12 * d2) / (c11 * c22 - c12 * c21)
+    alpha2 = (d1 - c11 * alpha1) / c12
+
+    beta1 = alpha1
+    beta2 = hny * alpha2
+
+    A0 = 1
+    A1 = alpha2
+    A2 = 0.25 * (alpha1 - alpha2)
+
+    B0 = 1
+    B1 = beta2
+    B2 = 0.25 * (beta1 - beta2)
+
+    V = 0.5 * (A0**0.5 + A1**0.5)
+    a0 = 0.5 * (V + (V**2 + A2) ** 0.5)
+    a1 = 1 - V
+    a2 = -0.25 * A2 / a0
+
+    W = 0.5 * (B0**0.5 + B1**0.5)
+    b0 = 0.5 * (W + (W**2 + B2) ** 0.5)
+    b1 = 1 - W
+    b2 = -0.25 * B2 / b0
+    return np.array([b0, b1, b2]) / (G if lowshelf else 1.0), np.array(
+        [a0, a1, a2]
+    )
+
+
+def __get_matched_eq_helpers(omega0, q):
+    """Return the some general helpers for matched biquad filters. The
+    normalized angular frequency and the quality factor (possibly scaled) are
+    needed.
+
+    Returns
+    -------
+    a, A, phi
+
+    """
+    q = 1 / (2 * q)
+    # a coefficients
+    if q <= 1:
+        a1 = -2 * np.exp(-q * omega0) * np.cos((1 - q**2) ** 0.5 * omega0)
+    else:
+        a1 = -2 * np.exp(-q * omega0) * np.cosh((q**2 - 1) ** 0.5 * omega0)
+    a2 = np.exp(-2 * q * omega0)
+
+    # In-between factors
+    A = np.array([(1 + a1 + a2) ** 2, (1 - a1 + a2) ** 2, -4 * a2]).squeeze()
+    sin_omega = np.sin(omega0 / 2) ** 2
+    phi = np.array([1 - sin_omega, sin_omega, 0])
+    phi[2] = 4 * phi[0] * phi[1]
+    return np.array([1, a1, a2]), A, phi

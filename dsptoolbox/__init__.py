@@ -4,14 +4,12 @@ from .standard_functions import (
     merge_filterbanks,
     pad_trim,
     fractional_delay,
-    fractional_octave_frequencies,
     activity_detector,
     fade,
     normalize,
     true_peak_level,
     resample,
     load_pkl_object,
-    erb_frequencies,
     detrend,
     rms,
     CalibrationData,
@@ -22,6 +20,7 @@ from .classes import (
     Filter,
     FilterBank,
     Signal,
+    ImpulseResponse,
     MultiBandSignal,
 )
 from . import transfer_functions
@@ -34,10 +33,12 @@ from . import transforms
 from . import audio_io
 from . import beamforming
 from . import effects
+from . import tools
 
 __all__ = [
     # Basic classes
     "Signal",
+    "ImpulseResponse",
     "MultiBandSignal",
     "Filter",
     "FilterBank",
@@ -52,9 +53,7 @@ __all__ = [
     "normalize",
     "fractional_delay",
     "true_peak_level",
-    "erb_frequencies",
     "load_pkl_object",
-    "fractional_octave_frequencies",
     "detrend",
     "rms",
     "CalibrationData",
@@ -71,6 +70,7 @@ __all__ = [
     "audio_io",
     "beamforming",
     "effects",
+    "tools",
 ]
 
-__version__ = "0.3.9"
+__version__ = "0.4.0"

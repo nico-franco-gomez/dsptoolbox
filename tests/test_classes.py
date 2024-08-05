@@ -156,24 +156,6 @@ class TestSignal:
         with pytest.raises(AssertionError):
             s.sampling_rate_hz = 44100.5
 
-        # Signal type
-        typ = "test signal"
-        s.signal_type = typ
-        assert s.signal_type == typ
-
-        # Setting a wrong signal type
-        with pytest.raises(AssertionError):
-            s.signal_type = 15
-
-        # Signal ID
-        typ = "test signal"
-        s.signal_id = typ
-        assert s.signal_id == typ
-
-        # Setting a wrong signal id
-        with pytest.raises(AssertionError):
-            s.signal_id = True
-
         # Number of channels is generated right
         assert s.number_of_channels == self.channels
 
@@ -182,7 +164,9 @@ class TestSignal:
             s.number_of_channels = 10
 
     def test_plot_generation(self):
-        s = dsp.Signal(time_data=self.time_vec, sampling_rate_hz=self.fs)
+        s = dsp.ImpulseResponse(
+            time_data=self.time_vec, sampling_rate_hz=self.fs
+        )
         # Test that all plots are generated without problems
         s.plot_magnitude()
         s.plot_magnitude(show_info_box=True)
@@ -194,7 +178,6 @@ class TestSignal:
         s.plot_spl(True)
 
         # Plot phase and group delay
-        s.signal_type = "rir"
         s.set_spectrum_parameters(method="standard")
         s.plot_phase()
         s.plot_group_delay()
@@ -202,10 +185,6 @@ class TestSignal:
         # Try to plot coherence
         with pytest.raises(AttributeError):
             s.plot_coherence()
-        # Try to plot group delay without having the correct signal type
-        with pytest.raises(AssertionError):
-            s.signal_type = "wrong type for group delay"
-            s.plot_group_delay()
         # Try to plot phase having welch's method for magnitude
         with pytest.raises(AssertionError):
             s.set_spectrum_parameters(method="welch", window_length_samples=32)
@@ -213,7 +192,6 @@ class TestSignal:
 
         # Plot signal with window and imaginary time data
         d = dsp.generators.dirac(1024, 512, sampling_rate_hz=self.fs)
-        d.signal_type = "ir"
         d, _ = dsp.transfer_functions.window_centered_ir(d, len(d))
         d = dsp.transforms.hilbert(d)
         d.plot_time()
@@ -462,6 +440,42 @@ class TestFilterClass:
         f.initialize_zi(1)
         with pytest.raises(AssertionError):
             f.initialize_zi(0)
+
+    def test_get_transfer_function(self):
+        # Functionality
+        f = dsp.Filter(
+            "other",
+            filter_configuration=dict(sos=self.iir),
+            sampling_rate_hz=self.fs,
+        )
+        freqs = np.linspace(1, 4e3, 200)
+        f.get_transfer_function(freqs)
+
+        b = sig.firwin(
+            1500,
+            (self.fs // 2 // 2),
+            pass_zero="lowpass",
+            fs=self.fs,
+            window="flattop",
+        )
+        f = dsp.Filter(
+            "other",
+            filter_configuration=dict(ba=[b, 1]),
+            sampling_rate_hz=self.fs,
+        )
+        f.get_transfer_function(freqs)
+
+        f = dsp.Filter(
+            "biquad",
+            filter_configuration={
+                "eq_type": "peaking",
+                "freqs": 200,
+                "gain": 3,
+                "q": 0.7,
+            },
+            sampling_rate_hz=self.fs,
+        )
+        f.get_transfer_function(freqs)
 
     def test_filter_and_resampling_IIR(self):
         f = dsp.Filter(
@@ -848,6 +862,28 @@ class TestFilterBankClass:
         for n in fb:
             assert dsp.Filter == type(n)
 
+    def test_transfer_function(self):
+        # Create
+        fb = dsp.FilterBank()
+        config = dict(
+            order=5,
+            freqs=[1500, 2000],
+            type_of_pass="bandpass",
+            filter_design_method="bessel",
+        )
+        fb.add_filter(dsp.Filter("iir", config, sampling_rate_hz=self.fs))
+        config = dict(order=150, freqs=[1500, 2000], type_of_pass="bandpass")
+        fb.add_filter(dsp.Filter("fir", config, self.fs))
+
+        freqs = np.linspace(1, 2e3, 400)
+        fb.get_transfer_function(freqs, mode="parallel")
+        fb.get_transfer_function(freqs, mode="sequential")
+        fb.get_transfer_function(freqs, mode="summed")
+
+        with pytest.raises(AssertionError):
+            freqs = np.linspace(1, self.fs, 40)
+            fb.get_transfer_function(freqs, mode="parallel")
+
 
 class TestMultiBandSignal:
     fs = 44100
@@ -1028,3 +1064,57 @@ class TestMultiBandSignal:
         )
         for n in mbs:
             assert dsp.Signal == type(n)
+
+
+class TestImpulseResponse:
+    fs_hz = 10_000
+    seconds = 2
+    d = dsp.generators.dirac(seconds * fs_hz, sampling_rate_hz=fs_hz)
+
+    path_rir = join("examples", "data", "rir.wav")
+
+    def get_ir(self):
+        return dsp.ImpulseResponse.from_file(self.path_rir)
+
+    def test_constructors(self):
+        rir = self.get_ir()
+        dsp.ImpulseResponse.from_time_data(rir.time_data, rir.sampling_rate_hz)
+        dsp.ImpulseResponse.from_signal(dsp.Signal.from_file(self.path_rir))
+
+    def test_channel_handling_with_window(self):
+        rir = self.get_ir()
+        rir = dsp.transfer_functions.window_centered_ir(rir, len(rir))[0]
+
+        # Add channel
+        window_previous = rir.window[:, 0]
+        rir.add_channel(self.path_rir)
+        assert rir.window.shape == rir.time_data.shape
+        np.testing.assert_array_equal(rir.window[:, 0], window_previous)
+        np.testing.assert_array_equal(rir.window[:, 1], 1.0)
+
+        # Remove channel
+        rir.remove_channel(1)
+        assert rir.window.shape == rir.time_data.shape
+        np.testing.assert_array_equal(rir.window[:, 0], window_previous)
+
+        # Swap channels
+        rir.add_channel(self.path_rir)
+        rir.add_channel(self.path_rir)
+        rir.swap_channels([2, 1, 0])
+        assert rir.window.shape == rir.time_data.shape
+        np.testing.assert_array_equal(rir.window[:, -1], window_previous)
+
+    def test_plotting_with_window(self):
+        rir = self.get_ir()
+        rir = dsp.transfer_functions.window_centered_ir(rir, len(rir))[0]
+        rir.plot_time()
+        rir.plot_spl()
+
+        # Expect no coherence saved
+        with pytest.raises(AssertionError):
+            rir.plot_coherence()
+
+        rir.add_channel(self.path_rir)
+        rir.plot_time()
+        rir.plot_spl()
+        # dsp.plots.show()

@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 from scipy.integrate import simpson
 from matplotlib.figure import Figure
 from matplotlib.axes import Axes
+from numpy.typing import NDArray
 
 from ..classes import Signal
 from .. import fractional_delay, merge_signals, pad_trim
@@ -67,19 +68,21 @@ class Grid(BasePoints):
         """
         super().__init__(positions)
 
-    def reconstruct_map_shape(self, map: np.ndarray) -> np.ndarray:
+    def reconstruct_map_shape(
+        self, map: NDArray[np.float64]
+    ) -> NDArray[np.float64]:
         """Placeholder for a user-defined map reconstruction. Here, it returns
         same given map. Use inheritance from the `Grid` class to overwrite this
         with an own implementation.
 
         Parameters
         ----------
-        map : `np.ndarray`
+        map : NDArray[np.float64]
             Map to be reshaped.
 
         Returns
         -------
-        map : `np.ndarray`
+        map : NDArray[np.float64]
             Reshaped map. Here with same passed shape as before.
 
         """
@@ -163,17 +166,19 @@ class Regular2DGrid(Grid):
         }
         super().__init__(positions)
 
-    def reconstruct_map_shape(self, map_vector: np.ndarray) -> np.ndarray:
+    def reconstruct_map_shape(
+        self, map_vector: NDArray[np.float64]
+    ) -> NDArray[np.float64]:
         """Reshapes the map to be a matrix that fits the grid.
 
         Parameters
         ----------
-        map_vector : `np.ndarray`
+        map_vector : NDArray[np.float64]
             Map (as a vector) to be reshaped.
 
         Returns
         -------
-        map : `np.ndarray`
+        map : NDArray[np.float64]
             Reshaped map.
 
         """
@@ -186,13 +191,13 @@ class Regular2DGrid(Grid):
         return map_vector.reshape(self.original_lengths)
 
     def plot_map(
-        self, map: np.ndarray, range_db: float = 20
+        self, map: NDArray[np.float64], range_db: float = 20
     ) -> tuple[Figure, Axes]:
         """Plot a map done with this type of grid.
 
         Parameters
         ----------
-        map : `np.ndarray`
+        map : NDArray[np.float64]
             Beamformer map.
         range_db : float, optional
             Range in dB to plot.
@@ -289,17 +294,19 @@ class Regular3DGrid(Grid):
         }
         super().__init__(positions)
 
-    def reconstruct_map_shape(self, map_vector: np.ndarray) -> np.ndarray:
+    def reconstruct_map_shape(
+        self, map_vector: NDArray[np.float64]
+    ) -> NDArray[np.float64]:
         """Reshapes the map to be a matrix that fits the grid.
 
         Parameters
         ----------
-        map_vector : `np.ndarray`
+        map_vector : NDArray[np.float64]
             Map (as a vector) to be reshaped.
 
         Returns
         -------
-        map : `np.ndarray`
+        map : NDArray[np.float64]
             Reshaped map.
 
         """
@@ -313,7 +320,7 @@ class Regular3DGrid(Grid):
 
     def plot_map(
         self,
-        map: np.ndarray,
+        map: NDArray[np.float64],
         third_dimension: str,
         value_third_dimension: float,
         range_db: float = 20,
@@ -322,7 +329,7 @@ class Regular3DGrid(Grid):
 
         Parameters
         ----------
-        map : `np.ndarray`
+        map : NDArray[np.float64]
             Beamformer map.
         third_dimension : str
             Choose the dimension that is normal to plane. Choose from `'x'`,
@@ -544,12 +551,12 @@ class MicArray(BasePoints):
 
         Parameters
         ----------
-        coord : `np.ndarray`
+        coord : NDArray[np.float64]
             Coordinates of array with shape (points, xyz).
 
         Returns
         -------
-        `np.ndarray`
+        NDArray[np.float64]
             Array with coordinates for mic closest to center with
             shape (x, y, z).
         ind : int
@@ -712,8 +719,8 @@ class BaseBeamformer:
           object.
 
         """
-        assert (
-            type(multi_channel_signal) is Signal
+        assert isinstance(
+            multi_channel_signal, Signal
         ), "Multi-channel signal must be of type Signal"
         assert (
             type(mic_array) is MicArray
@@ -859,7 +866,7 @@ class BeamformerDASFrequency(BeamformerGridded):
         center_frequency_hz: float,
         octave_fraction: int = 3,
         remove_csm_diagonal: bool = True,
-    ) -> np.ndarray:
+    ) -> NDArray[np.float64]:
         """Run delay-and-sum beamforming in the given frequency range.
 
         Parameters
@@ -875,7 +882,7 @@ class BeamformerDASFrequency(BeamformerGridded):
 
         Returns
         -------
-        map : `np.ndarray`
+        map : NDArray[np.float64]
             Beamforming map
 
         """
@@ -955,7 +962,7 @@ class BeamformerCleanSC(BeamformerGridded):
         maximum_iterations: int | None = None,
         safety_factor: float = 0.5,
         remove_csm_diagonal: bool = False,
-    ) -> np.ndarray:
+    ) -> NDArray[np.float64]:
         """Returns a deconvolved beaforming map.
 
         Parameters
@@ -980,7 +987,7 @@ class BeamformerCleanSC(BeamformerGridded):
 
         Returns
         -------
-        map : `np.ndarray`
+        map : NDArray[np.float64]
             Beamformer map.
 
         References
@@ -1083,7 +1090,7 @@ class BeamformerOrthogonal(BeamformerGridded):
         center_frequency_hz: float,
         octave_fraction: int = 3,
         number_eigenvalues: int | None = None,
-    ) -> np.ndarray:
+    ) -> NDArray[np.float64]:
         """Returns a beaforming map created with orthogonal beamforming.
 
         Parameters
@@ -1100,7 +1107,7 @@ class BeamformerOrthogonal(BeamformerGridded):
 
         Returns
         -------
-        map : np.ndarray
+        map : NDArray[np.float64]
             Beamformer map.
 
         References
@@ -1202,7 +1209,7 @@ class BeamformerFunctional(BeamformerGridded):
         center_frequency_hz: float,
         octave_fraction: int = 3,
         gamma: float = 10,
-    ) -> np.ndarray:
+    ) -> NDArray[np.float64]:
         """Returns a beaforming map created with functional beamforming.
 
         Parameters
@@ -1217,7 +1224,7 @@ class BeamformerFunctional(BeamformerGridded):
 
         Returns
         -------
-        map : np.ndarray
+        map : NDArray[np.float64]
             Beamformer map.
 
         References
@@ -1303,7 +1310,7 @@ class BeamformerMVDR(BeamformerGridded):
         center_frequency_hz: float,
         octave_fraction: int = 3,
         gamma: float = 10,
-    ) -> np.ndarray:
+    ) -> NDArray[np.float64]:
         """Returns a beaforming map created with MVDR beamforming.
 
         Parameters
@@ -1316,7 +1323,7 @@ class BeamformerMVDR(BeamformerGridded):
 
         Returns
         -------
-        map : np.ndarray
+        map : NDArray[np.float64]
             Beamformer map.
 
         References
@@ -1586,8 +1593,8 @@ def mix_sources_on_array(
 
 # ========== Steering vector formulations =====================================
 def classic_steering(
-    wave_number: np.ndarray, grid: Grid, mic: MicArray
-) -> np.ndarray:
+    wave_number: NDArray[np.float64], grid: Grid, mic: MicArray
+) -> NDArray[np.float64]:
     """Classic formulation for steering vector (formulation 1 in reference
     paper).
 
@@ -1602,7 +1609,7 @@ def classic_steering(
 
     Returns
     -------
-    steering_vector : `np.ndarray`
+    steering_vector : NDArray[np.float64]
         Complex steering vector with shape (frequency, nmics, ngrid).
 
     References
@@ -1636,8 +1643,8 @@ def classic_steering(
 
 
 def inverse_steering(
-    wave_number: np.ndarray, grid: Grid, mic: MicArray
-) -> np.ndarray:
+    wave_number: NDArray[np.float64], grid: Grid, mic: MicArray
+) -> NDArray[np.float64]:
     """Inverse formulation for steering vector (formulation 2 in reference
     paper).
 
@@ -1652,7 +1659,7 @@ def inverse_steering(
 
     Returns
     -------
-    steering_vector : `np.ndarray`
+    steering_vector : NDArray[np.float64]
         Complex steering vector with shape (frequency, nmics, ngrid).
 
     References
@@ -1687,8 +1694,8 @@ def inverse_steering(
 
 
 def true_power_steering(
-    wave_number: np.ndarray, grid: Grid, mic: MicArray
-) -> np.ndarray:
+    wave_number: NDArray[np.float64], grid: Grid, mic: MicArray
+) -> NDArray[np.complex128]:
     """Formulation for true power steering vector (formulation 3 in reference
     paper).
 
@@ -1703,7 +1710,7 @@ def true_power_steering(
 
     Returns
     -------
-    steering_vector : `np.ndarray`
+    steering_vector : NDArray[np.complex128]
         Complex steering vector with shape (frequency, nmics, ngrid).
 
     References
@@ -1740,8 +1747,8 @@ def true_power_steering(
 
 
 def true_location_steering(
-    wave_number: np.ndarray, grid: Grid, mic: MicArray
-) -> np.ndarray:
+    wave_number: NDArray[np.float64], grid: Grid, mic: MicArray
+) -> NDArray[np.float64]:
     """Formulation for true location steering vector (formulation 4 in
     reference paper).
 
@@ -1756,7 +1763,7 @@ def true_location_steering(
 
     Returns
     -------
-    steering_vector : `np.ndarray`
+    steering_vector : NDArray[np.float64]
         Complex steering vector with shape (frequency, ngrid, nmics).
 
     References

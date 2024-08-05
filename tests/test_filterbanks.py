@@ -206,6 +206,65 @@ class TestFilterbanksModule:
         )
         n2 = dsp.merge_signals(n2, n)
 
+    def test_matched_biquads(self):
+        # Only functionality and plausibility
+        # Parameters
+        fs_hz = 48000
+        freq = 10e3
+        gain_db = -20
+        q = 2**0.5 / 2
+
+        for eq_type in [
+            "peaking",
+            "lowpass",
+            "highpass",
+            "lowshelf",
+            "highshelf",
+            "bandpass",
+        ]:
+            dsp.filterbanks.matched_biquad(eq_type, freq, gain_db, q, fs_hz)
+
+            # For comparison with usual biquads
+        #     f = dsp.filterbanks.matched_biquad(
+        #         eq_type, freq, gain_db, q, fs_hz
+        #     )
+        #     f2 = dsp.Filter(
+        #         "biquad",
+        #         {
+        #             "eq_type": eq_type
+        #             + ("_peak" if eq_type == "bandpass" else ""),
+        #             "freqs": freq,
+        #             "gain": gain_db,
+        #             "q": q,
+        #         },
+        #         fs_hz,
+        #     )
+        #     fb = dsp.FilterBank([f, f2])
+        #     fig, ax = fb.plot_magnitude(length_samples=2**13)
+        #     fig.suptitle(eq_type.capitalize())
+        #     ax.legend(["Matched", "Standard"])
+        # dsp.plots.show()
+
+    def test_gaussian_kernel(self):
+        # Only functionality
+        fs_hz = 44100
+        n = dsp.generators.noise(sampling_rate_hz=fs_hz)
+
+        # Get kernel and apply filtering
+        f = dsp.filterbanks.gaussian_kernel(0.02, sampling_rate_hz=fs_hz)
+        n1 = f.filter_signal(n, zero_phase=True)
+
+        # Compare to normal gaussian window
+        length = int(0.02 * fs_hz + 0.5)
+        sigma = length / (2.0 * np.log(1 / 1e-2)) ** 0.5
+        w = sig.windows.gaussian(length, sigma, True)
+        w /= w.sum()
+        f = dsp.Filter("other", {"ba": [w, [1]]}, fs_hz)
+        n1 = dsp.merge_signals(n1, f.filter_signal(n, zero_phase=False))
+
+        # n1.plot_time()
+        # dsp.plots.show()
+
 
 class TestLatticeLadderFilter:
     b = np.array([1, 3, 3, 1])
@@ -215,7 +274,7 @@ class TestLatticeLadderFilter:
         # Example values taken from Oppenheim, A. V., Schafer, R. W.,,
         # Buck, J. R. (1999). Discrete-Time Signal Processing.
         # Prentice-hall Englewood Cliffs.
-        from dsptoolbox.classes._lattice_ladder_filter import (
+        from dsptoolbox.classes.lattice_ladder_filter import (
             _get_lattice_ladder_coefficients_iir,
         )
 
@@ -231,7 +290,7 @@ class TestLatticeLadderFilter:
         n = dsp.generators.noise(sampling_rate_hz=200)
         expected = sig.lfilter(self.b / 10, self.a, n.time_data.squeeze())
 
-        from dsptoolbox.classes._lattice_ladder_filter import (
+        from dsptoolbox.classes.lattice_ladder_filter import (
             _get_lattice_ladder_coefficients_iir,
         )
 
