@@ -14,6 +14,37 @@ adheres to `Semantic Versioning <http://semver.org/spec/v2.0.0.html>`_.
 - Validation for results from tests in every module (so far many tests are
   only regarding functionality)
 
+`0.4.0 <https://pypi.org/project/dsptoolbox/0.4.0>`_ - 
+---------------------
+Added
+~~~~~~
+- `ImpulseResponse` as a subclass of `Signal`. It handles time windows, coherence
+  and plotting of those windows. Assertions for expected `ImpulseResponse` instead
+  of `Signal` were added as well
+- new module ``tools`` for computations with primitive data types, added time
+  smoothing, interpolation of frequency response
+- `get_transfer_function` in Filter and FilterBank
+- analog-matched biquads in ``filterbanks``
+- `gaussian_kernel` approximation in ``filterbanks``
+- gain parameter functionality for some biquads
+- new biquad types (lowpass and highpass first order, inverter)
+- new explicit constructors for signal and filter
+- pearson correlation as part quality estimator for latency computation
+- new scaling parameter in synchrosqueezing of `cwt`
+- new parameter in `window_frequency_dependent`
+
+Bugfix
+~~~~~~
+- bugfix in `window_frequency_dependent` when querying a single frequency bin
+- corrected plotting of spl when calibrated signal is passed
+
+Misc
+~~~~~~~
+- got rid of signal type attribute. Use now `ImpulseResponse`
+- general doc additions and fixes, type annotations
+- `fractional_octave_smoothing` performance improved
+- renamed some files of code base for consistency
+
 `0.3.9 <https://pypi.org/project/dsptoolbox/0.3.9>`_ - 
 ---------------------
 Added
