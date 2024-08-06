@@ -73,6 +73,16 @@ class TestGeneratorsModule:
             padding_end_seconds=0,
         )
 
+        dsp.generators.noise(
+            type_of_noise=-0.5,
+            length_seconds=2,
+            sampling_rate_hz=5_000,
+            peak_level_dbfs=-20,
+            number_of_channels=1,
+            fade="log",
+            padding_end_seconds=0,
+        )
+
         # Peak level over 0 dBFS
         with pytest.raises(AssertionError):
             dsp.generators.noise(
