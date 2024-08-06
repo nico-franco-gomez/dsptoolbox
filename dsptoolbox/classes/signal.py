@@ -364,8 +364,8 @@ class Signal:
         scaling : str, optional
             Scaling for welch's method. Use `'power spectrum'`,
             `'power spectral density'`, `'amplitude spectrum'` or
-            `'amplitude spectral density'`. Pass `None` to avoid any scaling.
-            See references for details about scaling.
+            `'amplitude spectral density'`. Pass `None` to avoid any scaling
+            (power representation). See references for details about scaling.
             Default: `None`.
 
         References
@@ -911,11 +911,15 @@ class Signal:
 
         self._spectrum_parameters["smoothe"] = prior_smoothing
 
-        scaling = (
-            "amplitude"
-            if self._spectrum_parameters["scaling"] is None
-            else self._spectrum_parameters["scaling"]
-        )
+        if self._spectrum_parameters["scaling"] is None:
+            scaling = (
+                "power"
+                if self._spectrum_parameters["method"] == "welch"
+                else "amplitude"
+            )
+        else:
+            scaling = self._spectrum_parameters["scaling"]
+
         f, mag_db = _get_normalized_spectrum(
             f=f,
             spectra=sp,
