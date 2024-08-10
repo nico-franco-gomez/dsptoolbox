@@ -149,12 +149,9 @@ class TestFilterbanksModule:
             np.angle(sp[:, 0]), len(ir), fs_hz
         )
         with pytest.raises(AssertionError):
-            pl.set_parameters(-10, 2)
+            pl.set_parameters(-10)
         pl.get_filter_as_ir()
         pl.get_filter()
-
-        # Parameters
-        pl.set_parameters(80, 0.8)
         pl.set_parameters()
 
         # Phase linearizer – with interpolation
@@ -167,16 +164,25 @@ class TestFilterbanksModule:
         pl.get_filter_as_ir()
         pl.get_filter()
 
+    def test_group_delay_designer(self):
+        fs_hz = 48_000
+        fb = dsp.filterbanks.linkwitz_riley_crossovers(
+            [570, 2000], order=[2, 2], sampling_rate_hz=fs_hz
+        )
+        ir = fb.get_ir(length_samples=2**14).collapse()
+
         # Group delay-based correction
         ir = fb.get_ir(length_samples=2**14).collapse()
-        _, gd = dsp.transfer_functions.group_delay(ir)
+        _, gd = dsp.transfer_functions.group_delay(ir, method="matlab")
         gd = np.max(gd) * 2 - gd
-        gd *= ir.sampling_rate_hz
-        pl = dsp.filterbanks.PhaseLinearizer(
-            np.ones(len(gd)), len(ir), fs_hz, gd.squeeze()
-        )
-        pl.get_filter_as_ir()
+        pl = dsp.filterbanks.GroupDelayDesigner(gd.squeeze(), len(ir), fs_hz)
+        pl.set_parameters(200)
         pl.get_filter()
+
+        # ir = dsp.pad_trim(pl.get_filter_as_ir(), 2**15)
+        # ir.plot_time()
+        # ir.plot_magnitude()
+        # dsp.plots.show()
 
     def test_SVFilter(self):
         fs_hz = 10_000
