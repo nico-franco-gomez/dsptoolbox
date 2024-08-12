@@ -4,11 +4,7 @@ import numpy as np
 from scipy.integrate import cumulative_trapezoid
 from scipy.interpolate import PchipInterpolator
 from numpy.typing import NDArray
-from .._general_helpers import (
-    _correct_for_real_phase_spectrum,
-    _pad_trim,
-    _wrap_phase,
-)
+from .._general_helpers import _correct_for_real_phase_spectrum, _pad_trim
 from warnings import warn
 
 
@@ -108,13 +104,13 @@ class GroupDelayDesigner:
 
     def get_filter(self) -> Filter:
         """Get FIR filter."""
-        return Filter.from_ba(self._design(), [1], self.sampling_rate_hz)
+        return Filter.from_ba(self.__design(), [1], self.sampling_rate_hz)
 
     def get_filter_as_ir(self) -> ImpulseResponse:
         """Get the phase filter as an ImpulseResponse."""
-        return ImpulseResponse(None, self._design(), self.sampling_rate_hz)
+        return ImpulseResponse(None, self.__design(), self.sampling_rate_hz)
 
-    def _design(self) -> NDArray[np.float64]:
+    def __design(self) -> NDArray[np.float64]:
         """Compute filter."""
         target_gd = self._get_unscaled_preprocessed_group_delay()
         max_delay_samples_synthesized = int(
@@ -153,15 +149,16 @@ class GroupDelayDesigner:
 
         # Get new phase using group target group delay
         new_phase = -cumulative_trapezoid(target_gd, initial=0)
+
         # Correct if nyquist is given
+        add_extra_sample = False
         if gd_time_length_samples % 2 == 0:
-            new_phase = _correct_for_real_phase_spectrum(
-                _wrap_phase(new_phase)
-            )
+            add_extra_sample = new_phase[-1] % np.pi > np.pi / 2.0
+            new_phase = _correct_for_real_phase_spectrum(new_phase)
 
         # Convert to time domain and trim
         ir = np.fft.irfft(np.exp(1j * new_phase), gd_time_length_samples)
-        trim_length = int(max_delay_samples_synthesized + 1)
+        trim_length = int(max_delay_samples_synthesized + 1 + add_extra_sample)
         ir = _pad_trim(ir, trim_length)
         return ir
 

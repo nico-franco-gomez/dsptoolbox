@@ -1077,16 +1077,15 @@ def _get_chirp_rate(range_hz: list, length_seconds: float) -> float:
 
 
 def _correct_for_real_phase_spectrum(phase_spectrum: NDArray[np.float64]):
-    """This function takes in a wrapped phase spectrum and corrects it to
-    be for a real signal (assuming the last frequency bin corresponds to
-    nyquist, i.e., time data had an even length). This effectively adds a
-    small linear phase offset so that the phase at nyquist is either 0 or
-    np.pi.
+    """This function takes in a phase spectrum and corrects it to be for a real
+    signal (assuming the last frequency bin corresponds to nyquist, i.e., time
+    data had an even length). This effectively adds a small linear phase offset
+    so that the phase at nyquist is either 0 or np.pi.
 
     Parameters
     ----------
     phase_spectrum : NDArray[np.float64]
-        Wrapped phase to be corrected. It is assumed that its last element
+        Phase to be corrected. It is assumed that its last element
         corresponds to the nyquist frequency.
 
     Returns
@@ -1095,11 +1094,7 @@ def _correct_for_real_phase_spectrum(phase_spectrum: NDArray[np.float64]):
         Phase spectrum that can correspond to a real signal.
 
     """
-    factor = (
-        phase_spectrum[-1]
-        if phase_spectrum[-1] >= 0
-        else np.pi + phase_spectrum[-1]
-    )
+    factor = phase_spectrum[-1] % np.pi
     return (
         phase_spectrum
         - np.linspace(0, 1, len(phase_spectrum), endpoint=True) * factor

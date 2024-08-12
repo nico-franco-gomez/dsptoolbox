@@ -25,7 +25,6 @@ from .._general_helpers import (
     _find_frequencies_above_threshold,
     _fractional_octave_smoothing,
     _correct_for_real_phase_spectrum,
-    _wrap_phase,
 )
 from .._standard import (
     _welch,
@@ -716,7 +715,7 @@ def lin_phase_from_mag(
 
         phase = -2 * np.pi * f_vec * gd_ms
         if spectrum_has_nyquist:
-            phase = _correct_for_real_phase_spectrum(_wrap_phase(phase))
+            phase = _correct_for_real_phase_spectrum(phase)
         lin_spectrum[:, n] = spectrum[:, n] * np.exp(1j * phase)
     time_data = np.fft.irfft(lin_spectrum, axis=0, n=original_length_time_data)
     sig_lin_phase = ImpulseResponse(
