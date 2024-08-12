@@ -52,7 +52,10 @@ from .filterbanks import (
 )
 
 from ..classes.lattice_ladder_filter import LatticeLadderFilter
-from ..classes.phase_linearizer import PhaseLinearizer, GroupDelayDesigner
+from ..classes.group_delay_designer_phase_linearizer import (
+    PhaseLinearizer,
+    GroupDelayDesigner,
+)
 from ..classes.sv_filter import StateVariableFilter
 
 __all__ = [
