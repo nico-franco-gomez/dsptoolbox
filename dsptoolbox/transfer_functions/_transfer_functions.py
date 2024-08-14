@@ -14,8 +14,8 @@ from .._general_helpers import (
     _calculate_window,
     _pad_trim,
     _get_chirp_rate,
-    _get_smoothing_factor_ema,
 )
+from ..tools import to_db, time_smoothing
 
 
 def _spectral_deconvolve(
@@ -340,25 +340,18 @@ def _trim_ir(
     impulse_index -= start_index
 
     # ETC (from impulse until end)
-
-    etc = 20 * np.log10(
-        np.clip(
-            np.abs(
-                hilbert(
-                    time_data[start_index + impulse_index :],
-                    N=next_fast_len(
-                        len(time_data) - start_index - impulse_index, False
-                    ),
-                )
+    etc = to_db(
+        hilbert(
+            time_data[start_index + impulse_index :],
+            N=next_fast_len(
+                len(time_data) - start_index - impulse_index, False
             ),
-            a_min=1e-50,
-            a_max=None,
-        )
+        ),
+        True,
     )
 
     # Smoothing of ETC
-    smoothing_factor = _get_smoothing_factor_ema(20e-3, fs_hz)
-    envelope = lfilter([smoothing_factor], [1, -(1 - smoothing_factor)], etc)
+    envelope = time_smoothing(etc, fs_hz, 20e-3, None)
 
     # Ensure that energy is always decaying by checking it in non-overlapping
     # windows. When the energy of a window is larger than the previous one,
@@ -370,9 +363,7 @@ def _trim_ir(
     # with the highest weight. If all are above -0.7, method failed -> no
     # trimming
 
-    window_lengths = (np.array([10, 30, 50, 80, 100]) * 1e-3 * fs_hz).astype(
-        int
-    )
+    window_lengths = (np.array([10, 30, 50, 80]) * 1e-3 * fs_hz).astype(int)
     end = np.zeros(len(window_lengths))
     x = np.arange(len(envelope))
     corr_coeff = np.zeros(len(window_lengths))
