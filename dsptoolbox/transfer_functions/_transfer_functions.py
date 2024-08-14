@@ -363,7 +363,9 @@ def _trim_ir(
     # with the highest weight. If all are above -0.7, method failed -> no
     # trimming
 
-    window_lengths = (np.array([10, 30, 50, 80]) * 1e-3 * fs_hz).astype(int)
+    window_lengths = (np.array([10, 30, 50, 80]) * 1e-3 * fs_hz + 0.5).astype(
+        int
+    )
     end = np.zeros(len(window_lengths))
     x = np.arange(len(envelope))
     corr_coeff = np.zeros(len(window_lengths))

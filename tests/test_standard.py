@@ -161,12 +161,31 @@ class TestStandardModule:
         dsp.resample(self.audio_multi, desired_sampling_rate_hz=22050)
 
     def test_normalize(self):
+        # Check peak normalization
         td = self.audio_multi.time_data
-        n = dsp.normalize(self.audio_multi, peak_dbfs=-20)
+        n = dsp.normalize(self.audio_multi, norm_dbfs=-20)
         td /= np.max(np.abs(td))
         factor = 10 ** (-20 / 20)
         td *= factor
         assert np.isclose(np.max(np.abs(n.time_data)), np.max(np.abs(td)))
+
+        # Check rms
+        channel = self.audio_multi.get_channels(0)
+        rms_previous = dsp.rms(channel)[0]
+        n = dsp.normalize(channel, norm_dbfs=rms_previous - 10, mode="rms")
+        rms = dsp.rms(n)[0]
+        assert np.isclose(rms_previous - 10, rms)
+
+        # Check rest of api
+        dsp.normalize(
+            self.audio_multi, norm_dbfs=-20, mode="rms", each_channel=False
+        )
+        dsp.normalize(
+            self.audio_multi, norm_dbfs=-20, mode="rms", each_channel=True
+        )
+        dsp.normalize(
+            self.audio_multi, norm_dbfs=-20, mode="peak", each_channel=True
+        )
 
     def test_fade(self):
         # Functionality – result only tested for linear fade
