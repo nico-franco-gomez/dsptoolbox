@@ -6,8 +6,10 @@ import numpy as np
 from numpy.typing import NDArray
 from scipy.stats import pearsonr
 from warnings import warn
+
 from ..plots import general_plot
 from ..transfer_functions._transfer_functions import _trim_ir
+from ..tools import from_db, to_db
 
 
 def _reverb(
@@ -103,7 +105,7 @@ def _find_ir_start(
 
     Returns
     -------
-    ind : int
+    int
         Index of the start of the IR. It is the sample before the given
         threshold is surpassed for the first time.
 
@@ -695,10 +697,11 @@ class ShoeboxRoom(Room):
         modes = modes[modes[:, 0].argsort()]
 
         if generate_plot:
-            ind_norm = np.argmax(np.abs(p))
+            p_db = to_db(p, True)
+            p_db -= np.max(p_db)
             plot = general_plot(
                 f,
-                20 * np.log10(np.abs(p)) - 20 * np.log10(np.abs(p[ind_norm])),
+                p_db,
                 range_x=[f[0], f[-1]],
                 tight_layout=True,
                 returns=True,
@@ -985,7 +988,7 @@ def _c80_from_rir(
     else:
         stop = len(td)
     td **= 2
-    return 10 * np.log10(np.sum(td[:window]) / np.sum(td[window:stop]))
+    return to_db(np.sum(td[:window]) / np.sum(td[window:stop]), False)
 
 
 def _ts_from_rir(
@@ -1228,7 +1231,7 @@ if __name__ == "__main__":
     )[0]
     import matplotlib.pyplot as plt
 
-    plt.semilogx(f, 20 * np.log10(np.abs(p1)), label="mean alpha")
-    plt.semilogx(f, 20 * np.log10(np.abs(p2)), label="detailed alpha")
+    plt.semilogx(f, to_db(p1, True), label="mean alpha")
+    plt.semilogx(f, to_db(p2, True), label="detailed alpha")
     plt.legend()
     plt.show()

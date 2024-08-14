@@ -15,6 +15,7 @@ from ..transforms._transforms import (
     _squeeze_scalogram,
     _get_kernels_vqt,
 )
+from ..tools import to_db
 
 import numpy as np
 from numpy.typing import NDArray
@@ -142,9 +143,12 @@ def log_mel_spectrogram(
     if stft_parameters is not None:
         s.set_spectrogram_parameters(**stft_parameters)
     time_s, f_hz, sp = s.get_spectrogram()
+
     mfilt, f_mel = mel_filterbank(f_hz, range_hz, n_bands, normalize=True)
-    log_mel_sp = np.tensordot(mfilt, np.abs(sp), axes=(-1, 0))
-    log_mel_sp = 20 * np.log10(np.clip(log_mel_sp, a_min=1e-20, a_max=None))
+    log_mel_sp = np.tensordot(mfilt, np.abs(sp) ** 2.0, axes=(-1, 0))
+
+    log_mel_sp = to_db(log_mel_sp, False)
+
     if generate_plot:
         fig, ax = general_matrix_plot(
             log_mel_sp[..., channel],
@@ -189,7 +193,8 @@ def mel_filterbank(
     Returns
     -------
     mel_filters : NDArray[np.float64]
-        Mel filters matrix with shape (bands, frequency).
+        Mel filters matrix with shape (bands, frequency). These are to be
+        applied to a power response (squared spectrum).
     mel_center_freqs : NDArray[np.float64]
         Vector containing mel center frequencies.
 
@@ -280,20 +285,22 @@ def plot_waterfall(
         sig.set_spectrogram_parameters(**stft_parameters)
     t, f, stft = sig.get_spectrogram()
 
-    stft = np.abs(stft[..., 0])
-    z_label_extra = ""
-    if dynamic_range_db is not None:
-        stft /= np.max(stft)
-        clip_val = 10 ** (-dynamic_range_db / 20)
-        stft = np.clip(stft, a_min=clip_val, a_max=None)
-        z_label_extra = "FS (normalized @ peak)"
+    if sig._spectrum_parameters["scaling"] is None:
+        amplitude_scaling = True
+    else:
+        amplitude_scaling = "amplitude" in sig._spectrum_parameters["scaling"]
 
     fig, ax = plt.subplots(figsize=(10, 8), subplot_kw=dict(projection="3d"))
     tt, ff = np.meshgrid(t, f)
-    ax.plot_surface(tt, ff, 20 * np.log10(stft), cmap="magma")
+    ax.plot_surface(
+        tt,
+        ff,
+        to_db(stft[..., channel], amplitude_scaling, dynamic_range_db),
+        cmap="magma",
+    )
     ax.set_xlabel("Time / s")
     ax.set_ylabel("Frequency / Hz")
-    ax.set_zlabel("dB" + z_label_extra)
+    ax.set_zlabel("dB")
     fig.tight_layout()
     return fig, ax
 
@@ -372,21 +379,21 @@ def mfcc(
         signal.set_spectrogram_parameters(**stft_parameters)
     time_s, f, sp = signal.get_spectrogram()
 
-    # Get Log power spectrum
-    log_sp = 2 * np.log(np.abs(sp))
-
     # Mel filters
     if mel_filters is None:
         mel_filters, f_mel = mel_filterbank(f, None, n_bands=40)
     else:
-        assert mel_filters.shape[1] == log_sp.shape[0], (
+        assert mel_filters.shape[1] == sp.shape[0], (
             f"Shape of the mel filter matrix {mel_filters.shape} does "
-            + f"not match the STFT {log_sp.shape}"
+            + f"not match the STFT {sp.shape}"
         )
         f_mel = np.array([0, mel_filters.shape[0]])
 
     # Convert from Hz to Mel
-    log_sp = np.tensordot(mel_filters, log_sp, axes=(-1, 0))
+    sp = np.tensordot(mel_filters, np.abs(sp) ** 2.0, axes=(-1, 0))
+
+    # Get Log power spectrum
+    log_sp = to_db(sp, False)
 
     # Discrete cosine transform
     mfcc = np.abs(dct(log_sp, type=2, axis=0))

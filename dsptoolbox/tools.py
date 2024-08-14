@@ -18,6 +18,8 @@ from ._general_helpers import (
     _interpolate_fr as interpolate_fr,
     _time_smoothing as time_smoothing,
     _scale_spectrum as scale_spectrum,
+    to_db,
+    from_db,
 )
 
 from ._standard import (
@@ -52,72 +54,6 @@ def log_frequency_vector(
     return frequency_range_hz[0] * 2 ** (
         np.arange(0, n_octave, 1 / n_bins_per_octave)
     )
-
-
-def to_db(
-    x: NDArray[np.float64],
-    amplitude_input: bool,
-    dynamic_range_db: float | None = None,
-    min_value: float | None = float(np.finfo(np.float64).smallest_normal),
-) -> NDArray[np.float64]:
-    """Convert to dB from amplitude or power representation. Clipping small
-    values can be activated in order to avoid -inf dB outcomes.
-
-    Parameters
-    ----------
-    x : NDArray[np.float64]
-        Array to convert to dB.
-    amplitude_input : bool
-        Set to True if the values in x are in their linear form. False means
-        they have been already squared, i.e., in their power form.
-    dynamic_range_db : float, None, optional
-        If specified, a dynamic range in dB for the vector is applied by
-        finding its largest value and clipping to `max - dynamic_range_db`.
-        This will always overwrite `min_value` if specified. Pass None to
-        ignore. Default: None.
-    min_value : float, None, optional
-        Minimum value to clip `x` before converting into dB in order to avoid
-        `np.nan` or `-np.inf` in the output. Pass None to ignore. Default:
-        `np.finfo(np.float64).smallest_normal`.
-
-    Returns
-    -------
-    NDArray[np.float64]
-        New array or float in dB.
-
-    """
-    factor = 20.0 if amplitude_input else 10.0
-
-    if min_value is None and dynamic_range_db is None:
-        return factor * np.log10(np.abs(x))
-
-    x_abs = np.abs(x)
-
-    if dynamic_range_db is not None:
-        min_value = np.max(x_abs) * 10.0 ** (-abs(dynamic_range_db) / factor)
-
-    return factor * np.log10(np.clip(x_abs, a_min=min_value, a_max=None))
-
-
-def from_db(x: float | NDArray[np.float64], amplitude_output: bool):
-    """Get the values in their amplitude or power form from dB.
-
-    Parameters
-    ----------
-    x : float, NDArray[np.float64]
-        Values in dB.
-    amplitude_output : bool
-        When True, the values are returned in their linear form. Otherwise,
-        the squared (power) form is returned.
-
-    Returns
-    -------
-    float NDArray[np.float64]
-        Converted values
-
-    """
-    factor = 20.0 if amplitude_output else 10.0
-    return 10 ** (x / factor)
 
 
 def get_exact_value_at_frequency(

@@ -21,6 +21,72 @@ from warnings import warn
 from scipy.fft import next_fast_len
 
 
+def to_db(
+    x: NDArray[np.float64],
+    amplitude_input: bool,
+    dynamic_range_db: float | None = None,
+    min_value: float | None = float(np.finfo(np.float64).smallest_normal),
+) -> NDArray[np.float64]:
+    """Convert to dB from amplitude or power representation. Clipping small
+    values can be activated in order to avoid -inf dB outcomes.
+
+    Parameters
+    ----------
+    x : NDArray[np.float64]
+        Array to convert to dB.
+    amplitude_input : bool
+        Set to True if the values in x are in their linear form. False means
+        they have been already squared, i.e., they are in their power form.
+    dynamic_range_db : float, None, optional
+        If specified, a dynamic range in dB for the vector is applied by
+        finding its largest value and clipping to `max - dynamic_range_db`.
+        This will always overwrite `min_value` if specified. Pass None to
+        ignore. Default: None.
+    min_value : float, None, optional
+        Minimum value to clip `x` before converting into dB in order to avoid
+        `np.nan` or `-np.inf` in the output. Pass None to ignore. Default:
+        `np.finfo(np.float64).smallest_normal`.
+
+    Returns
+    -------
+    NDArray[np.float64]
+        New array or float in dB.
+
+    """
+    factor = 20.0 if amplitude_input else 10.0
+
+    if min_value is None and dynamic_range_db is None:
+        return factor * np.log10(np.abs(x))
+
+    x_abs = np.abs(x)
+
+    if dynamic_range_db is not None:
+        min_value = np.max(x_abs) * 10.0 ** (-abs(dynamic_range_db) / factor)
+
+    return factor * np.log10(np.clip(x_abs, a_min=min_value, a_max=None))
+
+
+def from_db(x: float | NDArray[np.float64], amplitude_output: bool):
+    """Get the values in their amplitude or power form from dB.
+
+    Parameters
+    ----------
+    x : float, NDArray[np.float64]
+        Values in dB.
+    amplitude_output : bool
+        When True, the values are returned in their linear form. Otherwise,
+        the squared (power) form is returned.
+
+    Returns
+    -------
+    float NDArray[np.float64]
+        Converted values
+
+    """
+    factor = 20.0 if amplitude_output else 10.0
+    return 10 ** (x / factor)
+
+
 def _find_nearest(points, vector) -> NDArray[np.int_]:
     """Gives back the indexes with the nearest points in vector
 
@@ -193,10 +259,10 @@ def _get_normalized_spectrum(
     # Factor
     if scaling == "amplitude":
         scale_factor = 20e-6 if calibrated_data and normalize is None else 1
-        factor = 20
+        amplitude_scaling = True
     elif scaling == "power":
         scale_factor = 4e-10 if calibrated_data and normalize is None else 1
-        factor = 10
+        amplitude_scaling = False
     else:
         raise ValueError(
             f"{scaling} is not supported. Please select amplitude or "
@@ -228,10 +294,7 @@ def _get_normalized_spectrum(
                 _fractional_octave_smoothing(mag_spectra**0.5, smoothe) ** 2
             )
 
-    epsilon = 10 ** (-800 / 10)
-    mag_spectra = factor * np.log10(
-        np.clip(mag_spectra, a_min=epsilon, a_max=None) / scale_factor
-    )
+    mag_spectra = to_db(mag_spectra / scale_factor, amplitude_scaling, 500)
 
     if normalize is not None:
         for i in range(spectra.shape[1]):
@@ -263,8 +326,9 @@ def _get_normalized_spectrum(
 def _find_frequencies_above_threshold(
     spec, f, threshold_db, normalize=True
 ) -> list:
-    """Finds frequencies above a certain threshold in a given spectrum."""
-    denum_db = 20 * np.log10(np.abs(spec))
+    """Finds frequencies above a certain threshold in a given (amplitude)
+    spectrum."""
+    denum_db = to_db(spec, True)
     if normalize:
         denum_db -= np.max(denum_db)
     freqs = f[denum_db > threshold_db]
@@ -645,7 +709,7 @@ def _frequency_weightning(
         weights = 12194**2 * f**2 / ((f**2 + 20.6**2) * (f**2 + 12194**2))
     weights /= weights[ind1k]
     if db_output:
-        weights = 20 * np.log10(weights)
+        weights = to_db(weights, True)
     return weights
 
 

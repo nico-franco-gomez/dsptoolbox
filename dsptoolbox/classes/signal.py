@@ -25,6 +25,7 @@ from .._general_helpers import (
     _remove_ir_latency_from_phase,
 )
 from .._standard import _welch, _group_delay_direct, _stft, _csm
+from ..tools import to_db
 
 
 class Signal:
@@ -1049,16 +1050,14 @@ class Signal:
                 td_squared_imaginary = oaconvolve(
                     td_squared_imaginary, window, mode="same", axes=0
                 )
-            complex_etc = 10 * np.log10(
-                np.clip(
-                    td_squared_imaginary,
-                    a_min=1e-80,
-                    a_max=None,
-                )
+            complex_etc = to_db(
+                td_squared_imaginary,
+                False,
+                500 if range_db is None else range_db,
             )
 
-        peak_values = 10 * np.log10(np.max(td_squared, axis=0))
-        etc = 10 * np.log10(np.clip(td_squared, a_min=1e-80, a_max=None))
+        etc = to_db(td_squared, False, 500)
+        peak_values = np.max(etc, axis=0)
 
         if normalize_at_peak:
             etc -= peak_values
@@ -1205,16 +1204,15 @@ class Signal:
         stft = stft[ids[0] : ids[1], :]
 
         if self._spectrogram_parameters["scaling"]:
-            if "power" in self._spectrogram_parameters["scaling"]:
-                factor = 10
-            else:
-                factor = 20
+            amplitude_scaling = (
+                "power" not in self._spectrogram_parameters["scaling"]
+            )
             zlabel = "dBFS"
         else:
-            factor = 20
+            amplitude_scaling = True
             zlabel = "dBFS"
 
-        stft_db = factor * np.log10(np.clip(np.abs(stft), 1e-30, None))
+        stft_db = to_db(stft, amplitude_scaling)
 
         if self.calibrated_signal:
             stft_db -= 20 * np.log10(2e-5)

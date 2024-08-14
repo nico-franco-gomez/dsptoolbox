@@ -5,6 +5,7 @@ from matplotlib.axes import Axes
 
 from .signal import Signal
 from ..plots import general_subplots_line
+from ..tools import to_db
 
 
 class ImpulseResponse(Signal):
@@ -300,11 +301,10 @@ class ImpulseResponse(Signal):
             normalize_at_peak, range_db, window_length_s
         )
 
-        peak_values = 10 * np.log10(np.max(self.time_data**2.0, axis=0))
+        peak_values = to_db(np.max(np.abs(self.time_data), axis=0), True)
 
-        add_to_peak = 1  # Add 1 dB for better plotting
         max_values = (
-            peak_values + add_to_peak
+            peak_values + 1  # Add 1 dB for better plotting
             if not normalize_at_peak
             else np.ones(self.number_of_channels)
         )
@@ -313,14 +313,7 @@ class ImpulseResponse(Signal):
             if hasattr(self, "window"):
                 ax[n].plot(
                     self.time_vector_s,
-                    20
-                    * np.log10(
-                        np.clip(
-                            np.abs(self.window[:, n] / 1.1),
-                            a_min=1e-40,
-                            a_max=None,
-                        )
-                    )
+                    to_db(self.window[:, n] / 1.1, True, dynamic_range_db=500)
                     + max_values[n],
                     alpha=0.75,
                 )
@@ -339,12 +332,12 @@ class ImpulseResponse(Signal):
         """
         fig, ax = super().plot_time()
         if hasattr(self, "window"):
-            mx = np.max(np.abs(self.time_data), axis=0) * 1.1
+            mx = np.max(np.abs(self.time_data), axis=0)
 
             for n in range(self.number_of_channels):
                 ax[n].plot(
                     self.time_vector_s,
-                    self.window[:, n] * mx[n] / 1.1,
+                    self.window[:, n] * mx[n],
                     alpha=0.75,
                 )
         return fig, ax

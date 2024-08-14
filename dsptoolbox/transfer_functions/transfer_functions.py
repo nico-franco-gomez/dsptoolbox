@@ -41,6 +41,7 @@ from ..standard_functions import (
 from ..generators import dirac
 from ..filterbanks import linkwitz_riley_crossovers
 from ..room_acoustics._room_acoustics import _find_ir_start
+from ..tools import to_db
 
 
 def spectral_deconvolve(
@@ -1709,7 +1710,7 @@ def harmonic_distortion_analysis(
 
         # Make plot
         if generate_plot:
-            ax.plot(f, 10 * np.log10(sp_power))
+            ax.plot(f, to_db(sp_power, False))
 
         # Accumulate time samples for THD+N
         thd[pos_thd - len(harm[i]) : pos_thd] = harm[i].time_data.squeeze()
@@ -1731,7 +1732,7 @@ def harmonic_distortion_analysis(
     freqs_thd = freqs[:ind_end]
     if generate_plot:
         sp_thd[sp_thd == 0] = np.nan
-        ax.plot(freqs_thd, 10 * np.log10(sp_thd), label="THD")
+        ax.plot(freqs_thd, to_db(sp_thd, False), label="THD")
         np.nan_to_num(sp_thd, False, 0)
 
     # THD+N
@@ -1744,7 +1745,7 @@ def harmonic_distortion_analysis(
     if generate_plot:
         ax.plot(
             f_thd_n,
-            10 * np.log10(sp_thd_n),
+            to_db(sp_thd_n, False),
             label="THD+N",
         )
         ax.legend(

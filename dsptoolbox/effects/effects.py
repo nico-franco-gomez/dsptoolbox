@@ -19,6 +19,7 @@ from ._effects import (
     get_time_period_from_musical_rhythm,
 )
 from ..plots import general_plot
+from ..tools import to_db
 
 from scipy.signal.windows import get_window
 import numpy as np
@@ -527,9 +528,7 @@ class SpectralSubtractor(AudioEffect):
         td = _get_framed_signal(td, len(self.window), self.step_size)
 
         # Get RMS values in dB for each time frame and channel
-        td_rms_db = 20 * np.log10(
-            np.clip(np.var(td, axis=0), a_min=1e-25, a_max=None)
-        )
+        td_rms_db = to_db(np.var(td, axis=0), False)
 
         # Windowed signal
         td_windowed = td * self.window[:, np.newaxis, np.newaxis]
@@ -1518,7 +1517,7 @@ class DigitalDelay(AudioEffect):
                 imp[i - delay_samples]
             )
 
-        imp = 20 * np.log10(np.clip(np.abs(imp), a_min=1e-15, a_max=None))
+        imp = to_db(imp, True)
 
         x = np.arange(len(imp)) / fs * 1e3
         fig, ax = general_plot(

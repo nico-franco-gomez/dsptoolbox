@@ -8,6 +8,7 @@ from scipy.fft import next_fast_len
 from scipy.stats import pearsonr
 from warnings import warn
 from numpy.typing import NDArray
+
 from .._general_helpers import (
     _find_nearest,
     _calculate_window,
