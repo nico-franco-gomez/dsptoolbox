@@ -110,14 +110,18 @@ def _find_ir_start(
         threshold is surpassed for the first time.
 
     """
-    energy_curve = ir**2
-    energy_curve_db = 10 * np.log10(
-        np.clip(energy_curve / np.max(energy_curve), a_min=1e-30, a_max=None)
+    signal_power = ir**2
+    start_ir = int(np.argmax(ir))
+
+    # -20 dB distance from peak value according to ISO 3382-1:2009-10
+    threshold = signal_power[start_ir] * from_db(
+        -np.abs(threshold_dbfs), False
     )
-    ind = int(np.where(energy_curve_db > threshold_dbfs)[0][0] - 1)
-    if ind < 0:
-        ind = 0
-    return ind
+
+    for start_ir in range(start_ir, -1, -1):
+        if signal_power[start_ir] < threshold:
+            break
+    return start_ir
 
 
 def _complex_mode_identification(
