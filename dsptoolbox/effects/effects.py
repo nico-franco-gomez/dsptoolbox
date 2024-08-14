@@ -4,9 +4,8 @@ from .._standard import (
     _get_framed_signal,
     _reconstruct_framed_signal,
     _pad_trim,
-    _rms,
 )
-from .._general_helpers import _get_next_power_2
+from .._general_helpers import _get_next_power_2, _rms
 from ._effects import (
     _arctan_distortion,
     _clean_signal,

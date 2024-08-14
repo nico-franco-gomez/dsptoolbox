@@ -416,14 +416,15 @@ def _compute_number_frames(
 
 
 def _normalize(
-    s: NDArray[np.float64], dbfs: float, mode="peak"
+    s: NDArray[np.float64], dbfs: float, mode: str, per_channel: bool
 ) -> NDArray[np.float64]:
     """Normalizes a signal.
 
     Parameters
     ----------
     s: NDArray[np.float64]
-        Signal to normalize.
+        Signal to normalize. It can be 1 or 2D. Time samples are assumed to
+        be in the outer axis.
     dbfs: float
         dbfs value to normalize to.
     mode: str, optional
@@ -436,22 +437,44 @@ def _normalize(
         Normalized signal.
 
     """
-    s = s.copy()
     assert mode in ("peak", "rms"), (
         "Mode of normalization is not "
         + "available. Select either peak or rms"
     )
+
+    onedim = s.ndim == 1
+    if onedim:
+        s = s[..., None]
+
+    factor = from_db(dbfs, True)
     if mode == "peak":
-        s /= np.max(np.abs(s))
-        s *= 10 ** (dbfs / 20)
-    if mode == "rms":
-        s *= 10 ** (dbfs / 20) / _rms(s)
-    return s
+        factor /= np.max(np.abs(s), axis=0 if per_channel else None)
+    elif mode == "rms":
+        factor /= _rms(s if per_channel else s.flatten())
+    s_norm = s * factor
+
+    return s_norm[..., 0] if onedim else s_norm
 
 
-def _rms(x: NDArray[np.float64]) -> NDArray[np.float64]:
-    """Root mean square computation."""
-    return np.sqrt(np.sum(x**2) / len(x))
+def _rms(x: NDArray[np.float64]) -> float | NDArray[np.float64]:
+    """Root mean squared value of a discrete time series.
+
+    Parameters
+    ----------
+    x : NDArray[np.float64]
+        Time series.
+
+    Returns
+    -------
+    rms : float or NDArray[np.float64]
+        Root mean squared of a signal. Float or NDArray[np.float64] depending
+        on input.
+
+    """
+    single_dim = x.ndim == 1
+    x = x[..., None] if single_dim else x
+    rms_vals = np.std(x, axis=0)
+    return rms_vals[..., 0] if single_dim else rms_vals
 
 
 def _amplify_db(s: NDArray[np.float64], db: float) -> NDArray[np.float64]:

@@ -123,7 +123,7 @@ def noise(
         mag[id_low:, :] *= (f[id_low:] ** (-type_of_noise * 0.5))[..., None]
 
     vec = np.fft.irfft(mag * np.exp(1j * ph), n=l_samples, axis=0)
-    vec = _normalize(vec, dbfs=peak_level_dbfs, mode="peak")
+    vec = _normalize(vec, dbfs=peak_level_dbfs, mode="peak", per_channel=True)
     if fade is not None:
         fade_length = 0.05 * length_seconds
         vec = _fade(
@@ -233,7 +233,9 @@ def chirp(
         chirp_td = np.sin(
             2 * np.pi * range_hz[0] / np.log(k) * (k**t - 1) + phase_offset
         )
-    chirp_td = _normalize(chirp_td, peak_level_dbfs, mode="peak")
+    chirp_td = _normalize(
+        chirp_td, peak_level_dbfs, mode="peak", per_channel=True
+    )
 
     if fade is not None:
         fade_length = 0.05 * length_seconds
@@ -373,7 +375,7 @@ def harmonic(
     # Generate wave
     td = np.sin(n_vec)
 
-    td = _normalize(td, peak_level_dbfs, mode="peak")
+    td = _normalize(td, peak_level_dbfs, mode="peak", per_channel=True)
 
     if fade is not None:
         fade_length = 0.05 * length_seconds
@@ -527,7 +529,7 @@ def oscillator(
             k += 1
         td *= -8 / np.pi**2
 
-    td = _normalize(td, peak_level_dbfs, mode="peak")
+    td = _normalize(td, peak_level_dbfs, mode="peak", per_channel=True)
 
     if fade is not None:
         fade_length = 0.05 * length_seconds

@@ -259,7 +259,7 @@ def convolve_rir_on_signal(
         )[:total_length_samples]
         if keep_peak_level:
             new_time_data[:, n] = _normalize(
-                new_time_data[:, n], old_peak, mode="peak"
+                new_time_data[:, n], old_peak, mode="peak", per_channel=True
             )
 
     new_sig = signal.copy()
