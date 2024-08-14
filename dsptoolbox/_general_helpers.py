@@ -1515,16 +1515,18 @@ def _interpolate_fr(
         Frequency response to be interpolated.
     f_target : NDArray[np.float64]
         Target frequency vector.
-    mode : str, optional
-        Convert to amplitude or power representation from dB during
-        interpolation (or the other way around) using the modes `"db2power"`
-        (input in dB, interpolation in power spectrum, output in dB),
-        `"db2amplitude"`, `"amplitude2db"`, `"power2db"`. Pass `None` to avoid
-        any conversion. Default: `None`.
-    interpolation_scheme : str, optional
+    mode : str, None, {"db2amplitude", "amplitude2db", "power2db",\
+            "power2amplitude", "amplitude2power"}, optional
+        Convert between amplitude, power or dB representation during the
+        interpolation step. For instance, using the modes "db2power" means
+        input in dB, interpolation in power spectrum, output in dB. Available
+        modes are "db2amplitude", "amplitude2db", "power2db",
+        "power2amplitude", "amplitude2power". Pass None to avoid any
+        conversion. Default: None.
+    interpolation_scheme : str, {"linear", "quadratic", "cubic"}, optional
         Type of interpolation to use. See `scipy.interpolation.interp1d` for
-        details. Choose from `"quadratic"` or `"cubic"` splines, or `"linear"`.
-        Default: `"linear"`.
+        details. Choose from "quadratic" or "cubic" splines, or "linear".
+        Default: "linear".
 
     Returns
     -------
@@ -1535,11 +1537,11 @@ def _interpolate_fr(
     -----
     - The input is always assumed to be already sorted.
     - In case `f_target` has values outside the boundaries of `f_interp`,
-      the first and last values of `fr_interp` are used for extrapolation. This
-      also applies if interpolation is done in dB. If done in amplitude or
-      power units, the fill value outside the boundaries is 0.
+      0 is used as the fill value. For interpolation in dB, fill values are
+      the vector's edges.
     - The interpolation is always done along the first (outer) axis or the
       vector.
+    - When converting to dB, the default clipping value of `to_db` is used.
     - Theoretical thoughts on interpolating an amplitude or power
       frequency response:
         - Using complex and dB values during interpolation are not very precise
@@ -1578,31 +1580,29 @@ def _interpolate_fr(
 
     """
 
-    fill_value = (fr_interp[0], fr_interp[-1])
+    fill_value = (0.0, 0.0)
+    y = fr_interp.copy()
 
     # Conversion if necessary
     if mode is not None:
         mode = mode.lower()
-        factor = 20 if "amplitude" in mode else 10
-        if mode[:3] == "db2":
-            fr_interp = 10 ** (fr_interp / factor)
-            fill_value = (0.0, 0.0)
+        if mode == "power2amplitude":
+            y **= 0.5
+        elif mode == "amplitude2power":
+            y **= 2.0
+        elif mode[:3] == "db2":
+            y = from_db(y, "amplitude" in mode)
         elif mode[-3:] == "2db":
-            fr_interp = factor * np.log10(
-                np.clip(
-                    np.abs(fr_interp),
-                    a_min=np.finfo(np.float64).smallest_normal,
-                    a_max=None,
-                )
-            )
-            fill_value = (fr_interp[0], fr_interp[-1])
+            y = to_db(y, "amplitude" in mode)
+            fill_value = (y[0], y[-1])
         else:
             raise ValueError(f"Unsupported interpolation mode: {mode}")
 
     interpolated = interp1d(
         f_interp,
-        fr_interp,
+        y,
         kind=interpolation_scheme,
+        copy=False,
         bounds_error=False,
         assume_sorted=True,
         fill_value=fill_value,
@@ -1611,16 +1611,14 @@ def _interpolate_fr(
 
     # Back conversion if activated
     if mode is not None:
-        if mode[:3] == "db2":
-            interpolated = factor * np.log10(
-                np.clip(
-                    np.abs(interpolated),
-                    a_min=np.finfo(np.float64).smallest_normal,
-                    a_max=None,
-                )
-            )
+        if mode == "power2amplitude":
+            interpolated **= 2.0
+        elif mode == "amplitude2power":
+            interpolated **= 0.5
+        elif mode[:3] == "db2":
+            interpolated = to_db(interpolated, "amplitude" in mode)
         elif mode[-3:] == "2db":
-            interpolated = 10 ** (interpolated / factor)
+            interpolated = from_db(interpolated, "amplitude" in mode)
 
     return interpolated
 
