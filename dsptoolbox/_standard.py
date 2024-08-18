@@ -830,37 +830,6 @@ def _detrend(
     return time_data
 
 
-def _rms(x: NDArray[np.float64]) -> float | NDArray[np.float64]:
-    """Root mean squared value of a discrete time series.
-
-    Parameters
-    ----------
-    x : NDArray[np.float64]
-        Time series.
-
-    Returns
-    -------
-    rms : float or NDArray[np.float64]
-        Root mean squared of a signal. Float or NDArray[np.float64] depending
-        on input.
-
-    """
-    single_dim = False
-    if x.ndim < 2:
-        single_dim = True
-        x = x[..., None]
-    elif x.ndim == 2:
-        pass
-    else:
-        raise ValueError(
-            "Shape of array is not valid. Only 2D-Arrays " + "are valid"
-        )
-    rms_vals = np.sqrt(np.mean(x**2, axis=0))
-    if single_dim:
-        rms_vals = np.squeeze(rms_vals)
-    return rms_vals
-
-
 def _get_framed_signal(
     td: NDArray[np.float64],
     window_length_samples: int,

@@ -17,7 +17,7 @@ from ..classes.filter_helpers import _impulse
 
 
 def noise(
-    type_of_noise: str = "white",
+    type_of_noise: str | float = "white",
     length_seconds: float = 1.0,
     sampling_rate_hz: int | None = None,
     peak_level_dbfs: float = -10.0,
@@ -29,10 +29,12 @@ def noise(
 
     Parameters
     ----------
-    type_of_noise : str, optional
-        Choose from `'white'`, `'pink'`, `'red'`, `'blue'`, `'violet'` or
-        `'grey'`.
-        Default: `'white'`.
+    type_of_noise : str {"white", "pink", "red", "blue", "violet", "grey"}, \
+            float, optional
+        Type of noise to generate. If a float is passed, it corresponds to
+        `beta`, where `beta` is used to define the slope of the power spectral
+        density (psd) with `psd * frequency**(-beta)`. See notes for details.
+        Default: "white".
     length_seconds : float, optional
         Length of the generated signal in seconds. Default: 1.
     sampling_rate_hz : int
@@ -45,8 +47,8 @@ def noise(
     fade : str, optional
         Type of fade done on the generated signal. By default, 10% of signal
         length (without the padding in the end) is faded at the beginning and
-        end. Options are `'exp'`, `'lin'`, `'log'`. Pass `None` for no
-        fading. Default: `'log'`.
+        end. Options are "exp", "lin", "log". Pass `None` for no
+        fading. Default: "log".
     padding_end_seconds : float, optional
         Padding at the end of signal. Default: 0.
 
@@ -59,11 +61,22 @@ def noise(
     ----------
     - https://en.wikipedia.org/wiki/Colors_of_noise
 
+    Notes
+    -----
+    - Using the `beta` parameter to define noise is the most flexible approach.
+      For instance, `beta=1.0` will deliver pink noise, `beta=-1.0` corresponds
+      to blue.
+
     """
     assert sampling_rate_hz is not None, "Sampling rate can not be None"
-    valid_noises = ("white", "pink", "red", "blue", "violet", "grey")
-    type_of_noise = type_of_noise.lower()
-    assert type_of_noise in valid_noises, f"{type_of_noise} is not valid"
+    if type(type_of_noise) is str:
+        valid_noises = ("white", "pink", "red", "blue", "violet", "grey")
+        type_of_noise = type_of_noise.lower()
+        assert type_of_noise in valid_noises, f"{type_of_noise} is not valid"
+    else:
+        assert (
+            type(type_of_noise) is float
+        ), "type_of_noise must be either str or float"
     assert length_seconds > 0, "Length has to be positive"
     assert peak_level_dbfs <= 0, "Peak level cannot surpass 0 dBFS"
     assert number_of_channels >= 1, "At least one channel should be generated"
@@ -85,7 +98,7 @@ def noise(
     # frequencies
     id_low = np.argmin(np.abs(f - 15))
     mag[0] = 0
-    if type_of_noise != "white":
+    if type_of_noise != "white" or type_of_noise != 0.0:
         mag[:id_low] *= 1e-20
 
     ph = np.random.uniform(-np.pi, np.pi, (len(f), number_of_channels))
@@ -106,9 +119,11 @@ def noise(
     elif type_of_noise == "grey":
         w = _frequency_weightning(f, "a", db_output=False)
         mag[id_low:, :] /= w[id_low:][..., None]
+    elif type(type_of_noise) is float:
+        mag[id_low:, :] *= (f[id_low:] ** (-type_of_noise * 0.5))[..., None]
 
     vec = np.fft.irfft(mag * np.exp(1j * ph), n=l_samples, axis=0)
-    vec = _normalize(vec, dbfs=peak_level_dbfs, mode="peak")
+    vec = _normalize(vec, dbfs=peak_level_dbfs, mode="peak", per_channel=True)
     if fade is not None:
         fade_length = 0.05 * length_seconds
         vec = _fade(
@@ -147,8 +162,8 @@ def chirp(
     Parameters
     ----------
     type_of_chirp : str, optional
-        Choose from `'lin'`, `'log'`.
-        Default: `'log'`.
+        Choose from "lin", "log".
+        Default: "log".
     range_hz : array-like with length 2
         Define range of chirp in Hz. When `None`, all frequencies between
         15 Hz and nyquist are taken. Default: `None`.
@@ -163,8 +178,8 @@ def chirp(
     fade : str, optional
         Type of fade done on the generated signal. By default, 10% of signal
         length (without the padding in the end) is faded at the beginning and
-        end. Options are `'exp'`, `'lin'`, `'log'`.
-        Pass `None` for no fading. Default: `'log'`.
+        end. Options are "exp", "lin", "log".
+        Pass `None` for no fading. Default: "log".
     phase_offset : float, optional
         This is an offset in radians for the phase of the sine. Default: 0.
     padding_end_seconds : float, optional
@@ -218,7 +233,9 @@ def chirp(
         chirp_td = np.sin(
             2 * np.pi * range_hz[0] / np.log(k) * (k**t - 1) + phase_offset
         )
-    chirp_td = _normalize(chirp_td, peak_level_dbfs, mode="peak")
+    chirp_td = _normalize(
+        chirp_td, peak_level_dbfs, mode="peak", per_channel=True
+    )
 
     if fade is not None:
         fade_length = 0.05 * length_seconds
@@ -324,8 +341,8 @@ def harmonic(
     fade : str, optional
         Type of fade done on the generated signal. By default, 5% of signal
         length (without the padding in the end) is faded at the beginning and
-        end. Options are `'exp'`, `'lin'`, `'log'`.
-        Pass `None` for no fading. Default: `'log'`.
+        end. Options are "exp", "lin", "log".
+        Pass `None` for no fading. Default: "log".
     padding_end_seconds : float, optional
         Padding at the end of signal. Default: 0.
 
@@ -358,7 +375,7 @@ def harmonic(
     # Generate wave
     td = np.sin(n_vec)
 
-    td = _normalize(td, peak_level_dbfs, mode="peak")
+    td = _normalize(td, peak_level_dbfs, mode="peak", per_channel=True)
 
     if fade is not None:
         fade_length = 0.05 * length_seconds
@@ -405,8 +422,8 @@ def oscillator(
     length_seconds : float, optional
         Length of the generated signal in seconds. Default: 1.
     mode : str, optional
-        Type of wave to generate. Choose from `'harmonic'`, `'square'`,
-        `'triangle'` or `'sawtooth'`. Default: `'harmonic'`.
+        Type of wave to generate. Choose from "harmonic", "square",
+        "triangle" or "sawtooth". Default: "harmonic".
     harmonic_cutoff_hz : float, optional
         It is possible to pass a cutoff frequency for the harmonics. If `None`,
         they are computed up until before the nyquist frequency.
@@ -423,8 +440,8 @@ def oscillator(
     fade : str, optional
         Type of fade done on the generated signal. By default, 5% of signal
         length (without the padding in the end) is faded at the beginning and
-        end. Options are `'exp'`, `'lin'`, `'log'`.
-        Pass `None` for no fading. Default: `'log'`.
+        end. Options are "exp", "lin", "log".
+        Pass `None` for no fading. Default: "log".
     padding_end_seconds : float, optional
         Padding at the end of signal. Default: 0.
 
@@ -512,7 +529,7 @@ def oscillator(
             k += 1
         td *= -8 / np.pi**2
 
-    td = _normalize(td, peak_level_dbfs, mode="peak")
+    td = _normalize(td, peak_level_dbfs, mode="peak", per_channel=True)
 
     if fade is not None:
         fade_length = 0.05 * length_seconds

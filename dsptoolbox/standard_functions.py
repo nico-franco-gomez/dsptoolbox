@@ -25,7 +25,6 @@ from ._standard import (
     _latency,
     _indices_above_threshold_dbfs,
     _detrend,
-    _rms,
     _fractional_delay_filter,
 )
 from ._general_helpers import (
@@ -36,7 +35,9 @@ from ._general_helpers import (
     _get_smoothing_factor_ema,
     _fractional_latency,
     _get_correlation_of_latencies,
+    _rms,
 )
+from .tools import from_db
 
 
 def latency(
@@ -378,43 +379,51 @@ def resample(sig: Signal, desired_sampling_rate_hz: int) -> Signal:
 
 def normalize(
     sig: Signal | MultiBandSignal,
-    peak_dbfs: float = -6,
+    norm_dbfs: float = -6,
+    mode: str = "peak",
     each_channel: bool = False,
 ) -> Signal | MultiBandSignal:
-    """Normalizes a signal to a given peak value. It either normalizes each
+    """Normalizes a signal to a given dBFS value. It either normalizes each
     channel or the signal as a whole.
 
     Parameters
     ----------
     sig : `Signal` or `MultiBandSignal`
         Signal to be normalized.
-    peak_dbfs : float, optional
-        dBFS to which to normalize peak. Default: -6.
+    norm_dbfs : float, optional
+        Value in dBFS to reach after normalization. Default: -6.
+    mode : str, {"peak", "rms"}, optional
+        Normalization mode. Either normalize peak or RMS value. See notes.
+        Default: "peak".
     each_channel : bool, optional
         When `True`, each channel on its own is normalized. When `False`,
-        the peak value for all channels is regarded. Default: `False`.
+        the peak or rms value across all channels is regarded.
+        Default: `False`.
 
     Returns
     -------
     new_sig : `Signal` or `MultiBandSignal`
         Normalized signal.
 
+    Notes
+    -----
+    - Normalization can be done for peak or RMS. The latter might generate a
+      signal with samples above 0 dBFS if `signal.constrain_amplitude=False`.
+
     """
     if isinstance(sig, Signal):
+        mode = mode.lower()
+        assert mode in ("peak", "rms"), "Normalization mode not supported"
         new_sig = sig.copy()
-        new_time_data = np.empty_like(sig.time_data)
-        if each_channel:
-            for n in range(sig.number_of_channels):
-                new_time_data[:, n] = _normalize(
-                    sig.time_data[:, n], peak_dbfs
-                )
-        else:
-            new_time_data = _normalize(sig.time_data, peak_dbfs)
-        new_sig.time_data = new_time_data
+        new_sig.time_data = _normalize(
+            new_sig.time_data, norm_dbfs, mode, each_channel
+        )
     elif isinstance(sig, MultiBandSignal):
         new_sig = sig.copy()
         for ind in range(sig.number_of_bands):
-            new_sig.bands[ind] = normalize(sig.bands[ind], peak_dbfs)
+            new_sig.bands[ind] = normalize(
+                sig.bands[ind], norm_dbfs, mode, each_channel
+            )
     else:
         raise TypeError(
             "Type of signal is not valid. Use either Signal or MultiBandSignal"
@@ -1222,3 +1231,46 @@ def dither(
     else:
         new_s.time_data = new_s.time_data + noise
     return new_s
+
+
+def apply_gain(
+    signal: Signal | MultiBandSignal, gain_db: float | NDArray[np.float64]
+) -> Signal | MultiBandSignal:
+    """Apply some gain to a signal. It can be done to the signal as a whole
+    or per channel.
+
+    Parameters
+    ----------
+    signal : Signal, MultiBandSignal
+        Signal to apply gain to.
+    gain_db : float, NDArray[np.float64]
+        Gain in dB to be applied. If it is an array, it should have as many
+        elements as there are channels in the signal.
+
+    Returns
+    -------
+    Signal, MultiBandSignal
+        Signal with new gains.
+
+    Notes
+    -----
+    If `constrain_amplitude=True` in the signal, the resulting time data might
+    get rescaled after applying the gain.
+
+    """
+    if isinstance(signal, Signal):
+        gain_linear = from_db(gain_db, True)
+        new_sig = signal.copy()
+        new_sig.time_data = new_sig.time_data * gain_linear
+        if new_sig.time_data_imaginary is not None:
+            new_sig.time_data_imaginary = (
+                new_sig.time_data_imaginary * gain_linear
+            )
+        return new_sig
+    elif isinstance(signal, MultiBandSignal):
+        new_mb = signal.copy()
+        for ind in range(new_mb.number_of_bands):
+            new_mb.bands[ind] = apply_gain(new_mb.bands[ind], gain_db)
+        return new_mb
+    else:
+        raise TypeError("No valid type was passed")

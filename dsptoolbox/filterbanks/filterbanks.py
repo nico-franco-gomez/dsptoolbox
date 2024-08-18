@@ -1,6 +1,5 @@
 """
-General use filter banks to be created and given back as a filter bank
-object
+General use filters and filter banks.
 """
 
 import numpy as np

@@ -6,8 +6,10 @@ import numpy as np
 from numpy.typing import NDArray
 from scipy.stats import pearsonr
 from warnings import warn
+
 from ..plots import general_plot
 from ..transfer_functions._transfer_functions import _trim_ir
+from ..tools import from_db, to_db
 
 
 def _reverb(
@@ -103,19 +105,23 @@ def _find_ir_start(
 
     Returns
     -------
-    ind : int
+    int
         Index of the start of the IR. It is the sample before the given
         threshold is surpassed for the first time.
 
     """
-    energy_curve = ir**2
-    energy_curve_db = 10 * np.log10(
-        np.clip(energy_curve / np.max(energy_curve), a_min=1e-30, a_max=None)
+    signal_power = ir**2
+    start_ir = int(np.argmax(ir))
+
+    # -20 dB distance from peak value according to ISO 3382-1:2009-10
+    threshold = signal_power[start_ir] * from_db(
+        -np.abs(threshold_dbfs), False
     )
-    ind = int(np.where(energy_curve_db > threshold_dbfs)[0][0] - 1)
-    if ind < 0:
-        ind = 0
-    return ind
+
+    for start_ir in range(start_ir, -1, -1):
+        if signal_power[start_ir] < threshold:
+            break
+    return start_ir
 
 
 def _complex_mode_identification(
@@ -695,10 +701,11 @@ class ShoeboxRoom(Room):
         modes = modes[modes[:, 0].argsort()]
 
         if generate_plot:
-            ind_norm = np.argmax(np.abs(p))
+            p_db = to_db(p, True)
+            p_db -= np.max(p_db)
             plot = general_plot(
                 f,
-                20 * np.log10(np.abs(p)) - 20 * np.log10(np.abs(p[ind_norm])),
+                p_db,
                 range_x=[f[0], f[-1]],
                 tight_layout=True,
                 returns=True,
@@ -985,7 +992,7 @@ def _c80_from_rir(
     else:
         stop = len(td)
     td **= 2
-    return 10 * np.log10(np.sum(td[:window]) / np.sum(td[window:stop]))
+    return to_db(np.sum(td[:window]) / np.sum(td[window:stop]), False)
 
 
 def _ts_from_rir(
@@ -1178,25 +1185,23 @@ def _compute_energy_decay_curve(
     trim_automatically: bool,
     fs_hz: int,
 ) -> NDArray[np.float64]:
-    """Get the energy decay curve from an energy time curve."""
+    """Get the energy decay curve."""
     # start_index might be the last index below -20 dB relative to peak value.
     # If so, the normalization of the edc should be done with the beginning
     if trim_automatically:
-        start_index, stopping_index, impulse_index = _trim_ir(
+        _, stopping_index, _ = _trim_ir(
             time_data,
             fs_hz,
-            offset_start_s=20e-3,
+            offset_start_s=1e-3,
         )
     else:
-        start_index = 0
         stopping_index = len(time_data)
 
+    start_index = _find_ir_start(time_data)
     signal_power = time_data[start_index:stopping_index] ** 2
     edc = np.sum(signal_power) - np.cumsum(signal_power)
-    epsilon = 1e-50
-    edc = 10 * np.log10(np.clip(edc, a_min=epsilon, a_max=None))
-    edc -= edc[impulse_index]
-    return edc
+    edc = to_db(edc, False)
+    return edc - edc[0]
 
 
 if __name__ == "__main__":
@@ -1228,7 +1233,7 @@ if __name__ == "__main__":
     )[0]
     import matplotlib.pyplot as plt
 
-    plt.semilogx(f, 20 * np.log10(np.abs(p1)), label="mean alpha")
-    plt.semilogx(f, 20 * np.log10(np.abs(p2)), label="detailed alpha")
+    plt.semilogx(f, to_db(p1, True), label="mean alpha")
+    plt.semilogx(f, to_db(p2, True), label="detailed alpha")
     plt.legend()
     plt.show()

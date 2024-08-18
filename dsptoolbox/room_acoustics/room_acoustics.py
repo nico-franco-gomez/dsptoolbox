@@ -21,6 +21,7 @@ from ._room_acoustics import (
 )
 from .._general_helpers import _find_nearest, _normalize, _pad_trim
 from ..standard_functions import pad_trim
+from ..tools import to_db
 
 
 def reverb_time(
@@ -189,7 +190,7 @@ def find_modes(
     dist_samp = 1 if dist_samp < 1 else dist_samp
 
     id_cmif, _ = find_peaks(
-        10 * np.log10(cmif),
+        to_db(cmif, False),
         distance=dist_samp,
         # width=dist_samp,  # Is width here a good idea?
         prominence=prominence_db,
@@ -252,13 +253,13 @@ def convolve_rir_on_signal(
 
     for n in range(signal.number_of_channels):
         if keep_peak_level:
-            old_peak = 20 * np.log10(np.max(np.abs(signal.time_data[:, n])))
+            old_peak = to_db(np.max(np.abs(signal.time_data[:, n])), True)
         new_time_data[:, n] = convolve(
             signal.time_data[:, n], rir.time_data[:, 0], mode="full"
         )[:total_length_samples]
         if keep_peak_level:
             new_time_data[:, n] = _normalize(
-                new_time_data[:, n], old_peak, mode="peak"
+                new_time_data[:, n], old_peak, mode="peak", per_channel=True
             )
 
     new_sig = signal.copy()

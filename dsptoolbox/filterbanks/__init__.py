@@ -24,8 +24,9 @@ Other:
 - `complementary_fir_filter()`: Create a complementary FIR filter from a
   linear-phase FIR prototype.
 - `LatticeLadderFilter()`: Filter with lattice-ladder topology.
-- `PhaseLinearizer()`: Design an FIR filter that linearizes a phase spectrum
-  or matches a target group delay.
+- `PhaseLinearizer()`: Design an FIR filter that linearizes a phase spectrum.
+- `GroupDelayDesigner()`: Design an FIR filter that matches a target group
+  delay.
 - `StateVariableFilter()`: SV-Filter discretized with a topology-preserving
   transform.
 - `convert_into_lattice_filter()`: Turns a conventional filter into its
@@ -51,7 +52,10 @@ from .filterbanks import (
 )
 
 from ..classes.lattice_ladder_filter import LatticeLadderFilter
-from ..classes.phase_linearizer import PhaseLinearizer
+from ..classes.group_delay_designer_phase_linearizer import (
+    PhaseLinearizer,
+    GroupDelayDesigner,
+)
 from ..classes.sv_filter import StateVariableFilter
 
 __all__ = [
@@ -65,6 +69,7 @@ __all__ = [
     "convert_into_lattice_filter",
     "LatticeLadderFilter",
     "PhaseLinearizer",
+    "GroupDelayDesigner",
     "StateVariableFilter",
     "pinking_filter",
     "matched_biquad",

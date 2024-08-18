@@ -8,6 +8,10 @@ class TestStandardModule:
     fs = 44100
     audio_multi = dsp.generators.noise("white", 2, fs, number_of_channels=3)
 
+    def get_multiband_signal(self):
+        fb = dsp.filterbanks.linkwitz_riley_crossovers([1e3], [4], self.fs)
+        return fb.filter_signal(self.audio_multi)
+
     def test_latency(self):
         # Create delayed version of signal
         td = self.audio_multi.time_data
@@ -157,12 +161,31 @@ class TestStandardModule:
         dsp.resample(self.audio_multi, desired_sampling_rate_hz=22050)
 
     def test_normalize(self):
+        # Check peak normalization
         td = self.audio_multi.time_data
-        n = dsp.normalize(self.audio_multi, peak_dbfs=-20)
+        n = dsp.normalize(self.audio_multi, norm_dbfs=-20)
         td /= np.max(np.abs(td))
         factor = 10 ** (-20 / 20)
         td *= factor
         assert np.isclose(np.max(np.abs(n.time_data)), np.max(np.abs(td)))
+
+        # Check rms
+        channel = self.audio_multi.get_channels(0)
+        rms_previous = dsp.rms(channel)[0]
+        n = dsp.normalize(channel, norm_dbfs=rms_previous - 10, mode="rms")
+        rms = dsp.rms(n)[0]
+        assert np.isclose(rms_previous - 10, rms)
+
+        # Check rest of api
+        dsp.normalize(
+            self.audio_multi, norm_dbfs=-20, mode="rms", each_channel=False
+        )
+        dsp.normalize(
+            self.audio_multi, norm_dbfs=-20, mode="rms", each_channel=True
+        )
+        dsp.normalize(
+            self.audio_multi, norm_dbfs=-20, mode="peak", each_channel=True
+        )
 
     def test_fade(self):
         # Functionality – result only tested for linear fade
@@ -350,3 +373,41 @@ class TestStandardModule:
         )
         dsp.dither(self.audio_multi, noise_shaping_filterbank=fb)
         dsp.dither(self.audio_multi, truncate=False)
+
+    def test_apply_gain(self):
+        # Signal
+        audio_multi = dsp.apply_gain(self.audio_multi, 5)
+        np.testing.assert_array_equal(
+            audio_multi.time_data,
+            self.audio_multi.time_data * dsp.tools.from_db(5, True),
+        )
+
+        gains = np.linspace(1, 5, self.audio_multi.number_of_channels)
+        audio_multi = dsp.apply_gain(self.audio_multi, gains)
+        np.testing.assert_array_equal(
+            audio_multi.time_data,
+            self.audio_multi.time_data * dsp.tools.from_db(gains, True),
+        )
+
+        audio_multi = dsp.apply_gain(self.audio_multi, gains)
+        np.testing.assert_array_equal(
+            audio_multi.time_data,
+            self.audio_multi.time_data * dsp.tools.from_db(gains, True),
+        )
+
+        # MultiBandSignal
+        audio_multi_mb = self.get_multiband_signal()
+        previous = audio_multi_mb.get_all_time_data()[0]
+        audio_multi_mb = dsp.apply_gain(audio_multi_mb, 5)
+        np.testing.assert_array_equal(
+            previous * dsp.tools.from_db(5, True),
+            audio_multi_mb.get_all_time_data()[0],
+        )
+
+        previous = audio_multi_mb.get_all_time_data()[0]
+        gains = np.linspace(1, 5, self.audio_multi.number_of_channels)
+        audio_multi_mb = dsp.apply_gain(audio_multi_mb, gains)
+        np.testing.assert_array_equal(
+            previous * dsp.tools.from_db(gains, True),
+            audio_multi_mb.get_all_time_data()[0],
+        )

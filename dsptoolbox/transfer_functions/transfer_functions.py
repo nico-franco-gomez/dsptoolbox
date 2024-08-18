@@ -25,7 +25,6 @@ from .._general_helpers import (
     _find_frequencies_above_threshold,
     _fractional_octave_smoothing,
     _correct_for_real_phase_spectrum,
-    _wrap_phase,
 )
 from .._standard import (
     _welch,
@@ -42,6 +41,7 @@ from ..standard_functions import (
 from ..generators import dirac
 from ..filterbanks import linkwitz_riley_crossovers
 from ..room_acoustics._room_acoustics import _find_ir_start
+from ..tools import to_db
 
 
 def spectral_deconvolve(
@@ -716,7 +716,7 @@ def lin_phase_from_mag(
 
         phase = -2 * np.pi * f_vec * gd_ms
         if spectrum_has_nyquist:
-            phase = _correct_for_real_phase_spectrum(_wrap_phase(phase))
+            phase = _correct_for_real_phase_spectrum(phase)
         lin_spectrum[:, n] = spectrum[:, n] * np.exp(1j * phase)
     time_data = np.fft.irfft(lin_spectrum, axis=0, n=original_length_time_data)
     sig_lin_phase = ImpulseResponse(
@@ -1710,7 +1710,7 @@ def harmonic_distortion_analysis(
 
         # Make plot
         if generate_plot:
-            ax.plot(f, 10 * np.log10(sp_power))
+            ax.plot(f, to_db(sp_power, False))
 
         # Accumulate time samples for THD+N
         thd[pos_thd - len(harm[i]) : pos_thd] = harm[i].time_data.squeeze()
@@ -1732,7 +1732,7 @@ def harmonic_distortion_analysis(
     freqs_thd = freqs[:ind_end]
     if generate_plot:
         sp_thd[sp_thd == 0] = np.nan
-        ax.plot(freqs_thd, 10 * np.log10(sp_thd), label="THD")
+        ax.plot(freqs_thd, to_db(sp_thd, False), label="THD")
         np.nan_to_num(sp_thd, False, 0)
 
     # THD+N
@@ -1745,7 +1745,7 @@ def harmonic_distortion_analysis(
     if generate_plot:
         ax.plot(
             f_thd_n,
-            10 * np.log10(sp_thd_n),
+            to_db(sp_thd_n, False),
             label="THD+N",
         )
         ax.legend(

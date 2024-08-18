@@ -19,6 +19,7 @@ from .._general_helpers import (
 )
 from ._beamforming import BasePoints, _clean_sc_deconvolve
 from ..plots import general_matrix_plot
+from ..tools import to_db
 
 try:
     from seaborn import set_style
@@ -218,7 +219,7 @@ class Regular2DGrid(Grid):
         ), "Map shape does not match grid shape"
         # Get right extent
         ex = self.extent
-        map = 20 * np.log10(np.clip(np.abs(map), a_min=1e-25, a_max=None))
+        map = to_db(map, False, dynamic_range_db=500)
         fig, ax = general_matrix_plot(
             map,
             # First dimension vertical and second dimension horizontal
@@ -379,7 +380,7 @@ class Regular3DGrid(Grid):
 
         # Get right extent
         ex = self.extent
-        map = 20 * np.log10(np.clip(np.abs(map), a_min=1e-25, a_max=None))
+        map = to_db(map, False, dynamic_range_db=500)
         fig, ax = general_matrix_plot(
             map,
             range_x=ex[extent_dimensions[1]],
