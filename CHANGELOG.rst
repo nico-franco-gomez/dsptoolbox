@@ -14,6 +14,25 @@ adheres to `Semantic Versioning <http://semver.org/spec/v2.0.0.html>`_.
 - Validation for results from tests in every module (so far many tests are
   only regarding functionality)
 
+`0.4.2 <https://pypi.org/project/dsptoolbox/0.4.2>`_ - 
+---------------------
+Added
+~~~~~~~
+- `apply_gain` utility function in ``standard``
+- beta parameter for arbitrary noise generation
+- `GroupDelayDesigner` in ``filterbanks``
+- nomalization of signals now accepts rms values
+
+Misc
+~~~~~
+- frequency response interpolation with more interpolation modes
+- refactored `PhaseLinearizer`
+
+Bugfix
+~~~~~~
+- corrected a case where scaling of spectrum while plotting was wrong
+
+
 `0.4.1 <https://pypi.org/project/dsptoolbox/0.4.1>`_ - 
 ---------------------
 
