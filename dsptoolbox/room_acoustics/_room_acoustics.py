@@ -9,7 +9,7 @@ from warnings import warn
 
 from ..plots import general_plot
 from ..transfer_functions._transfer_functions import _trim_ir
-from ..tools import from_db, to_db
+from ..tools import from_db, to_db, time_smoothing
 
 
 def _reverb(
@@ -56,12 +56,7 @@ def _reverb(
     acoustical parameters. pp. 22.
 
     """
-    if ir_start is None:
-        max_ind = np.argmax(np.abs(h))
-    else:
-        max_ind = ir_start
-
-    edc = _compute_energy_decay_curve(h, max_ind, automatic_trimming, fs_hz)
+    edc = _compute_energy_decay_curve(h, automatic_trimming, fs_hz)
     time_vector = np.linspace(0, len(edc) / fs_hz, len(edc))
 
     # Reverb
@@ -111,7 +106,7 @@ def _find_ir_start(
 
     """
     signal_power = ir**2
-    start_ir = int(np.argmax(ir))
+    start_ir = int(np.argmax(signal_power))
 
     # -20 dB distance from peak value according to ISO 3382-1:2009-10
     threshold = signal_power[start_ir] * from_db(
@@ -1181,11 +1176,23 @@ def _get_polynomial_coeffs_from_edc(
 
 def _compute_energy_decay_curve(
     time_data: NDArray[np.float64],
-    impulse_index: int,
     trim_automatically: bool,
     fs_hz: int,
 ) -> NDArray[np.float64]:
-    """Get the energy decay curve."""
+    """Get the energy decay curve. The start is found at -20 dB relative to
+    peak according to DIN EN ISO 3382. A noise correction term according to [1]
+    is applied, and the compensation energy for a truncated IR according to [2]
+    is also regarded.
+
+    References
+    ----------
+    - [1]: W. T. Chu. “Comparison of reverberation measurements using
+      Schroeder’s impulse method and decay-curve averaging method”. In:
+      Journal of the Acoustical Society of America 63.5 (1978), pp. 1444–1450.
+    - [2]: Lundeby, Virgran, Bietz and Vorlaender - Uncertainties of
+      Measurements in Room Acoustics - ACUSTICA Vol. 81 (1995).
+
+    """
     # start_index might be the last index below -20 dB relative to peak value.
     # If so, the normalization of the edc should be done with the beginning
     if trim_automatically:
@@ -1197,9 +1204,50 @@ def _compute_energy_decay_curve(
     else:
         stopping_index = len(time_data)
 
+    # Get noise estimation
+    noise_power = np.var(time_data[int(len(time_data) * 0.9) :])
+
+    # Select section of IR
     start_index = _find_ir_start(time_data)
-    signal_power = time_data[start_index:stopping_index] ** 2
-    edc = np.sum(signal_power) - np.cumsum(signal_power)
+    signal_power = time_data[start_index:stopping_index] ** 2.0
+
+    # Use only half of the dynamic range for the linear fitting
+    dynamic_range_db = (to_db(np.max(signal_power) / noise_power, False)) / 2.0
+
+    # Find compensation energy according to [2]
+    signal_db = to_db(time_smoothing(signal_power, fs_hz, 20e-3), False)
+    start_index_int = np.where(
+        dynamic_range_db + np.min(signal_db) > signal_db
+    )[0][0]
+    time_vector = np.linspace(0, len(signal_power) / fs_hz, len(signal_power))
+    p = np.polyfit(
+        time_vector[start_index_int:], signal_db[start_index_int:], 1
+    )
+
+    # Lundeby's compensation energy
+    B = from_db(p[0], False)
+    t_1 = (to_db(noise_power, False) - p[0]) / p[1]
+    A = np.log(noise_power / B) / t_1
+    e_comp = -B / A * np.exp(A * t_1)
+
+    # Correct noise
+    signal_power -= noise_power
+
+    # Backwards integration with compensation energy
+    e_comp *= fs_hz  # Scale by sampling rate due to integration
+    edc = np.sum(signal_power) + e_comp - np.cumsum(signal_power)
+
+    # Avoid "negative" energies due to noise
+    indices = np.where(edc <= 0)[0]
+
+    if len(indices) > 0:
+        edc = edc[: indices[0]]
+        if indices[0] <= int(20e-3 * fs_hz):  # End vector is too short
+            # Add noise again because it might be too high or not a valid
+            # estimation
+            signal_power += noise_power
+            edc = np.sum(signal_power) + e_comp - np.cumsum(signal_power)
+
     edc = to_db(edc, False)
     return edc - edc[0]
 

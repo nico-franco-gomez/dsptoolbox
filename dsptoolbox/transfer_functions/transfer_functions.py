@@ -1798,7 +1798,7 @@ def trim_ir(
     - The method employed for finding the ending of the IR works as follows:
         - A (hilbert) envelope is computed in dB (energy time curve). This is
           smoothed by exponential averaging with 20 ms.
-        - Non-overlapping windows with lengths 10, 30, 50, 80 and 100 ms are
+        - Non-overlapping windows with lengths 10, 30, 50 and 80 ms are
           checked starting from the impulse and going forwards. The first
           window to contain more energy than the previous one is regarded as
           the end of the IR.

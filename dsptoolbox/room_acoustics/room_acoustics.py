@@ -43,12 +43,14 @@ def reverb_time(
         If it is an integer, it is assumed as the start of the IR for all
         channels (and all bands). For more specific cases, pass a 1d-array
         containing the start indices for each channel or a 2d-array with
-        shape (band, channel) for a `MultiBandSignal`. Default: `None`.
+        shape (band, channel) for a `MultiBandSignal`. Pass `None` for an
+        automatic detection of the start. See notes for details.
+        Default: `None`.
     automatic_trimming : bool, optional
-        When set to `True`, the IR is trimmed using `trim_rir` independently
-        for each channel. This can influence significantly the energy decay
-        curve and, therefore, the reverberation time. Refer to the
-        documentation for more details. Default: `True`.
+        When set to `True`, the IR is trimmed using
+        `transfer_functions.trim_ir` independently for each channel. This can
+        influence significantly the energy decay curve and, therefore, the
+        reverberation time. See notes for more details. Default: `True`.
 
     Returns
     -------
@@ -61,20 +63,35 @@ def reverb_time(
         (band, channels) if `MultiBandSignal` object is passed. See notes
         for more details.
 
-    References
-    ----------
-    - DIN EN ISO 3382-1:2009-10, Acoustics - Measurement of the reverberation
-      time of rooms with reference to other acoustical parameters.
-    - Room-EQ-Wizard for Topt.
-
     Notes
     -----
+    - The start of the IR is determined by the last sample below -20 dB
+      relative to peak. This is in accordance with [1].
+    - The end of the IR is found by `transfer_functions.trim_ir`. This is then
+      used as the intersection time as explained in [2].
+    - The energy decay curve is computed while removing the noise energy
+      according to [3] and regarding the compensation energy as explained
+      by [1] and [2]. If too much noise is detected, its removal is avoided.
+    - The method "Topt" is implemented as explained by the documentation of
+      [4].
     - A correlation coefficient of -1 means there is a perfectly linear
       relation between time and energy decay, which is an optimal estimation.
       Coefficients larger than -0.9 might mean that the estimation is not
       valid.
     - In order to compare EDT to the other measures, it must be multiplied
       by 6.
+
+    References
+    ----------
+    - [1]: DIN EN ISO 3382-1:2009-10, Acoustics - Measurement of the
+      reverberation time of rooms with reference to other acoustical
+      parameters.
+    - [2]: Lundeby, Virgran, Bietz and Vorlaender - Uncertainties of
+      Measurements in Room Acoustics - ACUSTICA Vol. 81 (1995).
+    - [3]: W. T. Chu. “Comparison of reverberation measurements using
+      Schroeder’s impulse method and decay-curve averaging method”. In:
+      Journal of the Acoustical Society of America 63.5 (1978), pp. 1444–1450.
+    - [4]: Room-EQ-Wizard for Topt.
 
     """
     if type(signal) is ImpulseResponse:
