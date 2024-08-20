@@ -95,8 +95,8 @@ def _find_ir_start(
     ir : NDArray[np.float64]
         IR as a 1D-array.
     threshold_dbfs : float, optional
-        Threshold that should be surpassed at the start of the IR in dBFS.
-        The signal is always normalized. Default: -20.
+        Threshold that should be surpassed at the start of the IR in dB
+        relative to peak. Default: -20.
 
     Returns
     -------
@@ -105,16 +105,14 @@ def _find_ir_start(
         threshold is surpassed for the first time.
 
     """
-    signal_power = ir**2
-    start_ir = int(np.argmax(signal_power))
+    ir_abs = np.abs(ir)
+    start_ir = int(np.argmax(ir_abs))
 
     # -20 dB distance from peak value according to ISO 3382-1:2009-10
-    threshold = signal_power[start_ir] * from_db(
-        -np.abs(threshold_dbfs), False
-    )
+    threshold = ir_abs[start_ir] * from_db(-np.abs(threshold_dbfs), True)
 
     for start_ir in range(start_ir, -1, -1):
-        if signal_power[start_ir] < threshold:
+        if ir_abs[start_ir] < threshold:
             break
     return start_ir
 
