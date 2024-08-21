@@ -1221,10 +1221,12 @@ def _compute_energy_decay_curve(
     p = np.polyfit(
         time_vector[start_index_int:], signal_db[start_index_int:], 1
     )
+    avoid_corrections = p[1] >= 0.0  # Check if slope makes sense
 
     # Lundeby's compensation energy
     B = from_db(p[0], False)
     t_1 = (to_db(noise_power, False) - p[0]) / p[1]
+    avoid_corrections |= t_1 <= 0.0  # Check if intersection time makes sense
     A = np.log(noise_power / B) / t_1
     e_comp = -B / A * np.exp(A * t_1)
 
@@ -1239,12 +1241,15 @@ def _compute_energy_decay_curve(
     indices = np.where(edc <= 0)[0]
 
     if len(indices) > 0:
-        edc = edc[: indices[0]]
-        if indices[0] <= int(20e-3 * fs_hz):  # End vector is too short
-            # Add noise again because it might be too high or not a valid
-            # estimation
-            signal_power += noise_power
-            edc = np.sum(signal_power) + e_comp - np.cumsum(signal_power)
+        avoid_corrections |= indices[0] <= int(30e-3 * fs_hz + 0.5)
+        if not avoid_corrections:
+            edc = edc[: indices[0]]
+
+    if avoid_corrections:
+        # Some estimation went wrong
+        signal_power += noise_power
+        length = int(len(signal_power) * 0.95)  # discard 5% for safety
+        edc = np.sum(signal_power) - np.cumsum(signal_power)[:length]
 
     edc = to_db(edc, False)
     return edc - edc[0]
