@@ -21,7 +21,7 @@ import numpy as np
 from numpy.typing import NDArray
 from scipy.signal.windows import get_window
 from scipy.fft import dct
-from scipy.signal import oaconvolve, resample_poly
+from scipy.signal import oaconvolve, resample_poly, lfilter
 import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
 from matplotlib.axes import Axes
@@ -935,3 +935,71 @@ def stereo_mid_side(signal: Signal, forward: bool) -> Signal:
         td /= 2
     new_sig.time_data = td
     return new_sig
+
+
+def laguerre_transform(signal: Signal, warping_factor: float) -> Signal:
+    """This function implements the discrete Laguerre Transform in the time
+    domain implemented according to [1]. It is mainly used for frequency
+    warping. See notes for details.
+
+    This is a resource-intensive operation that should be applied to signals
+    that are not very long.
+
+    Parameters
+    ----------
+    signal : Signal
+        Signal to be transformed.
+    warping_factor : float
+        Warping factor. It must be in the range ]-1; 1[.
+
+    Returns
+    -------
+    Signal
+        Transformed signal.
+
+    Notes
+    -----
+    - This transform can be reversed by applying it once with `warping_factor`
+      and then with `-warping_factor`.
+    - It is an alternative, more general formulation to Warping and a special
+      case of using Kautz filters for a fixed pole. `warping_factor` here leads
+      to the same frequency mapping as warping.
+    - This can be used for frequency-dependent windowing of an impulse
+      response. Since this is not shift-invariant, the start of the IR should
+      be placed at `t=0`.
+    - In general, `warping_factor < 0.` shifts the frequency axis towards DC,
+      i.e., increases the resolution of the lower frequencies while lowering
+      that of higher frequencies. See [2] for the resolution/frequency-mapping
+      of warping.
+
+    References
+    ----------
+    - [1]: Zölzer, Battista. Digital Audio Effects DAFX. Chapter 11, second
+      edition.
+    - [2]: Bank, B. (2022). Warped, Kautz, and Fixed-Pole Parallel Filters: A
+      Review. Journal of the Audio Engineering Society.
+
+    """
+    assert (
+        np.abs(warping_factor) < 1.0
+    ), "Warping factor cannot be larger than 1."
+
+    xx = signal.time_data[::-1, ...]  # Time reversal
+    output = np.zeros_like(xx)
+
+    b = np.array([warping_factor, 1.0])
+    a = np.array([1.0, warping_factor])
+    b_normalized = (1.0 - warping_factor**2.0) ** 0.5
+
+    # First filtering stage with normalization
+    xx = lfilter(b_normalized, a, xx, axis=0)
+    output[0, :] = xx[-1, :]
+
+    # Rest filters
+    for i in range(1, xx.shape[0]):
+        xx = lfilter(b, a, xx, axis=0)
+        output[i, :] = xx[-1, :]
+
+    out = signal.copy()
+    out.time_data = output
+    return out

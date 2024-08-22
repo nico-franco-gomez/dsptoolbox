@@ -17,6 +17,8 @@ This module contains signal transforms.
 - `hilbert()` (Hilbert Transform)
 - `vqt()` (Variable-Q Transform)
 - `stereo_mid_side()` (Mid-Side representation of stereo signal)
+- `laguerre_transform()` (Frequency-warping by means of the Laguerre
+  transform).
 
 """
 
@@ -33,6 +35,7 @@ from .transforms import (
     hilbert,
     vqt,
     stereo_mid_side,
+    laguerre_transform,
 )
 
 __all__ = [
@@ -48,4 +51,5 @@ __all__ = [
     "hilbert",
     "vqt",
     "stereo_mid_side",
+    "laguerre_transform",
 ]

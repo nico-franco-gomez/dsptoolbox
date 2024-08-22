@@ -170,3 +170,8 @@ class TestTransformsModule:
         sp_aft = dsp.transforms.stereo_mid_side(sp, True)
         sp_aft = dsp.transforms.stereo_mid_side(sp_aft, False)
         assert np.all(np.isclose(sp.time_data, sp_aft.time_data))
+
+    def test_laguerre_transform(self):
+        # Only functionality
+        sp = dsp.pad_trim(self.speech, 128)
+        dsp.transforms.laguerre_transform(sp, -0.7)
