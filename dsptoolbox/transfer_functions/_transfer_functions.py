@@ -319,6 +319,7 @@ def _trim_ir(
     time_data: NDArray[np.float64],
     fs_hz: int,
     offset_start_s: float,
+    safety_distance_to_noise_floor_db: float = 10.0,
 ) -> tuple[int, int, int]:
     """
     Obtain the starting and stopping index curve using the smooth (exponential)
@@ -367,9 +368,9 @@ def _trim_ir(
     # with the highest weight. If all are above -0.7, method failed -> no
     # trimming
 
-    window_lengths = (np.array([10, 30, 50, 80]) * 1e-3 * fs_hz + 0.5).astype(
-        int
-    )
+    window_lengths = (
+        np.array([10, 30, 50, 70, 90]) * 1e-3 * fs_hz + 0.5
+    ).astype(int)
     end = np.zeros(len(window_lengths))
     x = np.arange(len(envelope))
     corr_coeff = np.zeros(len(window_lengths))
@@ -415,5 +416,46 @@ def _trim_ir(
         end_point = int(np.mean(np.hstack([np.ones(5) * len(envelope), end])))
 
     stop = end_point + start_index + impulse_index
+    if safety_distance_to_noise_floor_db != 0.0:
+        end_point = __find_index_above_noise_floor(
+            envelope[:end_point],
+            to_db(np.var(time_data[stop:]), False),
+            np.abs(safety_distance_to_noise_floor_db),
+        )
+        stop = end_point + start_index + impulse_index
 
     return start_index, stop, impulse_index
+
+
+def __find_index_above_noise_floor(
+    envelope: NDArray[np.float64],
+    noise_floor_db: float,
+    distance_to_noise_floor_db: float,
+):
+    """Get a safety distance from the noise floor using a polynomial fit of
+    the IR power density in dB."""
+    polynomial = (
+        np.polynomial.Polynomial.fit(
+            np.arange(len(envelope)),
+            envelope,
+            1,
+        )
+        .convert()
+        .coef
+    )
+
+    if polynomial[1] > 0.0:
+        return len(envelope)
+
+    new_stop_index = int(
+        ((noise_floor_db + distance_to_noise_floor_db) - polynomial[0])
+        / polynomial[1]
+        + 0.5
+    )
+
+    min_retain_length_percentage = 75.0
+    return np.clip(
+        new_stop_index,
+        int(len(envelope) * min_retain_length_percentage / 100.0 + 0.5),
+        len(envelope),
+    )
