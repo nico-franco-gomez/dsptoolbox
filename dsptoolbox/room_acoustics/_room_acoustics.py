@@ -1203,11 +1203,17 @@ def _compute_energy_decay_curve(
     else:
         stopping_index = len(time_data)
 
-    # Get noise estimation
-    noise_power = np.var(time_data[int(len(time_data) * 0.9) :])
-
-    # Select section of IR
+    # Find start
     start_index = _find_ir_start(time_data)
+
+    # Get noise estimation
+    if stopping_index != len(time_data):
+        # Either from the end
+        noise_power = np.var(time_data[stopping_index:])
+    else:
+        # Assume there is no noise in the end, take at least until the start
+        noise_power = np.var(time_data[:start_index])
+
     signal_power = time_data[start_index:stopping_index] ** 2.0
 
     # Use only half of the dynamic range for the linear fitting
