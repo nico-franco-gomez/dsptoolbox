@@ -1126,7 +1126,8 @@ def _get_best_linear_fit_for_edc(
         i2 = len(edc) - np.searchsorted(edc_inverted, step)
         rs[ind] = pearsonr(time_vector[i1:i2], edc[i1:i2])[0]
 
-    return steps[np.argmin(rs)], np.min(rs)
+    ind_min = np.argmin(rs)
+    return steps[ind_min], rs[ind_min]
 
 
 def _get_polynomial_coeffs_from_edc(
