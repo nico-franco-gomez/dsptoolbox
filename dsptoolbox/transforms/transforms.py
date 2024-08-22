@@ -939,8 +939,8 @@ def stereo_mid_side(signal: Signal, forward: bool) -> Signal:
 
 def laguerre_transform(signal: Signal, warping_factor: float) -> Signal:
     """This function implements the discrete Laguerre Transform in the time
-    domain implemented according to [1]. It is mainly used for frequency
-    warping. See notes for details.
+    domain according to [1]. It is mainly used for frequency warping. See notes
+    for details.
 
     This is a resource-intensive operation that should be applied to signals
     that are not very long.
