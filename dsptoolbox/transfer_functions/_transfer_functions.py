@@ -234,7 +234,7 @@ def _window_this_ir(
 
 
 def _warp_time_series(td: NDArray[np.float64], warping_factor: float):
-    """Warp or unwarp a time series.
+    """Warp or unwarp a time series. This is a port from [1].
 
     Parameters
     ----------
@@ -247,6 +247,10 @@ def _warp_time_series(td: NDArray[np.float64], warping_factor: float):
     -------
     warped_td : NDArray[np.float64]
         Time series in the (un)warped domain.
+
+    References
+    ----------
+    - [1]: http://legacy.spa.aalto.fi/software/warp/.
 
     """
     warped_td = np.zeros_like(td)

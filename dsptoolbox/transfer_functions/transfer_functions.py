@@ -1377,11 +1377,12 @@ def warp_ir(
     warping_factor: float,
     shift_ir: bool = True,
     total_length: int | None = None,
-):
-    """Compute the IR in the warped-domain as explained by [1].
+) -> ImpulseResponse:
+    r"""Compute the IR in the warped-domain as explained by [1]. This operation
+    corresponds to computing a warped FIR-Filter (WFIR).
 
-    To warp a signal, pass a negative `warping_factor`. To unwarp it, use a the
-    same positive `warping_factor`.
+    To pre-warp a signal, pass a negative `warping_factor`. To de-warp it, use
+    the same positive `warping_factor`. See notes for details.
 
     Parameters
     ----------
@@ -1401,8 +1402,6 @@ def warp_ir(
 
     Returns
     -------
-    f_unwarped : float
-        Frequency that remained unwarped after transformation.
     warped_ir : `Signal`
         The same IR with warped or dewarped time vector.
 
@@ -1412,6 +1411,17 @@ def warp_ir(
     - Frequency-dependent windowing can be easily done in the warped domain.
       This is not the approach used in `window_frequency_dependent()`, but
       it can be achieved with this function. See [2] for more details.
+    - In general, `warping_factor < 0.` shifts the frequency axis towards DC,
+      i.e., increases the resolution of the lower frequencies while lowering
+      that of higher frequencies. See [3] for the resolution/frequency-mapping
+      of warping.
+    - `warping_factor` will have a frequency-warping where a single frequency
+      point remains unwarped. The formula for this is [1]:
+
+        .. math::
+            \frac{f_s}{2\pi}\arccos(\lambda)
+
+      where lambda is the `warping_factor` and f_s the sampling rate.
 
     References
     ----------
@@ -1423,6 +1433,8 @@ def warp_ir(
       windowing," Proceedings of the 2001 IEEE Workshop on the Applications of
       Signal Processing to Audio and Acoustics (Cat. No.01TH8575), New Platz,
       NY, USA, 2001, pp. 35-38, doi: 10.1109/ASPAA.2001.969536.
+    - [3]: Bank, B. (2022). Warped, Kautz, and Fixed-Pole Parallel Filters: A
+      Review. Journal of the Audio Engineering Society.
 
     """
     assert (
@@ -1443,9 +1455,7 @@ def warp_ir(
     warped_ir = ir.copy()
     warped_ir.time_data = td
 
-    f_unwarped = ir.sampling_rate_hz / 2 / np.pi * np.arccos(warping_factor)
-
-    return f_unwarped, warped_ir
+    return warped_ir
 
 
 def find_ir_latency(ir: ImpulseResponse) -> NDArray[np.float64]:
