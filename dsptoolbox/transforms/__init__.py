@@ -20,6 +20,7 @@ This module contains signal transforms.
 - `laguerre()` (Frequency-warping by means of the Laguerre transform)
 - `kautz_filters()` (Response of kautz filters to an excitation)
 - `kautz()` (Approximation of a signal using a given set of Kautz filters)
+- `warp()` (Convert signal to/from warped domain)
 
 """
 
@@ -39,6 +40,7 @@ from .transforms import (
     laguerre,
     kautz_filters,
     kautz,
+    warp,
 )
 
 __all__ = [
@@ -57,4 +59,5 @@ __all__ = [
     "laguerre",
     "kautz_filters",
     "kautz",
+    "warp",
 ]

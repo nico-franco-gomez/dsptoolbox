@@ -476,12 +476,6 @@ class TestTransferFunctionsModule:
         ax.plot(f, 20 * np.log10(np.abs(sp)))
         print()
 
-    def test_warp_ir(self):
-        # Only functionality
-        s = dsp.ImpulseResponse(join("examples", "data", "rir.wav"))
-        dsp.transfer_functions.warp_ir(s, -0.6, True, 2**8)
-        dsp.transfer_functions.warp_ir(s, 0.6, False, 2**8)
-
     def test_harmonics_from_chirp_ir(self):
         # Only functionality
         ir = dsp.ImpulseResponse(join("examples", "data", "rir.wav"))

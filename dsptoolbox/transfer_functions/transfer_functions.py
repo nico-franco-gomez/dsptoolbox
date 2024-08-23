@@ -12,7 +12,6 @@ from ._transfer_functions import (
     _spectral_deconvolve,
     _window_this_ir_tukey,
     _window_this_ir,
-    _warp_time_series,
     _get_harmonic_times,
     _trim_ir,
 )
@@ -40,7 +39,6 @@ from ..standard_functions import (
 )
 from ..generators import dirac
 from ..filterbanks import linkwitz_riley_crossovers
-from ..room_acoustics._room_acoustics import _find_ir_start
 from ..tools import to_db
 
 
@@ -1370,92 +1368,6 @@ def window_frequency_dependent(
         w = np.exp(alpha[ind] * n)
         spec[ind, :] = rfft_scipy(w * td, axis=0)[ind_f] * scaling_func(w)
     return f, spec
-
-
-def warp_ir(
-    ir: ImpulseResponse,
-    warping_factor: float,
-    shift_ir: bool = True,
-    total_length: int | None = None,
-) -> ImpulseResponse:
-    r"""Compute the IR in the warped-domain as explained by [1]. This operation
-    corresponds to computing a warped FIR-Filter (WFIR).
-
-    To pre-warp a signal, pass a negative `warping_factor`. To de-warp it, use
-    the same positive `warping_factor`. See notes for details.
-
-    Parameters
-    ----------
-    ir : `ImpulseResponse`
-        Impulse response to (un)warp.
-    warping_factor : float
-        Warping factor. It has to be in the range ]-1; 1[.
-    shift_ir : bool, optional
-        Since the warping of an IR is not shift-invariant (see [2]), it is
-        recommended to place the start of the IR at the first index. When
-        `True`, the first sample to surpass -20 dBFS (relative to peak) is
-        shifted to the beginning and the previous samples are sent to the
-        end of the signal. `False` avoids any manipulation. Default: `True`.
-    total_length : int, optional
-        Total length to use for the warped signal. If `None`, the original
-        length is maintained. Default: `None`.
-
-    Returns
-    -------
-    warped_ir : `Signal`
-        The same IR with warped or dewarped time vector.
-
-    Notes
-    -----
-    - Depending on the signal length, this might be a slow computation.
-    - Frequency-dependent windowing can be easily done in the warped domain.
-      This is not the approach used in `window_frequency_dependent()`, but
-      it can be achieved with this function. See [2] for more details.
-    - In general, `warping_factor < 0.` shifts the frequency axis towards DC,
-      i.e., increases the resolution of the lower frequencies while lowering
-      that of higher frequencies. See [3] for the resolution/frequency-mapping
-      of warping.
-    - `warping_factor` will have a frequency-warping where a single frequency
-      point remains unwarped. The formula for this is [1]:
-
-        .. math::
-            \frac{f_s}{2\pi}\arccos(\lambda)
-
-      where lambda is the `warping_factor` and f_s the sampling rate.
-
-    References
-    ----------
-    - [1]: Härmä, Aki & Karjalainen, Matti & Avioja, Lauri & Välimäki, Vesa &
-      Laine, Unto & Huopaniemi, Jyri. (2000). Frequency-Warped Signal
-      Processing for Audio Applications. Journal of the Audio Engineering
-      Society. 48. 1011-1031.
-    - [2]: M. Karjalainen and T. Paatero, "Frequency-dependent signal
-      windowing," Proceedings of the 2001 IEEE Workshop on the Applications of
-      Signal Processing to Audio and Acoustics (Cat. No.01TH8575), New Platz,
-      NY, USA, 2001, pp. 35-38, doi: 10.1109/ASPAA.2001.969536.
-    - [3]: Bank, B. (2022). Warped, Kautz, and Fixed-Pole Parallel Filters: A
-      Review. Journal of the Audio Engineering Society.
-
-    """
-    assert (
-        type(ir) is ImpulseResponse
-    ), "This is only valid for an impulse response"
-    assert np.abs(warping_factor) < 1, "Warping factor has to be in ]-1; 1["
-
-    td = ir.time_data
-    if shift_ir:
-        for ch in range(ir.number_of_channels):
-            start = _find_ir_start(td[:, ch], -20)
-            td[:, ch] = np.roll(td[:, ch], -start)
-
-    if total_length is None:
-        total_length = td.shape[0]
-
-    td = _warp_time_series(td[:total_length, ...], warping_factor)
-    warped_ir = ir.copy()
-    warped_ir.time_data = td
-
-    return warped_ir
 
 
 def find_ir_latency(ir: ImpulseResponse) -> NDArray[np.float64]:

@@ -4,7 +4,7 @@ Backend for special module
 
 import numpy as np
 from numpy.typing import NDArray
-from scipy.signal import get_window
+from scipy.signal import get_window, lfilter
 
 
 def _pitch2frequency(tuning_a_hz: float = 440):
@@ -385,3 +385,48 @@ def _get_kernels_vqt(
         )
 
     return kernels
+
+
+def _warp_time_series(td: NDArray[np.float64], warping_factor: float):
+    """Warp or unwarp a time series. This is a port from [1].
+
+    Parameters
+    ----------
+    td : NDArray[np.float64]
+        Time series with shape (time samples, channels).
+    warping_factor : float
+        The warping factor to use.
+
+    Returns
+    -------
+    warped_td : NDArray[np.float64]
+        Time series in the (un)warped domain.
+
+    References
+    ----------
+    - [1]: http://legacy.spa.aalto.fi/software/warp/.
+
+    """
+    warped_td = np.zeros_like(td)
+
+    dirac = np.zeros(td.shape[0])
+    dirac[0] = 1
+
+    b = np.array([-warping_factor, 1])
+    a = np.array([1, -warping_factor])
+
+    warped_td = dirac[..., None] * td[0, :]
+
+    # Print progress to console
+    ns = [
+        int(0.25 * td.shape[0]),
+        int(0.5 * td.shape[0]),
+        int(0.75 * td.shape[0]),
+    ]
+
+    for n in np.arange(1, td.shape[0]):
+        dirac = lfilter(b, a, dirac)
+        warped_td += dirac[..., None] * td[n, :]
+        if n in ns:
+            print(f"Warped: {(ns.pop(0) / td.shape[0] * 100):.0f}% of signal")
+    return warped_td

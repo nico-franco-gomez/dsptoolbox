@@ -182,3 +182,9 @@ class TestTransformsModule:
         # Use some mixed pole distribution
         poles = np.array([0.5, 0.3 + 1j * 0.2, -0.3 + 1j * 0.2])
         dsp.transforms.kautz(sp, poles)
+
+    def test_warp(self):
+        # Only functionality
+        s = dsp.ImpulseResponse(join("examples", "data", "rir.wav"))
+        dsp.transforms.warp(s, -0.6, True, 2**8)
+        dsp.transforms.warp(s, 0.6, False, 2**8)
