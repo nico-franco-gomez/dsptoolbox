@@ -937,7 +937,7 @@ def stereo_mid_side(signal: Signal, forward: bool) -> Signal:
     return new_sig
 
 
-def laguerre_transform(signal: Signal, warping_factor: float) -> Signal:
+def laguerre(signal: Signal, warping_factor: float) -> Signal:
     """This function implements the discrete Laguerre Transform in the time
     domain according to [1]. It is mainly used for frequency warping. See notes
     for details.
@@ -1003,3 +1003,161 @@ def laguerre_transform(signal: Signal, warping_factor: float) -> Signal:
     out = signal.copy()
     out.time_data = output
     return out
+
+
+def kautz_filters(
+    ir: Signal,
+    poles: NDArray[np.complex128],
+    time_reversal_input: bool,
+    output_length: int | None = None,
+) -> tuple[Signal, NDArray[np.float64]]:
+    """This function computes the coefficients of the given Kautz filters
+    to an input (real) signal. The poles define the orthonormal basis for the
+    Kautz filters. This only supports real input/output, so that complex poles
+    will be complex-conjugated. See [1] for a detailed explanation on Kautz
+    filters and how they relate to Warping/Laguerre filters.
+
+    Parameters
+    ----------
+    ir : Signal
+        Input time series. Beware that the transform is not shift-invariant,
+        so if the input is an impulse response, each channel should be pruned
+        from any delays.
+    poles : NDArray[np.complex128]
+        Complex poles to define the basis of the Kautz filters. All poles must
+        lie inside the unit circle and be either real or have strictly positive
+        imaginary part. Complex poles will be automatically conjugated in order
+        to obtain a real-valued basis.
+    time_reversal_input : bool
+        For finding the coefficients corresponding to an excitation input
+        signal, the time series must be reversed. Set to `False` to avoid
+        time reversal. No time reversal might be useful for the response to a
+        dirac.
+    output_length : int, None, optional
+        Length of the output time series. The input will always be used
+        in its entire length and the output will be at least the total number
+        of poles. Pass None for the output to have the same length as the
+        input. Default: None.
+
+    Returns
+    -------
+    Signal
+        Output time series.
+    NDArray[np.float64]
+        Matrix with filters' response. It has shape (time sample, kautz filter
+        response, channel). For an input excitation, the final response
+        corresponds to the last time sample across all kautz filters.
+
+    Notes
+    -----
+
+    References
+    ----------
+    - [1]: Bank, B. (2022). Warped, Kautz, and Fixed-Pole Parallel Filters: A
+      Review. Journal of the Audio Engineering Society.
+    - This function is a port from the matlab toolbox:
+      http://legacy.spa.aalto.fi/software/kautz/kautz.htm
+
+    """
+    assert not np.any(
+        poles.imag < 0.0
+    ), "No poles with negative imaginary part should be passed"
+    assert not np.any(
+        np.abs(poles) >= 1.0
+    ), "No poles should lie outside the unit circle"
+
+    # Poles – Separate in real and imaginary
+    real_indices = poles.imag == 0.0
+    poles_real = np.real(poles[real_indices])
+    poles_complex = poles[~real_indices]
+
+    total_n_poles = len(poles_complex) * 2 + len(poles_real)
+
+    # Get data
+    td = ir.time_data
+
+    if output_length is None:
+        output_length = max(td.shape[0], total_n_poles)
+        if td.shape[0] < output_length:
+            td = _pad_trim(td, output_length)
+
+    output = np.zeros((output_length, total_n_poles, ir.number_of_channels))
+
+    # Time reversal
+    if time_reversal_input:
+        td = td[::-1]
+
+    # Real poles
+    for ii, preal in enumerate(poles_real):
+        output[:, ii, :] = (1.0 - preal**2.0) ** 0.5 * lfilter(
+            [1], [1, -preal], td, axis=0
+        )[:output_length, ...]
+        td = lfilter([-preal, 1], [1, -preal], td, axis=0)
+
+    # Complex poles
+    q = 2.0 * np.real(poles_complex)
+    r = np.abs(poles_complex) ** 2.0
+    for ii in range(len(poles_complex)):
+        output[:, len(poles_real) + ii * 2 - 1, :] = (
+            (1 - r[ii]) * (1 + r[ii] - q[ii]) / 2
+        ) * lfilter([1, -1], [1, q[ii], r[ii]], td, axis=0)[
+            :output_length, ...
+        ]
+        output[:, len(poles_real) + ii * 2, :] = (
+            (1 - r[ii]) * (1 + r[ii] + q[ii]) / 2
+        ) * lfilter([1, 1], [1, q[ii], r[ii]], td, axis=0)[:output_length, ...]
+        td = lfilter([r[ii], q[ii], 1], [1, q[ii], r[ii]], td, axis=0)
+
+    out_ir = ir.copy()
+    out_ir.time_data = output[-1, ...]
+    return out_ir, output
+
+
+def kautz(ir: Signal, poles: NDArray[np.complex128]):
+    """This delivers a least-squares approximation of a (real) signal with a
+    given (real) basis for Kautz filters. See `kautz_filters()` and [1] for
+    details.
+
+    Parameters
+    ----------
+    ir : Signal
+        Signal to be approximated with the given Kautz filter basis. If it is
+        an impulse response, each channel should be pruned from delay since
+        the transform is not shift-invariant.
+    poles : NDArray[np.complex128]
+        Poles that define the Kautz filters. They have to be within the unit
+        circle and either be real or have only positive imaginary parts.
+        Complex poles will be automatically conjugated in order to obtain a
+        real basis.
+
+    Returns
+    -------
+    Signal
+        Approximated signal.
+
+    Notes
+    -----
+    - The default length of the output will be at least 5 times the total
+      number of poles of the transform.
+
+    """
+    # Get response for the excitation signal
+    _, coefficients = kautz_filters(ir, poles, True)
+    coefficients = coefficients[-1, ...]
+
+    # Get response to a dirac
+    d = np.zeros(len(poles) * 10)
+    d[0] = 1.0
+    _, basis = kautz_filters(
+        Signal.from_time_data(d, ir.sampling_rate_hz),
+        poles,
+        False,
+    )
+
+    # Compute approximation (for all channels)
+    h = np.tensordot(basis, coefficients, (1, 0))
+
+    # Output
+    h_out = ir.copy()
+    h_out.time_data = h
+    return h_out
