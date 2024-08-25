@@ -1050,9 +1050,6 @@ def kautz_filters(
         response, channel). For an input excitation, the final response
         corresponds to the last time sample across all kautz filters.
 
-    Notes
-    -----
-
     References
     ----------
     - [1]: Bank, B. (2022). Warped, Kautz, and Fixed-Pole Parallel Filters: A
@@ -1169,7 +1166,7 @@ def kautz(
 def warp(
     ir: Signal,
     warping_factor: float,
-    shift_ir: bool = True,
+    shift_ir: bool,
     total_length: int | None = None,
 ) -> Signal:
     r"""Compute a warped signal as explained by [1]. This operation
@@ -1184,12 +1181,12 @@ def warp(
         Impulse response to (de)warp.
     warping_factor : float
         Warping factor. It has to be in the range ]-1; 1[.
-    shift_ir : bool, optional
+    shift_ir : bool
         Since the warping of an IR is not shift-invariant (see [2]), it is
         recommended to place the start of the IR at the first index. When
         `True`, the first sample to surpass -20 dBFS (relative to peak) is
         shifted to the beginning and the previous samples are sent to the
-        end of the signal. `False` avoids any manipulation. Default: `True`.
+        end of the signal. `False` avoids any manipulation.
     total_length : int, optional
         Total length to use for the warped signal. If `None`, the original
         length is maintained. Default: `None`.
@@ -1207,8 +1204,8 @@ def warp(
       it can be achieved with this function. See [2] for more details.
     - In general, `warping_factor < 0.` shifts the frequency axis towards
       nyquist, i.e., increases the resolution of the lower frequencies while
-      lowering that of higher frequencies. See [3] for the
-      resolution/frequency-mapping of warping.
+      lowering that of higher frequencies. See [1] and [3] for the frequency
+      mapping of warping.
     - `warping_factor` will have a frequency-warping where a single frequency
       point remains unwarped. The formula for this is [1]:
 
@@ -1216,6 +1213,20 @@ def warp(
             \frac{f_s}{2\pi}\arccos(\lambda)
 
       where lambda is the `warping_factor` and f_s the sampling rate.
+    - Warping poles and zeros in the rational transfer function can be done
+      by replacing the z^-1 with (z^-1 - lambda)/(1 - lambda*z^-1). This leads,
+      for instance, to transforming a pole p0 to a new pole p with
+
+        .. math::
+            p = \frac{\lambda + p_0}{1 + p_0 \lambda}
+
+      while appending the factor
+
+        .. math::
+            \left(1 - \lambda z^{-1}\right)^{M_p - N_z}
+
+      to the transfer function, where Mp is the total number of poles and Nz
+      the total number of zeros.
 
     References
     ----------
