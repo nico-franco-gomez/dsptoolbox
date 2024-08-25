@@ -170,3 +170,21 @@ class TestTransformsModule:
         sp_aft = dsp.transforms.stereo_mid_side(sp, True)
         sp_aft = dsp.transforms.stereo_mid_side(sp_aft, False)
         assert np.all(np.isclose(sp.time_data, sp_aft.time_data))
+
+    def test_laguerre(self):
+        # Only functionality
+        sp = dsp.pad_trim(self.speech, 128)
+        dsp.transforms.laguerre(sp, -0.7)
+
+    def test_kautz(self):
+        # Only functionality
+        sp = dsp.pad_trim(self.speech, 64)
+        # Use some mixed pole distribution
+        poles = np.array([0.5, 0.3 + 1j * 0.2, -0.3 + 1j * 0.2])
+        dsp.transforms.kautz(sp, poles)
+
+    def test_warp(self):
+        # Only functionality
+        s = dsp.ImpulseResponse(join("examples", "data", "rir.wav"))
+        dsp.transforms.warp(s, -0.6, True, 2**8)
+        dsp.transforms.warp(s, 0.6, False, 2**8)

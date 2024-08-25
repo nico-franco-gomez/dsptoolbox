@@ -8,12 +8,14 @@ from ..classes.multibandsignal import MultiBandSignal
 from ..plots import general_matrix_plot
 from .._standard import _reconstruct_framed_signal
 from .._general_helpers import _hz2mel, _mel2hz, _pad_trim
+from ..room_acoustics._room_acoustics import _find_ir_start
 from ..transforms._transforms import (
     _pitch2frequency,
     Wavelet,
     MorletWavelet,
     _squeeze_scalogram,
     _get_kernels_vqt,
+    _warp_time_series,
 )
 from ..tools import to_db
 
@@ -21,7 +23,7 @@ import numpy as np
 from numpy.typing import NDArray
 from scipy.signal.windows import get_window
 from scipy.fft import dct
-from scipy.signal import oaconvolve, resample_poly
+from scipy.signal import oaconvolve, resample_poly, lfilter
 import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
 from matplotlib.axes import Axes
@@ -935,3 +937,324 @@ def stereo_mid_side(signal: Signal, forward: bool) -> Signal:
         td /= 2
     new_sig.time_data = td
     return new_sig
+
+
+def laguerre(signal: Signal, warping_factor: float) -> Signal:
+    """This function implements the discrete Laguerre Transform in the time
+    domain according to [1]. It is mainly used for frequency warping. See notes
+    for details.
+
+    This is a resource-intensive operation that should be applied to signals
+    that are not very long.
+
+    Parameters
+    ----------
+    signal : Signal
+        Signal to be transformed.
+    warping_factor : float
+        Warping factor. It must be in the range ]-1; 1[.
+
+    Returns
+    -------
+    Signal
+        Transformed signal.
+
+    Notes
+    -----
+    - This transform can be reversed by applying it once with `warping_factor`
+      and then with `-warping_factor`.
+    - It is an alternative, more general formulation to Warping and a special
+      case of using Kautz filters for a fixed pole. `warping_factor` here leads
+      to the same frequency mapping as warping.
+    - This can be used for frequency-dependent windowing of an impulse
+      response. Since this is not shift-invariant, the start of the IR should
+      be placed at `t=0`.
+    - In general, `warping_factor < 0.` shifts the frequency axis towards
+      nyquist, i.e., increases the resolution of the lower frequencies while
+      lowering that of higher frequencies. See [2] for the
+      resolution/frequency-mapping of warping.
+
+    References
+    ----------
+    - [1]: Zölzer, Battista. Digital Audio Effects DAFX. Chapter 11, second
+      edition.
+    - [2]: Bank, B. (2022). Warped, Kautz, and Fixed-Pole Parallel Filters: A
+      Review. Journal of the Audio Engineering Society.
+
+    """
+    assert (
+        np.abs(warping_factor) < 1.0
+    ), "Warping factor cannot be larger than 1."
+
+    xx = signal.time_data[::-1, ...]  # Time reversal
+    output = np.zeros_like(xx)
+
+    b = np.array([warping_factor, 1.0])
+    a = np.array([1.0, warping_factor])
+    b_normalized = (1.0 - warping_factor**2.0) ** 0.5
+
+    # First filtering stage with normalization
+    xx = lfilter(b_normalized, a, xx, axis=0)
+    output[0, :] = xx[-1, :]
+
+    # Rest filters
+    for i in range(1, xx.shape[0]):
+        xx = lfilter(b, a, xx, axis=0)
+        output[i, :] = xx[-1, :]
+
+    out = signal.copy()
+    out.time_data = output
+    return out
+
+
+def kautz_filters(
+    ir: Signal,
+    poles: NDArray[np.complex128],
+    time_reversal_input: bool,
+    output_length: int | None = None,
+) -> tuple[Signal, NDArray[np.float64]]:
+    """This function computes the coefficients of the given Kautz filters
+    to an input (real) signal. The poles define the orthonormal basis for the
+    Kautz filters. This only supports real input/output, so that complex poles
+    will be complex-conjugated. See [1] for a detailed explanation on Kautz
+    filters and how they relate to Warping/Laguerre filters.
+
+    Parameters
+    ----------
+    ir : Signal
+        Input time series. Beware that the transform is not shift-invariant,
+        so if the input is an impulse response, each channel should be pruned
+        from any delays.
+    poles : NDArray[np.complex128]
+        Complex poles to define the basis of the Kautz filters. All poles must
+        lie inside the unit circle and be either real or have strictly positive
+        imaginary part. Complex poles will be automatically conjugated in order
+        to obtain a real-valued basis.
+    time_reversal_input : bool
+        For finding the coefficients corresponding to an excitation input
+        signal, the time series must be reversed. Set to `False` to avoid
+        time reversal. No time reversal might be useful for the response to a
+        dirac.
+    output_length : int, None, optional
+        Length of the output time series. The input will always be used
+        in its entire length and the output will be at least the total number
+        of poles. Pass None for the output to have the same length as the
+        input. Default: None.
+
+    Returns
+    -------
+    Signal
+        Output time series.
+    NDArray[np.float64]
+        Matrix with filters' response. It has shape (time sample, kautz filter
+        response, channel). For an input excitation, the final response
+        corresponds to the last time sample across all kautz filters.
+
+    References
+    ----------
+    - [1]: Bank, B. (2022). Warped, Kautz, and Fixed-Pole Parallel Filters: A
+      Review. Journal of the Audio Engineering Society.
+    - This function is a port from the matlab toolbox:
+      http://legacy.spa.aalto.fi/software/kautz/kautz.htm
+
+    """
+    assert not np.any(
+        poles.imag < 0.0
+    ), "No poles with negative imaginary part should be passed"
+    assert not np.any(
+        np.abs(poles) >= 1.0
+    ), "No poles should lie outside the unit circle"
+
+    # Poles – Separate in real and imaginary
+    real_indices = poles.imag == 0.0
+    poles_real = np.real(poles[real_indices])
+    poles_complex = poles[~real_indices]
+
+    total_n_poles = len(poles_complex) * 2 + len(poles_real)
+
+    # Get data
+    td = ir.time_data
+
+    if output_length is None:
+        output_length = max(td.shape[0], total_n_poles)
+        if td.shape[0] < output_length:
+            td = _pad_trim(td, output_length)
+
+    output = np.zeros((output_length, total_n_poles, ir.number_of_channels))
+
+    # Time reversal
+    if time_reversal_input:
+        td = td[::-1]
+
+    # Real poles
+    for ii, preal in enumerate(poles_real):
+        output[:, ii, :] = (1.0 - preal**2.0) ** 0.5 * lfilter(
+            [1], [1, -preal], td, axis=0
+        )[:output_length, ...]
+        td = lfilter([-preal, 1], [1, -preal], td, axis=0)
+
+    # Complex poles
+    q = 2.0 * np.real(poles_complex)
+    r = np.abs(poles_complex) ** 2.0
+    for ii in range(len(poles_complex)):
+        output[:, len(poles_real) + ii * 2 - 1, :] = (
+            (1 - r[ii]) * (1 + r[ii] - q[ii]) / 2
+        ) * lfilter([1, -1], [1, q[ii], r[ii]], td, axis=0)[
+            :output_length, ...
+        ]
+        output[:, len(poles_real) + ii * 2, :] = (
+            (1 - r[ii]) * (1 + r[ii] + q[ii]) / 2
+        ) * lfilter([1, 1], [1, q[ii], r[ii]], td, axis=0)[:output_length, ...]
+        td = lfilter([r[ii], q[ii], 1], [1, q[ii], r[ii]], td, axis=0)
+
+    out_ir = ir.copy()
+    out_ir.time_data = output[-1, ...]
+    return out_ir, output
+
+
+def kautz(
+    ir: Signal, poles: NDArray[np.complex128], output_length: int | None = None
+):
+    """This delivers a least-squares approximation of a (real) signal with a
+    given (real) basis for Kautz filters. See `kautz_filters()` and [1] for
+    details.
+
+    Parameters
+    ----------
+    ir : Signal
+        Signal to be approximated with the given Kautz filter basis. If it is
+        an impulse response, each channel should be pruned from delay since
+        the transform is not shift-invariant.
+    poles : NDArray[np.complex128]
+        Poles that define the Kautz filters. They have to be within the unit
+        circle and either be real or have only positive imaginary parts.
+        Complex poles will be automatically conjugated in order to obtain a
+        real basis.
+    output_length : int, None, optional
+        Length of output. It should be at least the total number of poles.
+        If None, it will be at least 5 times the total number of poles.
+        Default: None.
+
+    Returns
+    -------
+    Signal
+        Approximated signal.
+
+    """
+    # Get response for the excitation signal
+    _, coefficients = kautz_filters(ir, poles, True)
+    coefficients = coefficients[-1, ...]
+
+    # Get response to a dirac
+    d = np.zeros(len(poles) * 10 if output_length is None else output_length)
+    d[0] = 1.0
+    _, basis = kautz_filters(
+        Signal.from_time_data(d, ir.sampling_rate_hz),
+        poles,
+        False,
+    )
+
+    # Compute approximation (for all channels)
+    h = np.tensordot(basis, coefficients, (1, 0))
+
+    # Output
+    h_out = ir.copy()
+    h_out.time_data = h
+    return h_out
+
+
+def warp(
+    ir: Signal,
+    warping_factor: float,
+    shift_ir: bool,
+    total_length: int | None = None,
+) -> Signal:
+    r"""Compute a warped signal as explained by [1]. This operation
+    corresponds to computing a warped FIR-Filter (WFIR).
+
+    To pre-warp a signal, pass a negative `warping_factor`. To de-warp it, use
+    the same positive `warping_factor`. See notes for details.
+
+    Parameters
+    ----------
+    ir : `Signal`
+        Impulse response to (de)warp.
+    warping_factor : float
+        Warping factor. It has to be in the range ]-1; 1[.
+    shift_ir : bool
+        Since the warping of an IR is not shift-invariant (see [2]), it is
+        recommended to place the start of the IR at the first index. When
+        `True`, the first sample to surpass -20 dBFS (relative to peak) is
+        shifted to the beginning and the previous samples are sent to the
+        end of the signal. `False` avoids any manipulation.
+    total_length : int, optional
+        Total length to use for the warped signal. If `None`, the original
+        length is maintained. Default: `None`.
+
+    Returns
+    -------
+    warped_ir : `Signal`
+        The same IR with warped or dewarped time vector.
+
+    Notes
+    -----
+    - Depending on the signal length, this might be a slow computation.
+    - Frequency-dependent windowing can be easily done in the warped domain.
+      This is not the approach used in `window_frequency_dependent()`, but
+      it can be achieved with this function. See [2] for more details.
+    - In general, `warping_factor < 0.` shifts the frequency axis towards
+      nyquist, i.e., increases the resolution of the lower frequencies while
+      lowering that of higher frequencies. See [1] and [3] for the frequency
+      mapping of warping.
+    - `warping_factor` will have a frequency-warping where a single frequency
+      point remains unwarped. The formula for this is [1]:
+
+        .. math::
+            \frac{f_s}{2\pi}\arccos(\lambda)
+
+      where lambda is the `warping_factor` and f_s the sampling rate.
+    - Warping poles and zeros in the rational transfer function can be done
+      by replacing the z^-1 with (z^-1 - lambda)/(1 - lambda*z^-1). This leads,
+      for instance, to transforming a pole p0 to a new pole p with
+
+        .. math::
+            p = \frac{\lambda + p_0}{1 + p_0 \lambda}
+
+      while appending the factor
+
+        .. math::
+            \left(1 - \lambda z^{-1}\right)^{M_p - N_z}
+
+      to the transfer function, where Mp is the total number of poles and Nz
+      the total number of zeros.
+
+    References
+    ----------
+    - [1]: Härmä, Aki & Karjalainen, Matti & Avioja, Lauri & Välimäki, Vesa &
+      Laine, Unto & Huopaniemi, Jyri. (2000). Frequency-Warped Signal
+      Processing for Audio Applications. Journal of the Audio Engineering
+      Society. 48. 1011-1031.
+    - [2]: M. Karjalainen and T. Paatero, "Frequency-dependent signal
+      windowing," Proceedings of the 2001 IEEE Workshop on the Applications of
+      Signal Processing to Audio and Acoustics (Cat. No.01TH8575), New Platz,
+      NY, USA, 2001, pp. 35-38, doi: 10.1109/ASPAA.2001.969536.
+    - [3]: Bank, B. (2022). Warped, Kautz, and Fixed-Pole Parallel Filters: A
+      Review. Journal of the Audio Engineering Society.
+
+    """
+    assert np.abs(warping_factor) < 1, "Warping factor has to be in ]-1; 1["
+
+    td = ir.time_data
+    if shift_ir:
+        for ch in range(ir.number_of_channels):
+            start = _find_ir_start(td[:, ch], -20)
+            td[:, ch] = np.roll(td[:, ch], -start)
+
+    if total_length is None:
+        total_length = td.shape[0]
+
+    td = _warp_time_series(td[:total_length, ...], warping_factor)
+    warped_ir = ir.copy()
+    warped_ir.time_data = td
+
+    return warped_ir
