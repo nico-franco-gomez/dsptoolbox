@@ -14,6 +14,29 @@ adheres to `Semantic Versioning <http://semver.org/spec/v2.0.0.html>`_.
 - Validation for results from tests in every module (so far many tests are
   only regarding functionality)
 
+`0.4.3 <https://pypi.org/project/dsptoolbox/0.4.3>`_ - 
+---------------------
+Added
+~~~~~
+- added `laguerre` to ``transforms``
+- added `kautz` and `kautz_filters` to ``transforms``
+
+Misc
+~~~~
+- energy decay curve is not corrected with compensation energy or pruned from
+  noise when something during the estimation goes wrong (fallback strategy)
+- updated README
+- moved `warp_ir` to ``transforms`` and renamed to `warp`
+- general documentation additions and fixes
+- finding the end of an IR now also allows for defining a distance to noise
+  floor
+
+Bugfix
+~~~~~~
+- fixed a bug during the computation of the energy decay curve where
+  phase-inverted peaks were not taken into account for the start of the
+  impulse response
+
 `0.4.2 <https://pypi.org/project/dsptoolbox/0.4.2>`_ - 
 ---------------------
 Added
