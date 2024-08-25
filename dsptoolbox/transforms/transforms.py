@@ -16,6 +16,7 @@ from ..transforms._transforms import (
     _squeeze_scalogram,
     _get_kernels_vqt,
     _warp_time_series,
+    _get_warping_factor,
 )
 from ..tools import to_db
 
@@ -1165,7 +1166,7 @@ def kautz(
 
 def warp(
     ir: Signal,
-    warping_factor: float,
+    warping_factor: float | str,
     shift_ir: bool,
     total_length: int | None = None,
 ) -> Signal:
@@ -1179,8 +1180,12 @@ def warp(
     ----------
     ir : `Signal`
         Impulse response to (de)warp.
-    warping_factor : float
-        Warping factor. It has to be in the range ]-1; 1[.
+    warping_factor : float, str, {"bark", "erb", "bark-", "erb-"}
+        Warping factor. It has to be in the range ]-1; 1[. If a string is
+        provided, warping the frequency axis to (or from) an approximation
+        of the psychoacoustically motivated Bark or ERB scales is performed
+        according to [4]. Pass "-" in the end for the dewarping (backwards
+        step) stage.
     shift_ir : bool
         Since the warping of an IR is not shift-invariant (see [2]), it is
         recommended to place the start of the IR at the first index. When
@@ -1227,6 +1232,8 @@ def warp(
 
       to the transfer function, where Mp is the total number of poles and Nz
       the total number of zeros.
+    - The frequency scale approximation to the Bark scale presented in [4]
+      is more accurate than for the ERB scale.
 
     References
     ----------
@@ -1240,9 +1247,12 @@ def warp(
       NY, USA, 2001, pp. 35-38, doi: 10.1109/ASPAA.2001.969536.
     - [3]: Bank, B. (2022). Warped, Kautz, and Fixed-Pole Parallel Filters: A
       Review. Journal of the Audio Engineering Society.
+    - [4]: III, J.O. & Abel, Jonathan. (1999). Bark and ERB Bilinear
+      Transforms. Speech and Audio Processing, IEEE Transactions on. 7.
+      697 - 708. 10.1109/89.799695.
 
     """
-    assert np.abs(warping_factor) < 1, "Warping factor has to be in ]-1; 1["
+    warping_factor = _get_warping_factor(warping_factor, ir.sampling_rate_hz)
 
     td = ir.time_data
     if shift_ir:

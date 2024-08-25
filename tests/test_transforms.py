@@ -188,3 +188,9 @@ class TestTransformsModule:
         s = dsp.ImpulseResponse(join("examples", "data", "rir.wav"))
         dsp.transforms.warp(s, -0.6, True, 2**8)
         dsp.transforms.warp(s, 0.6, False, 2**8)
+
+        # warping scales
+        dsp.transforms.warp(s, "bark", False, 2**7)
+        dsp.transforms.warp(s, "bark-", False, 2**7)
+        dsp.transforms.warp(s, "erb", False, 2**7)
+        dsp.transforms.warp(s, "erb-", False, 2**7)
