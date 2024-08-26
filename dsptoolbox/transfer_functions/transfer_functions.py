@@ -1084,7 +1084,7 @@ def combine_ir_with_dirac(
         None,
     ), "Invalid normalization parameter"
     ir = normalize(ir)
-    latencies_samples = find_ir_latency(ir)
+    latencies_samples = np.argmax(np.abs(ir.time_data), axis=0)
 
     # Make impulse
     imp = dirac(
