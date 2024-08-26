@@ -2,6 +2,7 @@ import dsptoolbox as dsp
 import pytest
 import numpy as np
 import scipy.signal as sig
+import os
 
 
 class TestFilterbanksModule:
@@ -270,6 +271,23 @@ class TestFilterbanksModule:
 
         # n1.plot_time()
         # dsp.plots.show()
+
+    def test_parallel_sos(self):
+        # Only functionality
+        rir = dsp.ImpulseResponse(os.path.join("examples", "data", "rir.wav"))
+        poles = np.logspace(
+            np.log10(1e-2), np.log10(np.pi * 0.95), 3, endpoint=True
+        )
+        poles = 0.5 * np.exp(1j * poles)
+
+        # All cases
+        dsp.filterbanks.parallel_sos(rir, poles, 0, 0.0)
+        dsp.filterbanks.parallel_sos(rir, poles, 1, 0.0)
+        dsp.filterbanks.parallel_sos(rir, poles, 3, 0.0)
+        dsp.filterbanks.parallel_sos(rir, poles, 3, 1.0)
+        dsp.filterbanks.parallel_sos(
+            dsp.merge_signals(rir, rir), poles, 3, 1.0
+        )
 
 
 class TestLatticeLadderFilter:
