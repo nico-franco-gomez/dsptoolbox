@@ -34,6 +34,8 @@ Other:
 - `pinking_filter()`: Get a -3 dB/octave filter.
 - `matched_biquad()`: Analog-matched biquad filters.
 - `gaussian_kernel()`: IIR first-order approximation of a gaussian window.
+- `parallel_sos()`: Find the (least-squares) optimal linear combination of
+  parallel SOS to approximate an IR.
 
 """
 
@@ -50,6 +52,8 @@ from .filterbanks import (
     matched_biquad,
     gaussian_kernel,
 )
+
+from ._filterbank import _parallel_sos as parallel_sos
 
 from ..classes.lattice_ladder_filter import LatticeLadderFilter
 from ..classes.group_delay_designer_phase_linearizer import (
@@ -74,4 +78,5 @@ __all__ = [
     "pinking_filter",
     "matched_biquad",
     "gaussian_kernel",
+    "parallel_sos",
 ]

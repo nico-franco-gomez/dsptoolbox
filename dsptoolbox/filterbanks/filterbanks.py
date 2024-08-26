@@ -3,12 +3,15 @@ General use filters and filter banks.
 """
 
 import numpy as np
-from scipy.signal import windows, bilinear_zpk, freqz_zpk, tf2sos
-import warnings
-from .. import (
-    Filter,
-    FilterBank,
+from scipy.signal import (
+    windows,
+    bilinear_zpk,
+    freqz_zpk,
+    tf2sos,
 )
+import warnings
+
+from .. import Filter, FilterBank
 from ..tools import fractional_octave_frequencies, erb_frequencies
 from ..classes.lattice_ladder_filter import (
     LatticeLadderFilter,
