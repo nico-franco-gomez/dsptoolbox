@@ -1169,7 +1169,7 @@ def warp(
     warping_factor: float | str,
     shift_ir: bool,
     total_length: int | None = None,
-) -> Signal:
+) -> Signal | tuple[Signal, float]:
     r"""Compute a warped signal as explained by [1]. This operation
     corresponds to computing a warped FIR-Filter (WFIR).
 
@@ -1200,6 +1200,8 @@ def warp(
     -------
     warped_ir : `Signal`
         The same IR with warped or dewarped time vector.
+    float
+        Warping factor. Only returned in case "bark" or "erb" was passed.
 
     Notes
     -----
@@ -1252,6 +1254,7 @@ def warp(
       697 - 708. 10.1109/89.799695.
 
     """
+    approximation_warping_factor = type(warping_factor) is str
     warping_factor = _get_warping_factor(warping_factor, ir.sampling_rate_hz)
 
     td = ir.time_data
@@ -1267,4 +1270,6 @@ def warp(
     warped_ir = ir.copy()
     warped_ir.time_data = td
 
-    return warped_ir
+    return warped_ir, (
+        warping_factor if approximation_warping_factor else warped_ir
+    )
