@@ -16,6 +16,7 @@ from .standard_functions import (
     envelope,
     dither,
     apply_gain,
+    resample_filter,
 )
 from .classes import (
     Filter,
@@ -61,6 +62,7 @@ __all__ = [
     "envelope",
     "dither",
     "apply_gain",
+    "resample_filter",
     # Modules
     "transfer_functions",
     "distances",

@@ -10,7 +10,7 @@ and not on primitive data types such as arrays.
 import numpy as np
 from numpy.typing import NDArray
 import pickle
-from scipy.signal import resample_poly, convolve, hilbert
+from scipy.signal import resample_poly, convolve, hilbert, bilinear_zpk
 
 from fractions import Fraction
 from warnings import warn
@@ -1274,3 +1274,43 @@ def apply_gain(
         return new_mb
     else:
         raise TypeError("No valid type was passed")
+
+
+def resample_filter(filter: Filter, new_sampling_rate_hz: int) -> Filter:
+    """This function resamples a filter by mapping its zpk representation
+    to the s-plane and reapplying the bilinear transform to the new sampling
+    rate. This approach can deliver satisfactory results for filters whose
+    poles and zeros correspond to low normalized frequencies (~0.1), but higher
+    frequencies will get significantly distorted due to the bilinear mapping.
+
+    Parameters
+    ----------
+    filter : Filter
+        Filter to resample.
+    new_sampling_rate_hz : int
+        Target sampling rate in Hz.
+
+    Returns
+    -------
+    Filter
+        Filter with new sampling rate.
+
+    """
+    z, p, k = filter.get_coefficients("zpk")
+    add_to_poles = max(0, len(z) - len(p))
+    add_to_zeros = max(0, len(p) - len(z))
+
+    f = 2 * filter.sampling_rate_hz
+    p = f * (p - 1) / (p + 1)
+    z = z[z != -1.0]
+    z = f * (z - 1) / (z + 1)
+
+    if add_to_poles:
+        p = np.hstack([p, [-f] * (len(z) - len(p))])
+    if add_to_zeros:
+        z = np.hstack([z, [-f] * (len(p) - len(z))])
+
+    k /= np.real(np.prod(f - z) / np.prod(f - p))
+
+    z, p, k = bilinear_zpk(z, p, k, new_sampling_rate_hz)
+    return Filter.from_zpk(z, p, k, new_sampling_rate_hz)
