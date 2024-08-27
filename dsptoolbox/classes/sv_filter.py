@@ -7,12 +7,14 @@ import numpy as np
 from matplotlib.figure import Figure
 from matplotlib.axes import Axes
 from numpy.typing import NDArray
+
 from .signal import Signal
 from .multibandsignal import MultiBandSignal
 from ..generators import dirac
+from .realtime_filter import RealtimeFilter
 
 
-class StateVariableFilter:
+class StateVariableFilter(RealtimeFilter):
     """This is a state variable filter discretized using the
     topology-preserving transform (trapezoidal integrator)."""
 
@@ -80,14 +82,15 @@ class StateVariableFilter:
         self.n_channels = n_channels
         self.state = np.zeros((2, self.n_channels))
 
-    def _reset_state(self):
+    def reset_state(self):
         """Reset filter states."""
         self.state.fill(0)
 
-    def _process_sample(
+    def process_sample(
         self, sample: float, channel: int = 0
     ) -> tuple[float, float, float, float]:
-        """Process a single sample using a specific channel."""
+        """Process a single sample using a specific channel. Outputs are
+        lowpass, highpass, bandpass, allpass."""
         yh = (
             sample
             - (self.resonance + self.g) * self.state[0, channel]
@@ -102,7 +105,7 @@ class StateVariableFilter:
 
         return yl, yh, yb, yl - self.resonance * yb + yh
 
-    def _process_vector(
+    def __process_vector(
         self, input: NDArray[np.float64]
     ) -> NDArray[np.float64]:
         """Process a whole multichannel array. The outputs are a 3d-array with
@@ -118,7 +121,7 @@ class StateVariableFilter:
 
         for ch in range(input.shape[1]):
             for i in np.arange(len(input)):
-                outputs[i, :, ch] = self._process_sample(
+                outputs[i, :, ch] = self.process_sample(
                     input[i, ch], channel=ch
                 )
         return outputs
@@ -138,11 +141,16 @@ class StateVariableFilter:
             lowpass, highpass, bandpass and allpass (saved in this order in
             the multiband signal).
 
+        Notes
+        -----
+        - Current filter states are used and they are NOT set to zero
+          afterwards.
+
         """
         assert (
             self.sampling_rate_hz == signal.sampling_rate_hz
         ), "Sampling rates do not match"
-        td = self._process_vector(signal.time_data)
+        td = self.__process_vector(signal.time_data)
         return MultiBandSignal(
             [
                 type(signal)(
