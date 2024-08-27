@@ -1096,17 +1096,19 @@ def kautz_filters(
         td = lfilter([-preal, 1], [1, -preal], td, axis=0)
 
     # Complex poles
-    q = 2.0 * np.real(poles_complex)
+    q = -2.0 * np.real(poles_complex)
     r = np.abs(poles_complex) ** 2.0
     for ii in range(len(poles_complex)):
         output[:, len(poles_real) + ii * 2 - 1, :] = (
             (1 - r[ii]) * (1 + r[ii] - q[ii]) / 2
-        ) * lfilter([1, -1], [1, q[ii], r[ii]], td, axis=0)[
+        ) ** 0.5 * lfilter([1, -1], [1, q[ii], r[ii]], td, axis=0)[
             :output_length, ...
         ]
         output[:, len(poles_real) + ii * 2, :] = (
             (1 - r[ii]) * (1 + r[ii] + q[ii]) / 2
-        ) * lfilter([1, 1], [1, q[ii], r[ii]], td, axis=0)[:output_length, ...]
+        ) ** 0.5 * lfilter([1, 1], [1, q[ii], r[ii]], td, axis=0)[
+            :output_length, ...
+        ]
         td = lfilter([r[ii], q[ii], 1], [1, q[ii], r[ii]], td, axis=0)
 
     out_ir = ir.copy()
@@ -1271,9 +1273,10 @@ def warp(
     warped_ir = ir.copy()
     warped_ir.time_data = td
 
-    return warped_ir, (
-        warping_factor if approximation_warping_factor else warped_ir
-    )
+    if approximation_warping_factor:
+        return warped_ir, warping_factor
+
+    return warped_ir
 
 
 def warp_filter(filter: Filter, warping_factor: float) -> Filter:
