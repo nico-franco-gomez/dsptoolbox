@@ -1230,3 +1230,22 @@ class TestFilterTopologies:
             td[ind] = iir.process_sample(td[ind], 0)
 
         np.testing.assert_allclose(td, sig.lfilter(b, a, n.time_data[:, 0]))
+
+    def test_fir_filter(self):
+        fir_original = dsp.Filter.fir_design(
+            25,
+            1000.0,
+            "lowpass",
+            "blackman",
+            sampling_rate_hz=self.fs_hz,
+        )
+        b, _ = fir_original.get_coefficients("ba")
+        b = b[: len(b) // 2 + 3]  # some asymmetrical window
+        fir = dsp.filterbanks.FIRFilter(b)
+        n = self.get_noise()
+
+        td = n.time_data.squeeze()
+        for ind in np.arange(len(td)):
+            td[ind] = fir.process_sample(td[ind], 0)
+
+        np.testing.assert_allclose(td, sig.lfilter(b, [1], n.time_data[:, 0]))

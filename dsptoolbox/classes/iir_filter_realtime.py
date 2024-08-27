@@ -5,7 +5,9 @@ from .realtime_filter import RealtimeFilter
 
 
 class IIRFilter(RealtimeFilter):
-    """IIR filter implemented as a transposed direct form 2."""
+    """IIR filter implemented as a transposed direct form 2. This class is
+    written for experimentation purposes, but using `scipy.signal.lfilter`
+    should be preferred for usual filtering tasks."""
 
     def __init__(self, b: NDArray[np.float64], a: NDArray[np.float64]):
         """Instantiate an IIR filter from b (numerator) and a (denominator)
