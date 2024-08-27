@@ -70,14 +70,6 @@ class StateVariableFilter(RealtimeFilter):
         self.set_n_channels(n_channels)
 
     def set_n_channels(self, n_channels: int):
-        """Set the number of channels for which the filter will be filtering.
-
-        Parameters
-        ----------
-        n_channels : int
-            Number of channels to be filtered.
-
-        """
         assert n_channels > 0
         self.n_channels = n_channels
         self.state = np.zeros((2, self.n_channels))

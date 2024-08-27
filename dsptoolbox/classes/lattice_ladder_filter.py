@@ -100,42 +100,32 @@ class LatticeLadderFilter(RealtimeFilter):
         self.c = c_coefficients
         self.state: NDArray[np.float64] | None = None
         self.sampling_rate_hz = sampling_rate_hz
-        self.initialize_zi(1)
+        self.set_n_channels(1)
 
-    def initialize_zi(self, n_channels: int):
-        """Initialize the filter's state values for a number of channels.
-
-        Parameters
-        ----------
-        n_channels : int
-            Number of channels for which to initialize the filter's states.
-
-        """
+    def set_n_channels(self, n_channels: int):
         assert n_channels > 0, "At least one channel must be initialized"
 
         self.state = np.zeros((len(self.k), n_channels))
         if self.iir_filter:
             if self.sos_filtering:
                 self.state = np.zeros((self.k.shape[0], 2, n_channels))
+        self.n_channels = n_channels
 
     def reset_state(self):
         self.state.fill(0.0)
 
-    def filter_signal(self, signal: Signal, channels=None) -> Signal:
+    def filter_signal(self, signal: Signal) -> Signal:
         """Filtering using a lattice ladder structure (general IIR filter). The
         implementation follows [1].
 
         Parameters
         ----------
-        signal : `Signal`
+        signal : Signal
             Signal to filter.
-        channels : NDArray[np.float64], int, optional
-            Channels to filter. If `None`, all channels of the signal are
-            filtered.
 
         Returns
         -------
-        filtered_signal : `Signal`
+        Signal
             Filtered signal.
 
         References
@@ -147,23 +137,16 @@ class LatticeLadderFilter(RealtimeFilter):
         assert (
             signal.sampling_rate_hz == self.sampling_rate_hz
         ), "Sampling rates do not match"
-        if channels is None:
-            channels = np.arange(signal.number_of_channels)
-        else:
-            channels = np.atleast_1d(channels)
-            assert np.all(
-                signal.number_of_channels > channels
-            ), "Requested channel to filter does not exist"
 
-        td = signal.time_data[:, channels]
+        td = signal.time_data
 
-        if self.state.shape[1] != len(channels):
+        if self.n_channels != signal.number_of_channels:
             warn(
                 """Number of channels did not match the filter's """
                 + "state. The right number of channels are automatically"
                 + "initiated"
             )
-            self.initialize_zi(len(channels))
+            self.set_n_channels(signal.number_of_channels)
 
         if self.iir_filter:
             if self.sos_filtering:
@@ -182,9 +165,7 @@ class LatticeLadderFilter(RealtimeFilter):
             )
 
         filtered_signal = signal.copy()
-        new_td = filtered_signal.time_data
-        new_td[:, channels] = td
-        filtered_signal.time_data = new_td
+        filtered_signal.time_data = td
         return filtered_signal
 
     def process_sample(self, x: float, channel: int):
