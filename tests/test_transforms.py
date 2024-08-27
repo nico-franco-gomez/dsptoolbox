@@ -194,3 +194,13 @@ class TestTransformsModule:
         dsp.transforms.warp(s, "bark-", False, 2**7)
         dsp.transforms.warp(s, "erb", False, 2**7)
         dsp.transforms.warp(s, "erb-", False, 2**7)
+
+    def test_warp_filter(self):
+        # Only functionality
+        i = dsp.Filter.iir_design(
+            3, 100.0, "highpass", "butter", sampling_rate_hz=24000
+        )
+        ii = dsp.transforms.warp_filter(i, -0.6)
+        dsp.FilterBank([i, ii]).plot_magnitude(length_samples=2**14)
+        dsp.transforms.warp_filter(i, 0.6)
+        dsp.plots.show()

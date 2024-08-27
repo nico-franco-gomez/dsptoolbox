@@ -3,6 +3,7 @@ Here are methods considered as somewhat special or less common.
 """
 
 from ..classes.signal import Signal
+from ..classes.filter import Filter
 from ..classes.impulse_response import ImpulseResponse
 from ..classes.multibandsignal import MultiBandSignal
 from ..plots import general_matrix_plot
@@ -1230,7 +1231,7 @@ def warp(
       while appending the factor
 
         .. math::
-            \left(1 - \lambda z^{-1}\right)^{M_p - N_z}
+            \left(1 + \lambda z^{-1}\right)^{M_p - N_z}
 
       to the transfer function, where Mp is the total number of poles and Nz
       the total number of zeros.
@@ -1273,3 +1274,65 @@ def warp(
     return warped_ir, (
         warping_factor if approximation_warping_factor else warped_ir
     )
+
+
+def warp_filter(filter: Filter, warping_factor: float) -> Filter:
+    r"""Apply warping to a filter by transforming its poles and zeros. See
+    references for details on warping.
+
+    Parameters
+    ----------
+    filter : Filter
+        Filter to be warped.
+    warping_factor : float
+        Warping factor. See `warp()` for details.
+
+    Returns
+    -------
+    Filter
+        Warped filter.
+
+    Notes
+    -----
+    - The overall filter gain of the filter is not modified by this function.
+    - Warping poles and zeros in the rational transfer function can be done
+      by replacing the z^-1 with (z^-1 - lambda)/(1 - lambda*z^-1). This leads,
+      for instance, to transforming a pole p0 to a new pole p with
+
+        .. math::
+            p = \frac{\lambda + p_0}{1 + p_0 \lambda}
+
+      while appending the factor
+
+        .. math::
+            \left(1 + \lambda z^{-1}\right)^{M_p - N_z}
+
+      to the transfer function, where Mp is the total number of poles and Nz
+      the total number of zeros.
+
+    References
+    ----------
+    - [1]: Härmä, Aki & Karjalainen, Matti & Avioja, Lauri & Välimäki, Vesa &
+      Laine, Unto & Huopaniemi, Jyri. (2000). Frequency-Warped Signal
+      Processing for Audio Applications. Journal of the Audio Engineering
+      Society. 48. 1011-1031.
+    - [2]: M. Karjalainen and T. Paatero, "Frequency-dependent signal
+      windowing," Proceedings of the 2001 IEEE Workshop on the Applications of
+      Signal Processing to Audio and Acoustics (Cat. No.01TH8575), New Platz,
+      NY, USA, 2001, pp. 35-38, doi: 10.1109/ASPAA.2001.969536.
+    - [3]: Bank, B. (2022). Warped, Kautz, and Fixed-Pole Parallel Filters: A
+      Review. Journal of the Audio Engineering Society.
+    - [4]: III, J.O. & Abel, Jonathan. (1999). Bark and ERB Bilinear
+      Transforms. Speech and Audio Processing, IEEE Transactions on. 7.
+      697 - 708. 10.1109/89.799695.
+
+    """
+    assert abs(warping_factor) < 1.0, "Warping factor must be less than 1."
+    z, p, k = filter.get_coefficients("zpk")
+    p = (warping_factor + p) / (1 + warping_factor * p)
+    z = (warping_factor + z) / (1 + warping_factor * z)
+    if len(p) > len(z):
+        z = np.hstack([z, [warping_factor] * (len(p) - len(z))])
+    elif len(z) > len(p):
+        p = np.hstack([p, [warping_factor] * (len(z) - len(p))])
+    return Filter.from_zpk(z, p, k, filter.sampling_rate_hz)
