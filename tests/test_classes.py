@@ -1118,3 +1118,101 @@ class TestImpulseResponse:
         rir.plot_time()
         rir.plot_spl()
         # dsp.plots.show()
+
+
+class TestFilterTopologies:
+    fs_hz = 24_000
+
+    def get_noise(self):
+        return dsp.generators.noise(
+            length_seconds=1, sampling_rate_hz=self.fs_hz
+        )
+
+    def test_svfilter(self):
+        # Functionality
+        PLOT = False
+        sv_filt = dsp.filterbanks.StateVariableFilter(1000.0, 1.0, self.fs_hz)
+        n = self.get_noise()
+
+        td = n.time_data.squeeze()
+        for ind in np.arange(len(td)):
+            td[ind] = sv_filt.process_sample(td[ind], 0)[0]
+
+        sv_filt.reset_state()
+        mb = sv_filt.filter_signal(n)
+        n2 = mb.get_all_bands(0)
+
+        np.testing.assert_array_equal(td, n2.time_data[:, 0])
+
+        if PLOT:
+            n2.set_spectrum_parameters("standard")
+            _, ax = n2.plot_magnitude(normalize=None)
+            ax.plot(
+                np.fft.rfftfreq(len(td), 1 / self.fs_hz),
+                dsp.tools.to_db(np.fft.rfft(td), True),
+            )
+            dsp.plots.show()
+
+    def test_lattice_ladder_filter(self):
+        PLOT = False
+        n = self.get_noise()
+
+        # IIR sos
+        iir = dsp.Filter.iir_design(
+            4, 1000.0, "lowpass", "butter", sampling_rate_hz=self.fs_hz
+        )
+        llf = dsp.filterbanks.convert_into_lattice_filter(iir)
+
+        td = n.time_data.squeeze()
+        for ind in np.arange(len(td)):
+            td[ind] = llf.process_sample(td[ind], 0)
+
+        llf.reset_state()
+        n2 = llf.filter_signal(n)
+        np.testing.assert_array_equal(td, n2.time_data[:, 0])
+        np.testing.assert_allclose(
+            td, sig.sosfilt(iir.get_coefficients("sos"), n.time_data.squeeze())
+        )
+
+        # IIR ba
+        iir = dsp.Filter.from_ba(
+            *iir.get_coefficients("ba"), sampling_rate_hz=self.fs_hz
+        )
+        llf = dsp.filterbanks.convert_into_lattice_filter(iir)
+
+        td = n.time_data.squeeze()
+        for ind in np.arange(len(td)):
+            td[ind] = llf.process_sample(td[ind], 0)
+
+        llf.reset_state()
+        n2 = llf.filter_signal(n)
+        np.testing.assert_array_equal(td, n2.time_data[:, 0])
+        np.testing.assert_allclose(
+            td, sig.lfilter(*iir.get_coefficients("ba"), n.time_data.squeeze())
+        )
+
+        # FIR ba (this filter does not work due to the reflection coefficients,
+        # maybe use another one ?)
+        # fir = dsp.transfer_functions.ir_to_filter(iir.get_ir(1024))
+        # llf = dsp.filterbanks.convert_into_lattice_filter(fir)
+
+        # td = n.time_data.squeeze()
+        # for ind in np.arange(len(td)):
+        #     td[ind] = llf.process_sample(td[ind], 0)
+
+        # llf.reset_state()
+        # n2 = llf.filter_signal(n)
+        # np.testing.assert_array_equal(td, n2.time_data[:, 0])
+        # np.testing.assert_allclose(
+        #     td,
+        #     sig.lfilter(*fir.get_coefficients("ba"), n.time_data.squeeze()),
+        # )
+
+        if PLOT:
+            n2.set_spectrum_parameters("standard")
+            _, ax = n2.plot_magnitude(normalize=None)
+            ax.plot(
+                np.fft.rfftfreq(len(td), 1 / self.fs_hz),
+                dsp.tools.to_db(np.fft.rfft(td), True),
+            )
+            dsp.plots.show()
