@@ -1216,3 +1216,17 @@ class TestFilterTopologies:
                 dsp.tools.to_db(np.fft.rfft(td), True),
             )
             dsp.plots.show()
+
+    def test_iir_filter(self):
+        iir_original = dsp.Filter.iir_design(
+            4, 1000.0, "highpass", "butter", sampling_rate_hz=self.fs_hz
+        )
+        b, a = iir_original.get_coefficients("ba")
+        iir = dsp.filterbanks.IIRFilter(b, a)
+        n = self.get_noise()
+
+        td = n.time_data.squeeze()
+        for ind in np.arange(len(td)):
+            td[ind] = iir.process_sample(td[ind], 0)
+
+        np.testing.assert_allclose(td, sig.lfilter(b, a, n.time_data[:, 0]))

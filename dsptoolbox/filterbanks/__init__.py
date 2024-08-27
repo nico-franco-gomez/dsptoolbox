@@ -29,6 +29,7 @@ Other:
   delay.
 - `StateVariableFilter()`: SV-Filter discretized with a topology-preserving
   transform.
+- `IIRFilter()`: General IIR filter implemented as transposed direct-form 2.
 - `convert_into_lattice_filter()`: Turns a conventional filter into its
   lattice/ladder representation.
 - `pinking_filter()`: Get a -3 dB/octave filter.
@@ -56,6 +57,7 @@ from .filterbanks import (
 from ._filterbank import _parallel_sos as parallel_sos
 
 from ..classes.lattice_ladder_filter import LatticeLadderFilter
+from ..classes.iir_filter import IIRFilter
 from ..classes.group_delay_designer_phase_linearizer import (
     PhaseLinearizer,
     GroupDelayDesigner,
@@ -73,6 +75,7 @@ __all__ = [
     "convert_into_lattice_filter",
     "LatticeLadderFilter",
     "PhaseLinearizer",
+    "IIRFilter",
     "GroupDelayDesigner",
     "StateVariableFilter",
     "pinking_filter",
