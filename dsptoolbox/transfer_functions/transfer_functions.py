@@ -759,6 +759,7 @@ def min_phase_ir(
     assert (
         type(sig) is ImpulseResponse
     ), "This is only valid for an impulse response"
+    assert padding_factor > 1, "Padding factor should be at least 1"
     method = method.lower()
     assert method in ("real cepstrum", "equiripple"), (
         f"{method} is not valid. Use either real cepstrum or " + "equiripple"
