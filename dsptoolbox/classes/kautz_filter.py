@@ -1,6 +1,7 @@
 import numpy as np
 from numpy.typing import NDArray
 from scipy.signal import lfilter
+from scipy.linalg import lstsq
 
 from .realtime_filter import RealtimeFilter
 from .impulse_response import ImpulseResponse
@@ -61,13 +62,44 @@ class KautzFilter(RealtimeFilter):
         self.sampling_rate_hz = sampling_rate_hz
 
         self.__set_poles(poles)
-        self.__compute_filters()
         self.set_filter_coefficients(
             np.ones(self.n_real_poles), np.ones(self.n_complex_poles)
         )
         self.set_n_channels(1)
 
+    @staticmethod
+    def from_ir(ir: ImpulseResponse, order: int, iterations: int):
+        """Approximate the IR with an optimal pole basis and coefficients. The
+        algorithm is a port from [1] and based on [2].
+
+        Parameters
+        ----------
+        ir : ImpulseResponse
+            IR to approximate
+        order : int
+            Order of the Kautz filter.
+        iterations : int
+            Number of iterations for finding optimal poles.
+
+        Returns
+        -------
+        KautzFilter
+
+        References
+        ----------
+        - [1]: This function is a port from the matlab toolbox:
+          http://legacy.spa.aalto.fi/software/kautz/kautz.htm
+        - [2]: H.Brandenstein and R. Unbehauen, "Least-Square Approximation of
+          FIR by IIR Filters", IEEE Transactions on Signal Processing, vol. 46,
+          no. 1, pp. 21 - 30, 1998.
+
+        """
+        f = KautzFilter(np.ones(2) * 0.5, ir.sampling_rate_hz)
+        f.fit_poles_and_coefficients_to_ir(ir, order, iterations)
+        return f
+
     def __set_poles(self, poles: NDArray[np.complex128]):
+        """Set poles and compute real time filters."""
         # Separate into real and complex
         real_indices = poles.imag == 0.0
         self.poles_real = np.real(poles[real_indices])
@@ -76,6 +108,8 @@ class KautzFilter(RealtimeFilter):
         self.n_complex_poles = len(self.poles_complex) * 2
         self.n_real_poles = len(self.poles_real)
         self.total_n_poles = self.n_complex_poles + self.n_real_poles
+
+        self.__compute_filters()
 
     def set_filter_coefficients(
         self, c_real: NDArray[np.float64], c_complex: NDArray[np.float64]
@@ -306,3 +340,97 @@ class KautzFilter(RealtimeFilter):
                 [r[ii], q[ii], 1], [1, q[ii], r[ii]], time_data, axis=0
             )
         return output
+
+    def fit_poles_and_coefficients_to_ir(
+        self, ir: ImpulseResponse, order: int, iterations: int
+    ):
+        """Find optimal poles for fitting an IR using the algorithm of [1] and
+        based on [2].
+
+        References
+        ----------
+        - [1]: This function is a port from the matlab toolbox:
+          http://legacy.spa.aalto.fi/software/kautz/kautz.htm
+        - [2]: H.Brandenstein and R. Unbehauen, "Least-Square Approximation of
+          FIR by IIR Filters", IEEE Transactions on Signal Processing, vol. 46,
+          no. 1, pp. 21 - 30, 1998.
+
+        """
+        assert (
+            ir.number_of_channels == 1
+        ), "Only a single-channel IR is supported"
+        td = ir.time_data.squeeze()
+        poles = KautzFilter.__find_optimal_poles_for_ir(order, iterations, td)
+        self.__set_poles(poles)
+        self.fit_coefficients_to_ir(ir)
+
+    @staticmethod
+    def __find_optimal_poles_for_ir(
+        order: int, iterations: int, target_response: NDArray[np.float64]
+    ):
+        """Port from [1]. Based on [2].
+
+        References
+        ----------
+        - [1]: This function is a port from the matlab toolbox:
+          http://legacy.spa.aalto.fi/software/kautz/kautz.htm
+        - [2]: H.Brandenstein and R. Unbehauen, "Least-Square Approximation of
+          FIR by IIR Filters", IEEE Transactions on Signal Processing, vol. 46,
+          no. 1, pp. 21 - 30, 1998.
+
+        """
+        assert (
+            target_response.ndim == 1
+        ), "This is only valid for 1D time series"
+
+        response_length = len(target_response)
+
+        # time inverse of target_response
+        target_response = target_response[::-1]
+
+        # Accumulators
+        matrix_a = np.zeros((response_length, order))
+        polynomial_coefficients = np.array([1.0] + [0.0] * order)
+        coefficients_matrix = np.zeros((iterations, order + 1))
+        error_array = np.zeros(iterations)
+
+        for i in range(iterations):
+            filtered_response = lfilter(
+                [1.0], polynomial_coefficients, target_response
+            )
+            vector_b = np.hstack(
+                [np.zeros(order), -filtered_response[:-order]]
+            )
+
+            # Make A matrix
+            matrix_a.fill(0.0)
+            matrix_a[:, 0] = filtered_response
+            for k in range(1, order):
+                matrix_a[k:, k] = filtered_response[:-k]
+
+            least_squares_solution = lstsq(matrix_a, vector_b)[0]
+
+            # Form from LS solution: p[0] * x**n + p[1] * x**(n-1) + ...
+            polynomial_coefficients = np.hstack(
+                [[1.0], least_squares_solution[::-1]]
+            )
+
+            # Numerator z^-order * polynomial_coefficients(z^-1) coefficients
+            inverse_polynomial = polynomial_coefficients[::-1]
+
+            # AP filtering  -> Unstable outputs
+            allpass_filtered = lfilter(
+                inverse_polynomial, polynomial_coefficients, target_response
+            )
+
+            # Store coefficients in rows of coefficients_matrix
+            coefficients_matrix[i, :] = polynomial_coefficients
+
+            # normalized RMSE
+            error_array[i] = np.sum(allpass_filtered**2)
+
+        # Extract poles with the smallest error
+        inds = ~np.isnan(error_array)
+        min_error_index = np.argmin(error_array[inds])
+        poles = np.roots(coefficients_matrix[inds, :][min_error_index, :])
+        return poles[poles.imag >= 0.0]
