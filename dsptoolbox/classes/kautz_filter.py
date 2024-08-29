@@ -191,12 +191,13 @@ class KautzFilter(RealtimeFilter):
         return y
 
     def fit_coefficients_to_ir(self, ir: ImpulseResponse):
-        """Fit Kautz filter coefficients to an impulse response.
+        """Fit Kautz filter coefficients to an impulse response. See references
+        for the details on how this is accomplished.
 
         Parameters
         ----------
         ir : ImpulseResponse
-            Single-channel impulse response to which to set the filter
+            Single-channel impulse response to which to fit the filter
             coefficients. This works best for minimum-phase IRs and IRs without
             initial delay.
 

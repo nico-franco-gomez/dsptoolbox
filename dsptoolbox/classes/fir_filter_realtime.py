@@ -6,8 +6,9 @@ from .realtime_filter import RealtimeFilter
 
 class FIRFilter(RealtimeFilter):
     """FIR filter implemented in the time domain. This class is
-    written for experimentation purposes, but using `scipy.signal.lfilter` or
-    some convolution function should be preferred for usual filtering tasks."""
+    written for experimentation purposes and realtime applications, but using
+    `scipy.signal.lfilter` or some convolution function should be preferred for
+    usual offline filtering tasks."""
 
     def __init__(self, b: NDArray[np.float64]):
         """Instantiate an FIR filter from b (numerator) coefficients.

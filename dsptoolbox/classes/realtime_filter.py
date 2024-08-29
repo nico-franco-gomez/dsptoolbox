@@ -4,6 +4,8 @@ import abc
 class RealtimeFilter(abc.ABC):
     @abc.abstractmethod
     def process_sample(x: float, channel: int):
+        """Process a sample with the filter for a given channel. Channel index
+        is not checked for speed."""
         pass
 
     @abc.abstractmethod

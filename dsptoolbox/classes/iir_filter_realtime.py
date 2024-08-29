@@ -6,8 +6,9 @@ from .realtime_filter import RealtimeFilter
 
 class IIRFilter(RealtimeFilter):
     """IIR filter implemented as a transposed direct form 2. This class is
-    written for experimentation purposes, but using `scipy.signal.lfilter`
-    should be preferred for usual filtering tasks."""
+    written for experimentation purposes and realtime applications, but using
+    `scipy.signal.lfilter` should be preferred for common offline filtering
+    tasks."""
 
     def __init__(self, b: NDArray[np.float64], a: NDArray[np.float64]):
         """Instantiate an IIR filter from b (numerator) and a (denominator)
@@ -36,7 +37,6 @@ class IIRFilter(RealtimeFilter):
         self.state.fill(0.0)
 
     def process_sample(self, x: float, channel: int):
-        """Process a sample."""
         y = self.b[0] * x + self.state[0, channel]
         for i in range(self.order - 1):
             self.state[i, channel] = (
