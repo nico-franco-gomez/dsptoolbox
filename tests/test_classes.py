@@ -1249,3 +1249,46 @@ class TestFilterTopologies:
             td[ind] = fir.process_sample(td[ind], 0)
 
         np.testing.assert_allclose(td, sig.lfilter(b, [1], n.time_data[:, 0]))
+
+    def test_kautz_filters(self):
+        # Only functionality
+        fs_hz = 48000
+
+        # Define some poles for smoothing according to Bank, B. (2022). Warped,
+        # Kautz, and Fixed-Pole Parallel Filters: A Review. Journal of the
+        # Audio Engineering Society.
+        fractional_octave_smoothing = 24  # beta
+        K = int(10 * (fractional_octave_smoothing / 2) + 1)
+        pole_freqs_hz = np.logspace(
+            np.log10(20), np.log10(20480), K, endpoint=True
+        )
+        pole_freqs_rad = 2 * np.pi * pole_freqs_hz / fs_hz
+        bandwidth = np.zeros_like(pole_freqs_rad)
+        bandwidth[0] = pole_freqs_rad[1] - pole_freqs_rad[0]
+        bandwidth[-1] = pole_freqs_rad[-1] - pole_freqs_rad[-2]
+        bandwidth[1:-1] = (
+            pole_freqs_rad[2:] - pole_freqs_rad[:-2]
+        ) / 2  # Eq. 24
+        poles = np.exp(-bandwidth / 2 + 1j * pole_freqs_rad)  # Eq. 25
+
+        # Add two real poles just for testing
+        poles = np.hstack([0.1, poles, -0.4])
+
+        filter = dsp.filterbanks.KautzFilter(poles, fs_hz)
+
+        # Process sample and complete signal, compare both are equal
+        d = dsp.generators.dirac(2**11, sampling_rate_hz=fs_hz)
+        d.constrain_amplitude = False
+        td = d.time_data.squeeze()
+        for ind in np.arange(len(td)):
+            td[ind] = filter.process_sample(td[ind], 0)
+        dd = filter.get_ir(2**11)
+
+        # Normalize
+        td /= np.max(np.abs(td))
+        dd = dsp.normalize(dd, norm_dbfs=0.0)
+        np.testing.assert_allclose(td, dd.time_data.squeeze(), rtol=1e-6)
+
+        filter.fit_coefficients_to_ir(d)
+        assert np.any(filter.coefficients_complex_poles != 1.0)
+        assert np.any(filter.coefficients_real_poles != 1.0)

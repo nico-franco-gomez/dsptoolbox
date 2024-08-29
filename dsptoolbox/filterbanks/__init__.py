@@ -31,6 +31,7 @@ Other:
   transform.
 - `IIRFilter()`: General IIR filter implemented as transposed direct-form 2.
 - `FIRFilter()`: FIR filter implemented in the time domain.
+- `KautzFilter()`: Kautz filters with an orthonormal pole basis.
 - `convert_into_lattice_filter()`: Turns a conventional filter into its
   lattice/ladder representation.
 - `pinking_filter()`: Get a -3 dB/octave filter.
@@ -60,11 +61,12 @@ from ._filterbank import _parallel_sos as parallel_sos
 from ..classes.lattice_ladder_filter import LatticeLadderFilter
 from ..classes.iir_filter_realtime import IIRFilter
 from ..classes.fir_filter_realtime import FIRFilter
+from ..classes.sv_filter import StateVariableFilter
+from ..classes.kautz_filter import KautzFilter
 from ..classes.group_delay_designer_phase_linearizer import (
     PhaseLinearizer,
     GroupDelayDesigner,
 )
-from ..classes.sv_filter import StateVariableFilter
 
 __all__ = [
     "linkwitz_riley_crossovers",
@@ -79,6 +81,7 @@ __all__ = [
     "PhaseLinearizer",
     "IIRFilter",
     "FIRFilter",
+    "KautzFilter",
     "GroupDelayDesigner",
     "StateVariableFilter",
     "pinking_filter",
