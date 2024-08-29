@@ -168,7 +168,7 @@ class StateVariableFilter(RealtimeFilter):
 
         """
         d = dirac(length_samples, sampling_rate_hz=self.sampling_rate_hz)
-        self._reset_state()
+        self.reset_state()
         return self.filter_signal(d)
 
     def plot_magnitude(
