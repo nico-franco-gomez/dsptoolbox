@@ -31,14 +31,14 @@ Other:
   transform.
 - `IIRFilter()`: General IIR filter implemented as transposed direct-form 2.
 - `FIRFilter()`: FIR filter implemented in the time domain.
+- `ParallelFilter()`: Find the (least-squares) optimal linear combination of
+  parallel SOS to approximate an IR.
 - `KautzFilter()`: Kautz filters with an orthonormal pole basis.
 - `convert_into_lattice_filter()`: Turns a conventional filter into its
   lattice/ladder representation.
 - `pinking_filter()`: Get a -3 dB/octave filter.
 - `matched_biquad()`: Analog-matched biquad filters.
 - `gaussian_kernel()`: IIR first-order approximation of a gaussian window.
-- `parallel_sos()`: Find the (least-squares) optimal linear combination of
-  parallel SOS to approximate an IR.
 
 """
 
@@ -56,9 +56,8 @@ from .filterbanks import (
     gaussian_kernel,
 )
 
-from ._filterbank import _parallel_sos as parallel_sos
-
 from ..classes.lattice_ladder_filter import LatticeLadderFilter
+from ..classes.parallel_filter import ParallelFilter
 from ..classes.iir_filter_realtime import IIRFilter
 from ..classes.fir_filter_realtime import FIRFilter
 from ..classes.sv_filter import StateVariableFilter
@@ -81,11 +80,11 @@ __all__ = [
     "PhaseLinearizer",
     "IIRFilter",
     "FIRFilter",
+    "ParallelFilter",
     "KautzFilter",
     "GroupDelayDesigner",
     "StateVariableFilter",
     "pinking_filter",
     "matched_biquad",
     "gaussian_kernel",
-    "parallel_sos",
 ]

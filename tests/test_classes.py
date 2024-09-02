@@ -6,6 +6,7 @@ import pytest
 import dsptoolbox as dsp
 import numpy as np
 from os.path import join
+import os
 import scipy.signal as sig
 from matplotlib.pyplot import close
 
@@ -1292,3 +1293,30 @@ class TestFilterTopologies:
         filter.fit_coefficients_to_ir(d)
         assert np.any(filter.coefficients_complex_poles != 1.0)
         assert np.any(filter.coefficients_real_poles != 1.0)
+
+    def test_parallel_filterbank(self):
+        # Only functionality
+        rir = dsp.ImpulseResponse(os.path.join("examples", "data", "rir.wav"))
+        poles = np.logspace(
+            np.log10(1e-2), np.log10(np.pi * 0.95), 3, endpoint=True
+        )
+        poles = 0.5 * np.exp(1j * poles)
+
+        # All cases
+        fb = dsp.filterbanks.ParallelFilter(poles, 0, rir.sampling_rate_hz)
+        fb.fit_to_ir(rir)
+        fb.get_ir(256)
+        fb.set_n_channels(3)
+
+        for i in rir.time_data:
+            fb.process_sample(i, 1)
+        fb.reset_state()
+        iir_coeffs = np.random.normal(0, 0.1, (len(poles), 2))
+        fb.set_coefficients(iir_coeffs, np.random.normal(0, 0.01, 10))
+
+        fb = dsp.filterbanks.ParallelFilter(poles, 1, rir.sampling_rate_hz)
+        fb.set_parameters(4, 0.0)
+        fb.fit_to_ir(rir)
+        fb = dsp.filterbanks.ParallelFilter(poles, 3, rir.sampling_rate_hz)
+        fb.set_parameters(10, 1e-3)
+        fb.fit_to_ir(rir)

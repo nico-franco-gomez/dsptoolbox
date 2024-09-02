@@ -185,22 +185,6 @@ class TestFilterbanksModule:
         # ir.plot_magnitude()
         # dsp.plots.show()
 
-    def test_SVFilter(self):
-        fs_hz = 10_000
-        f = dsp.filterbanks.StateVariableFilter(500, np.sqrt(2), fs_hz)
-
-        n = dsp.generators.noise(sampling_rate_hz=fs_hz)
-        f.filter_signal(n)
-
-        n = dsp.generators.noise(number_of_channels=3, sampling_rate_hz=fs_hz)
-        f.filter_signal(n)
-
-        f.get_ir()
-
-        f.plot_magnitude(4096)
-        f.plot_group_delay(4096)
-        f.plot_phase(4096)
-
     def test_pinking_filter(self):
         # Only functionality
         fs_hz = 44100
@@ -271,23 +255,6 @@ class TestFilterbanksModule:
 
         # n1.plot_time()
         # dsp.plots.show()
-
-    def test_parallel_sos(self):
-        # Only functionality
-        rir = dsp.ImpulseResponse(os.path.join("examples", "data", "rir.wav"))
-        poles = np.logspace(
-            np.log10(1e-2), np.log10(np.pi * 0.95), 3, endpoint=True
-        )
-        poles = 0.5 * np.exp(1j * poles)
-
-        # All cases
-        dsp.filterbanks.parallel_sos(rir, poles, 0, 0.0)
-        dsp.filterbanks.parallel_sos(rir, poles, 1, 0.0)
-        dsp.filterbanks.parallel_sos(rir, poles, 3, 0.0)
-        dsp.filterbanks.parallel_sos(rir, poles, 3, 1.0)
-        dsp.filterbanks.parallel_sos(
-            dsp.merge_signals(rir, rir), poles, 3, 1.0
-        )
 
 
 class TestLatticeLadderFilter:

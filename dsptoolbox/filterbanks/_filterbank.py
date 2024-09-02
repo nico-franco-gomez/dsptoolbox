@@ -8,7 +8,6 @@ from os import sep
 from pickle import dump, HIGHEST_PROTOCOL
 from copy import deepcopy
 from numpy.typing import NDArray
-from scipy.linalg import lstsq
 from scipy.signal import (
     sosfilt,
     sosfilt_zi,
@@ -16,9 +15,6 @@ from scipy.signal import (
     sosfiltfilt,
     bilinear,
     tf2sos,
-    zpk2sos,
-    sosfreqz,
-    freqz,
 )
 
 from ..classes import (
@@ -1595,140 +1591,3 @@ def __get_matched_eq_helpers(omega0, q):
     phi = np.array([1 - sin_omega, sin_omega, 0])
     phi[2] = 4 * phi[0] * phi[1]
     return np.array([1, a1, a2]), A, phi
-
-
-def _parallel_sos(
-    ir: ImpulseResponse,
-    poles: NDArray[np.complex128],
-    n_fir: int = 1,
-    fir_offset_ms: float = 0.5,
-) -> list[FilterBank]:
-    """This function optimizes a pole basis to an IR in the frequency domain
-    by means of a least-squares approximation. Details are given in [1].
-
-    Parameters
-    ----------
-    ir : ImpulseResponse
-        IR to approximate. Each channel is approximated with an independent
-        filter bank. For the approximation to deliver satisfactory results,
-        it is recommended that the IR be minimum phase.
-    poles : NDArray[np.complex128]
-        Poles to use as basis for the approximation. Only real poles or
-        complex poles with positive imaginary parts should be passed
-        (they will be automatically conjugated). See [1] for detailed
-        information on how to find a suitable basis.
-    n_fir : int, optional
-        Number of FIR coefficients to use during the approximation. At least
-        1 is recommended, though an all-pole approximation could also deliver
-        satisfactory results in some cases. Default: 1.
-    fir_offset_ms : float, optional
-        Delay between the different fir coefficients in milliseconds. Setting
-        this to some value other than 0 can lead to a better overall
-        approximation at the expense of applying a longer FIR filter. Pass 0
-        to avoid any delays in between coefficients. Default: 0.5.
-
-    Returns
-    -------
-    list[FilterBank]
-        List containing a filter bank for each channel of the IR. For the
-        filtering operation, mode should be set to `"summed"`.
-
-    Notes
-    -----
-    - The frequency resolution of the filter bank is given by the set of poles.
-    - Methods for finding optimal poles are reviewed in depth in [1].
-    - It was noticed that delaying the FIR coefficients can be advantageous in
-      terms of quality of the approximation.
-
-    References
-    ----------
-    - [1]: Bank, B. (2022). Warped, Kautz, and Fixed-Pole Parallel Filters: A
-      Review. Journal of the Audio Engineering Society.
-
-    """
-    assert n_fir >= 0, "n_fir must be at least 0"
-    assert fir_offset_ms >= 0.0, "Offset must be positive"
-    assert np.all(
-        np.abs(poles) < 1.0
-    ), "At least one pole lies outside the unit circle"
-    assert np.all(
-        poles.imag >= 0.0
-    ), "Only poles with positive imaginary part are accepted"
-    assert np.all(np.abs(poles) > 0.0), "No poles at the origin should be used"
-    assert all(
-        [np.sum(np.isclose(poles, p)) == 1 for p in poles]
-    ), "Pole multiplicity cannot be more than 1"
-
-    freqs, spectrum_channels = ir.get_spectrum()
-    fs_hz = ir.sampling_rate_hz
-
-    # Get SOS
-    comp_inds = poles.imag != 0
-    poles = np.hstack([poles, poles[comp_inds].conjugate()])
-    sos = zpk2sos([], poles, 1.0)
-    n_sos = sos.shape[0]
-
-    # Create model matrix
-    n_parameters = n_sos * 2 + n_fir
-    L = len(freqs)
-    fir_offset_samples = max(1, int(fs_hz * fir_offset_ms / 1e3 + 0.5))
-    M = np.zeros((L, n_parameters), dtype=np.complex128)
-    for ind in range(0, n_sos * 2, 2):
-        M[:, ind] = sosfreqz(sos[ind // 2, :][None, :], freqs, fs=fs_hz)[1]
-
-        # Delayed by one sample
-        sos_delayed = sos[ind // 2, :]
-        sos_delayed[0] = 0.0
-        sos_delayed[1] = 1.0
-        M[:, ind + 1] = sosfreqz(sos_delayed[None, :], freqs, fs=fs_hz)[1]
-
-    for n in range(n_fir):
-        M[:, n_sos * 2 + n] = freqz(
-            np.hstack([[0.0] * (n * fir_offset_samples), [1.0]]),
-            [1.0],
-            freqs,
-            fs=fs_hz,
-        )[
-            1
-        ]  # Put impulse at index n for the FIR part
-
-    # Make "real" model matrix
-    M = np.vstack([np.real(M), np.imag(M)])
-
-    filter_banks = []
-    for ch in range(ir.number_of_channels):
-        # Make "real" optimization problem
-        spectrum = spectrum_channels[:, ch]
-        spectrum = np.hstack([np.real(spectrum), np.imag(spectrum)])
-        solution = lstsq(M, spectrum)[0]
-
-        # Extract IIR and FIR solution and put into SOS
-        for ind in range(0, n_sos * 2, 2):
-            sos[ind // 2, 0] = solution[ind]
-            sos[ind // 2, 1] = solution[ind + 1]
-
-        fir_coefficients = solution[n_sos * 2 :]
-
-        # Put delays in between the fir coefficients
-        if fir_offset_samples > 1 and n_fir > 1:
-            ff = np.zeros(
-                ((fir_offset_samples) * (len(fir_coefficients) - 1) + 1)
-            )
-            ff[:: fir_offset_samples + 1] = fir_coefficients[:-1]
-            ff[-1] = fir_coefficients[-1]
-            fir_coefficients = ff
-
-        # Filter bank object
-        fb = FilterBank(
-            [
-                Filter.from_sos(sos[n, :][None, ...], ir.sampling_rate_hz)
-                for n in range(n_sos)
-            ]
-        )
-        if len(fir_coefficients) > 0:
-            fb.add_filter(
-                Filter.from_ba(fir_coefficients, [1], ir.sampling_rate_hz)
-            )
-        filter_banks.append(fb)
-
-    return filter_banks
