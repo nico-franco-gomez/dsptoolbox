@@ -250,6 +250,9 @@ class Signal:
         self.number_of_channels = new_time_data.shape[1]
         self.__update_state()
 
+        if hasattr(self, "window"):
+            del self.window
+
     @property
     def sampling_rate_hz(self) -> int:
         return self.__sampling_rate_hz

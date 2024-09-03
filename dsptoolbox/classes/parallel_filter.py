@@ -157,6 +157,8 @@ class ParallelFilter(RealtimeFilter):
             ir.number_of_channels == 1
         ), "This is only valid for a single-channel IR"
         freqs, spectrum_channels = ir.get_spectrum()
+        freqs = freqs[1:]
+        spectrum_channels = spectrum_channels[1:]
         fs_hz = ir.sampling_rate_hz
 
         # Get SOS
