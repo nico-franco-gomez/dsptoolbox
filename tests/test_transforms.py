@@ -176,15 +176,24 @@ class TestTransformsModule:
         sp = dsp.pad_trim(self.speech, 128)
         dsp.transforms.laguerre(sp, -0.7)
 
-    def test_kautz(self):
-        # Only functionality
-        sp = dsp.pad_trim(self.speech, 64)
-        # Use some mixed pole distribution
-        poles = np.array([0.5, 0.3 + 1j * 0.2, -0.3 + 1j * 0.2])
-        dsp.transforms.kautz(sp, poles)
-
     def test_warp(self):
         # Only functionality
         s = dsp.ImpulseResponse(join("examples", "data", "rir.wav"))
         dsp.transforms.warp(s, -0.6, True, 2**8)
         dsp.transforms.warp(s, 0.6, False, 2**8)
+
+        # warping scales
+        dsp.transforms.warp(s, "bark", False, 2**7)
+        dsp.transforms.warp(s, "bark-", False, 2**7)
+        dsp.transforms.warp(s, "erb", False, 2**7)
+        dsp.transforms.warp(s, "erb-", False, 2**7)
+
+    def test_warp_filter(self):
+        # Only functionality
+        i = dsp.Filter.iir_design(
+            3, 100.0, "highpass", "butter", sampling_rate_hz=24000
+        )
+        ii = dsp.transforms.warp_filter(i, -0.6)
+        dsp.FilterBank([i, ii]).plot_magnitude(length_samples=2**14)
+        dsp.transforms.warp_filter(i, 0.6)
+        dsp.plots.show()

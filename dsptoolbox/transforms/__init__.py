@@ -18,9 +18,8 @@ This module contains signal transforms.
 - `vqt()` (Variable-Q Transform)
 - `stereo_mid_side()` (Mid-Side representation of stereo signal)
 - `laguerre()` (Frequency-warping by means of the Laguerre transform)
-- `kautz_filters()` (Response of kautz filters to an excitation)
-- `kautz()` (Approximation of a signal using a given set of Kautz filters)
 - `warp()` (Convert signal to/from warped domain)
+- `warp_filter()` (Warp a filter transforming its poles and zeros)
 
 """
 
@@ -38,9 +37,8 @@ from .transforms import (
     vqt,
     stereo_mid_side,
     laguerre,
-    kautz_filters,
-    kautz,
     warp,
+    warp_filter,
 )
 
 __all__ = [
@@ -57,7 +55,6 @@ __all__ = [
     "vqt",
     "stereo_mid_side",
     "laguerre",
-    "kautz_filters",
-    "kautz",
     "warp",
+    "warp_filter",
 ]

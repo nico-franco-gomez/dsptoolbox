@@ -8,7 +8,6 @@ from os import sep
 from pickle import dump, HIGHEST_PROTOCOL
 from copy import deepcopy
 from numpy.typing import NDArray
-
 from scipy.signal import (
     sosfilt,
     sosfilt_zi,
@@ -17,6 +16,7 @@ from scipy.signal import (
     bilinear,
     tf2sos,
 )
+
 from ..classes import (
     Signal,
     MultiBandSignal,

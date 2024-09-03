@@ -2,6 +2,7 @@ import dsptoolbox as dsp
 import pytest
 import numpy as np
 import scipy.signal as sig
+import os
 
 
 class TestFilterbanksModule:
@@ -183,22 +184,6 @@ class TestFilterbanksModule:
         # ir.plot_time()
         # ir.plot_magnitude()
         # dsp.plots.show()
-
-    def test_SVFilter(self):
-        fs_hz = 10_000
-        f = dsp.filterbanks.StateVariableFilter(500, np.sqrt(2), fs_hz)
-
-        n = dsp.generators.noise(sampling_rate_hz=fs_hz)
-        f.filter_signal(n)
-
-        n = dsp.generators.noise(number_of_channels=3, sampling_rate_hz=fs_hz)
-        f.filter_signal(n)
-
-        f.get_ir()
-
-        f.plot_magnitude(4096)
-        f.plot_group_delay(4096)
-        f.plot_phase(4096)
 
     def test_pinking_filter(self):
         # Only functionality

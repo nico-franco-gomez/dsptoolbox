@@ -2,13 +2,15 @@
 This file contains alternative filter implementations.
 """
 
-from .signal import Signal
 from warnings import warn
 import numpy as np
 from numpy.typing import NDArray
 
+from .signal import Signal
+from .realtime_filter import RealtimeFilter
 
-class LatticeLadderFilter:
+
+class LatticeLadderFilter(RealtimeFilter):
     """This is a class that handles a Lattice/Ladder filter representation.
     Depending on the `k` (reflection) or `c` (feedforward) coefficients, it
     might be a lattice or lattice/ladder filter structure.
@@ -98,61 +100,53 @@ class LatticeLadderFilter:
         self.c = c_coefficients
         self.state: NDArray[np.float64] | None = None
         self.sampling_rate_hz = sampling_rate_hz
+        self.set_n_channels(1)
 
-    def initialize_zi(self, n_channels: int):
-        """Initialize the filter's state values for a number of channels.
+    def set_n_channels(self, n_channels: int):
+        assert n_channels > 0, "At least one channel must be initialized"
 
-        Parameters
-        ----------
-        n_channels : int
-            Number of channels for which to initialize the filter's states.
-
-        """
         self.state = np.zeros((len(self.k), n_channels))
+        if self.iir_filter:
+            if self.sos_filtering:
+                self.state = np.zeros((self.k.shape[0], 2, n_channels))
+        self.n_channels = n_channels
 
-    def filter_signal(
-        self, signal: Signal, channels=None, activate_zi: bool = False
-    ) -> Signal:
-        """Filter the selected channels of a signal.
+    def reset_state(self):
+        self.state.fill(0.0)
+
+    def filter_signal(self, signal: Signal) -> Signal:
+        """Filtering using a lattice ladder structure (general IIR filter). The
+        implementation follows [1].
 
         Parameters
         ----------
-        signal : `Signal`
+        signal : Signal
             Signal to filter.
-        channels : NDArray[np.float64], int, optional
-            Channels to filter. If `None`, all channels of the signal are
-            filtered.
-        activate_zi : bool, optional
-            When `True`, the current filter state is reloaded and updated
-            after filtering.
 
         Returns
         -------
-        filtered_signal : `Signal`
+        Signal
             Filtered signal.
+
+        References
+        ----------
+        - [1]: Oppenheim, A. V., Schafer, R. W.,, Buck, J. R. (1999).
+          Discrete-Time Signal Processing. Prentice-hall Englewood Cliffs.
 
         """
         assert (
             signal.sampling_rate_hz == self.sampling_rate_hz
         ), "Sampling rates do not match"
-        if channels is None:
-            channels = np.arange(signal.number_of_channels)
-        else:
-            channels = np.atleast_1d(channels)
-            assert np.all(
-                signal.number_of_channels > channels
-            ), "Requested channel to filter does not exist"
 
-        td = signal.time_data[:, channels]
+        td = signal.time_data
 
-        if activate_zi:
-            if self.state.shape[1] != len(channels):
-                warn(
-                    """Number of channels did not match the filter's """
-                    + "state. The right number of channels are automatically"
-                    + "initiated"
-                )
-                self.initialize_zi(len(channels))
+        if self.n_channels != signal.number_of_channels:
+            warn(
+                """Number of channels did not match the filter's """
+                + "state. The right number of channels are automatically"
+                + "initiated"
+            )
+            self.set_n_channels(signal.number_of_channels)
 
         if self.iir_filter:
             if self.sos_filtering:
@@ -171,18 +165,91 @@ class LatticeLadderFilter:
             )
 
         filtered_signal = signal.copy()
-        new_td = filtered_signal.time_data
-        new_td[:, channels] = td
-        filtered_signal.time_data = new_td
+        filtered_signal.time_data = td
         return filtered_signal
+
+    def process_sample(self, x: float, channel: int):
+        """Filtering using a lattice ladder structure (general IIR filter). The
+        implementation follows [1].
+
+        Parameters
+        ----------
+        x : float
+            Input sample
+        channel : int
+            Channel to use (filter state)
+
+        Returns
+        -------
+        float
+            Filtered sample
+
+        References
+        ----------
+        - [1]: Oppenheim, A. V., Schafer, R. W.,, Buck, J. R. (1999).
+          Discrete-Time Signal Processing. Prentice-hall Englewood Cliffs.
+
+        """
+        if self.iir_filter:
+            if self.sos_filtering:
+                return self.__lattice_ladder_filtering_sos_sample(x, channel)
+            else:
+                return self.__lattice_ladder_filtering_iir_sample(x, channel)
+        else:
+            return self.__lattice_filtering_fir_sample(x, channel)
+
+    def __lattice_ladder_filtering_sos_sample(
+        self, x: float, channel: int
+    ) -> float:
+        for section in range(self.k.shape[0]):
+            x_low = 0
+
+            x += self.state[section, 1, channel] * self.k[section, 1]
+            s = x * -self.k[section, 1] + self.state[section, 1, channel]
+            x_low += s * self.c[section, 2]
+
+            x += self.state[section, 0, channel] * self.k[section, 0]
+            s = x * -self.k[section, 0] + self.state[section, 0, channel]
+            self.state[section, 1, channel] = s
+            x_low += s * self.c[section, 1]
+            self.state[section, 0, channel] = x
+
+            x = x * self.c[section, 0] + x_low
+        return x
+
+    def __lattice_ladder_filtering_iir_sample(
+        self,
+        x: float,
+        channel: int,
+    ) -> float:
+        order_iterations = len(self.k) - 1
+        x_low = 0
+        for i in range(order_iterations, -1, -1):
+            x += self.state[i, channel] * self.k[i]
+            s = x * -self.k[i] + self.state[i, channel]
+            if i != order_iterations:
+                self.state[i + 1, channel] = s
+            x_low += s * self.c[i + 1]
+        self.state[0, channel] = x
+        return x * self.c[0] + x_low
+
+    def __lattice_filtering_fir_sample(self, x: float, channel: int) -> float:
+        x_o = x
+        s0 = x_o
+        for i_k in range(len(self.k)):
+            s1 = -x_o * self.k[i_k] + self.state[i_k, channel]
+            x_o -= self.state[i_k, channel] * self.k[i_k]
+            self.state[i_k, channel] = s0
+            s0 = s1
+        return x_o
 
 
 def _lattice_ladder_filtering_sos(
     k: NDArray[np.float64],
     c: NDArray[np.float64],
     td: NDArray[np.float64],
-    state: NDArray[np.float64] | None = None,
-) -> tuple[NDArray[np.float64], NDArray[np.float64] | None]:
+    state: NDArray[np.float64],
+) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
     """Filtering using a lattice/ladder structure of second-order sections. See
     `_lattice_ladder_filtering` for the parameter explanation.
 
@@ -190,15 +257,10 @@ def _lattice_ladder_filtering_sos(
     assert k.shape[1] == 2, "Invalid second-order sections"
     assert c.shape[1] == 3, "Invalid second-order sections"
 
-    passed_state = True
-    if state is None:
-        passed_state = False
-        state = np.zeros((k.shape[0], 2, td.shape[1]))
-    else:
-        assert state.shape[0] == k.shape[0], (
-            "State first dimension must "
-            + "match the number of second-order sections"
-        )
+    assert state.shape[0] == k.shape[0], (
+        "State first dimension must "
+        + "match the number of second-order sections"
+    )
 
     for ch in range(td.shape[1]):
         for i_ch in np.arange(td.shape[0]):
@@ -218,25 +280,16 @@ def _lattice_ladder_filtering_sos(
 
                 td[i_ch, ch] = x * c[section, 0] + x_low
 
-    if not passed_state:
-        state = None
     return td, state
 
 
 def _lattice_filtering_fir(
     k: NDArray[np.float64],
     td: NDArray[np.float64],
-    state: NDArray[np.float64] | None = None,
-) -> tuple[NDArray[np.float64], NDArray[np.float64] | None]:
-    """Filtering using a lattice structure."""
-    passed_state = True
-    if state is None:
-        passed_state = False
-        state = np.zeros((len(k), td.shape[1]))
-    else:
-        assert (
-            state.shape[0] == k.shape[0]
-        ), "State length must match filter order"
+    state: NDArray[np.float64],
+) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
+    """FIR Filtering using a lattice structure."""
+    assert state.shape[0] == k.shape[0], "State length must match filter order"
 
     for ch in range(td.shape[1]):
         for i_ch in np.arange(td.shape[0]):
@@ -248,8 +301,6 @@ def _lattice_filtering_fir(
                 state[i_k, ch] = s0
                 s0 = s1
             td[i_ch, ch] = x_o
-    if not passed_state:
-        state = None
     return td, state
 
 
@@ -257,8 +308,8 @@ def _lattice_ladder_filtering_iir(
     k: NDArray[np.float64],
     c: NDArray[np.float64],
     td: NDArray[np.float64],
-    state: NDArray[np.float64] | None = None,
-) -> tuple[NDArray[np.float64], NDArray[np.float64] | None]:
+    state: NDArray[np.float64],
+) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
     """Filtering using a lattice ladder structure (general IIR filter). The
     implementation follows [1].
 
@@ -290,10 +341,6 @@ def _lattice_ladder_filtering_iir(
       Signal Processing. Prentice-hall Englewood Cliffs.
 
     """
-    passed_state = True
-    if state is None:
-        passed_state = False
-        state = np.zeros((len(k), td.shape[1]))
     order_iterations = len(k) - 1
 
     for ch in range(td.shape[1]):
@@ -309,8 +356,6 @@ def _lattice_ladder_filtering_iir(
             state[0, ch] = x
             td[i_ch, ch] = x * c[0] + x_low
 
-    if not passed_state:
-        state = None
     return td, state
 
 

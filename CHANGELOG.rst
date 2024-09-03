@@ -14,6 +14,26 @@ adheres to `Semantic Versioning <http://semver.org/spec/v2.0.0.html>`_.
 - Validation for results from tests in every module (so far many tests are
   only regarding functionality)
 
+`0.4.4 <https://pypi.org/project/dsptoolbox/0.4.4>`_ - 
+---------------------
+Added
+~~~~~
+- bark and erb approximations to warping factor
+- `ParallelFilter` in ``filterbanks``
+- `KautzFilter` in ``filterbanks``
+- Realtime capabilities for filter `LatticeLadderFilter`, `StateVariableFilter`,
+  `IIR`, `FIR`, `KautzFilter`
+- `warp_filter` in ``transforms``
+- `resample_filter` in ``standard``
+
+Misc
+~~~~
+- moved `kautz` and `kautz_filters` functionality to `KautzFilter`
+
+Bugfix
+~~~~~~
+- use the peak for `combine_ir_with_dirac` instead of delay with minimum-phase
+
 `0.4.3 <https://pypi.org/project/dsptoolbox/0.4.3>`_ - 
 ---------------------
 Added

@@ -24,6 +24,7 @@ from .._general_helpers import (
     _find_frequencies_above_threshold,
     _fractional_octave_smoothing,
     _correct_for_real_phase_spectrum,
+    _get_fractional_impulse_peak_index,
 )
 from .._standard import (
     _welch,
@@ -758,6 +759,7 @@ def min_phase_ir(
     assert (
         type(sig) is ImpulseResponse
     ), "This is only valid for an impulse response"
+    assert padding_factor > 1, "Padding factor should be at least 1"
     method = method.lower()
     assert method in ("real cepstrum", "equiripple"), (
         f"{method} is not valid. Use either real cepstrum or " + "equiripple"
@@ -1084,7 +1086,7 @@ def combine_ir_with_dirac(
         None,
     ), "Invalid normalization parameter"
     ir = normalize(ir)
-    latencies_samples = find_ir_latency(ir)
+    latencies_samples = _get_fractional_impulse_peak_index(ir.time_data)
 
     # Make impulse
     imp = dirac(
@@ -1106,7 +1108,9 @@ def combine_ir_with_dirac(
         imp = merge_signals(imp, imp_ch)
 
         # Save polarity for each channel using sample prior to peak
-        polarity[ch] *= np.sign(ir.time_data[int(latencies_samples[ch]), ch])
+        polarity[ch] *= np.sign(
+            ir.time_data[int(latencies_samples[ch] + 0.5), ch]
+        )
     imp.remove_channel(0)
 
     # Filter crossover for both

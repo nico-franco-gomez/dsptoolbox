@@ -327,6 +327,33 @@ class Filter:
         """
         return Filter("other", {"sos": sos}, sampling_rate_hz)
 
+    @staticmethod
+    def from_zpk(
+        z: NDArray[np.float64],
+        p: NDArray[np.float64],
+        k: float,
+        sampling_rate_hz: int,
+    ):
+        """Create a filter from zero-pole representation.
+
+        Parameters
+        ----------
+        z : NDArray[np.float64]
+            Zeros
+        p : NDArray[np.float64]
+            Poles
+        k : float
+            Gain
+        sampling_rate_hz : int
+            Sampling rate in Hz.
+
+        Returns
+        -------
+        Filter
+
+        """
+        return Filter("other", {"zpk": [z, p, k]}, sampling_rate_hz)
+
     def initialize_zi(self, number_of_channels: int = 1):
         """Initializes zi for steady-state filtering. The number of parallel
         zi's can be defined externally.

@@ -58,7 +58,7 @@ class FilterBank:
         if info is None:
             info = {}
         self.same_sampling_rate = same_sampling_rate
-        self.filters = filters if filters is not None else []
+        self.filters: list[Filter] = filters if filters is not None else []
         self.info: dict = info
 
     def _generate_metadata(self):

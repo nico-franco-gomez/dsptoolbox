@@ -6,6 +6,7 @@ import pytest
 import dsptoolbox as dsp
 import numpy as np
 from os.path import join
+import os
 import scipy.signal as sig
 from matplotlib.pyplot import close
 
@@ -1118,3 +1119,204 @@ class TestImpulseResponse:
         rir.plot_time()
         rir.plot_spl()
         # dsp.plots.show()
+
+
+class TestFilterTopologies:
+    fs_hz = 24_000
+
+    def get_noise(self):
+        return dsp.generators.noise(
+            length_seconds=1, sampling_rate_hz=self.fs_hz
+        )
+
+    def test_svfilter(self):
+        # Functionality
+        PLOT = False
+        sv_filt = dsp.filterbanks.StateVariableFilter(1000.0, 1.0, self.fs_hz)
+        n = self.get_noise()
+
+        td = n.time_data.squeeze()
+        for ind in np.arange(len(td)):
+            td[ind] = sv_filt.process_sample(td[ind], 0)[0]
+
+        sv_filt.reset_state()
+        mb = sv_filt.filter_signal(n)
+        n2 = mb.get_all_bands(0)
+
+        np.testing.assert_array_equal(td, n2.time_data[:, 0])
+
+        if PLOT:
+            n2.set_spectrum_parameters("standard")
+            _, ax = n2.plot_magnitude(normalize=None)
+            ax.plot(
+                np.fft.rfftfreq(len(td), 1 / self.fs_hz),
+                dsp.tools.to_db(np.fft.rfft(td), True),
+            )
+            dsp.plots.show()
+
+    def test_lattice_ladder_filter(self):
+        PLOT = False
+        n = self.get_noise()
+
+        # IIR sos
+        iir = dsp.Filter.iir_design(
+            4, 1000.0, "lowpass", "butter", sampling_rate_hz=self.fs_hz
+        )
+        llf = dsp.filterbanks.convert_into_lattice_filter(iir)
+
+        td = n.time_data.squeeze()
+        for ind in np.arange(len(td)):
+            td[ind] = llf.process_sample(td[ind], 0)
+
+        llf.reset_state()
+        n2 = llf.filter_signal(n)
+        np.testing.assert_array_equal(td, n2.time_data[:, 0])
+        np.testing.assert_allclose(
+            td, sig.sosfilt(iir.get_coefficients("sos"), n.time_data.squeeze())
+        )
+
+        # IIR ba
+        iir = dsp.Filter.from_ba(
+            *iir.get_coefficients("ba"), sampling_rate_hz=self.fs_hz
+        )
+        llf = dsp.filterbanks.convert_into_lattice_filter(iir)
+
+        td = n.time_data.squeeze()
+        for ind in np.arange(len(td)):
+            td[ind] = llf.process_sample(td[ind], 0)
+
+        llf.reset_state()
+        n2 = llf.filter_signal(n)
+        np.testing.assert_array_equal(td, n2.time_data[:, 0])
+        np.testing.assert_allclose(
+            td, sig.lfilter(*iir.get_coefficients("ba"), n.time_data.squeeze())
+        )
+
+        # FIR ba (this filter does not work due to the reflection coefficients,
+        # maybe use another one ?)
+        # fir = dsp.transfer_functions.ir_to_filter(iir.get_ir(1024))
+        # llf = dsp.filterbanks.convert_into_lattice_filter(fir)
+
+        # td = n.time_data.squeeze()
+        # for ind in np.arange(len(td)):
+        #     td[ind] = llf.process_sample(td[ind], 0)
+
+        # llf.reset_state()
+        # n2 = llf.filter_signal(n)
+        # np.testing.assert_array_equal(td, n2.time_data[:, 0])
+        # np.testing.assert_allclose(
+        #     td,
+        #     sig.lfilter(*fir.get_coefficients("ba"), n.time_data.squeeze()),
+        # )
+
+        if PLOT:
+            n2.set_spectrum_parameters("standard")
+            _, ax = n2.plot_magnitude(normalize=None)
+            ax.plot(
+                np.fft.rfftfreq(len(td), 1 / self.fs_hz),
+                dsp.tools.to_db(np.fft.rfft(td), True),
+            )
+            dsp.plots.show()
+
+    def test_iir_filter(self):
+        iir_original = dsp.Filter.iir_design(
+            4, 1000.0, "highpass", "butter", sampling_rate_hz=self.fs_hz
+        )
+        b, a = iir_original.get_coefficients("ba")
+        iir = dsp.filterbanks.IIRFilter(b, a)
+        n = self.get_noise()
+
+        td = n.time_data.squeeze()
+        for ind in np.arange(len(td)):
+            td[ind] = iir.process_sample(td[ind], 0)
+
+        np.testing.assert_allclose(td, sig.lfilter(b, a, n.time_data[:, 0]))
+
+    def test_fir_filter(self):
+        fir_original = dsp.Filter.fir_design(
+            25,
+            1000.0,
+            "lowpass",
+            "blackman",
+            sampling_rate_hz=self.fs_hz,
+        )
+        b, _ = fir_original.get_coefficients("ba")
+        b = b[: len(b) // 2 + 3]  # some asymmetrical window
+        fir = dsp.filterbanks.FIRFilter(b)
+        n = self.get_noise()
+
+        td = n.time_data.squeeze()
+        for ind in np.arange(len(td)):
+            td[ind] = fir.process_sample(td[ind], 0)
+
+        np.testing.assert_allclose(td, sig.lfilter(b, [1], n.time_data[:, 0]))
+
+    def test_kautz_filters(self):
+        # Only functionality
+        fs_hz = 48000
+
+        # Define some poles for smoothing according to Bank, B. (2022). Warped,
+        # Kautz, and Fixed-Pole Parallel Filters: A Review. Journal of the
+        # Audio Engineering Society.
+        fractional_octave_smoothing = 24  # beta
+        K = int(10 * (fractional_octave_smoothing / 2) + 1)
+        pole_freqs_hz = np.logspace(
+            np.log10(20), np.log10(20480), K, endpoint=True
+        )
+        pole_freqs_rad = 2 * np.pi * pole_freqs_hz / fs_hz
+        bandwidth = np.zeros_like(pole_freqs_rad)
+        bandwidth[0] = pole_freqs_rad[1] - pole_freqs_rad[0]
+        bandwidth[-1] = pole_freqs_rad[-1] - pole_freqs_rad[-2]
+        bandwidth[1:-1] = (
+            pole_freqs_rad[2:] - pole_freqs_rad[:-2]
+        ) / 2  # Eq. 24
+        poles = np.exp(-bandwidth / 2 + 1j * pole_freqs_rad)  # Eq. 25
+
+        # Add two real poles just for testing
+        poles = np.hstack([0.1, poles, -0.4])
+
+        filter = dsp.filterbanks.KautzFilter(poles, fs_hz)
+
+        # Process sample and complete signal, compare both are equal
+        d = dsp.generators.dirac(2**11, sampling_rate_hz=fs_hz)
+        d.constrain_amplitude = False
+        td = d.time_data.squeeze()
+        for ind in np.arange(len(td)):
+            td[ind] = filter.process_sample(td[ind], 0)
+        dd = filter.get_ir(2**11)
+
+        # Normalize
+        td /= np.max(np.abs(td))
+        dd = dsp.normalize(dd, norm_dbfs=0.0)
+        np.testing.assert_allclose(td, dd.time_data.squeeze(), rtol=1e-6)
+
+        filter.fit_coefficients_to_ir(d)
+        assert np.any(filter.coefficients_complex_poles != 1.0)
+        assert np.any(filter.coefficients_real_poles != 1.0)
+
+    def test_parallel_filterbank(self):
+        # Only functionality
+        rir = dsp.ImpulseResponse(os.path.join("examples", "data", "rir.wav"))
+        poles = np.logspace(
+            np.log10(1e-2), np.log10(np.pi * 0.95), 3, endpoint=True
+        )
+        poles = 0.5 * np.exp(1j * poles)
+
+        # All cases
+        fb = dsp.filterbanks.ParallelFilter(poles, 0, rir.sampling_rate_hz)
+        fb.fit_to_ir(rir)
+        fb.get_ir(256)
+        fb.set_n_channels(3)
+
+        for i in rir.time_data:
+            fb.process_sample(i, 1)
+        fb.reset_state()
+        iir_coeffs = np.random.normal(0, 0.1, (len(poles), 2))
+        fb.set_coefficients(iir_coeffs, np.random.normal(0, 0.01, 10))
+
+        fb = dsp.filterbanks.ParallelFilter(poles, 1, rir.sampling_rate_hz)
+        fb.set_parameters(4, 0.0)
+        fb.fit_to_ir(rir)
+        fb = dsp.filterbanks.ParallelFilter(poles, 3, rir.sampling_rate_hz)
+        fb.set_parameters(10, 1e-3)
+        fb.fit_to_ir(rir)
