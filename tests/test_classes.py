@@ -1320,3 +1320,23 @@ class TestFilterTopologies:
         fb = dsp.filterbanks.ParallelFilter(poles, 3, rir.sampling_rate_hz)
         fb.set_parameters(10, 1e-3)
         fb.fit_to_ir(rir)
+
+    def test_filter_chain(self):
+        # Only functionality
+        fc = dsp.filterbanks.FilterChain(
+            [
+                dsp.filterbanks.IIRFilter(
+                    np.array([0.5]), np.array([0.5, 0.1])
+                ),
+                dsp.filterbanks.FIRFilter(np.array([0.5, 0.5])),
+            ]
+        )
+        assert fc.n_filters == 2
+
+        n = np.random.normal(0, 0.1, 50)
+
+        for nn in n:
+            fc.process_sample(nn, 0)
+
+        fc.reset_state()
+        fc.set_n_channels(1)
