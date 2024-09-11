@@ -101,7 +101,7 @@ class TestSignal:
 
         # Try smoothing
         s.set_spectrum_parameters(
-            method="standard", scaling="amplitude spectrum", smoothe=3
+            method="standard", scaling="amplitude spectrum", smoothing=3
         )
         s.get_spectrum()
 
@@ -1087,23 +1087,21 @@ class TestImpulseResponse:
         rir = dsp.transfer_functions.window_centered_ir(rir, len(rir))[0]
 
         # Add channel
-        window_previous = rir.window[:, 0]
         rir.add_channel(self.path_rir)
+        assert not hasattr(rir, "window")
+
+        # Window again
+        rir = dsp.transfer_functions.window_centered_ir(rir, len(rir))[0]
         assert rir.window.shape == rir.time_data.shape
-        np.testing.assert_array_equal(rir.window[:, 0], window_previous)
-        np.testing.assert_array_equal(rir.window[:, 1], 1.0)
+        np.testing.assert_array_equal(rir.window[:, 1], rir.window[:, 0])
 
         # Remove channel
         rir.remove_channel(1)
-        assert rir.window.shape == rir.time_data.shape
-        np.testing.assert_array_equal(rir.window[:, 0], window_previous)
 
         # Swap channels
         rir.add_channel(self.path_rir)
         rir.add_channel(self.path_rir)
         rir.swap_channels([2, 1, 0])
-        assert rir.window.shape == rir.time_data.shape
-        np.testing.assert_array_equal(rir.window[:, -1], window_previous)
 
     def test_plotting_with_window(self):
         rir = self.get_ir()

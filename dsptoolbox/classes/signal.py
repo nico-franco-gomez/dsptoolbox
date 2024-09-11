@@ -328,7 +328,7 @@ class Signal:
     def set_spectrum_parameters(
         self,
         method="welch",
-        smoothe: int = 0,
+        smoothing: int = 0,
         window_length_samples: int = 1024,
         window_type: str = "hann",
         overlap_percent: float = 50,
@@ -344,8 +344,8 @@ class Signal:
             `'welch'` (Welch's method for stochastic signals, returns a
             periodogramm) or `'standard'` (Direct FFT from signal).
             Default: `'welch'`.
-        smoothe : int, optional
-            Smoothing across (`1/smoothe`) octave bands using a hamming
+        smoothing : int, optional
+            Smoothing across (`1/smoothing`) octave bands using a hamming
             window. It only applies when `method='standard'`. Smoothes
             magnitude AND phase. For accesing the smoothing algorithm, refer to
             `dsptoolbox._general_helpers._fractional_octave_smoothing()`.
@@ -386,7 +386,7 @@ class Signal:
         ), f"{method} is not a valid method. Use welch or standard"
         _new_spectrum_parameters = dict(
             method=method,
-            smoothe=smoothe,
+            smoothing=smoothing,
             window_length_samples=window_length_samples,
             window_type=window_type,
             overlap_percent=overlap_percent,
@@ -738,17 +738,17 @@ class Signal:
                 spectrum = np.fft.rfft(self.time_data, axis=0)
 
                 # Smoothing
-                if self._spectrum_parameters["smoothe"] != 0:
+                if self._spectrum_parameters["smoothing"] != 0:
                     # Smoothing the magnitude
                     temp_abs = _fractional_octave_smoothing(
                         np.abs(spectrum),
-                        self._spectrum_parameters["smoothe"],
+                        self._spectrum_parameters["smoothing"],
                         clip_values=True,
                     )
                     # Smoothing the phase is not shift-invariant...
                     temp_phase = _fractional_octave_smoothing(
                         np.unwrap(np.angle(spectrum), axis=0),
-                        self._spectrum_parameters["smoothe"],
+                        self._spectrum_parameters["smoothing"],
                     )
                     spectrum = temp_abs * np.exp(1j * temp_phase)
 
@@ -862,7 +862,7 @@ class Signal:
         range_hz=[20, 20e3],
         normalize: str | None = "1k",
         range_db=None,
-        smoothe: int = 0,
+        smoothing: int = 0,
         show_info_box: bool = False,
     ) -> tuple[Figure, Axes]:
         """Plots magnitude spectrum.
@@ -882,8 +882,8 @@ class Signal:
         range_db : array-like with length 2, optional
             Range in dB for which to plot the magnitude response.
             Default: `None`.
-        smoothe : int, optional
-            Smoothing across the (1/smoothe) octave band. It only applies to
+        smoothing : int, optional
+            Smoothing across the (1/smoothing) octave band. It only applies to
             the plot data and not to `get_spectrum()`. Default: 0 (no
             smoothing).
         show_info_box : bool, optional
@@ -907,13 +907,13 @@ class Signal:
 
         """
         # Handle smoothing
-        prior_smoothing = self._spectrum_parameters["smoothe"]
-        self._spectrum_parameters["smoothe"] = 0
+        prior_smoothing = self._spectrum_parameters["smoothing"]
+        self._spectrum_parameters["smoothing"] = 0
 
         # Get spectrum
         f, sp = self.get_spectrum()
 
-        self._spectrum_parameters["smoothe"] = prior_smoothing
+        self._spectrum_parameters["smoothing"] = prior_smoothing
 
         if self._spectrum_parameters["scaling"] is None:
             scaling = (
@@ -930,7 +930,7 @@ class Signal:
             scaling=("amplitude" if "amplitude" in scaling else "power"),
             f_range_hz=range_hz,
             normalize=normalize,
-            smoothe=smoothe,
+            smoothing=smoothing,
             calibrated_data=self.calibrated_signal,
         )
         if show_info_box:
@@ -938,7 +938,7 @@ class Signal:
             txt += f"""\nMode: {self._spectrum_parameters['method']}"""
             txt += f"\nRange: [{range_hz[0]}, {range_hz[1]}]"
             txt += f"\nNormalized: {normalize}"
-            txt += f"""\nSmoothing: {smoothe}"""
+            txt += f"""\nSmoothing: {smoothing}"""
         else:
             txt = None
         if normalize is not None:
@@ -1136,7 +1136,7 @@ class Signal:
         """
         # Handle spectrum parameters
         prior_spectrum_parameters = self._spectrum_parameters
-        self.set_spectrum_parameters("standard", scaling=None, smoothe=0)
+        self.set_spectrum_parameters("standard", scaling=None, smoothing=0)
         f, sp = self.get_spectrum()
         self._spectrum_parameters = prior_spectrum_parameters
 
@@ -1276,14 +1276,14 @@ class Signal:
             + "standard"
         )
 
-        prior_smoothing = self._spectrum_parameters["smoothe"]
-        self._spectrum_parameters["smoothe"] = 0
+        prior_smoothing = self._spectrum_parameters["smoothing"]
+        self._spectrum_parameters["smoothing"] = 0
 
         # Get spectrum
         f, sp = self.get_spectrum()
         ph = np.angle(sp)
 
-        self._spectrum_parameters["smoothe"] = prior_smoothing
+        self._spectrum_parameters["smoothing"] = prior_smoothing
 
         if remove_ir_latency:
             ph = _remove_ir_latency_from_phase(

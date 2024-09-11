@@ -201,7 +201,7 @@ class StateVariableFilter(RealtimeFilter):
             range_hz=range_hz,
             normalize=None,
             range_db=range_db,
-            smoothe=0,
+            smoothing=0,
         )
         ax.legend(["Lowpass", "Highpass", "Bandpass", "Allpass"])
         return fig, ax

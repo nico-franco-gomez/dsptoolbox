@@ -186,7 +186,7 @@ def _get_normalized_spectrum(
     scaling: str = "amplitude",
     f_range_hz=[20, 20000],
     normalize: str | None = None,
-    smoothe: int = 0,
+    smoothing: int = 0,
     phase=False,
     calibrated_data: bool = False,
 ) -> (
@@ -214,8 +214,8 @@ def _get_normalized_spectrum(
         `'max'` (maximum value) or `None` for no normalization. The
         normalization for 1 kHz uses a linear interpolation for getting the
         value at 1 kHz regardless of the frequency resolution. Default: `None`.
-    smoothe : int, optional
-        1/smoothe-fractional octave band smoothing for magnitude spectra. Pass
+    smoothing : int, optional
+        1/smoothing-fractional octave band smoothing for magnitude spectra. Pass
         `0` for no smoothing. Default: 0.
     phase : bool, optional
         When `True`, phase spectra are also returned. Smoothing is also
@@ -286,12 +286,12 @@ def _get_normalized_spectrum(
 
     mag_spectra = np.abs(spectra)
 
-    if smoothe != 0:
+    if smoothing != 0:
         if scaling == "amplitude":
-            mag_spectra = _fractional_octave_smoothing(mag_spectra, smoothe)
+            mag_spectra = _fractional_octave_smoothing(mag_spectra, smoothing)
         else:  # Smoothing always in amplitude representation
             mag_spectra = (
-                _fractional_octave_smoothing(mag_spectra**0.5, smoothe) ** 2
+                _fractional_octave_smoothing(mag_spectra**0.5, smoothing) ** 2
             )
 
     mag_spectra = to_db(mag_spectra / scale_factor, amplitude_scaling, 500)
@@ -305,10 +305,10 @@ def _get_normalized_spectrum(
 
     if phase:
         phase_spectra = np.angle(spectra)
-        if smoothe != 0:
+        if smoothing != 0:
             phase_spectra = _wrap_phase(
                 _fractional_octave_smoothing(
-                    np.unwrap(phase_spectra, axis=0), smoothe
+                    np.unwrap(phase_spectra, axis=0), smoothing
                 )
             )
 
