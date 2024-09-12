@@ -15,7 +15,10 @@ from scipy.signal import (
     sosfiltfilt,
     bilinear,
     tf2sos,
+    correlate,
+    freqz,
 )
+from scipy.linalg import lstsq
 
 from ..classes import (
     Signal,
@@ -27,7 +30,10 @@ from ..classes import (
 
 from ..generators import dirac
 from ..plots import general_plot
-from .._general_helpers import _get_normalized_spectrum
+from .._general_helpers import (
+    _get_normalized_spectrum,
+    __levison_durbin_recursion,
+)
 from .._standard import _group_delay_direct
 
 
@@ -1591,3 +1597,120 @@ def __get_matched_eq_helpers(omega0, q):
     phi = np.array([1 - sin_omega, sin_omega, 0])
     phi[2] = 4 * phi[0] * phi[1]
     return np.array([1, a1, a2]), A, phi
+
+
+def __ar_parameters(time_data: NDArray[np.float64], order: int):
+    """Compute the autoregressive coefficients for an AR process using the
+    Levinson-Durbin recursion to solve the Yule-Walker equations. This is done
+    from the biased autocorrelation.
+
+    Parameters
+    ----------
+    time_data : NDArray[np.float64]
+        Time data with shape (time samples, channel).
+    order : int
+        Recursion order.
+
+    Returns
+    -------
+    NDArray[np.float64]
+        Reflection coefficients with shape (coefficient, channel).
+
+    """
+    assert time_data.ndim == 1
+    # Biased autocorrelation for positive lags
+    autocorrelation = correlate(time_data, time_data, "full")[
+        len(time_data) - 1 : len(time_data) + order
+    ] / len(time_data)
+
+    return __levison_durbin_recursion(autocorrelation)
+
+
+def __ma_parameters(
+    time_data: NDArray[np.float64],
+    order: int,
+    ar_coefficients: NDArray[np.float64],
+):
+    """Estimate the MA parameters with through a least-squares approximation
+    using known AR parameters. This is done in the frequency domain.
+
+    Parameters
+    ----------
+    time_data : NDArray[np.float64]
+        Time data (single-channel).
+    order : int
+        Order of the MA parameters approximation.
+    ar_coefficients : NDArray[np.float64]
+        Autoregressive coefficients.
+
+    """
+    assert time_data.ndim == 1
+    spec = np.fft.rfft(time_data)
+    N = len(time_data)
+
+    num_coefficients = order + 1
+    A = np.zeros((N // 2 + 1, num_coefficients), dtype=np.complex128)
+    target_sp = np.hstack([np.real(spec), np.imag(spec)])
+
+    for n in range(num_coefficients):
+        A[:, n] = freqz(
+            np.array([0.0] * n + [1.0]),
+            ar_coefficients,
+            N // 2 + 1,
+            include_nyquist=N % 2 == 0,
+        )[1]
+
+    A = np.vstack([np.real(A), np.imag(A)])
+    return lstsq(
+        A, target_sp, overwrite_a=True, overwrite_b=True, check_finite=False
+    )[0]
+
+
+def arma(ir: ImpulseResponse, order_a: int, order_b: int = 0) -> Filter:
+    """Create an IIR filter approximation to an impulse response with an
+    autoregressive (AR), moving-average (MA) process model estimation. See
+    notes for details.
+
+    Parameters
+    ----------
+    ir : ImpulseResponse
+        Impulse response to be approximated. This should be done for a
+        single-channel IR.
+    order_a : int
+        Order of the denominator coefficients of the IIR filter. These are the
+        reflection or autoregressive coefficients.
+    order_b : int, optional
+        Order of the numerator coefficients. These are the moving-average
+        coefficients. Pass 0 to obtain a pure AR estimation.
+
+    Returns
+    -------
+    Filter
+        IIR filter with the provided orders for the numerator and denominator
+        coefficients.
+
+    Notes
+    -----
+    - This function finds the autoregressive (AR) parameters first by solving
+      the Yule-Walker equations through the Levinson-Durbin recursion.
+      Afterwards, the moving-average (MA) parameters are obtained through a
+      least-squares approximation.
+    - Due to the AR parameter estimation in the time domain, the phase response
+      is also approximated.
+    - Minimum-phase impulse responses deliver the best approximations.
+
+    """
+    assert (
+        ir.number_of_channels == 1
+    ), "This is only valid for single-channel IR"
+    assert order_a >= 1, "Order of a must be at least 1"
+    assert order_b >= 0, "Order of b should be at least 0"
+    assert len(ir) > order_a, "The order should be lower than the IR length"
+
+    a = __ar_parameters(ir.time_data[:, 0], order_a)
+    b = (
+        __ma_parameters(ir.time_data[:, 0], order_b, a)
+        if order_b > 0
+        else np.array([1.0])
+    )
+    return Filter.from_ba(b, a, ir.sampling_rate_hz)

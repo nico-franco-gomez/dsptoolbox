@@ -215,8 +215,8 @@ def _get_normalized_spectrum(
         normalization for 1 kHz uses a linear interpolation for getting the
         value at 1 kHz regardless of the frequency resolution. Default: `None`.
     smoothing : int, optional
-        1/smoothing-fractional octave band smoothing for magnitude spectra. Pass
-        `0` for no smoothing. Default: 0.
+        1/smoothing-fractional octave band smoothing for magnitude spectra.
+        Pass `0` for no smoothing. Default: 0.
     phase : bool, optional
         When `True`, phase spectra are also returned. Smoothing is also
         applied to the unwrapped phase. Default: `False`.
@@ -1792,3 +1792,49 @@ def _get_correlation_of_latencies(
         undelayed = undelayed[:length_to_check]
         correlations[ch] = pearsonr(delayed, undelayed)[0]
     return correlations
+
+
+def __levison_durbin_recursion(autocorrelation: NDArray[np.float64]):
+    """Levinson-Durbin recursion to be applied to the autocorrelation
+    estimate.
+
+    """
+    signal_variance = autocorrelation[0]
+    autocorr_coefficients = autocorrelation[1:]
+    num_coefficients = len(autocorr_coefficients)
+    ar_parameters = np.zeros(num_coefficients)
+
+    prediction_error = signal_variance
+
+    for order in range(num_coefficients):
+        reflection_value = autocorr_coefficients[order]
+        if order == 0:
+            reflection_coefficient = -reflection_value / prediction_error
+        else:
+            for lag in range(order):
+                reflection_value += (
+                    ar_parameters[lag] * autocorr_coefficients[order - lag - 1]
+                )
+            reflection_coefficient = -reflection_value / prediction_error
+        prediction_error *= 1.0 - reflection_coefficient**2.0
+        if prediction_error <= 0:
+            raise ValueError("Invalid prediction error: Singular Matrix")
+        ar_parameters[order] = reflection_coefficient
+
+        if order == 0:
+            continue
+
+        half_order = (order + 1) // 2
+        for lag in range(half_order):
+            reverse_lag = order - lag - 1
+            save_value = ar_parameters[lag]
+            ar_parameters[lag] = (
+                save_value
+                + reflection_coefficient * ar_parameters[reverse_lag]
+            )
+            if lag != reverse_lag:
+                ar_parameters[reverse_lag] += (
+                    reflection_coefficient * save_value
+                )
+    # Add first coefficient a0
+    return np.hstack([1.0, ar_parameters])

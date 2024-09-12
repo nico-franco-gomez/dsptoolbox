@@ -41,6 +41,7 @@ Other:
 - `pinking_filter()`: Get a -3 dB/octave filter.
 - `matched_biquad()`: Analog-matched biquad filters.
 - `gaussian_kernel()`: IIR first-order approximation of a gaussian window.
+- `arma()`: IIR filter approximation of an impulse response.
 
 """
 
@@ -57,6 +58,8 @@ from .filterbanks import (
     matched_biquad,
     gaussian_kernel,
 )
+
+from ._filterbank import arma
 
 from ..classes.lattice_ladder_filter import LatticeLadderFilter
 from ..classes.parallel_filter import ParallelFilter
@@ -91,4 +94,5 @@ __all__ = [
     "pinking_filter",
     "matched_biquad",
     "gaussian_kernel",
+    "arma",
 ]
