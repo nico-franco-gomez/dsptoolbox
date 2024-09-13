@@ -1794,17 +1794,31 @@ def _get_correlation_of_latencies(
     return correlations
 
 
-def __levison_durbin_recursion(autocorrelation: NDArray[np.float64]):
+def __levison_durbin_recursion(
+    autocorrelation: NDArray[np.float64],
+) -> tuple[NDArray[np.float64], float]:
     """Levinson-Durbin recursion to be applied to the autocorrelation
     estimate.
 
+    Parameters
+    ----------
+    autocorrelation : NDArray[np.float64]
+        Autocorrelation function with only positive lags and length of
+        `order + 1`, where `order` corresponds to the order of the AR
+        estimation. It should be a flat array (only one channel).
+
+    Returns
+    -------
+    reflection_coefficients : NDArray[np.float64]
+        Denominator coefficients.
+    prediction_error : float
+        Variance of the remaining error.
+
     """
-    signal_variance = autocorrelation[0]
+    prediction_error = autocorrelation[0]  # Signal variance
     autocorr_coefficients = autocorrelation[1:]
     num_coefficients = len(autocorr_coefficients)
     ar_parameters = np.zeros(num_coefficients)
-
-    prediction_error = signal_variance
 
     for order in range(num_coefficients):
         reflection_value = autocorr_coefficients[order]
@@ -1837,4 +1851,83 @@ def __levison_durbin_recursion(autocorrelation: NDArray[np.float64]):
                     reflection_coefficient * save_value
                 )
     # Add first coefficient a0
-    return np.hstack([1.0, ar_parameters])
+    return np.hstack([1.0, ar_parameters]), prediction_error
+
+
+def __burg_ar_estimation(
+    time_data: NDArray[np.float64], order: int
+) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
+    """Burg's method to estimate the AR parameters. This is done always along
+    the first axis. This implementation is taken from [2] and can take any
+    shape of input vector.
+
+    Parameters
+    ----------
+    time_data : NDArray[np.float64]
+        Time data to estimate.
+    order : int
+        Order of the estimation.
+
+    Returns
+    -------
+    NDArray[np.float64]
+        Denominator (reflection) coefficients.
+    NDArray[np.float64]
+        Variances of the prediction error.
+
+    References
+    ----------
+    - [1]: Larry Marple. A New Autoregressive Spectrum Analysis Algorithm. IEEE
+      Transactions on Acoustics, Speech, and Signal Processing vol 28, no. 4,
+      1980.
+    - [2]: McFee, Brian, Colin Raffel, Dawen Liang, Daniel PW Ellis, Matt
+      McVicar, Eric Battenberg, and Oriol Nieto. “librosa: Audio and music
+      signal analysis in python.” In Proceedings of the 14th python in science
+      conference, pp. 18-25. 2015.
+
+    """
+    onedim = time_data.ndim == 1
+    if onedim:
+        time_data = time_data[:, None]
+        shape = list(time_data.shape)
+        ar_coeffs = np.zeros((order + 1, 1))
+    else:
+        shape = list(time_data.shape)
+        shape[0] + 1
+        ar_coeffs = np.zeros(tuple(shape))
+
+    ar_coeffs[0] = 1.0
+    ar_coeffs_prev = ar_coeffs.copy()
+
+    shape[0] = 1
+    reflect_coeff = np.zeros(shape)
+    den = reflect_coeff.copy()
+
+    epsilon = np.finfo(np.float64).eps
+
+    fwd_pred_error = time_data[1:]
+    bwd_pred_error = time_data[:-1]
+    den[0] = np.sum(fwd_pred_error**2 + bwd_pred_error**2, axis=0)
+
+    for i in range(order):
+        reflect_coeff[0] = np.sum(bwd_pred_error * fwd_pred_error, axis=0)
+        reflect_coeff[0] *= -2
+        reflect_coeff[0] /= den[0] + epsilon
+        ar_coeffs_prev, ar_coeffs = ar_coeffs, ar_coeffs_prev
+        for j in range(1, i + 2):
+            ar_coeffs[j] = (
+                ar_coeffs_prev[j]
+                + reflect_coeff[0] * ar_coeffs_prev[i - j + 1]
+            )
+
+        fwd_pred_error_tmp = fwd_pred_error
+        fwd_pred_error = fwd_pred_error + reflect_coeff * bwd_pred_error
+        bwd_pred_error = bwd_pred_error + reflect_coeff * fwd_pred_error_tmp
+
+        q = 1.0 - reflect_coeff[0] ** 2
+        den[0] = q * den[0] - bwd_pred_error[-1] ** 2 - fwd_pred_error[0] ** 2
+
+        fwd_pred_error = fwd_pred_error[1:]
+        bwd_pred_error = bwd_pred_error[:-1]
+
+    return ar_coeffs.squeeze(), den[0]

@@ -33,6 +33,7 @@ from ..plots import general_plot
 from .._general_helpers import (
     _get_normalized_spectrum,
     __levison_durbin_recursion,
+    __burg_ar_estimation,
 )
 from .._standard import _group_delay_direct
 
@@ -1599,7 +1600,9 @@ def __get_matched_eq_helpers(omega0, q):
     return np.array([1, a1, a2]), A, phi
 
 
-def __ar_parameters(time_data: NDArray[np.float64], order: int):
+def __yw_ar_estimation(
+    time_data: NDArray[np.float64], order: int
+) -> tuple[NDArray[np.float64], float]:
     """Compute the autoregressive coefficients for an AR process using the
     Levinson-Durbin recursion to solve the Yule-Walker equations. This is done
     from the biased autocorrelation.
@@ -1607,18 +1610,22 @@ def __ar_parameters(time_data: NDArray[np.float64], order: int):
     Parameters
     ----------
     time_data : NDArray[np.float64]
-        Time data with shape (time samples, channel).
+        Time data (only single-channel signal is supported).
     order : int
         Recursion order.
 
     Returns
     -------
     NDArray[np.float64]
-        Reflection coefficients with shape (coefficient, channel).
+        Reflection coefficients with shape (coefficient).
+    float
+        Variance of the remaining error.
 
     """
-    assert time_data.ndim == 1
-    # Biased autocorrelation for positive lags
+    assert (
+        time_data.ndim == 1
+    ), "This function only accepts a single-channel signal"
+    # Biased autocorrelation (only positive lags)
     autocorrelation = correlate(time_data, time_data, "full")[
         len(time_data) - 1 : len(time_data) + order
     ] / len(time_data)
@@ -1666,7 +1673,12 @@ def __ma_parameters(
     )[0]
 
 
-def arma(ir: ImpulseResponse, order_a: int, order_b: int = 0) -> Filter:
+def arma(
+    ir: ImpulseResponse,
+    order_a: int,
+    order_b: int = 0,
+    method_ar: str = "yule-walker",
+) -> Filter:
     """Create an IIR filter approximation to an impulse response with an
     autoregressive (AR), moving-average (MA) process model estimation. See
     notes for details.
@@ -1682,6 +1694,10 @@ def arma(ir: ImpulseResponse, order_a: int, order_b: int = 0) -> Filter:
     order_b : int, optional
         Order of the numerator coefficients. These are the moving-average
         coefficients. Pass 0 to obtain a pure AR estimation.
+    method_ar : str, {"yule-walker", "burg"}, optional
+        Method to use for obtaining the AR parameters. Burg's method is
+        explained in [1] and the implementation was taken from [2].
+        Default: "yule-walker".
 
     Returns
     -------
@@ -1692,12 +1708,22 @@ def arma(ir: ImpulseResponse, order_a: int, order_b: int = 0) -> Filter:
     Notes
     -----
     - This function finds the autoregressive (AR) parameters first by solving
-      the Yule-Walker equations through the Levinson-Durbin recursion.
-      Afterwards, the moving-average (MA) parameters are obtained through a
-      least-squares approximation.
+      the Yule-Walker equations through the Levinson-Durbin recursion or using
+      Burg's method. Afterwards, the moving-average (MA) parameters are
+      obtained through a least-squares approximation.
     - Due to the AR parameter estimation in the time domain, the phase response
       is also approximated.
     - Minimum-phase impulse responses deliver the best approximations.
+
+    References
+    ----------
+    - [1]: Larry Marple. A New Autoregressive Spectrum Analysis Algorithm. IEEE
+      Transactions on Acoustics, Speech, and Signal Processing vol 28, no. 4,
+      1980.
+    - [2]: McFee, Brian, Colin Raffel, Dawen Liang, Daniel PW Ellis, Matt
+      McVicar, Eric Battenberg, and Oriol Nieto. “librosa: Audio and music
+      signal analysis in python.” In Proceedings of the 14th python in science
+      conference, pp. 18-25. 2015.
 
     """
     assert (
@@ -1706,8 +1732,16 @@ def arma(ir: ImpulseResponse, order_a: int, order_b: int = 0) -> Filter:
     assert order_a >= 1, "Order of a must be at least 1"
     assert order_b >= 0, "Order of b should be at least 0"
     assert len(ir) > order_a, "The order should be lower than the IR length"
+    method_ar = method_ar.lower()
 
-    a = __ar_parameters(ir.time_data[:, 0], order_a)
+    match method_ar:
+        case "yule-walker":
+            a = __yw_ar_estimation(ir.time_data[:, 0], order_a)[0]
+        case "burg":
+            a = __burg_ar_estimation(ir.time_data[:, 0], order_a)[0]
+        case _:
+            raise ValueError(f"{method_ar}: Method is not supported")
+
     b = (
         __ma_parameters(ir.time_data[:, 0], order_b, a)
         if order_b > 0

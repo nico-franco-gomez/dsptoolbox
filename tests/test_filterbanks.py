@@ -264,6 +264,10 @@ class TestFilterbanksModule:
         dsp.filterbanks.arma(rir, 10, 11)
         dsp.filterbanks.arma(dsp.pad_trim(rir, len(rir) - 1), 10, 11)
 
+        dsp.filterbanks.arma(rir, 10, 0, method_ar="burg")
+        dsp.filterbanks.arma(rir, 10, 1, method_ar="burg")
+        dsp.filterbanks.arma(rir, 10, 11, method_ar="burg")
+
 
 class TestLatticeLadderFilter:
     b = np.array([1, 3, 3, 1])
