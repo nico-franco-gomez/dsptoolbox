@@ -1671,7 +1671,8 @@ def __ma_parameters(
     return lstsq(
         A,
         target_sp,
-        # sv below 1% of largest sv are ignored (faster without accuracy loss)
+        # sv below 1% of largest sv are ignored (faster without much
+        # accuracy loss)
         cond=0.01,
         overwrite_a=True,
         overwrite_b=True,
@@ -1720,6 +1721,8 @@ def arma(
     - Due to the AR parameter estimation in the time domain, the phase response
       is also approximated.
     - Minimum-phase impulse responses deliver the best approximations.
+    - AR or MA orders above 120 are not recommended for warping due to greater
+      effects of numerical errors.
 
     References
     ----------

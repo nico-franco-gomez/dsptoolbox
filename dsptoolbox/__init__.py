@@ -1,3 +1,14 @@
+"""
+# dsptoolbox
+
+Collection of dsp, audio and acoustics-related functions.
+
+### Useful links:
+- Github Repo: https://github.com/nico-franco-gomez/dsptoolbox
+- Docs: https://dsptoolbox.readthedocs.io/en/latest/?badge=latest
+
+"""
+
 from .standard_functions import (
     latency,
     merge_signals,
