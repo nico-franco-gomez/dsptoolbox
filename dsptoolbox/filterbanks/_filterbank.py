@@ -1669,7 +1669,13 @@ def __ma_parameters(
 
     A = np.vstack([np.real(A), np.imag(A)])
     return lstsq(
-        A, target_sp, overwrite_a=True, overwrite_b=True, check_finite=False
+        A,
+        target_sp,
+        # sv below 1% of largest sv are ignored (faster without accuracy loss)
+        cond=0.01,
+        overwrite_a=True,
+        overwrite_b=True,
+        check_finite=False,
     )[0]
 
 
