@@ -262,7 +262,9 @@ def play_and_record(
 
     if normalized_dbfs is not None:
         assert normalized_dbfs <= 0, "Only values beneath 0 dBFS are allowed"
-        play_data = _normalize(play_data, dbfs=normalized_dbfs, mode="peak")
+        play_data = _normalize(
+            play_data, dbfs=normalized_dbfs, mode="peak", per_channel=False
+        )
 
     if device is not None:
         sd.default.device = device
@@ -383,7 +385,9 @@ def play(
     play_data = signal.time_data.copy()[:duration_samples, :]
     if normalized_dbfs is not None:
         assert normalized_dbfs <= 0, "Only values beneath 0 dBFS are allowed"
-        play_data = _normalize(play_data, dbfs=normalized_dbfs, mode="peak")
+        play_data = _normalize(
+            play_data, dbfs=normalized_dbfs, mode="peak", per_channel=False
+        )
     #
     if device is not None:
         sd.default.device = device
