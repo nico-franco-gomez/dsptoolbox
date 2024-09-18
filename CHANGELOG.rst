@@ -14,6 +14,28 @@ adheres to `Semantic Versioning <http://semver.org/spec/v2.0.0.html>`_.
 - Validation for results from tests in every module (so far many tests are
   only regarding functionality)
 
+`0.4.5 <https://pypi.org/project/dsptoolbox/0.4.5>`_ - 
+---------------------
+Added
+~~~~~
+- `FilterChain` in ``filterbanks`` for use in real-time applications
+- `arma` in ``filterbanks`` for obtaining arbitrary IIR filter approximations
+  to an impulse response
+
+Misc
+~~~~
+- renamed smoothe to smoothing across the library
+- zeros, poles and gain are now saved in `Filter`. They are returned instead
+  of recomputing from the coefficients
+- general doc improvements
+
+Bugfix
+~~~~~~
+- corrected a bug where the time window of an impulse response did not match
+  after some time-domain operation was applied to it
+- fixed a problem with normalization in ``audio_io``
+- fixed a problem with `Distortion` in ``effects``
+
 `0.4.4 <https://pypi.org/project/dsptoolbox/0.4.4>`_ - 
 ---------------------
 Added
