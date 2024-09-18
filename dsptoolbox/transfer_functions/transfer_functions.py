@@ -1553,7 +1553,7 @@ def harmonic_distortion_analysis(
             ), "Only single-channel IRs are supported"
 
         ir2 = ir.pop(0)
-        ir2._spectrum_parameters["smoothe"] = smoothing
+        ir2._spectrum_parameters["smoothing"] = smoothing
 
         harm = ir
         n_harmonics = len(harm)
@@ -1580,7 +1580,7 @@ def harmonic_distortion_analysis(
         )
         ir2.time_data = ir2.time_data[start:stop]
         ir2 = window_ir(ir2, len(ir2), constant_percentage=0.9)[0]
-        ir2._spectrum_parameters["smoothe"] = smoothing
+        ir2._spectrum_parameters["smoothing"] = smoothing
 
         passed_harmonics = False
     else:
@@ -1609,7 +1609,7 @@ def harmonic_distortion_analysis(
         quadratic_spectrum = "power" in scaling
 
     if generate_plot:
-        fig, ax = ir2.plot_magnitude(smoothe=smoothing, normalize=None)
+        fig, ax = ir2.plot_magnitude(smoothing=smoothing, normalize=None)
 
     for i in range(len(harm)):
         if not passed_harmonics:

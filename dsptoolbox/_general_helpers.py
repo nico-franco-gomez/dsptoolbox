@@ -186,7 +186,7 @@ def _get_normalized_spectrum(
     scaling: str = "amplitude",
     f_range_hz=[20, 20000],
     normalize: str | None = None,
-    smoothe: int = 0,
+    smoothing: int = 0,
     phase=False,
     calibrated_data: bool = False,
 ) -> (
@@ -214,9 +214,9 @@ def _get_normalized_spectrum(
         `'max'` (maximum value) or `None` for no normalization. The
         normalization for 1 kHz uses a linear interpolation for getting the
         value at 1 kHz regardless of the frequency resolution. Default: `None`.
-    smoothe : int, optional
-        1/smoothe-fractional octave band smoothing for magnitude spectra. Pass
-        `0` for no smoothing. Default: 0.
+    smoothing : int, optional
+        1/smoothing-fractional octave band smoothing for magnitude spectra.
+        Pass `0` for no smoothing. Default: 0.
     phase : bool, optional
         When `True`, phase spectra are also returned. Smoothing is also
         applied to the unwrapped phase. Default: `False`.
@@ -286,12 +286,12 @@ def _get_normalized_spectrum(
 
     mag_spectra = np.abs(spectra)
 
-    if smoothe != 0:
+    if smoothing != 0:
         if scaling == "amplitude":
-            mag_spectra = _fractional_octave_smoothing(mag_spectra, smoothe)
+            mag_spectra = _fractional_octave_smoothing(mag_spectra, smoothing)
         else:  # Smoothing always in amplitude representation
             mag_spectra = (
-                _fractional_octave_smoothing(mag_spectra**0.5, smoothe) ** 2
+                _fractional_octave_smoothing(mag_spectra**0.5, smoothing) ** 2
             )
 
     mag_spectra = to_db(mag_spectra / scale_factor, amplitude_scaling, 500)
@@ -305,10 +305,10 @@ def _get_normalized_spectrum(
 
     if phase:
         phase_spectra = np.angle(spectra)
-        if smoothe != 0:
+        if smoothing != 0:
             phase_spectra = _wrap_phase(
                 _fractional_octave_smoothing(
-                    np.unwrap(phase_spectra, axis=0), smoothe
+                    np.unwrap(phase_spectra, axis=0), smoothing
                 )
             )
 
@@ -1792,3 +1792,142 @@ def _get_correlation_of_latencies(
         undelayed = undelayed[:length_to_check]
         correlations[ch] = pearsonr(delayed, undelayed)[0]
     return correlations
+
+
+def __levison_durbin_recursion(
+    autocorrelation: NDArray[np.float64],
+) -> tuple[NDArray[np.float64], float]:
+    """Levinson-Durbin recursion to be applied to the autocorrelation
+    estimate.
+
+    Parameters
+    ----------
+    autocorrelation : NDArray[np.float64]
+        Autocorrelation function with only positive lags and length of
+        `order + 1`, where `order` corresponds to the order of the AR
+        estimation. It should be a flat array (only one channel).
+
+    Returns
+    -------
+    reflection_coefficients : NDArray[np.float64]
+        Denominator coefficients.
+    prediction_error : float
+        Variance of the remaining error.
+
+    """
+    prediction_error = autocorrelation[0]  # Signal variance
+    autocorr_coefficients = autocorrelation[1:]
+    num_coefficients = len(autocorr_coefficients)
+    ar_parameters = np.zeros(num_coefficients)
+
+    for order in range(num_coefficients):
+        reflection_value = autocorr_coefficients[order]
+        if order == 0:
+            reflection_coefficient = -reflection_value / prediction_error
+        else:
+            for lag in range(order):
+                reflection_value += (
+                    ar_parameters[lag] * autocorr_coefficients[order - lag - 1]
+                )
+            reflection_coefficient = -reflection_value / prediction_error
+        prediction_error *= 1.0 - reflection_coefficient**2.0
+        if prediction_error <= 0:
+            raise ValueError("Invalid prediction error: Singular Matrix")
+        ar_parameters[order] = reflection_coefficient
+
+        if order == 0:
+            continue
+
+        half_order = (order + 1) // 2
+        for lag in range(half_order):
+            reverse_lag = order - lag - 1
+            save_value = ar_parameters[lag]
+            ar_parameters[lag] = (
+                save_value
+                + reflection_coefficient * ar_parameters[reverse_lag]
+            )
+            if lag != reverse_lag:
+                ar_parameters[reverse_lag] += (
+                    reflection_coefficient * save_value
+                )
+    # Add first coefficient a0
+    return np.hstack([1.0, ar_parameters]), prediction_error
+
+
+def __burg_ar_estimation(
+    time_data: NDArray[np.float64], order: int
+) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
+    """Burg's method to estimate the AR parameters. This is done always along
+    the first axis. This implementation is taken from [2] and can take any
+    shape of input vector.
+
+    Parameters
+    ----------
+    time_data : NDArray[np.float64]
+        Time data to estimate.
+    order : int
+        Order of the estimation.
+
+    Returns
+    -------
+    NDArray[np.float64]
+        Denominator (reflection) coefficients.
+    NDArray[np.float64]
+        Variances of the prediction error.
+
+    References
+    ----------
+    - [1]: Larry Marple. A New Autoregressive Spectrum Analysis Algorithm. IEEE
+      Transactions on Acoustics, Speech, and Signal Processing vol 28, no. 4,
+      1980.
+    - [2]: McFee, Brian, Colin Raffel, Dawen Liang, Daniel PW Ellis, Matt
+      McVicar, Eric Battenberg, and Oriol Nieto. “librosa: Audio and music
+      signal analysis in python.” In Proceedings of the 14th python in science
+      conference, pp. 18-25. 2015.
+
+    """
+    onedim = time_data.ndim == 1
+    if onedim:
+        time_data = time_data[:, None]
+        shape = list(time_data.shape)
+        ar_coeffs = np.zeros((order + 1, 1))
+    else:
+        shape = list(time_data.shape)
+        shape[0] + 1
+        ar_coeffs = np.zeros(tuple(shape))
+
+    ar_coeffs[0] = 1.0
+    ar_coeffs_prev = ar_coeffs.copy()
+
+    shape[0] = 1
+    reflect_coeff = np.zeros(shape)
+    den = reflect_coeff.copy()
+
+    epsilon = np.finfo(np.float64).eps
+
+    fwd_pred_error = time_data[1:]
+    bwd_pred_error = time_data[:-1]
+    den[0] = np.sum(fwd_pred_error**2 + bwd_pred_error**2, axis=0)
+
+    for i in range(order):
+        reflect_coeff[0] = np.sum(bwd_pred_error * fwd_pred_error, axis=0)
+        reflect_coeff[0] *= -2
+        reflect_coeff[0] /= den[0] + epsilon
+        ar_coeffs_prev, ar_coeffs = ar_coeffs, ar_coeffs_prev
+        for j in range(1, i + 2):
+            ar_coeffs[j] = (
+                ar_coeffs_prev[j]
+                + reflect_coeff[0] * ar_coeffs_prev[i - j + 1]
+            )
+
+        fwd_pred_error_tmp = fwd_pred_error
+        fwd_pred_error = fwd_pred_error + reflect_coeff * bwd_pred_error
+        bwd_pred_error = bwd_pred_error + reflect_coeff * fwd_pred_error_tmp
+
+        q = 1.0 - reflect_coeff[0] ** 2
+        den[0] = q * den[0] - bwd_pred_error[-1] ** 2 - fwd_pred_error[0] ** 2
+
+        fwd_pred_error = fwd_pred_error[1:]
+        bwd_pred_error = bwd_pred_error[:-1]
+
+    return ar_coeffs.squeeze(), den[0]

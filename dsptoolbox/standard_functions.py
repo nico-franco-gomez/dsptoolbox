@@ -2,8 +2,8 @@
 Standard functions
 ------------------
 This module contains a general collection of DSP functions that do not fall
-under a same category. This functions act on the custom classes of `dsptoolbox`
-and not on primitive data types such as arrays.
+under a same category. These functions act on the custom classes of
+`dsptoolbox` and not on primitive data types such as arrays.
 
 """
 
@@ -1024,7 +1024,7 @@ class CalibrationData:
         Parameters
         ----------
         signal : `Signal` or `MultiBandSignal`
-            Signal to be calibrationrated.
+            Signal to calibrate.
         force_update : bool, optional
             When `True`, an update of the calibration data is forced. This
             might be necessary if the calibration signal or the parameters

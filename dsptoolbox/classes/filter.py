@@ -609,7 +609,7 @@ class Filter:
                 filter_configuration["passband_ripple"] = None
             if "stopband_attenuation" not in filter_configuration:
                 filter_configuration["stopband_attenuation"] = None
-            self.sos = sig.iirfilter(
+            self.zpk = sig.iirfilter(
                 N=filter_configuration["order"],
                 Wn=filter_configuration["freqs"],
                 btype=filter_configuration["type_of_pass"],
@@ -618,8 +618,9 @@ class Filter:
                 ftype=filter_configuration["filter_design_method"],
                 rp=filter_configuration["passband_ripple"],
                 rs=filter_configuration["stopband_attenuation"],
-                output="sos",
+                output="zpk",
             )
+            self.sos = sig.zpk2sos(*self.zpk)
             self.filter_type = filter_type
         elif filter_type == "fir":
             # Preparing parameters
@@ -671,19 +672,21 @@ class Filter:
                 "Only (and at least) one type of filter coefficients "
                 + "should be passed to create a filter"
             )
-            if "ba" in filter_configuration:
+            if "zpk" in filter_configuration:
+                self.zpk = filter_configuration["zpk"]
+                self.sos = sig.zpk2sos(*self.zpk, analog=False)
+                filter_configuration["order"] = max(
+                    len(self.zpk[0]), len(self.zpk[1])
+                )
+            elif "sos" in filter_configuration:
+                self.sos = filter_configuration["sos"]
+                filter_configuration["order"] = len(self.sos) * 2 - 1
+            elif "ba" in filter_configuration:
                 b, a = filter_configuration["ba"]
                 self.ba = [np.atleast_1d(b), np.atleast_1d(a)]
                 filter_configuration["order"] = (
                     max(len(self.ba[0]), len(self.ba[1])) - 1
                 )
-            if "zpk" in filter_configuration:
-                z, p, k = filter_configuration["zpk"]
-                self.sos = sig.zpk2sos(z, p, k, analog=False)
-                filter_configuration["order"] = len(self.sos) * 2 - 1
-            if "sos" in filter_configuration:
-                self.sos = filter_configuration["sos"]
-                filter_configuration["order"] = len(self.sos) * 2 - 1
             # Change filter type to 'fir' or 'iir' depending on coefficients
             self._check_and_update_filter_type()
 
@@ -883,7 +886,9 @@ class Filter:
             else:
                 coefficients = deepcopy(self.ba)
         elif mode == "zpk":
-            if hasattr(self, "sos"):
+            if hasattr(self, "zpk"):
+                coefficients = deepcopy(self.zpk)
+            elif hasattr(self, "sos"):
                 coefficients = sig.sos2zpk(self.sos)
             else:
                 # Check if filter is too long

@@ -256,6 +256,18 @@ class TestFilterbanksModule:
         # n1.plot_time()
         # dsp.plots.show()
 
+    def test_arma(self):
+        # Only functionality
+        rir = dsp.ImpulseResponse(os.path.join("examples", "data", "rir.wav"))
+        dsp.filterbanks.arma(rir, 10, 0)
+        dsp.filterbanks.arma(rir, 10, 1)
+        dsp.filterbanks.arma(rir, 10, 11)
+        dsp.filterbanks.arma(dsp.pad_trim(rir, len(rir) - 1), 10, 11)
+
+        dsp.filterbanks.arma(rir, 10, 0, method_ar="burg")
+        dsp.filterbanks.arma(rir, 10, 1, method_ar="burg")
+        dsp.filterbanks.arma(rir, 10, 11, method_ar="burg")
+
 
 class TestLatticeLadderFilter:
     b = np.array([1, 3, 3, 1])

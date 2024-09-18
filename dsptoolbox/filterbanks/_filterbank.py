@@ -15,7 +15,10 @@ from scipy.signal import (
     sosfiltfilt,
     bilinear,
     tf2sos,
+    correlate,
+    freqz,
 )
+from scipy.linalg import lstsq
 
 from ..classes import (
     Signal,
@@ -27,7 +30,11 @@ from ..classes import (
 
 from ..generators import dirac
 from ..plots import general_plot
-from .._general_helpers import _get_normalized_spectrum
+from .._general_helpers import (
+    _get_normalized_spectrum,
+    __levison_durbin_recursion,
+    __burg_ar_estimation,
+)
 from .._standard import _group_delay_direct
 
 
@@ -1591,3 +1598,162 @@ def __get_matched_eq_helpers(omega0, q):
     phi = np.array([1 - sin_omega, sin_omega, 0])
     phi[2] = 4 * phi[0] * phi[1]
     return np.array([1, a1, a2]), A, phi
+
+
+def __yw_ar_estimation(
+    time_data: NDArray[np.float64], order: int
+) -> tuple[NDArray[np.float64], float]:
+    """Compute the autoregressive coefficients for an AR process using the
+    Levinson-Durbin recursion to solve the Yule-Walker equations. This is done
+    from the biased autocorrelation.
+
+    Parameters
+    ----------
+    time_data : NDArray[np.float64]
+        Time data (only single-channel signal is supported).
+    order : int
+        Recursion order.
+
+    Returns
+    -------
+    NDArray[np.float64]
+        Reflection coefficients with shape (coefficient).
+    float
+        Variance of the remaining error.
+
+    """
+    assert (
+        time_data.ndim == 1
+    ), "This function only accepts a single-channel signal"
+    # Biased autocorrelation (only positive lags)
+    autocorrelation = correlate(time_data, time_data, "full")[
+        len(time_data) - 1 : len(time_data) + order
+    ] / len(time_data)
+
+    return __levison_durbin_recursion(autocorrelation)
+
+
+def __ma_parameters(
+    time_data: NDArray[np.float64],
+    order: int,
+    ar_coefficients: NDArray[np.float64],
+):
+    """Estimate the MA parameters with through a least-squares approximation
+    using known AR parameters. This is done in the frequency domain.
+
+    Parameters
+    ----------
+    time_data : NDArray[np.float64]
+        Time data (single-channel).
+    order : int
+        Order of the MA parameters approximation.
+    ar_coefficients : NDArray[np.float64]
+        Autoregressive coefficients.
+
+    """
+    assert time_data.ndim == 1
+    spec = np.fft.rfft(time_data)
+    N = len(time_data)
+
+    num_coefficients = order + 1
+    A = np.zeros((N // 2 + 1, num_coefficients), dtype=np.complex128)
+    target_sp = np.hstack([np.real(spec), np.imag(spec)])
+
+    for n in range(num_coefficients):
+        A[:, n] = freqz(
+            np.array([0.0] * n + [1.0]),
+            ar_coefficients,
+            N // 2 + 1,
+            include_nyquist=N % 2 == 0,
+        )[1]
+
+    A = np.vstack([np.real(A), np.imag(A)])
+    return lstsq(
+        A,
+        target_sp,
+        # sv below 1% of largest sv are ignored (faster without much
+        # accuracy loss)
+        cond=0.01,
+        overwrite_a=True,
+        overwrite_b=True,
+        check_finite=False,
+    )[0]
+
+
+def arma(
+    ir: ImpulseResponse,
+    order_a: int,
+    order_b: int = 0,
+    method_ar: str = "yule-walker",
+) -> Filter:
+    """Create an IIR filter approximation to an impulse response with an
+    autoregressive (AR), moving-average (MA) process model estimation. See
+    notes for details.
+
+    Parameters
+    ----------
+    ir : ImpulseResponse
+        Impulse response to be approximated. This should be done for a
+        single-channel IR.
+    order_a : int
+        Order of the denominator coefficients of the IIR filter. These are the
+        reflection or autoregressive coefficients.
+    order_b : int, optional
+        Order of the numerator coefficients. These are the moving-average
+        coefficients. Pass 0 to obtain a pure AR estimation.
+    method_ar : str, {"yule-walker", "burg"}, optional
+        Method to use for obtaining the AR parameters. Burg's method is
+        explained in [1] and the implementation was taken from [2].
+        Default: "yule-walker".
+
+    Returns
+    -------
+    Filter
+        IIR filter with the provided orders for the numerator and denominator
+        coefficients.
+
+    Notes
+    -----
+    - This function finds the autoregressive (AR) parameters first by solving
+      the Yule-Walker equations through the Levinson-Durbin recursion or using
+      Burg's method. Afterwards, the moving-average (MA) parameters are
+      obtained through a least-squares approximation.
+    - Due to the AR parameter estimation in the time domain, the phase response
+      is also approximated.
+    - Minimum-phase impulse responses deliver the best approximations.
+    - AR or MA orders above 120 are not recommended for warping due to greater
+      effects of numerical errors.
+
+    References
+    ----------
+    - [1]: Larry Marple. A New Autoregressive Spectrum Analysis Algorithm. IEEE
+      Transactions on Acoustics, Speech, and Signal Processing vol 28, no. 4,
+      1980.
+    - [2]: McFee, Brian, Colin Raffel, Dawen Liang, Daniel PW Ellis, Matt
+      McVicar, Eric Battenberg, and Oriol Nieto. “librosa: Audio and music
+      signal analysis in python.” In Proceedings of the 14th python in science
+      conference, pp. 18-25. 2015.
+
+    """
+    assert (
+        ir.number_of_channels == 1
+    ), "This is only valid for single-channel IR"
+    assert order_a >= 1, "Order of a must be at least 1"
+    assert order_b >= 0, "Order of b should be at least 0"
+    assert len(ir) > order_a, "The order should be lower than the IR length"
+    method_ar = method_ar.lower()
+
+    match method_ar:
+        case "yule-walker":
+            a = __yw_ar_estimation(ir.time_data[:, 0], order_a)[0]
+        case "burg":
+            a = __burg_ar_estimation(ir.time_data[:, 0], order_a)[0]
+        case _:
+            raise ValueError(f"{method_ar}: Method is not supported")
+
+    b = (
+        __ma_parameters(ir.time_data[:, 0], order_b, a)
+        if order_b > 0
+        else np.array([1.0])
+    )
+    return Filter.from_ba(b, a, ir.sampling_rate_hz)

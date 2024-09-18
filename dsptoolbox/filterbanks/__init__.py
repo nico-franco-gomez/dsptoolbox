@@ -34,11 +34,14 @@ Other:
 - `ParallelFilter()`: Find the (least-squares) optimal linear combination of
   parallel SOS to approximate an IR.
 - `KautzFilter()`: Kautz filters with an orthonormal pole basis.
+- `FilterChain()`: Filter structure for applying all other filters
+  sequentially.
 - `convert_into_lattice_filter()`: Turns a conventional filter into its
   lattice/ladder representation.
 - `pinking_filter()`: Get a -3 dB/octave filter.
 - `matched_biquad()`: Analog-matched biquad filters.
 - `gaussian_kernel()`: IIR first-order approximation of a gaussian window.
+- `arma()`: IIR filter approximation of an impulse response.
 
 """
 
@@ -56,12 +59,15 @@ from .filterbanks import (
     gaussian_kernel,
 )
 
+from ._filterbank import arma
+
 from ..classes.lattice_ladder_filter import LatticeLadderFilter
 from ..classes.parallel_filter import ParallelFilter
 from ..classes.iir_filter_realtime import IIRFilter
 from ..classes.fir_filter_realtime import FIRFilter
 from ..classes.sv_filter import StateVariableFilter
 from ..classes.kautz_filter import KautzFilter
+from ..classes.filter_chain import FilterChain
 from ..classes.group_delay_designer_phase_linearizer import (
     PhaseLinearizer,
     GroupDelayDesigner,
@@ -82,9 +88,11 @@ __all__ = [
     "FIRFilter",
     "ParallelFilter",
     "KautzFilter",
+    "FilterChain",
     "GroupDelayDesigner",
     "StateVariableFilter",
     "pinking_filter",
     "matched_biquad",
     "gaussian_kernel",
+    "arma",
 ]

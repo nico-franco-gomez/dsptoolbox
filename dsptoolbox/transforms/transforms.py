@@ -1154,6 +1154,9 @@ def warp_filter(filter: Filter, warping_factor: float) -> Filter:
 
       to the transfer function, where Mp is the total number of poles and Nz
       the total number of zeros.
+    - Warping filters with orders above 100 is not recommended due to numerical
+      errors when finding their polynomial roots. This does not apply if the
+      filter has the zeros and poles from which its coefficients were computed.
 
     References
     ----------

@@ -795,6 +795,8 @@ class Distortion(AudioEffect):
 
         new_td = np.zeros_like(td)
         for i in range(len(self.__distortion_funcs)):
+            if self.mix[i] == 0.0:
+                continue
             new_td += self._restore_peak_values(
                 self.__distortion_funcs[i](
                     td, self.distortion_levels[i], self.offset_db[i]
