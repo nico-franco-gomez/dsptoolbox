@@ -14,6 +14,14 @@ adheres to `Semantic Versioning <http://semver.org/spec/v2.0.0.html>`_.
 - Validation for results from tests in every module (so far many tests are
   only regarding functionality)
 
+`0.4.6 <https://pypi.org/project/dsptoolbox/0.4.6>`_ - 
+---------------------
+
+Bugfix
+~~~~~~
+- corrected `excess_group_delay` due to different padding cases when removing
+  the IR latency
+
 `0.4.5 <https://pypi.org/project/dsptoolbox/0.4.5>`_ - 
 ---------------------
 Added
