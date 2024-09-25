@@ -25,6 +25,7 @@ from .._general_helpers import (
     _fractional_octave_smoothing,
     _correct_for_real_phase_spectrum,
     _get_fractional_impulse_peak_index,
+    _interpolate_fr,
 )
 from .._standard import (
     _welch,
@@ -812,7 +813,7 @@ def group_delay(
         of the group delay. Default: `0`.
     remove_ir_latency : bool, optional
         If the signal is of type `"ir"` or `"rir"`, the impulse delay can be
-        removed by analizing the minimum phase equivalent. This uses the
+        removed by analyzing the minimum phase equivalent. This uses the
         padding factor 8 by default. Default: `False`.
 
     Returns
@@ -1013,7 +1014,7 @@ def excess_group_delay(
     assert (
         type(signal) is ImpulseResponse
     ), "This is only valid for an impulse response"
-    f, min_gd = minimum_group_delay(
+    f_min, min_gd = minimum_group_delay(
         signal, smoothing=0, padding_factor=8 if remove_ir_latency else 1
     )
     f, gd = group_delay(
@@ -1022,12 +1023,18 @@ def excess_group_delay(
         method="direct",
         remove_ir_latency=remove_ir_latency,
     )
+
+    # Min GD has fast FFT length, GD has fast RFFT length
+    # => Interpolate if they do not match
+    if len(f) != len(f_min):
+        gd = _interpolate_fr(f, gd, f_min, None, "linear")
+
     ex_gd = gd - min_gd
 
     if smoothing != 0:
         ex_gd = _fractional_octave_smoothing(ex_gd, smoothing)
 
-    return f, ex_gd
+    return f_min, ex_gd
 
 
 def combine_ir_with_dirac(
