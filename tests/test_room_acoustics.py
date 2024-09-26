@@ -2,6 +2,7 @@ import numpy as np
 import dsptoolbox as dsp
 import pytest
 from os.path import join
+import scipy.signal as sig
 
 
 class TestRoomAcousticsModule:
@@ -62,14 +63,45 @@ class TestRoomAcousticsModule:
         dsp.room_acoustics.find_modes(h, f_range_hz=[50, 150], dist_hz=5)
 
     def test_convolve_rir_on_signal(self):
-        # Only functionality
         speech = dsp.Signal(join("examples", "data", "speech.flac"))
-        dsp.room_acoustics.convolve_rir_on_signal(
-            speech, self.rir, keep_peak_level=True, keep_length=True
+        speech_2 = dsp.merge_signals(speech, speech)
+        result = dsp.room_acoustics.convolve_rir_on_signal(
+            speech, self.rir, keep_peak_level=False, keep_length=True
         )
-        dsp.room_acoustics.convolve_rir_on_signal(
-            speech, self.rir, keep_peak_level=False, keep_length=False
+        assert len(result) == len(speech)
+
+        result = dsp.room_acoustics.convolve_rir_on_signal(
+            speech_2, self.rir, keep_peak_level=True, keep_length=False
         )
+        np.testing.assert_allclose(
+            np.max(np.abs(result.time_data), axis=0),
+            np.max(np.abs(speech_2.time_data), axis=0),
+        )
+
+        # Double-channel
+        conv = dsp.room_acoustics.convolve_rir_on_signal(
+            speech_2,
+            self.rir,
+            keep_peak_level=False,
+            keep_length=False,
+        ).time_data
+        td = speech.time_data.squeeze()
+        ir = self.rir.time_data.squeeze()
+        expected = sig.convolve(td, ir)
+        np.testing.assert_allclose(conv[:, 0], expected)
+        np.testing.assert_allclose(conv[:, 1], expected)
+
+        # Length to trigger oaconvolve
+        length_ir = len(td) // 11
+        oaconv = dsp.room_acoustics.convolve_rir_on_signal(
+            speech_2,
+            dsp.pad_trim(self.rir, length_ir),
+            keep_peak_level=False,
+            keep_length=False,
+        ).time_data
+        expected = sig.convolve(td, ir[:length_ir])
+        np.testing.assert_allclose(oaconv[:, 0], expected)
+        np.testing.assert_allclose(oaconv[:, 1], expected)
 
     def test_find_ir_start(self):
         # Only functionality

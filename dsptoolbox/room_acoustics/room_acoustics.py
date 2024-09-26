@@ -3,7 +3,7 @@ High-level methods for room acoustics functions
 """
 
 import numpy as np
-from scipy.signal import find_peaks, convolve
+from scipy.signal import find_peaks, convolve, oaconvolve
 from numpy.typing import NDArray
 
 from ..classes import Signal, MultiBandSignal, Filter, ImpulseResponse
@@ -19,7 +19,7 @@ from ._room_acoustics import (
     _c80_from_rir,
     _ts_from_rir,
 )
-from .._general_helpers import _find_nearest, _normalize, _pad_trim
+from .._general_helpers import _find_nearest, _pad_trim
 from ..standard_functions import pad_trim
 from ..tools import to_db
 
@@ -260,24 +260,22 @@ def convolve_rir_on_signal(
         rir.sampling_rate_hz == signal.sampling_rate_hz
     ), "The sampling rates do not match"
 
-    if keep_length:
-        total_length_samples = signal.time_data.shape[0]
-    else:
-        total_length_samples = (
-            signal.time_data.shape[0] + rir.time_data.shape[0] - 1
+    if len(signal) > 10 * len(rir):
+        new_time_data = oaconvolve(
+            signal.time_data, rir.time_data, axes=0, mode="full"
         )
-    new_time_data = np.zeros((total_length_samples, signal.number_of_channels))
+    else:
+        new_time_data = convolve(
+            signal.time_data, rir.time_data, mode="full", method="auto"
+        )
 
-    for n in range(signal.number_of_channels):
-        if keep_peak_level:
-            old_peak = to_db(np.max(np.abs(signal.time_data[:, n])), True)
-        new_time_data[:, n] = convolve(
-            signal.time_data[:, n], rir.time_data[:, 0], mode="full"
-        )[:total_length_samples]
-        if keep_peak_level:
-            new_time_data[:, n] = _normalize(
-                new_time_data[:, n], old_peak, mode="peak", per_channel=True
-            )
+    if keep_length:
+        new_time_data = new_time_data[: len(signal), ...]
+
+    if keep_peak_level:
+        old_peak_levels = np.max(np.abs(signal.time_data), axis=0)
+        new_peak_levels = np.max(np.abs(new_time_data), axis=0)
+        new_time_data *= (old_peak_levels / new_peak_levels)[None, ...]
 
     new_sig = signal.copy()
     new_sig.time_data = new_time_data
