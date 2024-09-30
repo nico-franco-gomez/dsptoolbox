@@ -1871,7 +1871,8 @@ def __burg_ar_estimation(
     Returns
     -------
     NDArray[np.float64]
-        Denominator (reflection) coefficients.
+        Denominator (reflection) coefficients with shape (coefficient,
+        channel).
     NDArray[np.float64]
         Variances of the prediction error.
 

@@ -831,16 +831,17 @@ def _detrend(
 
 
 def _get_framed_signal(
-    td: NDArray[np.float64],
+    time_data: NDArray[np.float64],
     window_length_samples: int,
     step_size: int,
     keep_last_frames: bool = True,
 ) -> NDArray[np.float64]:
-    """This method computes a framed version of a signal and returns it.
+    """This function turns a signal into (possibly) overlaping time frames.
+    The original data gets copied.
 
     Parameters
     ----------
-    td : NDArray[np.float64]
+    time_data : NDArray[np.float64]
         Signal with shape (time samples, channels).
     window_length_samples : int
         Window length in samples.
@@ -852,10 +853,11 @@ def _get_framed_signal(
 
     Returns
     -------
-    td_framed : NDArray[np.float64]
+    time_data_framed : NDArray[np.float64]
         Framed signal with shape (time samples, frames, channels).
 
     """
+    assert time_data.ndim == 2, "Time data should have exactly two dimensions."
     # Force casting to integers
     if type(window_length_samples) is not int:
         window_length_samples = int(window_length_samples)
@@ -866,12 +868,12 @@ def _get_framed_signal(
     n_frames, padding_samp = _compute_number_frames(
         window_length_samples,
         step_size,
-        td.shape[0],
+        time_data.shape[0],
         zero_padding=keep_last_frames,
     )
-    td = _pad_trim(td, td.shape[0] + padding_samp)
+    td = _pad_trim(time_data, time_data.shape[0] + padding_samp)
     td_framed = np.zeros(
-        (window_length_samples, n_frames, td.shape[1]), dtype="float"
+        (window_length_samples, n_frames, td.shape[1]), dtype=np.float64
     )
 
     # Create time frames
