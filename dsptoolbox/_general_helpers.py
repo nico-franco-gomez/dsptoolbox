@@ -1341,8 +1341,10 @@ def _get_fractional_impulse_peak_index(
         roots = np.roots(pol)
         # Get only root between 0 and 1
         roots = roots[
-            (roots == roots.real)  # Real roots
-            & (roots <= 1)  # Range
+            # Real roots
+            (roots == roots.real)
+            # Range
+            & (roots <= 1)
             & (roots >= 0)
         ].real
         try:
@@ -1796,32 +1798,34 @@ def _get_correlation_of_latencies(
 
 def __levison_durbin_recursion(
     autocorrelation: NDArray[np.float64],
-) -> tuple[NDArray[np.float64], float]:
-    """Levinson-Durbin recursion to be applied to the autocorrelation
-    estimate.
+) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
+    """Levinson-Durbin recursion to be applied to the autocorrelation estimate.
+    It is always computed along the first (most outer) axis.
 
     Parameters
     ----------
     autocorrelation : NDArray[np.float64]
         Autocorrelation function with only positive lags and length of
         `order + 1`, where `order` corresponds to the order of the AR
-        estimation. It should be a flat array (only one channel).
+        estimation. It can have any shape, but the AR parameters are always
+        computed along the outer axis.
 
     Returns
     -------
     reflection_coefficients : NDArray[np.float64]
-        Denominator coefficients.
-    prediction_error : float
+        Denominator coefficients with shape (coefficient, ...).
+    prediction_error : NDArray[np.float64]
         Variance of the remaining error.
 
     """
-    prediction_error = autocorrelation[0]  # Signal variance
-    autocorr_coefficients = autocorrelation[1:]
-    num_coefficients = len(autocorr_coefficients)
-    ar_parameters = np.zeros(num_coefficients)
+    prediction_error = autocorrelation[0, ...].copy()  # Signal variance
+    autocorr_coefficients = autocorrelation[1:, ...].copy()
+
+    num_coefficients = autocorr_coefficients.shape[0]
+    ar_parameters = np.zeros_like(autocorr_coefficients)
 
     for order in range(num_coefficients):
-        reflection_value = autocorr_coefficients[order]
+        reflection_value = autocorr_coefficients[order].copy()
         if order == 0:
             reflection_coefficient = -reflection_value / prediction_error
         else:
@@ -1831,7 +1835,7 @@ def __levison_durbin_recursion(
                 )
             reflection_coefficient = -reflection_value / prediction_error
         prediction_error *= 1.0 - reflection_coefficient**2.0
-        if prediction_error <= 0:
+        if np.any(prediction_error <= 0):
             raise ValueError("Invalid prediction error: Singular Matrix")
         ar_parameters[order] = reflection_coefficient
 
@@ -1841,7 +1845,7 @@ def __levison_durbin_recursion(
         half_order = (order + 1) // 2
         for lag in range(half_order):
             reverse_lag = order - lag - 1
-            save_value = ar_parameters[lag]
+            save_value = ar_parameters[lag].copy()
             ar_parameters[lag] = (
                 save_value
                 + reflection_coefficient * ar_parameters[reverse_lag]
@@ -1850,8 +1854,14 @@ def __levison_durbin_recursion(
                 ar_parameters[reverse_lag] += (
                     reflection_coefficient * save_value
                 )
+
     # Add first coefficient a0
-    return np.hstack([1.0, ar_parameters]), prediction_error
+    ndim = ar_parameters.ndim
+    pad_width = tuple([(1, 0)] + [(0, 0)] * (ndim - 1))
+    return (
+        np.pad(ar_parameters, pad_width, mode="constant", constant_values=1.0),
+        prediction_error,
+    )
 
 
 def __burg_ar_estimation(

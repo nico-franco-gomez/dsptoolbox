@@ -1184,3 +1184,46 @@ def warp_filter(filter: Filter, warping_factor: float) -> Filter:
     elif len(z) > len(p):
         p = np.hstack([p, [warping_factor] * (len(z) - len(p))])
     return Filter.from_zpk(z, p, k, filter.sampling_rate_hz)
+
+
+def lpc(
+    signal: Signal,
+    order: int,
+    window_length_samples: int,
+    method_ar: str = "burg",
+    hop_size_samples: int | None = None,
+    window_type: str = "hann",
+):
+    """Encode an input signal into its linear-predictive coding coefficients.
+    This transforms the signal into source-filter representation and works
+    best with inputs that can be modeled through the all-pole model.
+
+    Parameters
+    ----------
+    signal : Signal
+        Input to encode.
+    order : int
+        Order of the coefficients to use.
+    window_length_samples : int
+        Window length in samples.
+    method_ar : str, {"yw", "burg"}, optional
+        Method to use for obtaining the LP coefficients. Choose from "yw"
+        (Yule-Walker) or "burg". Default: "burg".
+    hop_size_samples : int, None, optional
+        Hop size to use from window to window. If None is passed, a hop size
+        corresponding to 50% of the window length will be used. Default: None.
+    window_type : str, optional
+        Window type to use. It is recommended that a window type that satifies
+        the COLA-condition with length and hop size is chosen. Default: "hann".
+
+    Returns
+    -------
+    a_coefficients : NDArray[np.float64]
+        LP coefficients with shape (time window, coefficient, channel).
+    variances : NDArray[np.float64]
+        Variances (quadratic) of the source with shape (time window, channel).
+    reconstructed_signal : Signal
+        Signal reconstructed from the estimated LP coefficients using white
+        noise as the source.
+
+    """
