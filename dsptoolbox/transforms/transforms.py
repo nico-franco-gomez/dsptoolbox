@@ -1035,8 +1035,8 @@ def warp(
         Warping factor. It has to be in the range ]-1; 1[. If a string is
         provided, warping the frequency axis to (or from) an approximation
         of the psychoacoustically motivated Bark or ERB scales is performed
-        according to [4]. Pass "-" in the end for the dewarping (backwards
-        step) stage.
+        according to [4]. Pass "-" in the end for the dewarping (backwards)
+        stage.
     shift_ir : bool
         Since the warping of an IR is not shift-invariant (see [2]), it is
         recommended to place the start of the IR at the first index. When
@@ -1214,8 +1214,9 @@ def lpc(
     window_length_samples : int
         Window length in samples.
     synthesize_encoded_signal : bool, optional
-        When True, the encoded signal is synthesized and returned. Pass False
-        to avoid this computation. Default: False.
+        When True, the encoded signal is synthesized and returned. To this end,
+        white noise is always used as source. Pass False to avoid this
+        computation. Default: False.
     method_ar : str, {"yw", "burg"}, optional
         Method to use for obtaining the LP coefficients. Choose from "yw"
         (Yule-Walker) or "burg". Default: "burg".
@@ -1236,6 +1237,11 @@ def lpc(
         Signal reconstructed from the estimated LP coefficients using white
         noise as the source. This is only returned if
         `synthesize_encoded_signal=True`.
+
+    References
+    ----------
+    - https://en.wikipedia.org/wiki/Linear_predictive_coding
+    - https://ccrma.stanford.edu/~hskim08/lpc/
 
     """
     method_ar = method_ar.lower()
