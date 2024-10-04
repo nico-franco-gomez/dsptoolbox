@@ -15,7 +15,6 @@ from scipy.signal import (
     sosfiltfilt,
     bilinear,
     tf2sos,
-    correlate,
     freqz,
 )
 from scipy.linalg import lstsq
@@ -32,7 +31,7 @@ from ..generators import dirac
 from ..plots import general_plot
 from .._general_helpers import (
     _get_normalized_spectrum,
-    __levison_durbin_recursion,
+    __yw_ar_estimation,
     __burg_ar_estimation,
 )
 from .._standard import _group_delay_direct
@@ -1598,68 +1597,6 @@ def __get_matched_eq_helpers(omega0, q):
     phi = np.array([1 - sin_omega, sin_omega, 0])
     phi[2] = 4 * phi[0] * phi[1]
     return np.array([1, a1, a2]), A, phi
-
-
-def __yw_ar_estimation(
-    time_data: NDArray[np.float64], order: int
-) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
-    """Compute the autoregressive coefficients for an AR process using the
-    Levinson-Durbin recursion to solve the Yule-Walker equations. This is done
-    from the biased autocorrelation.
-
-    Parameters
-    ----------
-    time_data : NDArray[np.float64]
-        Time data with up to three dimensions. The AR parameters are always
-        computed along the first (outer) axis.
-    order : int
-        Recursion order.
-
-    Returns
-    -------
-    NDArray[np.float64]
-        Reflection coefficients with shape (coefficient, ...).
-    NDArray[np.float64]
-        Variance of the remaining error.
-
-    """
-    assert (
-        time_data.ndim <= 3
-    ), "This function only accepts a signal with one, two or three dimensions"
-
-    length_td = time_data.shape[0]
-    if time_data.ndim == 1:
-        autocorrelation = (
-            correlate(time_data, time_data, "full")[
-                length_td - 1 : length_td + order
-            ]
-            / length_td
-        )
-    elif time_data.ndim == 2:
-        autocorrelation = np.zeros((order + 1, time_data.shape[1]))
-        for i in range(time_data.shape[1]):
-            # Biased autocorrelation (only positive lags)
-            autocorrelation[:, i] = (
-                correlate(time_data[:, i], time_data[:, i], "full")[
-                    length_td - 1 : length_td + order
-                ]
-                / length_td
-            )
-    else:
-        autocorrelation = np.zeros(
-            (order + 1, time_data.shape[1], time_data.shape[2])
-        )
-        for ii in range(time_data.shape[2]):
-            for i in range(time_data.shape[1]):
-                # Biased autocorrelation (only positive lags)
-                autocorrelation[:, i, ii] = (
-                    correlate(
-                        time_data[:, i, ii], time_data[:, i, ii], "full"
-                    )[length_td - 1 : length_td + order]
-                    / length_td
-                )
-
-    return __levison_durbin_recursion(autocorrelation)
 
 
 def __ma_parameters(

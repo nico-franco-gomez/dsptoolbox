@@ -7,8 +7,14 @@ from ..classes.filter import Filter
 from ..classes.impulse_response import ImpulseResponse
 from ..classes.multibandsignal import MultiBandSignal
 from ..plots import general_matrix_plot
-from .._standard import _reconstruct_framed_signal
-from .._general_helpers import _hz2mel, _mel2hz, _pad_trim
+from .._standard import _reconstruct_framed_signal, _get_framed_signal
+from .._general_helpers import (
+    _hz2mel,
+    _mel2hz,
+    _pad_trim,
+    __yw_ar_estimation,
+    __burg_ar_estimation,
+)
 from ..room_acoustics._room_acoustics import _find_ir_start
 from ..transforms._transforms import (
     _pitch2frequency,
@@ -1190,6 +1196,7 @@ def lpc(
     signal: Signal,
     order: int,
     window_length_samples: int,
+    synthesize_encoded_signal: bool = False,
     method_ar: str = "burg",
     hop_size_samples: int | None = None,
     window_type: str = "hann",
@@ -1206,6 +1213,9 @@ def lpc(
         Order of the coefficients to use.
     window_length_samples : int
         Window length in samples.
+    synthesize_encoded_signal : bool, optional
+        When True, the encoded signal is synthesized and returned. Pass False
+        to avoid this computation. Default: False.
     method_ar : str, {"yw", "burg"}, optional
         Method to use for obtaining the LP coefficients. Choose from "yw"
         (Yule-Walker) or "burg". Default: "burg".
@@ -1224,6 +1234,43 @@ def lpc(
         Variances (quadratic) of the source with shape (time window, channel).
     reconstructed_signal : Signal
         Signal reconstructed from the estimated LP coefficients using white
-        noise as the source.
+        noise as the source. This is only returned if
+        `synthesize_encoded_signal=True`.
 
     """
+    method_ar = method_ar.lower()
+    assert method_ar in ("burg", "yw"), "AR method is not supported"
+
+    # Get windowed signal
+    if hop_size_samples is None:
+        hop_size_samples = window_length_samples // 2
+    td = _get_framed_signal(
+        signal.time_data, window_length_samples, hop_size_samples, True
+    )
+    window = get_window(window_type, window_length_samples, fftbins=True)
+    td *= window[:, None, None]
+
+    a, var = (
+        __burg_ar_estimation(td, order)
+        if method_ar == "burg"
+        else __yw_ar_estimation(td, order)
+    )
+
+    if not synthesize_encoded_signal:
+        return a, var
+
+    synthesized_signal = np.zeros_like(td)
+    for channel in range(td.shape[2]):
+        for n_window in range(td.shape[1]):
+            source = np.random.normal(
+                0.0, var[n_window, channel] ** 0.5, td.shape[0]
+            )
+            synthesized_signal[:, n_window, channel] = lfilter(
+                [1.0],
+                a[:, n_window, channel],
+                source,
+            )
+    synthesized_signal = _reconstruct_framed_signal(
+        synthesized_signal, hop_size_samples, window, len(signal)
+    )
+    return Signal.from_time_data(synthesized_signal, signal.sampling_rate_hz)

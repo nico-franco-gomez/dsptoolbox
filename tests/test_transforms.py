@@ -197,3 +197,12 @@ class TestTransformsModule:
         dsp.FilterBank([i, ii]).plot_magnitude(length_samples=2**14)
         dsp.transforms.warp_filter(i, 0.6)
         dsp.plots.show()
+
+    def test_lpc(self):
+        # Only functionality
+        speech = dsp.resample(self.speech, 8000)
+        dsp.transforms.lpc(speech, 10, 1024, False, "burg", 512)
+        dsp.transforms.lpc(speech, 10, 1024, True, "burg", 512)
+
+        dsp.transforms.lpc(speech, 10, 1024, False, "yw", 512)
+        dsp.transforms.lpc(speech, 10, 1024, True, "yw", 512)

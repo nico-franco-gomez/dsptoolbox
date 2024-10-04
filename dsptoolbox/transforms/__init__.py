@@ -39,6 +39,7 @@ from .transforms import (
     laguerre,
     warp,
     warp_filter,
+    lpc,
 )
 
 __all__ = [
@@ -57,4 +58,5 @@ __all__ = [
     "laguerre",
     "warp",
     "warp_filter",
+    "lpc",
 ]
