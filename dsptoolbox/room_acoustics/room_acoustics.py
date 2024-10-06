@@ -3,7 +3,7 @@ High-level methods for room acoustics functions
 """
 
 import numpy as np
-from scipy.signal import find_peaks, convolve, oaconvolve
+from scipy.signal import find_peaks, oaconvolve
 from numpy.typing import NDArray
 
 from ..classes import Signal, MultiBandSignal, Filter, ImpulseResponse
@@ -260,14 +260,9 @@ def convolve_rir_on_signal(
         rir.sampling_rate_hz == signal.sampling_rate_hz
     ), "The sampling rates do not match"
 
-    if len(signal) > 10 * len(rir):
-        new_time_data = oaconvolve(
-            signal.time_data, rir.time_data, axes=0, mode="full"
-        )
-    else:
-        new_time_data = convolve(
-            signal.time_data, rir.time_data, mode="full", method="auto"
-        )
+    new_time_data = oaconvolve(
+        signal.time_data, rir.time_data, axes=0, mode="full"
+    )
 
     if keep_length:
         new_time_data = new_time_data[: len(signal), ...]

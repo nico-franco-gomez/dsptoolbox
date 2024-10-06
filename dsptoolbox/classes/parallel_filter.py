@@ -282,9 +282,9 @@ class ParallelFilter(RealtimeFilter):
         td = signal.time_data
 
         if self.n_fir > 0:
-            output = sig.convolve(td, self.__fir_coefficients[:, None])[
-                : td.shape[0], ...
-            ]
+            output = sig.oaconvolve(
+                td, self.__fir_coefficients[:, None], axes=0
+            )[: td.shape[0], ...]
         else:
             output = np.zeros_like(td)
 
