@@ -216,7 +216,7 @@ class ParallelFilter(RealtimeFilter):
         # Solve "real" optimization problem
         spectrum = spectrum_channels[:, 0]
         spectrum = np.hstack([np.real(spectrum), np.imag(spectrum)])
-        solution = lstsq(M, spectrum)[0]
+        solution = lstsq(M, spectrum, overwrite_a=True, overwrite_b=True)[0]
 
         # Extract IIR and FIR solution and put into SOS
         for ind in range(0, n_sos * 3, 3):

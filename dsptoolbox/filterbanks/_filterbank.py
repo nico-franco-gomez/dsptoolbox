@@ -1637,12 +1637,8 @@ def __ma_parameters(
     return lstsq(
         A,
         target_sp,
-        # sv below 1% of largest sv are ignored (faster without much
-        # accuracy loss)
-        cond=0.01,
         overwrite_a=True,
         overwrite_b=True,
-        check_finite=False,
     )[0]
 
 
