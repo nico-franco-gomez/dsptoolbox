@@ -42,25 +42,22 @@ class GroupDelayDesigner:
 
     def set_parameters(
         self,
-        delay_increase_percent: float = 100.0,
+        delay_increase_ms: float = 0.0,
     ):
         """Set parameters for the FIR filter.
 
         Parameters
         ----------
-        delay_increase_percent : float, optional
-            This is the increase (in percentage) in delay to the current
-            maximum group delay. Increasing this improves the quality of the
-            designed filter but also makes it longer. Passing a value of 100
-            means that the total group delay will be 2 times larger than the
-            longest group delay. Default: 100.
+        delay_increase_ms : float, optional
+            This is an overall increase in delay to the current group delay (in
+            milliseconds). Increasing this improves the quality of the
+            designed filter but also makes it longer. Default: 0.
 
         """
         assert (
-            delay_increase_percent >= 0
+            delay_increase_ms >= 0
         ), "Delay increase must be larger than zero"
-        self.group_delay_increase_factor = 1 + delay_increase_percent / 100
-        self.total_length_factor = 1.0
+        self.group_delay_increase_ms = delay_increase_ms
 
     def _set_target_group_delay_s(
         self, target_group_delay_s: NDArray[np.float64]
@@ -87,9 +84,7 @@ class GroupDelayDesigner:
     def _get_unscaled_preprocessed_group_delay(self) -> NDArray[np.float64]:
         """Obtain reprocessed group delay for designing the FIR filter."""
         return (
-            self.target_group_delay_s
-            + np.max(self.target_group_delay_s)
-            * self.group_delay_increase_factor
+            self.target_group_delay_s + self.group_delay_increase_ms / 1e3
         ) / self._get_group_delay_factor_in_seconds()
 
     def _get_group_delay_factor_in_samples(self) -> float:
@@ -200,6 +195,27 @@ class PhaseLinearizer(GroupDelayDesigner):
             self._get_target_group_delay_in_seconds_from_phase()
         )
         self._set_target_group_delay_s(target_group_delay_s)
+
+    def set_parameters(
+        self,
+        delay_increase_percent: float = 100.0,
+    ):
+        """Set parameters for the FIR filter.
+
+        Parameters
+        ----------
+        delay_increase_percent : float, optional
+            This is the increase (in percentage) in delay to the current
+            maximum group delay. Increasing this improves the quality of the
+            designed filter but also makes it longer. Passing a value of 100
+            means that the total group delay will be 2 times larger than the
+            longest group delay. Default: 100.
+
+        """
+        assert (
+            delay_increase_percent >= 0
+        ), "Delay increase must be larger than zero"
+        self.group_delay_increase_factor = 1 + delay_increase_percent / 100
 
     def __get_group_delay(self, phase_response) -> NDArray[np.float64]:
         """Return the unscaled group delay from the phase response."""
