@@ -856,6 +856,12 @@ def _get_framed_signal(
     time_data_framed : NDArray[np.float64]
         Framed signal with shape (time samples, frames, channels).
 
+    Notes
+    -----
+    - Perfect reconstruction from this representation can be achieved when the
+      signal is zero-padded at the edges where the window does not yet meet
+      the COLA condition. Otherwise, these sections might be distorted.
+
     """
     assert time_data.ndim == 2, "Time data should have exactly two dimensions."
     # Force casting to integers
@@ -899,7 +905,7 @@ def _reconstruct_framed_signal(
     Parameters
     ----------
     td_framed : NDArray[np.float64]
-        Framed signal with shape (time samples, frame, channel).
+        Framed signal with shape (time samples, frames, channels).
     step_size : int
         Step size in samples between frames (also known as hop length).
     window : str, NDArray[np.float64], optional
@@ -918,7 +924,7 @@ def _reconstruct_framed_signal(
     Returns
     -------
     td : NDArray[np.float64]
-        Reconstructed signal.
+        Reconstructed signal with shape (time samples, channels).
 
     """
     assert (
