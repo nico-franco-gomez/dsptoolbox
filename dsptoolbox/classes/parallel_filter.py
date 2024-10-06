@@ -50,7 +50,7 @@ class ParallelFilter(RealtimeFilter):
         - The frequency resolution of the filter bank is given by the set of
           poles.
         - Methods for finding optimal poles are reviewed in depth in [1].
-        - It was noticed that delaying the FIR coefficients can be advantageous
+        - It was noticed that delaying the IIR coefficients can be advantageous
           in terms of quality of the approximation.
 
         References
