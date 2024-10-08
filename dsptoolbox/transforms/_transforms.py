@@ -3,6 +3,7 @@ Backend for special module
 """
 
 import numpy as np
+import numba as nb
 from numpy.typing import NDArray
 from scipy.signal import get_window, lfilter
 
@@ -469,3 +470,25 @@ def _get_warping_factor(warping_factor: float | str, fs_hz: int) -> float:
     else:
         raise TypeError("Invalid type for warping factor")
     return warping_factor
+
+
+@nb.jit(
+    nb.types.Array(nb.complex128, 2, "C")(
+        nb.types.Array(nb.complex128, 2, "C"),
+        nb.types.Array(nb.complex128, 1, "C"),
+        nb.types.Array(nb.complex128, 1, "C"),
+        nb.types.Array(nb.complex128, 2, "C"),
+    ),
+    parallel=True,
+)
+def _dft_backend_parallel(
+    time_data: NDArray[np.complex128],
+    freqs_normalized: NDArray[np.complex128],
+    dft_factor: NDArray[np.complex128],
+    spectrum: NDArray[np.complex128],
+):
+    for ind in nb.prange(len(freqs_normalized)):
+        spectrum[ind, :] = (
+            np.exp(dft_factor * freqs_normalized[ind]) @ time_data
+        )
+    return spectrum

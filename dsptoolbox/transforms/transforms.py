@@ -24,6 +24,7 @@ from ..transforms._transforms import (
     _get_kernels_vqt,
     _warp_time_series,
     _get_warping_factor,
+    _dft_backend_parallel,
 )
 from ..tools import to_db
 
@@ -1280,3 +1281,45 @@ def lpc(
         synthesized_signal, hop_size_samples, window, len(signal)
     )
     return Signal.from_time_data(synthesized_signal, signal.sampling_rate_hz)
+
+
+def dft(signal: Signal, frequency_vector_hz: NDArray[np.float64]):
+    """DFT for any set of frequencies. This is a direct computation of the DFT,
+    so it is significantly slower than an FFT, but it can be used to obtain any
+    desired frequency resolution.
+
+    Parameters
+    ----------
+    signal : Signal
+        Signal for which to compute the spectrum.
+    frequency_vector_hz : NDArray[np.float64]
+        Frequency vector to query.
+
+    Returns
+    -------
+    spectrum : NDArray[np.complex128]
+        Spectrum with the defined frequency resolution. It has shape
+        (frequency bin, channel).
+
+    Notes
+    -----
+    - This function uses a parallelized computation of the DFT bins with numba,
+      its performance might differ significantly from one computer to the
+      other.
+    - Frequency resolution different than linear can be obtained from the FFT
+      via warping, FFTLog (fast hankel transform) or the Chirp-Z transform.
+      None of these transforms allow for a completely arbitrary spacing of the
+      frequency bins.
+
+    """
+    time_data = signal.time_data.astype(np.complex128)
+    f_normalized = (
+        frequency_vector_hz * (time_data.shape[0] / signal.sampling_rate_hz)
+    ).astype(np.complex128)
+    dft_factor = (
+        -2j * np.pi * np.linspace(0.0, 1.0, time_data.shape[0], endpoint=False)
+    )
+    spectrum = np.zeros(
+        (len(frequency_vector_hz), time_data.shape[1]), dtype=np.complex128
+    )
+    return _dft_backend_parallel(time_data, f_normalized, dft_factor, spectrum)

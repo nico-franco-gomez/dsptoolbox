@@ -6,6 +6,7 @@ requires = [
     "sounddevice>=0.4",
     "matplotlib>=3.8",
     "seaborn>=0.12",
+    "numba>=0.60",
     "hatchling",
 ]
 build-backend = "hatchling.build"
@@ -30,6 +31,7 @@ dependencies = [
   "matplotlib",
   "numpy",
   "scipy",
+  "numba",
   "seaborn",
   "soundfile",
   "sounddevice",
