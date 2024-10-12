@@ -2003,4 +2003,4 @@ def __burg_ar_estimation(
         fwd_pred_error = fwd_pred_error[1:]
         bwd_pred_error = bwd_pred_error[:-1]
 
-    return ar_coeffs, den[0]
+    return ar_coeffs.squeeze() if onedim else ar_coeffs, den[0]
