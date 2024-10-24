@@ -15,7 +15,6 @@ from scipy.signal import (
     sosfiltfilt,
     bilinear,
     tf2sos,
-    correlate,
     freqz,
 )
 from scipy.linalg import lstsq
@@ -32,7 +31,7 @@ from ..generators import dirac
 from ..plots import general_plot
 from .._general_helpers import (
     _get_normalized_spectrum,
-    __levison_durbin_recursion,
+    __yw_ar_estimation,
     __burg_ar_estimation,
 )
 from .._standard import _group_delay_direct
@@ -1600,39 +1599,6 @@ def __get_matched_eq_helpers(omega0, q):
     return np.array([1, a1, a2]), A, phi
 
 
-def __yw_ar_estimation(
-    time_data: NDArray[np.float64], order: int
-) -> tuple[NDArray[np.float64], float]:
-    """Compute the autoregressive coefficients for an AR process using the
-    Levinson-Durbin recursion to solve the Yule-Walker equations. This is done
-    from the biased autocorrelation.
-
-    Parameters
-    ----------
-    time_data : NDArray[np.float64]
-        Time data (only single-channel signal is supported).
-    order : int
-        Recursion order.
-
-    Returns
-    -------
-    NDArray[np.float64]
-        Reflection coefficients with shape (coefficient).
-    float
-        Variance of the remaining error.
-
-    """
-    assert (
-        time_data.ndim == 1
-    ), "This function only accepts a single-channel signal"
-    # Biased autocorrelation (only positive lags)
-    autocorrelation = correlate(time_data, time_data, "full")[
-        len(time_data) - 1 : len(time_data) + order
-    ] / len(time_data)
-
-    return __levison_durbin_recursion(autocorrelation)
-
-
 def __ma_parameters(
     time_data: NDArray[np.float64],
     order: int,
@@ -1671,12 +1637,8 @@ def __ma_parameters(
     return lstsq(
         A,
         target_sp,
-        # sv below 1% of largest sv are ignored (faster without much
-        # accuracy loss)
-        cond=0.01,
         overwrite_a=True,
         overwrite_b=True,
-        check_finite=False,
     )[0]
 
 

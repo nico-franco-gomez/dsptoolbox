@@ -1292,6 +1292,13 @@ class TestFilterTopologies:
         assert np.any(filter.coefficients_complex_poles != 1.0)
         assert np.any(filter.coefficients_real_poles != 1.0)
 
+    def test_exponential_averager(self):
+        # Only functionality
+        n = np.random.normal(0, 0.1, 200)
+        f = dsp.filterbanks.ExponentialAverageFilter(1e-3, 1e-3, self.fs_hz)
+        for i in n:
+            f.process_sample(i, 0)
+
     def test_parallel_filterbank(self):
         # Only functionality
         rir = dsp.ImpulseResponse(os.path.join("examples", "data", "rir.wav"))

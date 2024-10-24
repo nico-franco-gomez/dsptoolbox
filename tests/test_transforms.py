@@ -193,7 +193,25 @@ class TestTransformsModule:
         i = dsp.Filter.iir_design(
             3, 100.0, "highpass", "butter", sampling_rate_hz=24000
         )
-        ii = dsp.transforms.warp_filter(i, -0.6)
-        dsp.FilterBank([i, ii]).plot_magnitude(length_samples=2**14)
+        dsp.transforms.warp_filter(i, -0.6)
+        # dsp.FilterBank([i, ii]).plot_magnitude(length_samples=2**14)
         dsp.transforms.warp_filter(i, 0.6)
-        dsp.plots.show()
+        # dsp.plots.show()
+
+    def test_lpc(self):
+        # Only functionality
+        speech = dsp.resample(self.speech, 8000)
+        dsp.transforms.lpc(speech, 10, 1024, False, "burg", 512)
+        dsp.transforms.lpc(speech, 10, 1024, True, "burg", 512)
+
+        dsp.transforms.lpc(speech, 10, 1024, False, "yw", 512)
+        dsp.transforms.lpc(speech, 10, 1024, True, "yw", 512)
+
+    def test_dft(self):
+        s = dsp.pad_trim(self.speech, 20_000)
+        s.set_spectrum_parameters("standard")
+        f, spectrum = s.get_spectrum()
+
+        select = slice(20, 40)
+        dft = dsp.transforms.dft(s, f[select])
+        np.testing.assert_allclose(dft, spectrum[select, ...])

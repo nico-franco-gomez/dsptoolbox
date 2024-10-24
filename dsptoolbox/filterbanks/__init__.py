@@ -34,6 +34,7 @@ Other:
 - `ParallelFilter()`: Find the (least-squares) optimal linear combination of
   parallel SOS to approximate an IR.
 - `KautzFilter()`: Kautz filters with an orthonormal pole basis.
+- `ExponentialAverageFilter()`.
 - `FilterChain()`: Filter structure for applying all other filters
   sequentially.
 - `convert_into_lattice_filter()`: Turns a conventional filter into its
@@ -67,6 +68,7 @@ from ..classes.iir_filter_realtime import IIRFilter
 from ..classes.fir_filter_realtime import FIRFilter
 from ..classes.sv_filter import StateVariableFilter
 from ..classes.kautz_filter import KautzFilter
+from ..classes.exponential_average_filter import ExponentialAverageFilter
 from ..classes.filter_chain import FilterChain
 from ..classes.group_delay_designer_phase_linearizer import (
     PhaseLinearizer,
@@ -88,6 +90,7 @@ __all__ = [
     "FIRFilter",
     "ParallelFilter",
     "KautzFilter",
+    "ExponentialAverageFilter",
     "FilterChain",
     "GroupDelayDesigner",
     "StateVariableFilter",

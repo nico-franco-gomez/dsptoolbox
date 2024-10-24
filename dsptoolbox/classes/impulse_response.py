@@ -278,6 +278,7 @@ class ImpulseResponse(Signal):
                 rf"$\gamma^2$ Coherence {n}"
                 for n in range(self.number_of_channels)
             ],
+            range_x=[20, 20e3],
             xlabels="Frequency / Hz",
             range_y=[-0.1, 1.1],
             returns=True,

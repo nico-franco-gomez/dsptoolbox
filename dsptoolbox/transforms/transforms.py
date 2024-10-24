@@ -7,8 +7,14 @@ from ..classes.filter import Filter
 from ..classes.impulse_response import ImpulseResponse
 from ..classes.multibandsignal import MultiBandSignal
 from ..plots import general_matrix_plot
-from .._standard import _reconstruct_framed_signal
-from .._general_helpers import _hz2mel, _mel2hz, _pad_trim
+from .._standard import _reconstruct_framed_signal, _get_framed_signal
+from .._general_helpers import (
+    _hz2mel,
+    _mel2hz,
+    _pad_trim,
+    __yw_ar_estimation,
+    __burg_ar_estimation,
+)
 from ..room_acoustics._room_acoustics import _find_ir_start
 from ..transforms._transforms import (
     _pitch2frequency,
@@ -18,6 +24,7 @@ from ..transforms._transforms import (
     _get_kernels_vqt,
     _warp_time_series,
     _get_warping_factor,
+    _dft_backend,
 )
 from ..tools import to_db
 
@@ -1029,8 +1036,8 @@ def warp(
         Warping factor. It has to be in the range ]-1; 1[. If a string is
         provided, warping the frequency axis to (or from) an approximation
         of the psychoacoustically motivated Bark or ERB scales is performed
-        according to [4]. Pass "-" in the end for the dewarping (backwards
-        step) stage.
+        according to [4]. Pass "-" in the end for the dewarping (backwards)
+        stage.
     shift_ir : bool
         Since the warping of an IR is not shift-invariant (see [2]), it is
         recommended to place the start of the IR at the first index. When
@@ -1184,3 +1191,135 @@ def warp_filter(filter: Filter, warping_factor: float) -> Filter:
     elif len(z) > len(p):
         p = np.hstack([p, [warping_factor] * (len(z) - len(p))])
     return Filter.from_zpk(z, p, k, filter.sampling_rate_hz)
+
+
+def lpc(
+    signal: Signal,
+    order: int,
+    window_length_samples: int,
+    synthesize_encoded_signal: bool = False,
+    method_ar: str = "burg",
+    hop_size_samples: int | None = None,
+    window_type: str = "hann",
+):
+    """Encode an input signal into its linear-predictive coding coefficients.
+    This transforms the signal into source-filter representation and works
+    best with inputs that can be modeled through the all-pole model.
+
+    Parameters
+    ----------
+    signal : Signal
+        Input to encode.
+    order : int
+        Order of the coefficients to use.
+    window_length_samples : int
+        Window length in samples.
+    synthesize_encoded_signal : bool, optional
+        When True, the encoded signal is synthesized and returned. To this end,
+        white noise is always used as source. Pass False to avoid this
+        computation. Default: False.
+    method_ar : str, {"yw", "burg"}, optional
+        Method to use for obtaining the LP coefficients. Choose from "yw"
+        (Yule-Walker) or "burg". Default: "burg".
+    hop_size_samples : int, None, optional
+        Hop size to use from window to window. If None is passed, a hop size
+        corresponding to 50% of the window length will be used. Default: None.
+    window_type : str, optional
+        Window type to use. It is recommended that a window type that satifies
+        the COLA-condition with length and hop size is chosen. Default: "hann".
+
+    Returns
+    -------
+    a_coefficients : NDArray[np.float64]
+        LP coefficients with shape (time window, coefficient, channel).
+    variances : NDArray[np.float64]
+        Variances (quadratic) of the source with shape (time window, channel).
+    reconstructed_signal : Signal
+        Signal reconstructed from the estimated LP coefficients using white
+        noise as the source. This is only returned if
+        `synthesize_encoded_signal=True`.
+
+    References
+    ----------
+    - https://en.wikipedia.org/wiki/Linear_predictive_coding
+    - https://ccrma.stanford.edu/~hskim08/lpc/
+
+    """
+    method_ar = method_ar.lower()
+    assert method_ar in ("burg", "yw"), "AR method is not supported"
+
+    # Get windowed signal
+    if hop_size_samples is None:
+        hop_size_samples = window_length_samples // 2
+    td = _get_framed_signal(
+        signal.time_data, window_length_samples, hop_size_samples, True
+    )
+    window = get_window(window_type, window_length_samples, fftbins=True)
+    td *= window[:, None, None]
+
+    a, var = (
+        __burg_ar_estimation(td, order)
+        if method_ar == "burg"
+        else __yw_ar_estimation(td, order)
+    )
+
+    if not synthesize_encoded_signal:
+        return a, var
+
+    synthesized_signal = np.zeros_like(td)
+    for channel in range(td.shape[2]):
+        for n_window in range(td.shape[1]):
+            source = np.random.normal(
+                0.0, var[n_window, channel] ** 0.5, td.shape[0]
+            )
+            synthesized_signal[:, n_window, channel] = lfilter(
+                [1.0],
+                a[:, n_window, channel],
+                source,
+            )
+    synthesized_signal = _reconstruct_framed_signal(
+        synthesized_signal, hop_size_samples, window, len(signal)
+    )
+    return Signal.from_time_data(synthesized_signal, signal.sampling_rate_hz)
+
+
+def dft(signal: Signal, frequency_vector_hz: NDArray[np.float64]):
+    """DFT for any set of frequencies. This is a direct computation of the DFT,
+    so it is significantly slower than an FFT, but it can be used to obtain any
+    desired frequency resolution.
+
+    Parameters
+    ----------
+    signal : Signal
+        Signal for which to compute the spectrum.
+    frequency_vector_hz : NDArray[np.float64]
+        Frequency vector to query.
+
+    Returns
+    -------
+    spectrum : NDArray[np.complex128]
+        Spectrum with the defined frequency resolution. It has shape
+        (frequency bin, channel).
+
+    Notes
+    -----
+    - This function uses a parallelized computation of the DFT bins with numba,
+      its performance might differ significantly from one computer to the
+      other.
+    - Frequency resolution different than linear can be obtained from the FFT
+      via warping, FFTLog (fast hankel transform) or the Chirp-Z transform.
+      None of these transforms allow for a completely arbitrary spacing of the
+      frequency bins.
+
+    """
+    time_data = signal.time_data.astype(np.complex128)
+    f_normalized = (
+        frequency_vector_hz * (time_data.shape[0] / signal.sampling_rate_hz)
+    ).astype(np.complex128)
+    dft_factor = (
+        -2j * np.pi * np.linspace(0.0, 1.0, time_data.shape[0], endpoint=False)
+    )
+    spectrum = np.zeros(
+        (len(frequency_vector_hz), time_data.shape[1]), dtype=np.complex128
+    )
+    return _dft_backend(time_data, f_normalized, dft_factor, spectrum)

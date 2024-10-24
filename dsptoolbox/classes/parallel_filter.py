@@ -50,7 +50,7 @@ class ParallelFilter(RealtimeFilter):
         - The frequency resolution of the filter bank is given by the set of
           poles.
         - Methods for finding optimal poles are reviewed in depth in [1].
-        - It was noticed that delaying the FIR coefficients can be advantageous
+        - It was noticed that delaying the IIR coefficients can be advantageous
           in terms of quality of the approximation.
 
         References
@@ -168,32 +168,41 @@ class ParallelFilter(RealtimeFilter):
         n_sos = self.__sos.shape[0]
 
         # ========== Create model matrix
-        n_parameters = n_sos * 2 + self.n_fir
+        n_parameters = n_sos * 3 + self.n_fir
         L = len(freqs)
         M = np.zeros((L, n_parameters), dtype=np.complex128)
 
-        for ind in range(0, n_sos * 2, 2):
+        for ind in range(0, n_sos * 3, 3):
             M[:, ind] = sig.sosfreqz(
-                self.__sos[ind // 2, :][None, :], freqs, fs=fs_hz
+                self.__sos[ind // 3, :][None, :], freqs, fs=fs_hz
             )[1]
 
             # Delayed by one sample
-            sos_delayed = self.__sos[ind // 2, :].copy()
+            sos_delayed = self.__sos[ind // 3, :].copy()
             sos_delayed[0] = 0.0
             sos_delayed[1] = 1.0
             M[:, ind + 1] = sig.sosfreqz(
                 sos_delayed[None, :], freqs, fs=fs_hz
             )[1]
 
+            # Delayed by two samples
+            sos_delayed = self.__sos[ind // 3, :].copy()
+            sos_delayed[0] = 0.0
+            sos_delayed[1] = 0.0
+            sos_delayed[2] = 1.0
+            M[:, ind + 2] = sig.sosfreqz(
+                sos_delayed[None, :], freqs, fs=fs_hz
+            )[1]
+
         # Apply IIR delay to SOS sections
         if self.delay_iir_samples > 0:
-            M[:, : n_sos * 2] *= sig.freqz(
+            M[:, : n_sos * 3] *= sig.freqz(
                 [0.0] * self.delay_iir_samples + [1.0], [1.0], freqs, fs=fs_hz
             )[1][:, None]
 
         for n in range(self.n_fir):
             # Put impulse at index n for the FIR part
-            M[:, n_sos * 2 + n] = sig.freqz(
+            M[:, n_sos * 3 + n] = sig.freqz(
                 np.hstack([[0.0] * (n * self.fir_offset_samples), [1.0]]),
                 [1.0],
                 freqs,
@@ -207,14 +216,15 @@ class ParallelFilter(RealtimeFilter):
         # Solve "real" optimization problem
         spectrum = spectrum_channels[:, 0]
         spectrum = np.hstack([np.real(spectrum), np.imag(spectrum)])
-        solution = lstsq(M, spectrum)[0]
+        solution = lstsq(M, spectrum, overwrite_a=True, overwrite_b=True)[0]
 
         # Extract IIR and FIR solution and put into SOS
-        for ind in range(0, n_sos * 2, 2):
-            self.__sos[ind // 2, 0] = solution[ind]
-            self.__sos[ind // 2, 1] = solution[ind + 1]
+        for ind in range(0, n_sos * 3, 3):
+            self.__sos[ind // 3, 0] = solution[ind]
+            self.__sos[ind // 3, 1] = solution[ind + 1]
+            self.__sos[ind // 3, 2] = solution[ind + 2]
 
-        self.__fir_coefficients = solution[n_sos * 2 :]
+        self.__fir_coefficients = solution[n_sos * 3 :]
 
         # Put delays in between the fir coefficients
         if self.fir_offset_samples > 1 and self.n_fir > 1:
@@ -282,9 +292,9 @@ class ParallelFilter(RealtimeFilter):
         td = signal.time_data
 
         if self.n_fir > 0:
-            output = sig.convolve(td, self.__fir_coefficients[:, None])[
-                : td.shape[0], ...
-            ]
+            output = sig.oaconvolve(
+                td, self.__fir_coefficients[:, None], axes=0
+            )[: td.shape[0], ...]
         else:
             output = np.zeros_like(td)
 

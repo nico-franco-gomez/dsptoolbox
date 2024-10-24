@@ -10,7 +10,12 @@ under a same category. These functions act on the custom classes of
 import numpy as np
 from numpy.typing import NDArray
 import pickle
-from scipy.signal import resample_poly, convolve, hilbert, bilinear_zpk
+from scipy.signal import (
+    resample_poly,
+    hilbert,
+    bilinear_zpk,
+    oaconvolve,
+)
 
 from fractions import Fraction
 from warnings import warn
@@ -648,10 +653,11 @@ def fractional_delay(
         )
 
         # Delay channels
-        new_time_data[:, channels] = convolve(
+        new_time_data[:, channels] = oaconvolve(
             sig.time_data[:, channels],
             frac_delay_filter[..., None],
             mode="full",
+            axes=0,
         )
 
         # Handle delayed and undelayed channels
@@ -1119,10 +1125,11 @@ def envelope(
             window_length_samples > 0
         ), "Window length must be more than 1 sample"
         rms_vec = signal.time_data
-        rms_vec = convolve(
+        rms_vec = oaconvolve(
             rms_vec**2,
             np.ones(window_length_samples)[..., None] / window_length_samples,
             mode="full",
+            axes=0,
         )[: len(rms_vec), ...]
         rms_vec **= 0.5
         return rms_vec

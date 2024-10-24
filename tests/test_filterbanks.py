@@ -177,7 +177,7 @@ class TestFilterbanksModule:
         _, gd = dsp.transfer_functions.group_delay(ir, method="matlab")
         gd = np.max(gd) * 2 - gd
         pl = dsp.filterbanks.GroupDelayDesigner(gd.squeeze(), len(ir), fs_hz)
-        pl.set_parameters(200)
+        pl.set_parameters(1.0)
         pl.get_filter()
 
         # ir = dsp.pad_trim(pl.get_filter_as_ir(), 2**15)

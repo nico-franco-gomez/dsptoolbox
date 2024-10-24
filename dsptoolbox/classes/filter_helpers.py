@@ -546,7 +546,7 @@ def _lfilter_fir(
     assert x.ndim == 2, "Filtering only works on 2D-arrays"
 
     # Convolving
-    y = sig.convolve(x, b[..., None], mode="full")
+    y = sig.oaconvolve(x, b[..., None], mode="full", axes=0)
 
     # Use zi's and take zf's
     if zi is not None:
@@ -612,8 +612,8 @@ def _filter_and_downsample(
         for ch in range(poly.shape[2]):
             temp = np.zeros(new_time_data.shape[0])
             for n in range(poly.shape[1]):
-                temp += sig.convolve(
-                    poly[:, n, ch], b_poly[:, n, 0], mode="full"
+                temp += sig.oaconvolve(
+                    poly[:, n, ch], b_poly[:, n, 0], mode="full", axes=0
                 )
             new_time_data[:, ch] = temp
         # Take correct values from vector
@@ -689,8 +689,8 @@ def _filter_and_upsample(
         # a better way to do it without the loops...
         for ch in range(time_data.shape[1]):
             for ind in range(up_factor):
-                new_time_data[ind::up_factor, ch] = sig.convolve(
-                    time_data[:, ch], b_poly[:, ind, 0], mode="full"
+                new_time_data[ind::up_factor, ch] = sig.oaconvolve(
+                    time_data[:, ch], b_poly[:, ind, 0], mode="full", axes=0
                 )
 
         # Take right samples from filtered signal

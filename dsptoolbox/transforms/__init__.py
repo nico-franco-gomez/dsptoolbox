@@ -20,6 +20,8 @@ This module contains signal transforms.
 - `laguerre()` (Frequency-warping by means of the Laguerre transform)
 - `warp()` (Convert signal to/from warped domain)
 - `warp_filter()` (Warp a filter transforming its poles and zeros)
+- `lpc()` (linear-predictive coding)
+- `dft()` (discrete fourier transform for arbitrary frequency resolution)
 
 """
 
@@ -39,6 +41,8 @@ from .transforms import (
     laguerre,
     warp,
     warp_filter,
+    lpc,
+    dft,
 )
 
 __all__ = [
@@ -57,4 +61,6 @@ __all__ = [
     "laguerre",
     "warp",
     "warp_filter",
+    "lpc",
+    "dft",
 ]

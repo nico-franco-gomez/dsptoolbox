@@ -14,6 +14,32 @@ adheres to `Semantic Versioning <http://semver.org/spec/v2.0.0.html>`_.
 - Validation for results from tests in every module (so far many tests are
   only regarding functionality)
 
+`0.4.7 <https://pypi.org/project/dsptoolbox/0.4.7>`_ - 
+---------------------
+Added
+~~~~~
+- new `dft` in ``transforms`` for computing DFTs with any resolution
+- `lpc` in ``transforms``
+- `ExponentialAverageFilter` in ``filterbanks``
+- support for python 3.13
+
+Misc
+~~~~
+- improved precision of parallel filter by adding a third feed-forward
+  coefficient to least-squares approximation
+- replaced convolve with oaconvolve in multiple places for optimal handling
+  with different signal lengths
+- made framed signal methods available in ``dsptoolbox.tools``
+- general doc corrections and additions
+- added numba as new dependency for parallelizing some functions. It will be
+  installed and used automatically if the current python environment is 3.12 or
+  below. Support for numba and python 3.13 is not yet available.
+
+Bugfix
+~~~~~~
+- fixed problem with group delay designer
+- fixed a problem with array dimensions in autoregressive coefficients estimation
+
 `0.4.6 <https://pypi.org/project/dsptoolbox/0.4.6>`_ - 
 ---------------------
 

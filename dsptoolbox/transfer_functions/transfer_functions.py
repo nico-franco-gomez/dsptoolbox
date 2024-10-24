@@ -730,13 +730,10 @@ def min_phase_ir(
     method: str = "real cepstrum",
     padding_factor: int = 8,
 ) -> ImpulseResponse:
-    """Returns same IR with minimum phase. Three methods are available for
+    """Returns same IR with minimum phase. Two methods are available for
     computing the minimum phase version of the IR: `'real cepstrum'` (using
     filtering the real-cepstral domain) and `'equiripple'` (for
     symmetric IR, uses `scipy.signal.minimum_phase`).
-
-    For general cases, `'real cepstrum'` and `'log hilbert'` deliver similar
-    results.
 
     Parameters
     ----------
