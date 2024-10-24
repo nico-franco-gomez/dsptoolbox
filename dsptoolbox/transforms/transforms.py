@@ -24,7 +24,7 @@ from ..transforms._transforms import (
     _get_kernels_vqt,
     _warp_time_series,
     _get_warping_factor,
-    _dft_backend_parallel,
+    _dft_backend,
 )
 from ..tools import to_db
 
@@ -1322,4 +1322,4 @@ def dft(signal: Signal, frequency_vector_hz: NDArray[np.float64]):
     spectrum = np.zeros(
         (len(frequency_vector_hz), time_data.shape[1]), dtype=np.complex128
     )
-    return _dft_backend_parallel(time_data, f_normalized, dft_factor, spectrum)
+    return _dft_backend(time_data, f_normalized, dft_factor, spectrum)

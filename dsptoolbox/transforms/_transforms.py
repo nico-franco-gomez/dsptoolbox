@@ -483,7 +483,7 @@ try:
         ),
         parallel=True,
     )
-    def _dft_backend_parallel(
+    def _dft_backend(
         time_data: NDArray[np.complex128],
         freqs_normalized: NDArray[np.complex128],
         dft_factor: NDArray[np.complex128],
@@ -498,7 +498,7 @@ try:
 except ModuleNotFoundError as _:
     print("Numba is not installed: ", _)
 
-    def _dft_backend_parallel(
+    def _dft_backend(
         time_data: NDArray[np.complex128],
         freqs_normalized: NDArray[np.complex128],
         dft_factor: NDArray[np.complex128],
