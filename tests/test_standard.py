@@ -375,24 +375,25 @@ class TestStandardModule:
         dsp.dither(self.audio_multi, truncate=False)
 
     def test_apply_gain(self):
+        some_signal = self.audio_multi.copy()
         # Signal
-        audio_multi = dsp.apply_gain(self.audio_multi, 5)
+        audio_multi = dsp.apply_gain(some_signal, 5)
         np.testing.assert_array_equal(
             audio_multi.time_data,
-            self.audio_multi.time_data * dsp.tools.from_db(5, True),
+            some_signal.time_data * dsp.tools.from_db(5, True),
         )
 
-        gains = np.linspace(1, 5, self.audio_multi.number_of_channels)
-        audio_multi = dsp.apply_gain(self.audio_multi, gains)
+        gains = np.linspace(1, 5, some_signal.number_of_channels)
+        audio_multi = dsp.apply_gain(some_signal, gains)
         np.testing.assert_array_equal(
             audio_multi.time_data,
-            self.audio_multi.time_data * dsp.tools.from_db(gains, True),
+            some_signal.time_data * dsp.tools.from_db(gains, True),
         )
 
-        audio_multi = dsp.apply_gain(self.audio_multi, gains)
+        audio_multi = dsp.apply_gain(some_signal, gains)
         np.testing.assert_array_equal(
             audio_multi.time_data,
-            self.audio_multi.time_data * dsp.tools.from_db(gains, True),
+            some_signal.time_data * dsp.tools.from_db(gains, True),
         )
 
         # MultiBandSignal
@@ -405,7 +406,7 @@ class TestStandardModule:
         )
 
         previous = audio_multi_mb.get_all_time_data()[0]
-        gains = np.linspace(1, 5, self.audio_multi.number_of_channels)
+        gains = np.linspace(1, 5, some_signal.number_of_channels)
         audio_multi_mb = dsp.apply_gain(audio_multi_mb, gains)
         np.testing.assert_array_equal(
             previous * dsp.tools.from_db(gains, True),
