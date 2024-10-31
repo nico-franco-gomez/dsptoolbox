@@ -1378,26 +1378,35 @@ def window_frequency_dependent(
     return f, spec
 
 
-def find_ir_latency(ir: ImpulseResponse) -> NDArray[np.float64]:
-    """Find the subsample maximum of each channel of the IR using the its
-    minimum phase equivalent.
+def find_ir_latency(
+    ir: ImpulseResponse, compare_to_min_phase_ir: bool = True
+) -> NDArray[np.float64]:
+    """Find the subsample maximum of each channel of the IR.
 
     Parameters
     ----------
     ir : `ImpulseResponse`
         Impulse response to find the maximum.
+    compare_to_min_phase_ir : bool, optional
+        When True, the latency is found by comparing the latency of the IR in
+        relation to its minimum phase equivalent. When False, the peak in the
+        time data is searched. Both cases are done with subsample accuracy.
+        Default: True.
 
     Returns
     -------
     latency_samples : NDArray[np.float64]
-        Array with the position of each channel's maximum in samples.
+        Array with the position of each channel's latency in samples.
 
     """
     assert (
         type(ir) is ImpulseResponse
     ), "This is only valid for an impulse response"
-    min_ir = min_phase_ir(ir)
-    return latency(ir, min_ir, 1)[0]
+    if compare_to_min_phase_ir:
+        min_ir = min_phase_ir(ir)
+        return latency(ir, min_ir, 1)[0]
+
+    return _get_fractional_impulse_peak_index(ir.time_data, 1)
 
 
 def harmonics_from_chirp_ir(
