@@ -343,24 +343,32 @@ def erb_frequencies(
 
 
 def convert_sample_representation(
-    values: NDArray[np.float64], output_format: str, cast: bool = True
+    values: NDArray,
+    input_format: str,
+    output_format: str,
+    cast_output: bool = True,
 ) -> tuple[NDArray, float, float]:
-    """This function takes in a double-precision array of audio samples and
-    turns it into the desired sample output format. It always clips the input
-    to the range [-1., 1.].
+    """This function takes in an array of audio samples and turns it into the
+    desired sample output format. It always clips the input to the maximum
+    allowed range.
 
     Parameters
     ----------
     vector : NDArray[np.float64]
         Values to convert.
-    output_format : str, {"f32", "i8", "i16", "i24", "i32", "u8", "u16",\
+    input_format : str, {"f32", "f64", "i8", "i16", "i24", "i32", "u8", "u16",\
         "u24", "u32"}
+        Input format for the samples. `i` refers to signed integer and `u`
+        means unsigned integer.
+    output_format : str, {"f32", "f64", "i8", "i16", "i24", "i32", "u8", \
+        "u16", "u24", "u32"}
         Output format for the samples. `i` refers to signed integer and `u`
         means unsigned integer.
-    cast : bool, optional
+    cast_output : bool, optional
         When True, the output vector is casted to the equivalent data type of
         the output format. This throws an assertion error if the casting is not
-        supported by numpy (for "i24" and "u24"). Default: True.
+        supported by numpy (for "i24" and "u24"). When avoiding casting, the
+        data type of the output is always np.float64. Default: True.
 
     Returns
     -------
@@ -369,17 +377,23 @@ def convert_sample_representation(
     equilibrium : float
         Value that represents equilibrium in the output sample format.
     span_value : float
-        Maximum distance from the equilibrium to the ends of the dynamic range.
-        Use equilibrium ± span_value to find the range of values.
+        Maximum distance from the equilibrium to the ends of the dynamic range
+        in the output sample format. Use equilibrium ± span_value to find the
+        range of values.
 
     Notes
     -----
     - Dithering is advised when lowering the bit depth, this is not done
       within this function.
+    - Passing the same format as input and output will raise an AssertionError.
 
     """
+    if input_format == output_format:
+        raise AssertionError("No conversion is necessary")
+
     valid_formats = [
         "f32",
+        "f64",
         "i8",
         "i16",
         "i24",
@@ -389,37 +403,51 @@ def convert_sample_representation(
         "u24",
         "u32",
     ]
+    input_format.lower()
     output_format = output_format.lower()
     assert (
-        output_format in valid_formats
-    ), f"Format {output_format} is not supported"
+        output_format in valid_formats and input_format in valid_formats
+    ), f"Format {input_format} or {output_format} is not supported"
 
+    # ==== Input (convert always to double precision)
+    if input_format not in ("f32", "f64"):
+        signed_input = input_format[0] == "i"
+        bits_input = int(input_format[1:])
+        max_value_input = 2.0 ** (bits_input - 1) - 1
+        values = values.astype(np.float64) / max_value_input
+        if not signed_input:
+            values -= 1.0
+    values = np.clip(values, -1.0, 1.0)
+
+    # ==== Output (from double precision to desired format)
     if output_format == "f32":
         return values.astype(np.float32), 0.0, 1.0
+    elif output_format == "f64":
+        return values, 0, 1.0
 
     # Fixed-point
-    signed = output_format[0] == "i"
-    bits = int(output_format[1:])
-    max_value = 2.0 ** (bits - 1) - 1
-    output = values * max_value
+    signed_output = output_format[0] == "i"
+    bits_output = int(output_format[1:])
+    max_value_output = 2.0 ** (bits_output - 1) - 1
+    output = values * max_value_output
     equilibrium = 0.0
 
-    if not signed:
-        output += max_value
-        equilibrium += max_value
+    if not signed_output:
+        output += max_value_output
+        equilibrium += max_value_output
 
-    if cast:
+    if cast_output:
         assert output_format not in (
             "i24",
             "u24",
         ), "This format is not supported for casting"
-        prefix = "int" if signed else "uint"
-        sample_type = eval(f"np.{prefix}{bits}")
+        prefix = "int" if signed_output else "uint"
+        sample_type = eval(f"np.{prefix}{bits_output}")
         output = output.astype(sample_type)
     else:
         output = np.trunc(output)
 
-    return output, equilibrium, max_value
+    return output, equilibrium, max_value_output
 
 
 __all__ = [
