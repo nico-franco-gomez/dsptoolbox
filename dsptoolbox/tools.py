@@ -342,6 +342,86 @@ def erb_frequencies(
     return frequencies
 
 
+def convert_sample_representation(
+    values: NDArray[np.float64], output_format: str, cast: bool = True
+) -> tuple[NDArray, float, float]:
+    """This function takes in a double-precision array of audio samples and
+    turns it into the desired sample output format. It always clips the input
+    to the range [-1., 1.].
+
+    Parameters
+    ----------
+    vector : NDArray[np.float64]
+        Values to convert.
+    output_format : str, {"f32", "i8", "i16", "i24", "i32", "u8", "u16",\
+        "u24", "u32"}
+        Output format for the samples. `i` refers to signed integer and `u`
+        means unsigned integer.
+    cast : bool, optional
+        When True, the output vector is casted to the equivalent data type of
+        the output format. This throws an assertion error if the casting is not
+        supported by numpy (for "i24" and "u24"). Default: True.
+
+    Returns
+    -------
+    output : NDArray
+        Vector with samples in the desired format.
+    equilibrium : float
+        Value that represents equilibrium in the output sample format.
+    span_value : float
+        Maximum distance from the equilibrium to the ends of the dynamic range.
+        Use equilibrium ± span_value to find the range of values.
+
+    Notes
+    -----
+    - Dithering is advised when lowering the bit depth, this is not done
+      within this function.
+
+    """
+    valid_formats = [
+        "f32",
+        "i8",
+        "i16",
+        "i24",
+        "i32",
+        "u8",
+        "u16",
+        "u24",
+        "u32",
+    ]
+    output_format = output_format.lower()
+    assert (
+        output_format in valid_formats
+    ), f"Format {output_format} is not supported"
+
+    if output_format == "f32":
+        return values.astype(np.float32), 0.0, 1.0
+
+    # Fixed-point
+    signed = output_format[0] == "i"
+    bits = int(output_format[1:])
+    max_value = 2.0 ** (bits - 1) - 1
+    output = values * max_value
+    equilibrium = 0.0
+
+    if not signed:
+        output += max_value
+        equilibrium += max_value
+
+    if cast:
+        assert output_format not in (
+            "i24",
+            "u24",
+        ), "This format is not supported for casting"
+        prefix = "int" if signed else "uint"
+        sample_type = eval(f"np.{prefix}{bits}")
+        output = output.astype(sample_type)
+    else:
+        output = np.trunc(output)
+
+    return output, equilibrium, max_value
+
+
 __all__ = [
     "fractional_octave_smoothing",
     "wrap_phase",
@@ -359,4 +439,5 @@ __all__ = [
     "scale_spectrum",
     "framed_signal",
     "reconstruct_from_framed_signal",
+    "convert_sample_representation",
 ]

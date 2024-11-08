@@ -28,3 +28,29 @@ class TestTools:
 
         dsp.tools.reconstruct_from_framed_signal(nn1, 10, None, len(n))
         dsp.tools.reconstruct_from_framed_signal(nn2, 10, None, len(n))
+
+    def test_convert_sample_conversion(self):
+        v = np.array([0.0, 1.0, -1.0, 0.5])
+        np.testing.assert_equal(
+            v, dsp.tools.convert_sample_representation(v, "f32", True)[0]
+        )
+
+        # With casting
+        for t in ["u8", "u16", "u32", "i8", "i16", "i32"]:
+            out, eq, max_val = dsp.tools.convert_sample_representation(
+                v, t, True
+            )
+            np.testing.assert_equal(
+                out,
+                np.array([eq, eq + max_val, eq - max_val, eq + max_val // 2]),
+            )
+
+        # Without casting
+        for t in ["i24", "u24"]:
+            out, eq, max_val = dsp.tools.convert_sample_representation(
+                v, t, False
+            )
+            np.testing.assert_equal(
+                out,
+                np.array([eq, eq + max_val, eq - max_val, eq + max_val // 2]),
+            )
