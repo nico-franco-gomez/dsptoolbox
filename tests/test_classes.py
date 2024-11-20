@@ -283,6 +283,13 @@ class TestSignal:
         )
         assert np.all(t == s.time_data.squeeze())
 
+    def test_sum_channels(self):
+        n = np.random.normal(0, 0.01, (300, 2))
+        nn = dsp.Signal.from_time_data(n, 10_000)
+        np.testing.assert_array_equal(
+            nn.sum_channels().time_data, np.sum(n, axis=1, keepdims=True)
+        )
+
 
 class TestFilterClass:
     """Tests for the Filter class.

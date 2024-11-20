@@ -683,6 +683,19 @@ class Signal:
         new_sig.time_data = self.time_data[:, channels]
         return new_sig
 
+    def sum_channels(self):
+        """Return a copy of the signal where all channels are summed into one.
+
+        Returns
+        -------
+        Signal
+            New signal with a single channel.
+
+        """
+        new_sig = self.copy()
+        new_sig.time_data = np.sum(new_sig.time_data, axis=1)
+        return new_sig
+
     # ======== Getters ========================================================
     def get_spectrum(
         self, force_computation=False
