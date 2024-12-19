@@ -1,0 +1,21 @@
+# dev:
+hatch # build
+wheel # build
+twine # upload build
+flake8  # linter
+pytest # tests
+# librosa  # validation
+# pyfar  # validation
+# pyroomacoustics # validation
+
+# jupyter notebooks:
+ipykernel
+ipympl
+notebook
+
+# docs:
+furo # theme
+numpydoc # numpy-like documentation
+sphinx # generate docs
+readthedocs-sphinx-search # readthedocs
+autodocsumm # autosummary with docs
