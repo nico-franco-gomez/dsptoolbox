@@ -166,7 +166,8 @@ class Filter:
         passband_ripple_db : float, None, optional
             Passband ripple in dB for "cheby1" and "ellip". Default: None.
         stopband_attenuation_db : float, None, optional
-            Passband ripple in dB for "cheby2" and "ellip". Default: None.
+            Minimum stopband attenutation in dB for "cheby2" and "ellip".
+            Default: None.
         sampling_rate_hz : int
             Sampling rate in Hz.
 
