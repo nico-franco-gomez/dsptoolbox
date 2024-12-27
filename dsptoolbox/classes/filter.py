@@ -839,6 +839,34 @@ class Filter:
             self.ba[0], [1], frequency_vector_hz, self.sampling_rate_hz
         )[1]
 
+    def get_group_delay(
+        self, frequency_vector_hz: NDArray[np.float64], in_seconds: bool = True
+    ) -> NDArray[np.float64]:
+        """Obtain the group delay of the filter using
+        `scipy.signal.group_delay`. To this end, filter coefficients in ba-form
+        are always used. This could lead to numerical imprecisions in case the
+        filter has a large order.
+
+        Parameters
+        ----------
+        frequency_vector_hz : NDArray[np.float64]
+            Frequency vector for which to compute the group delay.
+        in_seconds : bool, optional
+            When True, the output is given in seconds. Otherwise it is in
+            samples. Default: True.
+
+        Returns
+        -------
+        group_delay : NDArray[np.float64]
+            Group delay with shape (frequency).
+
+        """
+        ba = self.get_coefficients("ba")
+        gd = sig.group_delay(
+            ba, w=frequency_vector_hz, fs=self.sampling_rate_hz
+        )[1]
+        return gd / self.sampling_rate_hz if in_seconds else gd
+
     def get_coefficients(
         self, mode: str = "sos"
     ) -> (

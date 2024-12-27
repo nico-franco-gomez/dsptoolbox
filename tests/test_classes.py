@@ -547,6 +547,43 @@ class TestFilterClass:
         )
         assert len(f) == len(b)
 
+    def test_order(self):
+        b = sig.firwin(
+            1500,
+            (self.fs // 2 // 2),
+            pass_zero="lowpass",
+            fs=self.fs,
+            window="flattop",
+        )
+        f = dsp.Filter(
+            "other",
+            filter_configuration=dict(ba=[b, 1]),
+            sampling_rate_hz=self.fs,
+        )
+        assert f.order == len(b) - 1
+
+    def test_group_delay(self):
+        f_log = dsp.tools.log_frequency_vector([20, 20e3], 128)
+        bb = dsp.Filter.biquad(
+            eq_type="peaking",
+            frequency_hz=300,
+            gain_db=10,
+            q=1.5,
+            sampling_rate_hz=48000,
+        )
+        gd = bb.get_group_delay(f_log)
+        ff, gg = dsp.transfer_functions.group_delay(
+            bb.get_ir(length_samples=2**14)
+        )
+
+        interpolated_gd = dsp.tools.interpolate_fr(
+            ff, gg.squeeze(), f_log, interpolation_scheme="cubic"
+        )
+        np.testing.assert_allclose(interpolated_gd, gd, atol=1e-6)
+
+        # Check it runs
+        gd = bb.get_group_delay(f_log, False)
+
 
 class TestFilterBankClass:
     fs = 44100
