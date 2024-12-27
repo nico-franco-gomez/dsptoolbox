@@ -381,6 +381,10 @@ class Filter:
     def sampling_rate_hz(self):
         return self.__sampling_rate_hz
 
+    @property
+    def order(self):
+        return self.info["order"]
+
     @sampling_rate_hz.setter
     def sampling_rate_hz(self, new_sampling_rate_hz):
         assert (
