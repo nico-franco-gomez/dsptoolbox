@@ -350,7 +350,9 @@ def merge_filterbanks(fb1: FilterBank, fb2: FilterBank) -> FilterBank:
     return new_fb
 
 
-def resample(sig: Signal, desired_sampling_rate_hz: int) -> Signal:
+def resample(
+    sig: Signal, desired_sampling_rate_hz: int, rescaling: bool = True
+) -> Signal:
     """Resamples signal to the desired sampling rate using
     `scipy.signal.resample_poly` with an efficient polyphase representation.
 
@@ -360,11 +362,13 @@ def resample(sig: Signal, desired_sampling_rate_hz: int) -> Signal:
         Signal to be resampled.
     desired_sampling_rate_hz : int
         Sampling rate to convert the signal to.
+    rescaling : bool, optional
+        When True, the data is rescaled by dividing by the resampling factor.
 
     Returns
     -------
     new_sig : `Signal`
-        Resampled signal.
+        Resampled signal. It is rescaled by the resampling factor.
 
     """
     if sig.sampling_rate_hz == desired_sampling_rate_hz:
@@ -377,7 +381,7 @@ def resample(sig: Signal, desired_sampling_rate_hz: int) -> Signal:
     new_sig = sig.copy()
     if hasattr(new_sig, "window"):
         del new_sig.window
-    new_sig.time_data = new_time_data
+    new_sig.time_data = new_time_data * (d / u) if rescaling else new_time_data
     new_sig.sampling_rate_hz = desired_sampling_rate_hz
     return new_sig
 
