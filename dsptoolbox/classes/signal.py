@@ -325,6 +325,13 @@ class Signal:
     def __str__(self):
         return self._get_metadata_string()
 
+    def __iter__(self):
+        """Iterate over the channels of the signal. No modification to the
+        samples can be done through these slices."""
+        return iter(
+            [self.time_data[:, x] for x in range(self.number_of_channels)]
+        )
+
     def set_spectrum_parameters(
         self,
         method="welch",
