@@ -1389,3 +1389,23 @@ class TestFilterTopologies:
 
         fc.reset_state()
         fc.set_n_channels(1)
+
+    def test_state_space_filtering(self):
+        # Check filter's output against usual TDF2 implementation
+        ff = dsp.Filter.biquad("peaking", 100, 6, 0.7, self.fs_hz)
+        b, a = ff.get_coefficients("ba")
+        A, B, C, D = sig.tf2ss(b, a)
+        noise = dsp.generators.noise(
+            -2.0, sampling_rate_hz=self.fs_hz, number_of_channels=2
+        )
+        ff2 = dsp.filterbanks.StateSpaceFilter(A, B, C, D)
+        ff2.set_n_channels(noise.number_of_channels)
+        reference = ff.filter_signal(noise)
+
+        channel = 0
+        for ch_n in noise:
+            output = np.zeros(len(ch_n))
+            for ind in range(len(ch_n)):
+                output[ind] = ff2.process_sample(ch_n[ind], channel)
+            np.testing.assert_allclose(reference.time_data[:, channel], output)
+            channel += 1
