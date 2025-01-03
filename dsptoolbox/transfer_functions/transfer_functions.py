@@ -1703,7 +1703,7 @@ def harmonic_distortion_analysis(
 def trim_ir(
     ir: ImpulseResponse,
     channel: int = 0,
-    start_offset_s: float = 20e-3,
+    start_offset_s: float | None = 20e-3,
 ) -> tuple[ImpulseResponse, int, int]:
     """Trim an IR in the beginning and end. This method acts only on one
     channel and returns it trimmed. For defining the ending, a smooth envelope
@@ -1717,10 +1717,10 @@ def trim_ir(
         Impulse response to trim.
     channel : int, optional
         Channel to take from `rir`. Default: 0.
-    start_offset_s : float, optional
+    start_offset_s : float, None, optional
         This is the time prior to the peak value that is left after trimming.
         Pass 0 to start the IR one sample prior to peak value or a very big
-        offset to avoid any trimming at the beginning. Default: 20e-3
+        offset (or None) to avoid any trimming at the beginning. Default: 20e-3
         (20 milliseconds).
 
     Returns
@@ -1754,6 +1754,13 @@ def trim_ir(
               total length of the IR weighted stronger than the other values.
 
     """
+    # Pass a large offset that won't trim the start
+    start_offset_s = (
+        len(ir) / ir.sampling_rate_hz
+        if start_offset_s is None
+        else start_offset_s
+    )
+
     assert start_offset_s >= 0, "Offset must be at least 0"
     trimmed_rir = ir.get_channels(channel)
     td = trimmed_rir.time_data.squeeze()
