@@ -343,10 +343,8 @@ def merge_filterbanks(fb1: FilterBank, fb2: FilterBank) -> FilterBank:
             fb1.sampling_rate_hz == fb2.sampling_rate_hz
         ), "Sampling rates do not match"
 
-    new_filters = fb1.filters
-    for n in fb2.filters:
-        new_filters.append(n)
-    new_fb = FilterBank(new_filters, fb1.same_sampling_rate, fb1.info)
+    new_fb = fb1.copy()
+    new_fb.filters += fb2.filters
     return new_fb
 
 
