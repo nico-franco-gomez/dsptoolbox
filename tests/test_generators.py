@@ -186,6 +186,19 @@ class TestGeneratorsModule:
                 padding_end_seconds=0,
             )
 
+        nominal_duration_seconds = 1.0
+        _, sync_duration_seconds = dsp.generators.chirp(
+            type_of_chirp="sync-log",
+            range_hz=[20, 4e3],
+            length_seconds=nominal_duration_seconds,
+            sampling_rate_hz=10_000,
+            peak_level_dbfs=-10,
+            number_of_channels=2,
+            fade="log",
+            padding_end_seconds=1,
+        )
+        assert abs(nominal_duration_seconds - sync_duration_seconds) < 0.1
+
     def test_dirac(self):
         # Only functionality
         dsp.generators.dirac(

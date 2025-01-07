@@ -14,6 +14,7 @@ from .._general_helpers import (
     _frequency_weightning,
 )
 from ..classes.filter_helpers import _impulse
+from ._generators import _sync_log_chirp
 
 
 def noise(
@@ -156,14 +157,14 @@ def chirp(
     fade: str | None = "log",
     phase_offset: float = 0.0,
     padding_end_seconds: float = 0.0,
-) -> Signal:
+) -> Signal | tuple[Signal, float]:
     """Creates a sine-sweep signal.
 
     Parameters
     ----------
     type_of_chirp : str, optional
-        Choose from "lin", "log".
-        Default: "log".
+        Choose from "lin", "log", "sync-log". See Notes for details. Default:
+        "log".
     range_hz : array-like with length 2
         Define range of chirp in Hz. When `None`, all frequencies between
         15 Hz and nyquist are taken. Default: `None`.
@@ -184,14 +185,25 @@ def chirp(
         This is an offset in radians for the phase of the sine. Default: 0.
     padding_end_seconds : float, optional
         Padding at the end of signal. Default: 0.
+
     Returns
     -------
     chirp_sig : `Signal`
         Chirp Signal object.
+    chirp_duration_seconds : float
+        Effective chirp duration. This is only returned if the chirp is of
+        type "sync-log" because the provided length might differ slightly.
+
+    Notes
+    -----
+    - The "sync-log" chirp is defined according to [2] and ensures that the
+      harmonic responses have coherent phase with the linear response.
 
     References
     ----------
     - https://de.wikipedia.org/wiki/Chirp
+    - [2]: Antonin Novak, Laurent Simon, Pierrick Lotton. Synchronized
+      Swept-Sine: Theory, Application and Implementation.
 
     """
     assert sampling_rate_hz is not None, "Sampling rate can not be None"
@@ -199,7 +211,8 @@ def chirp(
     assert type_of_chirp in (
         "lin",
         "log",
-    ), f"{type_of_chirp} is not a valid type. Select lin or np.log"
+        "sync-log",
+    ), f"{type_of_chirp} is not a valid type."
     if range_hz is not None:
         assert (
             len(range_hz) == 2
@@ -220,19 +233,27 @@ def chirp(
     else:
         p_samples = 0
     l_samples = int(sampling_rate_hz * length_seconds + 0.5)
-    t = np.linspace(0, length_seconds, l_samples)
 
-    if type_of_chirp == "lin":
-        k = (range_hz[1] - range_hz[0]) / length_seconds
-        freqs = (range_hz[0] + k / 2 * t) * 2 * np.pi
-        chirp_td = np.sin(freqs * t + phase_offset)
-    elif type_of_chirp == "log":
-        k = np.exp(
-            (np.log(range_hz[1]) - np.log(range_hz[0])) / length_seconds
-        )
-        chirp_td = np.sin(
-            2 * np.pi * range_hz[0] / np.log(k) * (k**t - 1) + phase_offset
-        )
+    if type_of_chirp != "sync-log":
+        t = np.linspace(0, length_seconds, l_samples)
+
+    match type_of_chirp:
+        case "lin":
+            k = (range_hz[1] - range_hz[0]) / length_seconds
+            freqs = (range_hz[0] + k / 2 * t) * 2 * np.pi
+            chirp_td = np.sin(freqs * t + phase_offset)
+        case "log":
+            k = np.exp(
+                (np.log(range_hz[1]) - np.log(range_hz[0])) / length_seconds
+            )
+            chirp_td = np.sin(
+                2 * np.pi * range_hz[0] / np.log(k) * (k**t - 1) + phase_offset
+            )
+        case "sync-log":
+            chirp_td, T = _sync_log_chirp(
+                range_hz, length_seconds, sampling_rate_hz
+            )
+
     chirp_td = _normalize(
         chirp_td, peak_level_dbfs, mode="peak", per_channel=True
     )
@@ -259,9 +280,9 @@ def chirp(
     chirp_n = chirp_td[..., None]
     if number_of_channels != 1:
         chirp_n = np.repeat(chirp_n, repeats=number_of_channels, axis=1)
-    # Signal
+
     chirp_sig = Signal(None, chirp_n, sampling_rate_hz)
-    return chirp_sig
+    return (chirp_sig, T) if type_of_chirp == "sync-log" else chirp_sig
 
 
 def dirac(
