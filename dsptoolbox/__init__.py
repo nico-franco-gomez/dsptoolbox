@@ -28,6 +28,7 @@ from .standard_functions import (
     dither,
     apply_gain,
     resample_filter,
+    modify_signal_length,
 )
 from .classes import (
     Filter,
@@ -74,6 +75,7 @@ __all__ = [
     "dither",
     "apply_gain",
     "resample_filter",
+    "modify_signal_length",
     # Modules
     "transfer_functions",
     "distances",

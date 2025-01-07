@@ -908,7 +908,7 @@ def rms(
             + "MultiBandSignal type"
         )
     if in_dbfs:
-        rms = 20 * np.log10(rms)
+        rms = 20.0 * np.log10(rms)
     return np.atleast_1d(rms)
 
 
@@ -1323,3 +1323,81 @@ def resample_filter(filter: Filter, new_sampling_rate_hz: int) -> Filter:
 
     z, p, k = bilinear_zpk(z, p, k, new_sampling_rate_hz)
     return Filter.from_zpk(z, p, k, new_sampling_rate_hz)
+
+
+def modify_signal_length(
+    signal: Signal | MultiBandSignal,
+    start_seconds: float | None,
+    end_seconds: float | None,
+) -> Signal | MultiBandSignal:
+    """This function returns a copy of the signal with added silence at the
+    beginning or the end of the signal. Time samples can also be trimmed when
+    using negative time values.
+
+    Parameters
+    ----------
+    signal : Signal, MultiBandSignal
+        Signal to apply the length change to.
+    start_seconds : float, None
+        Seconds to add or remove from the start. Positive values append samples
+        while negative ones remove them. Pass None to avoid any modification.
+    end_seconds : float, None
+        Seconds to add or remove from the end. Positive values append samples
+        while negative ones remove them. Pass None to avoid any modification.
+
+    Returns
+    -------
+    Signal or MultiBandSignal
+
+    """
+    if isinstance(signal, Signal):
+        assert (
+            start_seconds is not None or end_seconds is not None
+        ), "At least the start or the end should be modified"
+        fs = signal.sampling_rate_hz
+        start_samples = (
+            0
+            if start_seconds is None
+            else int(start_seconds * fs + 0.5 * np.sign(start_seconds))
+        )
+        end_samples = (
+            0
+            if end_seconds is None
+            else int(end_seconds * fs + 0.5 * np.sign(end_seconds))
+        )
+
+        # Avoid cutting too many samples
+        if start_samples < 0:
+            assert len(signal) > -start_samples, "Trimming is too much"
+        if end_samples < 0:
+            assert len(signal) > -end_samples, "Trimming is too much"
+        if start_samples < 0 and end_samples < 0:
+            assert len(signal) > -(
+                start_samples + end_samples
+            ), "Trimming is too much"
+
+        new_sig = signal.copy()
+        td = new_sig.time_data
+        if start_samples >= 0:
+            td = np.pad(td, ((start_samples, 0), (0, 0)))
+        else:
+            td = td[-start_samples:, ...]
+
+        if end_samples >= 0:
+            td = np.pad(td, ((0, end_samples), (0, 0)))
+        else:
+            td = td[:end_samples, ...]
+        new_sig.time_data = td
+
+        if hasattr(new_sig, "window"):
+            del new_sig.window
+        return new_sig
+    elif isinstance(signal, MultiBandSignal):
+        bands = []
+        for b in signal:
+            bands.append(modify_signal_length(b, start_seconds, end_seconds))
+        new_mb = signal.copy()
+        new_mb.bands = bands
+        return new_mb
+    else:
+        raise TypeError("Unsupported type")
