@@ -245,13 +245,9 @@ class Signal:
         # Set time data (real and imaginary)
         self.__time_data = new_time_data
         self.time_data_imaginary = new_time_data_imag
-
-        # Set number of channels
-        self.number_of_channels = new_time_data.shape[1]
         self.__update_state()
 
-        if hasattr(self, "window"):
-            del self.window
+        self.clear_time_window()
 
     @property
     def sampling_rate_hz(self) -> int:
@@ -265,17 +261,16 @@ class Signal:
         self.__sampling_rate_hz = new_sampling_rate_hz
 
     @property
-    def number_of_channels(self) -> int:
-        return self.__number_of_channels
+    def length_seconds(self) -> float:
+        return len(self) / self.sampling_rate_hz
 
-    @number_of_channels.setter
-    def number_of_channels(self, new_number):
-        assert type(new_number) is int, "Number of channels must be integer"
-        assert new_number > 0, "There has to be at least one channel"
-        assert (
-            new_number == self.time_data.shape[1]
-        ), "Number of channels does not match with time data vector"
-        self.__number_of_channels = new_number
+    @property
+    def length_samples(self) -> int:
+        return len(self)
+
+    @property
+    def number_of_channels(self) -> int:
+        return self.__time_data.shape[1]
 
     @property
     def time_vector_s(self) -> NDArray[np.float64]:
@@ -320,10 +315,17 @@ class Signal:
         self.__calibrated_signal = ncs
 
     def __len__(self):
-        return self.time_data.shape[0]
+        return self.__time_data.shape[0]
 
     def __str__(self):
         return self._get_metadata_string()
+
+    def __iter__(self):
+        """Iterate over the channels of the signal. No modification to the
+        samples can be done through these slices."""
+        return iter(
+            [self.time_data[:, x] for x in range(self.number_of_channels)]
+        )
 
     def set_spectrum_parameters(
         self,
@@ -682,6 +684,25 @@ class Signal:
         new_sig = self.copy()
         new_sig.time_data = self.time_data[:, channels]
         return new_sig
+
+    def sum_channels(self):
+        """Return a copy of the signal where all channels are summed into one.
+
+        Returns
+        -------
+        Signal
+            New signal with a single channel.
+
+        """
+        new_sig = self.copy()
+        new_sig.time_data = np.sum(new_sig.time_data, axis=1)
+        new_sig.clear_time_window()
+        return new_sig
+
+    def clear_time_window(self):
+        """Deletes the time window of the signal in case there is any."""
+        if hasattr(self, "window"):
+            del self.window
 
     # ======== Getters ========================================================
     def get_spectrum(

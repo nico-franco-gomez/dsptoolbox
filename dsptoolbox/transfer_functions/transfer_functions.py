@@ -555,8 +555,7 @@ def average_irs(
         new_time_data = np.mean(avg_sig.time_data, axis=1)
 
     avg_sig.time_data = new_time_data
-    if hasattr(avg_sig, "window"):
-        del avg_sig.window
+    avg_sig.clear_time_window()
     return avg_sig
 
 
@@ -783,8 +782,7 @@ def min_phase_ir(
 
     min_phase_sig = sig.copy()
     min_phase_sig.time_data = new_time_data[: len(sig)]
-    if hasattr(min_phase_sig, "window"):
-        del min_phase_sig.window
+    min_phase_sig.clear_time_window()
     return min_phase_sig
 
 
@@ -1378,26 +1376,35 @@ def window_frequency_dependent(
     return f, spec
 
 
-def find_ir_latency(ir: ImpulseResponse) -> NDArray[np.float64]:
-    """Find the subsample maximum of each channel of the IR using the its
-    minimum phase equivalent.
+def find_ir_latency(
+    ir: ImpulseResponse, compare_to_min_phase_ir: bool = True
+) -> NDArray[np.float64]:
+    """Find the subsample maximum of each channel of the IR.
 
     Parameters
     ----------
     ir : `ImpulseResponse`
         Impulse response to find the maximum.
+    compare_to_min_phase_ir : bool, optional
+        When True, the latency is found by comparing the latency of the IR in
+        relation to its minimum phase equivalent. When False, the peak in the
+        time data is searched. Both cases are done with subsample accuracy.
+        Default: True.
 
     Returns
     -------
     latency_samples : NDArray[np.float64]
-        Array with the position of each channel's maximum in samples.
+        Array with the position of each channel's latency in samples.
 
     """
     assert (
         type(ir) is ImpulseResponse
     ), "This is only valid for an impulse response"
-    min_ir = min_phase_ir(ir)
-    return latency(ir, min_ir, 1)[0]
+    if compare_to_min_phase_ir:
+        min_ir = min_phase_ir(ir)
+        return latency(ir, min_ir, 1)[0]
+
+    return _get_fractional_impulse_peak_index(ir.time_data, 1)
 
 
 def harmonics_from_chirp_ir(
@@ -1694,7 +1701,7 @@ def harmonic_distortion_analysis(
 def trim_ir(
     ir: ImpulseResponse,
     channel: int = 0,
-    start_offset_s: float = 20e-3,
+    start_offset_s: float | None = 20e-3,
 ) -> tuple[ImpulseResponse, int, int]:
     """Trim an IR in the beginning and end. This method acts only on one
     channel and returns it trimmed. For defining the ending, a smooth envelope
@@ -1708,10 +1715,10 @@ def trim_ir(
         Impulse response to trim.
     channel : int, optional
         Channel to take from `rir`. Default: 0.
-    start_offset_s : float, optional
+    start_offset_s : float, None, optional
         This is the time prior to the peak value that is left after trimming.
         Pass 0 to start the IR one sample prior to peak value or a very big
-        offset to avoid any trimming at the beginning. Default: 20e-3
+        offset (or None) to avoid any trimming at the beginning. Default: 20e-3
         (20 milliseconds).
 
     Returns
@@ -1745,6 +1752,13 @@ def trim_ir(
               total length of the IR weighted stronger than the other values.
 
     """
+    # Pass a large offset that won't trim the start
+    start_offset_s = (
+        len(ir) / ir.sampling_rate_hz
+        if start_offset_s is None
+        else start_offset_s
+    )
+
     assert start_offset_s >= 0, "Offset must be at least 0"
     trimmed_rir = ir.get_channels(channel)
     td = trimmed_rir.time_data.squeeze()
@@ -1754,6 +1768,5 @@ def trim_ir(
         start_offset_s,
     )
     trimmed_rir.time_data = td[start:stop]
-    if hasattr(trimmed_rir, "window"):
-        del trimmed_rir.window
+    trimmed_rir.clear_time_window()
     return trimmed_rir, start, stop

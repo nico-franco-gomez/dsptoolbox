@@ -459,9 +459,20 @@ class TestTransferFunctionsModule:
         delay_seconds = 0.00133  # Some value to have a fractional delay
         delay_samples = self.fs * delay_seconds
         ir = dsp.fractional_delay(ir, delay_seconds)
-        output = dsp.transfer_functions.find_ir_latency(ir).squeeze()
+        peak_min_phase = dsp.transfer_functions.find_ir_latency(ir).squeeze()
+        peak = dsp.transfer_functions.find_ir_latency(ir, False)
 
-        assert np.isclose(delay_samples, output, atol=0.4)
+        assert np.isclose(delay_samples, peak_min_phase, atol=0.4)
+        assert np.isclose(delay_samples, peak, atol=0.3)
+
+        # Invert phase, should still deliver the same result
+        ir.time_data = ir.time_data * -1.0
+        assert np.isclose(
+            peak, dsp.transfer_functions.find_ir_latency(ir, False)
+        )
+        assert np.isclose(
+            peak_min_phase, dsp.transfer_functions.find_ir_latency(ir)
+        )
 
         ir = dsp.ImpulseResponse(join("examples", "data", "rir.wav"))
         assert dsp.transfer_functions.find_ir_latency(ir) > 0

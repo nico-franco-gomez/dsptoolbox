@@ -220,8 +220,7 @@ def pad_trim(
                 in_the_end=in_the_end,
             )
         new_sig = signal.copy()
-        if hasattr(new_sig, "window"):
-            del new_sig.window
+        new_sig.clear_time_window()
         new_sig.time_data = new_time_data
     elif isinstance(signal, MultiBandSignal):
         assert (
@@ -284,8 +283,7 @@ def merge_signals(
                 )
         new_time_data = np.append(in1.time_data, in2.time_data, axis=1)
         new_sig = in1.copy()
-        if hasattr(new_sig, "window"):
-            del new_sig.window
+        new_sig.clear_time_window()
         new_sig.time_data = new_time_data
     elif isinstance(in1, MultiBandSignal):
         assert isinstance(
@@ -343,14 +341,14 @@ def merge_filterbanks(fb1: FilterBank, fb2: FilterBank) -> FilterBank:
             fb1.sampling_rate_hz == fb2.sampling_rate_hz
         ), "Sampling rates do not match"
 
-    new_filters = fb1.filters
-    for n in fb2.filters:
-        new_filters.append(n)
-    new_fb = FilterBank(new_filters, fb1.same_sampling_rate, fb1.info)
+    new_fb = fb1.copy()
+    new_fb.filters += fb2.filters
     return new_fb
 
 
-def resample(sig: Signal, desired_sampling_rate_hz: int) -> Signal:
+def resample(
+    sig: Signal, desired_sampling_rate_hz: int, rescaling: bool = True
+) -> Signal:
     """Resamples signal to the desired sampling rate using
     `scipy.signal.resample_poly` with an efficient polyphase representation.
 
@@ -360,11 +358,13 @@ def resample(sig: Signal, desired_sampling_rate_hz: int) -> Signal:
         Signal to be resampled.
     desired_sampling_rate_hz : int
         Sampling rate to convert the signal to.
+    rescaling : bool, optional
+        When True, the data is rescaled by dividing by the resampling factor.
 
     Returns
     -------
     new_sig : `Signal`
-        Resampled signal.
+        Resampled signal. It is rescaled by the resampling factor.
 
     """
     if sig.sampling_rate_hz == desired_sampling_rate_hz:
@@ -375,9 +375,8 @@ def resample(sig: Signal, desired_sampling_rate_hz: int) -> Signal:
     u, d = ratio.as_integer_ratio()
     new_time_data = resample_poly(sig.time_data, up=u, down=d, axis=0)
     new_sig = sig.copy()
-    if hasattr(new_sig, "window"):
-        del new_sig.window
-    new_sig.time_data = new_time_data
+    new_sig.clear_time_window()
+    new_sig.time_data = new_time_data * (d / u) if rescaling else new_time_data
     new_sig.sampling_rate_hz = desired_sampling_rate_hz
     return new_sig
 
@@ -688,8 +687,7 @@ def fractional_delay(
 
         # =========== give out object =========================================
         out_sig = sig.copy()
-        if hasattr(out_sig, "window"):
-            del out_sig.window
+        out_sig.clear_time_window()
         out_sig.time_data = new_time_data
 
     elif isinstance(sig, MultiBandSignal):
@@ -808,9 +806,8 @@ def activity_detector(
     # Separate signals
     detected_sig = signal.copy()
     noise = signal.copy()
-    if hasattr(detected_sig, "window"):
-        del detected_sig.window
-        del noise.window
+    detected_sig.clear_time_window()
+    noise.clear_time_window()
 
     try:
         detected_sig.time_data = signal.time_data[signal_indices, 0]
@@ -906,7 +903,7 @@ def rms(
             + "MultiBandSignal type"
         )
     if in_dbfs:
-        rms = 20 * np.log10(rms)
+        rms = 20.0 * np.log10(rms)
     return np.atleast_1d(rms)
 
 
@@ -1321,3 +1318,80 @@ def resample_filter(filter: Filter, new_sampling_rate_hz: int) -> Filter:
 
     z, p, k = bilinear_zpk(z, p, k, new_sampling_rate_hz)
     return Filter.from_zpk(z, p, k, new_sampling_rate_hz)
+
+
+def modify_signal_length(
+    signal: Signal | MultiBandSignal,
+    start_seconds: float | None,
+    end_seconds: float | None,
+) -> Signal | MultiBandSignal:
+    """This function returns a copy of the signal with added silence at the
+    beginning or the end of the signal. Time samples can also be trimmed when
+    using negative time values.
+
+    Parameters
+    ----------
+    signal : Signal, MultiBandSignal
+        Signal to apply the length change to.
+    start_seconds : float, None
+        Seconds to add or remove from the start. Positive values append samples
+        while negative ones remove them. Pass None to avoid any modification.
+    end_seconds : float, None
+        Seconds to add or remove from the end. Positive values append samples
+        while negative ones remove them. Pass None to avoid any modification.
+
+    Returns
+    -------
+    Signal or MultiBandSignal
+
+    """
+    if isinstance(signal, Signal):
+        assert (
+            start_seconds is not None or end_seconds is not None
+        ), "At least the start or the end should be modified"
+        fs = signal.sampling_rate_hz
+        start_samples = (
+            0
+            if start_seconds is None
+            else int(start_seconds * fs + 0.5 * np.sign(start_seconds))
+        )
+        end_samples = (
+            0
+            if end_seconds is None
+            else int(end_seconds * fs + 0.5 * np.sign(end_seconds))
+        )
+
+        # Avoid cutting too many samples
+        if start_samples < 0:
+            assert len(signal) > -start_samples, "Trimming is too much"
+        if end_samples < 0:
+            assert len(signal) > -end_samples, "Trimming is too much"
+        if start_samples < 0 and end_samples < 0:
+            assert len(signal) > -(
+                start_samples + end_samples
+            ), "Trimming is too much"
+
+        new_sig = signal.copy()
+        td = new_sig.time_data
+        if start_samples >= 0:
+            td = np.pad(td, ((start_samples, 0), (0, 0)))
+        else:
+            td = td[-start_samples:, ...]
+
+        if end_samples >= 0:
+            td = np.pad(td, ((0, end_samples), (0, 0)))
+        else:
+            td = td[:end_samples, ...]
+        new_sig.time_data = td
+
+        new_sig.clear_time_window()
+        return new_sig
+    elif isinstance(signal, MultiBandSignal):
+        bands = []
+        for b in signal:
+            bands.append(modify_signal_length(b, start_seconds, end_seconds))
+        new_mb = signal.copy()
+        new_mb.bands = bands
+        return new_mb
+    else:
+        raise TypeError("Unsupported type")

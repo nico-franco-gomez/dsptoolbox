@@ -19,19 +19,18 @@ keywords = [
   "Research",
   "Prototyping",
 ]
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 dependencies = [
   "numba>=0.60;python_version<='3.12'",
-  "scipy>=1.11",
-  "numpy>=1.25",
+  "scipy>=1.14",
+  "numpy==2.0",
   "soundfile>=0.12",
-  "sounddevice>=0.4",
-  "matplotlib>=3.8",
-  "seaborn>=0.12",
+  "sounddevice>=0.5",
+  "matplotlib>=3.10",
+  "seaborn>=0.13",
 ]
 classifiers = [
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",

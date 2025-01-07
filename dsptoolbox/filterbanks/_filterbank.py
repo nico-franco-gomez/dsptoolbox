@@ -582,7 +582,6 @@ class LRFilterBank:
         length_samples: int = 2048,
         test_zi: bool = False,
         zero_phase: bool = False,
-        returns: bool = False,
     ):
         """Plots the phase response of each filter.
 
@@ -601,8 +600,6 @@ class LRFilterBank:
             Default: `False`.
         zero_phase : bool, optional
             Activates zero phase filtering. Default: `False`.
-        returns : bool, optional
-            When `True`, the figure and axis are returned. Default: `False`.
 
         Returns
         -------
@@ -641,7 +638,7 @@ class LRFilterBank:
             f, sp = bs.get_spectrum()
             gd = _group_delay_direct(sp.squeeze(), delta_f=f[1] - f[0]) * 1e3
             labels = ["Summed"]
-        fig, ax = general_plot(
+        return general_plot(
             f,
             gd,
             range_hz,
@@ -649,8 +646,6 @@ class LRFilterBank:
             returns=True,
             labels=labels,
         )
-        if returns:
-            return fig, ax
 
     def show_info(self):
         """Prints out information about the filter bank."""

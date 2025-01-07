@@ -35,6 +35,7 @@ Other:
   parallel SOS to approximate an IR.
 - `KautzFilter()`: Kautz filters with an orthonormal pole basis.
 - `ExponentialAverageFilter()`.
+- `StateSpaceFilter()`: Filter with state space representation.
 - `FilterChain()`: Filter structure for applying all other filters
   sequentially.
 - `convert_into_lattice_filter()`: Turns a conventional filter into its
@@ -70,6 +71,7 @@ from ..classes.sv_filter import StateVariableFilter
 from ..classes.kautz_filter import KautzFilter
 from ..classes.exponential_average_filter import ExponentialAverageFilter
 from ..classes.filter_chain import FilterChain
+from ..classes.state_space_filter import StateSpaceFilter
 from ..classes.group_delay_designer_phase_linearizer import (
     PhaseLinearizer,
     GroupDelayDesigner,
@@ -89,6 +91,7 @@ __all__ = [
     "IIRFilter",
     "FIRFilter",
     "ParallelFilter",
+    "StateSpaceFilter",
     "KautzFilter",
     "ExponentialAverageFilter",
     "FilterChain",

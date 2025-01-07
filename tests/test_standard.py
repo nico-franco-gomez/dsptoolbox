@@ -8,7 +8,7 @@ class TestStandardModule:
     fs = 44100
     audio_multi = dsp.generators.noise("white", 2, fs, number_of_channels=3)
 
-    def get_multiband_signal(self):
+    def get_multiband_signal(self) -> dsp.MultiBandSignal:
         fb = dsp.filterbanks.linkwitz_riley_crossovers([1e3], [4], self.fs)
         return fb.filter_signal(self.audio_multi)
 
@@ -406,7 +406,7 @@ class TestStandardModule:
         )
 
         previous = audio_multi_mb.get_all_time_data()[0]
-        gains = np.linspace(1, 5, some_signal.number_of_channels)
+        gains = np.linspace(1, 5, audio_multi.number_of_channels)
         audio_multi_mb = dsp.apply_gain(audio_multi_mb, gains)
         np.testing.assert_array_equal(
             previous * dsp.tools.from_db(gains, True),
@@ -431,3 +431,93 @@ class TestStandardModule:
         f = dsp.Filter.iir_design(
             7, [500, 18e3], "bandpass", "bessel", sampling_rate_hz=fs_hz
         )
+
+    def test_modify_signal_length(self):
+        with pytest.raises(AssertionError):
+            dsp.modify_signal_length(self.audio_multi, None, None)
+        with pytest.raises(AssertionError):
+            dsp.modify_signal_length(
+                self.audio_multi,
+                -(self.audio_multi.length_seconds + 1.0),
+                None,
+            )
+        with pytest.raises(AssertionError):
+            dsp.modify_signal_length(
+                self.audio_multi,
+                None,
+                -(self.audio_multi.length_seconds + 1.0),
+            )
+        with pytest.raises(AssertionError):
+            dsp.modify_signal_length(
+                self.audio_multi,
+                -self.audio_multi.length_seconds / 2.0,
+                -self.audio_multi.length_seconds / 1.9,
+            )
+
+        original_length = len(self.audio_multi)
+
+        # Add both
+        new = dsp.modify_signal_length(self.audio_multi, 1.0, 1.0)
+        assert new.length_seconds == self.audio_multi.length_seconds + 2.0
+        assert len(self.audio_multi) == original_length
+
+        # Add only start
+        new = dsp.modify_signal_length(self.audio_multi, 1.0, None)
+        assert new.length_seconds == self.audio_multi.length_seconds + 1.0
+        assert len(self.audio_multi) == original_length
+        np.testing.assert_array_equal(
+            new.time_data[: new.sampling_rate_hz], 0.0
+        )
+
+        # Add only end
+        new = dsp.modify_signal_length(self.audio_multi, None, 1.0)
+        assert new.length_seconds == self.audio_multi.length_seconds + 1.0
+        assert len(self.audio_multi) == original_length
+        np.testing.assert_array_equal(
+            new.time_data[-new.sampling_rate_hz :], 0.0
+        )
+
+        # Remove both
+        new = dsp.modify_signal_length(self.audio_multi, -0.5, -0.5)
+        assert new.length_seconds == self.audio_multi.length_seconds - 1.0
+        assert len(self.audio_multi) == original_length
+        np.testing.assert_array_equal(
+            new.time_data,
+            self.audio_multi.time_data[
+                new.sampling_rate_hz // 2 : -new.sampling_rate_hz // 2
+            ],
+        )
+
+        # Remove only start
+        new = dsp.modify_signal_length(self.audio_multi, -0.5, None)
+        assert new.length_seconds == self.audio_multi.length_seconds - 0.5
+        assert len(self.audio_multi) == original_length
+        np.testing.assert_array_equal(
+            new.time_data,
+            self.audio_multi.time_data[new.sampling_rate_hz // 2 :],
+        )
+
+        # Remove only end
+        new = dsp.modify_signal_length(self.audio_multi, None, -0.5)
+        assert new.length_seconds == self.audio_multi.length_seconds - 0.5
+        assert len(self.audio_multi) == original_length
+        np.testing.assert_array_equal(
+            new.time_data,
+            self.audio_multi.time_data[: -new.sampling_rate_hz // 2],
+        )
+
+        # Mixed
+        new = dsp.modify_signal_length(self.audio_multi, 1.5, -0.5)
+        assert new.length_seconds == self.audio_multi.length_seconds + 1.0
+        assert len(self.audio_multi) == original_length
+        np.testing.assert_array_equal(
+            new.time_data[: 3 * new.sampling_rate_hz // 2], 0.0
+        )
+        np.testing.assert_array_equal(
+            new.time_data[3 * new.sampling_rate_hz // 2 :],
+            self.audio_multi.time_data[: -new.sampling_rate_hz // 2],
+        )
+
+        # ===== MultiBandSignal: Only functionality
+        mb = self.get_multiband_signal()
+        dsp.modify_signal_length(mb, 1.5, -0.5)

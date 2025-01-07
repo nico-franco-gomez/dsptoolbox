@@ -178,12 +178,25 @@ class TestFilterbanksModule:
         gd = np.max(gd) * 2 - gd
         pl = dsp.filterbanks.GroupDelayDesigner(gd.squeeze(), len(ir), fs_hz)
         pl.set_parameters(1.0)
-        pl.get_filter()
+        min_length_filt = pl.get_filter()
 
         # ir = dsp.pad_trim(pl.get_filter_as_ir(), 2**15)
         # ir.plot_time()
         # ir.plot_magnitude()
         # dsp.plots.show()
+
+        new_filt = (
+            dsp.filterbanks.GroupDelayDesigner(gd.squeeze(), len(ir), fs_hz)
+            .set_parameters(1.0, 10)
+            .get_filter()
+        )
+        assert len(new_filt) - 10 == len(min_length_filt)
+
+        new_filt = (
+            dsp.filterbanks.GroupDelayDesigner(gd.squeeze(), len(ir), fs_hz)
+            .set_parameters(1.0, 0, False)
+            .get_filter()
+        )
 
     def test_pinking_filter(self):
         # Only functionality

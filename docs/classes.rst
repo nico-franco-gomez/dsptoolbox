@@ -40,7 +40,7 @@ Filter
    :undoc-members:
    :show-inheritance:
 
-Filterbank
+FilterBank
 ----------------------------------
 
 .. automodule:: dsptoolbox.classes.filterbank

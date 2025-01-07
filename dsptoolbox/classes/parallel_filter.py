@@ -136,7 +136,7 @@ class ParallelFilter(RealtimeFilter):
             self.__fir_coefficients = np.array([])
         self.n_fir = len(self.__fir_coefficients)
 
-    def fit_to_ir(self, ir: ImpulseResponse) -> FilterBank:
+    def fit_to_ir(self, ir: ImpulseResponse):
         """Fit the filter coefficients of this filter bank to an IR using the
         frequency-domain least-squares approximation as outlined in [1].
 
@@ -241,7 +241,7 @@ class ParallelFilter(RealtimeFilter):
 
         self.__compute_filter_bank()
 
-    def __compute_filter_bank(self) -> FilterBank:
+    def __compute_filter_bank(self):
         fb = FilterBank(
             [
                 Filter.from_sos(

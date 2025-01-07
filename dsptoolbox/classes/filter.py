@@ -166,7 +166,8 @@ class Filter:
         passband_ripple_db : float, None, optional
             Passband ripple in dB for "cheby1" and "ellip". Default: None.
         stopband_attenuation_db : float, None, optional
-            Passband ripple in dB for "cheby2" and "ellip". Default: None.
+            Minimum stopband attenutation in dB for "cheby2" and "ellip".
+            Default: None.
         sampling_rate_hz : int
             Sampling rate in Hz.
 
@@ -380,6 +381,10 @@ class Filter:
     def sampling_rate_hz(self):
         return self.__sampling_rate_hz
 
+    @property
+    def order(self):
+        return self.info["order"]
+
     @sampling_rate_hz.setter
     def sampling_rate_hz(self, new_sampling_rate_hz):
         assert (
@@ -592,8 +597,7 @@ class Filter:
             )
 
         new_sig = signal.copy()
-        if hasattr(new_sig, "window"):
-            del new_sig.window
+        new_sig.clear_time_window()
         new_sig.sampling_rate_hz = new_sampling_rate_hz
         new_sig.time_data = new_time_data
         return new_sig
@@ -833,6 +837,34 @@ class Filter:
         return sig.freqz(
             self.ba[0], [1], frequency_vector_hz, self.sampling_rate_hz
         )[1]
+
+    def get_group_delay(
+        self, frequency_vector_hz: NDArray[np.float64], in_seconds: bool = True
+    ) -> NDArray[np.float64]:
+        """Obtain the group delay of the filter using
+        `scipy.signal.group_delay`. To this end, filter coefficients in ba-form
+        are always used. This could lead to numerical imprecisions in case the
+        filter has a large order.
+
+        Parameters
+        ----------
+        frequency_vector_hz : NDArray[np.float64]
+            Frequency vector for which to compute the group delay.
+        in_seconds : bool, optional
+            When True, the output is given in seconds. Otherwise it is in
+            samples. Default: True.
+
+        Returns
+        -------
+        group_delay : NDArray[np.float64]
+            Group delay with shape (frequency).
+
+        """
+        ba = self.get_coefficients("ba")
+        gd = sig.group_delay(
+            ba, w=frequency_vector_hz, fs=self.sampling_rate_hz
+        )[1]
+        return gd / self.sampling_rate_hz if in_seconds else gd
 
     def get_coefficients(
         self, mode: str = "sos"

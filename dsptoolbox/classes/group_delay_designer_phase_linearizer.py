@@ -1,7 +1,7 @@
 from .filter import Filter
 from .impulse_response import ImpulseResponse
 import numpy as np
-from scipy.integrate import cumulative_trapezoid
+from scipy.integrate import cumulative_trapezoid, cumulative_simpson
 from scipy.interpolate import PchipInterpolator
 from numpy.typing import NDArray
 from .._general_helpers import _correct_for_real_phase_spectrum, _pad_trim
@@ -43,6 +43,8 @@ class GroupDelayDesigner:
     def set_parameters(
         self,
         delay_increase_ms: float = 0.0,
+        additional_length_samples: int = 0,
+        trapezoidal_integration: bool = True,
     ):
         """Set parameters for the FIR filter.
 
@@ -52,12 +54,29 @@ class GroupDelayDesigner:
             This is an overall increase in delay to the current group delay (in
             milliseconds). Increasing this improves the quality of the
             designed filter but also makes it longer. Default: 0.
+        additional_length_samples : int, optional
+            When obtaining the group delay, some energy might leak into the
+            latest samples. Through this parameter, the last samples can
+            be retained at the expense of a longer filter. Pass 0 to retain
+            only the theoretical minimum. Default: 0.
+        trapezoidal_integration : bool, optional
+            In order to obtain a phase response, the desired group delay must
+            be integrated using a numerical integration method. Trapezoidal
+            or Simpson integration can be used. The former tends to be more
+            stable but delivers less smooth responses. It will be activated
+            when True, otherwise, pass False to use Simpson. Default: True.
 
         """
         assert (
             delay_increase_ms >= 0
         ), "Delay increase must be larger than zero"
+        assert (
+            additional_length_samples >= 0
+        ), "Additional length must be 0 or greater"
         self.group_delay_increase_ms = delay_increase_ms
+        self.trapezoidal_integration = trapezoidal_integration
+        self.additional_length_samples = additional_length_samples
+        return self
 
     def _set_target_group_delay_s(
         self, target_group_delay_s: NDArray[np.float64]
@@ -143,7 +162,11 @@ class GroupDelayDesigner:
             gd_time_length_samples = new_gd_time_length_samples
 
         # Get new phase using group target group delay
-        new_phase = -cumulative_trapezoid(target_gd, initial=0)
+        new_phase = (
+            -cumulative_trapezoid(target_gd, initial=0)
+            if self.trapezoidal_integration
+            else -cumulative_simpson(target_gd, initial=0)
+        )
 
         # Correct if nyquist is given
         add_extra_sample = False
@@ -153,7 +176,12 @@ class GroupDelayDesigner:
 
         # Convert to time domain and trim
         ir = np.fft.irfft(np.exp(1j * new_phase), gd_time_length_samples)
-        trim_length = int(max_delay_samples_synthesized + 1 + add_extra_sample)
+        trim_length = int(
+            max_delay_samples_synthesized
+            + 1
+            + add_extra_sample
+            + self.additional_length_samples
+        )
         ir = _pad_trim(ir, trim_length)
         return ir
 
@@ -199,6 +227,8 @@ class PhaseLinearizer(GroupDelayDesigner):
     def set_parameters(
         self,
         delay_increase_percent: float = 100.0,
+        additional_length_samples: int = 0,
+        trapezoidal_integration: bool = True,
     ):
         """Set parameters for the FIR filter.
 
@@ -210,12 +240,26 @@ class PhaseLinearizer(GroupDelayDesigner):
             designed filter but also makes it longer. Passing a value of 100
             means that the total group delay will be 2 times larger than the
             longest group delay. Default: 100.
+        additional_length_samples : int, optional
+            When obtaining the group delay, some energy might leak into the
+            latest samples. Through this parameter, the last samples can
+            be retained at the expense of a longer filter. Pass 0 to retain
+            only the theoretical minimum. Default: 0.
+        trapezoidal_integration : bool, optional
+            In order to obtain a phase response, the desired group delay must
+            be integrated using a numerical integration method. Trapezoidal
+            or Simpson can be used. The former tends to be more stable but
+            delivers less smooth responses. It will be activated when True,
+            otherwise, pass False to use Simpson. Default: True.
 
         """
         assert (
             delay_increase_percent >= 0
         ), "Delay increase must be larger than zero"
         self.group_delay_increase_factor = 1 + delay_increase_percent / 100
+        return super().set_parameters(
+            0.0, additional_length_samples, trapezoidal_integration
+        )
 
     def __get_group_delay(self, phase_response) -> NDArray[np.float64]:
         """Return the unscaled group delay from the phase response."""

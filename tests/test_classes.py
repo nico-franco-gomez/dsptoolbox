@@ -160,9 +160,21 @@ class TestSignal:
         # Number of channels is generated right
         assert s.number_of_channels == self.channels
 
-        # Number of channels should not be changeable
-        with pytest.raises(AssertionError):
+        # Read-only properties - check
+        s.number_of_channels
+        s.length_samples
+        s.length_seconds
+        s.time_vector_s
+
+        # Some properties are read-only
+        with pytest.raises(AttributeError):
             s.number_of_channels = 10
+        with pytest.raises(AttributeError):
+            s.length_samples = 10
+        with pytest.raises(AttributeError):
+            s.length_seconds = 10.0
+        with pytest.raises(AttributeError):
+            s.time_vector_s = np.array([0.0, 1.0])
 
     def test_plot_generation(self):
         s = dsp.ImpulseResponse(
@@ -272,6 +284,9 @@ class TestSignal:
     def test_length_signal(self):
         s = dsp.Signal(time_data=self.time_vec, sampling_rate_hz=self.fs)
         assert len(s) == s.time_data.shape[0]
+        assert s.length_samples == len(s)
+        assert s.length_seconds == len(s) / s.sampling_rate_hz
+        assert s.length_seconds == s.time_vector_s[-1]
 
     def test_constrain_amplitude(self):
         t = np.random.normal(0, 1, 200)
@@ -282,6 +297,13 @@ class TestSignal:
             None, t, sampling_rate_hz=100, constrain_amplitude=False
         )
         assert np.all(t == s.time_data.squeeze())
+
+    def test_sum_channels(self):
+        n = np.random.normal(0, 0.01, (300, 2))
+        nn = dsp.Signal.from_time_data(n, 10_000)
+        np.testing.assert_array_equal(
+            nn.sum_channels().time_data, np.sum(n, axis=1, keepdims=True)
+        )
 
 
 class TestFilterClass:
@@ -539,6 +561,43 @@ class TestFilterClass:
             sampling_rate_hz=self.fs,
         )
         assert len(f) == len(b)
+
+    def test_order(self):
+        b = sig.firwin(
+            1500,
+            (self.fs // 2 // 2),
+            pass_zero="lowpass",
+            fs=self.fs,
+            window="flattop",
+        )
+        f = dsp.Filter(
+            "other",
+            filter_configuration=dict(ba=[b, 1]),
+            sampling_rate_hz=self.fs,
+        )
+        assert f.order == len(b) - 1
+
+    def test_group_delay(self):
+        f_log = dsp.tools.log_frequency_vector([20, 20e3], 128)
+        bb = dsp.Filter.biquad(
+            eq_type="peaking",
+            frequency_hz=300,
+            gain_db=10,
+            q=1.5,
+            sampling_rate_hz=48000,
+        )
+        gd = bb.get_group_delay(f_log)
+        ff, gg = dsp.transfer_functions.group_delay(
+            bb.get_ir(length_samples=2**14)
+        )
+
+        interpolated_gd = dsp.tools.interpolate_fr(
+            ff, gg.squeeze(), f_log, interpolation_scheme="cubic"
+        )
+        np.testing.assert_allclose(interpolated_gd, gd, atol=1e-6)
+
+        # Check it runs
+        gd = bb.get_group_delay(f_log, False)
 
 
 class TestFilterBankClass:
@@ -894,6 +953,9 @@ class TestMultiBandSignal:
         frequency_range_hz=[500, 1200], sampling_rate_hz=fs
     )
 
+    def get_mb(self) -> dsp.MultiBandSignal:
+        return self.fb.filter_signal(self.s)
+
     def test_create_and_general_functionalities(self):
         # Test creating from two signals and other functionalities
         mbs = dsp.MultiBandSignal(
@@ -1065,6 +1127,27 @@ class TestMultiBandSignal:
         )
         for n in mbs:
             assert dsp.Signal == type(n)
+
+    def test_multibandsignal_properties(self):
+        mb = self.get_mb()
+
+        # Get
+        mb.length_seconds
+        mb.number_of_bands
+        mb.number_of_channels
+        mb.length_samples
+
+        mb.bands
+
+        # Read-only properties
+        with pytest.raises(AttributeError):
+            mb.length_seconds = 1.0
+        with pytest.raises(AttributeError):
+            mb.number_of_bands = 1
+        with pytest.raises(AttributeError):
+            mb.number_of_channels = 1
+        with pytest.raises(AttributeError):
+            mb.length_samples = 1
 
 
 class TestImpulseResponse:
@@ -1345,3 +1428,23 @@ class TestFilterTopologies:
 
         fc.reset_state()
         fc.set_n_channels(1)
+
+    def test_state_space_filtering(self):
+        # Check filter's output against usual TDF2 implementation
+        ff = dsp.Filter.biquad("peaking", 100, 6, 0.7, self.fs_hz)
+        b, a = ff.get_coefficients("ba")
+        A, B, C, D = sig.tf2ss(b, a)
+        noise = dsp.generators.noise(
+            -2.0, sampling_rate_hz=self.fs_hz, number_of_channels=2
+        )
+        ff2 = dsp.filterbanks.StateSpaceFilter(A, B, C, D)
+        ff2.set_n_channels(noise.number_of_channels)
+        reference = ff.filter_signal(noise)
+
+        channel = 0
+        for ch_n in noise:
+            output = np.zeros(len(ch_n))
+            for ind in range(len(ch_n)):
+                output[ind] = ff2.process_sample(ch_n[ind], channel)
+            np.testing.assert_allclose(reference.time_data[:, channel], output)
+            channel += 1

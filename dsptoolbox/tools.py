@@ -18,6 +18,8 @@ from ._general_helpers import (
     _interpolate_fr as interpolate_fr,
     _time_smoothing as time_smoothing,
     _scale_spectrum as scale_spectrum,
+    _array_to_bytes_24bits,
+    _bytes_to_array_24bits,
     to_db,
     from_db,
 )
@@ -342,6 +344,151 @@ def erb_frequencies(
     return frequencies
 
 
+def convert_sample_representation(
+    values: NDArray | bytes,
+    input_format: str,
+    output_format: str,
+    cast_output: bool = True,
+    output_in_bytes: bool = False,
+) -> tuple[NDArray | bytes, float, float]:
+    """This function takes in an array of audio samples and turns it into the
+    desired sample output format. It always clips the input to the maximum
+    allowed range.
+
+    Parameters
+    ----------
+    vector : NDArray, bytes
+        Values to convert. If in bytes, the output will be a flat array as the
+        input without reordering.
+    input_format : str, {"f32", "f64", "i8", "i16", "i24", "i32", "u8", "u16",\
+        "u24", "u32"}
+        Input format for the samples. If the input is a byte array, the samples
+        will be read using `numpy.frombuffer()`. In the case of "i24" and
+        "u24", the input is expected to have 3-bytes samples and the endianness
+        of the current platform.
+    output_format : str, {"f32", "f64", "i8", "i16", "i24", "i32", "u8", \
+        "u16", "u24", "u32"}
+        Output format for the samples.
+    cast_output : bool, optional
+        When True, the output vector is casted to the equivalent data type of
+        the output format. This throws an assertion error if the casting is not
+        supported by numpy (for "i24" and "u24") AND the output is not in
+        bytes. When avoiding casting, the data type of the output is always
+        np.float64. Default: True.
+    output_in_bytes : bool, optional
+        When True, the array is returned with its bytes representation as
+        produced by `numpy.tobytes()`. In the case of "i24" and "u24" and
+        `cast_output=True`, the
+        bytes are always produced with the endianness of the current platform
+        and the size is 3 per sample bytes and in c ordering. Default: False.
+
+    Returns
+    -------
+    output : NDArray or bytes
+        Vector with samples in the desired format.
+    equilibrium : float
+        Value that represents equilibrium in the output sample format.
+    span_value : float
+        Maximum distance from the equilibrium to the ends of the dynamic range
+        in the output sample format. Use equilibrium ± span_value to find the
+        range of values.
+
+    Notes
+    -----
+    - Dithering is advised when lowering the bit depth, this is not done
+      within this function.
+    - Passing the same format as input and output will raise an AssertionError.
+    - `i` refers to signed integer and `u` means unsigned integer.
+
+    """
+    if input_format == output_format:
+        raise AssertionError("No conversion is necessary")
+
+    valid_formats = [
+        "f32",
+        "f64",
+        "i8",
+        "i16",
+        "i24",
+        "i32",
+        "u8",
+        "u16",
+        "u24",
+        "u32",
+    ]
+    input_format.lower()
+    output_format = output_format.lower()
+    assert (
+        output_format in valid_formats and input_format in valid_formats
+    ), f"Format {input_format} or {output_format} is not supported"
+
+    if type(values) is bytes:
+        signed_input = input_format[0] == "i"
+        if input_format in ("i24", "u24"):
+            values = _bytes_to_array_24bits(values, signed_input)
+        else:
+            if input_format not in ("f32", "f64"):
+                bits_input = int(input_format[1:])
+                input_format_to_read = eval(
+                    f"np.{"int" if signed_input else "uint"}{bits_input}"
+                )
+            else:
+                input_format_to_read = eval(f"np.{input_format}")
+            values = np.frombuffer(values, dtype=input_format_to_read)
+
+    # ==== Input (convert always to double precision)
+    if input_format not in ("f32", "f64"):
+        signed_input = input_format[0] == "i"
+        bits_input = int(input_format[1:])
+        max_value_input = 2.0 ** (bits_input - 1) - 1
+        values = values.astype(np.float64) / max_value_input
+        if not signed_input:
+            values -= 1.0
+    values = np.clip(values, -1.0, 1.0)
+
+    # ==== Output (from double precision to desired format)
+    if output_format == "f32":
+        return values.astype(np.float32), 0.0, 1.0
+    elif output_format == "f64":
+        return values, 0, 1.0
+
+    # Fixed-point output
+    signed_output = output_format[0] == "i"
+    bits_output = int(output_format[1:])
+    max_value_output = 2.0 ** (bits_output - 1) - 1
+    output = values * max_value_output
+    equilibrium = 0.0
+
+    if not signed_output:
+        output += max_value_output
+        equilibrium += max_value_output
+
+    if cast_output:
+        if output_format in ("i24", "u24"):
+            assert output_in_bytes, (
+                "This format is only valid for casting when "
+                + "the output is in bytes"
+            )
+            bits_output = 32
+        prefix = "int" if signed_output else "uint"
+        sample_type = eval(f"np.{prefix}{bits_output}")
+        output = output.astype(sample_type)
+    else:
+        output = np.trunc(output)
+
+    if not output_in_bytes:
+        return output, equilibrium, max_value_output
+
+    if output_format in ("i24", "u24") and cast_output:
+        return (
+            _array_to_bytes_24bits(output),
+            equilibrium,
+            max_value_output,
+        )
+    else:
+        return output.tobytes(), equilibrium, max_value_output
+
+
 __all__ = [
     "fractional_octave_smoothing",
     "wrap_phase",
@@ -359,4 +506,5 @@ __all__ = [
     "scale_spectrum",
     "framed_signal",
     "reconstruct_from_framed_signal",
+    "convert_sample_representation",
 ]

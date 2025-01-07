@@ -14,6 +14,37 @@ adheres to `Semantic Versioning <http://semver.org/spec/v2.0.0.html>`_.
 - Validation for results from tests in every module (so far many tests are
   only regarding functionality)
 
+`0.4.8 <https://pypi.org/project/dsptoolbox/0.4.8>`_ - 
+---------------------
+Added
+~~~~~
+- `convert_sample_representation` in ``dsptoolbox.tools``
+- `sum_all_channels` method in Signal class
+- `get_group_delay` method in Filter class
+- iterator in Signal class now iterates over the channels
+- `StateSpaceFilter` in ``filterbanks``
+- synchronized swept-sine was added a new type of chirp in ``generators``
+- `clear_time_window` in Signal class
+- `modify_signal_length` in ``dsptoolbox.*``
+
+Misc
+~~~~
+- extended functionality of `find_ir_latency` in ``transfer_functions``
+- dropped support for Python 3.10
+- rescaling time data can be done directly in `resample`
+- `PhaseLinearizer` and `GroupDelayDesigner` now can use two different
+  integration methods. They also got a new parameter that allows for more
+  flexible designs
+- `trim_ir` can now trim the end of an IR without modifying the start
+
+Bugfix
+~~~~~~
+- plotting in `LRFilterBank` now returns the plots just like the FilterBank
+  class
+- multiple docs fixes and type annotations
+- `merge_filterbanks` was fixed so that the output is a (deep) copy of the
+  input instead of a shallow one
+
 `0.4.7 <https://pypi.org/project/dsptoolbox/0.4.7>`_ - 
 ---------------------
 Added
