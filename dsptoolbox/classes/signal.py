@@ -700,6 +700,7 @@ class Signal:
         return new_sig
 
     def clear_time_window(self):
+        """Deletes the time window of the signal in case there is any."""
         if hasattr(self, "window"):
             del self.window
 
