@@ -555,8 +555,7 @@ def average_irs(
         new_time_data = np.mean(avg_sig.time_data, axis=1)
 
     avg_sig.time_data = new_time_data
-    if hasattr(avg_sig, "window"):
-        del avg_sig.window
+    avg_sig.clear_time_window()
     return avg_sig
 
 
@@ -783,8 +782,7 @@ def min_phase_ir(
 
     min_phase_sig = sig.copy()
     min_phase_sig.time_data = new_time_data[: len(sig)]
-    if hasattr(min_phase_sig, "window"):
-        del min_phase_sig.window
+    min_phase_sig.clear_time_window()
     return min_phase_sig
 
 
@@ -1770,6 +1768,5 @@ def trim_ir(
         start_offset_s,
     )
     trimmed_rir.time_data = td[start:stop]
-    if hasattr(trimmed_rir, "window"):
-        del trimmed_rir.window
+    trimmed_rir.clear_time_window()
     return trimmed_rir, start, stop

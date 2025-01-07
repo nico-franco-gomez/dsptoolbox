@@ -220,8 +220,7 @@ def pad_trim(
                 in_the_end=in_the_end,
             )
         new_sig = signal.copy()
-        if hasattr(new_sig, "window"):
-            del new_sig.window
+        new_sig.clear_time_window()
         new_sig.time_data = new_time_data
     elif isinstance(signal, MultiBandSignal):
         assert (
@@ -284,8 +283,7 @@ def merge_signals(
                 )
         new_time_data = np.append(in1.time_data, in2.time_data, axis=1)
         new_sig = in1.copy()
-        if hasattr(new_sig, "window"):
-            del new_sig.window
+        new_sig.clear_time_window()
         new_sig.time_data = new_time_data
     elif isinstance(in1, MultiBandSignal):
         assert isinstance(
@@ -377,8 +375,7 @@ def resample(
     u, d = ratio.as_integer_ratio()
     new_time_data = resample_poly(sig.time_data, up=u, down=d, axis=0)
     new_sig = sig.copy()
-    if hasattr(new_sig, "window"):
-        del new_sig.window
+    new_sig.clear_time_window()
     new_sig.time_data = new_time_data * (d / u) if rescaling else new_time_data
     new_sig.sampling_rate_hz = desired_sampling_rate_hz
     return new_sig
@@ -690,8 +687,7 @@ def fractional_delay(
 
         # =========== give out object =========================================
         out_sig = sig.copy()
-        if hasattr(out_sig, "window"):
-            del out_sig.window
+        out_sig.clear_time_window()
         out_sig.time_data = new_time_data
 
     elif isinstance(sig, MultiBandSignal):
@@ -810,9 +806,8 @@ def activity_detector(
     # Separate signals
     detected_sig = signal.copy()
     noise = signal.copy()
-    if hasattr(detected_sig, "window"):
-        del detected_sig.window
-        del noise.window
+    detected_sig.clear_time_window()
+    noise.clear_time_window()
 
     try:
         detected_sig.time_data = signal.time_data[signal_indices, 0]
@@ -1389,8 +1384,7 @@ def modify_signal_length(
             td = td[:end_samples, ...]
         new_sig.time_data = td
 
-        if hasattr(new_sig, "window"):
-            del new_sig.window
+        new_sig.clear_time_window()
         return new_sig
     elif isinstance(signal, MultiBandSignal):
         bands = []

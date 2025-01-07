@@ -247,8 +247,7 @@ class Signal:
         self.time_data_imaginary = new_time_data_imag
         self.__update_state()
 
-        if hasattr(self, "window"):
-            del self.window
+        self.clear_time_window()
 
     @property
     def sampling_rate_hz(self) -> int:
@@ -697,7 +696,12 @@ class Signal:
         """
         new_sig = self.copy()
         new_sig.time_data = np.sum(new_sig.time_data, axis=1)
+        new_sig.clear_time_window()
         return new_sig
+
+    def clear_time_window(self):
+        if hasattr(self, "window"):
+            del self.window
 
     # ======== Getters ========================================================
     def get_spectrum(

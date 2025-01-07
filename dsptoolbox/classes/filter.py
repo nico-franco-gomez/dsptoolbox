@@ -597,8 +597,7 @@ class Filter:
             )
 
         new_sig = signal.copy()
-        if hasattr(new_sig, "window"):
-            del new_sig.window
+        new_sig.clear_time_window()
         new_sig.sampling_rate_hz = new_sampling_rate_hz
         new_sig.time_data = new_time_data
         return new_sig
