@@ -76,11 +76,11 @@ class MultiBandSignal:
             self.__sampling_rate_hz = [int(s) for s in new_sampling_rate_hz]
 
     @property
-    def bands(self) -> list:
+    def bands(self) -> list[Signal]:
         return self.__bands
 
     @bands.setter
-    def bands(self, new_bands):
+    def bands(self, new_bands: list[Signal]):
         if new_bands is None:
             new_bands = []
         if type(new_bands) is tuple:
@@ -88,7 +88,7 @@ class MultiBandSignal:
         assert type(new_bands) is list, "bands has to be a list"
         if new_bands:
             # Check length and number of channels
-            self.number_of_channels = new_bands[0].number_of_channels
+            self.__number_of_channels = new_bands[0].number_of_channels
             sr = []
             complex_data = new_bands[0].time_data_imaginary is not None
             for s in new_bands:
@@ -107,7 +107,7 @@ class MultiBandSignal:
                 sr.append(s.sampling_rate_hz)
             if self.same_sampling_rate:
                 self.sampling_rate_hz = new_bands[0].sampling_rate_hz
-                self.band_length_samples = new_bands[0].time_data.shape[0]
+                expected_length_samples = new_bands[0].length_samples
             else:
                 self.sampling_rate_hz = sr
             # Check sampling rate and duration
@@ -118,7 +118,7 @@ class MultiBandSignal:
                         + "If you wish to create a multirate system, set "
                         + "same_sampling_rate to False"
                     )
-                    assert s.time_data.shape[0] == self.band_length_samples, (
+                    assert s.time_data.shape[0] == expected_length_samples, (
                         "The length of the bands is not always the same. "
                         + "This behaviour is not supported if there is a "
                         + "constant sampling rate"
@@ -140,6 +140,25 @@ class MultiBandSignal:
     @property
     def number_of_bands(self) -> int:
         return len(self.bands)
+
+    @property
+    def number_of_channels(self) -> int:
+        return self.__number_of_channels
+
+    @property
+    def length_seconds(self) -> float:
+        return self.bands[0].length_seconds if self.bands else 0.0
+
+    @property
+    def length_samples(self) -> list[int] | int:
+        if not self.bands:
+            return 0
+
+        return (
+            self.bands[0].length_samples
+            if self.same_sampling_rate
+            else [b.length_samples for b in self.bands]
+        )
 
     def __get_type_of_signal_bands(self):
         """Return type of saved bands (either Signal or ImpulseResponse)."""
@@ -167,7 +186,7 @@ class MultiBandSignal:
             if self.same_sampling_rate:
                 if hasattr(self, "sampling_rate_hz"):
                     self.info["sampling_rate_hz"] = self.sampling_rate_hz
-                self.info["band_length_samples"] = self.band_length_samples
+                self.info["length_samples"] = self.length_samples
             self.info["number_of_channels"] = self.number_of_channels
 
     # ======== Add and remove =================================================
@@ -383,7 +402,7 @@ class MultiBandSignal:
         if self.same_sampling_rate:
             td = zeros(
                 (
-                    self.band_length_samples,
+                    self.length_samples,
                     self.number_of_bands,
                     self.number_of_channels,
                 ),

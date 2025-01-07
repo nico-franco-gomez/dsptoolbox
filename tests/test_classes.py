@@ -160,9 +160,21 @@ class TestSignal:
         # Number of channels is generated right
         assert s.number_of_channels == self.channels
 
-        # Number of channels should not be changeable
-        with pytest.raises(AssertionError):
+        # Read-only properties - check
+        s.number_of_channels
+        s.length_samples
+        s.length_seconds
+        s.time_vector_s
+
+        # Some properties are read-only
+        with pytest.raises(AttributeError):
             s.number_of_channels = 10
+        with pytest.raises(AttributeError):
+            s.length_samples = 10
+        with pytest.raises(AttributeError):
+            s.length_seconds = 10.0
+        with pytest.raises(AttributeError):
+            s.time_vector_s = np.array([0.0, 1.0])
 
     def test_plot_generation(self):
         s = dsp.ImpulseResponse(
@@ -272,6 +284,9 @@ class TestSignal:
     def test_length_signal(self):
         s = dsp.Signal(time_data=self.time_vec, sampling_rate_hz=self.fs)
         assert len(s) == s.time_data.shape[0]
+        assert s.length_samples == len(s)
+        assert s.length_seconds == len(s) / s.sampling_rate_hz
+        assert s.length_seconds == s.time_vector_s[-1]
 
     def test_constrain_amplitude(self):
         t = np.random.normal(0, 1, 200)
@@ -938,6 +953,9 @@ class TestMultiBandSignal:
         frequency_range_hz=[500, 1200], sampling_rate_hz=fs
     )
 
+    def get_mb(self) -> dsp.MultiBandSignal:
+        return self.fb.filter_signal(self.s)
+
     def test_create_and_general_functionalities(self):
         # Test creating from two signals and other functionalities
         mbs = dsp.MultiBandSignal(
@@ -1109,6 +1127,27 @@ class TestMultiBandSignal:
         )
         for n in mbs:
             assert dsp.Signal == type(n)
+
+    def test_multibandsignal_properties(self):
+        mb = self.get_mb()
+
+        # Get
+        mb.length_seconds
+        mb.number_of_bands
+        mb.number_of_channels
+        mb.length_samples
+
+        mb.bands
+
+        # Read-only properties
+        with pytest.raises(AttributeError):
+            mb.length_seconds = 1.0
+        with pytest.raises(AttributeError):
+            mb.number_of_bands = 1
+        with pytest.raises(AttributeError):
+            mb.number_of_channels = 1
+        with pytest.raises(AttributeError):
+            mb.length_samples = 1
 
 
 class TestImpulseResponse:
