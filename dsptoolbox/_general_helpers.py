@@ -1364,7 +1364,7 @@ def _get_fractional_impulse_peak_index(
     return latency_samples + start_offset
 
 
-def _remove_ir_latency_from_phase(
+def _remove_ir_latency_from_phase_min_phase(
     freqs: NDArray[np.float64],
     phase: NDArray[np.float64],
     time_data: NDArray[np.float64],
@@ -1394,7 +1394,74 @@ def _remove_ir_latency_from_phase(
 
     """
     min_ir = _min_phase_ir_from_real_cepstrum(time_data, padding_factor)
-    delays_s = _fractional_latency(time_data, min_ir) / sampling_rate_hz
+    return _remove_ir_latency_from_phase(
+        freqs, phase, _fractional_latency(time_data, min_ir), sampling_rate_hz
+    )
+
+
+def _remove_ir_latency_from_phase_peak(
+    freqs: NDArray[np.float64],
+    phase: NDArray[np.float64],
+    time_data: NDArray[np.float64],
+    sampling_rate_hz: int,
+):
+    """
+    Remove the impulse delay from a phase response.
+
+    Parameters
+    ----------
+    freqs : NDArray[np.float64]
+        Frequency vector.
+    phase : NDArray[np.float64]
+        Phase vector.
+    time_data : NDArray[np.float64]
+        Corresponding time signal.
+    sampling_rate_hz : int
+        Sample rate.
+
+    Returns
+    -------
+    new_phase : NDArray[np.float64]
+        New phase response without impulse delay.
+
+    """
+    return _remove_ir_latency_from_phase(
+        freqs,
+        phase,
+        _get_fractional_impulse_peak_index(time_data),
+        sampling_rate_hz,
+    )
+
+
+def _remove_ir_latency_from_phase(
+    freqs: NDArray[np.float64],
+    phase: NDArray[np.float64],
+    latency_samples: NDArray,
+    sampling_rate_hz: int,
+):
+    """
+    Remove the impulse delay from a phase response.
+
+    Parameters
+    ----------
+    freqs : NDArray[np.float64]
+        Frequency vector.
+    phase : NDArray[np.float64]
+        Phase vector.
+    latency_samples : NDArray
+        Latency per channel to remove in samples.
+    sampling_rate_hz : int
+        Sampling rate in Hz.
+
+    Returns
+    -------
+    new_phase : NDArray[np.float64]
+        New phase response without impulse delay.
+
+    """
+    assert latency_samples.ndim == 1
+    assert len(latency_samples) == phase.shape[1]
+    delays_s = latency_samples / sampling_rate_hz
     return _wrap_phase(phase + 2 * np.pi * freqs[:, None] * delays_s[None, :])
 
 

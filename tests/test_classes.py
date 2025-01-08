@@ -193,6 +193,12 @@ class TestSignal:
         # Plot phase and group delay
         s.set_spectrum_parameters(method="standard")
         s.plot_phase()
+        s.plot_phase(unwrap=True, smoothing=4, remove_ir_latency=None)
+        s.plot_phase(remove_ir_latency="min_phase")
+        s.plot_phase(remove_ir_latency="peak")
+        s.plot_phase(remove_ir_latency=[10] * s.number_of_channels)
+        with pytest.raises(ValueError):
+            s.plot_phase(remove_ir_latency="no idea what removal method")
         s.plot_group_delay()
 
         # Try to plot coherence

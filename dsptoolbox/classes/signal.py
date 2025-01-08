@@ -10,7 +10,7 @@ import soundfile as sf
 from matplotlib.figure import Figure
 from matplotlib.axes import Axes
 from scipy.signal import oaconvolve
-from numpy.typing import NDArray
+from numpy.typing import NDArray, ArrayLike
 
 from ..plots import general_plot, general_subplots_line, general_matrix_plot
 from .plots import _csm_plot
@@ -22,6 +22,8 @@ from .._general_helpers import (
     _check_format_in_path,
     _scale_spectrum,
     _wrap_phase,
+    _remove_ir_latency_from_phase_min_phase,
+    _remove_ir_latency_from_phase_peak,
     _remove_ir_latency_from_phase,
 )
 from .._standard import _welch, _group_delay_direct, _stft, _csm
@@ -1129,8 +1131,8 @@ class Signal:
     def plot_group_delay(
         self,
         range_hz=[20, 20000],
-        remove_ir_latency: bool = False,
         smoothing: int = 0,
+        remove_ir_latency: str | ArrayLike | None = None,
     ) -> tuple[Figure, Axes]:
         """Plots group delay of each channel.
 
@@ -1139,13 +1141,21 @@ class Signal:
         range_hz : array-like with length 2, optional
             Range of frequencies for which to show group delay.
             Default: [20, 20e3].
-        remove_ir_latency : bool, optional
-            When `True`, the delay of the impulse is removed prior to the
-            computation of the group delay. Default: `False`.
         smoothing : int, optional
             When different than 0, smoothing is applied to the group delay
             along the (1/smoothing) octave band. This only affects the values
             in the plot. Default: 0.
+        remove_ir_latency : str ["peak", "min_phase"], ArrayLike,\
+                None, optional
+            If the signal is an impulse response, the delay of the impulse can
+            be removed. IR delay removal options are:
+
+            - str ["peak" or "min_phase"]: By regarding its delay in relation
+              to the minimum-phase equivalent or its peak in the time signal.
+            - ArrayLike: Delay in samples to remove from each channel.
+            - None: no latency removal.
+
+            Default: None.
 
         Returns
         -------
@@ -1161,15 +1171,31 @@ class Signal:
         f, sp = self.get_spectrum()
         self._spectrum_parameters = prior_spectrum_parameters
 
-        sp = np.angle(sp)
-        if remove_ir_latency:
-            sp = _remove_ir_latency_from_phase(
-                f, sp, self.time_data, self.sampling_rate_hz, 8
+        ph = np.angle(sp)
+
+        if remove_ir_latency is None:
+            pass
+        elif type(remove_ir_latency) is str:
+            match remove_ir_latency.lower():
+                case "peak":
+                    ph = _remove_ir_latency_from_phase_peak(
+                        f, ph, self.time_data, self.sampling_rate_hz
+                    )
+                case "min_phase":
+                    ph = _remove_ir_latency_from_phase_min_phase(
+                        f, ph, self.time_data, self.sampling_rate_hz, 8
+                    )
+                case _:
+                    raise ValueError("No valid latency removal")
+        else:
+            delays_samples = np.atleast_1d(remove_ir_latency)
+            ph = _remove_ir_latency_from_phase(
+                f, ph, delays_samples, self.sampling_rate_hz
             )
 
         gd = np.zeros((len(f), self.number_of_channels))
         for n in range(self.number_of_channels):
-            gd[:, n] = _group_delay_direct(sp[:, n], f[1] - f[0])
+            gd[:, n] = _group_delay_direct(ph[:, n], f[1] - f[0])
 
         if smoothing != 0:
             gd = _fractional_octave_smoothing(gd, smoothing)
@@ -1263,7 +1289,7 @@ class Signal:
         range_hz=[20, 20e3],
         unwrap: bool = False,
         smoothing: int = 0,
-        remove_ir_latency: bool = False,
+        remove_ir_latency: str | None | ArrayLike = None,
     ) -> tuple[Figure, Axes]:
         """Plots phase of the frequency response, only available if the method
         for the spectrum `"standard"`.
@@ -1279,9 +1305,17 @@ class Signal:
             When different than 0, the phase response is smoothed across the
             1/smoothing-octave band. This only applies smoothing to the plot
             data. Default: 0.
-        remove_ir_latency : bool, optional
+        remove_ir_latency : str ["peak", "min_phase"], ArrayLike,\
+                None, optional
             If the signal is an impulse response, the delay of the impulse can
-            be removed. Default: `False`.
+            be removed. IR delay removal options are:
+
+            - str ["peak" or "min_phase"]: By regarding its delay in relation
+              to the minimum-phase equivalent or its peak in the time signal.
+            - ArrayLike: Delay in samples to remove from each channel.
+            - None: no latency removal.
+
+            Default: None.
 
         Returns
         -------
@@ -1306,9 +1340,24 @@ class Signal:
 
         self._spectrum_parameters["smoothing"] = prior_smoothing
 
-        if remove_ir_latency:
+        if remove_ir_latency is None:
+            pass
+        elif type(remove_ir_latency) is str:
+            match remove_ir_latency.lower():
+                case "peak":
+                    ph = _remove_ir_latency_from_phase_peak(
+                        f, ph, self.time_data, self.sampling_rate_hz
+                    )
+                case "min_phase":
+                    ph = _remove_ir_latency_from_phase_min_phase(
+                        f, ph, self.time_data, self.sampling_rate_hz, 8
+                    )
+                case _:
+                    raise ValueError("No valid latency removal")
+        else:
+            delays_samples = np.atleast_1d(remove_ir_latency)
             ph = _remove_ir_latency_from_phase(
-                f, ph, self.time_data, self.sampling_rate_hz, 8
+                f, ph, delays_samples, self.sampling_rate_hz
             )
 
         if smoothing != 0:

@@ -18,7 +18,7 @@ from ._transfer_functions import (
 from ..classes import Signal, Filter, ImpulseResponse
 from ..classes.filter_helpers import _group_delay_filter
 from .._general_helpers import (
-    _remove_ir_latency_from_phase,
+    _remove_ir_latency_from_phase_min_phase,
     _min_phase_ir_from_real_cepstrum,
     _get_minimum_phase_spectrum_from_real_cepstrum,
     _find_frequencies_above_threshold,
@@ -844,7 +844,7 @@ def group_delay(
             assert (
                 type(signal) is ImpulseResponse
             ), "This is only valid for an impulse response"
-            sp = _remove_ir_latency_from_phase(
+            sp = _remove_ir_latency_from_phase_min_phase(
                 f, np.angle(sp), signal.time_data, signal.sampling_rate_hz, 1
             )
         for n in range(signal.number_of_channels):
