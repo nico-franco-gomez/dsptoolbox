@@ -422,9 +422,10 @@ class Filter:
         for ind in range(len(ba)):
             coeff = np.atleast_1d(ba[ind])
             assert coeff.ndim == 1
-            if np.issubdtype(coeff.dtype, np.integer):
+            if np.issubdtype(coeff.dtype, np.complexfloating):
+                coeff = coeff.astype(np.complex128)
+            else:
                 coeff = coeff.astype(np.float64)
-            assert coeff.dtype in (np.float64, np.complex128)
             ba[ind] = coeff
         self.__ba = ba
 
