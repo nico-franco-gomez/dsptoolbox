@@ -908,10 +908,10 @@ class Filter:
     ) -> (
         list[NDArray[np.float64]]
         | NDArray[np.float64]
-        | tuple[NDArray[np.float64], NDArray[np.float64], NDArray[np.float64]]
+        | tuple[NDArray[np.complex128], NDArray[np.complex128], float]
         | None
     ):
-        """Returns the filter coefficients.
+        """Return a copy of the filter coefficients.
 
         Parameters
         ----------
@@ -925,7 +925,8 @@ class Filter:
             Array with filter coefficients with shape depending on mode:
             - `"ba"`: list(b, a) with b and a of type NDArray[np.float64].
             - `"sos"`: NDArray[np.float64] with shape (n_sections, 6).
-            - `"zpk"`: tuple(z, p, k) with z, p, k of type NDArray[np.float64]
+            - `"zpk"`: tuple(z, p, k) with z, p, k of type
+              NDArray[np.complex128] and float
             - Return `None` if user decides that ba->sos is too costly. The
               threshold is for filters with order > 500.
 
@@ -956,7 +957,7 @@ class Filter:
                 coefficients = deepcopy(self.ba)
         elif mode == "zpk":
             if hasattr(self, "zpk"):
-                coefficients = deepcopy(self.zpk)
+                coefficients = tuple(deepcopy(self.zpk))
             elif hasattr(self, "sos"):
                 coefficients = sig.sos2zpk(self.sos)
             else:
