@@ -1007,9 +1007,11 @@ class Filter:
             Range for which to plot the magnitude response.
             Default: [20, 20000].
         normalize : str, optional
-            Mode for normalization, supported are `"1k"` for normalization
-            with value at frequency 1 kHz or `"max"` for normalization with
-            maximal value. Use `None` for no normalization. Default: `None`.
+            Mode for normalization, supported are "1k" for normalization
+            with value at frequency 1 kHz, "max" for normalization with
+            maximum value or "energy" for normalizing with average energy over
+            the given frequency range. Use `None` for no normalization.
+            Default: `None`.
         show_info_box : bool, optional
             Shows an information box on the plot. Default: `True`.
         zero_phase : bool, optional

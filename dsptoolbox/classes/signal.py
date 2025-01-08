@@ -896,12 +896,13 @@ class Signal:
         range_hz : array-like with length 2, optional
             Range for which to plot the magnitude response.
             Default: [20, 20000].
-        normalize : str, optional
-            Mode for normalization, supported are `'1k'` for normalization
-            with value at frequency 1 kHz or `'max'` for normalization with
-            maximal value. Use `None` for no normalization. Spectrum uses
-            then scaling set in the `set_spectrum_parameters()` method.
-            Default: `'1k'`.
+        normalize : str ["1k", "max", "energy"], optional
+            Mode for normalization, supported are "1k" for normalization
+            with value at frequency 1 kHz, "max" for normalization with
+            maximum value or "energy" for normalization with average energy
+            over the whole spectrum. Use `None` for no normalization.
+            Spectrum uses then scaling set in the `set_spectrum_parameters()`
+            method. Default: "1k".
         range_db : array-like with length 2, optional
             Range in dB for which to plot the magnitude response.
             Default: `None`.
@@ -966,11 +967,17 @@ class Signal:
             txt = None
         if normalize is not None:
             normalize = normalize.lower()
-            assert normalize in ("1k", "max"), "No valid normalization passed"
+            assert normalize in (
+                "1k",
+                "max",
+                "energy",
+            ), "No valid normalization passed"
             if normalize == "1k":
                 y_extra = " (normalized @ 1 kHz)"
             elif normalize == "max":
                 y_extra = " (normalized @ peak)"
+            elif normalize == "energy":
+                y_extra = " (normalized with average energy)"
         else:
             y_extra = "" if self.calibrated_signal else "FS"
         fig, ax = general_plot(

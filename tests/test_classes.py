@@ -477,6 +477,7 @@ class TestFilterClass:
 
         f.plot_magnitude(normalize="1k")
         f.plot_magnitude(normalize="max")
+        f.plot_magnitude(normalize="energy")
         close("all")
 
     def test_get_coefficients(self):

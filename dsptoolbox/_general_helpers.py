@@ -183,7 +183,7 @@ def _calculate_window(
 
 def _get_normalized_spectrum(
     f,
-    spectra: NDArray[np.float64],
+    spectra: NDArray[np.complex128 | np.float64],
     scaling: str = "amplitude",
     f_range_hz=[20, 20000],
     normalize: str | None = None,
@@ -202,17 +202,18 @@ def _get_normalized_spectrum(
     ----------
     f : NDArray[np.float64]
         Frequency vector.
-    spectra : NDArray[np.float64]
-        Spectrum matrix.
+    spectra : NDArray[np.complex128 | np.complex128]
+        Spectrum matrix. It can be the power or amplitude representation.
+        Complex spectrum is assumed to have amplitude scaling.
     scaling : str, optional
         Information about whether the spectrum is scaled as an amplitude or
-        power. Choose from `'amplitude'` or `'power'`. Default: `'amplitude'`.
+        power. Choose from "amplitude" or "power". Default: "amplitude".
     f_range_hz : array-like with length 2
         Range of frequencies to get the normalized spectrum back.
         Default: [20, 20e3].
     normalize : str, optional
-        Normalize spectrum (per channel). Choose from `'1k'` (for 1 kHz),
-        `'max'` (maximum value) or `None` for no normalization. The
+        Normalize spectrum (per channel). Choose from "1k" (for 1 kHz),
+        "max" (maximum value), "energy" or `None` for no normalization. The
         normalization for 1 kHz uses a linear interpolation for getting the
         value at 1 kHz regardless of the frequency resolution. Default: `None`.
     smoothing : int, optional
@@ -242,10 +243,11 @@ def _get_normalized_spectrum(
     """
     if normalize is not None:
         normalize = normalize.lower()
-        assert normalize in ("1k", "max"), (
-            f"{normalize} is not a valid normalization mode. Please use "
-            + "1k or max"
-        )
+        assert normalize in (
+            "1k",
+            "max",
+            "energy",
+        ), f"{normalize} is not a valid normalization mode."
     # Shaping
     one_dimensional = False
     if spectra.ndim < 2:
@@ -283,9 +285,8 @@ def _get_normalized_spectrum(
         id2 = len(f)
 
     spectra = spectra[id1:id2]
-    f = f[id1:id2]
-
     mag_spectra = np.abs(spectra)
+    f = f[id1:id2]
 
     if smoothing != 0:
         if scaling == "amplitude":
@@ -295,14 +296,27 @@ def _get_normalized_spectrum(
                 _fractional_octave_smoothing(mag_spectra**0.5, smoothing) ** 2
             )
 
-    mag_spectra = to_db(mag_spectra / scale_factor, amplitude_scaling, 500)
+    mag_spectra_db = to_db(mag_spectra / scale_factor, amplitude_scaling, 500)
 
     if normalize is not None:
-        for i in range(spectra.shape[1]):
-            if normalize == "1k":
-                mag_spectra[:, i] -= _get_exact_gain_1khz(f, mag_spectra[:, i])
-            else:
-                mag_spectra[:, i] -= np.max(mag_spectra[:, i])
+        if normalize == "1k":
+            normalization_db = np.array(
+                [
+                    _get_exact_gain_1khz(f, mag_spectra_db[:, i])
+                    for i in range(spectra.shape[1])
+                ]
+            )
+        elif normalize == "max":
+            normalization_db = np.max(mag_spectra_db, axis=0)
+        else:  # energy
+            normalization_db = to_db(
+                np.mean(
+                    mag_spectra**2.0 if amplitude_scaling else mag_spectra,
+                    axis=0,
+                ),
+                False,
+            )
+        mag_spectra_db -= normalization_db[None, :]
 
     if phase:
         phase_spectra = np.angle(spectra)
@@ -314,14 +328,14 @@ def _get_normalized_spectrum(
             )
 
     if one_dimensional:
-        mag_spectra = np.squeeze(mag_spectra)
+        mag_spectra_db = np.squeeze(mag_spectra_db)
         if phase:
             phase_spectra = np.squeeze(phase_spectra)
 
     if phase:
-        return f, mag_spectra, phase_spectra
+        return f, mag_spectra_db, phase_spectra
 
-    return f, mag_spectra
+    return f, mag_spectra_db
 
 
 def _find_frequencies_above_threshold(
