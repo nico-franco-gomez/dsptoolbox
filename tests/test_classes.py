@@ -367,6 +367,7 @@ class TestFilterClass:
         assert type(iir.ba) is list
         iir.ba[1] = np.array([1.0])
         np.testing.assert_equal(iir.ba[1], np.array([1.0]))
+        assert iir.order == len(self.iir_ba[0]) - 1
 
         with pytest.raises(AssertionError):
             iir.ba = [0, "b"]
@@ -378,6 +379,17 @@ class TestFilterClass:
             iir.sos = ["b"]
         with pytest.raises(AssertionError):
             iir.sos = np.zeros((3, 7))
+        assert iir.order == self.iir.shape[0] * 2
+
+        # Check order with sos
+        sos = dsp.Filter.iir_design(
+            6, 100.0, "lowpass", "butter", sampling_rate_hz=self.fs
+        )
+        assert sos.order == 6
+        sos = dsp.Filter.iir_design(
+            5, 100.0, "lowpass", "butter", sampling_rate_hz=self.fs
+        )
+        assert sos.order == 5
 
         # Pass integer a coefficients
         fir = dsp.Filter.from_ba(self.fir, [1], self.fs)

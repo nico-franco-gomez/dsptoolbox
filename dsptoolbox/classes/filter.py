@@ -381,10 +381,6 @@ class Filter:
     def sampling_rate_hz(self):
         return self.__sampling_rate_hz
 
-    @property
-    def order(self):
-        return self.info["order"]
-
     @sampling_rate_hz.setter
     def sampling_rate_hz(self, new_sampling_rate_hz):
         assert (
@@ -416,12 +412,7 @@ class Filter:
         self.__filter_type = new_type.lower()
 
     @property
-    def ba(
-        self,
-    ) -> list[
-        NDArray[np.float64 | np.complex128],
-        NDArray[np.float64 | np.complex128],
-    ]:
+    def ba(self) -> list[NDArray[np.float64 | np.complex128]]:
         return self.__ba
 
     @ba.setter
@@ -430,6 +421,7 @@ class Filter:
         assert len(ba) == 2, "ba coefficients must be a list of length two"
         for ind in range(len(ba)):
             coeff = np.atleast_1d(ba[ind])
+            assert coeff.ndim == 1
             if np.issubdtype(coeff.dtype, np.integer):
                 coeff = coeff.astype(np.float64)
             assert coeff.dtype in (np.float64, np.complex128)
@@ -437,28 +429,39 @@ class Filter:
         self.__ba = ba
 
     @property
-    def sos(self):
+    def sos(self) -> NDArray[np.float64 | np.complex128]:
         return self.__sos
 
     @sos.setter
-    def sos(self, sos) -> NDArray:
+    def sos(self, sos):
         assert isinstance(sos, np.ndarray)
         assert sos.ndim == 2
         assert sos.shape[1] == 6
         self.__sos = sos
 
     @property
-    def zpk(
-        self,
-    ) -> list[NDArray[np.complex128], NDArray[np.complex128], float]:
+    def zpk(self) -> list:
         return self.__zpk
 
     @zpk.setter
     def zpk(self, new_zpk):
         self.__zpk = list(new_zpk)
 
+    @property
+    def order(self):
+        if hasattr(self, "zpk"):
+            return max(len(self.zpk[0]), len(self.zpk[1]))
+        if hasattr(self, "sos"):
+            n_first_order_sos = np.sum(
+                (self.sos[:, 2] == 0.0) & (self.sos[:, 5] == 0.0)
+            )
+            return self.sos.shape[0] * 2 - n_first_order_sos
+        if hasattr(self, "ba"):
+            return max(len(self.ba[0]), len(self.ba[1])) - 1
+        raise ValueError("No order found")
+
     def __len__(self):
-        return self.info["order"] + 1
+        return self.order + 1
 
     def __str__(self):
         return self._get_metadata_string()
@@ -535,7 +538,7 @@ class Filter:
             zi_old = None
 
         # Check filter length compared to signal
-        if self.info["order"] > signal.time_data.shape[0]:
+        if self.order > signal.time_data.shape[0]:
             warn(
                 "Filter is longer than signal, results might be "
                 + "meaningless!"
@@ -705,9 +708,6 @@ class Filter:
             filter_configuration["eq_type"] = _get_biquad_type(
                 filter_configuration["eq_type"]
             ).capitalize()
-            filter_configuration["order"] = (
-                max(len(self.ba[0]), len(self.ba[1])) - 1
-            )
             self.filter_type = filter_type
         else:
             assert (
@@ -721,20 +721,15 @@ class Filter:
             if "zpk" in filter_configuration:
                 self.zpk = filter_configuration["zpk"]
                 self.sos = sig.zpk2sos(*self.zpk, analog=False)
-                filter_configuration["order"] = max(
-                    len(self.zpk[0]), len(self.zpk[1])
-                )
             elif "sos" in filter_configuration:
                 self.sos = filter_configuration["sos"]
-                filter_configuration["order"] = len(self.sos) * 2 - 1
             elif "ba" in filter_configuration:
                 b, a = filter_configuration["ba"]
                 self.ba = [np.atleast_1d(b), np.atleast_1d(a)]
-                filter_configuration["order"] = (
-                    max(len(self.ba[0]), len(self.ba[1])) - 1
-                )
             # Change filter type to 'fir' or 'iir' depending on coefficients
             self._check_and_update_filter_type()
+
+        filter_configuration["order"] = self.order
 
         # Update Metadata about the Filter
         self.info: dict = filter_configuration
@@ -784,7 +779,7 @@ class Filter:
         """Helper for creating a string containing all filter info."""
         txt = f"""Filter – ID: {self.info["filter_id"]}\n"""
         temp = ""
-        for n in range(len(txt)):
+        for _ in range(len(txt)):
             temp += "-"
         txt += temp + "\n"
         for k in self.info.keys():
@@ -939,7 +934,7 @@ class Filter:
             if hasattr(self, "sos"):
                 coefficients = self.sos.copy()
             else:
-                if self.info["order"] > 500:
+                if self.order > 500:
                     inp = None
                     while inp not in ("y", "n"):
                         inp = input(
@@ -966,7 +961,7 @@ class Filter:
                 coefficients = sig.sos2zpk(self.sos)
             else:
                 # Check if filter is too long
-                if self.info["order"] > 500:
+                if self.order > 500:
                     inp = None
                     while inp not in ("y", "n"):
                         inp = input(
@@ -1025,8 +1020,8 @@ class Filter:
             Axes.
 
         """
-        if self.info["order"] > length_samples:
-            length_samples = self.info["order"] + 100
+        if self.order > length_samples:
+            length_samples = self.order + 100
             warn(
                 f"length_samples ({length_samples}) is shorter than the "
                 + f"""filter order {self.info['order']}. Length will be """
@@ -1073,8 +1068,8 @@ class Filter:
             Axes.
 
         """
-        if self.info["order"] > length_samples:
-            length_samples = self.info["order"] + 100
+        if self.order > length_samples:
+            length_samples = self.order + 100
             warn(
                 f"length_samples ({length_samples}) is shorter than the "
                 + f"""filter order {self.info['order']}. Length will be """
@@ -1140,8 +1135,8 @@ class Filter:
             Axes.
 
         """
-        if self.info["order"] > length_samples:
-            length_samples = self.info["order"] + 1
+        if self.order > length_samples:
+            length_samples = self.order + 1
             warn(
                 f"length_samples ({length_samples}) is shorter than the "
                 + f"""filter order {self.info['order']}. Length will be """
@@ -1181,7 +1176,7 @@ class Filter:
 
         """
         # Ask explicitely if filter is very long
-        if self.info["order"] > 500:
+        if self.order > 500:
             inp = None
             while inp not in ("y", "n"):
                 inp = input(
