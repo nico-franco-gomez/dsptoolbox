@@ -326,6 +326,15 @@ class TestFilterClass:
         output="sos",
         fs=fs,
     )
+    iir_ba = sig.iirfilter(
+        8,
+        1000,
+        btype="lowpass",
+        analog=False,
+        ftype="butter",
+        output="ba",
+        fs=fs,
+    )
 
     def test_create_from_coefficients(self):
         # Try creating a filter from the coefficients, recognizing filter
@@ -352,6 +361,27 @@ class TestFilterClass:
         condiir = condiir and np.all(sos == self.iir)
 
         assert condfir and condiir
+
+    def test_filter_properties(self):
+        iir = dsp.Filter.from_ba(*self.iir_ba, sampling_rate_hz=self.fs)
+        assert type(iir.ba) is list
+        iir.ba[1] = np.array([1.0])
+        np.testing.assert_equal(iir.ba[1], np.array([1.0]))
+
+        with pytest.raises(AssertionError):
+            iir.ba = [0, "b"]
+        with pytest.raises(AssertionError):
+            iir.ba = [0, 1, 1]
+
+        iir = dsp.Filter.from_sos(self.iir, sampling_rate_hz=self.fs)
+        with pytest.raises(AssertionError):
+            iir.sos = ["b"]
+        with pytest.raises(AssertionError):
+            iir.sos = np.zeros((3, 7))
+
+        # Pass integer a coefficients
+        fir = dsp.Filter.from_ba(self.fir, [1], self.fs)
+        assert fir.ba[1].dtype == np.float64
 
     def test_standard_filtering(self):
         # Try filtering compared to scipy's functions

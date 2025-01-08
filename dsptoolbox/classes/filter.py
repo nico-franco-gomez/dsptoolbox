@@ -415,6 +415,48 @@ class Filter:
         assert type(new_type) is str, "Filter type must be a string"
         self.__filter_type = new_type.lower()
 
+    @property
+    def ba(
+        self,
+    ) -> list[
+        NDArray[np.float64 | np.complex128],
+        NDArray[np.float64 | np.complex128],
+    ]:
+        return self.__ba
+
+    @ba.setter
+    def ba(self, new_ba):
+        ba = list(new_ba)
+        assert len(ba) == 2, "ba coefficients must be a list of length two"
+        for ind in range(len(ba)):
+            coeff = np.atleast_1d(ba[ind])
+            if np.issubdtype(coeff.dtype, np.integer):
+                coeff = coeff.astype(np.float64)
+            assert coeff.dtype in (np.float64, np.complex128)
+            ba[ind] = coeff
+        self.__ba = ba
+
+    @property
+    def sos(self):
+        return self.__sos
+
+    @sos.setter
+    def sos(self, sos) -> NDArray:
+        assert isinstance(sos, np.ndarray)
+        assert sos.ndim == 2
+        assert sos.shape[1] == 6
+        self.__sos = sos
+
+    @property
+    def zpk(
+        self,
+    ) -> list[NDArray[np.complex128], NDArray[np.complex128], float]:
+        return self.__zpk
+
+    @zpk.setter
+    def zpk(self, new_zpk):
+        self.__zpk = list(new_zpk)
+
     def __len__(self):
         return self.info["order"] + 1
 
@@ -642,7 +684,7 @@ class Filter:
                     pass_zero=filter_configuration["type_of_pass"],
                     fs=self.sampling_rate_hz,
                 ),
-                np.asarray([1]),
+                np.asarray([1.0]),
             ]
             self.filter_type = filter_type
         elif filter_type == "biquad":
