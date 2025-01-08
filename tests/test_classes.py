@@ -375,7 +375,7 @@ class TestFilterClass:
         np.testing.assert_equal(iir.ba[1], np.array([1.0]))
         assert iir.order == len(self.iir_ba[0]) - 1
 
-        with pytest.raises(AssertionError):
+        with pytest.raises(ValueError):
             iir.ba = [0, "b"]
         with pytest.raises(AssertionError):
             iir.ba = [0, 1, 1]
