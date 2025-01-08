@@ -1000,7 +1000,8 @@ class Filter:
         Parameters
         ----------
         length_samples : int, optional
-            Length of ir for magnitude plot. Default: 512.
+            Length of IR for magnitude plot. See notes for details.
+            Default: 512.
         range_hz : array-like with length 2, optional
             Range for which to plot the magnitude response.
             Default: [20, 20000].
@@ -1019,6 +1020,13 @@ class Filter:
             Figure.
         ax : `matplotlib.axes.Axes`
             Axes.
+
+        Notes
+        -----
+        - An IR of the filter is obtained by filtering a dirac impulse in the
+          case of IIR filters. For FIR filters, the taps are used and,
+          if necessary, zero-padded. The IR length determines the frequency
+          resolution.
 
         """
         if self.order > length_samples:
@@ -1119,7 +1127,7 @@ class Filter:
         Parameters
         ----------
         length_samples : int, optional
-            Length of ir for magnitude plot. Default: 512.
+            Length of IR for phase plot. See notes for details. Default: 512.
         range_hz : array-like with length 2, optional
             Range for which to plot the magnitude response.
             Default: [20, 20000].
@@ -1134,6 +1142,13 @@ class Filter:
             Figure.
         ax : `matplotlib.axes.Axes`
             Axes.
+
+        Notes
+        -----
+        - An IR of the filter is obtained by filtering a dirac impulse in the
+          case of IIR filters. For FIR filters, the taps are used and,
+          if necessary, zero-padded. The IR length determines the frequency
+          resolution.
 
         """
         if self.order > length_samples:

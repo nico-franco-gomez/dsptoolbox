@@ -1388,8 +1388,8 @@ def find_ir_latency(
     compare_to_min_phase_ir : bool, optional
         When True, the latency is found by comparing the latency of the IR in
         relation to its minimum phase equivalent. When False, the peak in the
-        time data is searched. Both cases are done with subsample accuracy.
-        Default: True.
+        time data is searched. Both cases are done with subsample accuracy. For
+        the former, the padding factor 8 is used. Default: True.
 
     Returns
     -------
