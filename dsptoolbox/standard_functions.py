@@ -20,6 +20,7 @@ from scipy.signal import (
 
 from fractions import Fraction
 from warnings import warn
+from copy import deepcopy
 
 from .classes import (
     Signal,
@@ -362,33 +363,32 @@ def append_signals(
         )
 
 
-def merge_filterbanks(fb1: FilterBank, fb2: FilterBank) -> FilterBank:
-    """Merges two filterbanks by append the filters of the second to the first.
+def append_filterbanks(fbs: list[FilterBank]) -> FilterBank:
+    """Merges filterbanks by concatenating all of its filters.
 
     Parameters
     ----------
-    fb1 : `FilterBank`
-        First filterbank.
-    fb2 : `FilterBank`
-        Second filterbank.
+    fbs : list[FilterBank]
+        List of FilterBanks.
 
     Returns
     -------
-    new_fb : `FilterBank`
+    new_fb : FilterBank
         New filterbank with all filters.
 
     """
-    assert fb1.same_sampling_rate == fb2.same_sampling_rate, (
-        "Both filterbanks should have the same settings regarding "
-        + "sampling rates"
-    )
-    if fb1.same_sampling_rate:
+    assert len(fbs) > 1, "At least two filter banks should be passed"
+    for f in fbs:
         assert (
-            fb1.sampling_rate_hz == fb2.sampling_rate_hz
+            f.same_sampling_rate == fbs[0].same_sampling_rate
+        ), "Sampling rates do not match"
+        assert (
+            f.sampling_rate_hz == fbs[0].sampling_rate_hz
         ), "Sampling rates do not match"
 
-    new_fb = fb1.copy()
-    new_fb.filters += fb2.filters
+    new_fb = fbs[0].copy()
+    for ind in range(1, len(fbs)):
+        new_fb.filters += deepcopy(fbs[ind].filters)
     return new_fb
 
 

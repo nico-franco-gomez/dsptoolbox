@@ -139,20 +139,21 @@ class TestStandardModule:
         assert sm_.number_of_channels == 2
         assert sm_.number_of_bands == 2
 
-    def test_merge_filterbanks(self):
+    def test_append_filterbanks(self):
         fb1 = dsp.filterbanks.auditory_filters_gammatone(
             [600, 800], sampling_rate_hz=self.fs
         )
         fb2 = dsp.filterbanks.auditory_filters_gammatone(
             [800, 1000], sampling_rate_hz=self.fs
         )
-        dsp.merge_filterbanks(fb1, fb2)
+        fb_out = dsp.append_filterbanks([fb1, fb2])
+        assert len(fb_out) == len(fb1) + len(fb2)
 
         with pytest.raises(AssertionError):
             fb3 = dsp.filterbanks.auditory_filters_gammatone(
                 [800, 1000], sampling_rate_hz=48000
             )
-            dsp.merge_filterbanks(fb1, fb3)
+            dsp.append_filterbanks([fb1, fb3])
 
     def test_resample(self):
         # The result itself will not be checked, only that there is an output
