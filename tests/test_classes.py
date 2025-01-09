@@ -478,6 +478,12 @@ class TestFilterClass:
         f.plot_magnitude(normalize="1k")
         f.plot_magnitude(normalize="max")
         f.plot_magnitude(normalize="energy")
+
+        with pytest.raises(AssertionError):
+            f.plot_taps()
+
+        f2 = dsp.Filter.from_ba(self.fir, [1.0], self.fs)
+        f2.plot_taps()
         close("all")
 
     def test_get_coefficients(self):

@@ -1234,6 +1234,41 @@ class Filter:
             )
         return fig, ax
 
+    def plot_taps(
+        self, show_info_box: bool = False, in_db: bool = False
+    ) -> tuple[Figure, Axes]:
+        """Plots filter taps for an FIR filter. IIR filters will raise an
+        assertion error.
+
+        Parameters
+        ----------
+        show_info_box : bool, optional
+            Shows an information box on the plot. Default: `False`.
+        in_db : bool, optional
+            When True, the FIR coefficients are shown in dB. Default: `False`.
+
+        Returns
+        -------
+        fig : `matplotlib.figure.Figure`
+            Figure.
+        ax : `matplotlib.axes.Axes`
+            Axes.
+
+        """
+        assert self.filter_type == "fir"
+        t = np.arange(0, len(self)) / self.sampling_rate_hz
+        txt = self._get_metadata_string() if show_info_box else None
+        return general_plot(
+            t,
+            to_db(self.ba[0], True) if in_db else self.ba[0],
+            log=False,
+            xlabel="Time / s",
+            ylabel="Taps / 1",
+            info_box=txt,
+            tight_layout=True,
+            returns=True,
+        )
+
     # ======== Saving and export ==============================================
     def save_filter(self, path: str = "filter"):
         """Saves the Filter object as a pickle.
