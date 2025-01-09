@@ -295,6 +295,10 @@ class Signal:
         self.__time_data_imaginary = new_imag
 
     @property
+    def is_complex_signal(self) -> bool:
+        return self.time_data_imaginary is not None
+
+    @property
     def constrain_amplitude(self) -> bool | None:
         return self.__constrain_amplitude
 

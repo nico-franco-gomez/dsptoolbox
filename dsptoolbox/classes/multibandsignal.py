@@ -150,6 +150,12 @@ class MultiBandSignal:
         return self.bands[0].length_seconds if self.bands else 0.0
 
     @property
+    def is_complex_signal(self) -> bool:
+        if not self.bands:
+            return False
+        return self.bands[0].is_complex_signal
+
+    @property
     def length_samples(self) -> list[int] | int:
         if not self.bands:
             return 0
