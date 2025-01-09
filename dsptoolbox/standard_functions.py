@@ -1238,44 +1238,80 @@ def dither(
 
 
 def apply_gain(
-    signal: Signal | MultiBandSignal, gain_db: float | NDArray[np.float64]
-) -> Signal | MultiBandSignal:
-    """Apply some gain to a signal. It can be done to the signal as a whole
-    or per channel.
+    target: Signal | MultiBandSignal | Filter | FilterBank,
+    gain_db: float | NDArray[np.float64],
+) -> Signal | MultiBandSignal | Filter | FilterBank:
+    """Apply some gain to a signal or filters.
+
+    If it is a Signal or MultiBandSignal, it can be done to the signal as a
+    whole or per channel.
+
+    If it is a Filter or a FilterBank, it can be applied to the different
+    filters. When passing a single gain value to a FilterBank, this will be
+    applied to all filters. See notes for details.
 
     Parameters
     ----------
-    signal : Signal, MultiBandSignal
-        Signal to apply gain to.
+    target : Signal, MultiBandSignal, Filter, FilterBank
+        Target to apply gain to.
     gain_db : float, NDArray[np.float64]
         Gain in dB to be applied. If it is an array, it should have as many
-        elements as there are channels in the signal.
+        elements as there are channels in the signal or filters in the
+        filter bank.
 
     Returns
     -------
-    Signal, MultiBandSignal
-        Signal with new gains.
+    Signal, MultiBandSignal, Filter, FilterBank
+        Signal or filter with new gain.
 
     Notes
     -----
-    If `constrain_amplitude=True` in the signal, the resulting time data might
-    get rescaled after applying the gain.
+    - If `constrain_amplitude=True` in the signal, the resulting time data
+      might get rescaled after applying the gain.
+    - When applying gain to a FilterBank, it should be regarded how it will be
+      used. If the intended mode is "parallel", then a single gain value will
+      modify each band. If "sequential", the gain value will be applied to the
+      output signal for each filter. In the latter case, a single filter should
+      get the gain modification.
 
     """
-    if isinstance(signal, Signal):
-        gain_linear = from_db(gain_db, True)
-        new_sig = signal.copy()
+    if isinstance(target, Signal):
+        gain_linear = from_db(np.atleast_1d(gain_db), True)
+        if len(gain_linear) == 1:
+            gain_linear = gain_linear[0]
+        new_sig = target.copy()
         new_sig.time_data = new_sig.time_data * gain_linear
         if new_sig.time_data_imaginary is not None:
             new_sig.time_data_imaginary = (
                 new_sig.time_data_imaginary * gain_linear
             )
         return new_sig
-    elif isinstance(signal, MultiBandSignal):
-        new_mb = signal.copy()
+    elif isinstance(target, MultiBandSignal):
+        new_mb = target.copy()
         for ind in range(new_mb.number_of_bands):
             new_mb.bands[ind] = apply_gain(new_mb.bands[ind], gain_db)
         return new_mb
+    elif isinstance(target, Filter):
+        filter = target.copy()
+        gain_linear = from_db(np.atleast_1d(gain_db), True)
+        if len(gain_linear) == 1:
+            gain_linear = gain_linear[0]
+        if filter.has_sos:
+            filter.sos[-1, :3] *= gain_linear
+        else:
+            filter.ba[0] *= gain_linear
+        return filter
+    elif isinstance(target, FilterBank):
+        gain = np.atleast_1d(gain_db)
+        assert (
+            len(gain) == 1 or len(gain) == target.number_of_filters
+        ), "Incompatible number of gains"
+        if len(gain) == 1:
+            gain = np.repeat(gain, target.number_of_filters)
+        new_fb = target.copy()
+        for ind in range(new_fb.number_of_filters):
+            new_fb.filters[ind] = apply_gain(new_fb.filters[ind], gain[ind])
+        return new_fb
     else:
         raise TypeError("No valid type was passed")
 

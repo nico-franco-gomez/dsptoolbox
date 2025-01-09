@@ -413,6 +413,43 @@ class TestStandardModule:
             audio_multi_mb.get_all_time_data()[0],
         )
 
+        # Filter
+        iir = dsp.Filter.biquad("peaking", 500.0, 0.0, 0.7, self.fs)
+        output_level1 = dsp.rms(iir.filter_signal(self.audio_multi))
+        gain_db = -5.0
+        output_level2 = dsp.rms(
+            dsp.apply_gain(iir, gain_db).filter_signal(self.audio_multi)
+        )
+        np.testing.assert_array_almost_equal(
+            output_level1 + gain_db, output_level2
+        )
+        with pytest.raises(ValueError):
+            dsp.apply_gain(iir, [gain_db, 0])
+
+        # FilterBank
+        fb = dsp.FilterBank([iir, iir])
+        base_level = dsp.rms(
+            fb.filter_signal(self.audio_multi, mode="sequential")
+        )
+        fb2 = dsp.apply_gain(fb, gain_db)
+        output_level = dsp.rms(
+            fb2.filter_signal(self.audio_multi, mode="sequential")
+        )
+        np.testing.assert_array_almost_equal(
+            base_level + gain_db * len(fb), output_level
+        )
+
+        # multiple gains for a filter bank
+        fb2 = dsp.apply_gain(fb, [gain_db] + [0] * (len(fb) - 1))
+        output_level = dsp.rms(
+            fb2.filter_signal(self.audio_multi, mode="sequential")
+        )
+        np.testing.assert_array_almost_equal(
+            base_level + gain_db, output_level
+        )
+        with pytest.raises(AssertionError):
+            dsp.apply_gain(fb, [gain_db] + [0] * (len(fb) + 1))
+
     def test_resample_filter(self):
         # Functionality
         fs_hz = 48000
