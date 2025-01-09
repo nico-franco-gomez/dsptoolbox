@@ -10,6 +10,13 @@ import os
 import scipy.signal as sig
 from matplotlib.pyplot import close
 
+RIR_PATH = os.path.join(
+    os.path.dirname(__file__), "..", "examples", "data", "rir.wav"
+)
+CHIRP_STEREO_PATH = os.path.join(
+    os.path.dirname(__file__), "..", "examples", "data", "chirp_stereo.wav"
+)
+
 
 class TestSignal:
     """Testing signal functionalities."""
@@ -505,6 +512,10 @@ class TestFilterClass:
         f.get_ir()
 
     def test_other_functionalities(self):
+        #
+        dsp.Filter.fir_from_file(RIR_PATH)
+
+        #
         f = dsp.Filter(
             "other",
             filter_configuration=dict(sos=self.iir),

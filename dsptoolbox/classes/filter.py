@@ -356,6 +356,28 @@ class Filter:
         """
         return Filter("other", {"zpk": [z, p, k]}, sampling_rate_hz)
 
+    @staticmethod
+    def fir_from_file(path: str, channel: int = 0) -> "Filter":
+        """Read an FIR filter from an audio file.
+
+        Parameters
+        ----------
+        path : str
+            Path to audio file. It will be read using Signal.from_file().
+        channel : int, optional
+            Channel to take from the audio file for the FIR filter. Default: 0.
+
+        Returns
+        -------
+        Filter
+            FIR filter.
+
+        """
+        ir = ImpulseResponse.from_file(path)
+        return Filter.from_ba(
+            ir.time_data[:, channel], [1.0], ir.sampling_rate_hz
+        )
+
     def initialize_zi(self, number_of_channels: int = 1):
         """Initializes zi for steady-state filtering. The number of parallel
         zi's can be defined externally.
