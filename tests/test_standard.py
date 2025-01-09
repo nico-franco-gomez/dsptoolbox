@@ -521,3 +521,34 @@ class TestStandardModule:
         # ===== MultiBandSignal: Only functionality
         mb = self.get_multiband_signal()
         dsp.modify_signal_length(mb, 1.5, -0.5)
+
+    def test_merge_fir_filters(self):
+        f1 = dsp.Filter.fir_design(
+            50, 100.0, "lowpass", "hamming", sampling_rate_hz=self.fs
+        )
+
+        # Dirac with some delay
+        dirac = np.zeros(30)
+        delay = len(dirac) - 1
+        dirac[-1] = 1.0
+        f2 = dsp.Filter.from_ba(dirac, [1.0], self.fs)
+
+        f3 = dsp.merge_fir_filters([f1, f2])
+        np.testing.assert_array_equal(f3.ba[0][delay:], f1.ba[0])
+
+        # With filterbank
+        f3 = dsp.merge_fir_filters(dsp.FilterBank([f1, f2]))
+        np.testing.assert_array_equal(f3.ba[0][delay:], f1.ba[0])
+
+        with pytest.raises(AssertionError):
+            dsp.merge_fir_filters([f1])
+
+        with pytest.raises(AssertionError):
+            iir = dsp.Filter.biquad(
+                "lowpass_first_order", 50.0, -3.0, 0.7, self.fs
+            )
+            dsp.merge_fir_filters([f1, iir])
+
+        with pytest.raises(AssertionError):
+            f2 = dsp.Filter.from_ba(dirac, [1.0], self.fs * 2)
+            dsp.merge_fir_filters([f1, f2])

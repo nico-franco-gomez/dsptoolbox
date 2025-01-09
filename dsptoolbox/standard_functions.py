@@ -15,6 +15,7 @@ from scipy.signal import (
     hilbert,
     bilinear_zpk,
     oaconvolve,
+    convolve,
 )
 
 from fractions import Fraction
@@ -255,8 +256,7 @@ def merge_signals(
         Second signal.
     padding_trimming : bool, optional
         If the signals do not have the same length, the second one is padded
-        or trimmed. When `True`, padding/trimming is done.
-        Default: `True`.
+        or trimmed. When `True`, padding/trimming is done. Default: `True`.
     at_end : bool, optional
         When `True` and `padding_trimming=True`, padding or trimming is done
         at the end of signal. Otherwise it is done in the beginning.
@@ -317,7 +317,7 @@ def merge_signals(
 
 
 def merge_filterbanks(fb1: FilterBank, fb2: FilterBank) -> FilterBank:
-    """Merges two filterbanks.
+    """Merges two filterbanks by append the filters of the second to the first.
 
     Parameters
     ----------
@@ -329,7 +329,7 @@ def merge_filterbanks(fb1: FilterBank, fb2: FilterBank) -> FilterBank:
     Returns
     -------
     new_fb : `FilterBank`
-        New filterbank with merged filters
+        New filterbank with all filters.
 
     """
     assert fb1.same_sampling_rate == fb2.same_sampling_rate, (
@@ -1343,6 +1343,7 @@ def modify_signal_length(
     Returns
     -------
     Signal or MultiBandSignal
+        Copy of the signal with new length.
 
     """
     if isinstance(signal, Signal):
@@ -1383,7 +1384,6 @@ def modify_signal_length(
         else:
             td = td[:end_samples, ...]
         new_sig.time_data = td
-
         new_sig.clear_time_window()
         return new_sig
     elif isinstance(signal, MultiBandSignal):
@@ -1395,3 +1395,33 @@ def modify_signal_length(
         return new_mb
     else:
         raise TypeError("Unsupported type")
+
+
+def merge_fir_filters(filters: list[Filter] | FilterBank) -> Filter:
+    """This returns an FIR filter that results from convolving all passed FIR
+    filters.
+
+    Parameters
+    ----------
+    fir : list[Filter] or FilterBank
+        List or FilterBank containing all FIR filters to combine. If any filter
+        is not FIR, an assertion will be raised.
+
+    Returns
+    -------
+    Filter
+        Combined FIR filter.
+
+    """
+    fir = filters.filters if isinstance(filters, FilterBank) else filters
+    assert len(fir) > 1, "There must be at least two filters to combine"
+    assert all([f.filter_type == "fir" for f in fir]), "Some filter is not FIR"
+    assert all(
+        [fir[0].sampling_rate_hz == f.sampling_rate_hz for f in fir]
+    ), "Sampling rates do not match"
+    b_coefficients = fir[0].ba[0].copy()
+    for ind in range(1, len(fir)):
+        b_coefficients = convolve(
+            b_coefficients, fir[ind].ba[0], mode="full", method="auto"
+        )
+    return Filter.from_ba(b_coefficients, [1.0], fir[0].sampling_rate_hz)

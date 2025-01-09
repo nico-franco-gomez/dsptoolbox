@@ -29,6 +29,7 @@ from .standard_functions import (
     apply_gain,
     resample_filter,
     modify_signal_length,
+    merge_fir_filters,
 )
 from .classes import (
     Filter,
@@ -76,6 +77,7 @@ __all__ = [
     "apply_gain",
     "resample_filter",
     "modify_signal_length",
+    "merge_fir_filters",
     # Modules
     "transfer_functions",
     "distances",
