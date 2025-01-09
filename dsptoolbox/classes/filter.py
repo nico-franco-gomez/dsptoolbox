@@ -149,7 +149,7 @@ class Filter:
         passband_ripple_db: float | None = None,
         stopband_attenuation_db: float | None = None,
         sampling_rate_hz: int | None = None,
-    ):
+    ) -> "Filter":
         """Return an IIR filter using `scipy.signal.iirfilter`. IIR filters are
         always implemented as SOS by default.
 
@@ -197,7 +197,7 @@ class Filter:
         gain_db: float,
         q: float,
         sampling_rate_hz: int,
-    ):
+    ) -> "Filter":
         """Return a biquad filter according to [1].
 
         Parameters
@@ -244,7 +244,7 @@ class Filter:
         filter_design_method: str,
         width_hz: float | None = None,
         sampling_rate_hz: int | None = None,
-    ):
+    ) -> "Filter":
         """Design an FIR filter using `scipy.signal.firwin`.
 
         Parameters
@@ -288,7 +288,7 @@ class Filter:
         b: ArrayLike,
         a: ArrayLike,
         sampling_rate_hz: int,
-    ):
+    ) -> "Filter":
         """Create a filter from some b (numerator) and a (denominator)
         coefficients.
 
@@ -312,7 +312,7 @@ class Filter:
     def from_sos(
         sos: NDArray[np.float64],
         sampling_rate_hz: int,
-    ):
+    ) -> "Filter":
         """Create a filter from second-order sections.
 
         Parameters
@@ -335,7 +335,7 @@ class Filter:
         p: NDArray[np.float64],
         k: float,
         sampling_rate_hz: int,
-    ):
+    ) -> "Filter":
         """Create a filter from zero-pole representation.
 
         Parameters
