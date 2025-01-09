@@ -57,7 +57,7 @@ class TestStandardModule:
         assert np.allclose(corr, 1.0, atol=1e-2)
         assert np.abs(lat[0] - delay * noi.sampling_rate_hz) < 0.9
 
-        noi = dsp.merge_signals(noi_del, noi)
+        noi = dsp.append_signals([noi_del, noi])
         latencies, corr = dsp.latency(noi, polynomial_points=1)
         assert len(latencies) == noi.number_of_channels - 1
         assert np.allclose(corr, 1.0, atol=1e-2)
@@ -121,11 +121,11 @@ class TestStandardModule:
         multi = dsp.MultiBandSignal(b)
         dsp.pad_trim(multi, 40_000)
 
-    def test_merge_signal(self):
+    def test_append_signals(self):
         # Signal
         s1 = self.audio_multi.get_channels(0)
         s2 = self.audio_multi.get_channels(1)
-        s = dsp.merge_signals(s1, s2)
+        s = dsp.append_signals([s1, s2])
         assert s.number_of_channels == 2
         assert np.all(s.time_data == self.audio_multi.time_data[:, :2])
         # MultiBandSignal
@@ -135,7 +135,7 @@ class TestStandardModule:
         ]
         sm = dsp.MultiBandSignal(b)
         sm1 = dsp.MultiBandSignal(b)
-        sm_ = dsp.merge_signals(sm, sm1)
+        sm_ = dsp.append_signals([sm, sm1])
         assert sm_.number_of_channels == 2
         assert sm_.number_of_bands == 2
 

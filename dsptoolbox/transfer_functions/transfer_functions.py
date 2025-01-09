@@ -35,7 +35,7 @@ from .._standard import (
 )
 from ..standard_functions import (
     fractional_delay,
-    merge_signals,
+    append_signals,
     normalize,
     latency,
 )
@@ -1107,7 +1107,7 @@ def combine_ir_with_dirac(
         imp_ch = fractional_delay(
             imp_ch, delay_seconds=delay_seconds, keep_length=True
         )
-        imp = merge_signals(imp, imp_ch)
+        imp = append_signals([imp, imp_ch])
 
         # Save polarity for each channel using sample prior to peak
         polarity[ch] *= np.sign(

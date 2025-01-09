@@ -28,7 +28,7 @@ class TestRoomAcousticsModule:
         # Check Index
         ind = np.argmax(np.abs(self.rir.time_data))
         dsp.room_acoustics.reverb_time(self.rir, mode="edt", ir_start=ind)
-        combined = dsp.merge_signals(self.rir, self.rir)
+        combined = dsp.append_signals([self.rir, self.rir])
         dsp.room_acoustics.reverb_time(
             combined, mode="edt", ir_start=[ind, ind - 1]
         )
@@ -64,7 +64,7 @@ class TestRoomAcousticsModule:
 
     def test_convolve_rir_on_signal(self):
         speech = dsp.Signal(join("examples", "data", "speech.flac"))
-        speech_2 = dsp.merge_signals(speech, speech)
+        speech_2 = dsp.append_signals([speech, speech])
         result = dsp.room_acoustics.convolve_rir_on_signal(
             speech, self.rir, keep_peak_level=False, keep_length=True
         )

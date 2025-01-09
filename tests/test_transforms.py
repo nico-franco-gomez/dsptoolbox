@@ -166,7 +166,7 @@ class TestTransformsModule:
         dsp.transforms.hilbert(s_mb)
 
     def test_stereo_mid_side(self):
-        sp = dsp.merge_signals(self.speech, self.speech)
+        sp = dsp.append_signals([self.speech, self.speech])
         sp_aft = dsp.transforms.stereo_mid_side(sp, True)
         sp_aft = dsp.transforms.stereo_mid_side(sp_aft, False)
         assert np.all(np.isclose(sp.time_data, sp_aft.time_data))

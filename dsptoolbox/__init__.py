@@ -11,8 +11,8 @@ Collection of dsp, audio and acoustics-related functions.
 
 from .standard_functions import (
     latency,
-    merge_signals,
     merge_filterbanks,
+    append_signals,
     pad_trim,
     fractional_delay,
     activity_detector,
@@ -61,8 +61,8 @@ __all__ = [
     "latency",
     "pad_trim",
     "fade",
-    "merge_signals",
     "merge_filterbanks",
+    "append_signals",
     "resample",
     "activity_detector",
     "normalize",

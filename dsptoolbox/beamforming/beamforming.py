@@ -11,7 +11,7 @@ from matplotlib.axes import Axes
 from numpy.typing import NDArray
 
 from ..classes import Signal
-from .. import fractional_delay, merge_signals, pad_trim
+from .. import fractional_delay, append_signals, pad_trim
 from .._general_helpers import (
     _get_fractional_octave_bandwidth,
     _find_nearest,
@@ -1527,8 +1527,8 @@ class MonopoleSource:
             # Amplitude scaling – 1 on point and decays with distance
             ns.time_data = ns.time_data / (1 + distances[i])
             # Append to final signal
-            multi_channel_signal = merge_signals(
-                multi_channel_signal, ns, padding_trimming=True
+            multi_channel_signal = append_signals(
+                [multi_channel_signal, ns], padding_trimming=True
             )
         # Remove original signal
         multi_channel_signal.remove_channel(0)

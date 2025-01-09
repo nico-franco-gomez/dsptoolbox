@@ -205,10 +205,10 @@ class TestFilterbanksModule:
         n.set_spectrum_parameters(window_length_samples=1024)
         f = dsp.filterbanks.pinking_filter(3000, fs_hz)
         n2 = f.filter_signal(n)
-        n2 = dsp.merge_signals(
-            n2, dsp.generators.noise("pink", sampling_rate_hz=fs_hz)
+        n2 = dsp.append_signals(
+            [n2, dsp.generators.noise("pink", sampling_rate_hz=fs_hz)]
         )
-        n2 = dsp.merge_signals(n2, n)
+        n2 = dsp.append_signals([n2, n])
 
     def test_matched_biquads(self):
         # Only functionality and plausibility
@@ -264,7 +264,7 @@ class TestFilterbanksModule:
         w = sig.windows.gaussian(length, sigma, True)
         w /= w.sum()
         f = dsp.Filter("other", {"ba": [w, [1]]}, fs_hz)
-        n1 = dsp.merge_signals(n1, f.filter_signal(n, zero_phase=False))
+        n1 = dsp.append_signals([n1, f.filter_signal(n, zero_phase=False)])
 
         # n1.plot_time()
         # dsp.plots.show()

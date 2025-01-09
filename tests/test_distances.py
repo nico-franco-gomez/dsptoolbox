@@ -93,14 +93,14 @@ class TestDistancesModule:
         )
         dsp.distances.snr(speech, noise)
         # Multichannel
-        speech = dsp.merge_signals(speech, speech)
+        speech = dsp.append_signals([speech, speech])
         dsp.distances.snr(speech, noise)
 
     def test_si_sdr(self):
         # Single-channel
         dsp.distances.si_sdr(self.sig1, self.sig2)
         # Multi-channel
-        sig2 = dsp.merge_signals(self.sig2, self.sig2)
+        sig2 = dsp.append_signals([self.sig2, self.sig2])
         dsp.distances.si_sdr(self.sig1, sig2)
 
     def test_fw_snr_seg(self):
