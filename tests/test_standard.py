@@ -240,6 +240,20 @@ class TestStandardModule:
         lat = dsp.latency(s, self.audio_multi)[0]
         assert np.all(np.isclose(np.abs(lat), [150, 0, 0]))
 
+    def test_delay(self):
+        # Delay in seconds
+        delay_samp = 150
+
+        # All channels
+        s = dsp.delay(self.audio_multi, delay_samp)
+        lat = dsp.latency(s, self.audio_multi)[0]
+        assert np.all(np.isclose(np.abs(lat), 150))
+
+        # Selected channels only
+        s = dsp.delay(self.audio_multi, delay_samp, channels=0)
+        lat = dsp.latency(s, self.audio_multi)[0]
+        assert np.all(np.isclose(np.abs(lat), [150, 0, 0]))
+
     def test_activity_detector(self):
         # Only functionality tested
         # Create harmonic signal and silence afterwards

@@ -660,7 +660,7 @@ def fractional_delay(
     assert delay_seconds >= 0, "Delay must be positive"
     if isinstance(sig, Signal):
         if delay_seconds == 0:
-            return sig
+            return sig.copy()
         if sig.time_data_imaginary is not None:
             warn(
                 "Imaginary time data will be ignored in this function. "
@@ -668,21 +668,16 @@ def fractional_delay(
                 + "needed."
             )
         delay_samples = delay_seconds * sig.sampling_rate_hz
-        assert (
-            delay_samples < sig.time_data.shape[0]
-        ), "Delay too large for the given signal"
-        assert (
-            order + 1 < sig.time_data.shape[0]
-        ), "Filter order is longer than the signal itself"
+        if keep_length:
+            assert (
+                delay_samples < sig.time_data.shape[0]
+            ), "Delay too large for the given signal"
         if channels is None:
             channels = np.arange(sig.number_of_channels)
         channels = np.atleast_1d(np.asarray(channels).squeeze())
-        assert np.all(
-            channels < sig.number_of_channels
-        ), "There is at least an invalid channel number"
-        assert len(np.unique(channels)) == len(
-            channels
-        ), "At least one channel is repeated"
+        assert np.all(channels < sig.number_of_channels) and len(
+            np.unique(channels)
+        ) == len(channels), "There is at least an invalid channel number"
 
         # Get filter and integer delay
         delay_int, frac_delay_filter = _fractional_delay_filter(
@@ -741,8 +736,105 @@ def fractional_delay(
         out_sig = sig.copy()
         for b in sig.bands:
             new_bands.append(
-                fractional_delay(b, delay_seconds, channels, keep_length)
+                fractional_delay(
+                    b,
+                    delay_seconds,
+                    channels,
+                    keep_length,
+                    order,
+                    side_lobe_suppression_db,
+                )
             )
+        out_sig.bands = new_bands
+    else:
+        raise TypeError(
+            "Passed signal should be either type Signal or "
+            + "MultiBandSignal"
+        )
+    return out_sig
+
+
+def delay(
+    sig: Signal | MultiBandSignal,
+    delay_samples: int,
+    channels=None,
+    keep_length: bool = False,
+) -> Signal | MultiBandSignal:
+    """Apply a time delay to a signal. This function is faster than
+    `fractional_delay` because it only applies integer delay by zero-padding.
+
+    Parameters
+    ----------
+    sig : `Signal` or `MultiBandSignal`
+        Signal to be delayed.
+    delay_samples : int
+        Delay in samples.
+    channels : int or array-like, optional
+        Channels to be delayed. Pass `None` to delay all channels.
+        Default: `None`.
+    keep_length : bool, optional
+        When `True`, the signal retains its original length and loses
+        information for the latest samples. If only specific channels are to be
+        delayed, and keep_length is set to `False`, the remaining channels are
+        zero-padded in the end. Default: `False`.
+
+    Returns
+    -------
+    out_sig : `Signal` or `MultiBandSignal`
+        Delayed signal.
+
+    """
+    if isinstance(sig, Signal):
+        if delay_samples == 0:
+            return sig.copy()
+        if keep_length:
+            assert (
+                delay_samples < sig.time_data.shape[0]
+            ), "Delay too large for the given signal"
+        if channels is None:
+            channels = np.arange(sig.number_of_channels)
+        channels = np.atleast_1d(np.asarray(channels).squeeze())
+        assert np.all(channels < sig.number_of_channels) and len(
+            np.unique(channels)
+        ) == len(channels), "There is at least an invalid channel number"
+
+        # Copy data
+        new_time_data = sig.time_data
+
+        # Handle delayed and undelayed channels
+        channels_not = np.setdiff1d(
+            channels, np.arange(new_time_data.shape[1])
+        )
+        not_delayed = new_time_data[:, channels_not]
+        delayed = new_time_data[:, channels]
+
+        delayed = _pad_trim(
+            delayed, delay_samples + new_time_data.shape[0], in_the_end=False
+        )
+        not_delayed = _pad_trim(
+            not_delayed,
+            delay_samples + new_time_data.shape[0],
+            in_the_end=True,
+        )
+
+        new_time_data = _pad_trim(
+            new_time_data,
+            delay_samples + new_time_data.shape[0],
+            in_the_end=True,
+        )
+        new_time_data[:, channels_not] = not_delayed
+        new_time_data[:, channels] = delayed
+        if keep_length:
+            new_time_data = new_time_data[: sig.time_data.shape[0], :]
+
+        out_sig = sig.copy()
+        out_sig.clear_time_window()
+        out_sig.time_data = new_time_data
+    elif isinstance(sig, MultiBandSignal):
+        new_bands = []
+        out_sig = sig.copy()
+        for b in sig.bands:
+            new_bands.append(delay(b, delay_samples, channels, keep_length))
         out_sig.bands = new_bands
     else:
         raise TypeError(
