@@ -27,6 +27,7 @@ from .filter_helpers import (
 from .plots import _zp_plot
 from ..plots import general_plot
 from .._general_helpers import _check_format_in_path, _pad_trim
+from ..tools import to_db
 
 
 class Filter:
@@ -416,8 +417,8 @@ class Filter:
         return self.__ba
 
     @ba.setter
-    def ba(self, new_ba):
-        ba = list(new_ba)
+    def ba(self, new_ba: tuple | list):
+        ba: list[NDArray] = list(new_ba)
         assert len(ba) == 2, "ba coefficients must be a list of length two"
         for ind in range(len(ba)):
             coeff = np.atleast_1d(ba[ind])
@@ -994,7 +995,7 @@ class Filter:
         normalize: str | None = None,
         show_info_box: bool = True,
         zero_phase: bool = False,
-    ):
+    ) -> tuple[Figure, Axes]:
         """Plots magnitude spectrum.
         Change parameters of spectrum with set_spectrum_parameters.
 
@@ -1175,9 +1176,7 @@ class Filter:
             )
         return fig, ax
 
-    def plot_zp(
-        self, show_info_box: bool = False
-    ) -> tuple[Figure, Axes] | None:
+    def plot_zp(self, show_info_box: bool = False) -> tuple[Figure, Axes]:
         """Plots zeros and poles with the unit circle. This returns `None` and
         produces no plot if user decides that conversion ba->sos is too costly.
 
