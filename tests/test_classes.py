@@ -381,6 +381,7 @@ class TestFilterClass:
         iir.ba[1] = np.array([1.0])
         np.testing.assert_equal(iir.ba[1], np.array([1.0]))
         assert iir.order == len(self.iir_ba[0]) - 1
+        assert not iir.has_sos
 
         with pytest.raises(ValueError):
             iir.ba = [0, "b"]
@@ -403,10 +404,12 @@ class TestFilterClass:
             5, 100.0, "lowpass", "butter", sampling_rate_hz=self.fs
         )
         assert sos.order == 5
+        assert sos.has_sos
 
         # Pass integer a coefficients
         fir = dsp.Filter.from_ba(self.fir, [1], self.fs)
         assert fir.ba[1].dtype == np.float64
+        assert not fir.has_sos
 
     def test_standard_filtering(self):
         # Try filtering compared to scipy's functions

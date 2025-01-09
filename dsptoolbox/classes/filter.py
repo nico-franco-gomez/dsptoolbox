@@ -464,6 +464,12 @@ class Filter:
         self.__sos = sos
 
     @property
+    def has_sos(self) -> bool:
+        if self.filter_type == "fir":
+            return False
+        return hasattr(self, "sos")
+
+    @property
     def zpk(self) -> list:
         return self.__zpk
 
