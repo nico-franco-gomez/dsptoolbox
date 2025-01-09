@@ -266,14 +266,27 @@ class TestTransferFunctionsModule:
         assert np.all(b == s.time_data[:, 0])
         assert f.sampling_rate_hz == s.sampling_rate_hz
 
+        # To filter bank
+        fb = dsp.transfer_functions.ir_to_filter(
+            dsp.ImpulseResponse.from_signal(self.audio_multi), channel=None
+        )
+        assert len(fb) == self.audio_multi.number_of_channels
+
     def test_filter_to_ir(self):
+        order = 216
         f = dsp.Filter(
             "fir",
-            dict(order=216, freqs=1000, type_of_pass="highpass"),
+            dict(order=order, freqs=1000, type_of_pass="highpass"),
             self.fs,
         )
         s = dsp.transfer_functions.filter_to_ir(f)
-        assert s.time_data.shape[0] == 216 + 1
+        assert s.time_data.shape[0] == order + 1
+
+        # From filter bank
+        fb = dsp.FilterBank([f] * 2)
+        ir = dsp.transfer_functions.filter_to_ir(fb)
+        assert ir.number_of_channels == len(fb)
+        assert len(ir) == order + 1
 
         with pytest.raises(AssertionError):
             f = dsp.Filter(

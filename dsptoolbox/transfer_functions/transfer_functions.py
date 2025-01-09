@@ -15,7 +15,7 @@ from ._transfer_functions import (
     _get_harmonic_times,
     _trim_ir,
 )
-from ..classes import Signal, Filter, ImpulseResponse
+from ..classes import Signal, Filter, ImpulseResponse, FilterBank
 from ..classes.filter_helpers import _group_delay_filter
 from .._general_helpers import (
     _remove_ir_latency_from_phase_min_phase,
@@ -1147,8 +1147,10 @@ def combine_ir_with_dirac(
 
 
 def ir_to_filter(
-    signal: ImpulseResponse, channel: int = 0, phase_mode: str = "direct"
-) -> Filter:
+    signal: ImpulseResponse,
+    channel: int | None = 0,
+    phase_mode: str = "direct",
+) -> Filter | FilterBank:
     """This function takes in an impulse response and turns the selected
     channel into an FIR filter. With `phase_mode` it is possible
     to use minimum phase or minimum linear phase.
@@ -1158,24 +1160,24 @@ def ir_to_filter(
     signal : `Signal`
         Signal to be converted into a filter.
     channel : int, optional
-        Channel of the signal to be used. Default: 0.
-    phase_mode : {'direct', 'min', 'lin'} str, optional
-        Phase of the FIR filter. Choose from `'direct'` (no changes to phase),
-        `'min'` (minimum phase) or `'lin'` (minimum linear phase).
-        Default: `'direct'`.
+        Channel of the signal to be used. If None, all channels are used and
+        the return is a FilterBank with each channel as an FIR filter. This
+        also applies for a signal with a single channel. Default: 0.
+    phase_mode : {"direct", "min", "lin"} str, optional
+        Phase of the FIR filter. Choose from "direct" (no changes to phase),
+        "min" (minimum phase) or "lin" (minimum linear phase).
+        Default: "direct".
 
     Returns
     -------
-    filt : `Filter`
-        FIR filter object.
+    filt : Filter or FilterBank
+        (FIR) Filter from a single channel or FilterBank with FIR filters from
+        each channel.
 
     """
     assert (
         type(signal) is ImpulseResponse
     ), "This is only valid for an impulse response"
-    assert (
-        channel < signal.number_of_channels
-    ), f"Signal does not have a channel {channel}"
     phase_mode = phase_mode.lower()
     assert phase_mode in (
         "direct",
@@ -1184,44 +1186,65 @@ def ir_to_filter(
     ), f"""{phase_mode} is not valid. Choose from ('direct', 'min', 'lin')"""
 
     # Choose channel
-    signal = signal.get_channels(channel)
+    signal = signal.get_channels(channel) if channel is not None else signal
 
     # Change phase
     if phase_mode == "min":
         f, sp = signal.get_spectrum()
-        signal = min_phase_from_mag(np.abs(sp), signal.sampling_rate_hz)
+        signal = min_phase_from_mag(
+            np.abs(sp), signal.sampling_rate_hz, len(signal)
+        )
     elif phase_mode == "lin":
         f, sp = signal.get_spectrum()
-        signal = lin_phase_from_mag(np.abs(sp), signal.sampling_rate_hz)
-    b = signal.time_data[:, 0]
-    a = [1]
-    filt = Filter(
-        "other", {"ba": [b, a]}, sampling_rate_hz=signal.sampling_rate_hz
-    )
-    return filt
+        signal = lin_phase_from_mag(
+            np.abs(sp), signal.sampling_rate_hz, len(signal)
+        )
+
+    filters = []
+    for ch in signal:
+        filt = Filter.from_ba(ch, [1.0], signal.sampling_rate_hz)
+        if channel is not None:
+            return filt
+        filters.append(filt)
+    return FilterBank(filters)
 
 
-def filter_to_ir(fir: Filter) -> ImpulseResponse:
-    """Takes in an FIR filter and converts it into an IR by taking its
-    b coefficients.
+def filter_to_ir(fir: Filter | FilterBank) -> ImpulseResponse:
+    """Takes in an FIR filter or multiple filters in a filter bank and converts
+    them into an IR by taking its b coefficients.
 
     Parameters
     ----------
-    fir : `Filter`
-        Filter containing an FIR filter.
+    fir : Filter or FilterBank
+        Filter containing an FIR filter. In case of a FilterBank, all filters
+        should be FIR.
 
     Returns
     -------
-    new_sig : `Signal`
-        New IR signal.
+    new_sig : ImpulseResponse
+        New IR. If the input was a FilterBank, the ImpulseResponse has multiple
+        channels. Its length always corresponds to the longest filter.
 
     """
-    assert (
-        fir.filter_type == "fir"
-    ), "This is only valid is only available for FIR filters"
-    b, _ = fir.get_coefficients(mode="ba")
-    new_sig = ImpulseResponse(None, b, sampling_rate_hz=fir.sampling_rate_hz)
-    return new_sig
+    if isinstance(fir, Filter):
+        assert fir.filter_type == "fir", "This is only valid for FIR filters"
+        return ImpulseResponse.from_time_data(
+            fir.ba[0].copy(), sampling_rate_hz=fir.sampling_rate_hz
+        )
+    elif isinstance(fir, FilterBank):
+        assert all(
+            [f.filter_type == "fir" for f in fir]
+        ), "Filter types must be fir"
+        assert (
+            fir.same_sampling_rate
+        ), "Only valid for filter banks with consistent sampling rate"
+        length_samples = max([len(f) for f in fir])
+        td = np.zeros((length_samples, len(fir)), dtype=np.float64)
+        for ind, f in enumerate(fir):
+            td[: len(f), ind] = f.ba[0].copy()
+        return ImpulseResponse.from_time_data(td, fir.sampling_rate_hz)
+    else:
+        raise TypeError("Unsupported type")
 
 
 def window_frequency_dependent(
