@@ -7,6 +7,7 @@ from matplotlib.axes import Axes
 from numpy.typing import NDArray
 
 from .signal import Signal
+from .impulse_response import ImpulseResponse
 from .multibandsignal import MultiBandSignal
 from .filter import Filter
 from .filter_helpers import _filterbank_on_signal
@@ -60,6 +61,22 @@ class FilterBank:
         self.same_sampling_rate = same_sampling_rate
         self.filters: list[Filter] = filters if filters is not None else []
         self.info: dict = info
+
+    @staticmethod
+    def firs_from_file(path: str):
+        """Read an audio file and return each channel as an FIR filter in a
+        FilterBank.
+
+        Parameters
+        ----------
+        path : str
+            Path to audio file.
+
+        """
+        ir = ImpulseResponse.from_file(path)
+        return FilterBank(
+            [Filter.from_ba(ch, [1.0], ir.sampling_rate_hz) for ch in iter(ir)]
+        )
 
     def _generate_metadata(self):
         """Generates the info dictionary with metadata about the FilterBank."""

@@ -708,6 +708,12 @@ class TestFilterBankClass:
         assert fb.number_of_filters == 2
         assert fb.sampling_rate_hz == self.fs
 
+        # Reading FIRs from files
+        firs = dsp.FilterBank.firs_from_file(RIR_PATH)
+        assert len(firs) == 1
+        firs = dsp.FilterBank.firs_from_file(CHIRP_STEREO_PATH)
+        assert len(firs) == 2
+
     def test_plots(self):
         # Create
         fb = dsp.FilterBank()
