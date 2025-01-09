@@ -351,12 +351,15 @@ def _find_frequencies_above_threshold(
 
 
 def _pad_trim(
-    vector: NDArray[np.float64],
+    vector: NDArray,
     desired_length: int,
     axis: int = 0,
     in_the_end: bool = True,
-) -> NDArray[np.float64]:
+) -> NDArray:
     """Pads (with zeros) or trim (depending on size and desired length)."""
+    if vector.shape[axis] == desired_length:
+        return vector.copy()
+
     throw_axis = False
     if vector.ndim < 2:
         assert axis == 0, "You can only pad along the 0 axis"
