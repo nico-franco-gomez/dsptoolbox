@@ -136,11 +136,19 @@ def latency(
         latencies = latency_func(
             in1.time_data, td2, polynomial_points=polynomial_points
         )
-        return latencies, _get_correlation_of_latencies(
-            td2 if td2 is not None else in1.time_data[:, 0][..., None],
-            in1.time_data if td2 is not None else in1.time_data[:, 1:],
-            np.round(latencies, 0).astype(np.int_),
-        )
+        try:
+            return latencies, _get_correlation_of_latencies(
+                td2 if td2 is not None else in1.time_data[:, 0][..., None],
+                in1.time_data if td2 is not None else in1.time_data[:, 1:],
+                np.round(latencies, 0).astype(np.int_),
+            )
+        except Exception as e:
+            print(e)
+            warn(
+                "An error occured while computing the correlations. "
+                + "They are set to 0."
+            )
+            return latencies, np.zeros(len(latencies))
 
     elif isinstance(in1, MultiBandSignal):
         if in2 is not None:
