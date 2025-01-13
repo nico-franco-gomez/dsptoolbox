@@ -102,6 +102,7 @@ class FilterBank:
         """
         for f in self.filters:
             f.initialize_zi(number_of_channels)
+        return self
 
     @property
     def sampling_rate_hz(self) -> int | NDArray[np.int_]:
@@ -198,6 +199,7 @@ class FilterBank:
                 fs.insert(index, filt)
             self.filters = fs
         self._generate_metadata()
+        return self
 
     def remove_filter(
         self, index: int = -1, return_filter: bool = False
@@ -225,7 +227,7 @@ class FilterBank:
         self.filters = n_f
         if return_filter:
             return f
-        return None
+        return self
 
     def swap_filters(self, new_order):
         """Rearranges the filters in the new given order.
@@ -255,6 +257,7 @@ class FilterBank:
         ), "There are repeated indexes in the new order vector"
         n_f = [self.filters[i] for i in new_order]
         self.filters = n_f
+        return self
 
     # ======== Filtering ======================================================
     def filter_signal(
@@ -512,6 +515,7 @@ class FilterBank:
     def show_info(self):
         """Show information about the filter bank."""
         print(self._get_metadata_str())
+        return self
 
     def _get_metadata_str(self):
         txt = ""
@@ -875,20 +879,19 @@ class FilterBank:
         return fig, ax
 
     # ======== Saving and export ==============================================
-    def save_filterbank(self, path: str = "filterbank"):
+    def save_filterbank(self, path: str):
         """Saves the FilterBank object as a pickle.
 
         Parameters
         ----------
-        path : str, optional
-            Path for the filterbank to be saved. Use only folder1/folder2/name
-            (without format). Default: `'filterbank'`
-            (local folder, object named filterbank).
+        path : str
+            Path for the filter bank to be saved with format `.pkl`.
 
         """
         path = _check_format_in_path(path, "pkl")
         with open(path, "wb") as data_file:
             dump(self, data_file, HIGHEST_PROTOCOL)
+        return self
 
     def copy(self):
         """Returns a copy of the object.

@@ -100,6 +100,7 @@ class CalibrationData:
             padding_trimming=allow_pad_trimming,
         )
         self.__update = True
+        return self
 
     def _compute_calibration_factors(self):
         """Computes the calibration factors for each channel."""

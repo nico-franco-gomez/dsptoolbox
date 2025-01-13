@@ -415,6 +415,7 @@ class Signal:
             if not all(handler):
                 self._spectrum_parameters = _new_spectrum_parameters
                 self.__spectrum_state_update = True
+        return self
 
     def set_csm_parameters(
         self,
@@ -474,6 +475,7 @@ class Signal:
             if not all(handler):
                 self._csm_parameters = _new_csm_parameters
                 self.__csm_state_update = True
+        return self
 
     def set_spectrogram_parameters(
         self,
@@ -540,6 +542,7 @@ class Signal:
             if not all(handler):
                 self._spectrogram_parameters = _new_spectrogram_parameters
                 self.__spectrogram_state_update = True
+        return self
 
     # ======== Add, remove and reorder channels ===============================
     def add_channel(
@@ -616,6 +619,7 @@ class Signal:
             [self.time_data, new_time_data], axis=1
         )
         self.__update_state()
+        return self
 
     def remove_channel(self, channel_number: int = -1):
         """Removes a channel.
@@ -635,6 +639,7 @@ class Signal:
         )
         self.time_data = np.delete(self.time_data, channel_number, axis=-1)
         self.__update_state()
+        return self
 
     def swap_channels(self, new_order):
         """Rearranges the channels (inplace) in the new given order.
@@ -663,6 +668,7 @@ class Signal:
             new_order
         ), "There are repeated indexes in the new order vector"
         self.time_data = self.time_data[:, new_order]
+        return self
 
     def get_channels(self, channels):
         """Returns a signal object with the selected channels. Beware that
@@ -711,6 +717,7 @@ class Signal:
         """Deletes the time window of the signal in case there is any."""
         if hasattr(self, "window"):
             del self.window
+        return self
 
     # ======== Getters ========================================================
     def get_spectrum(
@@ -1422,17 +1429,13 @@ class Signal:
         return fig, ax
 
     # ======== Saving and copy ================================================
-    def save_signal(
-        self, path: str = "signal", mode: str = "wav", bit_depth: int = 32
-    ):
+    def save_signal(self, path: str, mode: str = "wav", bit_depth: int = 32):
         """Saves the Signal object as wav, flac or pickle.
 
         Parameters
         ----------
-        path : str, optional
-            Path for the signal to be saved. Use only folders/name
-            (without format). Default: `'signal'`
-            (local folder, object named signal).
+        path : str
+            Path for the signal to be saved.
         mode : str, optional
             Mode of saving. Available modes are `'wav'`, `'flac'`, `'pkl'`.
             Default: `'wav'`.
@@ -1469,6 +1472,7 @@ class Signal:
                 f"{mode} is not a supported saving mode. Use "
                 + "wav, flac or pkl"
             )
+        return self
 
     def copy(self):
         """Returns a copy of the object.
@@ -1496,6 +1500,7 @@ class Signal:
     def show_info(self):
         """Prints all the signal information to the console."""
         print(self._get_metadata_string())
+        return self
 
     # ======== Streaming methods ==============================================
     def set_streaming_position(self, position_samples: int = 0) -> bool:

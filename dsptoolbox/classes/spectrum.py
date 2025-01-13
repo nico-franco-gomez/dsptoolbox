@@ -5,12 +5,14 @@ from scipy import interpolate as int_sci
 from scipy.integrate import trapezoid
 from matplotlib.figure import Figure
 from matplotlib.axes import Axes
+from pickle import dump, HIGHEST_PROTOCOL
 
 from ..tools import to_db, fractional_octave_smoothing
 from .. import plots
 from .signal import Signal
 from .filter import Filter
 from .filterbank import FilterBank
+from .._general_helpers import _check_format_in_path
 
 
 class Spectrum:
@@ -694,6 +696,21 @@ class Spectrum:
             returns=True,
         )
         return fig, ax
+
+    def save_spectrum(self, path: str):
+        """Saves the Spectrum object as a pickle.
+
+        Parameters
+        ----------
+        path : str
+            Path for the filter to be saved. Use only folder1/folder2/name
+            (it can be passed with .pkl at the end or without it).
+
+        """
+        path = _check_format_in_path(path, "pkl")
+        with open(path, "wb") as data_file:
+            dump(self, data_file, HIGHEST_PROTOCOL)
+        return self
 
     def copy(self) -> "Spectrum":
         """Copy the spectral data.

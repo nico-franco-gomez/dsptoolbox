@@ -134,6 +134,7 @@ class ImpulseResponse(Signal):
             window.shape == self.time_data.shape
         ), f"{window.shape} does not match shape {self.time_data.shape}"
         self.window = window
+        return self
 
     def plot_spl(
         self,

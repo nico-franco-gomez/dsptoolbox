@@ -400,6 +400,8 @@ class Filter:
             for _ in range(number_of_channels):
                 self.zi.append(sig.lfilter_zi(self.ba[0], self.ba[1]))
 
+        return self
+
     @property
     def sampling_rate_hz(self):
         return self.__sampling_rate_hz
@@ -771,6 +773,7 @@ class Filter:
             self.info["preferred_method_of_filtering"] = "sos"
         if "filter_id" not in self.info:
             self.info["filter_id"] = None
+        return self
 
     # ======== Check type =====================================================
     def _check_and_update_filter_type(self):
@@ -1297,20 +1300,19 @@ class Filter:
         )
 
     # ======== Saving and export ==============================================
-    def save_filter(self, path: str = "filter"):
+    def save_filter(self, path: str):
         """Saves the Filter object as a pickle.
 
         Parameters
         ----------
-        path : str, optional
-            Path for the filter to be saved. Use only folder1/folder2/name
-            (it can be passed with .pkl at the end or without it).
-            Default: `"filter"` (local folder, object named filter).
+        path : str
+            Path for the filter to be saved with format `.pkl`.
 
         """
         path = _check_format_in_path(path, "pkl")
         with open(path, "wb") as data_file:
             dump(self, data_file, HIGHEST_PROTOCOL)
+        return self
 
     def copy(self):
         """Returns a copy of the object.

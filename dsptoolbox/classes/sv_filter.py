@@ -68,6 +68,7 @@ class StateVariableFilter(RealtimeFilter):
         self.resonance = resonance
         self.intermediate_value = 1 / (1 + self.resonance * self.g + self.g**2)
         self.set_n_channels(n_channels)
+        return self
 
     def set_n_channels(self, n_channels: int):
         assert n_channels > 0

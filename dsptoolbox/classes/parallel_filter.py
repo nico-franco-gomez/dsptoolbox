@@ -107,6 +107,7 @@ class ParallelFilter(RealtimeFilter):
             if delay_iir_samples is None
             else delay_iir_samples
         )
+        return self
 
     def set_coefficients(
         self,
@@ -135,6 +136,7 @@ class ParallelFilter(RealtimeFilter):
         else:
             self.__fir_coefficients = np.array([])
         self.n_fir = len(self.__fir_coefficients)
+        return self
 
     def fit_to_ir(self, ir: ImpulseResponse):
         """Fit the filter coefficients of this filter bank to an IR using the
@@ -240,6 +242,7 @@ class ParallelFilter(RealtimeFilter):
             self.__fir_coefficients = ff
 
         self.__compute_filter_bank()
+        return self
 
     def __compute_filter_bank(self):
         fb = FilterBank(

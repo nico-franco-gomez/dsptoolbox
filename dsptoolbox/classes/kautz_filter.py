@@ -133,6 +133,7 @@ class KautzFilter(RealtimeFilter):
         assert self.n_real_poles == len(c_real)
         self.coefficients_real_poles = c_real
         self.coefficients_complex_poles = c_complex
+        return self
 
     def __compute_filters(self):
         self.__filters_real: list[IIRFilter] = []
@@ -261,6 +262,7 @@ class KautzFilter(RealtimeFilter):
         )
 
         self.sampling_rate_hz = ir.sampling_rate_hz
+        return self
 
     def filter_signal(self, signal: Signal) -> Signal:
         """Filter a whole signal with the Kautz filter."""
@@ -363,6 +365,7 @@ class KautzFilter(RealtimeFilter):
         poles = KautzFilter.__find_optimal_poles_for_ir(order, iterations, td)
         self.__set_poles(poles)
         self.fit_coefficients_to_ir(ir)
+        return self
 
     @staticmethod
     def __find_optimal_poles_for_ir(
