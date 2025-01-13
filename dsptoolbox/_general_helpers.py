@@ -290,10 +290,13 @@ def _get_normalized_spectrum(
 
     if smoothing != 0:
         if scaling == "amplitude":
-            mag_spectra = _fractional_octave_smoothing(mag_spectra, smoothing)
+            mag_spectra = _fractional_octave_smoothing(
+                mag_spectra, None, smoothing
+            )
         else:  # Smoothing always in amplitude representation
             mag_spectra = (
-                _fractional_octave_smoothing(mag_spectra**0.5, smoothing) ** 2
+                _fractional_octave_smoothing(mag_spectra**0.5, None, smoothing)
+                ** 2
             )
 
     mag_spectra_db = to_db(mag_spectra / scale_factor, amplitude_scaling, 500)
@@ -323,7 +326,7 @@ def _get_normalized_spectrum(
         if smoothing != 0:
             phase_spectra = _wrap_phase(
                 _fractional_octave_smoothing(
-                    np.unwrap(phase_spectra, axis=0), smoothing
+                    np.unwrap(phase_spectra, axis=0), None, smoothing
                 )
             )
 
@@ -590,6 +593,7 @@ def _gaussian_window_sigma(window_length: int, alpha: float = 2.5) -> float:
 
 def _fractional_octave_smoothing(
     vector: NDArray[np.float64],
+    bin_spacing_octaves: float | None = None,
     num_fractions: int = 3,
     window_type="hann",
     window_vec: NDArray[np.float64] | None = None,
@@ -604,6 +608,9 @@ def _fractional_octave_smoothing(
     vector : NDArray[np.float64]
         Vector to be smoothed. It is assumed that the first axis is to
         be smoothed.
+    bin_spacing_octaves : float, None, optional
+        Spacing between frequency bins in octaves. If None, it is assumed that
+        the vector is linearly spaced. Default: None.
     num_fractions : int, optional
         Fraction of octave to be smoothed across. Default: 3 (third band).
     window_type : str, optional
@@ -630,23 +637,21 @@ def _fractional_octave_smoothing(
     - https://github.com/pyfar/pyfar
 
     """
-    if window_type is not None:
-        assert window_vec is None, (
-            "Set window_vec to None if you wish to create the window "
-            + "within the function"
-        )
-    if window_vec is not None:
-        assert window_type is None, (
-            "Set window_type to None if you wish to pass a vector to use "
-            + "as window"
-        )
-    # Linear and logarithmic frequency vector
-    N = len(vector)
-    l1 = np.arange(N, dtype=np.float64)
-    k_log = (N) ** (l1 / (N - 1))
-    l1 += 1.0
-    beta = np.log2(k_log[1])
+    lin_spaced = bin_spacing_octaves is None
 
+    if lin_spaced:
+        # Linear and logarithmic frequency vector
+        N = len(vector)
+        l1 = np.arange(N, dtype=np.float64)
+        k_log = (N) ** (l1 / (N - 1))
+        l1 += 1.0
+        beta = np.log2(k_log[1])
+        # Interpolate to logarithmic scale
+        vector = PchipInterpolator(l1, vector, axis=0)(k_log)
+    else:
+        beta = bin_spacing_octaves
+
+    # Smooth
     # Window length always odd, so that delay can be easily compensated
     n_window = int(1 / (num_fractions * beta) + 0.5)  # Round
     n_window += 1 - n_window % 2  # Ensure odd length
@@ -667,6 +672,7 @@ def _fractional_octave_smoothing(
             window_type is None
         ), "When using a window as a vector, window type should be None"
         window = window_vec
+
     # Dimension handling
     one_dim = False
     if vector.ndim == 1:
@@ -676,14 +682,11 @@ def _fractional_octave_smoothing(
     # Normalize window
     window /= window.sum()
 
-    # Interpolate to logarithmic scale
-    vec_log = PchipInterpolator(l1, vector, axis=0)(k_log)
-
     # Smoothe by convolving with window (output is centered)
     n_window_half = n_window // 2
     smoothed = oaconvolve(
         np.pad(
-            vec_log,
+            vector,
             ((n_window_half, n_window_half - (1 - n_window % 2)), (0, 0)),
             mode="edge",
         ),
@@ -691,18 +694,24 @@ def _fractional_octave_smoothing(
         mode="valid",
         axes=0,
     )
+    if one_dim:
+        smoothed = smoothed.squeeze()
 
     # Interpolate back to linear scale
-    vec_final = interp1d(
-        k_log, smoothed, kind="linear", copy=False, assume_sorted=True, axis=0
-    )(l1)
-    if one_dim:
-        vec_final = vec_final.squeeze()
+    if lin_spaced:
+        smoothed = interp1d(
+            k_log,
+            smoothed,
+            kind="linear",
+            copy=False,
+            assume_sorted=True,
+            axis=0,
+        )(l1)
 
-    # Avoid any negative values (numerical errors)
+    # Avoid any negative values
     if clip_values:
-        vec_final = np.clip(vec_final, a_min=0, a_max=None)
-    return vec_final
+        smoothed = np.clip(smoothed, a_min=0, a_max=None)
+    return smoothed
 
 
 def _frequency_weightning(

@@ -860,7 +860,9 @@ def group_delay(
             )
 
     if smoothing != 0:
-        group_delays = _fractional_octave_smoothing(group_delays, smoothing)
+        group_delays = _fractional_octave_smoothing(
+            group_delays, None, smoothing
+        )
 
     return f, group_delays
 
@@ -972,7 +974,7 @@ def minimum_group_delay(
     for n in range(signal.number_of_channels):
         min_gd[:, n] = _group_delay_direct(min_phases[:, n], f[1] - f[0])
     if smoothing != 0:
-        min_gd = _fractional_octave_smoothing(min_gd, smoothing)
+        min_gd = _fractional_octave_smoothing(min_gd, None, smoothing)
     return f, min_gd
 
 
@@ -1027,7 +1029,7 @@ def excess_group_delay(
     ex_gd = gd - min_gd
 
     if smoothing != 0:
-        ex_gd = _fractional_octave_smoothing(ex_gd, smoothing)
+        ex_gd = _fractional_octave_smoothing(ex_gd, None, smoothing)
 
     return f_min, ex_gd
 

@@ -769,12 +769,14 @@ class Signal:
                     # Smoothing the magnitude
                     temp_abs = _fractional_octave_smoothing(
                         np.abs(spectrum),
+                        None,
                         self._spectrum_parameters["smoothing"],
                         clip_values=True,
                     )
                     # Smoothing the phase is not shift-invariant...
                     temp_phase = _fractional_octave_smoothing(
                         np.unwrap(np.angle(spectrum), axis=0),
+                        None,
                         self._spectrum_parameters["smoothing"],
                     )
                     spectrum = temp_abs * np.exp(1j * temp_phase)
@@ -1209,7 +1211,7 @@ class Signal:
             gd[:, n] = _group_delay_direct(ph[:, n], f[1] - f[0])
 
         if smoothing != 0:
-            gd = _fractional_octave_smoothing(gd, smoothing)
+            gd = _fractional_octave_smoothing(gd, None, smoothing)
 
         fig, ax = general_plot(
             f,
@@ -1373,7 +1375,9 @@ class Signal:
 
         if smoothing != 0:
             ph = _wrap_phase(
-                _fractional_octave_smoothing(np.unwrap(ph, axis=0), smoothing)
+                _fractional_octave_smoothing(
+                    np.unwrap(ph, axis=0), None, smoothing
+                )
             )
 
         if unwrap:
