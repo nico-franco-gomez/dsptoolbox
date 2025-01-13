@@ -35,6 +35,8 @@ run the following commands on your console:
 If this does not work properly for some reason, refer to the documentation for
 `sounddevice`_ or `PortAudio`_.
 
+For ASIO support on Windows, refer to `sounddevice`_.
+
 .. _documentation: http://dsptoolbox.readthedocs.io/
 .. _examples: https://github.com/nico-franco-gomez/dsptoolbox/tree/main/examples
 .. _sounddevice: https://python-sounddevice.readthedocs.io/en/0.4.5/
