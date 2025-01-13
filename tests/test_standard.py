@@ -604,3 +604,34 @@ class TestStandardModule:
         with pytest.raises(AssertionError):
             f2 = dsp.Filter.from_ba(dirac, [1.0], self.fs * 2)
             dsp.merge_fir_filters([f1, f2])
+
+    def test_spectral_difference(self):
+        filt = dsp.Filter.biquad("peaking", 500.0, 10.0, 1.0, 48000)
+        spec = dsp.Spectrum.from_filter(
+            dsp.tools.log_frequency_vector([20, 20e3], 128), filt, False
+        )
+        spec_flat = dsp.Spectrum.from_filter(
+            dsp.tools.log_frequency_vector([20, 20e3], 128),
+            dsp.Filter.biquad("peaking", 500.0, 0.0, 1.0, 48000),
+            False,
+        )
+        sp_out = dsp.spectral_difference(
+            spec, spec_flat, energy_normalization=False
+        )
+        np.testing.assert_almost_equal(
+            spec.spectral_data, sp_out.spectral_data
+        )
+
+        with pytest.raises(AssertionError):
+            sp_out = dsp.spectral_difference(
+                spec, spec_flat, energy_normalization=False, complex=True
+            )
+
+        # Some different parameters
+        dsp.spectral_difference(
+            spec,
+            spec_flat,
+            energy_normalization=True,
+            octave_fraction_smoothing=12.0,
+            dynamic_range_db=None,
+        )
