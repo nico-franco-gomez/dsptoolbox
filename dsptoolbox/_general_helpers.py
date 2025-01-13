@@ -1634,17 +1634,17 @@ def _interpolate_fr(
         Frequency response to be interpolated.
     f_target : NDArray[np.float64]
         Target frequency vector.
-    mode : str, None, {"db2amplitude", "amplitude2db", "power2db",\
-            "power2amplitude", "amplitude2power"}, optional
-        Convert between amplitude, power or dB representation during the
-        interpolation step. For instance, using the modes "db2power" means
-        input in dB, interpolation in power spectrum, output in dB. Available
-        modes are "db2amplitude", "amplitude2db", "power2db",
-        "power2amplitude", "amplitude2power". Pass None to avoid any
+    mode : str {"db2amplitude", "amplitude2db", "power2db",\
+            "power2amplitude", "amplitude2power"}, None, optional
+        Convert between amplitude, power or dB representation during the\
+        interpolation step. For instance, using the modes "db2power" means\
+        input in dB, interpolation in power spectrum, output in dB. Available\
+        modes are "db2amplitude", "amplitude2db", "power2db",\
+        "power2amplitude", "amplitude2power". Pass None to avoid any\
         conversion. Default: None.
-    interpolation_scheme : str, {"linear", "quadratic", "cubic"}, optional
-        Type of interpolation to use. See `scipy.interpolation.interp1d` for
-        details. Choose from "quadratic" or "cubic" splines, or "linear".
+    interpolation_scheme : str {"linear", "quadratic", "cubic"}, optional
+        Type of interpolation to use. See `scipy.interpolation.interp1d` for\
+        details. Choose from "quadratic" or "cubic" splines, or "linear".\
         Default: "linear".
 
     Returns
