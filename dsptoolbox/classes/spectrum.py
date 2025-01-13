@@ -62,13 +62,21 @@ class Spectrum:
             assert (
                 sig._spectrum_parameters["method"] == "standard"
             ), "Method for obtaining a complex spectrum must be standard"
+        else:
+            if scaling is None:
+                if sig._spectrum_parameters["method"] == "standard":
+                    scaling = "amplitude"
+                else:
+                    scaling = "power"
 
         f, sp = sig.get_spectrum()
         if complex:
             assert np.iscomplexobj(sp), "Spectrum of signal is not complex"
             return Spectrum(f, sp)
 
-        return Spectrum(f, sp if "amplitude" in scaling else sp**0.5)
+        return Spectrum(
+            f, np.abs(sp) if "amplitude" in scaling else np.abs(sp) ** 0.5
+        )
 
     @staticmethod
     def from_filter(
@@ -141,7 +149,7 @@ class Spectrum:
         return self.__frequency_vector_type
 
     @property
-    def n_frequency_bins(self) -> int:
+    def number_frequency_bins(self) -> int:
         return len(self.frequency_vector_hz)
 
     @property
@@ -155,7 +163,7 @@ class Spectrum:
         if data.shape[0] < data.shape[1]:
             data = data.T
         assert (
-            data.shape[0] == self.n_frequency_bins
+            data.shape[0] == self.number_frequency_bins
         ), "Spectral data and frequency vector lengths do not match"
         self.__is_magnitude_spectrum = not np.iscomplexobj(data)
         self.__spectral_data = data.astype(
@@ -180,19 +188,25 @@ class Spectrum:
 
     @staticmethod
     def __check_frequency_vector_type(f_vec_hz: NDArray[np.float64]) -> str:
-        if np.all(
-            np.isclose(np.ediff1d(f_vec_hz), f_vec_hz[-1] - f_vec_hz[-2])
-        ):
-            return "linear"
+        try:
+            if np.all(
+                np.isclose(np.ediff1d(f_vec_hz), f_vec_hz[-1] - f_vec_hz[-2])
+            ):
+                return "linear"
 
-        if np.all(
-            np.isclose(
-                f_vec_hz[2:] / f_vec_hz[1:-1], f_vec_hz[-1] / f_vec_hz[-2]
-            )
-        ):
-            return "logarithmic"
+            if np.all(
+                np.isclose(
+                    f_vec_hz[2:] / f_vec_hz[1:-1], f_vec_hz[-1] / f_vec_hz[-2]
+                )
+            ):
+                return "logarithmic"
+        except Exception as e:
+            print(e)
 
         return "other"
+
+    def __len__(self):
+        return self.number_frequency_bins
 
     def trim(
         self,
@@ -235,7 +249,17 @@ class Spectrum:
         -------
         self
 
+        Notes
+        -----
+        - If the spectrum is complex, the interpolation domain will be
+          magphase. Otherwise, it will be power.
+
         """
+        self.set_interpolator_parameters(
+            "power" if self.is_magnitude else "magphase",
+            self.__int_scheme,
+            self.__int_edges,
+        )
         new_sp = self.get_interpolated_spectrum(
             new_freqs_hz, "magnitude" if self.is_magnitude else "complex"
         )
@@ -338,7 +362,9 @@ class Spectrum:
             output = np.zeros(
                 (len(requested_frequency), self.number_of_channels),
                 dtype=(
-                    np.float64 if output_type != "complex" else np.complex128
+                    np.float64
+                    if self.__int_domain not in ("complex", "magphase")
+                    else np.complex128
                 ),
             )
             for ch in range(output.shape[1]):
@@ -476,7 +502,8 @@ class Spectrum:
         the RMS value of the underlying signal exactly.
 
         This is computed by using trapezoidal integration across the frequency
-        axis.
+        axis. The passed frequency limits are always included in the
+        computation.
 
         Parameters
         ----------
@@ -570,63 +597,6 @@ class Spectrum:
         self.spectral_data = mag * np.exp(1j * ph)
         return self
 
-    def construct_time_signal(
-        self,
-        sampling_rate_hz: int,
-        min_length_samples: int | None = None,
-        magphase_interpolation: bool = True,
-    ) -> Signal:
-        """Create a time signal from the complex spectrum. Complex
-        interpolation will be triggered.
-
-        Parameters
-        ----------
-        sampling_rate_hz : int
-            Sampling rate for the output signal.
-        min_length_samples : int, None, optional
-            Minimum length for the time signal. If None, it is inferred from
-            the average frequency resolution.
-        magphase_interpolation : bool, optional
-            When True, the interpolation is set to be done on magnitude-phase
-            domain. Otherwise, it is on the complex plane. Default: True.
-
-        Returns
-        -------
-        Signal
-            Reconstructed time signal.
-
-        """
-        assert not self.is_magnitude, "Not valid for magnitude spectrum"
-
-        if min_length_samples is None:
-            if self.frequency_vector_type == "linear":
-                df = self.frequency_vector_hz[1] - self.frequency_vector_hz[0]
-            else:
-                df = np.mean(np.ediff1d(self.frequency_vector_hz))
-            f_vec_length = int((sampling_rate_hz / 2) / df + 0.5)
-            if f_vec_length % 2 == 0:
-                f_vec_length += 1
-        else:
-            f_vec_length = min_length_samples // 2 + 1
-            df = sampling_rate_hz / f_vec_length
-
-        lin_freqs = np.linspace(
-            0, sampling_rate_hz / 2, f_vec_length, endpoint=True
-        )
-
-        self.set_interpolator_parameters(
-            "magphase" if magphase_interpolation else "complex"
-        )
-        sp = self.get_interpolated_spectrum(lin_freqs, "complex")
-        return Signal.from_time_data(
-            np.fft.irfft(
-                sp,
-                axis=0,
-                n=max(min_length_samples, (f_vec_length - 1) * 2),
-            ),
-            sampling_rate_hz,
-        )
-
     def set_coherence(self, coherence: NDArray[np.float64]):
         """Sets the coherence matrix from the transfer function computation.
 
@@ -680,7 +650,7 @@ class Spectrum:
                     else np.max(self.spectral_data, axis=0)
                 )
             elif normalization == "energy":
-                norm = (self.get_energy() / self.n_frequency_bins) ** 0.5
+                norm = (self.get_energy() / self.number_frequency_bins) ** 0.5
         else:
             norm = np.ones(self.number_of_channels)
 
@@ -750,12 +720,12 @@ class Spectrum:
         ind_high = (
             int(np.searchsorted(self.frequency_vector_hz, f_upper_hz))
             if f_upper_hz is not None
-            else self.n_frequency_bins
+            else self.number_frequency_bins
         )
         if inclusive:
             ind_high += 1
-            ind_high = min(ind_high, self.n_frequency_bins)
+            ind_high = min(ind_high, self.number_frequency_bins)
         else:
-            ind_low -= 1
-            ind_low = max(0, ind_low)
+            ind_low += 1
+        assert ind_low < ind_high, "Slice is invalid"
         return slice(ind_low, ind_high)
