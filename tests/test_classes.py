@@ -1515,3 +1515,266 @@ class TestFilterTopologies:
                 output[ind] = ff2.process_sample(ch_n[ind], channel)
             np.testing.assert_allclose(reference.time_data[:, channel], output)
             channel += 1
+
+
+class TestSpectrum:
+    def get_spectrum_from_filter(self, freqs=None, complex=False):
+        """Get some spectrum from a filter. If `freqs=None`, it is a
+        logarithmic vector."""
+        filt = dsp.Filter.biquad("peaking", 500.0, 10.0, 1.0, 48000)
+        return dsp.Spectrum.from_filter(
+            (
+                dsp.tools.log_frequency_vector([20, 20e3], 128)
+                if freqs is None
+                else freqs
+            ),
+            filt,
+            complex,
+        )
+
+    def get_spectrum_from_rir(self, complex=False):
+        return dsp.Spectrum.from_signal(
+            dsp.ImpulseResponse.from_file(RIR_PATH), complex
+        )
+
+    def test_properties(self):
+        spec = self.get_spectrum_from_filter(complex=False)
+        assert spec.frequency_vector_type == "logarithmic"
+        assert spec.is_magnitude
+        assert spec.number_of_channels == 1
+
+        spec = self.get_spectrum_from_filter(complex=True)
+        assert not spec.is_magnitude
+
+        freqs = np.array([100.0, 200.0, 300.0])
+        spec = self.get_spectrum_from_filter(freqs, complex=True)
+        assert spec.frequency_vector_type == "linear"
+
+        freqs = np.array([100.0, 200.0, 300.0, 504.0])
+        spec = self.get_spectrum_from_filter(freqs, complex=True)
+        assert spec.frequency_vector_type == "other"
+        assert spec.number_frequency_bins == len(freqs)
+
+    def test_constructor_and_setters(self):
+        freqs = np.array([100.0, 200.0, 300.0])
+        spec = dsp.Spectrum(freqs, [np.zeros(3) for _ in range(2)])
+        assert len(spec) == len(freqs)
+        assert spec.number_of_channels == 2
+
+    def test_trim(self):
+        freqs = np.array([100.0, 200.0, 300.0, 504.0])
+        spec = self.get_spectrum_from_filter(freqs, complex=True)
+        spec2 = spec.copy().trim(200.0, 300.0, True)
+        np.testing.assert_array_equal(
+            np.array([200.0, 300.0]), spec2.frequency_vector_hz
+        )
+
+        spec2 = spec.copy().trim(100.0, 300.0, False)
+        np.testing.assert_array_equal(
+            np.array([200.0]), spec2.frequency_vector_hz
+        )
+
+    def test_resample(self):
+        # Only functionaltiy
+        freqs = np.array([100.0, 200.0, 300.0])
+
+        sp = self.get_spectrum_from_rir(False)
+        sp.resample(freqs)
+        sp = self.get_spectrum_from_rir(True)
+        sp.resample(freqs)
+
+    def test_interpolation_magnitude(self):
+        sp_mag = self.get_spectrum_from_filter(None, False)
+        f = np.array([200.0, 300.0])
+        f_outside = np.array([sp_mag.frequency_vector_hz[-1] + 1.0])
+
+        # Assertions
+        # Complex and magnitude
+        with pytest.raises(AssertionError):
+            sp_mag.set_interpolator_parameters("complex")
+            sp_mag.get_interpolated_spectrum(f, "magnitude")
+        with pytest.raises(AssertionError):
+            sp_mag.set_interpolator_parameters("complex")
+            sp_mag.get_interpolated_spectrum(f, "complex")
+        with pytest.raises(AssertionError):
+            sp_mag.set_interpolator_parameters("magnitude")
+            sp_mag.get_interpolated_spectrum(f, "complex")
+        with pytest.raises(AssertionError):
+            sp_mag.set_interpolator_parameters("power")
+            sp_mag.get_interpolated_spectrum(f, "complex")
+        with pytest.raises(AssertionError):
+            sp_mag.set_interpolator_parameters("magphase")
+            sp_mag.get_interpolated_spectrum(f, "magnitude")
+        with pytest.raises(AssertionError):
+            sp_mag.set_interpolator_parameters("magphase")
+            sp_mag.get_interpolated_spectrum(f, "complex")
+
+        # Padding
+        with pytest.raises(AssertionError):
+            sp_mag.set_interpolator_parameters("power", edges_handling="error")
+            sp_mag.get_interpolated_spectrum(f_outside, "magnitude")
+
+        # Normal functionality magnitude (no checking results)
+        #
+        sp_mag.set_interpolator_parameters("power", "linear", "zero-pad")
+        sp_mag.get_interpolated_spectrum(f, "power")
+        sp_mag.get_interpolated_spectrum(f, "magnitude")
+        sp_mag.get_interpolated_spectrum(f, "db")
+        sp_mag.set_interpolator_parameters("magnitude", "linear", "zero-pad")
+        sp_mag.get_interpolated_spectrum(f, "power")
+        sp_mag.get_interpolated_spectrum(f, "magnitude")
+        sp_mag.get_interpolated_spectrum(f, "db")
+        #
+        sp_mag.set_interpolator_parameters("power", "cubic", "zero-pad")
+        sp_mag.get_interpolated_spectrum(f, "power")
+        sp_mag.get_interpolated_spectrum(f, "magnitude")
+        sp_mag.get_interpolated_spectrum(f, "db")
+        sp_mag.set_interpolator_parameters("magnitude", "cubic", "zero-pad")
+        sp_mag.get_interpolated_spectrum(f, "power")
+        sp_mag.get_interpolated_spectrum(f, "magnitude")
+        sp_mag.get_interpolated_spectrum(f, "db")
+        #
+        sp_mag.set_interpolator_parameters("power", "pchip", "zero-pad")
+        sp_mag.get_interpolated_spectrum(f, "power")
+        sp_mag.get_interpolated_spectrum(f, "magnitude")
+        sp_mag.get_interpolated_spectrum(f, "db")
+        sp_mag.set_interpolator_parameters("magnitude", "pchip", "zero-pad")
+        sp_mag.get_interpolated_spectrum(f, "power")
+        sp_mag.get_interpolated_spectrum(f, "magnitude")
+        sp_mag.get_interpolated_spectrum(f, "db")
+        #
+        sp_mag.set_interpolator_parameters("power", "linear", "zero-pad")
+        sp_mag.get_interpolated_spectrum(f_outside, "power")
+        sp_mag.get_interpolated_spectrum(f_outside, "db")
+        sp_mag.set_interpolator_parameters("magnitude", "pchip", "extend")
+        sp_mag.get_interpolated_spectrum(f_outside, "magnitude")
+        sp_mag.get_interpolated_spectrum(f_outside, "db")
+
+    def test_interpolation_complex(self):
+        sp_comp = self.get_spectrum_from_filter(None, True)
+        f = np.array([200.0, 300.0])
+        f_outside = np.array([sp_comp.frequency_vector_hz[-1] + 1.0])
+
+        # Normal functionality magnitude (no checking results)
+        #
+        sp_comp.set_interpolator_parameters("complex", "linear", "zero-pad")
+        sp_comp.get_interpolated_spectrum(f, "power")
+        sp_comp.get_interpolated_spectrum(f, "magnitude")
+        sp_comp.get_interpolated_spectrum(f, "db")
+        sp_comp.get_interpolated_spectrum(f, "complex")
+        sp_comp.set_interpolator_parameters("magphase", "linear", "zero-pad")
+        sp_comp.get_interpolated_spectrum(f, "power")
+        sp_comp.get_interpolated_spectrum(f, "magnitude")
+        sp_comp.get_interpolated_spectrum(f, "db")
+        sp_comp.get_interpolated_spectrum(f, "complex")
+        #
+        sp_comp.set_interpolator_parameters("complex", "cubic", "zero-pad")
+        sp_comp.get_interpolated_spectrum(f, "power")
+        sp_comp.get_interpolated_spectrum(f, "magnitude")
+        sp_comp.get_interpolated_spectrum(f, "db")
+        sp_comp.get_interpolated_spectrum(f, "complex")
+        sp_comp.set_interpolator_parameters("magphase", "cubic", "zero-pad")
+        sp_comp.get_interpolated_spectrum(f, "power")
+        sp_comp.get_interpolated_spectrum(f, "magnitude")
+        sp_comp.get_interpolated_spectrum(f, "db")
+        sp_comp.get_interpolated_spectrum(f, "complex")
+        #
+        sp_comp.set_interpolator_parameters("complex", "pchip", "zero-pad")
+        sp_comp.get_interpolated_spectrum(f, "power")
+        sp_comp.get_interpolated_spectrum(f, "magnitude")
+        sp_comp.get_interpolated_spectrum(f, "db")
+        sp_comp.get_interpolated_spectrum(f, "complex")
+        sp_comp.set_interpolator_parameters("magphase", "pchip", "zero-pad")
+        sp_comp.get_interpolated_spectrum(f, "power")
+        sp_comp.get_interpolated_spectrum(f, "magnitude")
+        sp_comp.get_interpolated_spectrum(f, "db")
+        sp_comp.get_interpolated_spectrum(f, "complex")
+        #
+        sp_comp.set_interpolator_parameters("magnitude", "linear", "zero-pad")
+        sp_comp.get_interpolated_spectrum(f, "power")
+        sp_comp.get_interpolated_spectrum(f, "magnitude")
+        sp_comp.get_interpolated_spectrum(f, "db")
+        sp_comp.set_interpolator_parameters("power", "linear", "zero-pad")
+        sp_comp.get_interpolated_spectrum(f, "power")
+        sp_comp.get_interpolated_spectrum(f, "magnitude")
+        sp_comp.get_interpolated_spectrum(f, "db")
+        #
+        sp_comp.set_interpolator_parameters("power", "cubic", "zero-pad")
+        sp_comp.get_interpolated_spectrum(f, "power")
+        sp_comp.get_interpolated_spectrum(f, "magnitude")
+        sp_comp.get_interpolated_spectrum(f, "db")
+        sp_comp.set_interpolator_parameters("magnitude", "cubic", "zero-pad")
+        sp_comp.get_interpolated_spectrum(f, "power")
+        sp_comp.get_interpolated_spectrum(f, "magnitude")
+        sp_comp.get_interpolated_spectrum(f, "db")
+        #
+        sp_comp.set_interpolator_parameters("power", "pchip", "zero-pad")
+        sp_comp.get_interpolated_spectrum(f, "power")
+        sp_comp.get_interpolated_spectrum(f, "magnitude")
+        sp_comp.get_interpolated_spectrum(f, "db")
+        sp_comp.set_interpolator_parameters("magnitude", "pchip", "zero-pad")
+        sp_comp.get_interpolated_spectrum(f, "power")
+        sp_comp.get_interpolated_spectrum(f, "magnitude")
+        sp_comp.get_interpolated_spectrum(f, "db")
+        #
+        sp_comp.set_interpolator_parameters("power", "linear", "zero-pad")
+        sp_comp.get_interpolated_spectrum(f_outside, "power")
+        sp_comp.get_interpolated_spectrum(f_outside, "db")
+        sp_comp.set_interpolator_parameters("magnitude", "pchip", "extend")
+        sp_comp.get_interpolated_spectrum(f_outside, "magnitude")
+        sp_comp.get_interpolated_spectrum(f_outside, "db")
+        sp_comp.set_interpolator_parameters("complex", "pchip", "extend")
+        sp_comp.get_interpolated_spectrum(f_outside, "magnitude")
+        sp_comp.get_interpolated_spectrum(f_outside, "db")
+        sp_comp.get_interpolated_spectrum(f_outside, "complex")
+        sp_comp.set_interpolator_parameters("magphase", "pchip", "extend")
+        sp_comp.get_interpolated_spectrum(f_outside, "magnitude")
+        sp_comp.get_interpolated_spectrum(f_outside, "db")
+        sp_comp.get_interpolated_spectrum(f_outside, "complex")
+        #
+        sp_comp.set_interpolator_parameters("magphase", "pchip", "zero-pad")
+        sp_comp.get_interpolated_spectrum(f_outside, "magnitude")
+        sp_comp.get_interpolated_spectrum(f_outside, "db")
+        sp_comp.get_interpolated_spectrum(f_outside, "complex")
+
+    def test_get_energy(self):
+        # Total energy
+        sp = self.get_spectrum_from_rir()
+        np.testing.assert_allclose(
+            sp.get_energy(),
+            np.sum(sp.spectral_data**2.0, axis=0)
+            * (sp.frequency_vector_hz[1] - sp.frequency_vector_hz[0]),
+            rtol=0.01,
+        )
+
+        # Functionality of boundaries
+        sp.get_energy(10.0, 50.0)
+        sp.get_energy(10.0, None)
+        sp.get_energy(None, 50.0)
+
+        with pytest.raises(AssertionError):
+            sp.get_energy(200.0, 50.0)
+
+    def test_apply_octave_smoothing(self):
+        # Only functionality
+        sp = self.get_spectrum_from_filter()
+        sp.apply_octave_smoothing(12.0)
+
+        sp = self.get_spectrum_from_filter(np.linspace(500, 2000))
+        sp.apply_octave_smoothing(12.0)
+
+    def test_coherence(self):
+        sp = self.get_spectrum_from_rir()
+        sp.set_coherence(np.zeros((len(sp), 1)))
+        sp.plot_coherence()
+
+    def test_plot_magnitude(self):
+        sp = self.get_spectrum_from_filter()
+        sp.plot_magnitude(True, None, None)
+        sp.plot_magnitude(True, None, 10.0)
+        sp.plot_magnitude(True, "1khz", 10.0)
+        sp.plot_magnitude(True, "max", 10.0)
+        sp.plot_magnitude(True, "energy", 10.0)
+        sp.plot_magnitude(False, None, None)
+        sp.plot_magnitude(False, None, None)
+        sp.plot_magnitude(False, None, None)
