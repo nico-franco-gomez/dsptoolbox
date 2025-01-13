@@ -47,7 +47,7 @@ from ..tools import to_db
 def spectral_deconvolve(
     num: Signal,
     denum: Signal,
-    mode: str = "regularized",
+    apply_regularization: bool = True,
     start_stop_hz=None,
     threshold_db=-30,
     padding: bool = False,
@@ -63,17 +63,15 @@ def spectral_deconvolve(
         Signal to deconvolve from.
     denum : `Signal`
         Signal to deconvolve.
-    mode : str, optional
-        `'window'` uses a spectral window in the numerator. `'regularized'`
-        uses a regularized inversion. `'standard'` uses direct deconvolution.
-        Default: `'regularized'`.
+    apply_regularization : bool, optional
+        When True, a regularization window is applied for avoiding noise
+        outside the excitation frequency region. Default: True.
     start_stop_hz : array-like or `None`, optional
         This is a vector of length 2 or 4 with frequency values that define the
-        area of the denominator that has some energy. This is only relevant for
-        `'window'` and `'regularized'`. Pass `None` to use an automatic mode
-        that recognizes the start and stop of the denominator
-        (it assumes a chirp). If mode is standard, `start_stop_hz` has to be
-        set to `None`. Default: `None`.
+        area of the denominator that has some energy during the regularization.
+        Pass `None` to use an automatic mode that recognizes the start and stop
+        of the denominator (it assumes a chirp). If regularization is
+        deactivated, `start_stop_hz` has to be set to `None`. Default: `None`.
     threshold_db : int, optional
         Threshold in dBFS for the automatic creation of the window.
         Default: -30.
@@ -106,13 +104,7 @@ def spectral_deconvolve(
     assert (
         num.sampling_rate_hz == denum.sampling_rate_hz
     ), "Sampling rates do not match"
-    mode = mode.lower()
-    assert mode in (
-        "regularized",
-        "window",
-        "standard",
-    ), f"{mode} is not supported. Use regularized, window or None"
-    if mode == "standard":
+    if not apply_regularization:
         assert (
             start_stop_hz is None
         ), "No start_stop_hz vector can be passed when using standard mode"
@@ -134,18 +126,20 @@ def spectral_deconvolve(
 
     for n in range(num.number_of_channels):
         n_denum = 0 if multichannel else n
-        if mode != "standard":
+        if apply_regularization:
             if start_stop_hz is None:
                 start_stop_hz = _find_frequencies_above_threshold(
                     denum_fft[:, n_denum], freqs_hz, threshold_db
                 )
             if len(start_stop_hz) == 2:
-                temp = []
-                temp.append(start_stop_hz[0] / np.sqrt(2))
-                temp.append(start_stop_hz[0])
-                temp.append(start_stop_hz[1])
-                temp.append(np.min([start_stop_hz[1] * np.sqrt(2), fs_hz / 2]))
-                start_stop_hz = temp
+                start_stop_hz = np.array(
+                    [
+                        start_stop_hz[0] / np.sqrt(2),
+                        start_stop_hz[0],
+                        start_stop_hz[1],
+                        np.min([start_stop_hz[1] * np.sqrt(2), fs_hz / 2]),
+                    ]
+                )
             elif len(start_stop_hz) == 4:
                 pass
             else:
@@ -158,7 +152,7 @@ def spectral_deconvolve(
             freqs_hz,
             fft_length,
             start_stop_hz=start_stop_hz,
-            mode=mode,
+            regularized=apply_regularization,
         )
     new_sig = ImpulseResponse(None, new_time_data, num.sampling_rate_hz)
     if padding:
@@ -471,7 +465,9 @@ def compute_transfer_function(
 
 
 def average_irs(
-    signal: ImpulseResponse, mode: str = "time", normalize_energy: bool = True
+    signal: ImpulseResponse,
+    time_average: bool = True,
+    normalize_energy: bool = True,
 ) -> ImpulseResponse:
     """Averages all channels of a given IR. It can either use a time domain
     average while time-aligning all channels to the one with the longest
@@ -481,11 +477,10 @@ def average_irs(
     ----------
     signal : `ImpulseResponse`
         Signal with channels to be averaged over.
-    mode : str, optional
-        It can be either `"time"` or `"spectral"`. When `"time"` is selected,
-        the IRs are time-aligned to the channel with the largest latency
-        and then averaged in the time domain. `"spectral"` averages directly
-        the magnitude and phase of each IR. Default: `"time"`.
+    time_average : bool, optional
+        When True, the IRs are time-aligned to the channel with the largest
+        (minimum-phase) latency and then averaged in the time domain. False
+        averages directly the magnitude and phase of each IR. Default: True.
     normalize_energy : bool, optional
         When `True`, the energy of all spectra is normalized to the first
         channel's energy and then averaged. Beware that normalization factors
@@ -501,11 +496,6 @@ def average_irs(
     assert (
         type(signal) is ImpulseResponse
     ), "This is only valid for an impulse response"
-    mode = mode.lower()
-    assert mode in (
-        "time",
-        "spectral",
-    ), "Invalid mode. Use either time or spectral"
     assert (
         signal.number_of_channels > 1
     ), "Signal has only one channel so no meaningful averaging can be done"
@@ -516,7 +506,7 @@ def average_irs(
         energies /= energies[0]
         avg_sig.time_data = avg_sig.time_data * energies
 
-    if mode == "spectral":
+    if not time_average:
         # Obtain channel magnitude and phase spectra
         _, sp = signal.get_spectrum()
         mag = np.abs(sp)
@@ -719,7 +709,7 @@ def lin_phase_from_mag(
 
 def min_phase_ir(
     sig: ImpulseResponse,
-    method: str = "real cepstrum",
+    use_real_cepstrum: bool = True,
     padding_factor: int = 8,
 ) -> ImpulseResponse:
     """Returns same IR with minimum phase. Two methods are available for
@@ -731,10 +721,9 @@ def min_phase_ir(
     ----------
     sig : `ImpulseResponse`
         IR for which to compute minimum phase IR.
-    method : str, optional
-        For general cases, `'real cepstrum'`. If the IR is symmetric (like a
-        linear-phase filter), `'equiripple'` is recommended.
-        Default: `'real cepstrum'`.
+    use_real_cepstrum : bool, optional
+        Set to True for general cases. If the IR is symmetric (like a
+        linear-phase filter), False is recommended. Default: True.
     padding_factor : int, optional
         Zero-padding to a length corresponding to
         `current_length * padding_factor` can be done, in order to avoid time
@@ -750,13 +739,9 @@ def min_phase_ir(
         type(sig) is ImpulseResponse
     ), "This is only valid for an impulse response"
     assert padding_factor > 1, "Padding factor should be at least 1"
-    method = method.lower()
-    assert method in ("real cepstrum", "equiripple"), (
-        f"{method} is not valid. Use either real cepstrum or " + "equiripple"
-    )
     new_time_data = sig.time_data
 
-    if method == "real cepstrum":
+    if use_real_cepstrum:
         new_time_data = _min_phase_ir_from_real_cepstrum(
             new_time_data, padding_factor
         )
@@ -781,7 +766,7 @@ def min_phase_ir(
 
 def group_delay(
     signal: Signal,
-    method="matlab",
+    analytic_computation: bool = True,
     smoothing: int = 0,
     remove_ir_latency: bool = False,
 ) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
@@ -791,11 +776,11 @@ def group_delay(
     ----------
     signal : `Signal`
         Signal for which to compute group delay.
-    method : str, optional
-        `'direct'` uses gradient with unwrapped phase. `'matlab'` uses
-        this implementation:
+    analytic_computation : bool, optional
+        When True, this implementation is used: \
         https://www.dsprelated.com/freebooks/filters/Phase_Group_Delay.html.
-        Default: `'matlab'`.
+        Otherwise, the numerical gradient of the unwrapped phase response is
+        used. Default: True.
     smoothing : int, optional
         Octave fraction by which to apply smoothing. `0` avoids any smoothing
         of the group delay. Default: `0`.
@@ -812,12 +797,6 @@ def group_delay(
         Matrix containing group delays in seconds with shape (gd, channel).
 
     """
-    method = method.lower()
-    assert method in (
-        "direct",
-        "matlab",
-    ), f"{method} is not valid. Use direct or matlab"
-
     length_time_signal = (
         next_fast_length_fft(signal.time_data.shape[0] * 8, True)
         if remove_ir_latency
@@ -827,7 +806,7 @@ def group_delay(
     f = np.fft.rfftfreq(td.shape[0], 1 / signal.sampling_rate_hz)
     group_delays = np.zeros((length_time_signal // 2 + 1, td.shape[1]))
 
-    if method == "direct":
+    if not analytic_computation:
         spec_parameters = signal._spectrum_parameters
         signal.set_spectrum_parameters("standard")
         sp = rfft_scipy(td, axis=0)
@@ -862,7 +841,7 @@ def group_delay(
 
 def minimum_phase(
     signal: ImpulseResponse,
-    method: str = "real cepstrum",
+    use_real_cepstrum: bool = True,
     padding_factor: int = 8,
 ) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
     """Gives back a matrix containing the minimum phase signal for each
@@ -874,9 +853,9 @@ def minimum_phase(
     ----------
     signal : `Signal`
         IR for which to compute the minimum phase.
-    method : str, optional
-        Selects the method to use. `'real cepstrum'` is of general use.
-        `'equiripple'` is for symmetric IR (e.g. linear-phase FIR filters).
+    use_real_cepstrum : bool, optional
+        Set to True for general cases. If the IR is symmetric (like a
+        linear-phase filter), False is recommended. Default: True.
     padding_factor : int, optional
         Zero-padding to a length corresponding to at least
         `current_length * padding_factor` can be done in order to avoid time
@@ -893,13 +872,8 @@ def minimum_phase(
     assert (
         type(signal) is ImpulseResponse
     ), "This is only valid for an impulse response"
-    method = method.lower()
-    assert method in (
-        "real cepstrum",
-        "equiripple",
-    ), f"{method} is not valid. Use real cepstrum or equiripple"
 
-    if method == "equiripple":
+    if not use_real_cepstrum:
         f = np.fft.rfftfreq(
             signal.time_data.shape[0], d=1 / signal.sampling_rate_hz
         )
@@ -1010,7 +984,7 @@ def excess_group_delay(
     f, gd = group_delay(
         signal,
         smoothing=0,
-        method="direct",
+        analytic_computation=False,
         remove_ir_latency=remove_ir_latency,
     )
 
@@ -1248,7 +1222,7 @@ def window_frequency_dependent(
     channel: int | None = None,
     frequency_range_hz: list | None = None,
     scaling: str | None = None,
-    end_window_value: float = 0.5,
+    end_window_value: float = 0.01,
 ) -> Spectrum:
     """A spectrum with frequency-dependent windowing defined by cycles is
     returned. To this end, a variable gaussian window is applied.
@@ -1278,7 +1252,7 @@ def window_frequency_dependent(
         and `None` leaves the spectrum completely unscaled. Default: `None`.
     end_window_value : float, optional
         This is the value that the gaussian window should have at its width.
-        Default: 0.5.
+        Default: 0.01.
 
     Returns
     -------
@@ -1693,7 +1667,7 @@ def harmonic_distortion_analysis(
     thd_n.set_spectrum_parameters(**ir2._spectrum_parameters)
     f_thd_n, sp_thd_n = thd_n.get_spectrum()
     if not quadratic_spectrum:
-        sp_thd_n = np.abs(sp_thd_n) ** 2
+        sp_thd_n = np.abs(sp_thd_n) ** 2.0
 
     if generate_plot:
         ax.plot(
@@ -1708,12 +1682,8 @@ def harmonic_distortion_analysis(
         )
         d["plot"] = [fig, ax]
 
-    d["thd_n"] = Spectrum(
-        f_thd_n, sp_thd_n**0.5 if quadratic_spectrum else sp_thd_n
-    )
-    d["thd"] = Spectrum(
-        freqs_thd, sp_thd**0.5 if quadratic_spectrum else sp_thd
-    )
+    d["thd_n"] = Spectrum(f_thd_n, sp_thd_n**0.5)
+    d["thd"] = Spectrum(freqs_thd, sp_thd**0.5)
 
     return d
 

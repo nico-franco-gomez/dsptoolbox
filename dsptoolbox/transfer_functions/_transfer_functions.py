@@ -23,13 +23,13 @@ def _spectral_deconvolve(
     denum_fft: NDArray[np.complex128],
     freqs_hz,
     time_signal_length: int,
-    mode="regularized",
-    start_stop_hz=None,
+    regularized: bool,
+    start_stop_hz,
 ) -> NDArray[np.complex128]:
     assert num_fft.shape == denum_fft.shape, "Shapes do not match"
     assert len(freqs_hz) == len(num_fft), "Frequency vector does not match"
 
-    if mode == "regularized":
+    if regularized:
         # Regularized division
         ids = _find_nearest(start_stop_hz, freqs_hz)
         eps = _calculate_window(ids, len(freqs_hz), inverse=True) * 10 ** (
@@ -37,22 +37,9 @@ def _spectral_deconvolve(
         )
         denum_reg = denum_fft.conj() / (np.abs(denum_fft) ** 2 + eps)
         new_time_data = np.fft.irfft(num_fft * denum_reg, n=time_signal_length)
-    elif mode == "window":
-        ids = _find_nearest(start_stop_hz, freqs_hz)
-        window = _calculate_window(ids, len(freqs_hz), inverse=False)
-        window += 10 ** (-200 / 10)
-        num_fft_n = num_fft * window
-        new_time_data = np.fft.irfft(
-            np.divide(num_fft_n, denum_fft), n=time_signal_length
-        )
-    elif mode == "standard":
+    else:
         new_time_data = np.fft.irfft(
             np.divide(num_fft, denum_fft), n=time_signal_length
-        )
-    else:
-        raise ValueError(
-            f"{mode} is not supported. Choose window"
-            + ", regularized or standard"
         )
     return new_time_data
 

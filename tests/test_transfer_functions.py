@@ -17,7 +17,7 @@ class TestTransferFunctionsModule:
         dsp.transfer_functions.spectral_deconvolve(
             self.y_m,
             self.x,
-            mode="regularized",
+            apply_regularization=True,
             start_stop_hz=None,
             threshold_db=-30,
             padding=False,
@@ -26,7 +26,7 @@ class TestTransferFunctionsModule:
         dsp.transfer_functions.spectral_deconvolve(
             self.y_st,
             self.x,
-            mode="regularized",
+            apply_regularization=True,
             start_stop_hz=None,
             threshold_db=-30,
             padding=False,
@@ -35,28 +35,9 @@ class TestTransferFunctionsModule:
         dsp.transfer_functions.spectral_deconvolve(
             self.y_st,
             self.x,
-            mode="regularized",
+            apply_regularization=True,
             start_stop_hz=[30, 15e3],
             threshold_db=None,
-            padding=False,
-            keep_original_length=False,
-        )
-        # Window
-        dsp.transfer_functions.spectral_deconvolve(
-            self.y_m,
-            self.x,
-            mode="window",
-            start_stop_hz=None,
-            threshold_db=-30,
-            padding=False,
-            keep_original_length=False,
-        )
-        dsp.transfer_functions.spectral_deconvolve(
-            self.y_m,
-            self.x,
-            mode="window",
-            start_stop_hz=[30, 15e3],
-            threshold_db=-30,
             padding=False,
             keep_original_length=False,
         )
@@ -64,7 +45,7 @@ class TestTransferFunctionsModule:
         dsp.transfer_functions.spectral_deconvolve(
             self.y_m,
             self.x,
-            mode="standard",
+            apply_regularization=False,
             start_stop_hz=None,
             threshold_db=None,
             padding=False,
@@ -73,7 +54,7 @@ class TestTransferFunctionsModule:
         dsp.transfer_functions.spectral_deconvolve(
             self.y_m,
             self.x,
-            mode="standard",
+            apply_regularization=False,
             start_stop_hz=None,
             threshold_db=None,
             padding=True,
@@ -82,7 +63,7 @@ class TestTransferFunctionsModule:
         dsp.transfer_functions.spectral_deconvolve(
             self.y_m,
             self.x,
-            mode="standard",
+            apply_regularization=False,
             start_stop_hz=None,
             threshold_db=None,
             padding=True,
@@ -325,7 +306,7 @@ class TestTransferFunctionsModule:
         dsp.transfer_functions.average_irs(h, normalize_energy=True)
         # h1.plot_magnitude()
         dsp.transfer_functions.average_irs(h, normalize_energy=False)
-        dsp.transfer_functions.average_irs(h, mode="spectral")
+        dsp.transfer_functions.average_irs(h, time_average=False)
         # h2.plot_magnitude()
 
     def test_min_phase_from_mag(self):
@@ -348,7 +329,7 @@ class TestTransferFunctionsModule:
         ir = dsp.transfer_functions.spectral_deconvolve(
             self.y_st,
             self.x,
-            mode="regularized",
+            apply_regularization="regularized",
             start_stop_hz=None,
             threshold_db=-30,
             padding=False,
@@ -359,12 +340,17 @@ class TestTransferFunctionsModule:
         )
         # Check only that some result is produced, validity should be checked
         # somewhere else
-        dsp.transfer_functions.group_delay(ir, method="matlab")
-        dsp.transfer_functions.group_delay(ir, method="direct")
+        dsp.transfer_functions.group_delay(ir, analytic_computation=True)
+        dsp.transfer_functions.group_delay(ir, analytic_computation=False)
 
-        dsp.transfer_functions.group_delay(ir, method="matlab", smoothing=4)
         dsp.transfer_functions.group_delay(
-            ir, method="direct", smoothing=4, remove_ir_latency=True
+            ir, analytic_computation=True, smoothing=4
+        )
+        dsp.transfer_functions.group_delay(
+            ir,
+            analytic_computation=False,
+            smoothing=4,
+            remove_ir_latency=True,
         )
 
         # Single-channel plausibility check
@@ -374,7 +360,7 @@ class TestTransferFunctionsModule:
         ir = dsp.transfer_functions.spectral_deconvolve(
             self.y_st,
             self.x,
-            mode="regularized",
+            apply_regularization="regularized",
             start_stop_hz=None,
             threshold_db=-30,
             padding=False,
@@ -403,7 +389,7 @@ class TestTransferFunctionsModule:
         ir = dsp.transfer_functions.spectral_deconvolve(
             self.y_st,
             self.x,
-            mode="regularized",
+            apply_regularization="regularized",
             start_stop_hz=None,
             threshold_db=-30,
             padding=False,
@@ -427,7 +413,7 @@ class TestTransferFunctionsModule:
         ir = dsp.transfer_functions.spectral_deconvolve(
             self.y_st,
             self.x,
-            mode="regularized",
+            apply_regularization="regularized",
             start_stop_hz=None,
             threshold_db=-30,
             padding=False,

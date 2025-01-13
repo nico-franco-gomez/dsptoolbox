@@ -174,7 +174,7 @@ class TestFilterbanksModule:
 
         # Group delay-based correction
         ir = fb.get_ir(length_samples=2**14).collapse()
-        _, gd = dsp.transfer_functions.group_delay(ir, method="matlab")
+        _, gd = dsp.transfer_functions.group_delay(ir)
         gd = np.max(gd) * 2 - gd
         pl = dsp.filterbanks.GroupDelayDesigner(gd.squeeze(), len(ir), fs_hz)
         pl.set_parameters(1.0)
