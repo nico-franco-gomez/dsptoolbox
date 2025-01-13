@@ -491,12 +491,14 @@ class TestTransferFunctionsModule:
 
     def test_window_frequency_dependent(self):
         s = dsp.ImpulseResponse(join("examples", "data", "rir.wav"))
-        f, sp = dsp.transfer_functions.window_frequency_dependent(
+        sp = dsp.transfer_functions.window_frequency_dependent(
             s, 10, 0, [100, 1000]
         )
 
         fig, ax = s.plot_magnitude(normalize=None)
-        ax.plot(f, 20 * np.log10(np.abs(sp)))
+        ax.plot(
+            sp.frequency_vector_hz, 20 * np.log10(np.abs(sp.spectral_data))
+        )
         print()
 
     def test_harmonics_from_chirp_ir(self):

@@ -1249,7 +1249,7 @@ def window_frequency_dependent(
     frequency_range_hz: list | None = None,
     scaling: str | None = None,
     end_window_value: float = 0.5,
-):
+) -> Spectrum:
     """A spectrum with frequency-dependent windowing defined by cycles is
     returned. To this end, a variable gaussian window is applied.
 
@@ -1282,10 +1282,8 @@ def window_frequency_dependent(
 
     Returns
     -------
-    f : NDArray[np.float64]
-        Frequency vector.
-    spec : NDArray[np.complex128]
-        Complex spectrum with shape (frequency, channel).
+    Spectrum
+        Complex spectrum.
 
     Notes
     -----
@@ -1391,7 +1389,7 @@ def window_frequency_dependent(
     for ind, ind_f in enumerate(inds_f):
         w = np.exp(alpha[ind] * n)
         spec[ind, :] = rfft_scipy(w * td, axis=0)[ind_f] * scaling_func(w)
-    return f, spec
+    return Spectrum(f, spec)
 
 
 def find_ir_latency(
@@ -1551,8 +1549,8 @@ def harmonic_distortion_analysis(
     Returns
     -------
     dict
-        A dictionary containing each spectrum is returned. Each item is a list
-        with form [frequency vector, spectrum]. Its keys are:
+        A dictionary containing each spectrum is returned. Each item is of type
+        Spectrum. Its keys are:
             - "1": spectrum of the fundamental.
             - "2": spectrum of the second harmonic.
             - "3": ...
@@ -1661,7 +1659,7 @@ def harmonic_distortion_analysis(
         )
 
         # Save in dictionary
-        d[f"{i + 2}"] = [f, sp]
+        d[f"{i + 2}"] = Spectrum(f, sp**0.5 if quadratic_spectrum else sp)
 
         # Make plot
         if generate_plot:
@@ -1710,8 +1708,12 @@ def harmonic_distortion_analysis(
         )
         d["plot"] = [fig, ax]
 
-    d["thd_n"] = [f_thd_n, sp_thd_n]
-    d["thd"] = [freqs_thd, sp_thd]
+    d["thd_n"] = Spectrum(
+        f_thd_n, sp_thd_n**0.5 if quadratic_spectrum else sp_thd_n
+    )
+    d["thd"] = Spectrum(
+        freqs_thd, sp_thd**0.5 if quadratic_spectrum else sp_thd
+    )
 
     return d
 
