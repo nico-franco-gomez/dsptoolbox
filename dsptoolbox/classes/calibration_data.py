@@ -63,7 +63,9 @@ class CalibrationData:
         # State tracker
         self.__update = True
 
-    def add_calibration_channel(self, new_channel):
+    def add_calibration_channel(
+        self, new_channel, allow_pad_trimming: bool = False
+    ):
         """Adds a new calibration channel to the calibration signal.
 
         Parameters
@@ -75,6 +77,10 @@ class CalibrationData:
             at the end of the new channel. This is supported, but not
             recommended since zero-padding might distort the real RMS value
             of the recorded signal.
+        allow_pad_trimming : bool, optional
+            When True, padding or trimming is activated for the new channel.
+            Otherwise, an error will be thrown if the new channel's length
+            does not match the current one. Default: False.
 
         """
         if isinstance(new_channel, str):
@@ -90,7 +96,8 @@ class CalibrationData:
                 "either str, tuple or Signal"
             )
         self.calibration_signal = append_signals(
-            [self.calibration_signal, new_channel]
+            [self.calibration_signal, new_channel],
+            padding_trimming=allow_pad_trimming,
         )
         self.__update = True
 
