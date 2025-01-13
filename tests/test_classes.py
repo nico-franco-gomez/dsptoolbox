@@ -208,9 +208,6 @@ class TestSignal:
             s.plot_phase(remove_ir_latency="no idea what removal method")
         s.plot_group_delay()
 
-        # Try to plot coherence
-        with pytest.raises(AssertionError):
-            s.plot_coherence()
         # Try to plot phase having welch's method for magnitude
         with pytest.raises(AssertionError):
             s.set_spectrum_parameters(method="welch", window_length_samples=32)
@@ -1266,11 +1263,6 @@ class TestImpulseResponse:
         rir = dsp.transfer_functions.window_centered_ir(rir, len(rir))[0]
         rir.plot_time()
         rir.plot_spl()
-
-        # Expect no coherence saved
-        with pytest.raises(AssertionError):
-            rir.plot_coherence()
-
         rir.add_channel(self.path_rir)
         rir.plot_time()
         rir.plot_spl()

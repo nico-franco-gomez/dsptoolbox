@@ -10,6 +10,7 @@ Here are the classes of the dsptoolbox:
 - `MultiBandSignal` (signal with multiple bands and multirate capabilities)
 - `Filter` (filter class with filtering methods)
 - `FilterBank` (class containing a group of `Filters` and their metadata)
+- `Spectrum` (class for containing a complex or magnitude spectrum)
 
 """
 
@@ -18,6 +19,7 @@ from .filterbank import FilterBank
 from .signal import Signal
 from .impulse_response import ImpulseResponse
 from .multibandsignal import MultiBandSignal
+from .spectrum import Spectrum
 
 __all__ = [
     "Filter",
@@ -25,4 +27,5 @@ __all__ = [
     "Signal",
     "ImpulseResponse",
     "MultiBandSignal",
+    "Spectrum",
 ]

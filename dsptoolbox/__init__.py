@@ -30,6 +30,8 @@ from .standard import (
     resample_filter,
     modify_signal_length,
     merge_fir_filters,
+    spectral_difference,
+    append_spectra,
 )
 from .classes import (
     Filter,
@@ -37,6 +39,7 @@ from .classes import (
     Signal,
     ImpulseResponse,
     MultiBandSignal,
+    Spectrum,
 )
 from .classes.calibration_data import CalibrationData
 from . import transfer_functions
@@ -58,6 +61,7 @@ __all__ = [
     "MultiBandSignal",
     "Filter",
     "FilterBank",
+    "Spectrum",
     "CalibrationData",
     # Functions in standard module
     "latency",
@@ -80,6 +84,8 @@ __all__ = [
     "resample_filter",
     "modify_signal_length",
     "merge_fir_filters",
+    "spectral_difference",
+    "append_spectra",
     # Modules
     "transfer_functions",
     "distances",

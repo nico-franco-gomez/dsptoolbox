@@ -15,7 +15,7 @@ from ._transfer_functions import (
     _get_harmonic_times,
     _trim_ir,
 )
-from ..classes import Signal, Filter, ImpulseResponse, FilterBank
+from ..classes import Signal, Filter, ImpulseResponse, FilterBank, Spectrum
 from ..classes.filter_helpers import _group_delay_filter
 from .._general_helpers import (
     _remove_ir_latency_from_phase_min_phase,
@@ -345,7 +345,7 @@ def compute_transfer_function(
     mode="h2",
     window_length_samples: int = 1024,
     spectrum_parameters: dict | None = None,
-) -> tuple[ImpulseResponse, NDArray[np.complex128], NDArray[np.float64]]:
+) -> Spectrum:
     r"""Gets transfer function H1, H2 or H3 (for stochastic signals).
     H1: for noise in the output signal. `Gxy/Gxx`.
     H2: for noise in the input signal. `Gyy/Gyx`.
@@ -372,14 +372,9 @@ def compute_transfer_function(
 
     Returns
     -------
-    tf_sig : `ImpulseResponse`
-        Transfer functions as `ImpulseResponse` object. Coherences are also
-        computed and saved in the `ImpulseResponse` object.
-    tf : NDArray[np.complex128]
-        Complex transfer function as type NDArray[np.complex128] with shape
-        (frequency, channel).
-    coherence : NDArray[np.float64]
-        Coherence of the measurement with shape (frequency, channel).
+    spec : `Spectrum`
+        Transfer functions as Spectrum. Coherences are also computed and saved
+        as `coherence` attribute.
 
     Notes
     -----
@@ -468,13 +463,11 @@ def compute_transfer_function(
         elif mode == "h3".casefold():
             tf[:, n] = G_xy / np.abs(G_xy) * (G_yy / G_xx) ** 0.5
         coherence[:, n] = np.abs(G_xy) ** 2 / G_xx / G_yy
-    tf_sig = ImpulseResponse(
-        None,
-        np.fft.irfft(tf, axis=0, n=window_length_samples),
-        output.sampling_rate_hz,
+    spec = Spectrum(
+        np.fft.rfftfreq(window_length_samples, 1 / input.sampling_rate_hz), tf
     )
-    tf_sig.set_coherence(coherence)
-    return tf_sig, tf, coherence
+    spec.set_coherence(coherence)
+    return spec
 
 
 def average_irs(

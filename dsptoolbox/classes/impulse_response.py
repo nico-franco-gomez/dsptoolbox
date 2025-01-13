@@ -4,7 +4,6 @@ from matplotlib.figure import Figure
 from matplotlib.axes import Axes
 
 from .signal import Signal
-from ..plots import general_subplots_line
 from ..tools import to_db
 
 
@@ -136,42 +135,6 @@ class ImpulseResponse(Signal):
         ), f"{window.shape} does not match shape {self.time_data.shape}"
         self.window = window
 
-    def set_coherence(self, coherence: NDArray[np.float64]):
-        """Sets the coherence measurements of the transfer function.
-        It only works for `signal_type = ('ir', 'h1', 'h2', 'h3', 'rir')`.
-
-        Parameters
-        ----------
-        coherence : NDArray[np.float64]
-            Coherence matrix.
-
-        """
-        assert coherence.shape[0] == (
-            self.time_data.shape[0] // 2 + 1
-        ), "Length of signals and given coherence do not match"
-        assert coherence.shape[1] == self.number_of_channels, (
-            "Number of channels between given coherence and signal "
-            + "does not match"
-        )
-        self.coherence = coherence
-
-    def get_coherence(self) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
-        """Returns the coherence matrix.
-
-        Returns
-        -------
-        f : NDArray[np.float64]
-            Frequency vector.
-        coherence : NDArray[np.float64]
-            Coherence matrix.
-
-        """
-        assert hasattr(
-            self, "coherence"
-        ), "There is no coherence data saved in the Signal object"
-        f, _ = self.get_spectrum()
-        return f, self.coherence
-
     def plot_spl(
         self,
         normalize_at_peak: bool = False,
@@ -254,33 +217,4 @@ class ImpulseResponse(Signal):
                     self.window[:, n] * mx[n],
                     alpha=0.75,
                 )
-        return fig, ax
-
-    def plot_coherence(self) -> tuple[Figure, list[Axes]]:
-        """Plots coherence measurements if there are any.
-
-        Returns
-        -------
-        fig : `matplotlib.figure.Figure`
-            Figure.
-        ax : list of `matplotlib.axes.Axes`
-            Axes.
-
-        """
-        f, coh = self.get_coherence()
-        fig, ax = general_subplots_line(
-            x=f,
-            matrix=coh,
-            column=True,
-            sharey=True,
-            log=True,
-            ylabels=[
-                rf"$\gamma^2$ Coherence {n}"
-                for n in range(self.number_of_channels)
-            ],
-            range_x=[20, 20e3],
-            xlabels="Frequency / Hz",
-            range_y=[-0.1, 1.1],
-            returns=True,
-        )
         return fig, ax

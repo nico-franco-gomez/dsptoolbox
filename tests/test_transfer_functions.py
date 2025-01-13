@@ -307,7 +307,7 @@ class TestTransferFunctionsModule:
             spectrum_parameters=None,
         )
         # Single-channel with other windows
-        h, h_numpy, coh = dsp.transfer_functions.compute_transfer_function(
+        h = dsp.transfer_functions.compute_transfer_function(
             self.y_m,
             self.x,
             mode="H2",
@@ -315,7 +315,6 @@ class TestTransferFunctionsModule:
             spectrum_parameters=dict(window_type=("chebwin", 40)),
         )
         # Check that coherence is saved
-        h.get_coherence()
         h.plot_coherence()
         # dsp.plots.show()
 
