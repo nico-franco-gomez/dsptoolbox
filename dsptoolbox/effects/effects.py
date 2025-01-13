@@ -1,11 +1,10 @@
 from ..classes import Signal, MultiBandSignal
 from .. import activity_detector
-from .._standard import (
+from ..standard._framed_signal_representation import (
     _get_framed_signal,
     _reconstruct_framed_signal,
-    _pad_trim,
 )
-from .._general_helpers import _get_next_power_2, _rms
+from .._general_helpers import _get_next_power_2, _rms, _pad_trim
 from ._effects import (
     _arctan_distortion,
     _clean_signal,

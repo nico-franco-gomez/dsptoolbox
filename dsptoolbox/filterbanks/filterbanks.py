@@ -29,7 +29,7 @@ from ._filterbank import (
     _get_matched_bandpass_eq,
     _get_matched_shelving_eq,
 )
-from .._standard import _kaiser_window_fractional
+from ..standard._standard_backend import _kaiser_window_fractional
 
 
 def linkwitz_riley_crossovers(

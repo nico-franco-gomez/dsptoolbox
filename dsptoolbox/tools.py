@@ -24,9 +24,11 @@ from ._general_helpers import (
     from_db,
 )
 
-from ._standard import (
+from .standard._standard_backend import (
     _center_frequencies_fractional_octaves_iec,
     _exact_center_frequencies_fractional_octaves,
+)
+from .standard._framed_signal_representation import (
     _get_framed_signal as framed_signal,
     _reconstruct_framed_signal as reconstruct_from_framed_signal,
 )

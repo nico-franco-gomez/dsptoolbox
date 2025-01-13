@@ -20,7 +20,7 @@ from ._room_acoustics import (
     _ts_from_rir,
 )
 from .._general_helpers import _find_nearest, _pad_trim
-from ..standard_functions import pad_trim
+from ..standard import pad_trim
 from ..tools import to_db
 
 

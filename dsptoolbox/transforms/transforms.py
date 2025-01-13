@@ -7,7 +7,10 @@ from ..classes.filter import Filter
 from ..classes.impulse_response import ImpulseResponse
 from ..classes.multibandsignal import MultiBandSignal
 from ..plots import general_matrix_plot
-from .._standard import _reconstruct_framed_signal, _get_framed_signal
+from ..standard._framed_signal_representation import (
+    _get_framed_signal,
+    _reconstruct_framed_signal,
+)
 from .._general_helpers import (
     _hz2mel,
     _mel2hz,

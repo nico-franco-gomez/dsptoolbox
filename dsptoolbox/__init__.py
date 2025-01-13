@@ -9,7 +9,7 @@ Collection of dsp, audio and acoustics-related functions.
 
 """
 
-from .standard_functions import (
+from .standard import (
     latency,
     append_signals,
     append_filterbanks,
@@ -24,7 +24,6 @@ from .standard_functions import (
     load_pkl_object,
     detrend,
     rms,
-    CalibrationData,
     envelope,
     dither,
     apply_gain,
@@ -39,6 +38,7 @@ from .classes import (
     ImpulseResponse,
     MultiBandSignal,
 )
+from .classes.calibration_data import CalibrationData
 from . import transfer_functions
 from . import distances
 from . import room_acoustics
@@ -58,6 +58,7 @@ __all__ = [
     "MultiBandSignal",
     "Filter",
     "FilterBank",
+    "CalibrationData",
     # Functions in standard module
     "latency",
     "pad_trim",
@@ -73,7 +74,6 @@ __all__ = [
     "load_pkl_object",
     "detrend",
     "rms",
-    "CalibrationData",
     "envelope",
     "dither",
     "apply_gain",

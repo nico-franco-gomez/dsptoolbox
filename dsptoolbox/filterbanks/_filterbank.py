@@ -34,7 +34,7 @@ from .._general_helpers import (
     __yw_ar_estimation,
     __burg_ar_estimation,
 )
-from .._standard import _group_delay_direct
+from ..standard._standard_backend import _group_delay_direct
 
 
 # ============== First implementation

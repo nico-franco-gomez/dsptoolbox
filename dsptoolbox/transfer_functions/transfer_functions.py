@@ -26,14 +26,14 @@ from .._general_helpers import (
     _correct_for_real_phase_spectrum,
     _get_fractional_impulse_peak_index,
     _interpolate_fr,
-)
-from .._standard import (
-    _welch,
-    _minimum_phase,
-    _group_delay_direct,
     _pad_trim,
 )
-from ..standard_functions import (
+from ..standard._standard_backend import (
+    _minimum_phase,
+    _group_delay_direct,
+)
+from ..standard._spectral_methods import _welch
+from ..standard import (
     fractional_delay,
     append_signals,
     normalize,

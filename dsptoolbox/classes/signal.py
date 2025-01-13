@@ -26,7 +26,9 @@ from .._general_helpers import (
     _remove_ir_latency_from_phase_peak,
     _remove_ir_latency_from_phase,
 )
-from .._standard import _welch, _group_delay_direct, _stft, _csm
+from ..standard._standard_backend import _group_delay_direct
+from ..standard._spectral_methods import _welch, _stft, _csm
+
 from ..tools import to_db
 
 
