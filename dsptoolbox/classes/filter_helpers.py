@@ -10,7 +10,7 @@ from numpy.typing import NDArray
 from .signal import Signal
 from .multibandsignal import MultiBandSignal
 from .._general_helpers import _polyphase_decomposition
-from ..standard.enums import BiquadEqType
+from ..standard.enums import BiquadEqType, FilterBankMode
 
 
 def _biquad_coefficients(
@@ -200,10 +200,10 @@ def _group_delay_filter(ba, length_samples: int = 512, fs_hz: int = 48000):
 def _filter_on_signal(
     signal: Signal,
     sos,
-    channels=None,
-    zi=None,
-    zero_phase: bool = False,
-    warning_on_complex_output: bool = True,
+    channels,
+    zi,
+    zero_phase: bool,
+    warning_on_complex_output: bool,
 ):
     """Takes in a `Signal` object and filters selected channels. Exports a new
     `Signal` object.
@@ -214,18 +214,17 @@ def _filter_on_signal(
         Signal to be filtered.
     sos : array-like
         SOS coefficients of filter.
-    channels : int or array-like, optional
+    channels : int or array-like
         Channel or array of channels to be filtered. When `None`, all
-        channels are filtered. Default: `None`.
-    zi : array-like, optional
+        channels are filtered.
+    zi : array-like
         When not `None`, the filter state values are updated after filtering.
-        Default: `None`.
-    zero_phase : bool, optional
+    zero_phase : bool
         Uses zero-phase filtering on signal. Be aware that the filter
-        is doubled in this case. Default: `False`.
-    warning_on_complex_output: bool, optional
+        is doubled in this case.
+    warning_on_complex_output: bool
         When `True`, there is a warning when the output is complex. Either way,
-        only the real part is regarded. Default: `True`.
+        only the real part is regarded.
 
     Returns
     -------
@@ -282,11 +281,11 @@ def _filter_on_signal(
 def _filter_on_signal_ba(
     signal: Signal,
     ba,
-    channels=None,
-    zi: list | None = None,
-    zero_phase: bool = False,
-    filter_type: str = "iir",
-    warning_on_complex_output: bool = True,
+    channels,
+    zi: list | None,
+    zero_phase: bool,
+    filter_type: str,
+    warning_on_complex_output: bool,
 ):
     """Takes in a `Signal` object and filters selected channels. Exports a new
     `Signal` object.
@@ -298,22 +297,21 @@ def _filter_on_signal_ba(
     ba : list
         List with ba coefficients of filter. Form ba=[b, a] where b and a
         are of type NDArray[np.float64].
-    channels : array-like, optional
+    channels : array-like
         Channel or array of channels to be filtered. When `None`, all
-        channels are filtered. Default: `None`.
-    zi : list, optional
+        channels are filtered.
+    zi : list
         When not `None`, the filter state values are updated after filtering.
         They should be passed as a list with the zi 1D-arrays.
-        Default: `None`.
-    zero_phase : bool, optional
+    zero_phase : bool
         Uses zero-phase filtering on signal. Be aware that the filter
-        is doubled in this case. Default: `False`.
-    filter_type : str, optional
+        is doubled in this case.
+    filter_type : str
         Filter type. When FIR, an own implementation of lfilter is used,
-        otherwise scipy.signal.lfilter is used. Default: `'iir'`.
-    warning_on_complex_output: bool, optional
+        otherwise scipy.signal.lfilter is used.
+    warning_on_complex_output: bool
         When `True`, there is a warning when the output is complex. Either way,
-        only the real part is regarded. Default: `True`.
+        only the real part is regarded.
 
     Returns
     -------
@@ -389,10 +387,10 @@ def _filter_on_signal_ba(
 def _filterbank_on_signal(
     signal: Signal,
     filters,
-    activate_zi: bool = False,
-    mode: str = "parallel",
-    zero_phase: bool = False,
-    same_sampling_rate: bool = True,
+    activate_zi: bool,
+    mode: str,
+    zero_phase: bool,
+    same_sampling_rate: bool,
 ):
     """Applies filter bank on a given signal.
 
@@ -402,18 +400,18 @@ def _filterbank_on_signal(
         Signal to be filtered.
     filters : list
         List containing filters to be applied to signal.
-    activate_zi : bool, optional
+    activate_zi : bool
         When `True`, the filter initial values for each channel are updated
-        while filtering. Default: `None`.
-    mode : str, optional
+        while filtering.
+    mode : FilterBankMode
         Mode of filtering. Choose from `'parallel'`, `'sequential'` and
-        `'summed'`. Default: `'parallel'`.
-    zero_phase : bool, optional
+        `'summed'`.
+    zero_phase : bool
         Uses zero-phase filtering on signal. Be aware that the filter order
-        is doubled in this case. Default: `False`.
-    same_sampling_rate : bool, optional
+        is doubled in this case.
+    same_sampling_rate : bool
         When `True`, the output MultiBandSignal (parallel filtering) has
-        same sampling rate for all bands. Default: `True`.
+        same sampling rate for all bands.
 
     Returns
     -------
@@ -422,7 +420,7 @@ def _filterbank_on_signal(
 
     """
     n_filt = len(filters)
-    if mode == "parallel":
+    if mode == FilterBankMode.Parallel:
         ss = []
         for n in range(n_filt):
             ss.append(
@@ -431,7 +429,7 @@ def _filterbank_on_signal(
                 )
             )
         out_sig = MultiBandSignal(ss, same_sampling_rate=same_sampling_rate)
-    elif mode == "sequential":
+    elif mode == FilterBankMode.Sequential:
         out_sig = signal.copy()
         for n in range(n_filt):
             out_sig = filters[n].filter_signal(

@@ -35,7 +35,7 @@ from .._general_helpers import (
     __burg_ar_estimation,
 )
 from ..standard._standard_backend import _group_delay_direct
-from ..standard.enums import FilterType, FilterCoefficientsType
+from ..standard.enums import FilterType, FilterCoefficientsType, FilterBankMode
 
 
 # ============== First implementation
@@ -737,7 +737,7 @@ class GammaToneFilterBank(FilterBank):
 
         # apply filterbank to impulse to estimate the required values
         d = dirac(delay_samples + 3, sampling_rate_hz=self.sampling_rate_hz)
-        d = self.filter_signal(d, mode="parallel")
+        d = self.filter_signal(d, mode=FilterBankMode.Parallel)
         d = d.get_all_bands(channel=0)
         real, imag = d.time_data, d.time_data_imaginary
 
@@ -1203,101 +1203,6 @@ class QMFCrossover(BaseCrossover):
             sampling_rate_hz=lowpass.sampling_rate_hz,
         )
         return [lowpass, hp_filter]
-
-
-# Not Working so far
-# class CQFCrossover(BaseCrossover):
-#     """This class contains methods for the creation of conjugate quadrature
-#     filters, with which perfect (magnitude) reconstruction can be achieved.
-#     Since these filters do not generally have linear phase, there might be
-#     some phase distortion after reconstruction.
-
-#     """
-#     def __init__(self, lowpass: Filter):
-#         """Create a conjugate quadrature filters crossover based on a lowpass
-#         filter prototype.
-
-#         Parameters
-#         ----------
-#         lowpass : `Filter`
-#             Lowpass filter prototype.
-
-#         References
-#         ----------
-#         - https://tinyurl.com/2cssq2oa
-
-#         """
-#         if 'freqs' in lowpass.info:
-#             if lowpass.info['freqs'] != lowpass.sampling_rate_hz//4:
-#                 warn('Cut-off frequency for lowpass filter should be half ' +
-#                      'the nyquist frequency.')
-#         # Create FilterBank
-#         super().__init__(
-#             analysis_filters=self._get_analysis_filters(lowpass),
-#             synthesis_filters=self._get_synthesis_filters(lowpass),
-#             info=dict(Info='Quadrature mirror filters crossover'))
-
-#     def _get_analysis_filters(self, lowpass: Filter):
-#         """Create and return analysis filters based on a lowpass prototype.
-
-#         Parameters
-#         ----------
-#         lowpass : `Filter`
-#             Lowpass prototype.
-
-#         Returns
-#         -------
-#         analysis_filters : list
-#             List containing exactly two analysis filters. The first one is
-#             the passed lowpass prototype.
-
-#         References
-#         ----------
-#         - https://tinyurl.com/2cssq2oa
-
-#         """
-#         if lowpass.filter_type == 'fir':
-#             # Create highpass filter based on lowpass
-#             b_base, _ = lowpass.get_coefficients(mode='ba')
-#             b_high = b_base.copy()
-#             b_high = np.flip(b_high)
-#             b_high[::2] *= -1
-#             # Create filter
-#             highpass = Filter(
-#                 'other', dict(ba=[b_high, [1]]),
-#                 sampling_rate_hz=lowpass.sampling_rate_hz)
-#             # Type of filter bank
-#             self.fir_filterbank = True
-#         else:
-#             raise ValueError('This type of crossover is only supported ' +
-#                              'for FIR filters')
-#         return [lowpass, highpass]
-
-#     def _get_synthesis_filters(self, lowpass: Filter):
-#         """Create and return synthesis filters based on a lowpass prototype.
-
-#         Parameters
-#         ----------
-#         lowpass : `Filter`
-#             Lowpass prototype.
-
-#         Returns
-#         -------
-#         synthesis_filters : list
-#             List containing exactly two synthesis filters.
-
-#         References
-#         ----------
-#         - https://tinyurl.com/2cssq2oa
-
-#         """
-#         b, a = lowpass.get_coefficients(mode='ba')
-#         lp_filter = Filter('other', dict(ba=[np.flip(b), a]),
-#                            sampling_rate_hz=lowpass.sampling_rate_hz)
-#         b[::2] *= -1
-#         hp_filter = Filter('other', dict(ba=[b, a]),
-#                            sampling_rate_hz=lowpass.sampling_rate_hz)
-#         return [lp_filter, hp_filter]
 
 
 def _crossover_downsample(

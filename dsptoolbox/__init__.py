@@ -37,6 +37,8 @@ from .standard import (
     FilterType,
     FilterCoefficientsType,
     BiquadEqType,
+    FilterBankMode,
+    FilterPassType,
 )
 from .classes import (
     Filter,
@@ -109,6 +111,8 @@ __all__ = [
     "FilterType",
     "FilterCoefficientsType",
     "BiquadEqType",
+    "FilterBankMode",
+    "FilterPassType",
 ]
 
 __version__ = "0.5dev"

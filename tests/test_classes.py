@@ -780,20 +780,20 @@ class TestFilterBankClass:
         fb.add_filter(dsp.Filter(dsp.FilterType.Fir, config, self.fs))
 
         # Get plots
-        fb.plot_magnitude(mode="parallel")
-        fb.plot_magnitude(mode="sequential")
-        fb.plot_magnitude(mode="summed")
-        fb.plot_magnitude(mode="parallel", test_zi=True)
+        fb.plot_magnitude(mode=dsp.FilterBankMode.Parallel)
+        fb.plot_magnitude(mode=dsp.FilterBankMode.Sequential)
+        fb.plot_magnitude(mode=dsp.FilterBankMode.Summed)
+        fb.plot_magnitude(mode=dsp.FilterBankMode.Parallel, test_zi=True)
 
-        fb.plot_phase(mode="parallel")
-        fb.plot_phase(mode="sequential")
-        fb.plot_phase(mode="summed")
-        fb.plot_phase(mode="parallel", test_zi=True)
+        fb.plot_phase(mode=dsp.FilterBankMode.Parallel)
+        fb.plot_phase(mode=dsp.FilterBankMode.Sequential)
+        fb.plot_phase(mode=dsp.FilterBankMode.Summed)
+        fb.plot_phase(mode=dsp.FilterBankMode.Parallel, test_zi=True)
 
-        fb.plot_group_delay(mode="parallel")
-        fb.plot_group_delay(mode="sequential")
-        fb.plot_group_delay(mode="summed")
-        fb.plot_group_delay(mode="parallel", test_zi=True)
+        fb.plot_group_delay(mode=dsp.FilterBankMode.Parallel)
+        fb.plot_group_delay(mode=dsp.FilterBankMode.Sequential)
+        fb.plot_group_delay(mode=dsp.FilterBankMode.Summed)
+        fb.plot_group_delay(mode=dsp.FilterBankMode.Parallel, test_zi=True)
 
     def test_filterbank_functionalities(self):
         fb = dsp.FilterBank()
@@ -835,7 +835,7 @@ class TestFilterBankClass:
             fb.swap_filters([1, 2])
 
         # Others
-        fb.get_ir()
+        fb.get_ir(dsp.FilterBankMode.Parallel)
         fb.copy()
         fb.show_info()
         print(fb)
@@ -866,7 +866,9 @@ class TestFilterBankClass:
             coefficients_mode=dsp.FilterCoefficientsType.Ba
         )
         # Parallel
-        s_ = fb.filter_signal(s, mode="parallel", activate_zi=False)
+        s_ = fb.filter_signal(
+            s, mode=dsp.FilterBankMode.Parallel, activate_zi=False
+        )
         assert type(s_) is dsp.MultiBandSignal
         assert s_.number_of_bands == fb.number_of_filters
         assert np.all(
@@ -882,7 +884,9 @@ class TestFilterBankClass:
         )
 
         # Sequential mode
-        s_ = fb.filter_signal(s, mode="sequential", activate_zi=False)
+        s_ = fb.filter_signal(
+            s, mode=dsp.FilterBankMode.Sequential, activate_zi=False
+        )
         assert type(s_) is dsp.Signal
         # Change order (just because they're linear systems)
         temp = sig.lfilter(filt2, [1], s.time_data[:, 1])
@@ -891,7 +895,9 @@ class TestFilterBankClass:
         assert np.all(np.isclose(s_.time_data[:, 1], temp))
 
         # Summed mode
-        s_ = fb.filter_signal(s, mode="summed", activate_zi=False)
+        s_ = fb.filter_signal(
+            s, mode=dsp.FilterBankMode.Summed, activate_zi=False
+        )
         assert type(s_) is dsp.Signal
         # Add together
         temp = sig.lfilter(filt2, [1], s.time_data[:, 1])
@@ -899,19 +905,34 @@ class TestFilterBankClass:
         assert np.all(np.isclose(s_.time_data[:, 1], temp))
 
         # Filter's zi
-        s_ = fb.filter_signal(s, mode="parallel", activate_zi=True)
-        s_ = fb.filter_signal(s, mode="sequential", activate_zi=True)
-        s_ = fb.filter_signal(s, mode="summed", activate_zi=True)
+        s_ = fb.filter_signal(
+            s, mode=dsp.FilterBankMode.Parallel, activate_zi=True
+        )
+        s_ = fb.filter_signal(
+            s, mode=dsp.FilterBankMode.Sequential, activate_zi=True
+        )
+        s_ = fb.filter_signal(
+            s, mode=dsp.FilterBankMode.Summed, activate_zi=True
+        )
 
         # Zero-phase filtering
-        s_ = fb.filter_signal(s, mode="parallel", zero_phase=True)
-        s_ = fb.filter_signal(s, mode="sequential", zero_phase=True)
-        s_ = fb.filter_signal(s, mode="summed", zero_phase=True)
+        s_ = fb.filter_signal(
+            s, mode=dsp.FilterBankMode.Parallel, zero_phase=True
+        )
+        s_ = fb.filter_signal(
+            s, mode=dsp.FilterBankMode.Sequential, zero_phase=True
+        )
+        s_ = fb.filter_signal(
+            s, mode=dsp.FilterBankMode.Summed, zero_phase=True
+        )
 
         # No zi and zero phase filtering at the same time!
         with pytest.raises(AssertionError):
             s_ = fb.filter_signal(
-                s, mode="summed", activate_zi=True, zero_phase=True
+                s,
+                mode=dsp.FilterBankMode.Summed,
+                activate_zi=True,
+                zero_phase=True,
             )
 
     def test_multirate(self):
@@ -1012,12 +1033,12 @@ class TestFilterBankClass:
         config = dict(order=150, freqs=[1500, 2000], type_of_pass="bandpass")
         fb.add_filter(dsp.Filter(dsp.FilterType.Fir, config, self.fs // 2))
 
-        fb.plot_magnitude()
-        fb.plot_phase()
-        fb.plot_group_delay()
-        fb.get_ir()
+        fb.plot_magnitude(dsp.FilterBankMode.Parallel)
+        fb.plot_phase(dsp.FilterBankMode.Parallel)
+        fb.plot_group_delay(dsp.FilterBankMode.Parallel)
+        fb.get_ir(dsp.FilterBankMode.Parallel)
         with pytest.raises(AssertionError):
-            fb.get_ir(mode="summed")
+            fb.get_ir(mode=dsp.FilterBankMode.Summed)
 
     def test_filtering_multirate_multiband(self):
         fb = dsp.FilterBank(same_sampling_rate=False)
@@ -1082,13 +1103,13 @@ class TestFilterBankClass:
         fb.add_filter(dsp.Filter(dsp.FilterType.Fir, config, self.fs))
 
         freqs = np.linspace(1, 2e3, 400)
-        fb.get_transfer_function(freqs, mode="parallel")
-        fb.get_transfer_function(freqs, mode="sequential")
-        fb.get_transfer_function(freqs, mode="summed")
+        fb.get_transfer_function(freqs, mode=dsp.FilterBankMode.Parallel)
+        fb.get_transfer_function(freqs, mode=dsp.FilterBankMode.Sequential)
+        fb.get_transfer_function(freqs, mode=dsp.FilterBankMode.Summed)
 
         with pytest.raises(AssertionError):
             freqs = np.linspace(1, self.fs, 40)
-            fb.get_transfer_function(freqs, mode="parallel")
+            fb.get_transfer_function(freqs, mode=dsp.FilterBankMode.Parallel)
 
 
 class TestMultiBandSignal:

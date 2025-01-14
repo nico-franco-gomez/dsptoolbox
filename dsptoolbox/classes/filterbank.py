@@ -15,7 +15,7 @@ from ..generators import dirac
 from ..plots import general_plot
 from .._general_helpers import _get_normalized_spectrum, _check_format_in_path
 from ..standard._standard_backend import _group_delay_direct
-from ..standard.enums import SpectrumMethod, SpectrumScaling
+from ..standard.enums import SpectrumMethod, SpectrumScaling, FilterBankMode
 
 
 class FilterBank:
@@ -264,26 +264,19 @@ class FilterBank:
     def filter_signal(
         self,
         signal: Signal,
-        mode: str = "parallel",
+        mode: FilterBankMode,
         activate_zi: bool = False,
         zero_phase: bool = False,
     ) -> Signal | MultiBandSignal:
         """Applies the filter bank to a signal and returns a multiband signal
         or a `Signal` object.
-        `'parallel'`: returns a `MultiBandSignal` object where each band is
-        the output of each filter.
-        `'sequential'`: applies each filter to the given Signal in a sequential
-        manner and returns output with same dimension.
-        `'summed'`: applies every filter as parallel and then sums the outputs
-        returning same dimensional output as input.
 
         Parameters
         ----------
         signal : `Signal`
             Signal to be filtered.
-        mode : str, optional
-            Way to apply filter bank to the signal. Supported modes are:
-            `'parallel'`, `'sequential'`, `'summed'`. Default: `'parallel'`.
+        mode : FilterBankMode
+            Way to apply filter bank to the signal.
         activate_zi : bool, optional
             Takes in the filter initial values and updates them for
             streaming purposes. Default: `False`.
@@ -303,13 +296,8 @@ class FilterBank:
                 "This method only supports Signal objects. Use "
                 + "filter_multiband_signal() for multirate parallel filtering"
             )
-        mode = mode.lower()
-        assert mode in (
-            "parallel",
-            "sequential",
-            "summed",
-        ), f"{mode} is not a valid mode. Use parallel, sequential or summed"
-        if mode in ("sequential", "summed"):
+
+        if mode in (FilterBankMode.Sequential, FilterBankMode.Summed):
             assert self.same_sampling_rate, (
                 "Multirate filtering is not valid for sequential or summed "
                 + "filtering"
@@ -395,7 +383,7 @@ class FilterBank:
     # ======== Get impulse ====================================================
     def get_ir(
         self,
-        mode: str = "parallel",
+        mode: FilterBankMode,
         length_samples: int = 2048,
         test_zi: bool = False,
         zero_phase: bool = False,
@@ -404,9 +392,8 @@ class FilterBank:
 
         Parameters
         ----------
-        mode : str, optional
-            Filtering mode. Choose from `'parallel'`, `'sequential'` or
-            `'summed'`. Default: `'parallel'`.
+        mode : FilterBankMode
+            Filtering mode.
         length_samples : int, optional
             Length of the impulse response to be generated. If some filter
             is longer than the given length, then the length is adapted.
@@ -425,7 +412,7 @@ class FilterBank:
         """
         if not self.same_sampling_rate:
             assert (
-                mode.lower() == "parallel"
+                mode == FilterBankMode.Parallel
             ), "Multirate filter bank can only deliver an IR in parallel mode"
             mb = MultiBandSignal(same_sampling_rate=False)
             sr = self.sampling_rate_hz
@@ -467,7 +454,7 @@ class FilterBank:
         return ir
 
     def get_transfer_function(
-        self, frequency_vector_hz: NDArray[np.float64], mode: str = "parallel"
+        self, frequency_vector_hz: NDArray[np.float64], mode: FilterBankMode
     ) -> NDArray[np.complex128]:
         """Compute the complex transfer function of the filter bank for
         specified frequencies. The output is based on the filter bank filtering
@@ -477,7 +464,7 @@ class FilterBank:
         ----------
         frequency_vector_hz : NDArray[np.float64]
             Frequency vector to evaluate frequencies at.
-        mode : str, optional
+        mode : FilterBankMode
             Way of applying the filter bank. If `"parallel"`, the resulting
             transfer function will have shape (frequency, filter). In the cases
             of `"sequential"` and `"summed"`, it will have shape (frequency).
@@ -488,25 +475,19 @@ class FilterBank:
             Complex transfer function of the filter bank.
 
         """
-        mode = mode.lower()
-        assert mode in (
-            "parallel",
-            "sequential",
-            "summed",
-        ), f"{mode} is not a valid mode. Use parallel, sequential or summed"
         match mode:
-            case "parallel":
+            case FilterBankMode.Parallel:
                 h = np.zeros(
                     (len(frequency_vector_hz), self.number_of_filters),
                     dtype=np.complex128,
                 )
                 for ind, f in enumerate(self.filters):
                     h[:, ind] = f.get_transfer_function(frequency_vector_hz)
-            case "sequential":
+            case FilterBankMode.Sequential:
                 h = np.ones(len(frequency_vector_hz), dtype=np.complex128)
                 for ind, f in enumerate(self.filters):
                     h *= f.get_transfer_function(frequency_vector_hz)
-            case "summed":
+            case FilterBankMode.Summed:
                 h = np.ones(len(frequency_vector_hz), dtype=np.complex128)
                 for ind, f in enumerate(self.filters):
                     h += f.get_transfer_function(frequency_vector_hz)
@@ -538,7 +519,7 @@ class FilterBank:
 
     def plot_magnitude(
         self,
-        mode: str = "parallel",
+        mode: FilterBankMode,
         range_hz=[20, 20e3],
         length_samples: int = 2048,
         test_zi: bool = False,
@@ -547,11 +528,11 @@ class FilterBank:
 
         Parameters
         ----------
-        mode : str, optional
+        mode : FilterBankMode
             Type of plot. `'parallel'` plots every filter's frequency response,
             `'sequential'` plots the frequency response after having filtered
             one impulse with every filter in the FilterBank. `'summed'`
-            sums up every frequency response. Default: `'parallel'`.
+            sums up every frequency response.
         range_hz : array-like, optional
             Range of Hz to plot. Default: [20, 20e3].
         length_samples : int, optional
@@ -596,8 +577,8 @@ class FilterBank:
         )
 
         # Filtering and plot
-        if mode == "parallel":
-            bs = self.filter_signal(d, mode="parallel", activate_zi=test_zi)
+        if mode == FilterBankMode.Parallel:
+            bs = self.filter_signal(d, mode=mode, activate_zi=test_zi)
             specs = []
             for b in bs.bands:
                 b.spectrum_method = SpectrumMethod.FFT
@@ -622,8 +603,8 @@ class FilterBank:
                 range_y=range_y,
                 tight_layout=False,
             )
-        elif mode == "sequential":
-            bs = self.filter_signal(d, mode="sequential", activate_zi=test_zi)
+        elif mode == FilterBankMode.Sequential:
+            bs = self.filter_signal(d, mode=mode, activate_zi=test_zi)
             bs.spectrum_method = SpectrumMethod.FFT
             bs.spectrum_scaling = SpectrumScaling.FFTBackward
             f, sp = bs.get_spectrum()
@@ -641,8 +622,8 @@ class FilterBank:
                     for n in range(bs.number_of_channels)
                 ],
             )
-        elif mode == "summed":
-            bs = self.filter_signal(d, mode="summed", activate_zi=test_zi)
+        elif mode == FilterBankMode.Summed:
+            bs = self.filter_signal(d, mode=mode, activate_zi=test_zi)
             bs.spectrum_method = SpectrumMethod.FFT
             bs.spectrum_scaling = SpectrumScaling.FFTBackward
             f, sp = bs.get_spectrum()
@@ -661,7 +642,7 @@ class FilterBank:
 
     def plot_phase(
         self,
-        mode: str = "parallel",
+        mode: FilterBankMode,
         range_hz=[20, 20e3],
         unwrap: bool = False,
         length_samples: int = 2048,
@@ -671,11 +652,11 @@ class FilterBank:
 
         Parameters
         ----------
-        mode : str, optional
+        mode : FilterBankMode
             Type of plot. `'parallel'` plots every filter's frequency response,
             `'sequential'` plots the frequency response after having filtered
             one impulse with every filter in the FilterBank. `'summed'`
-            sums up every filter output. Default: `'parallel'`.
+            sums up every filter output.
         range_hz : array-like, optional
             Range of Hz to plot. Default: [20, 20e3].
         unwrap : bool, optional
@@ -722,8 +703,8 @@ class FilterBank:
         )
 
         # Plot
-        if mode == "parallel":
-            bs = self.filter_signal(d, mode="parallel", activate_zi=test_zi)
+        if mode == FilterBankMode.Parallel:
+            bs = self.filter_signal(d, mode=mode, activate_zi=test_zi)
             phase = []
             f = bs.bands[0].get_spectrum()[0]
             for b in bs.bands:
@@ -740,8 +721,8 @@ class FilterBank:
                 labels=[f"Filter {h}" for h in range(bs.number_of_bands)],
                 tight_layout=False,
             )
-        elif mode == "sequential":
-            bs = self.filter_signal(d, mode="sequential", activate_zi=test_zi)
+        elif mode == FilterBankMode.Sequential:
+            bs = self.filter_signal(d, mode=mode, activate_zi=test_zi)
             f, sp = bs.get_spectrum()
             ph = np.angle(sp)
             if unwrap:
@@ -757,8 +738,8 @@ class FilterBank:
                     for n in range(bs.number_of_channels)
                 ],
             )
-        elif mode == "summed":
-            bs = self.filter_signal(d, mode="summed", activate_zi=test_zi)
+        elif mode == FilterBankMode.Summed:
+            bs = self.filter_signal(d, mode=mode, activate_zi=test_zi)
             f, sp = bs.get_spectrum()
             ph = np.angle(sp)
             if unwrap:
@@ -775,7 +756,7 @@ class FilterBank:
 
     def plot_group_delay(
         self,
-        mode: str = "parallel",
+        mode: FilterBankMode,
         range_hz=[20, 20e3],
         length_samples: int = 2048,
         test_zi: bool = False,
@@ -784,11 +765,11 @@ class FilterBank:
 
         Parameters
         ----------
-        mode : str, optional
+        mode : FilterBankMode
             Type of plot. `'parallel'` plots every filter's frequency response,
             `'sequential'` plots the frequency response after having filtered
             one impulse with every filter in the FilterBank. `'summed'`
-            sums up every filter output. Default: `'parallel'`.
+            sums up every filter output.
         range_hz : array-like, optional
             Range of Hz to plot. Default: [20, 20e3].
         length_samples : int, optional
@@ -833,8 +814,8 @@ class FilterBank:
         )
 
         # Plot
-        if mode == "parallel":
-            bs = self.filter_signal(d, mode="parallel", activate_zi=test_zi)
+        if mode == FilterBankMode.Parallel:
+            bs = self.filter_signal(d, mode=mode, activate_zi=test_zi)
             gd = []
             f = bs.bands[0].get_spectrum()[0]
             for b in bs.bands:
@@ -853,8 +834,8 @@ class FilterBank:
                 labels=[f"Filter {h}" for h in range(bs.number_of_bands)],
                 tight_layout=False,
             )
-        elif mode == "sequential":
-            bs = self.filter_signal(d, mode="sequential", activate_zi=test_zi)
+        elif mode == FilterBankMode.Sequential:
+            bs = self.filter_signal(d, mode=mode, activate_zi=test_zi)
             f, sp = bs.get_spectrum()
             gd = _group_delay_direct(sp.squeeze(), f[1] - f[0]) * 1e3
             fig, ax = general_plot(
@@ -868,8 +849,8 @@ class FilterBank:
                     for n in range(bs.number_of_channels)
                 ],
             )
-        elif mode == "summed":
-            bs = self.filter_signal(d, mode="summed", activate_zi=test_zi)
+        elif mode == FilterBankMode.Summed:
+            bs = self.filter_signal(d, mode=mode, activate_zi=test_zi)
             f, sp = bs.get_spectrum()
             gd = _group_delay_direct(sp.squeeze(), f[1] - f[0]) * 1e3
             fig, ax = general_plot(

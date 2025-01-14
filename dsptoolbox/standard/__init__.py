@@ -30,6 +30,8 @@ from .enums import (
     FilterCoefficientsType,
     FilterType,
     BiquadEqType,
+    FilterBankMode,
+    FilterPassType,
 )
 
 __all__ = [
@@ -67,4 +69,6 @@ __all__ = [
     "FilterCoefficientsType",
     "FilterType",
     "BiquadEqType",
+    "FilterBankMode",
+    "FilterPassType",
 ]

@@ -256,3 +256,26 @@ class BiquadEqType(Enum):
     Allpass = auto()
     Notch = auto()
     Inverter = auto()
+
+
+class FilterBankMode(Enum):
+    """Ways to apply a filter bank to a signal:
+    - Parallel: returns a MultiBandSignal where each band is the output of
+      each filter.
+    - Sequential: applies each filter to the given Signal in a sequential
+      manner and returns output with same dimension.
+    - Summed: applies every filter as parallel and then sums the outputs
+      returning same dimensional output as input.
+
+    """
+
+    Parallel = auto()
+    Sequential = auto()
+    Summed = auto()
+
+
+class FilterPassType(Enum):
+    Lowpass = auto()
+    Highpass = auto()
+    Bandpass = auto()
+    Bandstop = auto()
