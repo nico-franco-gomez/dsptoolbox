@@ -30,7 +30,12 @@ from ._filterbank import (
     _get_matched_shelving_eq,
 )
 from ..standard._standard_backend import _kaiser_window_fractional
-from ..standard.enums import FilterType, FilterCoefficientsType, BiquadEqType
+from ..standard.enums import (
+    FilterType,
+    FilterCoefficientsType,
+    BiquadEqType,
+    FilterPassType,
+)
 
 
 def linkwitz_riley_crossovers(
@@ -393,14 +398,14 @@ def fractional_octave_bands(
     octave_filter_bank = FilterBank()
 
     for ind in range(len(lower)):
-        top = "bandpass"
+        top = FilterPassType.Bandpass
         freqs = [lower[ind], upper[ind]]
         if upper[ind] > sampling_rate_hz // 2:
-            top = "highpass"
+            top = FilterPassType.Highpass
             freqs = lower[ind]
 
         f = Filter(
-            "iir",
+            FilterType.Iir,
             dict(
                 type_of_pass=top,
                 filter_design_method="butter",

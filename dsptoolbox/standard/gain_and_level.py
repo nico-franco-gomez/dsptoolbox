@@ -104,7 +104,7 @@ def fade(
 
     new_time_data = np.empty_like(sig.time_data)
     for n in range(sig.number_of_channels):
-        vec = sig.time_data[:, n]
+        vec = sig.time_data[:, n].copy()
         if at_start:
             new_time_data[:, n] = _fade(
                 vec,
@@ -259,11 +259,9 @@ def apply_gain(
         if len(gain_linear) == 1:
             gain_linear = gain_linear[0]
         new_sig = target.copy()
-        new_sig.time_data = new_sig.time_data * gain_linear
+        new_sig.time_data *= gain_linear
         if new_sig.time_data_imaginary is not None:
-            new_sig.time_data_imaginary = (
-                new_sig.time_data_imaginary * gain_linear
-            )
+            new_sig.time_data_imaginary *= gain_linear
         return new_sig
     elif isinstance(target, MultiBandSignal):
         new_mb = target.copy()

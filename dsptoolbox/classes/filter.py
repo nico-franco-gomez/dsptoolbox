@@ -359,7 +359,7 @@ class Filter:
         """
         return Filter(
             FilterType.Other,
-            {FilterCoefficientsType.Sos: [z, p, k]},
+            {FilterCoefficientsType.Zpk: [z, p, k]},
             sampling_rate_hz,
         )
 

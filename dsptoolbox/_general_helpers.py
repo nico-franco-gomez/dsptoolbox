@@ -1589,9 +1589,9 @@ def _fractional_latency(
 
     """
     if td2 is None:
-        td2 = td1[:, 0][..., None]
-        td1 = np.atleast_2d(td1[:, 1:])
-        xcor = correlate(td2, td1)
+        td2_ = td1[:, 0][..., None]
+        td1_ = np.atleast_2d(td1[:, 1:])
+        xcor = correlate(td2_, td1_)
     else:
         xcor = np.zeros((td1.shape[0] + td2.shape[0] - 1, td2.shape[1]))
         for i in range(td2.shape[1]):
