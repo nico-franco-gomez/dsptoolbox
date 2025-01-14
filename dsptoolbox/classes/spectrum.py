@@ -734,9 +734,15 @@ class Spectrum:
             else self.number_frequency_bins
         )
         if inclusive:
-            ind_high += 1
-            ind_high = min(ind_high, self.number_frequency_bins)
+            if f_upper_hz is not None:
+                ind_high += 1
+                ind_high = min(ind_high, self.number_frequency_bins)
+            if f_lower_hz is not None:
+                if self.frequency_vector_hz[ind_low] != f_lower_hz:
+                    ind_low -= 1
+                    ind_low = max(ind_low, 0)
         else:
-            ind_low += 1
+            if f_lower_hz is not None:
+                ind_low += 1
         assert ind_low < ind_high, "Slice is invalid"
         return slice(ind_low, ind_high)
