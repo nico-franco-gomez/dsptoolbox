@@ -24,6 +24,7 @@ from .other import (
     merge_fir_filters,
     spectral_difference,
 )
+from .enums import SpectrumMethod, SpectrumScaling
 
 __all__ = [
     # Append
@@ -54,4 +55,7 @@ __all__ = [
     "dither",
     "merge_fir_filters",
     "spectral_difference",
+    # Enums
+    "SpectrumMethod",
+    "SpectrumScaling",
 ]
