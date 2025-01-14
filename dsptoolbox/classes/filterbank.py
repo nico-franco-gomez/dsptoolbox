@@ -15,6 +15,7 @@ from ..generators import dirac
 from ..plots import general_plot
 from .._general_helpers import _get_normalized_spectrum, _check_format_in_path
 from ..standard._standard_backend import _group_delay_direct
+from ..standard.enums import SpectrumMethod, SpectrumScaling
 
 
 class FilterBank:
@@ -599,7 +600,8 @@ class FilterBank:
             bs = self.filter_signal(d, mode="parallel", activate_zi=test_zi)
             specs = []
             for b in bs.bands:
-                b.set_spectrum_parameters(method="standard", scaling=None)
+                b.spectrum_method = SpectrumMethod.FFT
+                b.spectrum_scaling = SpectrumScaling.FFTBackward
                 f, sp = b.get_spectrum()
                 f, sp = _get_normalized_spectrum(
                     f, sp, f_range_hz=range_hz, normalize=None
@@ -622,7 +624,8 @@ class FilterBank:
             )
         elif mode == "sequential":
             bs = self.filter_signal(d, mode="sequential", activate_zi=test_zi)
-            bs.set_spectrum_parameters(method="standard", scaling=None)
+            bs.spectrum_method = SpectrumMethod.FFT
+            bs.spectrum_scaling = SpectrumScaling.FFTBackward
             f, sp = bs.get_spectrum()
             f, sp = _get_normalized_spectrum(
                 f, np.squeeze(sp), f_range_hz=range_hz, normalize=None
@@ -640,7 +643,8 @@ class FilterBank:
             )
         elif mode == "summed":
             bs = self.filter_signal(d, mode="summed", activate_zi=test_zi)
-            bs.set_spectrum_parameters(method="standard", scaling=None)
+            bs.spectrum_method = SpectrumMethod.FFT
+            bs.spectrum_scaling = SpectrumScaling.FFTBackward
             f, sp = bs.get_spectrum()
             f, sp = _get_normalized_spectrum(
                 f, np.squeeze(sp), f_range_hz=range_hz, normalize=None

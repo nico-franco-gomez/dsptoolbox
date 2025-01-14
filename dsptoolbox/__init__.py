@@ -34,6 +34,9 @@ from .standard import (
     append_spectra,
     SpectrumScaling,
     SpectrumMethod,
+    FilterType,
+    FilterCoefficientsType,
+    BiquadEqType,
 )
 from .classes import (
     Filter,
@@ -103,6 +106,9 @@ __all__ = [
     # Enums
     "SpectrumScaling",
     "SpectrumMethod",
+    "FilterType",
+    "FilterCoefficientsType",
+    "BiquadEqType",
 ]
 
 __version__ = "0.5dev"

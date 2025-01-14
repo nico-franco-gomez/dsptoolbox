@@ -110,7 +110,7 @@ class TestFilterbanksModule:
             fs_hz,
         )
         f2 = dsp.filterbanks.complementary_fir_filter(f)
-        coefficients = f.get_coefficients("ba")[0]
+        coefficients = f.get_coefficients(dsp.FilterCoefficientsType.Ba)[0]
 
         # Get perfect impulse
         h = np.zeros(len(coefficients))
@@ -118,12 +118,16 @@ class TestFilterbanksModule:
 
         # Assert that both filters summed give a perfect impulse
         assert np.all(
-            np.isclose(h, f2.get_coefficients("ba")[0] + coefficients)
+            np.isclose(
+                h,
+                f2.get_coefficients(dsp.FilterCoefficientsType.Ba)[0]
+                + coefficients,
+            )
         )
 
         # Check functionality for even length
         f = dsp.Filter(
-            "fir",
+            dsp.FilterType.Fir,
             {"type_of_pass": "lowpass", "order": 121, "freqs": 400},
             fs_hz,
         )
@@ -219,12 +223,13 @@ class TestFilterbanksModule:
         q = 2**0.5 / 2
 
         for eq_type in [
-            "peaking",
-            "lowpass",
-            "highpass",
-            "lowshelf",
-            "highshelf",
-            "bandpass",
+            dsp.BiquadEqType.Peaking,
+            dsp.BiquadEqType.Lowpass,
+            dsp.BiquadEqType.Highpass,
+            dsp.BiquadEqType.Lowshelf,
+            dsp.BiquadEqType.Highshelf,
+            dsp.BiquadEqType.BandpassPeak,
+            dsp.BiquadEqType.BandpassSkirt,
         ]:
             dsp.filterbanks.matched_biquad(eq_type, freq, gain_db, q, fs_hz)
 
@@ -337,8 +342,12 @@ class TestLatticeLadderFilter:
         assert np.all(np.isclose(n1, n2))
 
         # BA
-        b, a = f.get_coefficients("ba")
-        f2 = dsp.Filter("other", {"ba": [b, a]}, f.sampling_rate_hz)
+        b, a = f.get_coefficients(dsp.FilterCoefficientsType.Ba)
+        f2 = dsp.Filter(
+            dsp.FilterType.Other,
+            {dsp.FilterCoefficientsType.Ba: [b, a]},
+            f.sampling_rate_hz,
+        )
         new_f = dsp.filterbanks.convert_into_lattice_filter(f2)
         n1 = f2.filter_signal(n).time_data.squeeze()
         n2 = new_f.filter_signal(n).time_data.squeeze()
@@ -347,8 +356,8 @@ class TestLatticeLadderFilter:
         # FIR
         n = dsp.generators.noise(sampling_rate_hz=fs)
         f = dsp.Filter(
-            "other",
-            {"ba": [[1, 13 / 24, 5 / 8, 1 / 3], [1]]},
+            dsp.FilterType.Other,
+            {dsp.FilterCoefficientsType.Ba: [[1, 13 / 24, 5 / 8, 1 / 3], [1]]},
             sampling_rate_hz=fs,
         )
         new_f = dsp.filterbanks.convert_into_lattice_filter(f)

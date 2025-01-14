@@ -35,6 +35,7 @@ from .._general_helpers import (
     __burg_ar_estimation,
 )
 from ..standard._standard_backend import _group_delay_direct
+from ..standard.enums import FilterType, FilterCoefficientsType
 
 
 # ============== First implementation
@@ -1144,9 +1145,11 @@ class QMFCrossover(BaseCrossover):
         - https://tinyurl.com/2a3frbyv
 
         """
-        if lowpass.filter_type == "fir":
+        if lowpass.filter_type == FilterType.Fir:
             # Create highpass filter based on lowpass
-            b_base, _ = lowpass.get_coefficients(mode="ba")
+            b_base, _ = lowpass.get_coefficients(
+                coefficients_mode=FilterCoefficientsType.Ba
+            )
             b_high = b_base.copy()
             # H1(z) = H0(-z) <-> odd coefficients are multiplied by -1
             b_high[1::2] *= -1
@@ -1159,11 +1162,13 @@ class QMFCrossover(BaseCrossover):
             # Type of filter bank
             self.fir_filterbank = True
         else:
-            z_base, p_base, k_base = lowpass.get_coefficients(mode="zpk")
+            z_base, p_base, k_base = lowpass.get_coefficients(
+                coefficients_mode=FilterCoefficientsType.Zpk
+            )
             zpk_new = [z_base * -1, p_base * -1, k_base]
             highpass = Filter(
-                "other",
-                dict(zpk=zpk_new),
+                FilterType.Other,
+                {FilterCoefficientsType.Zpk: zpk_new},
                 sampling_rate_hz=lowpass.sampling_rate_hz,
             )
             # Type of filter bank
@@ -1189,10 +1194,12 @@ class QMFCrossover(BaseCrossover):
         - https://tinyurl.com/2a3frbyv
 
         """
-        b, a = lowpass.get_coefficients(mode="ba")
+        b, a = lowpass.get_coefficients(
+            coefficients_mode=FilterCoefficientsType.Ba
+        )
         hp_filter = Filter(
-            "other",
-            dict(ba=[-b, a]),
+            FilterType.Other,
+            {FilterCoefficientsType.Ba: [-b, a]},
             sampling_rate_hz=lowpass.sampling_rate_hz,
         )
         return [lowpass, hp_filter]

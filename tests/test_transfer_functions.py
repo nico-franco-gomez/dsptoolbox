@@ -243,7 +243,7 @@ class TestTransferFunctionsModule:
         s = self.audio_multi.time_data[:200, 0]
         s = dsp.ImpulseResponse(None, s, self.fs)
         f = dsp.transfer_functions.ir_to_filter(s, channel=0)
-        b, _ = f.get_coefficients(mode="ba")
+        b, _ = f.get_coefficients(mode=dsp.FilterCoefficientsType.Ba)
         assert np.all(b == s.time_data[:, 0])
         assert f.sampling_rate_hz == s.sampling_rate_hz
 
@@ -256,7 +256,7 @@ class TestTransferFunctionsModule:
     def test_filter_to_ir(self):
         order = 216
         f = dsp.Filter(
-            "fir",
+            dsp.FilterType.Fir,
             dict(order=order, freqs=1000, type_of_pass="highpass"),
             self.fs,
         )

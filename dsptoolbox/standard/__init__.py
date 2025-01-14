@@ -24,7 +24,13 @@ from .other import (
     merge_fir_filters,
     spectral_difference,
 )
-from .enums import SpectrumMethod, SpectrumScaling
+from .enums import (
+    SpectrumMethod,
+    SpectrumScaling,
+    FilterCoefficientsType,
+    FilterType,
+    BiquadEqType,
+)
 
 __all__ = [
     # Append
@@ -58,4 +64,7 @@ __all__ = [
     # Enums
     "SpectrumMethod",
     "SpectrumScaling",
+    "FilterCoefficientsType",
+    "FilterType",
+    "BiquadEqType",
 ]

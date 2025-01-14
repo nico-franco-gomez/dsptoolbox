@@ -42,6 +42,7 @@ from ..standard import (
 from ..generators import dirac
 from ..filterbanks import linkwitz_riley_crossovers
 from ..tools import to_db
+from ..standard.enums import FilterType
 
 
 def spectral_deconvolve(
@@ -1196,13 +1197,15 @@ def filter_to_ir(fir: Filter | FilterBank) -> ImpulseResponse:
 
     """
     if isinstance(fir, Filter):
-        assert fir.filter_type == "fir", "This is only valid for FIR filters"
+        assert (
+            fir.filter_type == FilterType.Fir
+        ), "This is only valid for FIR filters"
         return ImpulseResponse.from_time_data(
             fir.ba[0].copy(), sampling_rate_hz=fir.sampling_rate_hz
         )
     elif isinstance(fir, FilterBank):
         assert all(
-            [f.filter_type == "fir" for f in fir]
+            [f.filter_type == FilterType.Fir for f in fir]
         ), "Filter types must be fir"
         assert (
             fir.same_sampling_rate

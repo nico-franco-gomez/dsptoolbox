@@ -4,190 +4,134 @@ Backend for filter class and general filtering functions.
 
 import numpy as np
 from warnings import warn
-from enum import Enum
 import scipy.signal as sig
 from numpy.typing import NDArray
 
 from .signal import Signal
 from .multibandsignal import MultiBandSignal
 from .._general_helpers import _polyphase_decomposition
-
-
-def _get_biquad_type(number: int | None = None, name: str | None = None):
-    """Helper method that handles string inputs for the biquad filters."""
-    if name is not None:
-        name = name.lower()
-        valid_names = (
-            "peaking",
-            "lowpass",
-            "highpass",
-            "bandpass_skirt",
-            "bandpass_peak",
-            "notch",
-            "allpass",
-            "lowshelf",
-            "highshelf",
-            "lowpass_first_order",
-            "highpass_first_order",
-            "inverter",
-        )
-        assert name in valid_names, (
-            f"{name} is not a valid name. Please "
-            + """select from the ('peaking', 'lowpass', 'highpass',
-            'bandpass_skirt', 'bandpass_peak', 'notch', 'allpass', 'lowshelf',
-            'highshelf', 'lowpass_first_order', 'highpass_first_order',
-            'inverter')"""
-        )
-
-    class biquad(Enum):
-        peaking = 0
-        lowpass = 1
-        highpass = 2
-        bandpass_skirt = 3
-        bandpass_peak = 4
-        notch = 5
-        allpass = 6
-        lowshelf = 7
-        highshelf = 8
-        lowpass_first_order = 9
-        highpass_first_order = 10
-        inverter = 11
-
-    if number is None:
-        assert (
-            name is not None
-        ), "Either number or name must be given, not both"
-        r = eval(f"biquad.{name}")
-        r = r.value
-    else:
-        assert name is None, "Either number or name must be given, not both"
-        r = biquad(number).name
-    return r
+from ..standard.enums import BiquadEqType
 
 
 def _biquad_coefficients(
-    eq_type: int | str = 0,
-    fs_hz: int = 48000,
-    frequency_hz: float | list | tuple | NDArray[np.float64] = 1000,
-    gain_db: float = 0,
-    q: float = 1,
+    eq_type: BiquadEqType,
+    fs_hz: int,
+    frequency_hz: float,
+    gain_db: float,
+    q: float,
 ):
     """Creates the filter coefficients for biquad filters.
-    eq_type: 0 PEAKING, 1 LOWPASS, 2 HIGHPASS, 3 BANDPASS_SKIRT,
-        4 BANDPASS_PEAK, 5 NOTCH, 6 ALLPASS, 7 LOWSHELF, 8 HIGHSHELF.
 
     References
     ----------
     - https://www.w3.org/TR/2021/NOTE-audio-eq-cookbook-20210608/
 
     """
-    # Asserts and input safety
-    if type(eq_type) is str:
-        eq_type = _get_biquad_type(None, eq_type)
-    # frequency_hz
-    frequency_hz = np.asarray(frequency_hz)
-    if frequency_hz.ndim > 0:
-        frequency_hz = np.mean(frequency_hz)
-        warn(
-            "More than one frequency was passed for biquad filter. This is "
-            + "not supported. A mean of passed frequencies was used for the "
-            + "design but this might not give the intended result!"
+    A = (
+        10 ** (gain_db / 40)
+        if eq_type
+        in (
+            BiquadEqType.Peaking,
+            BiquadEqType.Lowshelf,
+            BiquadEqType.Highshelf,
         )
-    A = 10 ** (gain_db / 40) if eq_type in (0, 7, 8) else 10 ** (gain_db / 20)
+        else 10 ** (gain_db / 20)
+    )
     Omega = 2.0 * np.pi * (frequency_hz / fs_hz)
     sn = np.sin(Omega)
     cs = np.cos(Omega)
     alpha = sn / (2.0 * q)
     a = np.ones(3)
     b = np.ones(3)
-    if eq_type == 0:  # Peaking
-        b[0] = 1 + alpha * A
-        b[1] = -2 * cs
-        b[2] = 1 - alpha * A
-        a[0] = 1 + alpha / A
-        a[1] = -2 * cs
-        a[2] = 1 - alpha / A
-    elif eq_type == 1:  # Lowpass
-        b[0] = (1 - cs) / 2 * A
-        b[1] = (1 - cs) * A
-        b[2] = b[0]
-        a[0] = 1 + alpha
-        a[1] = -2 * cs
-        a[2] = 1 - alpha
-    elif eq_type == 2:  # Highpass
-        b[0] = (1 + cs) / 2.0 * A
-        b[1] = -1 * (1 + cs) * A
-        b[2] = b[0]
-        a[0] = 1 + alpha
-        a[1] = -2 * cs
-        a[2] = 1 - alpha
-    elif eq_type == 3:  # Bandpass skirt
-        b[0] = sn / 2 * A
-        b[1] = 0
-        b[2] = -b[0]
-        a[0] = 1 + alpha
-        a[1] = -2 * cs
-        a[2] = 1 - alpha
-    elif eq_type == 4:  # Bandpass peak
-        b[0] = alpha * A
-        b[1] = 0
-        b[2] = -b[0]
-        a[0] = 1 + alpha
-        a[1] = -2 * cs
-        a[2] = 1 - alpha
-    elif eq_type == 5:  # Notch
-        b[0] = 1 * A
-        b[1] = -2 * cs * A
-        b[2] = b[0]
-        a[0] = 1 + alpha
-        a[1] = -2 * cs
-        a[2] = 1 - alpha
-    elif eq_type == 6:  # Allpass
-        b[0] = (1 - alpha) * A
-        b[1] = -2 * cs * A
-        b[2] = (1 + alpha) * A
-        a[0] = 1 + alpha
-        a[1] = -2 * cs
-        a[2] = 1 - alpha
-    elif eq_type == 7:  # Lowshelf
-        b[0] = A * ((A + 1) - (A - 1) * cs + 2 * np.sqrt(A) * alpha)
-        b[1] = 2 * A * ((A - 1) - (A + 1) * cs)
-        b[2] = A * ((A + 1) - (A - 1) * cs - 2 * np.sqrt(A) * alpha)
-        a[0] = (A + 1) + (A - 1) * cs + 2 * np.sqrt(A) * alpha
-        a[1] = -2 * ((A - 1) + (A + 1) * cs)
-        a[2] = (A + 1) + (A - 1) * cs - 2 * np.sqrt(A) * alpha
-    elif eq_type == 8:  # Highshelf
-        b[0] = A * ((A + 1) + (A - 1) * cs + 2 * np.sqrt(A) * alpha)
-        b[1] = -2 * A * ((A - 1) + (A + 1) * cs)
-        b[2] = A * ((A + 1) + (A - 1) * cs - 2 * np.sqrt(A) * alpha)
-        a[0] = (A + 1) - (A - 1) * cs + 2 * np.sqrt(A) * alpha
-        a[1] = 2 * ((A - 1) - (A + 1) * cs)
-        a[2] = (A + 1) - (A - 1) * cs - 2 * np.sqrt(A) * alpha
-    elif eq_type == 9:  # Lowpass first order
-        K = 1.0 / np.tan(Omega / 2.0)
-        b[0] = A
-        b[1] = A
-        b[2] = 0.0
-        a[0] = 1.0 + K
-        a[1] = 1.0 - K
-        a[2] = 0.0
-    elif eq_type == 10:  # Highpass first order
-        K = 1.0 / np.tan(Omega / 2.0)
-        b[0] = K * A
-        b[1] = -K * A
-        b[2] = 0.0
-        a[0] = 1.0 + K
-        a[1] = 1.0 - K
-        a[2] = 0.0
-    elif eq_type == 11:  # Inverter
-        b[0] = A
-        b[1] = 0.0
-        b[2] = 0.0
-        a[0] = 1.0
-        a[1] = 0.0
-        a[2] = 0.0
-    else:
-        raise Exception("eq_type not supported")
+    match eq_type:
+        case BiquadEqType.Peaking:
+            b[0] = 1 + alpha * A
+            b[1] = -2 * cs
+            b[2] = 1 - alpha * A
+            a[0] = 1 + alpha / A
+            a[1] = -2 * cs
+            a[2] = 1 - alpha / A
+        case BiquadEqType.Lowpass:
+            b[0] = (1 - cs) / 2 * A
+            b[1] = (1 - cs) * A
+            b[2] = b[0]
+            a[0] = 1 + alpha
+            a[1] = -2 * cs
+            a[2] = 1 - alpha
+        case BiquadEqType.Highpass:
+            b[0] = (1 + cs) / 2.0 * A
+            b[1] = -1 * (1 + cs) * A
+            b[2] = b[0]
+            a[0] = 1 + alpha
+            a[1] = -2 * cs
+            a[2] = 1 - alpha
+        case BiquadEqType.BandpassSkirt:
+            b[0] = sn / 2 * A
+            b[1] = 0
+            b[2] = -b[0]
+            a[0] = 1 + alpha
+            a[1] = -2 * cs
+            a[2] = 1 - alpha
+        case BiquadEqType.BandpassPeak:
+            b[0] = alpha * A
+            b[1] = 0
+            b[2] = -b[0]
+            a[0] = 1 + alpha
+            a[1] = -2 * cs
+            a[2] = 1 - alpha
+        case BiquadEqType.Notch:
+            b[0] = 1 * A
+            b[1] = -2 * cs * A
+            b[2] = b[0]
+            a[0] = 1 + alpha
+            a[1] = -2 * cs
+            a[2] = 1 - alpha
+        case BiquadEqType.Allpass:
+            b[0] = (1 - alpha) * A
+            b[1] = -2 * cs * A
+            b[2] = (1 + alpha) * A
+            a[0] = 1 + alpha
+            a[1] = -2 * cs
+            a[2] = 1 - alpha
+        case BiquadEqType.Lowshelf:
+            b[0] = A * ((A + 1) - (A - 1) * cs + 2 * np.sqrt(A) * alpha)
+            b[1] = 2 * A * ((A - 1) - (A + 1) * cs)
+            b[2] = A * ((A + 1) - (A - 1) * cs - 2 * np.sqrt(A) * alpha)
+            a[0] = (A + 1) + (A - 1) * cs + 2 * np.sqrt(A) * alpha
+            a[1] = -2 * ((A - 1) + (A + 1) * cs)
+            a[2] = (A + 1) + (A - 1) * cs - 2 * np.sqrt(A) * alpha
+        case BiquadEqType.Highshelf:
+            b[0] = A * ((A + 1) + (A - 1) * cs + 2 * np.sqrt(A) * alpha)
+            b[1] = -2 * A * ((A - 1) + (A + 1) * cs)
+            b[2] = A * ((A + 1) + (A - 1) * cs - 2 * np.sqrt(A) * alpha)
+            a[0] = (A + 1) - (A - 1) * cs + 2 * np.sqrt(A) * alpha
+            a[1] = 2 * ((A - 1) - (A + 1) * cs)
+            a[2] = (A + 1) - (A - 1) * cs - 2 * np.sqrt(A) * alpha
+        case BiquadEqType.LowpassFirstOrder:
+            K = 1.0 / np.tan(Omega / 2.0)
+            b[0] = A
+            b[1] = A
+            b[2] = 0.0
+            a[0] = 1.0 + K
+            a[1] = 1.0 - K
+            a[2] = 0.0
+        case BiquadEqType.HighpassFirstOrder:
+            K = 1.0 / np.tan(Omega / 2.0)
+            b[0] = K * A
+            b[1] = -K * A
+            b[2] = 0.0
+            a[0] = 1.0 + K
+            a[1] = 1.0 - K
+            a[2] = 0.0
+        case BiquadEqType.Inverter:
+            b[0] = A
+            b[1] = 0.0
+            b[2] = 0.0
+            a[0] = 1.0
+            a[1] = 0.0
+            a[2] = 0.0
+        case _:
+            raise Exception("eq_type not supported")
     return b, a
 
 
@@ -292,7 +236,7 @@ def _filter_on_signal(
 
     """
     # Time Data
-    new_time_data = signal.time_data
+    new_time_data = signal.time_data.copy()
 
     # zi unpacking
     if zi is not None:
@@ -391,7 +335,7 @@ def _filter_on_signal_ba(
         )
 
     # Time Data
-    new_time_data = signal.time_data
+    new_time_data = signal.time_data.copy()
 
     # zi unpacking
     if zi is not None:

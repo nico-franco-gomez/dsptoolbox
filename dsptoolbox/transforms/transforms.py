@@ -30,6 +30,7 @@ from ..transforms._transforms import (
     _dft_backend,
 )
 from ..tools import to_db
+from ..standard.enums import FilterCoefficientsType
 
 import numpy as np
 from numpy.typing import NDArray
@@ -1186,7 +1187,7 @@ def warp_filter(filter: Filter, warping_factor: float) -> Filter:
 
     """
     assert abs(warping_factor) < 1.0, "Warping factor must be less than 1."
-    z, p, k = filter.get_coefficients("zpk")
+    z, p, k = filter.get_coefficients(FilterCoefficientsType.Zpk)
     p = (warping_factor + p) / (1 + warping_factor * p)
     z = (warping_factor + z) / (1 + warping_factor * z)
     if len(p) > len(z):

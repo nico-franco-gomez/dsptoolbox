@@ -381,7 +381,12 @@ class TestStandardModule:
             [
                 dsp.Filter(
                     "biquad",
-                    {"freqs": 500, "q": 1, "gain": 2, "eq_type": "peaking"},
+                    {
+                        "freqs": 500,
+                        "q": 1,
+                        "gain": 2,
+                        "eq_type": dsp.BiquadEqType.Peaking,
+                    },
                     self.audio_multi.sampling_rate_hz,
                 )
             ]

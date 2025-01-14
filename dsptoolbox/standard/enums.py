@@ -228,3 +228,31 @@ class SpectrumScaling(Enum):
             return factor
 
         return factor**2.0
+
+
+class FilterCoefficientsType(Enum):
+    Zpk = auto()
+    Sos = auto()
+    Ba = auto()
+
+
+class FilterType(Enum):
+    Iir = auto()
+    Fir = auto()
+    Biquad = auto()
+    Other = auto()
+
+
+class BiquadEqType(Enum):
+    Lowpass = auto()
+    Highpass = auto()
+    Peaking = auto()
+    Lowshelf = auto()
+    Highshelf = auto()
+    BandpassSkirt = auto()
+    BandpassPeak = auto()
+    LowpassFirstOrder = auto()
+    HighpassFirstOrder = auto()
+    Allpass = auto()
+    Notch = auto()
+    Inverter = auto()

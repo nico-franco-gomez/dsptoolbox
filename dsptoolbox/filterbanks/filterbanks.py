@@ -30,6 +30,7 @@ from ._filterbank import (
     _get_matched_shelving_eq,
 )
 from ..standard._standard_backend import _kaiser_window_fractional
+from ..standard.enums import FilterType, FilterCoefficientsType, BiquadEqType
 
 
 def linkwitz_riley_crossovers(
@@ -294,7 +295,11 @@ def auditory_filters_gammatone(
             np.atleast_2d([1, 0, 0, 1, -coefficients[bb], 0]), (4, 1)
         )
         sos_section[3, 0] = normalizations[bb]
-        f = Filter("other", {"sos": sos_section}, sampling_rate_hz)
+        f = Filter(
+            FilterType.Other,
+            {FilterCoefficientsType.Sos: sos_section},
+            sampling_rate_hz,
+        )
         f.warning_if_complex = False
         filters.append(f)
 
@@ -480,7 +485,9 @@ def complementary_fir_filter(fir: Filter) -> Filter:
       response of both filters.
 
     """
-    assert fir.filter_type == "fir", "Filter prototype must be an FIR filter"
+    assert (
+        fir.filter_type == FilterType.Fir
+    ), "Filter prototype must be an FIR filter"
     b = fir.ba[0].copy()
     odd_length = len(b) % 2 == 1
 
@@ -519,26 +526,25 @@ def convert_into_lattice_filter(filt: Filter) -> LatticeLadderFilter:
       this, an assertion error is raised.
 
     """
-    if filt.filter_type in ("iir", "biquad"):
-        if hasattr(filt, "sos"):
-            sos = filt.get_coefficients("sos")
+    if filt.filter_type == FilterType.Iir and hasattr(filt, "sos"):
+        if filt.has_sos:
+            sos = filt.get_coefficients(FilterCoefficientsType.Sos)
             k, c = _get_lattice_ladder_coefficients_iir_sos(sos)
-        else:
-            b, a = filt.get_coefficients("ba")
-            k, c = _get_lattice_ladder_coefficients_iir(b, a)
-        new_filt = LatticeLadderFilter(k, c, filt.sampling_rate_hz)
-    elif filt.filter_type == "fir":
-        b, a = filt.get_coefficients("ba")
-        b /= b[0]
-        k = _get_lattice_coefficients_fir(b)
-        assert np.all(np.abs(k) < 1), (
-            "Some reflection coefficient was "
-            + "equal or larger than zero, this is not supported"
-        )
-        new_filt = LatticeLadderFilter(k, None, filt.sampling_rate_hz)
-    else:
-        raise ValueError(f"Unsupported filter type: {filt.filter_type}")
-    return new_filt
+            return LatticeLadderFilter(k, c, filt.sampling_rate_hz)
+
+        b, a = filt.get_coefficients(FilterCoefficientsType.Ba)
+        k, c = _get_lattice_ladder_coefficients_iir(b, a)
+        return LatticeLadderFilter(k, c, filt.sampling_rate_hz)
+
+    # FIR
+    b, a = filt.get_coefficients(FilterCoefficientsType.Ba)
+    b /= b[0]
+    k = _get_lattice_coefficients_fir(b)
+    assert np.all(np.abs(k) < 1), (
+        "Some reflection coefficient was "
+        + "equal or larger than zero, this is not supported"
+    )
+    return LatticeLadderFilter(k, None, filt.sampling_rate_hz)
 
 
 def pinking_filter(frequency_0_db: float, sampling_rate_hz: int) -> Filter:
@@ -583,7 +589,7 @@ def pinking_filter(frequency_0_db: float, sampling_rate_hz: int) -> Filter:
 
 
 def matched_biquad(
-    eq_type: str,
+    eq_type: BiquadEqType,
     freq_hz: float,
     gain_db: float,
     q: float,
@@ -597,7 +603,7 @@ def matched_biquad(
 
     Parameters
     ----------
-    eq_type : str
+    eq_type : BiquadEqType
         Type of biquad filter to create. Choose from "peaking", "lowpass",
         "highpass", "bandpass", "lowshelf", "highshelf".
     freq_hz : float
@@ -655,47 +661,44 @@ def matched_biquad(
     - [5]: M. Vicanek. Matched Two-Pole Digital Shelving Filters. 2024.
 
     """
-    eq_type = eq_type.lower()
-    assert eq_type in (
-        "peaking",
-        "lowpass",
-        "highpass",
-        "lowshelf",
-        "highshelf",
-        "bandpass",
-    ), f"{eq_type} is not valid as eq type"
     assert (
         freq_hz > 0 and freq_hz < sampling_rate_hz / 2
     ), f"{freq_hz} is not a valid frequency"
     assert q > 0, "Quality factor must be greater than zero"
 
     match eq_type:
-        case "peaking":
+        case BiquadEqType.Peaking:
             ba = _get_matched_peaking_eq(
                 freq_hz, gain_db, q, q_factor, sampling_rate_hz
             )
-        case "lowpass":
+        case BiquadEqType.Lowpass:
             ba = _get_matched_lowpass_eq(freq_hz, gain_db, q, sampling_rate_hz)
-        case "highpass":
+        case BiquadEqType.Highpass:
             ba = _get_matched_highpass_eq(
                 freq_hz, gain_db, q, sampling_rate_hz
             )
-        case "bandpass":
+        case BiquadEqType.BandpassPeak:
             ba = _get_matched_bandpass_eq(
                 freq_hz, gain_db, q, sampling_rate_hz
             )
-        case "lowshelf":
+        case BiquadEqType.BandpassSkirt:
+            ba = _get_matched_bandpass_eq(
+                freq_hz, gain_db, q, sampling_rate_hz
+            )
+        case BiquadEqType.Lowshelf:
             ba = _get_matched_shelving_eq(
                 freq_hz, gain_db, sampling_rate_hz, True
             )
-        case "highshelf":
+        case BiquadEqType.Highshelf:
             ba = _get_matched_shelving_eq(
                 freq_hz, gain_db, sampling_rate_hz, False
             )
+        case _:
+            raise ValueError("Unsupported Eq type")
 
     return Filter(
-        "other",
-        {"ba": ba},
+        FilterType.Other,
+        {FilterCoefficientsType.Ba: ba},
         sampling_rate_hz,
     )
 
