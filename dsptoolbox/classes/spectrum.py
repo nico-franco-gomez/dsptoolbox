@@ -55,21 +55,10 @@ class Spectrum:
             raised if this is not the case. Default: False.
 
         """
-        scaling = sig._spectrum_parameters["scaling"]
         if complex:
-            if scaling is not None:
-                assert (
-                    "power" not in scaling
-                ), "Power scaling can not be used for a complex spectrum"
-            assert (
-                sig._spectrum_parameters["method"] == "standard"
-            ), "Method for obtaining a complex spectrum must be standard"
-        else:
-            if scaling is None:
-                if sig._spectrum_parameters["method"] == "standard":
-                    scaling = "amplitude"
-                else:
-                    scaling = "power"
+            assert sig.spectrum_scaling.outputs_complex_spectrum(
+                sig.spectrum_method
+            ), "Method or scaling do not deliver a complex spectrum"
 
         f, sp = sig.get_spectrum()
         if complex:
@@ -77,7 +66,12 @@ class Spectrum:
             return Spectrum(f, sp)
 
         return Spectrum(
-            f, np.abs(sp) if "amplitude" in scaling else np.abs(sp) ** 0.5
+            f,
+            (
+                np.abs(sp)
+                if sig.spectrum_scaling.is_amplitude_scaling()
+                else np.abs(sp) ** 0.5
+            ),
         )
 
     @staticmethod

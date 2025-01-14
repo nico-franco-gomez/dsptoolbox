@@ -713,12 +713,6 @@ class BaseBeamformer:
         c : float, optional
             Speed of sound in m/s. Default: 343.
 
-        Methods
-        -------
-        - `set_csm_parameters()`: passes all necessary parameters to configure
-          the cross-spectral matrix acquired via the multi-channel signal
-          object.
-
         """
         assert isinstance(
             multi_channel_signal, Signal
@@ -735,7 +729,6 @@ class BaseBeamformer:
         self.mics = mic_array
         self.c = c
         self.beamformer_type = "Base"
-        self.set_csm_parameters = self.signal.set_csm_parameters
 
     # ======== Prints and plots ===============================================
     def plot_setting(self) -> tuple[Figure, Axes]:

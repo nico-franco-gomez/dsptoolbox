@@ -21,6 +21,8 @@ from warnings import warn
 from scipy.fft import next_fast_len
 import sys
 
+from .standard.enums import SpectrumScaling
+
 
 def to_db(
     x: NDArray[np.float64],
@@ -1217,7 +1219,7 @@ def _correct_for_real_phase_spectrum(phase_spectrum: NDArray[np.float64]):
 
 def _scale_spectrum(
     spectrum: NDArray[np.float64] | NDArray[np.complex128],
-    mode: str | None,
+    scaling: SpectrumScaling,
     time_length_samples: int,
     sampling_rate_hz: int,
     window: NDArray[np.float64] | None = None,
@@ -1230,12 +1232,11 @@ def _scale_spectrum(
     ----------
     spectrum : NDArray[np.float64] | NDArray[np.complex128]
         Spectrum to scale. It is assumed that the frequency bins are along
-        the first dimension.
-    mode : str, None
-        Type of scaling to use. `"power spectral density"`, `"power spectrum"`,
-        `"amplitude spectral density"`, `"amplitude spectrum"`. Pass `None`
-        to avoid any scaling and return the same spectrum. Using a power
-        representation will returned the squared spectrum.
+        the first dimension. No FFT normalization should have been applied to
+        it.
+    scaling : SpectrumScaling
+        Type of scaling to use. Using a power representation will returned the
+        squared spectrum.
     time_length_samples : int
         Original length of the time data.
     sampling_rate_hz : int
@@ -1263,38 +1264,20 @@ def _scale_spectrum(
         spectrum.shape[0] * 2 - 1,
     ), "Time length does not match"
 
-    if mode is None:
-        return spectrum
+    factor = scaling.get_scaling_factor(
+        time_length_samples, sampling_rate_hz, window
+    )
 
-    mode = mode.lower()
-    assert mode in (
-        "amplitude spectral density",
-        "amplitude spectrum",
-        "power spectral density",
-        "power spectrum",
-    ), f"{mode} is not a supported mode"
-
-    if "spectral density" in mode:
-        if window is None:
-            factor = (2 / time_length_samples / sampling_rate_hz) ** 0.5
-        else:
-            factor = (
-                2 / np.sum(window**2, axis=0, keepdims=True) / sampling_rate_hz
-            ) ** 0.5
-    elif "spectrum" in mode:
-        if window is None:
-            factor = 2**0.5 / time_length_samples
-        else:
-            factor = 2**0.5 / np.sum(window, axis=0, keepdims=True)
-
-    spectrum *= factor
-
+    # One-sided fix for DC and Nyquist (assuming input was linear)
     spectrum[0] /= 2**0.5
     if time_length_samples % 2 == 0:
         spectrum[-1] /= 2**0.5
 
-    if "power" in mode:
+    # Amplitude vs. Power
+    if not scaling.is_amplitude_scaling():
         spectrum = np.abs(spectrum) ** 2
+
+    spectrum *= factor
 
     return spectrum
 

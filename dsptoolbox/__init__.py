@@ -32,6 +32,8 @@ from .standard import (
     merge_fir_filters,
     spectral_difference,
     append_spectra,
+    SpectrumScaling,
+    SpectrumMethod,
 )
 from .classes import (
     Filter,
@@ -98,6 +100,9 @@ __all__ = [
     "beamforming",
     "effects",
     "tools",
+    # Enums
+    "SpectrumScaling",
+    "SpectrumMethod",
 ]
 
 __version__ = "0.5dev"

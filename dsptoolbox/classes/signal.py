@@ -11,6 +11,7 @@ from matplotlib.figure import Figure
 from matplotlib.axes import Axes
 from scipy.signal import oaconvolve
 from numpy.typing import NDArray, ArrayLike
+from scipy.fft import rfft, next_fast_len
 
 from ..plots import general_plot, general_subplots_line, general_matrix_plot
 from .plots import _csm_plot
@@ -27,9 +28,9 @@ from .._general_helpers import (
     _remove_ir_latency_from_phase,
 )
 from ..standard._standard_backend import _group_delay_direct
-from ..standard._spectral_methods import _welch, _stft, _csm
-
+from ..standard._spectral_methods import _welch, _stft, _csm_welch, _csm_fft
 from ..tools import to_db
+from ..standard.enums import SpectrumScaling, SpectrumMethod
 
 
 class Signal:
@@ -47,6 +48,7 @@ class Signal:
         time_data=None,
         sampling_rate_hz: int | None = None,
         constrain_amplitude: bool = True,
+        activate_cache: bool = False,
     ):
         """Signal class that saves time data, channel and sampling rate
         information as well as spectrum, cross-spectral matrix and more.
@@ -68,6 +70,10 @@ class Signal:
             A warning is always shown when audio gets normalized and the used
             normalization factor is saved as `amplitude_scale_factor`.
             Default: `True`.
+        activate_cache : bool, optional
+            When True, spectra, CSM and STFT will be cached. They will not
+            be computed again if no parameters have changed. Set to False to
+            avoid caching altogether. Default: False.
 
         Methods
         -------
@@ -90,6 +96,7 @@ class Signal:
         self.constrain_amplitude = constrain_amplitude
         self.scale_factor = None
         self.calibrated_signal = False
+        self.activate_cache = activate_cache
         # State tracker
         self.__spectrum_state_update = True
         self.__csm_state_update = True
@@ -117,7 +124,6 @@ class Signal:
         self.sampling_rate_hz = sampling_rate_hz
         self.time_data = time_data
         self.set_spectrum_parameters()
-        self.set_csm_parameters()
         self.set_spectrogram_parameters()
         self._generate_metadata()
 
@@ -202,15 +208,12 @@ class Signal:
     # ======== Properties and setters =========================================
     @property
     def time_data(self) -> NDArray[np.float64]:
-        return self.__time_data.copy()
+        return self.__time_data
 
     @time_data.setter
     def time_data(self, new_time_data):
         # Shape of Time Data array
-        if not type(new_time_data) is NDArray[np.float64]:
-            new_time_data = np.asarray(new_time_data)
-        if new_time_data.ndim > 2:
-            new_time_data = new_time_data.squeeze()
+        new_time_data = np.atleast_2d(new_time_data).squeeze()
         assert new_time_data.ndim <= 2, (
             f"{new_time_data.ndim} are "
             + "too many dimensions for time data. Dimensions should"
@@ -309,7 +312,7 @@ class Signal:
         assert type(nca) is bool, "constrain_amplitude must be of type boolean"
         self.__constrain_amplitude = nca
         # Restart time data setter for triggering normalization if needed
-        if hasattr(self, "time_data"):
+        if nca and hasattr(self, "time_data"):
             ntd = self.time_data
             self.time_data = ntd
 
@@ -323,7 +326,7 @@ class Signal:
         self.__calibrated_signal = ncs
 
     def __len__(self):
-        return self.__time_data.shape[0]
+        return self.time_data.shape[0]
 
     def __str__(self):
         return self._get_metadata_string()
@@ -337,31 +340,34 @@ class Signal:
 
     def set_spectrum_parameters(
         self,
-        method="welch",
+        method: SpectrumMethod = SpectrumMethod.WelchPeriodogram,
         smoothing: int = 0,
+        pad_to_fast_length: bool = True,
         window_length_samples: int = 1024,
         window_type: str = "hann",
         overlap_percent: float = 50,
         detrend: bool = True,
         average: str = "mean",
-        scaling: str | None = None,
-    ):
+        scaling: SpectrumScaling = SpectrumScaling.FFTBackward,
+    ) -> "Signal":
         """Sets all necessary parameters for the computation of the spectrum.
 
         Parameters
         ----------
-        method : str, optional
-            `'welch'` (Welch's method for stochastic signals, returns a
-            periodogramm) or `'standard'` (Direct FFT from signal).
-            Default: `'welch'`.
+        method : SpectrumComputation, optional
+            Method to use in order to acquire the spectrum. See notes for
+            details. Default: WelchPeriodogram.
         smoothing : int, optional
-            Smoothing across (`1/smoothing`) octave bands using a hamming
-            window. It only applies when `method='standard'`. Smoothes
+            Smoothing across (`1/smoothing`) octave bands. It will only be
+            applied on the spectrum. Smoothes
             magnitude AND phase. For accesing the smoothing algorithm, refer to
             `dsptoolbox._general_helpers._fractional_octave_smoothing()`.
             If smoothing is applied here, `Signal.get_spectrum()` returns
             the smoothed spectrum, but plotting ignores this parameter.
             Default: 0 (no smoothing).
+        pad_to_fast_length : bool, optional
+            When True and `method=FFT`, the spectrum will be zero-padded to
+            have a length that is fast for computing the FFT. Default: True.
         window_length_samples : int, optional
             Window size. Default: 1024.
         window_type : str, optional
@@ -375,12 +381,13 @@ class Signal:
         average : str, optional
             Averaging method. Choose from `'mean'` or `'median'`.
             Default: `'mean'`.
-        scaling : str, optional
-            Scaling for welch's method. Use `'power spectrum'`,
-            `'power spectral density'`, `'amplitude spectrum'` or
-            `'amplitude spectral density'`. Pass `None` to avoid any scaling
-            (power representation). See references for details about scaling.
-            Default: `None`.
+        scaling : SpectrumScaling, optional
+            Scaling of spectrum. See references for details about scaling.
+            Default: FFTBackward.
+
+        Returns
+        -------
+        self
 
         References
         ----------
@@ -389,14 +396,19 @@ class Signal:
           including a comprehensive list of window functions and some new
           at-top windows.
 
+        Notes
+        -----
+        - On the SpectrumComputation:
+            - FFT should be done for deterministic signals and impulse
+              responses.
+            - WelchPeriodogram can be applied to stochastic signals and as an
+              averaged spectrum for non-stationary signals.
+
         """
-        assert method in (
-            "welch",
-            "standard",
-        ), f"{method} is not a valid method. Use welch or standard"
         _new_spectrum_parameters = dict(
             method=method,
             smoothing=smoothing,
+            pad_to_fast_length=pad_to_fast_length,
             window_length_samples=window_length_samples,
             window_type=window_type,
             overlap_percent=overlap_percent,
@@ -408,84 +420,50 @@ class Signal:
             self._spectrum_parameters = _new_spectrum_parameters
             self.__spectrum_state_update = True
         else:
-            handler = [
-                self._spectrum_parameters[k] == _new_spectrum_parameters[k]
-                for k in self._spectrum_parameters.keys()
-            ]
-            if not all(handler):
+            if not all(
+                [
+                    self._spectrum_parameters[k] == _new_spectrum_parameters[k]
+                    for k in self._spectrum_parameters
+                ]
+            ):
                 self._spectrum_parameters = _new_spectrum_parameters
                 self.__spectrum_state_update = True
-        return self
 
-    def set_csm_parameters(
-        self,
-        window_length_samples: int = 1024,
-        window_type: str = "hann",
-        overlap_percent: float = 75.0,
-        detrend: bool = True,
-        average: str = "mean",
-        scaling: str | None = "power spectral density",
-    ):
-        """Sets all necessary parameters for the computation of the
-        cross-spectral matrix.
-
-        Parameters
-        ----------
-        window_length_samples : int, optional
-            Window size. Default: 1024.
-        window_type : str, optional
-            Window to be used. Default: `'hann'`.
-        overlap_percent : float, optional
-            Overlap in percent. Default: 75.
-        detrend : bool, optional
-            Detrending (subtracting mean). Default: True.
-        average : str, optional
-            Averaging method. Choose from `'mean'` or `'median'`.
-            Default: `'mean'`.
-        scaling : str or `None`, optional
-            Scaling. Use `'power spectrum'`, `'power spectral density'`,
-            `'amplitude spectrum'` or `'amplitude spectral density'`. Pass
-            `None` to avoid any scaling. See references for details about
-            scaling. Default: `'power spectral density'`.
-
-        References
-        ----------
-        - Heinzel, G., Rüdiger, A., & Schilling, R. (2002). Spectrum and
-          spectral density estimation by the Discrete Fourier transform (DFT),
-          including a comprehensive list of window functions and some new
-          at-top windows.
-
-        """
-        _new_csm_parameters = dict(
-            window_length_samples=window_length_samples,
-            window_type=window_type,
-            overlap_percent=overlap_percent,
-            detrend=detrend,
-            average=average,
-            scaling=scaling,
-        )
-        if not hasattr(self, "_csm_parameters"):
-            self._csm_parameters = _new_csm_parameters
-            self.__csm_state_update = True
-        else:
-            handler = [
-                self._csm_parameters[k] == _new_csm_parameters[k]
-                for k in self._csm_parameters.keys()
-            ]
-            if not all(handler):
-                self._csm_parameters = _new_csm_parameters
+                # Also CSM
                 self.__csm_state_update = True
         return self
+
+    @property
+    def spectrum_scaling(self) -> SpectrumScaling:
+        return self._spectrum_parameters["scaling"]
+
+    @spectrum_scaling.setter
+    def spectrum_scaling(self, new_scaling: SpectrumScaling):
+        assert isinstance(new_scaling, SpectrumScaling)
+        self._spectrum_parameters["scaling"] = new_scaling
+        self.__spectrum_state_update = True
+        self.__csm_state_update = True
+
+    @property
+    def spectrum_method(self) -> SpectrumMethod:
+        return self._spectrum_parameters["method"]
+
+    @spectrum_method.setter
+    def spectrum_method(self, new_method: SpectrumMethod):
+        assert isinstance(new_method, SpectrumMethod)
+        self._spectrum_parameters["method"] = new_method
+        self.__spectrum_state_update = True
+        self.__csm_state_update = True
 
     def set_spectrogram_parameters(
         self,
         window_length_samples: int = 1024,
         window_type: str = "hann",
-        overlap_percent=50,
+        overlap_percent: float = 50.0,
         fft_length_samples: int | None = None,
         detrend: bool = False,
         padding: bool = True,
-        scaling: str | None = None,
+        scaling: SpectrumScaling = SpectrumScaling.FFTBackward,
     ):
         """Sets all necessary parameters for the computation of the
         spectrogram.
@@ -508,10 +486,12 @@ class Signal:
         padding : bool, optional
             Padding signal in the beginning and end to center it in order
             to avoid losing energy because of windowing. Default: `True`.
-        scaling : str, optional
-            Scale as `"amplitude spectrum"`, `"amplitude spectral density"`,
-            `"power spectrum"` or `"power spectral density"`. Pass `None`
-            to avoid any scaling. See references for details. Default: `None`.
+        scaling : SpectrumScaling, optional
+            Scaling of spectrum. Default: `FFTBackwards`.
+
+        Returns
+        -------
+        self
 
         References
         ----------
@@ -534,12 +514,13 @@ class Signal:
             self._spectrogram_parameters = _new_spectrogram_parameters
             self.__spectrogram_state_update = True
         else:
-            handler = [
-                self._spectrogram_parameters[k]
-                == _new_spectrogram_parameters[k]
-                for k in self._spectrogram_parameters.keys()
-            ]
-            if not all(handler):
+            if not all(
+                [
+                    self._spectrogram_parameters[k]
+                    == _new_spectrogram_parameters[k]
+                    for k in self._spectrogram_parameters
+                ]
+            ):
                 self._spectrogram_parameters = _new_spectrogram_parameters
                 self.__spectrogram_state_update = True
         return self
@@ -551,7 +532,7 @@ class Signal:
         new_time_data: NDArray[np.float64] | None = None,
         sampling_rate_hz: int | None = None,
         padding_trimming: bool = True,
-    ):
+    ) -> "Signal":
         """Adds new channels to this signal object.
 
         Parameters
@@ -565,6 +546,10 @@ class Signal:
         padding_trimming : bool, optional
             Activates padding or trimming at the end of signal in case the
             new data does not match previous data. Default: `True`.
+
+        Returns
+        -------
+        self
 
         """
         if path is not None:
@@ -621,13 +606,17 @@ class Signal:
         self.__update_state()
         return self
 
-    def remove_channel(self, channel_number: int = -1):
+    def remove_channel(self, channel_number: int = -1) -> "Signal":
         """Removes a channel.
 
         Parameters
         ----------
         channel_number : int, optional
             Channel number to be removed. Default: -1 (last).
+
+        Returns
+        -------
+        self
 
         """
         if channel_number == -1:
@@ -641,13 +630,17 @@ class Signal:
         self.__update_state()
         return self
 
-    def swap_channels(self, new_order):
+    def swap_channels(self, new_order) -> "Signal":
         """Rearranges the channels (inplace) in the new given order.
 
         Parameters
         ----------
         new_order : array-like
             New rearrangement of channels.
+
+        Returns
+        -------
+        self
 
         """
         new_order = np.atleast_1d(np.asarray(new_order).squeeze())
@@ -670,7 +663,7 @@ class Signal:
         self.time_data = self.time_data[:, new_order]
         return self
 
-    def get_channels(self, channels):
+    def get_channels(self, channels) -> "Signal":
         """Returns a signal object with the selected channels. Beware that
         first channel index is 0!
 
@@ -699,7 +692,7 @@ class Signal:
         new_sig.time_data = self.time_data[:, channels]
         return new_sig
 
-    def sum_channels(self):
+    def sum_channels(self) -> "Signal":
         """Return a copy of the signal where all channels are summed into one.
 
         Returns
@@ -713,7 +706,7 @@ class Signal:
         new_sig.clear_time_window()
         return new_sig
 
-    def clear_time_window(self):
+    def clear_time_window(self) -> "Signal":
         """Deletes the time window of the signal in case there is any."""
         if hasattr(self, "window"):
             del self.window
@@ -722,8 +715,8 @@ class Signal:
     # ======== Getters ========================================================
     def get_spectrum(
         self, force_computation=False
-    ) -> tuple[NDArray[np.float64], NDArray[np.complex128]]:
-        """Returns spectrum.
+    ) -> tuple[NDArray[np.float64], NDArray[np.complex128 | np.float64]]:
+        """Returns spectrum according to the stored parameters.
 
         Parameters
         ----------
@@ -734,7 +727,7 @@ class Signal:
         -------
         spectrum_freqs : NDArray[np.float64]
             Frequency vector.
-        spectrum : NDArray[np.complex128]
+        spectrum : NDArray[np.complex128 | np.float64]
             Spectrum matrix for each channel.
 
         """
@@ -745,33 +738,32 @@ class Signal:
         )
 
         if condition:
-            if self._spectrum_parameters["method"] == "welch":
-                spectrum = np.zeros(
-                    (
-                        self._spectrum_parameters["window_length_samples"] // 2
-                        + 1,
-                        self.number_of_channels,
-                    ),
-                    dtype="float",
+            if self.spectrum_method == SpectrumMethod.WelchPeriodogram:
+                spectrum = _welch(
+                    self.time_data,
+                    None,
+                    self.sampling_rate_hz,
+                    self._spectrum_parameters["window_type"],
+                    self._spectrum_parameters["window_length_samples"],
+                    self._spectrum_parameters["overlap_percent"],
+                    self._spectrum_parameters["detrend"],
+                    self._spectrum_parameters["average"],
+                    self._spectrum_parameters["scaling"],
                 )
-                for n in range(self.number_of_channels):
-                    spectrum[:, n] = _welch(
-                        self.time_data[:, n],
-                        None,
-                        self.sampling_rate_hz,
-                        self._spectrum_parameters["window_type"],
-                        self._spectrum_parameters["window_length_samples"],
-                        self._spectrum_parameters["overlap_percent"],
-                        self._spectrum_parameters["detrend"],
-                        self._spectrum_parameters["average"],
-                        self._spectrum_parameters["scaling"],
-                    )
-                time_length = self._spectrum_parameters[
-                    "window_length_samples"
-                ]
-            elif self._spectrum_parameters["method"] == "standard":
+                fft_length = self._spectrum_parameters["window_length_samples"]
+            else:  # FFT
+                fft_length = (
+                    next_fast_len(self.length_samples, True)
+                    if self._spectrum_parameters["pad_to_fast_length"]
+                    else self.length_samples
+                )
                 # Get spectrum
-                spectrum = np.fft.rfft(self.time_data, axis=0)
+                spectrum = rfft(
+                    self.time_data,
+                    axis=0,
+                    norm=self.spectrum_scaling.fft_norm(),
+                    n=fft_length,
+                )
 
                 # Smoothing
                 if self._spectrum_parameters["smoothing"] != 0:
@@ -791,31 +783,29 @@ class Signal:
                     spectrum = temp_abs * np.exp(1j * temp_phase)
 
                 # Length of signal for frequency vector and scaling
-                time_length = self.time_data.shape[0]
-                spectrum = _scale_spectrum(
-                    spectrum,
-                    self._spectrum_parameters["scaling"],
-                    time_length,
-                    self.sampling_rate_hz,
-                    None if not hasattr(self, "window") else self.window,
-                )
+                if self.spectrum_scaling.has_physical_units():
+                    spectrum = _scale_spectrum(
+                        spectrum,
+                        self.spectrum_scaling,
+                        fft_length,
+                        self.sampling_rate_hz,
+                        None if not hasattr(self, "window") else self.window,
+                    )
 
-            self.spectrum = []
-            self.spectrum.append(
-                np.fft.rfftfreq(time_length, 1 / self.sampling_rate_hz)
-            )
-            self.spectrum.append(spectrum)
-            spectrum_freqs = self.spectrum[0]
-            self.__spectrum_state_update = False
-        else:
-            spectrum_freqs, spectrum = self.spectrum[0], self.spectrum[1]
-        return spectrum_freqs.copy(), spectrum.copy()
+            freqs = np.fft.rfftfreq(fft_length, 1 / self.sampling_rate_hz)
+            if self.activate_cache:
+                self.spectrum = [freqs.copy(), spectrum.copy()]
+                self.__spectrum_state_update = False
+            return freqs, spectrum
+
+        return self.spectrum[0].copy(), self.spectrum[1].copy()
 
     def get_csm(
         self, force_computation=False
     ) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
         """Get Cross spectral matrix for all channels with the shape
-        (frequencies, channels, channels).
+        (frequencies, channels, channels). It uses the parameters stored in
+        `set_spectrum_parameters`.
 
         Returns
         -------
@@ -836,10 +826,35 @@ class Signal:
         )
 
         if condition:
-            self.csm = _csm(
-                self.time_data, self.sampling_rate_hz, **self._csm_parameters
-            )
-            self.__csm_state_update = False
+            if self.spectrum_method == SpectrumMethod.WelchPeriodogram:
+                f, csm = _csm_welch(
+                    self.time_data,
+                    self.sampling_rate_hz,
+                    self._spectrum_parameters["window_length_samples"],
+                    self._spectrum_parameters["window_type"],
+                    self._spectrum_parameters["overlap_percent"],
+                    self._spectrum_parameters["detrend"],
+                    self._spectrum_parameters["average"],
+                    self._spectrum_parameters["scaling"],
+                )
+            else:
+                # Ensure a complex type of scaling during computation of
+                # spectrum
+                old_scaling = self.spectrum_scaling
+                self.spectrum_scaling = SpectrumScaling.FFTBackward
+
+                f, sp = self.get_spectrum()
+                csm = _csm_fft(
+                    sp,
+                    old_scaling,
+                    self.window if hasattr(self, "window") else None,
+                    self.sampling_rate_hz,
+                )
+                self.spectrum_scaling = old_scaling
+            if self.activate_cache:
+                self.csm = [f.copy(), csm.copy()]
+                self.__csm_state_update = False
+            return f, csm
         return self.csm[0].copy(), self.csm[1].copy()
 
     def get_spectrogram(
@@ -875,7 +890,7 @@ class Signal:
         )
 
         if condition:
-            self.spectrogram = _stft(
+            spectrogram = _stft(
                 self.time_data,
                 self.sampling_rate_hz,
                 self._spectrogram_parameters["window_length_samples"],
@@ -887,12 +902,15 @@ class Signal:
                 self._spectrogram_parameters["scaling"],
             )
             self.__spectrogram_state_update = False
-        t_s, f_hz, spectrogram = (
-            self.spectrogram[0],
-            self.spectrogram[1],
-            self.spectrogram[2],
+            if self.activate_cache:
+                self.spectrogram = deepcopy(spectrogram)
+            return spectrogram[0], spectrogram[1], spectrogram[2]
+
+        return (
+            self.spectrogram[0].copy(),
+            self.spectrogram[1].copy(),
+            self.spectrogram[2].copy(),
         )
-        return t_s, f_hz, spectrogram
 
     # ======== Plots ==========================================================
     def plot_magnitude(
@@ -954,19 +972,14 @@ class Signal:
 
         self._spectrum_parameters["smoothing"] = prior_smoothing
 
-        if self._spectrum_parameters["scaling"] is None:
-            scaling = (
-                "power"
-                if self._spectrum_parameters["method"] == "welch"
-                else "amplitude"
-            )
-        else:
-            scaling = self._spectrum_parameters["scaling"]
-
         f, mag_db = _get_normalized_spectrum(
             f=f,
             spectra=sp,
-            scaling=("amplitude" if "amplitude" in scaling else "power"),
+            scaling=(
+                "amplitude"
+                if self.spectrum_scaling.is_amplitude_scaling()
+                else "power"
+            ),
             f_range_hz=range_hz,
             normalize=normalize,
             smoothing=smoothing,
@@ -1189,7 +1202,11 @@ class Signal:
         """
         # Handle spectrum parameters
         prior_spectrum_parameters = self._spectrum_parameters
-        self.set_spectrum_parameters("standard", scaling=None, smoothing=0)
+        self.set_spectrum_parameters(
+            SpectrumMethod.FFT,
+            scaling=SpectrumScaling.FFTBackward,
+            smoothing=0,
+        )
         f, sp = self.get_spectrum()
         self._spectrum_parameters = prior_spectrum_parameters
 
@@ -1275,16 +1292,11 @@ class Signal:
         f = f[ids[0] : ids[1]]
         stft = stft[ids[0] : ids[1], :]
 
-        if self._spectrogram_parameters["scaling"]:
-            amplitude_scaling = (
-                "power" not in self._spectrogram_parameters["scaling"]
-            )
-            zlabel = "dBFS"
-        else:
-            amplitude_scaling = True
-            zlabel = "dBFS"
-
-        stft_db = to_db(stft, amplitude_scaling)
+        zlabel = "dBFS"
+        stft_db = to_db(
+            stft,
+            self._spectrogram_parameters["scaling"].is_amplitude_scaling(),
+        )
 
         if self.calibrated_signal:
             stft_db -= 20 * np.log10(2e-5)
@@ -1314,7 +1326,7 @@ class Signal:
         remove_ir_latency: str | None | ArrayLike = None,
     ) -> tuple[Figure, Axes]:
         """Plots phase of the frequency response, only available if the method
-        for the spectrum `"standard"`.
+        for the spectrum is FFT.
 
         Parameters
         ----------
@@ -1347,11 +1359,9 @@ class Signal:
             Axes.
 
         """
-        assert self._spectrum_parameters["method"] == "standard", (
-            "Phase cannot be plotted since the spectrum is "
-            + "welch. Please change spectrum parameters method to "
-            + "standard"
-        )
+        assert (
+            self.spectrum_method == SpectrumMethod.FFT
+        ), "Phase cannot be plotted since the spectrum is welch."
 
         prior_smoothing = self._spectrum_parameters["smoothing"]
         self._spectrum_parameters["smoothing"] = 0
@@ -1501,67 +1511,3 @@ class Signal:
         """Prints all the signal information to the console."""
         print(self._get_metadata_string())
         return self
-
-    # ======== Streaming methods ==============================================
-    def set_streaming_position(self, position_samples: int = 0) -> bool:
-        """Sets the start position for streaming.
-
-        Parameters
-        ----------
-        position_samples : int, optional
-            Position (in samples) for starting the stream. Default: 0.
-
-        Returns
-        -------
-        stop_flag : bool
-            When `True`, all of the available time samples in the signal have
-            been used.
-
-        """
-        stop_flag = False
-        if self.time_data.shape[0] - position_samples < 0:
-            stop_flag = True
-        assert (
-            type(position_samples) is int
-        ), "Position must be in samples and thus an integer"
-        self.streaming_position = position_samples
-        return stop_flag
-
-    def stream_samples(self, blocksize_samples: int, signal_mode: bool = True):
-        """Returns block of samples to be reproduced in an audio stream. Use
-        `set_streaming_position` to define start of streaming.
-
-        Parameters
-        ----------
-        blocksize_samples : int
-            Blocksize to be returned (in samples).
-        signal_mode : bool, optional
-            When `True` a `Signal` object is returned containing the desired
-            samples. `False` returns a numpy array. Default: `True`.
-
-        Returns
-        -------
-        sig : NDArray[np.float64] or `Signal`
-            Numpy array with samples used for reproduction with shape
-            (time_samples, channels) or `Signal` object.
-        stop_flag : bool
-            When `True`, all samples of the available signal have been
-            reproduced and the stream should be stopped.
-
-        """
-        if not hasattr(self, "streaming_position"):
-            stop_flag = self.set_streaming_position()
-        sig = self.time_data[
-            self.streaming_position : self.streaming_position
-            + blocksize_samples,
-            :,
-        ].copy()
-        stop_flag = self.set_streaming_position(
-            self.streaming_position + blocksize_samples
-        )
-        if signal_mode:
-            sig = Signal(None, sig, self.sampling_rate_hz)
-            # In an audio stream, welch's method for acquiring a spectrum
-            # is not very logical...
-            sig.set_spectrum_parameters(method="standard", scaling=None)
-        return sig, stop_flag
