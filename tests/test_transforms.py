@@ -191,7 +191,11 @@ class TestTransformsModule:
     def test_warp_filter(self):
         # Only functionality
         i = dsp.Filter.iir_design(
-            3, 100.0, "highpass", "butter", sampling_rate_hz=24000
+            3,
+            100.0,
+            dsp.FilterPassType.Highpass,
+            "butter",
+            sampling_rate_hz=24000,
         )
         dsp.transforms.warp_filter(i, -0.6)
         # dsp.FilterBank([i, ii]).plot_magnitude(length_samples=2**14)

@@ -526,7 +526,7 @@ def convert_into_lattice_filter(filt: Filter) -> LatticeLadderFilter:
       this, an assertion error is raised.
 
     """
-    if filt.filter_type == FilterType.Iir and hasattr(filt, "sos"):
+    if filt.filter_type == FilterType.Iir:
         if filt.has_sos:
             sos = filt.get_coefficients(FilterCoefficientsType.Sos)
             k, c = _get_lattice_ladder_coefficients_iir_sos(sos)

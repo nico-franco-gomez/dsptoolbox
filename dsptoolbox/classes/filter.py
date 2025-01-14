@@ -27,7 +27,12 @@ from .plots import _zp_plot
 from ..plots import general_plot
 from .._general_helpers import _check_format_in_path, _pad_trim
 from ..tools import to_db
-from ..standard.enums import FilterCoefficientsType, FilterType, BiquadEqType
+from ..standard.enums import (
+    FilterCoefficientsType,
+    FilterType,
+    BiquadEqType,
+    FilterPassType,
+)
 
 
 class Filter:
@@ -75,8 +80,7 @@ class Filter:
             - order (int): Filter order
             - freqs (float, array-like): array with len 2 when "bandpass"
               or "bandstop".
-            - type_of_pass (str): "bandpass", "lowpass", "highpass",
-              "bandstop".
+            - type_of_pass (FilterPassType).
             - filter_design_method (str): Default: "butter". Supported methods
               are: "butter", "bessel", "ellip", "cheby1", "cheby2".
             - passband_ripple (float): maximum passband ripple in dB for
@@ -91,8 +95,7 @@ class Filter:
             - order (int): Filter order, i.e., number of taps - 1.
             - freqs (float, array-like): array with len 2 when "bandpass"
               or "bandstop".
-            - type_of_pass (str): "bandpass", "lowpass", "highpass",
-              "bandstop".
+            - type_of_pass (FilterPassType).
             - filter_design_method (str): Window to be used. Default:
               "hamming". Supported types are: "boxcar", "triang",
               "blackman", "hamming", "hann", "bartlett", "flattop",
@@ -138,7 +141,7 @@ class Filter:
     def iir_design(
         order: int,
         frequency_hz: float | ArrayLike,
-        type_of_pass: str,
+        type_of_pass: FilterPassType,
         filter_design_method: str,
         passband_ripple_db: float | None = None,
         stopband_attenuation_db: float | None = None,
@@ -153,8 +156,8 @@ class Filter:
             Filter order.
         frequency_hz : float | ArrayLike
             Frequency or frequencies of the filter in Hz.
-        type_of_pass : str, {"lowpass", "highpass", "bandpass", "bandstop"}
-            Type of filter.
+        type_of_pass : FilterPassType
+            Type of pass.
         filter_design_method : str, {"butter", "bessel", "ellip", "cheby1",\
             "cheby2"}
             Design method for the IIR filter.
@@ -232,7 +235,7 @@ class Filter:
     def fir_design(
         order: int,
         frequency_hz: float | ArrayLike,
-        type_of_pass: str,
+        type_of_pass: FilterPassType,
         filter_design_method: str,
         width_hz: float | None = None,
         sampling_rate_hz: int | None = None,
@@ -245,8 +248,8 @@ class Filter:
             Filter order. It corresponds to the number of taps - 1.
         frequency_hz : float | ArrayLike
             Frequency or frequencies of the filter in Hz.
-        type_of_pass : str, {"lowpass", "highpass", "bandpass", "bandstop"}
-            Type of filter.
+        type_of_pass : FilterPassType
+            Type of filter pass.
         filter_design_method : str, {"boxcar", "triang",\
               "blackman", "hamming", "hann", "bartlett", "flattop",\
               "parzen", "bohman", "blackmanharris", "nuttall", "barthann",\
@@ -694,7 +697,7 @@ class Filter:
             self.zpk = sig.iirfilter(
                 N=filter_configuration["order"],
                 Wn=filter_configuration["freqs"],
-                btype=filter_configuration["type_of_pass"],
+                btype=filter_configuration["type_of_pass"].name.lower(),
                 analog=False,
                 fs=self.sampling_rate_hz,
                 ftype=filter_configuration["filter_design_method"],
@@ -716,7 +719,9 @@ class Filter:
                     cutoff=filter_configuration["freqs"],
                     window=filter_configuration["filter_design_method"],
                     width=filter_configuration["width"],
-                    pass_zero=filter_configuration["type_of_pass"],
+                    pass_zero=filter_configuration[
+                        "type_of_pass"
+                    ].name.lower(),
                     fs=self.sampling_rate_hz,
                 ),
                 np.asarray([1.0]),
@@ -942,37 +947,34 @@ class Filter:
         """
         if coefficients_mode == FilterCoefficientsType.Sos:
             if hasattr(self, "sos"):
-                coefficients = self.sos.copy()
-            else:
-                if self.order > 500:
-                    warn(
-                        "Order is above 500. Computing SOS might take a "
-                        + "long time"
-                    )
-                coefficients = sig.tf2sos(self.ba[0], self.ba[1])
+                return self.sos.copy()
+            if self.order > 500:
+                warn(
+                    "Order is above 500. Computing SOS might take a "
+                    + "long time"
+                )
+            return sig.tf2sos(self.ba[0], self.ba[1])
         elif coefficients_mode == FilterCoefficientsType.Ba:
             if hasattr(self, "sos"):
-                coefficients = sig.sos2tf(self.sos)
-            else:
-                coefficients = deepcopy(self.ba)
+                return sig.sos2tf(self.sos)
+            return deepcopy(self.ba)
         elif coefficients_mode == FilterCoefficientsType.Zpk:
             if hasattr(self, "zpk"):
-                coefficients = tuple(deepcopy(self.zpk))
+                return tuple(deepcopy(self.zpk))
             elif hasattr(self, "sos"):
-                coefficients = sig.sos2zpk(self.sos)
-            else:
-                # Check if filter is too long
-                if self.order > 500:
-                    warn(
-                        "Order is above 500. Computing SOS might take a "
-                        + "long time"
-                    )
-                coefficients = sig.tf2zpk(self.ba[0], self.ba[1])
+                return sig.sos2zpk(self.sos)
+
+            # Check if filter is too long
+            if self.order > 500:
+                warn(
+                    "Order is above 500. Computing SOS might take a "
+                    + "long time"
+                )
+            return sig.tf2zpk(self.ba[0], self.ba[1])
         else:
             raise ValueError(
                 f"{coefficients_mode} is not valid. Use sos, ba or zpk"
             )
-        return coefficients
 
     # ======== Plots and prints ===============================================
     def show_info(self):

@@ -438,11 +438,19 @@ class TestFilterClass:
 
         # Check order with sos
         sos = dsp.Filter.iir_design(
-            6, 100.0, "lowpass", "butter", sampling_rate_hz=self.fs
+            6,
+            100.0,
+            dsp.FilterPassType.Lowpass,
+            "butter",
+            sampling_rate_hz=self.fs,
         )
         assert sos.order == 6
         sos = dsp.Filter.iir_design(
-            5, 100.0, "lowpass", "butter", sampling_rate_hz=self.fs
+            5,
+            100.0,
+            dsp.FilterPassType.Lowpass,
+            "butter",
+            sampling_rate_hz=self.fs,
         )
         assert sos.order == 5
         assert sos.has_sos
@@ -723,7 +731,7 @@ class TestFilterBankClass:
         config = dict(
             order=5,
             freqs=[1510, 2000],
-            type_of_pass="bandpass",
+            type_of_pass=dsp.FilterPassType.Bandpass,
             filter_design_method="bessel",
         )
         fb.add_filter(
@@ -733,7 +741,11 @@ class TestFilterBankClass:
         assert fb.number_of_filters == 1
         assert fb.sampling_rate_hz == self.fs
 
-        config = dict(order=150, freqs=[1500, 2000], type_of_pass="bandpass")
+        config = dict(
+            order=150,
+            freqs=[1500, 2000],
+            type_of_pass=dsp.FilterPassType.Bandpass,
+        )
         fb.add_filter(dsp.Filter(dsp.FilterType.Fir, config, self.fs))
 
         assert fb.number_of_filters == 2
@@ -744,11 +756,15 @@ class TestFilterBankClass:
         config = dict(
             order=5,
             freqs=[1501, 2000],
-            type_of_pass="bandpass",
+            type_of_pass=dsp.FilterPassType.Bandpass,
             filter_design_method="bessel",
         )
         filters.append(dsp.Filter(dsp.FilterType.Iir, config, self.fs))
-        config = dict(order=150, freqs=[1500, 2000], type_of_pass="bandpass")
+        config = dict(
+            order=150,
+            freqs=[1500, 2000],
+            type_of_pass=dsp.FilterPassType.Bandpass,
+        )
         filters.append(dsp.Filter(dsp.FilterType.Fir, config, self.fs))
         fb = dsp.FilterBank(
             filters=filters,
@@ -770,13 +786,17 @@ class TestFilterBankClass:
         config = dict(
             order=5,
             freqs=[1502, 2000],
-            type_of_pass="bandpass",
+            type_of_pass=dsp.FilterPassType.Bandpass,
             filter_design_method="bessel",
         )
         fb.add_filter(
             dsp.Filter(dsp.FilterType.Iir, config, sampling_rate_hz=self.fs)
         )
-        config = dict(order=150, freqs=[1500, 2000], type_of_pass="bandpass")
+        config = dict(
+            order=150,
+            freqs=[1500, 2000],
+            type_of_pass=dsp.FilterPassType.Bandpass,
+        )
         fb.add_filter(dsp.Filter(dsp.FilterType.Fir, config, self.fs))
 
         # Get plots
@@ -801,13 +821,17 @@ class TestFilterBankClass:
         config = dict(
             order=5,
             freqs=[1500, 2000],
-            type_of_pass="bandpass",
+            type_of_pass=dsp.FilterPassType.Bandpass,
             filter_design_method="bessel",
         )
         fb.add_filter(
             dsp.Filter(dsp.FilterType.Iir, config, sampling_rate_hz=self.fs)
         )
-        config = dict(order=150, freqs=[1500, 2000], type_of_pass="bandpass")
+        config = dict(
+            order=150,
+            freqs=[1500, 2000],
+            type_of_pass=dsp.FilterPassType.Bandpass,
+        )
         fb.add_filter(dsp.Filter(dsp.FilterType.Fir, config, self.fs))
 
         assert fb.number_of_filters == 2
@@ -846,13 +870,17 @@ class TestFilterBankClass:
         config = dict(
             order=5,
             freqs=[1500, 2000],
-            type_of_pass="bandpass",
+            type_of_pass=dsp.FilterPassType.Bandpass,
             filter_design_method="bessel",
         )
         fb.add_filter(
             dsp.Filter(dsp.FilterType.Iir, config, sampling_rate_hz=self.fs)
         )
-        config = dict(order=150, freqs=[1500, 2000], type_of_pass="bandpass")
+        config = dict(
+            order=150,
+            freqs=[1500, 2000],
+            type_of_pass=dsp.FilterPassType.Bandpass,
+        )
         fb.add_filter(dsp.Filter(dsp.FilterType.Fir, config, self.fs))
 
         t_vec = np.random.normal(0, 0.01, (self.fs * 3, 2))
@@ -940,7 +968,7 @@ class TestFilterBankClass:
         config = dict(
             order=5,
             freqs=[1500, 2000],
-            type_of_pass="bandpass",
+            type_of_pass=dsp.FilterPassType.Bandpass,
             filter_design_method="bessel",
         )
         fb.add_filter(
@@ -950,7 +978,11 @@ class TestFilterBankClass:
         assert fb.number_of_filters == 1
         assert fb.sampling_rate_hz == [self.fs]
 
-        config = dict(order=150, freqs=[1500, 2000], type_of_pass="bandpass")
+        config = dict(
+            order=150,
+            freqs=[1500, 2000],
+            type_of_pass=dsp.FilterPassType.Bandpass,
+        )
         fb.add_filter(dsp.Filter(dsp.FilterType.Fir, config, self.fs // 2))
 
         assert fb.number_of_filters == 2
@@ -977,7 +1009,7 @@ class TestFilterBankClass:
             config = dict(
                 order=5,
                 freqs=[1500, 2000],
-                type_of_pass="bandpass",
+                type_of_pass=dsp.FilterPassType.Bandpass,
                 filter_design_method="bessel",
             )
             fb.add_filter(
@@ -986,7 +1018,9 @@ class TestFilterBankClass:
                 )
             )
             config = dict(
-                order=150, freqs=[1500, 2000], type_of_pass="bandpass"
+                order=150,
+                freqs=[1500, 2000],
+                type_of_pass=dsp.FilterPassType.Bandpass,
             )
             fb.add_filter(dsp.Filter(dsp.FilterType.Fir, config, self.fs // 2))
 
@@ -995,11 +1029,15 @@ class TestFilterBankClass:
         config = dict(
             order=5,
             freqs=[1500, 2000],
-            type_of_pass="bandpass",
+            type_of_pass=dsp.FilterPassType.Bandpass,
             filter_design_method="bessel",
         )
         filters.append(dsp.Filter(dsp.FilterType.Iir, config, self.fs))
-        config = dict(order=150, freqs=[1500, 2000], type_of_pass="bandpass")
+        config = dict(
+            order=150,
+            freqs=[1500, 2000],
+            type_of_pass=dsp.FilterPassType.Bandpass,
+        )
         filters.append(dsp.Filter(dsp.FilterType.Fir, config, self.fs // 2))
         fb = dsp.FilterBank(
             filters=filters,
@@ -1024,13 +1062,17 @@ class TestFilterBankClass:
         config = dict(
             order=5,
             freqs=[1500, 2000],
-            type_of_pass="bandpass",
+            type_of_pass=dsp.FilterPassType.Bandpass,
             filter_design_method="bessel",
         )
         fb.add_filter(
             dsp.Filter(dsp.FilterType.Iir, config, sampling_rate_hz=self.fs)
         )
-        config = dict(order=150, freqs=[1500, 2000], type_of_pass="bandpass")
+        config = dict(
+            order=150,
+            freqs=[1500, 2000],
+            type_of_pass=dsp.FilterPassType.Bandpass,
+        )
         fb.add_filter(dsp.Filter(dsp.FilterType.Fir, config, self.fs // 2))
 
         fb.plot_magnitude(dsp.FilterBankMode.Parallel)
@@ -1045,13 +1087,17 @@ class TestFilterBankClass:
         config = dict(
             order=5,
             freqs=[1500, 2000],
-            type_of_pass="bandpass",
+            type_of_pass=dsp.FilterPassType.Bandpass,
             filter_design_method="bessel",
         )
         fb.add_filter(
             dsp.Filter(dsp.FilterType.Iir, config, sampling_rate_hz=self.fs)
         )
-        config = dict(order=150, freqs=[1500, 2000], type_of_pass="bandpass")
+        config = dict(
+            order=150,
+            freqs=[1500, 2000],
+            type_of_pass=dsp.FilterPassType.Bandpass,
+        )
         fb.add_filter(dsp.Filter(dsp.FilterType.Fir, config, self.fs // 2))
 
         s1 = dsp.generators.noise(
@@ -1076,13 +1122,17 @@ class TestFilterBankClass:
         config = dict(
             order=5,
             freqs=[1500, 2000],
-            type_of_pass="bandpass",
+            type_of_pass=dsp.FilterPassType.Bandpass,
             filter_design_method="bessel",
         )
         fb.add_filter(
             dsp.Filter(dsp.FilterType.Iir, config, sampling_rate_hz=self.fs)
         )
-        config = dict(order=150, freqs=[1500, 2000], type_of_pass="bandpass")
+        config = dict(
+            order=150,
+            freqs=[1500, 2000],
+            type_of_pass=dsp.FilterPassType.Bandpass,
+        )
         fb.add_filter(dsp.Filter(dsp.FilterType.Fir, config, self.fs // 2))
         for n in fb:
             assert dsp.Filter == type(n)
@@ -1093,13 +1143,17 @@ class TestFilterBankClass:
         config = dict(
             order=5,
             freqs=[1500, 2000],
-            type_of_pass="bandpass",
+            type_of_pass=dsp.FilterPassType.Bandpass,
             filter_design_method="bessel",
         )
         fb.add_filter(
             dsp.Filter(dsp.FilterType.Iir, config, sampling_rate_hz=self.fs)
         )
-        config = dict(order=150, freqs=[1500, 2000], type_of_pass="bandpass")
+        config = dict(
+            order=150,
+            freqs=[1500, 2000],
+            type_of_pass=dsp.FilterPassType.Bandpass,
+        )
         fb.add_filter(dsp.Filter(dsp.FilterType.Fir, config, self.fs))
 
         freqs = np.linspace(1, 2e3, 400)
@@ -1121,7 +1175,7 @@ class TestMultiBandSignal:
     )
 
     def get_mb(self) -> dsp.MultiBandSignal:
-        return self.fb.filter_signal(self.s)
+        return self.fb.filter_signal(self.s, dsp.FilterBankMode.Parallel)
 
     def test_create_and_general_functionalities(self):
         # Test creating from two signals and other functionalities
@@ -1163,10 +1217,11 @@ class TestMultiBandSignal:
             )
 
         # Create from filter bank
-        mbs = self.fb.filter_signal(self.s)
+        mbs = self.fb.filter_signal(self.s, dsp.FilterBankMode.Parallel)
         assert type(mbs) is dsp.MultiBandSignal
 
     def test_collapse(self):
+        td = self.s.time_data.copy()
         mbs = dsp.MultiBandSignal(
             bands=[self.s, self.s],
             same_sampling_rate=True,
@@ -1174,7 +1229,6 @@ class TestMultiBandSignal:
         )
         mbs_ = mbs.collapse()
 
-        td = self.s.time_data
         assert np.all(mbs_.time_data == td + td)
 
     def test_get_all_bands(self):
@@ -1378,7 +1432,7 @@ class TestFilterTopologies:
         sv_filt = dsp.filterbanks.StateVariableFilter(1000.0, 1.0, self.fs_hz)
         n = self.get_noise()
 
-        td = n.time_data.squeeze()
+        td = n.time_data.copy().squeeze()
         for ind in np.arange(len(td)):
             td[ind] = sv_filt.process_sample(td[ind], 0)[0]
 
@@ -1389,7 +1443,7 @@ class TestFilterTopologies:
         np.testing.assert_array_equal(td, n2.time_data[:, 0])
 
         if PLOT:
-            n2.set_spectrum_parameters("standard")
+            n2.spectrum_method = dsp.SpectrumMethod.FFT
             _, ax = n2.plot_magnitude(normalize=None)
             ax.plot(
                 np.fft.rfftfreq(len(td), 1 / self.fs_hz),
@@ -1403,11 +1457,15 @@ class TestFilterTopologies:
 
         # IIR sos
         iir = dsp.Filter.iir_design(
-            4, 1000.0, "lowpass", "butter", sampling_rate_hz=self.fs_hz
+            4,
+            1000.0,
+            dsp.FilterPassType.Lowpass,
+            "butter",
+            sampling_rate_hz=self.fs_hz,
         )
         llf = dsp.filterbanks.convert_into_lattice_filter(iir)
 
-        td = n.time_data.squeeze()
+        td = n.time_data.copy().squeeze()
         for ind in np.arange(len(td)):
             td[ind] = llf.process_sample(td[ind], 0)
 
@@ -1429,7 +1487,7 @@ class TestFilterTopologies:
         )
         llf = dsp.filterbanks.convert_into_lattice_filter(iir)
 
-        td = n.time_data.squeeze()
+        td = n.time_data.copy().squeeze()
         for ind in np.arange(len(td)):
             td[ind] = llf.process_sample(td[ind], 0)
 
@@ -1472,13 +1530,17 @@ class TestFilterTopologies:
 
     def test_iir_filter(self):
         iir_original = dsp.Filter.iir_design(
-            4, 1000.0, "highpass", "butter", sampling_rate_hz=self.fs_hz
+            4,
+            1000.0,
+            dsp.FilterPassType.Highpass,
+            "butter",
+            sampling_rate_hz=self.fs_hz,
         )
         b, a = iir_original.get_coefficients(dsp.FilterCoefficientsType.Ba)
         iir = dsp.filterbanks.IIRFilter(b, a)
         n = self.get_noise()
 
-        td = n.time_data.squeeze()
+        td = n.time_data.copy().squeeze()
         for ind in np.arange(len(td)):
             td[ind] = iir.process_sample(td[ind], 0)
 
@@ -1488,7 +1550,7 @@ class TestFilterTopologies:
         fir_original = dsp.Filter.fir_design(
             25,
             1000.0,
-            "lowpass",
+            dsp.FilterPassType.Lowpass,
             "blackman",
             sampling_rate_hz=self.fs_hz,
         )
@@ -1497,7 +1559,7 @@ class TestFilterTopologies:
         fir = dsp.filterbanks.FIRFilter(b)
         n = self.get_noise()
 
-        td = n.time_data.squeeze()
+        td = n.time_data.copy().squeeze()
         for ind in np.arange(len(td)):
             td[ind] = fir.process_sample(td[ind], 0)
 
@@ -1602,7 +1664,9 @@ class TestFilterTopologies:
 
     def test_state_space_filtering(self):
         # Check filter's output against usual TDF2 implementation
-        ff = dsp.Filter.biquad("peaking", 100, 6, 0.7, self.fs_hz)
+        ff = dsp.Filter.biquad(
+            dsp.BiquadEqType.Peaking, 100, 6, 0.7, self.fs_hz
+        )
         b, a = ff.get_coefficients(dsp.FilterCoefficientsType.Ba)
         A, B, C, D = sig.tf2ss(b, a)
         noise = dsp.generators.noise(
@@ -1625,7 +1689,9 @@ class TestSpectrum:
     def get_spectrum_from_filter(self, freqs=None, complex=False):
         """Get some spectrum from a filter. If `freqs=None`, it is a
         logarithmic vector."""
-        filt = dsp.Filter.biquad("peaking", 500.0, 10.0, 1.0, 48000)
+        filt = dsp.Filter.biquad(
+            dsp.BiquadEqType.Peaking, 500.0, 10.0, 1.0, 48000
+        )
         return dsp.Spectrum.from_filter(
             (
                 dsp.tools.log_frequency_vector([20, 20e3], 128)

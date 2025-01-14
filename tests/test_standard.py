@@ -474,19 +474,35 @@ class TestStandardModule:
         # Functionality
         fs_hz = 48000
         f = dsp.Filter.iir_design(
-            8, [500, 2e3], "bandpass", "bessel", sampling_rate_hz=fs_hz
+            8,
+            [500, 2e3],
+            dsp.FilterPassType.Bandpass,
+            "bessel",
+            sampling_rate_hz=fs_hz,
         )
         dsp.resample_filter(f, 24000)
         f = dsp.Filter.iir_design(
-            5, 500, "highpass", "bessel", sampling_rate_hz=fs_hz
+            5,
+            500,
+            dsp.FilterPassType.Lowpass,
+            "bessel",
+            sampling_rate_hz=fs_hz,
         )
         dsp.resample_filter(f, 24000)
         f = dsp.Filter.iir_design(
-            8, 500, "lowpass", "bessel", sampling_rate_hz=fs_hz
+            8,
+            500,
+            dsp.FilterPassType.Highpass,
+            "bessel",
+            sampling_rate_hz=fs_hz,
         )
         dsp.resample_filter(f, 24000)
         f = dsp.Filter.iir_design(
-            7, [500, 18e3], "bandpass", "bessel", sampling_rate_hz=fs_hz
+            7,
+            [500, 18e3],
+            dsp.FilterPassType.Bandpass,
+            "bessel",
+            sampling_rate_hz=fs_hz,
         )
 
     def test_modify_signal_length(self):
