@@ -23,7 +23,12 @@ from .._general_helpers import (
     _get_smoothing_factor_ema,
 )
 from ..tools import from_db
-from .enums import SpectrumType, InterpolationDomain, FilterBankMode
+from .enums import (
+    SpectrumType,
+    InterpolationDomain,
+    FilterBankMode,
+    FilterCoefficientsType,
+)
 
 
 def load_pkl_object(path: str):
@@ -137,7 +142,7 @@ def activity_detector(
 
     # Get indices
     signal_indices = _indices_above_threshold_dbfs(
-        signal_filtered.time_data,
+        signal_filtered.time_data.copy(),
         threshold_dbfs=threshold_dbfs,
         attack_smoothing_coeff=attack_coeff,
         release_smoothing_coeff=release_coeff,
@@ -371,34 +376,45 @@ def dither(
     return new_s
 
 
-def merge_fir_filters(filters: list[Filter] | FilterBank) -> Filter:
-    """This returns an FIR filter that results from convolving all passed FIR
-    filters.
+def merge_filters(filters: list[Filter] | FilterBank) -> Filter:
+    """This returns a filter that concatenates all passed filters passed.
+    For FIR filters, it is the result of convolving all passed FIR filters. For
+    IIR, their SOS are concatenated. Mixed lists will raise an error.
 
     Parameters
     ----------
-    fir : list[Filter] or FilterBank
-        List or FilterBank containing all FIR filters to combine. If any filter
-        is not FIR, an assertion will be raised.
+    filters : list[Filter] or FilterBank
+        List or FilterBank containing all filters to combine.
 
     Returns
     -------
     Filter
-        Combined FIR filter.
+        Combined filter.
 
     """
-    fir = filters.filters if isinstance(filters, FilterBank) else filters
-    assert len(fir) > 1, "There must be at least two filters to combine"
-    assert all([not f.is_iir for f in fir]), "Some filter is not FIR"
+    filts = filters.filters if isinstance(filters, FilterBank) else filters
+    assert len(filts) > 1, "There must be at least two filters to combine"
     assert all(
-        [fir[0].sampling_rate_hz == f.sampling_rate_hz for f in fir]
+        [filts[0].sampling_rate_hz == f.sampling_rate_hz for f in filts]
     ), "Sampling rates do not match"
-    b_coefficients = fir[0].ba[0].copy()
-    for ind in range(1, len(fir)):
-        b_coefficients = convolve(
-            b_coefficients, fir[ind].ba[0], mode="full", method="auto"
+
+    if filts[0].is_fir:
+        assert all([f.is_fir for f in filts]), "Some filter is not FIR"
+        b_coefficients = filts[0].ba[0].copy()
+        for ind in range(1, len(filts)):
+            b_coefficients = convolve(
+                b_coefficients, filts[ind].ba[0], mode="full", method="auto"
+            )
+        return Filter.from_ba(b_coefficients, [1.0], filts[0].sampling_rate_hz)
+
+    assert all([f.is_iir for f in filts]), "Some filter is not IIR"
+    sos = filts[0].get_coefficients(FilterCoefficientsType.Sos)
+    for ind in range(1, len(filts)):
+        sos = np.concatenate(
+            [sos, filts[ind].get_coefficients(FilterCoefficientsType.Sos)],
+            axis=0,
         )
-    return Filter.from_ba(b_coefficients, [1.0], fir[0].sampling_rate_hz)
+    return Filter.from_sos(sos, filts[0].sampling_rate_hz)
 
 
 def spectral_difference(

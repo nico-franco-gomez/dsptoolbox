@@ -29,7 +29,7 @@ from .standard import (
     apply_gain,
     resample_filter,
     modify_signal_length,
-    merge_fir_filters,
+    merge_filters,
     spectral_difference,
     append_spectra,
     # Enums
@@ -99,7 +99,7 @@ __all__ = [
     "apply_gain",
     "resample_filter",
     "modify_signal_length",
-    "merge_fir_filters",
+    "merge_filters",
     "spectral_difference",
     "append_spectra",
     # Modules

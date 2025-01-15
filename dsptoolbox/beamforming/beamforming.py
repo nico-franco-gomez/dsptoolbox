@@ -1506,7 +1506,7 @@ class MonopoleSource:
                 self.emitted_signal, delays[i], keep_length=True
             )
             # Amplitude scaling – 1 on point and decays with distance
-            ns.time_data = ns.time_data / (1 + distances[i])
+            ns.time_data /= 1.0 + distances[i]
             # Append to final signal
             multi_channel_signal = append_signals(
                 [multi_channel_signal, ns], padding_trimming=True

@@ -21,7 +21,7 @@ from .other import (
     detrend,
     envelope,
     dither,
-    merge_fir_filters,
+    merge_filters,
     spectral_difference,
 )
 from .enums import (
@@ -69,7 +69,7 @@ __all__ = [
     "detrend",
     "envelope",
     "dither",
-    "merge_fir_filters",
+    "merge_filters",
     "spectral_difference",
     # Enums
     "SpectrumMethod",

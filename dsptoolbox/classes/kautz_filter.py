@@ -365,8 +365,9 @@ class KautzFilter(RealtimeFilter):
         assert (
             ir.number_of_channels == 1
         ), "Only a single-channel IR is supported"
-        td = ir.time_data.squeeze()
-        poles = KautzFilter.__find_optimal_poles_for_ir(order, iterations, td)
+        poles = KautzFilter.__find_optimal_poles_for_ir(
+            order, iterations, ir.time_data.squeeze().copy()
+        )
         self.__set_poles(poles)
         self.fit_coefficients_to_ir(ir)
         return self

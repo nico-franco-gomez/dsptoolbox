@@ -653,25 +653,38 @@ class TestStandardModule:
         dirac[-1] = 1.0
         f2 = dsp.Filter.from_ba(dirac, [1.0], self.fs)
 
-        f3 = dsp.merge_fir_filters([f1, f2])
+        f3 = dsp.merge_filters([f1, f2])
         np.testing.assert_array_equal(f3.ba[0][delay:], f1.ba[0])
 
         # With filterbank
-        f3 = dsp.merge_fir_filters(dsp.FilterBank([f1, f2]))
+        f3 = dsp.merge_filters(dsp.FilterBank([f1, f2]))
         np.testing.assert_array_equal(f3.ba[0][delay:], f1.ba[0])
 
         with pytest.raises(AssertionError):
-            dsp.merge_fir_filters([f1])
+            dsp.merge_filters([f1])
 
         with pytest.raises(AssertionError):
             iir = dsp.Filter.biquad(
                 dsp.BiquadEqType.LowpassFirstOrder, 50.0, -3.0, 0.7, self.fs
             )
-            dsp.merge_fir_filters([f1, iir])
+            dsp.merge_filters([f1, iir])
 
         with pytest.raises(AssertionError):
             f2 = dsp.Filter.from_ba(dirac, [1.0], self.fs * 2)
-            dsp.merge_fir_filters([f1, f2])
+            dsp.merge_filters([f1, f2])
+
+    def test_merge_iir_filters(self):
+        f1 = dsp.Filter.biquad(
+            eq_type=dsp.BiquadEqType.Allpass,
+            frequency_hz=500.0,
+            gain_db=5.0,
+            q=0.7,
+            sampling_rate_hz=self.fs,
+        )
+
+        f3 = dsp.merge_filters([f1, f1.copy()])
+        assert f3.has_sos
+        assert f3.sos.shape[0] == 2
 
     def test_spectral_difference(self):
         filt = dsp.Filter.biquad(

@@ -257,7 +257,7 @@ class LRFilterBank:
         new_time_data = np.zeros(
             (s.time_data.shape[0], s.number_of_channels, self.number_of_bands)
         )
-        in_sig = s.time_data
+        in_sig = s.time_data.copy()
 
         # Filter with zi
         if activate_zi:
