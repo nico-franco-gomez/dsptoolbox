@@ -215,9 +215,9 @@ def reconstructing_fractional_octave_bands(
     filters = []
     for i in range(time.shape[0]):
         config = {}
-        config["ba"] = [time[i, :], [1]]
+        config[FilterCoefficientsType.Ba] = [time[i, :], [1]]
         filters.append(
-            Filter("other", config, sampling_rate_hz=sampling_rate_hz)
+            Filter(FilterType.Other, config, sampling_rate_hz=sampling_rate_hz)
         )
     filt_bank = FilterBank(filters=filters)
 
@@ -500,7 +500,7 @@ def complementary_fir_filter(fir: Filter) -> Filter:
         h = np.sinc(np.arange(-len(b) // 2 + 1, len(b) // 2 + 1) - 0.5)
         b = h * _kaiser_window_fractional(len(h), 60, 0.5) - b
 
-    fir_complementary = Filter("other", {"ba": [b, [1]]}, fir.sampling_rate_hz)
+    fir_complementary = Filter.from_ba(b, [1.0], fir.sampling_rate_hz)
     return fir_complementary
 
 
@@ -584,9 +584,7 @@ def pinking_filter(frequency_0_db: float, sampling_rate_hz: int) -> Filter:
     # Obtain desired gain from response at frequency point
     h = freqz_zpk(z, p, k, [frequency_0_db], fs=sampling_rate_hz)[1]
     k /= np.abs(h)
-    return Filter(
-        "other", {"zpk": [z, p, k]}, sampling_rate_hz=sampling_rate_hz
-    )
+    return Filter.from_zpk(z, p, k, sampling_rate_hz=sampling_rate_hz)
 
 
 def matched_biquad(
@@ -708,7 +706,7 @@ def gaussian_kernel(
     kernel_length_seconds: float,
     kernel_boundary_value: float = 1e-2,
     approximation_order: int = 12,
-    sampling_rate_hz: int = None,
+    sampling_rate_hz: int | None = None,
 ):
     """Approximate a gaussian FIR window with a first-order IIR approximation
     kernel according to [1]. The resulting filter must be applied using
@@ -770,4 +768,4 @@ def gaussian_kernel(
     sos = tf2sos(b, a)
     sos = np.repeat(sos, K, axis=0)
 
-    return Filter("other", {"sos": sos}, sampling_rate_hz)
+    return Filter.from_sos(sos, sampling_rate_hz)

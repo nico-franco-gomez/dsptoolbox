@@ -935,7 +935,7 @@ class BaseCrossover(FilterBank):
     def filter_signal(
         self,
         signal: Signal,
-        mode: str = "parallel",
+        mode: FilterBankMode,
         activate_zi: bool = False,
         downsample: bool = False,
     ) -> Signal | MultiBandSignal:
@@ -944,12 +944,6 @@ class BaseCrossover(FilterBank):
                 signal, mode, activate_zi, zero_phase=False
             )
         # ========== In case of downsampling while filtering ==================
-        mode = mode.lower()
-        assert mode in (
-            "parallel",
-            "sequential",
-            "summed",
-        ), f"{mode} is not a valid mode. Use parallel, sequential or summed"
         assert (
             signal.sampling_rate_hz == self.sampling_rate_hz
         ), "Sampling rates do not match"
@@ -1159,8 +1153,8 @@ class QMFCrossover(BaseCrossover):
             b_high[1::2] *= -1
             # Create filter
             highpass = Filter(
-                "other",
-                dict(ba=[b_high, [1]]),
+                FilterType.Other,
+                {FilterCoefficientsType.Ba: [b_high, [1.0]]},
                 sampling_rate_hz=lowpass.sampling_rate_hz,
             )
             # Type of filter bank
@@ -1210,7 +1204,7 @@ class QMFCrossover(BaseCrossover):
 
 
 def _crossover_downsample(
-    signal: Signal, filters: list, mode: str, down_factor: int = 2
+    signal: Signal, filters: list, mode: FilterBankMode, down_factor: int = 2
 ) -> Signal | MultiBandSignal:
     """Apply crossover and downsample on signal.
 
@@ -1221,9 +1215,8 @@ def _crossover_downsample(
     filters : list
         List containing filters to use. Since it is a crossover, it should
         have 2 filters.
-    mode : str
-        Mode of filtering. Choose from `'parallel'`, `'sequential'` and
-        `'summed'`.
+    mode : FilterBankMode
+        Mode of filtering.
     down_factor : int, optional
         Down factor for decimation. Default: 2.
 
@@ -1235,7 +1228,7 @@ def _crossover_downsample(
     """
     n_filt = len(filters)
     assert n_filt == 2, "A crossover should contain exactly 2 filters"
-    if mode == "parallel":
+    if mode == FilterBankMode.Parallel:
         ss = []
         for n in range(n_filt):
             ss.append(
@@ -1246,7 +1239,7 @@ def _crossover_downsample(
                 )
             )
         out_sig = MultiBandSignal(ss, same_sampling_rate=True)
-    elif mode == "sequential":
+    elif mode == FilterBankMode.Sequential:
         out_sig = signal.copy()
         for n in range(n_filt):
             out_sig = filters[n].filter_and_resample_signal(

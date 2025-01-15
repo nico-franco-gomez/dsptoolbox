@@ -22,7 +22,7 @@ class TestFilterbanksModule:
 
         # Test filtering
         s = dsp.generators.noise("white", sampling_rate_hz=5_000)
-        fb.filter_signal(s, mode="parallel")
+        fb.filter_signal(s, mode=dsp.FilterBankMode.Parallel)
 
     def test_reconstructing_fractional_octave_bands(self):
         # Only functionality
@@ -47,7 +47,7 @@ class TestFilterbanksModule:
 
         # Reconstruct signal
         s = dsp.generators.noise(type_of_noise="pink", sampling_rate_hz=4_000)
-        mb = fb.filter_signal(s)
+        mb = fb.filter_signal(s, dsp.FilterBankMode.Parallel)
         fb.reconstruct(mb)
 
     def test_qmf_crossover(self):
@@ -55,20 +55,33 @@ class TestFilterbanksModule:
         fs_hz = 4_000
         ny_hz = fs_hz // 2
         lp = dsp.Filter(
-            "fir",
-            {"order": 10, "freqs": ny_hz // 2, "type_of_pass": "lowpass"},
+            dsp.FilterType.Fir,
+            {
+                "order": 10,
+                "freqs": ny_hz // 2,
+                "type_of_pass": dsp.FilterPassType.Lowpass,
+            },
             sampling_rate_hz=fs_hz,
         )
         fb = dsp.filterbanks.qmf_crossover(lp)
         s = dsp.generators.noise("white", sampling_rate_hz=fs_hz)
         fb.filter_signal(
-            s, mode="parallel", activate_zi=False, downsample=False
+            s,
+            mode=dsp.FilterBankMode.Parallel,
+            activate_zi=False,
+            downsample=False,
         )
         fb.filter_signal(
-            s, mode="parallel", activate_zi=True, downsample=False
+            s,
+            mode=dsp.FilterBankMode.Parallel,
+            activate_zi=True,
+            downsample=False,
         )
         mb_ = fb.filter_signal(
-            s, mode="parallel", activate_zi=False, downsample=True
+            s,
+            mode=dsp.FilterBankMode.Parallel,
+            activate_zi=False,
+            downsample=True,
         )
 
         # Reconstruction
@@ -99,14 +112,18 @@ class TestFilterbanksModule:
 
     def test_weightning_filter(self):
         fs_hz = 5_000
-        dsp.filterbanks.weighting_filter("a", fs_hz)
-        dsp.filterbanks.weighting_filter("c", fs_hz)
+        dsp.filterbanks.weighting_filter(True, fs_hz)
+        dsp.filterbanks.weighting_filter(False, fs_hz)
 
     def test_complementary_filter_fir(self):
         fs_hz = 5000
         f = dsp.Filter(
-            "fir",
-            {"type_of_pass": "highpass", "order": 120, "freqs": 400},
+            dsp.FilterType.Fir,
+            {
+                "type_of_pass": dsp.FilterPassType.Highpass,
+                "order": 120,
+                "freqs": 400,
+            },
             fs_hz,
         )
         f2 = dsp.filterbanks.complementary_fir_filter(f)
@@ -128,7 +145,11 @@ class TestFilterbanksModule:
         # Check functionality for even length
         f = dsp.Filter(
             dsp.FilterType.Fir,
-            {"type_of_pass": "lowpass", "order": 121, "freqs": 400},
+            {
+                "type_of_pass": dsp.FilterPassType.Lowpass,
+                "order": 121,
+                "freqs": 400,
+            },
             fs_hz,
         )
         dsp.filterbanks.complementary_fir_filter(f)
@@ -268,7 +289,7 @@ class TestFilterbanksModule:
         sigma = length / (2.0 * np.log(1 / 1e-2)) ** 0.5
         w = sig.windows.gaussian(length, sigma, True)
         w /= w.sum()
-        f = dsp.Filter("other", {"ba": [w, [1]]}, fs_hz)
+        f = dsp.Filter.from_ba(w, [1.0], fs_hz)
         n1 = dsp.append_signals([n1, f.filter_signal(n, zero_phase=False)])
 
         # n1.plot_time()
