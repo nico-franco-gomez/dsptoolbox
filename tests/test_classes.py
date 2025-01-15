@@ -388,6 +388,14 @@ class TestFilterClass:
         fs=fs,
     )
 
+    def get_iir(self, sos: bool = True) -> dsp.Filter:
+        if sos:
+            return dsp.Filter.from_sos(self.iir, self.fs)
+        return dsp.Filter.from_ba(*self.iir_ba, self.fs)
+
+    def get_fir(self):
+        return dsp.Filter.from_ba(self.fir, np.array([1.0]), self.fs)
+
     def test_create_from_coefficients(self):
         # Try creating a filter from the coefficients, recognizing filter
         # type and returning the coefficients in the right way
@@ -437,19 +445,19 @@ class TestFilterClass:
         assert iir.order == self.iir.shape[0] * 2
 
         # Check order with sos
-        sos = dsp.Filter.iir_design(
+        sos = dsp.Filter.new_iir_filter(
             6,
             100.0,
             dsp.FilterPassType.Lowpass,
-            "butter",
+            dsp.IirDesignMethod.Butterworth,
             sampling_rate_hz=self.fs,
         )
         assert sos.order == 6
-        sos = dsp.Filter.iir_design(
+        sos = dsp.Filter.new_iir_filter(
             5,
             100.0,
             dsp.FilterPassType.Lowpass,
-            "butter",
+            dsp.IirDesignMethod.Butterworth,
             sampling_rate_hz=self.fs,
         )
         assert sos.order == 5
@@ -460,72 +468,45 @@ class TestFilterClass:
         assert fir.ba[1].dtype == np.float64
         assert not fir.has_sos
 
-    def test_standard_filtering(self):
+    def test_filtering_fir(self):
         # Try filtering compared to scipy's functions
         t_vec = np.random.normal(0, 0.01, self.fs * 2)
 
         # FIR
-        result_scipy = sig.lfilter(self.fir, [1], t_vec.copy())
-
-        s = dsp.Signal(None, t_vec, self.fs)
-        f = dsp.Filter(
-            dsp.FilterType.Other,
-            filter_configuration={
-                dsp.FilterCoefficientsType.Ba: [self.fir, 1]
-            },
-            sampling_rate_hz=self.fs,
-        )
+        result_scipy = sig.lfilter(self.fir, [1], t_vec)
+        s = dsp.Signal.from_time_data(t_vec, self.fs)
+        f = self.get_fir()
         result_own = f.filter_signal(s).time_data.squeeze()
-        condfir = np.all(np.isclose(result_scipy, result_own))
+        np.testing.assert_allclose(result_scipy, result_own)
 
-        # IIR
-        result_scipy = sig.sosfilt(self.iir, t_vec.copy())
-        f = dsp.Filter(
-            dsp.FilterType.Other,
-            filter_configuration={dsp.FilterCoefficientsType.Sos: self.iir},
-            sampling_rate_hz=self.fs,
-        )
-        result_own = f.filter_signal(s).time_data.squeeze()
-        condiir = np.all(np.isclose(result_scipy, result_own))
-
-        assert condfir and condiir
-
-    def test_other_filtering(self):
-        # Try filtering using filtfilt compared to scipy's functions
-        t_vec = np.random.normal(0, 0.01, self.fs * 2)
-
-        # FIR
+        # filtfilt
         result_scipy = sig.filtfilt(self.fir, [1], t_vec)
+        result_own = f.filter_signal(s, zero_phase=True).time_data.squeeze()
+        np.testing.assert_allclose(result_scipy, result_own)
 
+        # Assert original data remains equal
+        np.testing.assert_array_equal(s.time_data.squeeze(), t_vec)
+
+    def test_filtering_iir(self):
+        # Try filtering compared to scipy's functions
+        t_vec = np.random.normal(0, 0.01, self.fs * 2)
         s = dsp.Signal(None, t_vec, self.fs)
-        f = dsp.Filter(
-            dsp.FilterType.Other,
-            filter_configuration={
-                dsp.FilterCoefficientsType.Ba: [self.fir, 1]
-            },
-            sampling_rate_hz=self.fs,
-        )
-        result_own = f.filter_signal(s, zero_phase=True).time_data.squeeze()
-        condfir = np.all(np.isclose(result_scipy, result_own))
-
         # IIR
-        result_scipy = sig.sosfiltfilt(self.iir, t_vec)
-        f = dsp.Filter(
-            dsp.FilterType.Other,
-            filter_configuration={dsp.FilterCoefficientsType.Sos: self.iir},
-            sampling_rate_hz=self.fs,
-        )
-        result_own = f.filter_signal(s, zero_phase=True).time_data.squeeze()
-        condiir = np.all(np.isclose(result_scipy, result_own))
+        result_scipy = sig.sosfilt(self.iir, t_vec)
+        f = self.get_iir()
+        result_own = f.filter_signal(s).time_data.squeeze()
+        np.testing.assert_allclose(result_scipy, result_own)
 
-        assert condfir and condiir
+        # filtfilt
+        result_scipy = sig.sosfiltfilt(self.iir, t_vec)
+        result_own = f.filter_signal(s, zero_phase=True).time_data.squeeze()
+        np.testing.assert_allclose(result_scipy, result_own)
+
+        # Assert original data remains equal
+        np.testing.assert_array_equal(s.time_data.squeeze(), t_vec)
 
     def test_plots(self):
-        f = dsp.Filter(
-            dsp.FilterType.Other,
-            filter_configuration={dsp.FilterCoefficientsType.Sos: self.iir},
-            sampling_rate_hz=self.fs,
-        )
+        f = self.get_iir()
         # Standard config
         f.plot_magnitude()
         f.plot_phase()
@@ -538,45 +519,33 @@ class TestFilterClass:
         f.plot_group_delay(show_info_box=True)
         f.plot_zp(show_info_box=True)
 
-        f.plot_magnitude(normalize="1k")
-        f.plot_magnitude(normalize="max")
-        f.plot_magnitude(normalize="energy")
+        f.plot_magnitude(normalize=dsp.MagnitudeNormalization.OneKhz)
+        f.plot_magnitude(normalize=dsp.MagnitudeNormalization.Max)
+        f.plot_magnitude(normalize=dsp.MagnitudeNormalization.Energy)
 
         with pytest.raises(AssertionError):
             f.plot_taps()
 
-        f2 = dsp.Filter.from_ba(self.fir, [1.0], self.fs)
+        f2 = self.get_fir()
         f2.plot_taps()
         close("all")
 
     def test_get_coefficients(self):
-        f = dsp.Filter(
-            dsp.FilterType.Other,
-            filter_configuration={dsp.FilterCoefficientsType.Sos: self.iir},
-            sampling_rate_hz=self.fs,
-        )
+        f = self.get_iir()
         f.get_coefficients(coefficients_mode=dsp.FilterCoefficientsType.Ba)
         f.get_coefficients(coefficients_mode=dsp.FilterCoefficientsType.Sos)
         f.get_coefficients(coefficients_mode=dsp.FilterCoefficientsType.Zpk)
 
     def test_get_ir(self):
-        f = dsp.Filter(
-            dsp.FilterType.Other,
-            filter_configuration={dsp.FilterCoefficientsType.Sos: self.iir},
-            sampling_rate_hz=self.fs,
-        )
+        f = self.get_iir()
         f.get_ir()
 
     def test_other_functionalities(self):
         #
-        dsp.Filter.fir_from_file(RIR_PATH)
+        dsp.Filter.new_fir_from_file(RIR_PATH)
 
         #
-        f = dsp.Filter(
-            dsp.FilterType.Other,
-            filter_configuration={dsp.FilterCoefficientsType.Sos: self.iir},
-            sampling_rate_hz=self.fs,
-        )
+        f = self.get_iir()
         f.get_filter_metadata()
         f._get_metadata_string()
         f.show_info()
@@ -588,26 +557,11 @@ class TestFilterClass:
 
     def test_get_transfer_function(self):
         # Functionality
-        f = dsp.Filter(
-            dsp.FilterType.Other,
-            filter_configuration={dsp.FilterCoefficientsType.Sos: self.iir},
-            sampling_rate_hz=self.fs,
-        )
+        f = self.get_iir()
         freqs = np.linspace(1, 4e3, 200)
         f.get_transfer_function(freqs)
 
-        b = sig.firwin(
-            1500,
-            (self.fs // 2 // 2),
-            pass_zero="lowpass",
-            fs=self.fs,
-            window="flattop",
-        )
-        f = dsp.Filter(
-            dsp.FilterType.Other,
-            filter_configuration={dsp.FilterCoefficientsType.Ba: [b, 1]},
-            sampling_rate_hz=self.fs,
-        )
+        f = self.get_fir()
         f.get_transfer_function(freqs)
 
         f = dsp.Filter(
@@ -623,11 +577,7 @@ class TestFilterClass:
         f.get_transfer_function(freqs)
 
     def test_filter_and_resampling_IIR(self):
-        f = dsp.Filter(
-            dsp.FilterType.Other,
-            filter_configuration={dsp.FilterCoefficientsType.Sos: self.iir},
-            sampling_rate_hz=self.fs,
-        )
+        f = self.get_iir()
 
         # Time vector
         t_vec = np.random.normal(0, 0.01, self.fs * 2)
@@ -701,7 +651,7 @@ class TestFilterClass:
 
     def test_group_delay(self):
         f_log = dsp.tools.log_frequency_vector([20, 20e3], 128)
-        bb = dsp.Filter.biquad(
+        bb = dsp.Filter.new_biquad(
             eq_type=dsp.BiquadEqType.Peaking,
             frequency_hz=300,
             gain_db=10,
@@ -732,7 +682,7 @@ class TestFilterBankClass:
             order=5,
             freqs=[1510, 2000],
             type_of_pass=dsp.FilterPassType.Bandpass,
-            filter_design_method="bessel",
+            filter_design_method=dsp.IirDesignMethod.Bessel,
         )
         fb.add_filter(
             dsp.Filter(dsp.FilterType.Iir, config, sampling_rate_hz=self.fs)
@@ -757,7 +707,7 @@ class TestFilterBankClass:
             order=5,
             freqs=[1501, 2000],
             type_of_pass=dsp.FilterPassType.Bandpass,
-            filter_design_method="bessel",
+            filter_design_method=dsp.IirDesignMethod.Bessel,
         )
         filters.append(dsp.Filter(dsp.FilterType.Iir, config, self.fs))
         config = dict(
@@ -787,7 +737,7 @@ class TestFilterBankClass:
             order=5,
             freqs=[1502, 2000],
             type_of_pass=dsp.FilterPassType.Bandpass,
-            filter_design_method="bessel",
+            filter_design_method=dsp.IirDesignMethod.Bessel,
         )
         fb.add_filter(
             dsp.Filter(dsp.FilterType.Iir, config, sampling_rate_hz=self.fs)
@@ -822,7 +772,7 @@ class TestFilterBankClass:
             order=5,
             freqs=[1500, 2000],
             type_of_pass=dsp.FilterPassType.Bandpass,
-            filter_design_method="bessel",
+            filter_design_method=dsp.IirDesignMethod.Bessel,
         )
         fb.add_filter(
             dsp.Filter(dsp.FilterType.Iir, config, sampling_rate_hz=self.fs)
@@ -871,7 +821,7 @@ class TestFilterBankClass:
             order=5,
             freqs=[1500, 2000],
             type_of_pass=dsp.FilterPassType.Bandpass,
-            filter_design_method="bessel",
+            filter_design_method=dsp.IirDesignMethod.Bessel,
         )
         fb.add_filter(
             dsp.Filter(dsp.FilterType.Iir, config, sampling_rate_hz=self.fs)
@@ -969,7 +919,7 @@ class TestFilterBankClass:
             order=5,
             freqs=[1500, 2000],
             type_of_pass=dsp.FilterPassType.Bandpass,
-            filter_design_method="bessel",
+            filter_design_method=dsp.IirDesignMethod.Bessel,
         )
         fb.add_filter(
             dsp.Filter(dsp.FilterType.Iir, config, sampling_rate_hz=self.fs)
@@ -1010,7 +960,7 @@ class TestFilterBankClass:
                 order=5,
                 freqs=[1500, 2000],
                 type_of_pass=dsp.FilterPassType.Bandpass,
-                filter_design_method="bessel",
+                filter_design_method=dsp.IirDesignMethod.Bessel,
             )
             fb.add_filter(
                 dsp.Filter(
@@ -1030,7 +980,7 @@ class TestFilterBankClass:
             order=5,
             freqs=[1500, 2000],
             type_of_pass=dsp.FilterPassType.Bandpass,
-            filter_design_method="bessel",
+            filter_design_method=dsp.IirDesignMethod.Bessel,
         )
         filters.append(dsp.Filter(dsp.FilterType.Iir, config, self.fs))
         config = dict(
@@ -1063,7 +1013,7 @@ class TestFilterBankClass:
             order=5,
             freqs=[1500, 2000],
             type_of_pass=dsp.FilterPassType.Bandpass,
-            filter_design_method="bessel",
+            filter_design_method=dsp.IirDesignMethod.Bessel,
         )
         fb.add_filter(
             dsp.Filter(dsp.FilterType.Iir, config, sampling_rate_hz=self.fs)
@@ -1088,7 +1038,7 @@ class TestFilterBankClass:
             order=5,
             freqs=[1500, 2000],
             type_of_pass=dsp.FilterPassType.Bandpass,
-            filter_design_method="bessel",
+            filter_design_method=dsp.IirDesignMethod.Bessel,
         )
         fb.add_filter(
             dsp.Filter(dsp.FilterType.Iir, config, sampling_rate_hz=self.fs)
@@ -1123,7 +1073,7 @@ class TestFilterBankClass:
             order=5,
             freqs=[1500, 2000],
             type_of_pass=dsp.FilterPassType.Bandpass,
-            filter_design_method="bessel",
+            filter_design_method=dsp.IirDesignMethod.Bessel,
         )
         fb.add_filter(
             dsp.Filter(dsp.FilterType.Iir, config, sampling_rate_hz=self.fs)
@@ -1144,7 +1094,7 @@ class TestFilterBankClass:
             order=5,
             freqs=[1500, 2000],
             type_of_pass=dsp.FilterPassType.Bandpass,
-            filter_design_method="bessel",
+            filter_design_method=dsp.IirDesignMethod.Bessel,
         )
         fb.add_filter(
             dsp.Filter(dsp.FilterType.Iir, config, sampling_rate_hz=self.fs)
@@ -1456,11 +1406,11 @@ class TestFilterTopologies:
         n = self.get_noise()
 
         # IIR sos
-        iir = dsp.Filter.iir_design(
+        iir = dsp.Filter.new_iir_filter(
             4,
             1000.0,
             dsp.FilterPassType.Lowpass,
-            "butter",
+            dsp.IirDesignMethod.Butterworth,
             sampling_rate_hz=self.fs_hz,
         )
         llf = dsp.filterbanks.convert_into_lattice_filter(iir)
@@ -1529,11 +1479,11 @@ class TestFilterTopologies:
             dsp.plots.show()
 
     def test_iir_filter(self):
-        iir_original = dsp.Filter.iir_design(
+        iir_original = dsp.Filter.new_iir_filter(
             4,
             1000.0,
             dsp.FilterPassType.Highpass,
-            "butter",
+            dsp.IirDesignMethod.Butterworth,
             sampling_rate_hz=self.fs_hz,
         )
         b, a = iir_original.get_coefficients(dsp.FilterCoefficientsType.Ba)
@@ -1547,11 +1497,11 @@ class TestFilterTopologies:
         np.testing.assert_allclose(td, sig.lfilter(b, a, n.time_data[:, 0]))
 
     def test_fir_filter(self):
-        fir_original = dsp.Filter.fir_design(
+        fir_original = dsp.Filter.new_fir_filter(
             25,
             1000.0,
             dsp.FilterPassType.Lowpass,
-            "blackman",
+            dsp.Window.Blackman,
             sampling_rate_hz=self.fs_hz,
         )
         b, _ = fir_original.get_coefficients(dsp.FilterCoefficientsType.Ba)
@@ -1664,7 +1614,7 @@ class TestFilterTopologies:
 
     def test_state_space_filtering(self):
         # Check filter's output against usual TDF2 implementation
-        ff = dsp.Filter.biquad(
+        ff = dsp.Filter.new_biquad(
             dsp.BiquadEqType.Peaking, 100, 6, 0.7, self.fs_hz
         )
         b, a = ff.get_coefficients(dsp.FilterCoefficientsType.Ba)
@@ -1689,7 +1639,7 @@ class TestSpectrum:
     def get_spectrum_from_filter(self, freqs=None, complex=False):
         """Get some spectrum from a filter. If `freqs=None`, it is a
         logarithmic vector."""
-        filt = dsp.Filter.biquad(
+        filt = dsp.Filter.new_biquad(
             dsp.BiquadEqType.Peaking, 500.0, 10.0, 1.0, 48000
         )
         return dsp.Spectrum.from_filter(
@@ -1709,7 +1659,7 @@ class TestSpectrum:
 
     def test_properties(self):
         spec = self.get_spectrum_from_filter(complex=False)
-        assert spec.frequency_vector_type == "logarithmic"
+        assert spec.frequency_vector_type == dsp.FrequencySpacing.Logarithmic
         assert spec.is_magnitude
         assert spec.number_of_channels == 1
 
@@ -1718,11 +1668,11 @@ class TestSpectrum:
 
         freqs = np.array([100.0, 200.0, 300.0])
         spec = self.get_spectrum_from_filter(freqs, complex=True)
-        assert spec.frequency_vector_type == "linear"
+        assert spec.frequency_vector_type == dsp.FrequencySpacing.Linear
 
         freqs = np.array([100.0, 200.0, 300.0, 504.0])
         spec = self.get_spectrum_from_filter(freqs, complex=True)
-        assert spec.frequency_vector_type == "other"
+        assert spec.frequency_vector_type == dsp.FrequencySpacing.Other
         assert spec.number_frequency_bins == len(freqs)
 
     def test_constructor_and_setters(self):
@@ -1761,64 +1711,107 @@ class TestSpectrum:
         # Assertions
         # Complex and magnitude
         with pytest.raises(AssertionError):
-            sp_mag.set_interpolator_parameters("complex")
-            sp_mag.get_interpolated_spectrum(f, "magnitude")
+            sp_mag.set_interpolator_parameters(dsp.InterpolationDomain.Complex)
+            sp_mag.get_interpolated_spectrum(f, dsp.SpectrumType.Magnitude)
         with pytest.raises(AssertionError):
-            sp_mag.set_interpolator_parameters("complex")
-            sp_mag.get_interpolated_spectrum(f, "complex")
+            sp_mag.set_interpolator_parameters(dsp.InterpolationDomain.Complex)
+            sp_mag.get_interpolated_spectrum(f, dsp.SpectrumType.Complex)
         with pytest.raises(AssertionError):
-            sp_mag.set_interpolator_parameters("magnitude")
-            sp_mag.get_interpolated_spectrum(f, "complex")
+            sp_mag.set_interpolator_parameters(
+                dsp.InterpolationDomain.Magnitude
+            )
+            sp_mag.get_interpolated_spectrum(f, dsp.SpectrumType.Complex)
         with pytest.raises(AssertionError):
-            sp_mag.set_interpolator_parameters("power")
-            sp_mag.get_interpolated_spectrum(f, "complex")
+            sp_mag.set_interpolator_parameters(dsp.InterpolationDomain.Power)
+            sp_mag.get_interpolated_spectrum(f, dsp.SpectrumType.Complex)
         with pytest.raises(AssertionError):
-            sp_mag.set_interpolator_parameters("magphase")
-            sp_mag.get_interpolated_spectrum(f, "magnitude")
+            sp_mag.set_interpolator_parameters(
+                dsp.InterpolationDomain.MagnitudePhase
+            )
+            sp_mag.get_interpolated_spectrum(f, dsp.SpectrumType.Magnitude)
         with pytest.raises(AssertionError):
-            sp_mag.set_interpolator_parameters("magphase")
-            sp_mag.get_interpolated_spectrum(f, "complex")
+            sp_mag.set_interpolator_parameters(
+                dsp.InterpolationDomain.MagnitudePhase
+            )
+            sp_mag.get_interpolated_spectrum(f, dsp.SpectrumType.Complex)
 
         # Padding
         with pytest.raises(AssertionError):
-            sp_mag.set_interpolator_parameters("power", edges_handling="error")
-            sp_mag.get_interpolated_spectrum(f_outside, "magnitude")
+            sp_mag.set_interpolator_parameters(
+                dsp.InterpolationDomain.Power,
+                edges_handling=dsp.InterpolationEdgeHandling.Error,
+            )
+            sp_mag.get_interpolated_spectrum(
+                f_outside, dsp.SpectrumType.Magnitude
+            )
 
         # Normal functionality magnitude (no checking results)
         #
-        sp_mag.set_interpolator_parameters("power", "linear", "zero-pad")
-        sp_mag.get_interpolated_spectrum(f, "power")
-        sp_mag.get_interpolated_spectrum(f, "magnitude")
-        sp_mag.get_interpolated_spectrum(f, "db")
-        sp_mag.set_interpolator_parameters("magnitude", "linear", "zero-pad")
-        sp_mag.get_interpolated_spectrum(f, "power")
-        sp_mag.get_interpolated_spectrum(f, "magnitude")
-        sp_mag.get_interpolated_spectrum(f, "db")
+        sp_mag.set_interpolator_parameters(
+            dsp.InterpolationDomain.Power,
+            dsp.InterpolationScheme.Linear,
+            dsp.InterpolationEdgeHandling.ZeroPad,
+        )
+        sp_mag.get_interpolated_spectrum(f, dsp.SpectrumType.Power)
+        sp_mag.get_interpolated_spectrum(f, dsp.SpectrumType.Magnitude)
+        sp_mag.get_interpolated_spectrum(f, dsp.SpectrumType.Db)
+        sp_mag.set_interpolator_parameters(
+            dsp.InterpolationDomain.Magnitude,
+            dsp.InterpolationScheme.Linear,
+            dsp.InterpolationEdgeHandling.ZeroPad,
+        )
+        sp_mag.get_interpolated_spectrum(f, dsp.SpectrumType.Power)
+        sp_mag.get_interpolated_spectrum(f, dsp.SpectrumType.Magnitude)
+        sp_mag.get_interpolated_spectrum(f, dsp.SpectrumType.Db)
         #
-        sp_mag.set_interpolator_parameters("power", "cubic", "zero-pad")
-        sp_mag.get_interpolated_spectrum(f, "power")
-        sp_mag.get_interpolated_spectrum(f, "magnitude")
-        sp_mag.get_interpolated_spectrum(f, "db")
-        sp_mag.set_interpolator_parameters("magnitude", "cubic", "zero-pad")
-        sp_mag.get_interpolated_spectrum(f, "power")
-        sp_mag.get_interpolated_spectrum(f, "magnitude")
-        sp_mag.get_interpolated_spectrum(f, "db")
+        sp_mag.set_interpolator_parameters(
+            dsp.InterpolationDomain.Power,
+            dsp.InterpolationScheme.Cubic,
+            dsp.InterpolationEdgeHandling.ZeroPad,
+        )
+        sp_mag.get_interpolated_spectrum(f, dsp.SpectrumType.Power)
+        sp_mag.get_interpolated_spectrum(f, dsp.SpectrumType.Magnitude)
+        sp_mag.get_interpolated_spectrum(f, dsp.SpectrumType.Db)
+        sp_mag.set_interpolator_parameters(
+            dsp.InterpolationDomain.Magnitude,
+            dsp.InterpolationScheme.Cubic,
+            dsp.InterpolationEdgeHandling.ZeroPad,
+        )
+        sp_mag.get_interpolated_spectrum(f, dsp.SpectrumType.Power)
+        sp_mag.get_interpolated_spectrum(f, dsp.SpectrumType.Magnitude)
+        sp_mag.get_interpolated_spectrum(f, dsp.SpectrumType.Db)
         #
-        sp_mag.set_interpolator_parameters("power", "pchip", "zero-pad")
-        sp_mag.get_interpolated_spectrum(f, "power")
-        sp_mag.get_interpolated_spectrum(f, "magnitude")
-        sp_mag.get_interpolated_spectrum(f, "db")
-        sp_mag.set_interpolator_parameters("magnitude", "pchip", "zero-pad")
-        sp_mag.get_interpolated_spectrum(f, "power")
-        sp_mag.get_interpolated_spectrum(f, "magnitude")
-        sp_mag.get_interpolated_spectrum(f, "db")
+        sp_mag.set_interpolator_parameters(
+            dsp.InterpolationDomain.Power,
+            dsp.InterpolationScheme.Pchip,
+            dsp.InterpolationEdgeHandling.ZeroPad,
+        )
+        sp_mag.get_interpolated_spectrum(f, dsp.SpectrumType.Power)
+        sp_mag.get_interpolated_spectrum(f, dsp.SpectrumType.Magnitude)
+        sp_mag.get_interpolated_spectrum(f, dsp.SpectrumType.Db)
+        sp_mag.set_interpolator_parameters(
+            dsp.InterpolationDomain.Magnitude,
+            dsp.InterpolationScheme.Pchip,
+            dsp.InterpolationEdgeHandling.ZeroPad,
+        )
+        sp_mag.get_interpolated_spectrum(f, dsp.SpectrumType.Power)
+        sp_mag.get_interpolated_spectrum(f, dsp.SpectrumType.Magnitude)
+        sp_mag.get_interpolated_spectrum(f, dsp.SpectrumType.Db)
         #
-        sp_mag.set_interpolator_parameters("power", "linear", "zero-pad")
-        sp_mag.get_interpolated_spectrum(f_outside, "power")
-        sp_mag.get_interpolated_spectrum(f_outside, "db")
-        sp_mag.set_interpolator_parameters("magnitude", "pchip", "extend")
-        sp_mag.get_interpolated_spectrum(f_outside, "magnitude")
-        sp_mag.get_interpolated_spectrum(f_outside, "db")
+        sp_mag.set_interpolator_parameters(
+            dsp.InterpolationDomain.Power,
+            dsp.InterpolationScheme.Linear,
+            dsp.InterpolationEdgeHandling.ZeroPad,
+        )
+        sp_mag.get_interpolated_spectrum(f_outside, dsp.SpectrumType.Power)
+        sp_mag.get_interpolated_spectrum(f_outside, dsp.SpectrumType.Db)
+        sp_mag.set_interpolator_parameters(
+            dsp.InterpolationDomain.Magnitude,
+            dsp.InterpolationScheme.Pchip,
+            dsp.InterpolationEdgeHandling.Extend,
+        )
+        sp_mag.get_interpolated_spectrum(f_outside, dsp.SpectrumType.Magnitude)
+        sp_mag.get_interpolated_spectrum(f_outside, dsp.SpectrumType.Db)
 
     def test_interpolation_complex(self):
         sp_comp = self.get_spectrum_from_filter(None, True)
@@ -1827,85 +1820,161 @@ class TestSpectrum:
 
         # Normal functionality magnitude (no checking results)
         #
-        sp_comp.set_interpolator_parameters("complex", "linear", "zero-pad")
-        sp_comp.get_interpolated_spectrum(f, "power")
-        sp_comp.get_interpolated_spectrum(f, "magnitude")
-        sp_comp.get_interpolated_spectrum(f, "db")
-        sp_comp.get_interpolated_spectrum(f, "complex")
-        sp_comp.set_interpolator_parameters("magphase", "linear", "zero-pad")
-        sp_comp.get_interpolated_spectrum(f, "power")
-        sp_comp.get_interpolated_spectrum(f, "magnitude")
-        sp_comp.get_interpolated_spectrum(f, "db")
-        sp_comp.get_interpolated_spectrum(f, "complex")
+        sp_comp.set_interpolator_parameters(
+            dsp.InterpolationDomain.Complex,
+            dsp.InterpolationScheme.Linear,
+            dsp.InterpolationEdgeHandling.ZeroPad,
+        )
+        sp_comp.get_interpolated_spectrum(f, dsp.SpectrumType.Power)
+        sp_comp.get_interpolated_spectrum(f, dsp.SpectrumType.Magnitude)
+        sp_comp.get_interpolated_spectrum(f, dsp.SpectrumType.Db)
+        sp_comp.get_interpolated_spectrum(f, dsp.SpectrumType.Complex)
+        sp_comp.set_interpolator_parameters(
+            dsp.InterpolationDomain.MagnitudePhase,
+            dsp.InterpolationScheme.Linear,
+            dsp.InterpolationEdgeHandling.ZeroPad,
+        )
+        sp_comp.get_interpolated_spectrum(f, dsp.SpectrumType.Power)
+        sp_comp.get_interpolated_spectrum(f, dsp.SpectrumType.Magnitude)
+        sp_comp.get_interpolated_spectrum(f, dsp.SpectrumType.Db)
+        sp_comp.get_interpolated_spectrum(f, dsp.SpectrumType.Complex)
         #
-        sp_comp.set_interpolator_parameters("complex", "cubic", "zero-pad")
-        sp_comp.get_interpolated_spectrum(f, "power")
-        sp_comp.get_interpolated_spectrum(f, "magnitude")
-        sp_comp.get_interpolated_spectrum(f, "db")
-        sp_comp.get_interpolated_spectrum(f, "complex")
-        sp_comp.set_interpolator_parameters("magphase", "cubic", "zero-pad")
-        sp_comp.get_interpolated_spectrum(f, "power")
-        sp_comp.get_interpolated_spectrum(f, "magnitude")
-        sp_comp.get_interpolated_spectrum(f, "db")
-        sp_comp.get_interpolated_spectrum(f, "complex")
+        sp_comp.set_interpolator_parameters(
+            dsp.InterpolationDomain.Complex,
+            dsp.InterpolationScheme.Cubic,
+            dsp.InterpolationEdgeHandling.ZeroPad,
+        )
+        sp_comp.get_interpolated_spectrum(f, dsp.SpectrumType.Power)
+        sp_comp.get_interpolated_spectrum(f, dsp.SpectrumType.Magnitude)
+        sp_comp.get_interpolated_spectrum(f, dsp.SpectrumType.Db)
+        sp_comp.get_interpolated_spectrum(f, dsp.SpectrumType.Complex)
+        sp_comp.set_interpolator_parameters(
+            dsp.InterpolationDomain.MagnitudePhase,
+            dsp.InterpolationScheme.Cubic,
+            dsp.InterpolationEdgeHandling.ZeroPad,
+        )
+        sp_comp.get_interpolated_spectrum(f, dsp.SpectrumType.Power)
+        sp_comp.get_interpolated_spectrum(f, dsp.SpectrumType.Magnitude)
+        sp_comp.get_interpolated_spectrum(f, dsp.SpectrumType.Db)
+        sp_comp.get_interpolated_spectrum(f, dsp.SpectrumType.Complex)
         #
-        sp_comp.set_interpolator_parameters("complex", "pchip", "zero-pad")
-        sp_comp.get_interpolated_spectrum(f, "power")
-        sp_comp.get_interpolated_spectrum(f, "magnitude")
-        sp_comp.get_interpolated_spectrum(f, "db")
-        sp_comp.get_interpolated_spectrum(f, "complex")
-        sp_comp.set_interpolator_parameters("magphase", "pchip", "zero-pad")
-        sp_comp.get_interpolated_spectrum(f, "power")
-        sp_comp.get_interpolated_spectrum(f, "magnitude")
-        sp_comp.get_interpolated_spectrum(f, "db")
-        sp_comp.get_interpolated_spectrum(f, "complex")
+        sp_comp.set_interpolator_parameters(
+            dsp.InterpolationDomain.Complex,
+            dsp.InterpolationScheme.Pchip,
+            dsp.InterpolationEdgeHandling.ZeroPad,
+        )
+        sp_comp.get_interpolated_spectrum(f, dsp.SpectrumType.Power)
+        sp_comp.get_interpolated_spectrum(f, dsp.SpectrumType.Magnitude)
+        sp_comp.get_interpolated_spectrum(f, dsp.SpectrumType.Db)
+        sp_comp.get_interpolated_spectrum(f, dsp.SpectrumType.Complex)
+        sp_comp.set_interpolator_parameters(
+            dsp.InterpolationDomain.MagnitudePhase,
+            dsp.InterpolationScheme.Pchip,
+            dsp.InterpolationEdgeHandling.ZeroPad,
+        )
+        sp_comp.get_interpolated_spectrum(f, dsp.SpectrumType.Power)
+        sp_comp.get_interpolated_spectrum(f, dsp.SpectrumType.Magnitude)
+        sp_comp.get_interpolated_spectrum(f, dsp.SpectrumType.Db)
+        sp_comp.get_interpolated_spectrum(f, dsp.SpectrumType.Complex)
         #
-        sp_comp.set_interpolator_parameters("magnitude", "linear", "zero-pad")
-        sp_comp.get_interpolated_spectrum(f, "power")
-        sp_comp.get_interpolated_spectrum(f, "magnitude")
-        sp_comp.get_interpolated_spectrum(f, "db")
-        sp_comp.set_interpolator_parameters("power", "linear", "zero-pad")
-        sp_comp.get_interpolated_spectrum(f, "power")
-        sp_comp.get_interpolated_spectrum(f, "magnitude")
-        sp_comp.get_interpolated_spectrum(f, "db")
+        sp_comp.set_interpolator_parameters(
+            dsp.InterpolationDomain.Magnitude,
+            dsp.InterpolationScheme.Linear,
+            dsp.InterpolationEdgeHandling.ZeroPad,
+        )
+        sp_comp.get_interpolated_spectrum(f, dsp.SpectrumType.Power)
+        sp_comp.get_interpolated_spectrum(f, dsp.SpectrumType.Magnitude)
+        sp_comp.get_interpolated_spectrum(f, dsp.SpectrumType.Db)
+        sp_comp.set_interpolator_parameters(
+            dsp.InterpolationDomain.Power,
+            dsp.InterpolationScheme.Linear,
+            dsp.InterpolationEdgeHandling.ZeroPad,
+        )
+        sp_comp.get_interpolated_spectrum(f, dsp.SpectrumType.Power)
+        sp_comp.get_interpolated_spectrum(f, dsp.SpectrumType.Magnitude)
+        sp_comp.get_interpolated_spectrum(f, dsp.SpectrumType.Db)
         #
-        sp_comp.set_interpolator_parameters("power", "cubic", "zero-pad")
-        sp_comp.get_interpolated_spectrum(f, "power")
-        sp_comp.get_interpolated_spectrum(f, "magnitude")
-        sp_comp.get_interpolated_spectrum(f, "db")
-        sp_comp.set_interpolator_parameters("magnitude", "cubic", "zero-pad")
-        sp_comp.get_interpolated_spectrum(f, "power")
-        sp_comp.get_interpolated_spectrum(f, "magnitude")
-        sp_comp.get_interpolated_spectrum(f, "db")
+        sp_comp.set_interpolator_parameters(
+            dsp.InterpolationDomain.Power,
+            dsp.InterpolationScheme.Cubic,
+            dsp.InterpolationEdgeHandling.ZeroPad,
+        )
+        sp_comp.get_interpolated_spectrum(f, dsp.SpectrumType.Power)
+        sp_comp.get_interpolated_spectrum(f, dsp.SpectrumType.Magnitude)
+        sp_comp.get_interpolated_spectrum(f, dsp.SpectrumType.Db)
+        sp_comp.set_interpolator_parameters(
+            dsp.InterpolationDomain.Magnitude,
+            dsp.InterpolationScheme.Cubic,
+            dsp.InterpolationEdgeHandling.ZeroPad,
+        )
+        sp_comp.get_interpolated_spectrum(f, dsp.SpectrumType.Power)
+        sp_comp.get_interpolated_spectrum(f, dsp.SpectrumType.Magnitude)
+        sp_comp.get_interpolated_spectrum(f, dsp.SpectrumType.Db)
         #
-        sp_comp.set_interpolator_parameters("power", "pchip", "zero-pad")
-        sp_comp.get_interpolated_spectrum(f, "power")
-        sp_comp.get_interpolated_spectrum(f, "magnitude")
-        sp_comp.get_interpolated_spectrum(f, "db")
-        sp_comp.set_interpolator_parameters("magnitude", "pchip", "zero-pad")
-        sp_comp.get_interpolated_spectrum(f, "power")
-        sp_comp.get_interpolated_spectrum(f, "magnitude")
-        sp_comp.get_interpolated_spectrum(f, "db")
+        sp_comp.set_interpolator_parameters(
+            dsp.InterpolationDomain.Power,
+            dsp.InterpolationScheme.Pchip,
+            dsp.InterpolationEdgeHandling.ZeroPad,
+        )
+        sp_comp.get_interpolated_spectrum(f, dsp.SpectrumType.Power)
+        sp_comp.get_interpolated_spectrum(f, dsp.SpectrumType.Magnitude)
+        sp_comp.get_interpolated_spectrum(f, dsp.SpectrumType.Db)
+        sp_comp.set_interpolator_parameters(
+            dsp.InterpolationDomain.Magnitude,
+            dsp.InterpolationScheme.Pchip,
+            dsp.InterpolationEdgeHandling.ZeroPad,
+        )
+        sp_comp.get_interpolated_spectrum(f, dsp.SpectrumType.Power)
+        sp_comp.get_interpolated_spectrum(f, dsp.SpectrumType.Magnitude)
+        sp_comp.get_interpolated_spectrum(f, dsp.SpectrumType.Db)
         #
-        sp_comp.set_interpolator_parameters("power", "linear", "zero-pad")
-        sp_comp.get_interpolated_spectrum(f_outside, "power")
-        sp_comp.get_interpolated_spectrum(f_outside, "db")
-        sp_comp.set_interpolator_parameters("magnitude", "pchip", "extend")
-        sp_comp.get_interpolated_spectrum(f_outside, "magnitude")
-        sp_comp.get_interpolated_spectrum(f_outside, "db")
-        sp_comp.set_interpolator_parameters("complex", "pchip", "extend")
-        sp_comp.get_interpolated_spectrum(f_outside, "magnitude")
-        sp_comp.get_interpolated_spectrum(f_outside, "db")
-        sp_comp.get_interpolated_spectrum(f_outside, "complex")
-        sp_comp.set_interpolator_parameters("magphase", "pchip", "extend")
-        sp_comp.get_interpolated_spectrum(f_outside, "magnitude")
-        sp_comp.get_interpolated_spectrum(f_outside, "db")
-        sp_comp.get_interpolated_spectrum(f_outside, "complex")
+        sp_comp.set_interpolator_parameters(
+            dsp.InterpolationDomain.Power,
+            dsp.InterpolationScheme.Linear,
+            dsp.InterpolationEdgeHandling.ZeroPad,
+        )
+        sp_comp.get_interpolated_spectrum(f_outside, dsp.SpectrumType.Power)
+        sp_comp.get_interpolated_spectrum(f_outside, dsp.SpectrumType.Db)
+        sp_comp.set_interpolator_parameters(
+            dsp.InterpolationDomain.Magnitude,
+            dsp.InterpolationScheme.Pchip,
+            dsp.InterpolationEdgeHandling.Extend,
+        )
+        sp_comp.get_interpolated_spectrum(
+            f_outside, dsp.SpectrumType.Magnitude
+        )
+        sp_comp.get_interpolated_spectrum(f_outside, dsp.SpectrumType.Db)
+        sp_comp.set_interpolator_parameters(
+            dsp.InterpolationDomain.Complex,
+            dsp.InterpolationScheme.Pchip,
+            dsp.InterpolationEdgeHandling.Extend,
+        )
+        sp_comp.get_interpolated_spectrum(
+            f_outside, dsp.SpectrumType.Magnitude
+        )
+        sp_comp.get_interpolated_spectrum(f_outside, dsp.SpectrumType.Db)
+        sp_comp.get_interpolated_spectrum(f_outside, dsp.SpectrumType.Complex)
+        sp_comp.set_interpolator_parameters(
+            dsp.InterpolationDomain.MagnitudePhase,
+            dsp.InterpolationScheme.Pchip,
+            dsp.InterpolationEdgeHandling.Extend,
+        )
+        sp_comp.get_interpolated_spectrum(
+            f_outside, dsp.SpectrumType.Magnitude
+        )
+        sp_comp.get_interpolated_spectrum(f_outside, dsp.SpectrumType.Db)
+        sp_comp.get_interpolated_spectrum(f_outside, dsp.SpectrumType.Complex)
         #
-        sp_comp.set_interpolator_parameters("magphase", "pchip", "zero-pad")
-        sp_comp.get_interpolated_spectrum(f_outside, "magnitude")
-        sp_comp.get_interpolated_spectrum(f_outside, "db")
-        sp_comp.get_interpolated_spectrum(f_outside, "complex")
+        sp_comp.set_interpolator_parameters(
+            dsp.InterpolationDomain.MagnitudePhase,
+            dsp.InterpolationScheme.Pchip,
+            dsp.InterpolationEdgeHandling.ZeroPad,
+        )
+        sp_comp.get_interpolated_spectrum(
+            f_outside, dsp.SpectrumType.Magnitude
+        )
+        sp_comp.get_interpolated_spectrum(f_outside, dsp.SpectrumType.Db)
+        sp_comp.get_interpolated_spectrum(f_outside, dsp.SpectrumType.Complex)
 
     def test_get_energy(self):
         # Total energy
@@ -1940,11 +2009,21 @@ class TestSpectrum:
 
     def test_plot_magnitude(self):
         sp = self.get_spectrum_from_filter()
-        sp.plot_magnitude(True, None, None)
-        sp.plot_magnitude(True, None, 10.0)
-        sp.plot_magnitude(True, "1khz", 10.0)
-        sp.plot_magnitude(True, "max", 10.0)
-        sp.plot_magnitude(True, "energy", 10.0)
-        sp.plot_magnitude(False, None, None)
-        sp.plot_magnitude(False, None, None)
-        sp.plot_magnitude(False, None, None)
+        sp.plot_magnitude(
+            True, dsp.MagnitudeNormalization.NoNormalization, None
+        )
+        sp.plot_magnitude(
+            True, dsp.MagnitudeNormalization.NoNormalization, 10.0
+        )
+        sp.plot_magnitude(True, dsp.MagnitudeNormalization.OneKhz, 10.0)
+        sp.plot_magnitude(True, dsp.MagnitudeNormalization.Max, 10.0)
+        sp.plot_magnitude(True, dsp.MagnitudeNormalization.Energy, 10.0)
+        sp.plot_magnitude(
+            False, dsp.MagnitudeNormalization.NoNormalization, None
+        )
+        sp.plot_magnitude(
+            False, dsp.MagnitudeNormalization.NoNormalization, None
+        )
+        sp.plot_magnitude(
+            False, dsp.MagnitudeNormalization.NoNormalization, None
+        )

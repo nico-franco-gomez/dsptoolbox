@@ -190,7 +190,7 @@ class TestTransformsModule:
 
     def test_warp_filter(self):
         # Only functionality
-        i = dsp.Filter.iir_design(
+        i = dsp.Filter.new_iir_filter(
             3,
             100.0,
             dsp.FilterPassType.Highpass,

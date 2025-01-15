@@ -452,7 +452,7 @@ class TestStandardModule:
         )
 
         # Filter
-        iir = dsp.Filter.biquad(
+        iir = dsp.Filter.new_biquad(
             dsp.BiquadEqType.Peaking, 500.0, 0.0, 0.7, self.fs
         )
         output_level1 = dsp.rms(iir.filter_signal(self.audio_multi))
@@ -499,7 +499,7 @@ class TestStandardModule:
     def test_resample_filter(self):
         # Functionality
         fs_hz = 48000
-        f = dsp.Filter.iir_design(
+        f = dsp.Filter.new_iir_filter(
             8,
             [500, 2e3],
             dsp.FilterPassType.Bandpass,
@@ -507,7 +507,7 @@ class TestStandardModule:
             sampling_rate_hz=fs_hz,
         )
         dsp.resample_filter(f, 24000)
-        f = dsp.Filter.iir_design(
+        f = dsp.Filter.new_iir_filter(
             5,
             500,
             dsp.FilterPassType.Lowpass,
@@ -515,7 +515,7 @@ class TestStandardModule:
             sampling_rate_hz=fs_hz,
         )
         dsp.resample_filter(f, 24000)
-        f = dsp.Filter.iir_design(
+        f = dsp.Filter.new_iir_filter(
             8,
             500,
             dsp.FilterPassType.Highpass,
@@ -523,7 +523,7 @@ class TestStandardModule:
             sampling_rate_hz=fs_hz,
         )
         dsp.resample_filter(f, 24000)
-        f = dsp.Filter.iir_design(
+        f = dsp.Filter.new_iir_filter(
             7,
             [500, 18e3],
             dsp.FilterPassType.Bandpass,
@@ -622,11 +622,11 @@ class TestStandardModule:
         dsp.modify_signal_length(mb, 1.5, -0.5)
 
     def test_merge_fir_filters(self):
-        f1 = dsp.Filter.fir_design(
+        f1 = dsp.Filter.new_fir_filter(
             50,
             100.0,
             dsp.FilterPassType.Lowpass,
-            "hamming",
+            dsp.Window.Hamming,
             sampling_rate_hz=self.fs,
         )
 
@@ -647,7 +647,7 @@ class TestStandardModule:
             dsp.merge_fir_filters([f1])
 
         with pytest.raises(AssertionError):
-            iir = dsp.Filter.biquad(
+            iir = dsp.Filter.new_biquad(
                 dsp.BiquadEqType.LowpassFirstOrder, 50.0, -3.0, 0.7, self.fs
             )
             dsp.merge_fir_filters([f1, iir])
@@ -657,7 +657,7 @@ class TestStandardModule:
             dsp.merge_fir_filters([f1, f2])
 
     def test_spectral_difference(self):
-        filt = dsp.Filter.biquad(
+        filt = dsp.Filter.new_biquad(
             dsp.BiquadEqType.Peaking, 500.0, 10.0, 1.0, 48000
         )
         spec = dsp.Spectrum.from_filter(
@@ -665,7 +665,7 @@ class TestStandardModule:
         )
         spec_flat = dsp.Spectrum.from_filter(
             dsp.tools.log_frequency_vector([20, 20e3], 128),
-            dsp.Filter.biquad(
+            dsp.Filter.new_biquad(
                 dsp.BiquadEqType.Peaking, 500.0, 0.0, 1.0, 48000
             ),
             False,
