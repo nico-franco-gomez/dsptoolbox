@@ -529,3 +529,4 @@ class FadeType(Enum):
     Linear = auto()
     Exponential = auto()
     Logarithmic = auto()
+    NoFade = auto()

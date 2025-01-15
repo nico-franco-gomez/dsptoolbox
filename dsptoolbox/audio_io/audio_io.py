@@ -263,7 +263,10 @@ def play_and_record(
     if normalized_dbfs is not None:
         assert normalized_dbfs <= 0, "Only values beneath 0 dBFS are allowed"
         play_data = _normalize(
-            play_data, dbfs=normalized_dbfs, mode="peak", per_channel=False
+            play_data,
+            dbfs=normalized_dbfs,
+            peak_normalization="peak",
+            per_channel=False,
         )
 
     if device is not None:
@@ -386,7 +389,10 @@ def play(
     if normalized_dbfs is not None:
         assert normalized_dbfs <= 0, "Only values beneath 0 dBFS are allowed"
         play_data = _normalize(
-            play_data, dbfs=normalized_dbfs, mode="peak", per_channel=False
+            play_data,
+            dbfs=normalized_dbfs,
+            peak_normalization="peak",
+            per_channel=False,
         )
     #
     if device is not None:

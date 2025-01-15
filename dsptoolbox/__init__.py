@@ -48,6 +48,7 @@ from .standard import (
     InterpolationEdgeHandling,
     FrequencySpacing,
     Window,
+    FadeType,
 )
 from .classes import (
     Filter,
@@ -130,6 +131,7 @@ __all__ = [
     "FrequencySpacing",
     "IirDesignMethod",
     "Window",
+    "FadeType",
 ]
 
 __version__ = "0.5dev"

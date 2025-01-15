@@ -187,36 +187,56 @@ class TestStandardModule:
         # Check rms
         channel = self.audio_multi.get_channels(0)
         rms_previous = dsp.rms(channel)[0]
-        n = dsp.normalize(channel, norm_dbfs=rms_previous - 10, mode="rms")
+        n = dsp.normalize(
+            channel, norm_dbfs=rms_previous - 10, peak_normalization=False
+        )
         rms = dsp.rms(n)[0]
         assert np.isclose(rms_previous - 10, rms)
 
         # Check rest of api
         dsp.normalize(
-            self.audio_multi, norm_dbfs=-20, mode="rms", each_channel=False
+            self.audio_multi,
+            norm_dbfs=-20,
+            peak_normalization=False,
+            each_channel=False,
         )
         dsp.normalize(
-            self.audio_multi, norm_dbfs=-20, mode="rms", each_channel=True
+            self.audio_multi,
+            norm_dbfs=-20,
+            peak_normalization=False,
+            each_channel=True,
         )
         dsp.normalize(
-            self.audio_multi, norm_dbfs=-20, mode="peak", each_channel=True
+            self.audio_multi,
+            norm_dbfs=-20,
+            peak_normalization=True,
+            each_channel=True,
         )
 
     def test_fade(self):
         # Functionality – result only tested for linear fade
-        dsp.fade(self.audio_multi, type_fade="lin")
-        dsp.fade(self.audio_multi, type_fade="log")
-        dsp.fade(self.audio_multi, type_fade="exp")
+        dsp.fade(self.audio_multi, fade_type=dsp.FadeType.Linear)
+        dsp.fade(self.audio_multi, fade_type=dsp.FadeType.Logarithmic)
+        dsp.fade(self.audio_multi, fade_type=dsp.FadeType.Exponential)
 
         f_end = dsp.fade(
-            self.audio_multi, type_fade="lin", at_start=False, at_end=True
+            self.audio_multi,
+            fade_type=dsp.FadeType.Linear,
+            at_start=False,
+            at_end=True,
         )
         f_st = dsp.fade(
-            self.audio_multi, type_fade="lin", at_start=True, at_end=False
+            self.audio_multi,
+            fade_type=dsp.FadeType.Linear,
+            at_start=True,
+            at_end=False,
         )
         with pytest.raises(AssertionError):
             dsp.fade(
-                self.audio_multi, type_fade="lin", at_start=False, at_end=False
+                self.audio_multi,
+                fade_type=dsp.FadeType.Linear,
+                at_start=False,
+                at_end=False,
             )
 
         # Fade at start
@@ -503,7 +523,7 @@ class TestStandardModule:
             8,
             [500, 2e3],
             dsp.FilterPassType.Bandpass,
-            "bessel",
+            dsp.IirDesignMethod.Bessel,
             sampling_rate_hz=fs_hz,
         )
         dsp.resample_filter(f, 24000)
@@ -511,7 +531,7 @@ class TestStandardModule:
             5,
             500,
             dsp.FilterPassType.Lowpass,
-            "bessel",
+            dsp.IirDesignMethod.Bessel,
             sampling_rate_hz=fs_hz,
         )
         dsp.resample_filter(f, 24000)
@@ -519,7 +539,7 @@ class TestStandardModule:
             8,
             500,
             dsp.FilterPassType.Highpass,
-            "bessel",
+            dsp.IirDesignMethod.Bessel,
             sampling_rate_hz=fs_hz,
         )
         dsp.resample_filter(f, 24000)
@@ -527,7 +547,7 @@ class TestStandardModule:
             7,
             [500, 18e3],
             dsp.FilterPassType.Bandpass,
-            "bessel",
+            dsp.IirDesignMethod.Bessel,
             sampling_rate_hz=fs_hz,
         )
 

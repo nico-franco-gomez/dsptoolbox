@@ -40,6 +40,7 @@ from .enums import (
     InterpolationEdgeHandling,
     FrequencySpacing,
     Window,
+    FadeType,
 )
 
 __all__ = [
@@ -87,4 +88,5 @@ __all__ = [
     "InterpolationEdgeHandling",
     "FrequencySpacing",
     "Window",
+    "FadeType",
 ]

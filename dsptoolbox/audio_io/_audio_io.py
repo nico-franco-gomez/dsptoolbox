@@ -4,6 +4,7 @@ Backend for audio io module
 
 from sounddevice import CallbackStop
 from .. import Signal, normalize, fade
+from ..standard.enums import FadeType
 from numpy import ndarray
 
 
@@ -28,9 +29,14 @@ def standard_callback(signal: Signal):
 
     """
     # Normalize
-    signal = normalize(signal)
+    signal = normalize(signal, -6.0)
+
     # Fade in and fade out
-    signal = fade(signal, length_fade_seconds=signal.time_vector_s[-1] * 0.05)
+    signal = fade(
+        signal,
+        FadeType.Exponential,
+        length_fade_seconds=signal.time_vector_s[-1] * 0.05,
+    )
 
     def call(outdata: ndarray, frames: int, time, status) -> None:
         """Standard version of an audio callback with a signal object.

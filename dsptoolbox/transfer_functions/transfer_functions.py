@@ -1057,7 +1057,7 @@ def combine_ir_with_dirac(
         "peak",
         None,
     ), "Invalid normalization parameter"
-    ir = normalize(ir)
+    ir = normalize(ir, 0.0)
     latencies_samples = _get_fractional_impulse_peak_index(ir.time_data)
 
     # Make impulse
@@ -1112,7 +1112,7 @@ def combine_ir_with_dirac(
     # Combine
     combined_ir = ir.copy()
     combined_ir.time_data = td_ir + td_imp * polarity[None, ...]
-    combined_ir = normalize(combined_ir)
+    combined_ir = normalize(combined_ir, 0.0)
     return combined_ir
 
 

@@ -99,8 +99,8 @@ class TestFilterbanksModule:
 
     def test_weightning_filter(self):
         fs_hz = 5_000
-        dsp.filterbanks.weightning_filter("a", fs_hz)
-        dsp.filterbanks.weightning_filter("c", fs_hz)
+        dsp.filterbanks.weighting_filter("a", fs_hz)
+        dsp.filterbanks.weighting_filter("c", fs_hz)
 
     def test_complementary_filter_fir(self):
         fs_hz = 5000
@@ -327,11 +327,11 @@ class TestLatticeLadderFilter:
         # Second-order sections
         n = dsp.generators.noise(sampling_rate_hz=fs)
         f = dsp.Filter(
-            "iir",
+            dsp.FilterType.Iir,
             {
-                "filter_design_method": "bessel",
+                "filter_design_method": dsp.IirDesignMethod.Bessel,
                 "order": 9,
-                "type_of_pass": "lowpass",
+                "type_of_pass": dsp.FilterPassType.Lowpass,
                 "freqs": 1000,
             },
             sampling_rate_hz=fs,

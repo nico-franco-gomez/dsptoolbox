@@ -21,7 +21,7 @@ from warnings import warn
 from scipy.fft import next_fast_len
 import sys
 
-from .standard.enums import SpectrumScaling, MagnitudeNormalization
+from .standard.enums import SpectrumScaling, MagnitudeNormalization, FadeType
 
 
 def to_db(
@@ -436,7 +436,10 @@ def _compute_number_frames(
 
 
 def _normalize(
-    s: NDArray[np.float64], dbfs: float, mode: str, per_channel: bool
+    s: NDArray[np.float64],
+    dbfs: float,
+    peak_normalization: bool,
+    per_channel: bool,
 ) -> NDArray[np.float64]:
     """Normalizes a signal.
 
@@ -447,9 +450,8 @@ def _normalize(
         be in the outer axis.
     dbfs: float
         dbfs value to normalize to.
-    mode: str, optional
-        Mode of normalization, `peak` uses the signal maximum absolute value,
-        `rms` uses Root mean square value
+    peak_normalization: Bool
+        Mode of normalization. True -> `peak`, False -> `rms`.
 
     Returns
     -------
@@ -457,19 +459,14 @@ def _normalize(
         Normalized signal.
 
     """
-    assert mode in ("peak", "rms"), (
-        "Mode of normalization is not "
-        + "available. Select either peak or rms"
-    )
-
     onedim = s.ndim == 1
     if onedim:
         s = s[..., None]
 
     factor = from_db(dbfs, True)
-    if mode == "peak":
+    if peak_normalization:
         factor /= np.max(np.abs(s), axis=0 if per_channel else None)
-    elif mode == "rms":
+    else:
         factor /= _rms(s if per_channel else s.flatten())
     s_norm = s * factor
 
@@ -504,10 +501,10 @@ def _amplify_db(s: NDArray[np.float64], db: float) -> NDArray[np.float64]:
 
 def _fade(
     s: NDArray[np.float64],
-    length_seconds: float = 0.1,
-    mode: str = "exp",
-    sampling_rate_hz: int = 48000,
-    at_start: bool = True,
+    length_seconds: float,
+    mode: FadeType,
+    sampling_rate_hz: int,
+    at_start: bool,
 ) -> NDArray[np.float64]:
     """Create a fade in signal.
 
@@ -515,16 +512,14 @@ def _fade(
     ----------
     s : NDArray[np.float64]
         np.array to be faded.
-    length_seconds : float, optional
-        Length of fade in seconds. Default: 0.1.
-    mode : str, optional
-        Type of fading. Options are `'exp'`, `'lin'`, `'log'`.
-        Default: `'lin'`.
-    sampling_rate_hz : int, optional
-        Sampling rate. Default: 48000.
-    at_start : bool, optional
+    length_seconds : float
+        Length of fade in seconds.
+    mode : FadeType
+        Type of fading.
+    sampling_rate_hz : int
+        Sampling rate.
+    at_start : bool
         When `True`, the start is faded. When `False`, the end.
-        Default: `True`.
 
     Returns
     -------
@@ -532,12 +527,9 @@ def _fade(
         Faded vector.
 
     """
-    mode = mode.lower()
-    assert mode in (
-        "exp",
-        "lin",
-        "log",
-    ), f"{mode} is not supported. Choose from exp, lin, log."
+    if mode == FadeType.NoFade:
+        return s
+
     assert length_seconds > 0, "Only positive lengths"
     l_samples = int(length_seconds * sampling_rate_hz)
     assert len(s) > l_samples, "Signal is shorter than the desired fade"
@@ -550,12 +542,12 @@ def _fade(
     else:
         assert s.ndim == 2, "Fade only supports 1D and 2D vectors"
 
-    if mode == "exp":
+    if mode == FadeType.Exponential:
         db = np.linspace(-100, 0, l_samples)
         fade = 10 ** (db / 20)
-    elif mode == "lin":
+    elif mode == FadeType.Linear:
         fade = np.linspace(0, 1, l_samples)
-    else:
+    else:  # FadeType.Logarithmic
         # The constant 50 could be an extra parameter for the user...
         fade = np.log10(np.linspace(1, 50 * 10**0.5, l_samples))
         fade /= fade[-1]

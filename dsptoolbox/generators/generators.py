@@ -15,6 +15,7 @@ from .._general_helpers import (
 )
 from ..classes.filter_helpers import _impulse
 from ._generators import _sync_log_chirp
+from ..standard.enums import FadeType
 
 
 def noise(
@@ -23,7 +24,7 @@ def noise(
     sampling_rate_hz: int | None = None,
     peak_level_dbfs: float = -10.0,
     number_of_channels: int = 1,
-    fade: str | None = "log",
+    fade: FadeType = FadeType.Logarithmic,
     padding_end_seconds: float = 0.0,
 ) -> Signal:
     """Creates a noise signal.
@@ -45,11 +46,10 @@ def noise(
     number_of_channels : int, optional
         Number of channels (with different noise signals) to be created.
         Default: 1.
-    fade : str, optional
+    fade : FadeType, optional
         Type of fade done on the generated signal. By default, 10% of signal
         length (without the padding in the end) is faded at the beginning and
-        end. Options are "exp", "lin", "log". Pass `None` for no
-        fading. Default: "log".
+        end. Default: Logarithmic.
     padding_end_seconds : float, optional
         Padding at the end of signal. Default: 0.
 
@@ -124,7 +124,9 @@ def noise(
         mag[id_low:, :] *= (f[id_low:] ** (-type_of_noise * 0.5))[..., None]
 
     vec = np.fft.irfft(mag * np.exp(1j * ph), n=l_samples, axis=0)
-    vec = _normalize(vec, dbfs=peak_level_dbfs, mode="peak", per_channel=True)
+    vec = _normalize(
+        vec, dbfs=peak_level_dbfs, peak_normalization="peak", per_channel=True
+    )
     if fade is not None:
         fade_length = 0.05 * length_seconds
         vec = _fade(
@@ -154,7 +156,7 @@ def chirp(
     sampling_rate_hz: int | None = None,
     peak_level_dbfs: float = -10.0,
     number_of_channels: int = 1,
-    fade: str | None = "log",
+    fade: FadeType = FadeType.Logarithmic,
     phase_offset: float = 0.0,
     padding_end_seconds: float = 0.0,
 ) -> Signal | tuple[Signal, float]:
@@ -176,11 +178,10 @@ def chirp(
         Peak level of the signal in dBFS. Default: -10.
     number_of_channels : int, optional
         Number of channels (with the same chirp) to be created. Default: 1.
-    fade : str, optional
+    fade : FadeType, optional
         Type of fade done on the generated signal. By default, 10% of signal
         length (without the padding in the end) is faded at the beginning and
-        end. Options are "exp", "lin", "log".
-        Pass `None` for no fading. Default: "log".
+        end. Default: Logarithmic.
     phase_offset : float, optional
         This is an offset in radians for the phase of the sine. Default: 0.
     padding_end_seconds : float, optional
@@ -255,7 +256,7 @@ def chirp(
             )
 
     chirp_td = _normalize(
-        chirp_td, peak_level_dbfs, mode="peak", per_channel=True
+        chirp_td, peak_level_dbfs, peak_normalization="peak", per_channel=True
     )
 
     if fade is not None:
@@ -339,7 +340,7 @@ def harmonic(
     peak_level_dbfs: float = -10.0,
     number_of_channels: int = 1,
     uncorrelated: bool = False,
-    fade: str | None = "log",
+    fade: FadeType = FadeType.Logarithmic,
     padding_end_seconds: float = 0.0,
 ) -> Signal:
     """Creates a multi-channel harmonic (sine) tone.
@@ -359,11 +360,10 @@ def harmonic(
     uncorrelated : bool, optional
         When `True`, each channel gets a random phase shift so that the signals
         are not perfectly correlated. Default: `False`.
-    fade : str, optional
+    fade : FadeType, optional
         Type of fade done on the generated signal. By default, 5% of signal
         length (without the padding in the end) is faded at the beginning and
-        end. Options are "exp", "lin", "log".
-        Pass `None` for no fading. Default: "log".
+        end. Default: Logarithmic.
     padding_end_seconds : float, optional
         Padding at the end of signal. Default: 0.
 
@@ -396,7 +396,9 @@ def harmonic(
     # Generate wave
     td = np.sin(n_vec)
 
-    td = _normalize(td, peak_level_dbfs, mode="peak", per_channel=True)
+    td = _normalize(
+        td, peak_level_dbfs, peak_normalization="peak", per_channel=True
+    )
 
     if fade is not None:
         fade_length = 0.05 * length_seconds
@@ -431,7 +433,7 @@ def oscillator(
     peak_level_dbfs: float = -10.0,
     number_of_channels: int = 1,
     uncorrelated: bool = False,
-    fade: str | None = "log",
+    fade: FadeType = FadeType.Logarithmic,
     padding_end_seconds: float = 0.0,
 ) -> Signal:
     """Creates a non-aliased, multi-channel wave tone.
@@ -458,11 +460,10 @@ def oscillator(
     uncorrelated : bool, optional
         When `True`, each channel gets a random phase shift so that the signals
         are not perfectly correlated. Default: `False`.
-    fade : str, optional
+    fade : FadeType, optional
         Type of fade done on the generated signal. By default, 5% of signal
         length (without the padding in the end) is faded at the beginning and
-        end. Options are "exp", "lin", "log".
-        Pass `None` for no fading. Default: "log".
+        end. Default: Logarithmic.
     padding_end_seconds : float, optional
         Padding at the end of signal. Default: 0.
 
@@ -550,7 +551,9 @@ def oscillator(
             k += 1
         td *= -8 / np.pi**2
 
-    td = _normalize(td, peak_level_dbfs, mode="peak", per_channel=True)
+    td = _normalize(
+        td, peak_level_dbfs, peak_normalization="peak", per_channel=True
+    )
 
     if fade is not None:
         fade_length = 0.05 * length_seconds
