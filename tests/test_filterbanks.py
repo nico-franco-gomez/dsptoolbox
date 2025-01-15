@@ -21,7 +21,9 @@ class TestFilterbanksModule:
             )
 
         # Test filtering
-        s = dsp.generators.noise("white", sampling_rate_hz=5_000)
+        s = dsp.generators.noise(
+            dsp.generators.NoiseType.White, sampling_rate_hz=5_000
+        )
         fb.filter_signal(s, mode=dsp.FilterBankMode.Parallel)
 
     def test_reconstructing_fractional_octave_bands(self):
@@ -46,7 +48,9 @@ class TestFilterbanksModule:
             )
 
         # Reconstruct signal
-        s = dsp.generators.noise(type_of_noise="pink", sampling_rate_hz=4_000)
+        s = dsp.generators.noise(
+            type_of_noise=dsp.generators.NoiseType.Pink, sampling_rate_hz=4_000
+        )
         mb = fb.filter_signal(s, dsp.FilterBankMode.Parallel)
         fb.reconstruct(mb)
 
@@ -61,7 +65,9 @@ class TestFilterbanksModule:
             sampling_rate_hz=fs_hz,
         )
         fb = dsp.filterbanks.qmf_crossover(lp)
-        s = dsp.generators.noise("white", sampling_rate_hz=fs_hz)
+        s = dsp.generators.noise(
+            dsp.generators.NoiseType.White, sampling_rate_hz=fs_hz
+        )
         fb.filter_signal(
             s,
             mode=dsp.FilterBankMode.Parallel,
@@ -222,7 +228,12 @@ class TestFilterbanksModule:
         f = dsp.filterbanks.pinking_filter(3000, fs_hz)
         n2 = f.filter_signal(n)
         n2 = dsp.append_signals(
-            [n2, dsp.generators.noise("pink", sampling_rate_hz=fs_hz)]
+            [
+                n2,
+                dsp.generators.noise(
+                    dsp.generators.NoiseType.Pink, sampling_rate_hz=fs_hz
+                ),
+            ]
         )
         n2 = dsp.append_signals([n2, n])
 

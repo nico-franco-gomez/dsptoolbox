@@ -928,10 +928,14 @@ class TestFilterBankClass:
         fb.add_filter(self.get_fir_filter(True))
 
         s1 = dsp.generators.noise(
-            "white", length_seconds=1, sampling_rate_hz=self.fs
+            dsp.generators.NoiseType.White,
+            length_seconds=1,
+            sampling_rate_hz=self.fs,
         )
         s2 = dsp.generators.noise(
-            "white", length_seconds=2, sampling_rate_hz=self.fs // 2
+            dsp.generators.NoiseType.White,
+            length_seconds=2,
+            sampling_rate_hz=self.fs // 2,
         )
 
         mb = dsp.MultiBandSignal(bands=[s1, s2], same_sampling_rate=False)

@@ -6,7 +6,7 @@ import os
 
 class TestStandardModule:
     fs = 44100
-    audio_multi = dsp.generators.noise("white", 2, fs, number_of_channels=3)
+    audio_multi = dsp.generators.noise(2, fs, number_of_channels=3)
 
     def get_multiband_signal(self) -> dsp.MultiBandSignal:
         fb = dsp.filterbanks.linkwitz_riley_crossovers([1e3], [4], self.fs)
@@ -291,13 +291,13 @@ class TestStandardModule:
     def test_activity_detector(self):
         # Only functionality tested
         # Create harmonic signal and silence afterwards
-        s = dsp.generators.harmonic(sampling_rate_hz=self.fs)
+        s = dsp.generators.oscillator(1000.0, sampling_rate_hz=self.fs)
         s = dsp.pad_trim(s, s.time_data.shape[0] * 2)
         dsp.activity_detector(s)
 
     def test_detrend(self):
         # Functionality
-        s = dsp.generators.harmonic(
+        s = dsp.generators.oscillator(
             100,
             sampling_rate_hz=700,
             peak_level_dbfs=-20,
@@ -308,7 +308,7 @@ class TestStandardModule:
         dsp.detrend(s, polynomial_order=0)
 
         # One channel
-        s = dsp.generators.harmonic(
+        s = dsp.generators.oscillator(
             100,
             sampling_rate_hz=700,
             peak_level_dbfs=-20,
@@ -344,7 +344,8 @@ class TestStandardModule:
 
     def test_calibration_data(self):
         # Calibration for one channel
-        sine = dsp.generators.harmonic(
+        sine = dsp.generators.oscillator(
+            frequency_hz=100.0,
             sampling_rate_hz=self.audio_multi.sampling_rate_hz,
             peak_level_dbfs=-20,
         )
@@ -353,7 +354,8 @@ class TestStandardModule:
 
         # Wrong number of channels
         with pytest.raises(AssertionError):
-            sine = dsp.generators.harmonic(
+            sine = dsp.generators.oscillator(
+                frequency_hz=1000.0,
                 sampling_rate_hz=self.audio_multi.sampling_rate_hz,
                 peak_level_dbfs=-20,
                 number_of_channels=self.audio_multi.number_of_channels - 1,
@@ -362,7 +364,8 @@ class TestStandardModule:
             calib.calibrate_signal(self.audio_multi)
 
         # Calibration for all channels
-        sine = dsp.generators.harmonic(
+        sine = dsp.generators.oscillator(
+            frequency_hz=1000.0,
             sampling_rate_hz=self.audio_multi.sampling_rate_hz,
             peak_level_dbfs=-20,
             number_of_channels=self.audio_multi.number_of_channels,

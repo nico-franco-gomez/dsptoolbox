@@ -16,12 +16,13 @@ from .._general_helpers import (
 from ..classes.filter_helpers import _impulse
 from ._generators import _sync_log_chirp
 from ..standard.enums import FadeType
+from .enums import NoiseType, ChirpType, WaveForm
 
 
 def noise(
-    type_of_noise: str | float = "white",
-    length_seconds: float = 1.0,
-    sampling_rate_hz: int | None = None,
+    sampling_rate_hz: int,
+    length_seconds: float,
+    type_of_noise: NoiseType | float = NoiseType.White,
     peak_level_dbfs: float = -10.0,
     number_of_channels: int = 1,
     fade: FadeType = FadeType.Logarithmic,
@@ -31,16 +32,15 @@ def noise(
 
     Parameters
     ----------
-    type_of_noise : str {"white", "pink", "red", "blue", "violet", "grey"}, \
-            float, optional
+    sampling_rate_hz : int
+        Sampling rate in Hz.
+    length_seconds : float
+        Length of the generated signal in seconds.
+    type_of_noise : NoiseType, float, optional
         Type of noise to generate. If a float is passed, it corresponds to
         `beta`, where `beta` is used to define the slope of the power spectral
         density (psd) with `psd * frequency**(-beta)`. See notes for details.
-        Default: "white".
-    length_seconds : float, optional
-        Length of the generated signal in seconds. Default: 1.
-    sampling_rate_hz : int
-        Sampling rate in Hz. Default: `None`.
+        Default: White.
     peak_level_dbfs : float, optional
         Peak level of the signal in dBFS. Default: -10.
     number_of_channels : int, optional
@@ -70,14 +70,11 @@ def noise(
 
     """
     assert sampling_rate_hz is not None, "Sampling rate can not be None"
-    if type(type_of_noise) is str:
-        valid_noises = ("white", "pink", "red", "blue", "violet", "grey")
-        type_of_noise = type_of_noise.lower()
-        assert type_of_noise in valid_noises, f"{type_of_noise} is not valid"
-    else:
+    if type(type_of_noise) is not NoiseType:
         assert (
             type(type_of_noise) is float
-        ), "type_of_noise must be either str or float"
+        ), "type_of_noise must be either NoiseType or float"
+
     assert length_seconds > 0, "Length has to be positive"
     assert peak_level_dbfs <= 0, "Peak level cannot surpass 0 dBFS"
     assert number_of_channels >= 1, "At least one channel should be generated"
@@ -99,7 +96,7 @@ def noise(
     # frequencies
     id_low = np.argmin(np.abs(f - 15))
     mag[0] = 0
-    if type_of_noise != "white" or type_of_noise != 0.0:
+    if type_of_noise != NoiseType.White or type_of_noise != 0.0:
         mag[:id_low] *= 1e-20
 
     ph = np.random.uniform(-np.pi, np.pi, (len(f), number_of_channels))
@@ -109,15 +106,15 @@ def noise(
     if l_samples % 2 == 0:
         ph[-1, :] = 0
 
-    if type_of_noise == "pink":
+    if type_of_noise == NoiseType.Pink:
         mag[id_low:, :] /= (f[id_low:] ** 0.5)[..., None]
-    elif type_of_noise == "red":
+    elif type_of_noise == NoiseType.Red:
         mag[id_low:, :] /= f[id_low:][..., None]
-    elif type_of_noise == "blue":
+    elif type_of_noise == NoiseType.Blue:
         mag[id_low:, :] *= (f[id_low:] ** 0.5)[..., None]
-    elif type_of_noise == "violet":
+    elif type_of_noise == NoiseType.Violet:
         mag[id_low:, :] *= f[id_low:][..., None]
-    elif type_of_noise == "grey":
+    elif type_of_noise == NoiseType.Grey:
         w = _frequency_weightning(f, "a", db_output=False)
         mag[id_low:, :] /= w[id_low:][..., None]
     elif type(type_of_noise) is float:
@@ -125,7 +122,7 @@ def noise(
 
     vec = np.fft.irfft(mag * np.exp(1j * ph), n=l_samples, axis=0)
     vec = _normalize(
-        vec, dbfs=peak_level_dbfs, peak_normalization="peak", per_channel=True
+        vec, dbfs=peak_level_dbfs, peak_normalization=True, per_channel=True
     )
     if fade is not None:
         fade_length = 0.05 * length_seconds
@@ -150,10 +147,10 @@ def noise(
 
 
 def chirp(
-    type_of_chirp: str = "log",
+    sampling_rate_hz: int,
+    type_of_chirp: ChirpType = ChirpType.Logarithmic,
     range_hz=None,
     length_seconds: float = 1.0,
-    sampling_rate_hz: int | None = None,
     peak_level_dbfs: float = -10.0,
     number_of_channels: int = 1,
     fade: FadeType = FadeType.Logarithmic,
@@ -164,16 +161,15 @@ def chirp(
 
     Parameters
     ----------
-    type_of_chirp : str, optional
-        Choose from "lin", "log", "sync-log". See Notes for details. Default:
-        "log".
+    sampling_rate_hz : int
+        Sampling rate in Hz. Default: `None`.
+    type_of_chirp : ChirpType, optional
+        Type of chirp. Default: Logarithmic.
     range_hz : array-like with length 2
         Define range of chirp in Hz. When `None`, all frequencies between
         15 Hz and nyquist are taken. Default: `None`.
     length_seconds : float, optional
         Length of the generated signal in seconds. Default: 1.
-    sampling_rate_hz : int
-        Sampling rate in Hz. Default: `None`.
     peak_level_dbfs : float, optional
         Peak level of the signal in dBFS. Default: -10.
     number_of_channels : int, optional
@@ -207,13 +203,6 @@ def chirp(
       Swept-Sine: Theory, Application and Implementation.
 
     """
-    assert sampling_rate_hz is not None, "Sampling rate can not be None"
-    type_of_chirp = type_of_chirp.lower()
-    assert type_of_chirp in (
-        "lin",
-        "log",
-        "sync-log",
-    ), f"{type_of_chirp} is not a valid type."
     if range_hz is not None:
         assert (
             len(range_hz) == 2
@@ -235,28 +224,30 @@ def chirp(
         p_samples = 0
     l_samples = int(sampling_rate_hz * length_seconds + 0.5)
 
-    if type_of_chirp != "sync-log":
+    if type_of_chirp != ChirpType.SyncLog:
         t = np.linspace(0, length_seconds, l_samples)
 
     match type_of_chirp:
-        case "lin":
+        case ChirpType.Linear:
             k = (range_hz[1] - range_hz[0]) / length_seconds
             freqs = (range_hz[0] + k / 2 * t) * 2 * np.pi
             chirp_td = np.sin(freqs * t + phase_offset)
-        case "log":
+        case ChirpType.Logarithmic:
             k = np.exp(
                 (np.log(range_hz[1]) - np.log(range_hz[0])) / length_seconds
             )
             chirp_td = np.sin(
                 2 * np.pi * range_hz[0] / np.log(k) * (k**t - 1) + phase_offset
             )
-        case "sync-log":
+        case ChirpType.SyncLog:
             chirp_td, T = _sync_log_chirp(
                 range_hz, length_seconds, sampling_rate_hz
             )
+        case _:
+            raise ValueError("Unsupported chirp type")
 
     chirp_td = _normalize(
-        chirp_td, peak_level_dbfs, peak_normalization="peak", per_channel=True
+        chirp_td, peak_level_dbfs, peak_normalization=True, per_channel=True
     )
 
     if fade is not None:
@@ -283,28 +274,28 @@ def chirp(
         chirp_n = np.repeat(chirp_n, repeats=number_of_channels, axis=1)
 
     chirp_sig = Signal(None, chirp_n, sampling_rate_hz)
-    return (chirp_sig, T) if type_of_chirp == "sync-log" else chirp_sig
+    return (chirp_sig, T) if type_of_chirp == ChirpType.SyncLog else chirp_sig
 
 
 def dirac(
-    length_samples: int = 512,
+    length_samples: int,
+    sampling_rate_hz: int,
     delay_samples: int = 0,
     number_of_channels: int = 1,
-    sampling_rate_hz: int | None = None,
 ) -> ImpulseResponse:
     """Generates a dirac impulse (ImpulseResponse) with the specified length
     and sampling rate.
 
     Parameters
     ----------
-    length_samples : int, optional
-        Length in samples. Default: 512.
+    length_samples : int
+        Length in samples.
+    sampling_rate_hz : int
+        Sampling rate to be used.
     delay_samples : int, optional
         Delay of the impulse in samples. Default: 0.
     number_of_channels : int, optional
         Number of channels to be generated with the same impulse. Default: 1.
-    sampling_rate_hz : int
-        Sampling rate to be used. Default: `None`.
 
     Returns
     -------
@@ -333,103 +324,12 @@ def dirac(
     return imp
 
 
-def harmonic(
-    frequency_hz: float = 1000.0,
-    length_seconds: float = 1.0,
-    sampling_rate_hz: int | None = None,
-    peak_level_dbfs: float = -10.0,
-    number_of_channels: int = 1,
-    uncorrelated: bool = False,
-    fade: FadeType = FadeType.Logarithmic,
-    padding_end_seconds: float = 0.0,
-) -> Signal:
-    """Creates a multi-channel harmonic (sine) tone.
-
-    Parameters
-    ----------
-    frequency_hz : float, optional
-        Frequency (in Hz) for the sine tone. Default: 1000.
-    length_seconds : float, optional
-        Length of the generated signal in seconds. Default: 1.
-    sampling_rate_hz : int
-        Sampling rate in Hz. Default: `None`.
-    peak_level_dbfs : float, optional
-        Peak level of the signal in dBFS. Default: -10.
-    number_of_channels : int, optional
-        Number of channels to be created. Default: 1.
-    uncorrelated : bool, optional
-        When `True`, each channel gets a random phase shift so that the signals
-        are not perfectly correlated. Default: `False`.
-    fade : FadeType, optional
-        Type of fade done on the generated signal. By default, 5% of signal
-        length (without the padding in the end) is faded at the beginning and
-        end. Default: Logarithmic.
-    padding_end_seconds : float, optional
-        Padding at the end of signal. Default: 0.
-
-    Returns
-    -------
-    harmonic_sig : `Signal`
-        Harmonic tone signal.
-
-    """
-    assert sampling_rate_hz is not None, "Sampling rate can not be None"
-    assert (
-        frequency_hz < sampling_rate_hz // 2
-    ), "Frequency must be beneath nyquist frequency"
-    assert frequency_hz > 0, "Frequency must be bigger than 0"
-
-    if padding_end_seconds != 0:
-        assert padding_end_seconds > 0, "Padding has to be a positive time"
-        p_samples = int(padding_end_seconds * sampling_rate_hz)
-    else:
-        p_samples = 0
-    l_samples = int(sampling_rate_hz * length_seconds + 0.5)
-    n_vec = np.arange(l_samples, dtype=np.float64)[..., None]
-    n_vec = np.repeat(n_vec, number_of_channels, axis=-1)
-
-    # Frequency vector
-    n_vec *= frequency_hz / sampling_rate_hz * 2.0 * np.pi
-    # Apply phase shift
-    if uncorrelated:
-        n_vec += np.random.uniform(-np.pi, np.pi, (number_of_channels))
-    # Generate wave
-    td = np.sin(n_vec)
-
-    td = _normalize(
-        td, peak_level_dbfs, peak_normalization="peak", per_channel=True
-    )
-
-    if fade is not None:
-        fade_length = 0.05 * length_seconds
-        td = _fade(
-            s=td,
-            length_seconds=fade_length,
-            mode=fade,
-            sampling_rate_hz=sampling_rate_hz,
-            at_start=True,
-        )
-        td = _fade(
-            s=td,
-            length_seconds=fade_length,
-            mode=fade,
-            sampling_rate_hz=sampling_rate_hz,
-            at_start=False,
-        )
-
-    td = _pad_trim(td, l_samples + p_samples)
-
-    # Signal
-    harmonic_sig = Signal(None, td, sampling_rate_hz)
-    return harmonic_sig
-
-
 def oscillator(
-    frequency_hz: float = 1000.0,
+    frequency_hz: float,
+    sampling_rate_hz: int,
     length_seconds: float = 1.0,
-    mode: str = "harmonic",
+    mode: WaveForm = WaveForm.Harmonic,
     harmonic_cutoff_hz: float | None = None,
-    sampling_rate_hz: int | None = None,
     peak_level_dbfs: float = -10.0,
     number_of_channels: int = 1,
     uncorrelated: bool = False,
@@ -444,9 +344,8 @@ def oscillator(
         Frequency (in Hz). Default: 1000.
     length_seconds : float, optional
         Length of the generated signal in seconds. Default: 1.
-    mode : str, optional
-        Type of wave to generate. Choose from "harmonic", "square",
-        "triangle" or "sawtooth". Default: "harmonic".
+    mode : WaveForm, optional
+        Type of wave to generate. Default: Harmonic.
     harmonic_cutoff_hz : float, optional
         It is possible to pass a cutoff frequency for the harmonics. If `None`,
         they are computed up until before the nyquist frequency.
@@ -473,12 +372,6 @@ def oscillator(
         Wave signal.
 
     """
-    mode = mode.lower()
-    assert mode in ("harmonic", "square", "triangle", "sawtooth"), (
-        f"{mode} is not a valid mode. Choose harmonic, square, triangle "
-        + "or sawtooth"
-    )
-    assert sampling_rate_hz is not None, "Sampling rate can not be None"
     assert (
         frequency_hz < sampling_rate_hz // 2
     ), "Frequency must be beneath nyquist frequency"
@@ -509,34 +402,14 @@ def oscillator(
     # Get waveforms
     td = np.zeros((l_samples, number_of_channels))
     k = 1
-    if mode == "harmonic":
-        td = np.sin(
-            2 * np.pi * frequency_hz / sampling_rate_hz * n + phase_shift
-        )
-    elif mode == "square":
-        while (2 * k - 1) * frequency_hz < harmonic_cutoff_hz:
-            td += np.sin(
-                np.pi * 2 * (2 * k - 1) * frequency_hz / sampling_rate_hz * n
-                + phase_shift
-            ) / (2 * k - 1)
-            k += 1
-        td *= 4 / np.pi
-    elif mode == "sawtooth":
-        while k * frequency_hz < harmonic_cutoff_hz:
-            td += (
-                np.sin(
-                    np.pi * 2 * k * frequency_hz / sampling_rate_hz * n
-                    + phase_shift
-                )
-                / k
-                * (-1) ** k
+    match mode:
+        case WaveForm.Harmonic:
+            td = np.sin(
+                2 * np.pi * frequency_hz / sampling_rate_hz * n + phase_shift
             )
-            k += 1
-        td *= -(2 / np.pi)
-    else:
-        while (2 * k - 1) * frequency_hz < harmonic_cutoff_hz:
-            td += (
-                np.sin(
+        case WaveForm.Square:
+            while (2 * k - 1) * frequency_hz < harmonic_cutoff_hz:
+                td += np.sin(
                     np.pi
                     * 2
                     * (2 * k - 1)
@@ -544,15 +417,43 @@ def oscillator(
                     / sampling_rate_hz
                     * n
                     + phase_shift
+                ) / (2 * k - 1)
+                k += 1
+            td *= 4 / np.pi
+        case WaveForm.Sawtooth:
+            while k * frequency_hz < harmonic_cutoff_hz:
+                td += (
+                    np.sin(
+                        np.pi * 2 * k * frequency_hz / sampling_rate_hz * n
+                        + phase_shift
+                    )
+                    / k
+                    * (-1) ** k
                 )
-                / (2 * k - 1) ** 2
-                * (-1) ** k
-            )
-            k += 1
-        td *= -8 / np.pi**2
+                k += 1
+            td *= -(2 / np.pi)
+        case WaveForm.Triangle:
+            while (2 * k - 1) * frequency_hz < harmonic_cutoff_hz:
+                td += (
+                    np.sin(
+                        np.pi
+                        * 2
+                        * (2 * k - 1)
+                        * frequency_hz
+                        / sampling_rate_hz
+                        * n
+                        + phase_shift
+                    )
+                    / (2 * k - 1) ** 2
+                    * (-1) ** k
+                )
+                k += 1
+            td *= -8 / np.pi**2
+        case _:
+            raise ValueError("Unsupported wave form")
 
     td = _normalize(
-        td, peak_level_dbfs, peak_normalization="peak", per_channel=True
+        td, peak_level_dbfs, peak_normalization=True, per_channel=True
     )
 
     if fade is not None:
