@@ -20,6 +20,7 @@ from .._general_helpers import (
 from ._beamforming import BasePoints, _clean_sc_deconvolve
 from ..plots import general_matrix_plot
 from ..tools import to_db
+from .enums import SteeringVectorType
 
 try:
     from seaborn import set_style
@@ -644,22 +645,15 @@ class SteeringVector:
     """
 
     # ======== Constructor ====================================================
-    def __init__(self, formulation="true location"):
+    def __init__(
+        self, formulation: SteeringVectorType = SteeringVectorType.TrueLocation
+    ):
         """Initializes the SteeringVector using the passed formulation.
 
         Parameters
         ----------
-        formulation : str or callable, optional
-            Steering vector formulation to use. Choose from `'classic'`,
-            `'inverse'`, `'true power'` or `'true location'`. These
-            correspond to 1, 2, 3 and 4 of the reference paper, respectively.
-            For an own formulation, pass a callable with signature::
-
-                formulation(wave_number: numpy.ndarray, grid: Grid,
-                            microphone_array: MicArray) -> numpy.ndarray:
-
-            The output array should have shape (frequency, mic, grid) and be
-            complex-valued. Default: `'true location'`.
+        formulation : SteeringVectorType, optional
+            Steering vector formulation to use. Default: TrueLocation.
 
         Methods
         -------
@@ -673,26 +667,20 @@ class SteeringVector:
           Acoustics and Vibration. 2012. 10.1155/2012/292695.
 
         """
-        if type(formulation) is str:
-            formulation = formulation.lower()
-            if formulation == "classic":
+        match formulation:
+            case SteeringVectorType.Classic:
                 self.get_vector = classic_steering
-            elif formulation == "inverse":
+            case SteeringVectorType.Inverse:
                 self.get_vector = inverse_steering
-            elif formulation == "true power":
+            case SteeringVectorType.TruePower:
                 self.get_vector = true_power_steering
-            elif formulation == "true location":
+            case SteeringVectorType.TrueLocation:
                 self.get_vector = true_location_steering
-            else:
+            case _:
                 raise ValueError(
                     "Incorrect formulation. Use either classic, inverse, "
                     + "true power or true location"
                 )
-        else:
-            assert (
-                type(formulation) is callable
-            ), "Formulation should be a callable or a string"
-            self.get_vector = formulation
 
 
 class BaseBeamformer:

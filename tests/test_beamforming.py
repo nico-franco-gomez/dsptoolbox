@@ -55,9 +55,15 @@ class TestBeamformingModule:
         m.get_maximum_frequency_range()
 
     def test_steering_vector(self):
-        dsp.beamforming.SteeringVector(formulation="true location")
-        dsp.beamforming.SteeringVector(formulation="inverse")
-        dsp.beamforming.SteeringVector(formulation="true power")
+        dsp.beamforming.SteeringVector(
+            formulation=dsp.beamforming.SteeringVectorType.TrueLocation
+        )
+        dsp.beamforming.SteeringVector(
+            formulation=dsp.beamforming.SteeringVectorType.Inverse
+        )
+        dsp.beamforming.SteeringVector(
+            formulation=dsp.beamforming.SteeringVectorType.TruePower
+        )
 
         # Check for steering vector classic
         ma = dsp.beamforming.MicArray(self.points_uniform)
@@ -85,7 +91,9 @@ class TestBeamformingModule:
                     rt0 = dist(g.coordinates[i2, :], r0)
                     h[i0, i1, i2] = 1 / N * np.exp(-1j * kn * (rti - rt0))
 
-        st = dsp.beamforming.SteeringVector(formulation="classic")
+        st = dsp.beamforming.SteeringVector(
+            formulation=dsp.beamforming.SteeringVectorType.Classic
+        )
         h_intern = st.get_vector(k, g, ma)
 
         # Test for difference
@@ -137,7 +145,9 @@ class TestBeamformingModule:
         g = dsp.beamforming.Regular2DGrid(xval, yval, ["x", "y"], value3=zval)
 
         # Steering vector
-        st = dsp.beamforming.SteeringVector(formulation="true location")
+        st = dsp.beamforming.SteeringVector(
+            formulation=dsp.beamforming.SteeringVectorType.TrueLocation
+        )
 
         # Create beamformer and plot setting
         bf = dsp.beamforming.BeamformerDASFrequency(s, ma, g, st)
