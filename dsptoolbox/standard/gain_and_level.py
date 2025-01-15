@@ -273,6 +273,8 @@ def apply_gain(
         gain_linear = from_db(np.atleast_1d(gain_db), True)
         if len(gain_linear) == 1:
             gain_linear = gain_linear[0]
+        if filter.has_zpk:
+            filter.zpk[-1] *= gain_linear
         if filter.has_sos:
             filter.sos[-1, :3] *= gain_linear
         else:

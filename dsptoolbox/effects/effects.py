@@ -1016,7 +1016,6 @@ class Compressor(AudioEffect):
             log=False,
             xlabel="Input Gain / dB",
             ylabel="Output Gain / dB",
-            returns=True,
         )
         ax.plot(gains_db, gains_mixed)
         ax.axvline(
@@ -1526,7 +1525,6 @@ class DigitalDelay(AudioEffect):
             log=False,
             xlabel="Time / ms",
             ylabel="Amplitude [dB]",
-            returns=True,
         )
         ax.set_ylim([-100, 1])
         ax.set_title("Delay – Repetitions decay")

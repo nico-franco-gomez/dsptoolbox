@@ -583,9 +583,14 @@ class FilterBank:
             for b in bs.bands:
                 b.spectrum_method = SpectrumMethod.FFT
                 b.spectrum_scaling = SpectrumScaling.FFTBackward
-                f, sp = b.get_spectrum()
                 f, sp = _get_normalized_spectrum(
-                    f, sp, f_range_hz=range_hz, normalize=None
+                    *b.get_spectrum(),
+                    b.spectrum_scaling.is_amplitude_scaling(),
+                    f_range_hz=range_hz,
+                    normalize=None,
+                    smoothing=0.0,
+                    phase=False,
+                    calibrated_data=False,
                 )
                 specs.append(np.squeeze(sp))
             specs = np.array(specs).T
@@ -598,7 +603,6 @@ class FilterBank:
                 specs,
                 range_hz,
                 ylabel="Magnitude / dB",
-                returns=True,
                 labels=[f"Filter {h}" for h in range(bs.number_of_bands)],
                 range_y=range_y,
                 tight_layout=False,
@@ -607,16 +611,20 @@ class FilterBank:
             bs = self.filter_signal(d, mode=mode, activate_zi=test_zi)
             bs.spectrum_method = SpectrumMethod.FFT
             bs.spectrum_scaling = SpectrumScaling.FFTBackward
-            f, sp = bs.get_spectrum()
             f, sp = _get_normalized_spectrum(
-                f, np.squeeze(sp), f_range_hz=range_hz, normalize=None
+                *bs.get_spectrum(),
+                bs.spectrum_scaling.is_amplitude_scaling(),
+                f_range_hz=range_hz,
+                normalize=None,
+                smoothing=0.0,
+                phase=False,
+                calibrated_data=False,
             )
             fig, ax = general_plot(
                 f,
                 sp,
                 range_hz,
                 ylabel="Magnitude / dB",
-                returns=True,
                 labels=[
                     f"Sequential - Channel {n}"
                     for n in range(bs.number_of_channels)
@@ -628,14 +636,20 @@ class FilterBank:
             bs.spectrum_scaling = SpectrumScaling.FFTBackward
             f, sp = bs.get_spectrum()
             f, sp = _get_normalized_spectrum(
-                f, np.squeeze(sp), f_range_hz=range_hz, normalize=None
+                f,
+                sp,
+                bs.spectrum_scaling.is_amplitude_scaling(),
+                f_range_hz=range_hz,
+                normalize=None,
+                smoothing=0.0,
+                phase=False,
+                calibrated_data=False,
             )
             fig, ax = general_plot(
                 f,
                 sp,
                 range_hz,
                 ylabel="Magnitude / dB",
-                returns=True,
                 labels=["Summed"],
             )
         return fig, ax
@@ -717,7 +731,6 @@ class FilterBank:
                 phase,
                 range_hz,
                 ylabel="Phase / rad",
-                returns=True,
                 labels=[f"Filter {h}" for h in range(bs.number_of_bands)],
                 tight_layout=False,
             )
@@ -732,7 +745,6 @@ class FilterBank:
                 ph,
                 range_hz,
                 ylabel="Phase / rad",
-                returns=True,
                 labels=[
                     f"Sequential - Channel {n}"
                     for n in range(bs.number_of_channels)
@@ -749,7 +761,6 @@ class FilterBank:
                 ph,
                 range_hz,
                 ylabel="Phase / rad",
-                returns=True,
                 labels=["Summed"],
             )
         return fig, ax
@@ -830,7 +841,6 @@ class FilterBank:
                 gd,
                 range_hz,
                 ylabel="Group delay / ms",
-                returns=True,
                 labels=[f"Filter {h}" for h in range(bs.number_of_bands)],
                 tight_layout=False,
             )
@@ -843,7 +853,6 @@ class FilterBank:
                 gd[..., None],
                 range_hz,
                 ylabel="Group delay / ms",
-                returns=True,
                 labels=[
                     f"Sequential - Channel {n}"
                     for n in range(bs.number_of_channels)
@@ -858,7 +867,6 @@ class FilterBank:
                 gd[..., None],
                 range_hz,
                 ylabel="Group delay / ms",
-                returns=True,
                 labels=["Summed"],
             )
         return fig, ax

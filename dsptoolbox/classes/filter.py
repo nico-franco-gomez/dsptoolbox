@@ -32,6 +32,9 @@ from ..standard.enums import (
     FilterType,
     BiquadEqType,
     FilterPassType,
+    IirDesignMethod,
+    Window,
+    MagnitudeNormalization,
 )
 
 
@@ -81,28 +84,20 @@ class Filter:
             - freqs (float, array-like): array with len 2 when "bandpass"
               or "bandstop".
             - type_of_pass (FilterPassType).
-            - filter_design_method (str): Default: "butter". Supported methods
-              are: "butter", "bessel", "ellip", "cheby1", "cheby2".
+            - filter_design_method (IirDesignMethod): Default: Butterworth.
             - passband_ripple (float): maximum passband ripple in dB for
               "ellip" and "cheby1".
             - stopband_attenuation (float): minimum stopband attenuation in dB
               for "ellip" and "cheby2".
 
         For `fir`:
-            Keys: order, freqs, type_of_pass, filter_design_method (optional),
-            width (optional, necessary for "kaiser").
+            Keys: order, freqs, type_of_pass, window (optional).
 
             - order (int): Filter order, i.e., number of taps - 1.
             - freqs (float, array-like): array with len 2 when "bandpass"
               or "bandstop".
             - type_of_pass (FilterPassType).
-            - filter_design_method (str): Window to be used. Default:
-              "hamming". Supported types are: "boxcar", "triang",
-              "blackman", "hamming", "hann", "bartlett", "flattop",
-              "parzen", "bohman", "blackmanharris", "nuttall", "barthann",
-              "cosine", "exponential", "tukey", "taylor".
-            - width (float): estimated width of transition region in Hz for
-              kaiser window. Default: `None`.
+            - window (Window): Window to be used. Default: Hamming.
 
         For `biquad`:
             Keys: eq_type, freqs, gain, q.
@@ -138,11 +133,11 @@ class Filter:
         self.__set_filter_parameters(filter_type, filter_configuration)
 
     @staticmethod
-    def iir_design(
+    def new_iir_filter(
         order: int,
         frequency_hz: float | ArrayLike,
         type_of_pass: FilterPassType,
-        filter_design_method: str,
+        filter_design_method: IirDesignMethod,
         passband_ripple_db: float | None = None,
         stopband_attenuation_db: float | None = None,
         sampling_rate_hz: int | None = None,
@@ -158,8 +153,7 @@ class Filter:
             Frequency or frequencies of the filter in Hz.
         type_of_pass : FilterPassType
             Type of pass.
-        filter_design_method : str, {"butter", "bessel", "ellip", "cheby1",\
-            "cheby2"}
+        filter_design_method : IirDesignMethod
             Design method for the IIR filter.
         passband_ripple_db : float, None, optional
             Passband ripple in dB for "cheby1" and "ellip". Default: None.
@@ -188,7 +182,7 @@ class Filter:
         )
 
     @staticmethod
-    def biquad(
+    def new_biquad(
         eq_type: BiquadEqType,
         frequency_hz: float | ArrayLike,
         gain_db: float,
@@ -232,12 +226,11 @@ class Filter:
         )
 
     @staticmethod
-    def fir_design(
+    def new_fir_filter(
         order: int,
         frequency_hz: float | ArrayLike,
         type_of_pass: FilterPassType,
-        filter_design_method: str,
-        width_hz: float | None = None,
+        window: Window,
         sampling_rate_hz: int | None = None,
     ) -> "Filter":
         """Design an FIR filter using `scipy.signal.firwin`.
@@ -250,14 +243,8 @@ class Filter:
             Frequency or frequencies of the filter in Hz.
         type_of_pass : FilterPassType
             Type of filter pass.
-        filter_design_method : str, {"boxcar", "triang",\
-              "blackman", "hamming", "hann", "bartlett", "flattop",\
-              "parzen", "bohman", "blackmanharris", "nuttall", "barthann",\
-              "cosine", "exponential", "tukey", "taylor"}
-            Design method for the FIR filter.
-        width_hz : float, None, optional
-            estimated width of transition region in Hz for kaiser window.
-            Default: `None`.
+        window : Window
+            Window to apply to the FIR filter.
         sampling_rate_hz : int
             Sampling rate in Hz.
 
@@ -272,8 +259,7 @@ class Filter:
                 "order": order,
                 "freqs": frequency_hz,
                 "type_of_pass": type_of_pass,
-                "filter_design_method": filter_design_method,
-                "width": width_hz,
+                "window": window,
             },
             sampling_rate_hz,
         )
@@ -364,7 +350,7 @@ class Filter:
         )
 
     @staticmethod
-    def fir_from_file(path: str, channel: int = 0) -> "Filter":
+    def new_fir_from_file(path: str, channel: int = 0) -> "Filter":
         """Read an FIR filter from an audio file.
 
         Parameters
@@ -385,6 +371,7 @@ class Filter:
             ir.time_data[:, channel], [1.0], ir.sampling_rate_hz
         )
 
+    # ================
     def initialize_zi(self, number_of_channels: int = 1):
         """Initializes zi for steady-state filtering. The number of parallel
         zi's can be defined externally.
@@ -476,6 +463,10 @@ class Filter:
     @property
     def has_sos(self) -> bool:
         return hasattr(self, "sos")
+
+    @property
+    def has_zpk(self) -> bool:
+        return hasattr(self, "zpk")
 
     @property
     def zpk(self) -> list:
@@ -689,7 +680,9 @@ class Filter:
     ):
         if filter_type == FilterType.Iir:
             if "filter_design_method" not in filter_configuration:
-                filter_configuration["filter_design_method"] = "butter"
+                filter_configuration["filter_design_method"] = (
+                    IirDesignMethod.Butterworth
+                )
             if "passband_ripple" not in filter_configuration:
                 filter_configuration["passband_ripple"] = None
             if "stopband_attenuation" not in filter_configuration:
@@ -697,10 +690,12 @@ class Filter:
             self.zpk = sig.iirfilter(
                 N=filter_configuration["order"],
                 Wn=filter_configuration["freqs"],
-                btype=filter_configuration["type_of_pass"].name.lower(),
+                btype=filter_configuration["type_of_pass"].to_str(),
                 analog=False,
                 fs=self.sampling_rate_hz,
-                ftype=filter_configuration["filter_design_method"],
+                ftype=filter_configuration[
+                    "filter_design_method"
+                ].to_scipy_str(),
                 rp=filter_configuration["passband_ripple"],
                 rs=filter_configuration["stopband_attenuation"],
                 output="zpk",
@@ -708,20 +703,15 @@ class Filter:
             self.sos = sig.zpk2sos(*self.zpk)
         elif filter_type == FilterType.Fir:
             # Preparing parameters
-            if "filter_design_method" not in filter_configuration:
-                filter_configuration["filter_design_method"] = "hamming"
-            if "width" not in filter_configuration:
-                filter_configuration["width"] = None
+            if "window" not in filter_configuration:
+                filter_configuration["window"] = Window.Hamming
             # Filter creation
             self.ba = [
                 sig.firwin(
                     numtaps=filter_configuration["order"] + 1,
                     cutoff=filter_configuration["freqs"],
-                    window=filter_configuration["filter_design_method"],
-                    width=filter_configuration["width"],
-                    pass_zero=filter_configuration[
-                        "type_of_pass"
-                    ].name.lower(),
+                    window=filter_configuration["window"].to_scipy_format(),
+                    pass_zero=filter_configuration["type_of_pass"].to_str(),
                     fs=self.sampling_rate_hz,
                 ),
                 np.asarray([1.0]),
@@ -985,7 +975,7 @@ class Filter:
         self,
         length_samples: int = 512,
         range_hz=[20, 20e3],
-        normalize: str | None = None,
+        normalize: MagnitudeNormalization = MagnitudeNormalization.NoNormalization,
         show_info_box: bool = True,
         zero_phase: bool = False,
     ) -> tuple[Figure, Axes]:
@@ -1000,12 +990,8 @@ class Filter:
         range_hz : array-like with length 2, optional
             Range for which to plot the magnitude response.
             Default: [20, 20000].
-        normalize : str, optional
-            Mode for normalization, supported are "1k" for normalization
-            with value at frequency 1 kHz, "max" for normalization with
-            maximum value or "energy" for normalizing with average energy over
-            the given frequency range. Use `None` for no normalization.
-            Default: `None`.
+        normalize : MagnitudeNormalization, optional
+            Mode for normalization. Default: NoNormalization.
         show_info_box : bool, optional
             Shows an information box on the plot. Default: `True`.
         zero_phase : bool, optional
@@ -1098,7 +1084,6 @@ class Filter:
             range_x=range_hz,
             range_y=[ymin, ymax],
             ylabel="Group delay / ms",
-            returns=True,
         )
         if show_info_box:
             txt = self._get_metadata_string()
@@ -1206,7 +1191,7 @@ class Filter:
             z, p, k = sig.sos2zpk(self.sos)
         else:
             z, p, k = sig.tf2zpk(self.ba[0], self.ba[1])
-        fig, ax = _zp_plot(z, p, returns=True)
+        fig, ax = _zp_plot(z, p)
         ax.text(
             0.75,
             0.91,
@@ -1260,7 +1245,6 @@ class Filter:
             ylabel="Taps / 1",
             info_box=txt,
             tight_layout=True,
-            returns=True,
         )
 
     # ======== Saving and export ==============================================

@@ -460,7 +460,7 @@ class ShoeboxRoom(Room):
 
         """
         coordinates_m = np.squeeze(coordinates_m)
-        return np.all(coordinates_m <= self.dimensions_m)
+        return bool(np.all(coordinates_m <= self.dimensions_m))
 
     def get_mixing_time(
         self,
@@ -697,11 +697,7 @@ class ShoeboxRoom(Room):
             p_db = to_db(p, True)
             p_db -= np.max(p_db)
             plot = general_plot(
-                f,
-                p_db,
-                range_x=[f[0], f[-1]],
-                tight_layout=True,
-                returns=True,
+                f, p_db, range_x=[f[0], f[-1]], tight_layout=True
             )
             plot[1].set_ylabel("Magnitude / dBFS (norm @ Peak)")
         else:

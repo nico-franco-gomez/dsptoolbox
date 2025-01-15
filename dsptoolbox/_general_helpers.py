@@ -21,7 +21,7 @@ from warnings import warn
 from scipy.fft import next_fast_len
 import sys
 
-from .standard.enums import SpectrumScaling
+from .standard.enums import SpectrumScaling, MagnitudeNormalization
 
 
 def to_db(
@@ -186,12 +186,12 @@ def _calculate_window(
 def _get_normalized_spectrum(
     f,
     spectra: NDArray[np.complex128 | np.float64],
-    scaling: str = "amplitude",
-    f_range_hz=[20, 20000],
-    normalize: str | None = None,
-    smoothing: int = 0,
-    phase=False,
-    calibrated_data: bool = False,
+    is_amplitude_scaling: bool,
+    f_range_hz,
+    normalize: MagnitudeNormalization,
+    smoothing: int,
+    phase: bool,
+    calibrated_data: bool,
 ) -> (
     tuple[NDArray[np.float64], NDArray[np.float64]]
     | tuple[NDArray[np.float64], NDArray[np.float64], NDArray[np.float64]]
@@ -207,26 +207,22 @@ def _get_normalized_spectrum(
     spectra : NDArray[np.complex128 | np.complex128]
         Spectrum matrix. It can be the power or amplitude representation.
         Complex spectrum is assumed to have amplitude scaling.
-    scaling : str, optional
+    is_amplitude_scaling : bool
         Information about whether the spectrum is scaled as an amplitude or
-        power. Choose from "amplitude" or "power". Default: "amplitude".
+        power.
     f_range_hz : array-like with length 2
         Range of frequencies to get the normalized spectrum back.
-        Default: [20, 20e3].
-    normalize : str, optional
-        Normalize spectrum (per channel). Choose from "1k" (for 1 kHz),
-        "max" (maximum value), "energy" or `None` for no normalization. The
-        normalization for 1 kHz uses a linear interpolation for getting the
-        value at 1 kHz regardless of the frequency resolution. Default: `None`.
-    smoothing : int, optional
+    normalize : MagnitudeNormalization
+        Normalize spectrum (per channel).
+    smoothing : int
         1/smoothing-fractional octave band smoothing for magnitude spectra.
-        Pass `0` for no smoothing. Default: 0.
-    phase : bool, optional
+        Pass `0` for no smoothing.
+    phase : bool
         When `True`, phase spectra are also returned. Smoothing is also
-        applied to the unwrapped phase. Default: `False`.
-    calibrated_data : bool, optional
+        applied to the unwrapped phase.
+    calibrated_data : bool
         When `True`, it is assumed that the time data has been calibrated
-        to be in Pascal so that it is scaled by p0=20e-6 Pa. Default: `False`.
+        to be in Pascal so that it is scaled by p0=20e-6 Pa.
 
     Returns
     -------
@@ -239,17 +235,9 @@ def _get_normalized_spectrum(
 
     Notes
     -----
-    - The spectrum is clipped at -800 dB by default when standard or -400 dB
-      when welch method is used.
+    - The spectrum is clipped according to `tools.to_db()`.
 
     """
-    if normalize is not None:
-        normalize = normalize.lower()
-        assert normalize in (
-            "1k",
-            "max",
-            "energy",
-        ), f"{normalize} is not a valid normalization mode."
     # Shaping
     one_dimensional = False
     if spectra.ndim < 2:
@@ -262,16 +250,19 @@ def _get_normalized_spectrum(
             + "possible since the spectra are not complex"
         )
     # Factor
-    if scaling == "amplitude":
-        scale_factor = 20e-6 if calibrated_data and normalize is None else 1
-        amplitude_scaling = True
-    elif scaling == "power":
-        scale_factor = 4e-10 if calibrated_data and normalize is None else 1
-        amplitude_scaling = False
+    if is_amplitude_scaling:
+        scale_factor = (
+            20e-6
+            if calibrated_data
+            and normalize == MagnitudeNormalization.NoNormalization
+            else 1
+        )
     else:
-        raise ValueError(
-            f"{scaling} is not supported. Please select amplitude or "
-            + "power scaling"
+        scale_factor = (
+            4e-10
+            if calibrated_data
+            and normalize == MagnitudeNormalization.NoNormalization
+            else 1
         )
 
     if f_range_hz is not None:
@@ -291,37 +282,43 @@ def _get_normalized_spectrum(
     f = f[id1:id2]
 
     if smoothing != 0:
-        if scaling == "amplitude":
-            mag_spectra = _fractional_octave_smoothing(
-                mag_spectra, None, smoothing
-            )
-        else:  # Smoothing always in amplitude representation
+        if is_amplitude_scaling:
             mag_spectra = (
-                _fractional_octave_smoothing(mag_spectra**0.5, None, smoothing)
-                ** 2
+                _fractional_octave_smoothing(mag_spectra, None, smoothing)
+                if is_amplitude_scaling
+                else (
+                    # Smoothing always in amplitude representation
+                    _fractional_octave_smoothing(
+                        mag_spectra**0.5, None, smoothing
+                    )
+                    ** 2
+                )
             )
 
-    mag_spectra_db = to_db(mag_spectra / scale_factor, amplitude_scaling, 500)
+    mag_spectra_db = to_db(
+        mag_spectra / scale_factor, is_amplitude_scaling, 500
+    )
 
-    if normalize is not None:
-        if normalize == "1k":
-            normalization_db = np.array(
-                [
-                    _get_exact_gain_1khz(f, mag_spectra_db[:, i])
-                    for i in range(spectra.shape[1])
-                ]
-            )
-        elif normalize == "max":
-            normalization_db = np.max(mag_spectra_db, axis=0)
-        else:  # energy
-            normalization_db = to_db(
-                np.mean(
-                    mag_spectra**2.0 if amplitude_scaling else mag_spectra,
-                    axis=0,
-                ),
-                False,
-            )
-        mag_spectra_db -= normalization_db[None, :]
+    if normalize == MagnitudeNormalization.OneKhz:
+        normalization_db = np.array(
+            [
+                _get_exact_gain_1khz(f, mag_spectra_db[:, i])
+                for i in range(spectra.shape[1])
+            ]
+        )
+    elif normalize == MagnitudeNormalization.Max:
+        normalization_db = np.max(mag_spectra_db, axis=0)
+    elif normalize == MagnitudeNormalization.Energy:
+        normalization_db = to_db(
+            np.mean(
+                mag_spectra**2.0 if is_amplitude_scaling else mag_spectra,
+                axis=0,
+            ),
+            False,
+        )
+    else:
+        normalization_db = np.zeros(mag_spectra_db.shape[1])
+    mag_spectra_db -= normalization_db[None, :]
 
     if phase:
         phase_spectra = np.angle(spectra)

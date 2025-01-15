@@ -23,7 +23,7 @@ from .._general_helpers import (
     _get_smoothing_factor_ema,
 )
 from ..tools import from_db
-from .enums import FilterType
+from .enums import FilterType, SpectrumType, InterpolationDomain
 
 
 def load_pkl_object(path: str):
@@ -470,9 +470,14 @@ def spectral_difference(
         inp1.apply_octave_smoothing(octave_fraction_smoothing)
         inp2.apply_octave_smoothing(octave_fraction_smoothing)
 
-    inp2.set_interpolator_parameters("magphase" if complex else "power")
+    inp2.set_interpolator_parameters(
+        InterpolationDomain.MagnitudePhase
+        if complex
+        else InterpolationDomain.Power
+    )
     mag2 = inp2.get_interpolated_spectrum(
-        inp1.frequency_vector_hz, "complex" if complex else "magnitude"
+        inp1.frequency_vector_hz,
+        SpectrumType.Complex if complex else SpectrumType.Magnitude,
     )
 
     if dynamic_range_db is not None:

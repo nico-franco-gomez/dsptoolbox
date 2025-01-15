@@ -32,6 +32,7 @@ from .standard import (
     merge_fir_filters,
     spectral_difference,
     append_spectra,
+    # Enums
     SpectrumScaling,
     SpectrumMethod,
     FilterType,
@@ -39,6 +40,14 @@ from .standard import (
     BiquadEqType,
     FilterBankMode,
     FilterPassType,
+    IirDesignMethod,
+    MagnitudeNormalization,
+    SpectrumType,
+    InterpolationDomain,
+    InterpolationScheme,
+    InterpolationEdgeHandling,
+    FrequencySpacing,
+    Window,
 )
 from .classes import (
     Filter,
@@ -113,6 +122,14 @@ __all__ = [
     "BiquadEqType",
     "FilterBankMode",
     "FilterPassType",
+    "MagnitudeNormalization",
+    "SpectrumType",
+    "InterpolationDomain",
+    "InterpolationScheme",
+    "InterpolationEdgeHandling",
+    "FrequencySpacing",
+    "IirDesignMethod",
+    "Window",
 ]
 
 __version__ = "0.5dev"

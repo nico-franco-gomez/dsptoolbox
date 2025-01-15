@@ -30,7 +30,11 @@ from .._general_helpers import (
 from ..standard._standard_backend import _group_delay_direct
 from ..standard._spectral_methods import _welch, _stft, _csm_welch, _csm_fft
 from ..tools import to_db
-from ..standard.enums import SpectrumScaling, SpectrumMethod
+from ..standard.enums import (
+    SpectrumScaling,
+    SpectrumMethod,
+    MagnitudeNormalization,
+)
 
 
 class Signal:
@@ -304,7 +308,7 @@ class Signal:
         return self.time_data_imaginary is not None
 
     @property
-    def constrain_amplitude(self) -> bool | None:
+    def constrain_amplitude(self) -> bool:
         return self.__constrain_amplitude
 
     @constrain_amplitude.setter
@@ -916,7 +920,7 @@ class Signal:
     def plot_magnitude(
         self,
         range_hz=[20, 20e3],
-        normalize: str | None = "1k",
+        normalize: MagnitudeNormalization = MagnitudeNormalization.NoNormalization,
         range_db=None,
         smoothing: int = 0,
         show_info_box: bool = False,
@@ -929,13 +933,8 @@ class Signal:
         range_hz : array-like with length 2, optional
             Range for which to plot the magnitude response.
             Default: [20, 20000].
-        normalize : str ["1k", "max", "energy"], optional
-            Mode for normalization, supported are "1k" for normalization
-            with value at frequency 1 kHz, "max" for normalization with
-            maximum value or "energy" for normalization with average energy
-            over the whole spectrum. Use `None` for no normalization.
-            Spectrum uses then scaling set in the `set_spectrum_parameters()`
-            method. Default: "1k".
+        normalize : MagnitudeNormalization, optional
+            Mode for normalization. Default: NoNormalization.
         range_db : array-like with length 2, optional
             Range in dB for which to plot the magnitude response.
             Default: `None`.
@@ -975,16 +974,14 @@ class Signal:
         f, mag_db = _get_normalized_spectrum(
             f=f,
             spectra=sp,
-            scaling=(
-                "amplitude"
-                if self.spectrum_scaling.is_amplitude_scaling()
-                else "power"
-            ),
+            is_amplitude_scaling=self.spectrum_scaling.is_amplitude_scaling(),
             f_range_hz=range_hz,
             normalize=normalize,
             smoothing=smoothing,
+            phase=False,
             calibrated_data=self.calibrated_signal,
         )
+
         if show_info_box:
             txt = "Info"
             txt += f"""\nMode: {self._spectrum_parameters['method']}"""
@@ -993,28 +990,22 @@ class Signal:
             txt += f"""\nSmoothing: {smoothing}"""
         else:
             txt = None
-        if normalize is not None:
-            normalize = normalize.lower()
-            assert normalize in (
-                "1k",
-                "max",
-                "energy",
-            ), "No valid normalization passed"
-            if normalize == "1k":
+
+        match normalize:
+            case MagnitudeNormalization.NoNormalization:
+                y_extra = "" if self.calibrated_signal else "FS"
+            case MagnitudeNormalization.OneKhz:
                 y_extra = " (normalized @ 1 kHz)"
-            elif normalize == "max":
+            case MagnitudeNormalization.Max:
                 y_extra = " (normalized @ peak)"
-            elif normalize == "energy":
+            case MagnitudeNormalization.Energy:
                 y_extra = " (normalized with average energy)"
-        else:
-            y_extra = "" if self.calibrated_signal else "FS"
         fig, ax = general_plot(
             f,
             mag_db,
             range_hz,
             ylabel="Magnitude / dB" + y_extra,
             info_box=txt,
-            returns=True,
             labels=[f"Channel {n}" for n in range(self.number_of_channels)],
             range_y=range_db,
         )
@@ -1039,7 +1030,6 @@ class Signal:
             sharex=True,
             ylabels=[f"Channel {n}" for n in range(self.number_of_channels)],
             xlabels="Time / s",
-            returns=True,
         )
 
         plot_complex = self.time_data_imaginary is not None
@@ -1144,7 +1134,6 @@ class Signal:
                 for n in range(self.number_of_channels)
             ],
             xlabels="Time / s",
-            returns=True,
         )
 
         add_to_peak = 1  # Add 1 dB for better plotting
@@ -1245,7 +1234,6 @@ class Signal:
             range_hz,
             labels=[f"Channel {n}" for n in range(self.number_of_channels)],
             ylabel="Group delay / ms",
-            returns=True,
         )
         return fig, ax
 
@@ -1314,7 +1302,6 @@ class Signal:
             xlog=False,
             ylog=logfreqs,
             colorbar=True,
-            returns=True,
         )
         return fig, ax
 
@@ -1408,7 +1395,6 @@ class Signal:
             range_x=range_hz,
             labels=[f"Channel {n}" for n in range(self.number_of_channels)],
             ylabel="Phase / rad",
-            returns=True,
         )
         return fig, ax
 
@@ -1435,7 +1421,7 @@ class Signal:
 
         """
         f, csm = self.get_csm()
-        fig, ax = _csm_plot(f, csm, range_hz, logx, with_phase, returns=True)
+        fig, ax = _csm_plot(f, csm, range_hz, logx, with_phase)
         return fig, ax
 
     # ======== Saving and copy ================================================

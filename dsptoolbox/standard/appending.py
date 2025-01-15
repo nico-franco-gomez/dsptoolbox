@@ -8,6 +8,7 @@ from ..classes import (
     Spectrum,
 )
 from .._general_helpers import _pad_trim
+from .enums import SpectrumType
 
 
 def append_signals(
@@ -204,7 +205,12 @@ def append_spectra(
     for s in spectra:
         spec[:, ch_ind : ch_ind + s.number_of_channels] = (
             s.get_interpolated_spectrum(
-                freqs, "complex" if complex_append else "magnitude"
+                freqs,
+                (
+                    SpectrumType.Complex
+                    if complex_append
+                    else SpectrumType.Magnitude
+                ),
             )
         )
         ch_ind += s.number_of_channels

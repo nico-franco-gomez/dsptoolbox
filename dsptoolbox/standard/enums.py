@@ -523,3 +523,9 @@ class FrequencySpacing(Enum):
     Linear = auto()
     Other = auto()
 
+
+# ====== Other
+class FadeType(Enum):
+    Linear = auto()
+    Exponential = auto()
+    Logarithmic = auto()
