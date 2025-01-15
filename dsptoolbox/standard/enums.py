@@ -1,6 +1,7 @@
 from numpy.typing import NDArray
 import numpy as np
 from enum import Enum, auto
+from scipy.signal.windows import get_window as get_window_scipy
 
 
 class SpectrumMethod(Enum):
@@ -231,12 +232,29 @@ class SpectrumScaling(Enum):
 
 
 class FilterCoefficientsType(Enum):
+    """Coefficients accepted by scipy.
+
+    - Zpk: zero, poles, gain.
+    - Sos: second-order sections.
+    - Ba: feed-forward and feed-backward coefficients.
+
+    """
+
     Zpk = auto()
     Sos = auto()
     Ba = auto()
 
 
 class FilterType(Enum):
+    """Filter types supported for filter class.
+
+    - IIR.
+    - FIR.
+    - Biquad: second-order IIR filter. Used commonly for EQ's.
+    - Other: can be either IIR or FIR. This is checked after initialization.
+
+    """
+
     Iir = auto()
     Fir = auto()
     Biquad = auto()
@@ -279,3 +297,229 @@ class FilterPassType(Enum):
     Highpass = auto()
     Bandpass = auto()
     Bandstop = auto()
+
+    def __str__(self):
+        return self.name.lower()
+
+    def to_str(self):
+        return str(self)
+
+
+class IirDesignMethod(Enum):
+    """Methods for IIR filter design:
+
+    - Butterworth: maximally flat in the passband. Good for general use.
+    - Bessel: mild rolloff but with approximately linear phase response in the
+      passband.
+    - Chebyshev1: ripples in the passband, monotonically decreasing in the
+      stopband. Steep Rolloff.
+    - Chebyshev2: flat in the passband, ripples in the stopband.
+    - Elliptic: ripples in passband and stopband. Very steep rolloff.
+
+    """
+
+    Bessel = auto()
+    Butterworth = auto()
+    Chebyshev1 = auto()
+    Chebyshev2 = auto()
+    Elliptic = auto()
+
+    def to_scipy_str(self) -> str:
+        """Return the scipy string variant."""
+        if self == IirDesignMethod.Bessel:
+            return "bessel"
+        if self == IirDesignMethod.Butterworth:
+            return "butter"
+        if self == IirDesignMethod.Chebyshev1:
+            return "cheby1"
+        if self == IirDesignMethod.Chebyshev2:
+            return "cheby2"
+        if self == IirDesignMethod.Elliptic:
+            return "ellip"
+
+
+class Window(Enum):
+    """Different window types. They are computed via
+    `scipy.signal.windows.get_window()`.
+
+    """
+
+    Boxcar = auto()
+    Triang = auto()
+    Blackman = auto()
+    Hamming = auto()
+    Hann = auto()
+    Bartlett = auto()
+    Flattop = auto()
+    Parzen = auto()
+    Bohman = auto()
+    Blackmanharris = auto()
+    Nuttall = auto()
+    Barthann = auto()
+    Cosine = auto()
+    Exponential = auto()
+    Tukey = auto()
+    Taylor = auto()
+    Lanczos = auto()
+    Kaiser = auto()
+    KaiserBesselDerived = auto()
+    Gaussian = auto()
+    GeneralCosine = auto()
+    GeneralGaussian = auto()
+    GeneralHamming = auto()
+    Dpss = auto()
+    Chebwin = auto()
+
+    @property
+    def extra_parameter(self):
+        return self.__extra_parameter
+
+    def with_extra_parameter(
+        self, extra_parameter: float | tuple[float, float]
+    ):
+        """Add the extra parameter parameter to the window. Windows that
+        require an extra parameter are:
+        - Kaiser
+        - KaiserBesselDerived
+        - Gaussian
+        - GeneralCosine
+        - GeneralGaussian (two parameters)
+        - GeneralHamming
+        - Dpss
+        - Chebwin
+
+        Refer to `scipy.signal.windows` for more information.
+
+        """
+        self.__extra_parameter = extra_parameter
+        return self
+
+    def to_scipy_format(self):
+        """Parse to format for passing to
+        `scipy.signal.windows.get_window()`.
+
+        """
+        if self.needs_extra_parameter():
+            if self == Window.GeneralGaussian:
+                return (
+                    self.__to_str(),
+                    self.extra_parameter[0],
+                    self.extra_parameter[1],
+                )
+            return (self.__to_str(), self.extra_parameter)
+        return self.__to_str()
+
+    def __to_str(self) -> str:
+        if self == Window.KaiserBesselDerived:
+            return "kaiser_bessel_derived"
+        if self == Window.GeneralCosine:
+            return "general_cosine"
+        if self == Window.GeneralGaussian:
+            return "general_gaussian"
+        if self == Window.GeneralHamming:
+            return "general_hamming"
+
+        return self.name.lower()
+
+    def needs_extra_parameter(self) -> bool:
+        """When True, window type requires a new parameter."""
+        return self in (
+            Window.Kaiser,
+            Window.KaiserBesselDerived,
+            Window.Gaussian,
+            Window.GeneralCosine,
+            Window.GeneralGaussian,  # 2 parameters
+            Window.GeneralHamming,
+            Window.Dpss,
+            Window.Chebwin,
+        )
+
+    def __call__(self, n_values: int, symmetric: bool):
+        """Get window values from `scipy.signal.windows.get_window()`."""
+        return get_window_scipy(
+            self.to_scipy_format(), n_values, not symmetric
+        )
+
+
+class MagnitudeNormalization(Enum):
+    """Normalization for magnitude responses:
+
+    - OneKhz: @ 1 kHz.
+    - Max: @ peak.
+    - Energy: use average energy (per frequency) as normalization value.
+    - NoNormalization.
+
+    """
+
+    OneKhz = auto()
+    Max = auto()
+    Energy = auto()
+    NoNormalization = auto()
+
+
+class SpectrumType(Enum):
+    """Spectrum representations."""
+
+    Power = auto()
+    Magnitude = auto()
+    Complex = auto()
+    Db = auto()
+
+
+class InterpolationDomain(Enum):
+    """For Complex and MagnitudePhase domains, the underlying data must be
+    complex.
+
+    """
+
+    Magnitude = auto()
+    Power = auto()
+    Complex = auto()
+    MagnitudePhase = auto()
+
+    def is_complex(self) -> bool:
+        return self in (
+            InterpolationDomain.Complex,
+            InterpolationDomain.MagnitudePhase,
+        )
+
+    def is_linear(self) -> bool:
+        return self != InterpolationDomain.Power
+
+
+class InterpolationScheme(Enum):
+    """The interpolation schemes are:
+
+    - Linear: linear interpolation. It is the fastest and most stable.
+    - Cubic: CubicSplines. It delivers smoother results, but can lead\
+      to overshooting and other interpolation artifacts.
+    - Pchip: PchipInterpolator. It is a polynomial interpolator that\
+      avoids overshooting between interpolation points.
+
+    """
+
+    Linear = auto()
+    Cubic = auto()
+    Pchip = auto()
+
+
+class InterpolationEdgeHandling(Enum):
+    """Handling of edges during interpolation:
+
+    - ZeroPad: fills with 0 values the frequency bins outside the range.
+    - Extend: uses the values at the edges of the spectrum.
+    - Error: raises an assertion error if frequency bins outside the saved
+      range are requested.
+
+    """
+
+    ZeroPad = auto()
+    Extend = auto()
+    Error = auto()
+
+
+class FrequencySpacing(Enum):
+    Logarithmic = auto()
+    Linear = auto()
+    Other = auto()
+

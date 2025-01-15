@@ -32,6 +32,14 @@ from .enums import (
     BiquadEqType,
     FilterBankMode,
     FilterPassType,
+    IirDesignMethod,
+    MagnitudeNormalization,
+    SpectrumType,
+    InterpolationDomain,
+    InterpolationScheme,
+    InterpolationEdgeHandling,
+    FrequencySpacing,
+    Window,
 )
 
 __all__ = [
@@ -71,4 +79,12 @@ __all__ = [
     "BiquadEqType",
     "FilterBankMode",
     "FilterPassType",
+    "IirDesignMethod",
+    "MagnitudeNormalization",
+    "SpectrumType",
+    "InterpolationDomain",
+    "InterpolationScheme",
+    "InterpolationEdgeHandling",
+    "FrequencySpacing",
+    "Window",
 ]
