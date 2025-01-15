@@ -10,15 +10,16 @@ from warnings import warn
 from ..plots import general_plot
 from ..transfer_functions._transfer_functions import _trim_ir
 from ..tools import from_db, to_db, time_smoothing
+from .enums import ReverbTime
 
 
 def _reverb(
     h: NDArray[np.float64],
     fs_hz,
     mode,
-    ir_start: int | None = None,
-    return_ir_start: bool = False,
-    automatic_trimming: bool = True,
+    ir_start: int | None,
+    return_ir_start: bool,
+    automatic_trimming: bool,
 ):
     """Computes reverberation time of signal.
 
@@ -28,16 +29,15 @@ def _reverb(
         Time series.
     fs_hz : int
         Sampling rate in Hz.
-    mode : str
+    mode : ReverbTime
         Parameter for the reverberation time.
-    ir_start : int, optional
+    ir_start : int
         When not `None`, the index is used as the start of the impulse
-        response. Default: `None`.
-    return_ir_start : bool, optional
+        response.
+    return_ir_start : bool
         When `True`, it returns not only reverberation time but also the
         index of the sample with the start of the impulse response.
-        Default: `False`.
-    trim_ending : bool, optional
+    trim_ending : bool
         When `True`, signal's power is trimmed to the first point falling below
         a threshold before computing the energy decay curve.
 
@@ -60,25 +60,24 @@ def _reverb(
     time_vector = np.linspace(0, len(edc) / fs_hz, len(edc))
 
     # Reverb
-    if mode == "TOPT":
+    if mode == ReverbTime.Adaptive:
         time, corr = _obtain_optimal_reverb_time(time_vector, edc)
         if return_ir_start:
             return time, corr, ir_start
         return time, corr
 
-    mode = mode.upper()
-    if mode == "T20":
+    if mode == ReverbTime.T20:
         p, corr = _get_polynomial_coeffs_from_edc(time_vector, edc, -5, -25)
-    elif mode == "T30":
+    elif mode == ReverbTime.T30:
         p, corr = _get_polynomial_coeffs_from_edc(time_vector, edc, -5, -35)
-    elif mode == "T60":
+    elif mode == ReverbTime.T60:
         p, corr = _get_polynomial_coeffs_from_edc(time_vector, edc, -5, -65)
-    elif mode == "EDT":
+    elif mode == ReverbTime.EDT:
         p, corr = _get_polynomial_coeffs_from_edc(time_vector, edc, 0, -10)
     else:
         raise ValueError("Supported modes are only T20, T30, T60 and EDT")
 
-    factor = 60 if mode != "EDT" else 10
+    factor = 60 if mode != ReverbTime.EDT else 10
 
     if return_ir_start:
         return (factor / np.abs(p[0])), corr, ir_start

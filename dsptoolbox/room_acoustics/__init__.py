@@ -23,6 +23,7 @@ from .room_acoustics import (
     ShoeboxRoom,
     descriptors,
 )
+from .enums import ReverbTime, RoomAcousticsDescriptor
 
 __all__ = [
     "reverb_time",
@@ -32,4 +33,6 @@ __all__ = [
     "generate_synthetic_rir",
     "ShoeboxRoom",
     "descriptors",
+    "ReverbTime",
+    "RoomAcousticsDescriptor",
 ]

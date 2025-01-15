@@ -28,11 +28,12 @@ from ..standard.enums import (
     SpectrumMethod,
     FilterBankMode,
 )
+from .enums import ReverbTime, RoomAcousticsDescriptor
 
 
 def reverb_time(
     signal: ImpulseResponse | MultiBandSignal,
-    mode: str = "T20",
+    mode: ReverbTime = ReverbTime.Adaptive,
     ir_start: int | NDArray[np.int_] | None = None,
     automatic_trimming: bool = True,
 ) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
@@ -42,9 +43,8 @@ def reverb_time(
     ----------
     signal : `ImpulseResponse` or `MultiBandSignal`
         IR for which to compute reverberation times.
-    mode : str, optional
-        Reverberation time mode. Options are `'Topt'`, `'T20'`, `'T30'`,
-        `'T60'` or `'EDT'`. Default: `'Topt'`.
+    mode : ReverbTime, optional
+        Reverberation time mode. Default: Topt.
     ir_start : int or array-like, NDArray[np.int_], optional
         If it is an integer, it is assumed as the start of the IR for all
         channels (and all bands). For more specific cases, pass a 1d-array
@@ -102,12 +102,6 @@ def reverb_time(
     """
     if type(signal) is ImpulseResponse:
         ir_start = _check_ir_start_reverb(signal, ir_start)
-        mode = mode.upper()
-        valid_modes = ("TOPT", "T20", "T30", "T60", "EDT")
-        assert mode in valid_modes, (
-            f"{mode} is not valid. Use either one of "
-            + "these: Topt, T20, T30, T60 or EDT"
-        )
         reverberation_times = np.zeros((signal.number_of_channels))
         correlation_coefficients = np.zeros((signal.number_of_channels))
         for n in range(signal.number_of_channels):
@@ -475,7 +469,7 @@ def generate_synthetic_rir(
 
 def descriptors(
     rir: ImpulseResponse | MultiBandSignal,
-    mode: str = "d50",
+    descriptor: RoomAcousticsDescriptor,
     automatic_trimming_rir: bool = True,
 ):
     """Returns a desired room acoustics descriptor from an RIR.
@@ -486,16 +480,8 @@ def descriptors(
         Room impulse response. If it is a multi-channel signal, the descriptor
         given back has the shape (channel). If it is a `MultiBandSignal`,
         the descriptor has shape (band, channel).
-    mode : {'d50', 'c80', 'br', 'ts'} str, optional
-        This defines the descriptor to be computed. Options are:
-        - `'d50'`: Definition. It takes values between [0, 1] and should
-          correlate (positively) with speech inteligibility.
-        - `'c80'`: Clarity. It is a value in dB. The higher, the more energy
-          arrives in the early part of the RIR compared to the later part.
-        - `'br'`: Bass-ratio. It exposes the ratio of reverberation times
-          of the lower-frequency octave bands (125, 250) to the higher ones
-          (500, 1000). T20 is always used.
-        - `'ts'`: Center time. It is the central time computed of the RIR.
+    descriptor : RoomAcousticsDescriptor
+        This defines the descriptor to be computed.
     automatic_trimming_rir : bool, optional
         When `True`, the RIR is automatically trimmed after a certain energy
         threshold relative to the peak value has been surpassed. See notes
@@ -515,19 +501,12 @@ def descriptors(
       Refer to the documentation for more details.
 
     """
-    mode = mode.lower()
-    assert mode in (
-        "d50",
-        "c80",
-        "br",
-        "ts",
-    ), "Given mode is not in the available descriptors"
     if isinstance(rir, ImpulseResponse):
-        if mode == "d50":
+        if descriptor == RoomAcousticsDescriptor.D50:
             func = _d50_from_rir
-        elif mode == "c80":
+        elif descriptor == RoomAcousticsDescriptor.C80:
             func = _c80_from_rir
-        elif mode == "ts":
+        elif descriptor == RoomAcousticsDescriptor.CenterTime:
             func = _ts_from_rir
         else:
             # Bass ratio
@@ -541,13 +520,13 @@ def descriptors(
                 automatic_trimming_rir,
             )
     elif type(rir) is MultiBandSignal:
-        assert mode != "br", (
+        assert descriptor != RoomAcousticsDescriptor.BassRatio, (
             "Bass-ratio is not a valid descriptor to be used on a "
             + "MultiBandSignal. Pass a RIR as Signal to compute it"
         )
         desc = np.zeros((rir.number_of_bands, rir.number_of_channels))
         for ind, b in enumerate(rir):
-            desc[ind, :] = descriptors(b, mode=mode)
+            desc[ind, :] = descriptors(b, descriptor=descriptor)
     else:
         raise TypeError("RIR must be of type Signal or MultiBandSignal")
     return desc
