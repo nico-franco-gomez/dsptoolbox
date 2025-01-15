@@ -78,31 +78,28 @@ class TestTransferFunctionsModule:
         )
         h = dsp.pad_trim(h, 2**13)
 
-        dsp.transfer_functions.window_ir(
-            h, 2**11, window_type="hann", at_start=True
-        )
-        dsp.transfer_functions.window_ir(
-            h, 2**11, window_type="hann", at_start=False
-        )
-        dsp.transfer_functions.window_ir(
-            h, 2**15, window_type="hann", at_start=True
-        )
+        dsp.transfer_functions.window_ir(h, 2**11, at_start=True)
+        dsp.transfer_functions.window_ir(h, 2**11, at_start=False)
+        dsp.transfer_functions.window_ir(h, 2**15, at_start=True)
         # Try window with extra parameters
-        dsp.transfer_functions.window_ir(
-            h, 2**12, window_type=("kaiser", 10), at_start=True
-        )
         dsp.transfer_functions.window_ir(
             h,
             2**12,
-            adaptive=False,
-            window_type=("kaiser", 10),
+            window_type=dsp.Window.Kaiser.with_extra_parameter(10),
             at_start=True,
         )
         dsp.transfer_functions.window_ir(
             h,
             2**12,
             adaptive=False,
-            window_type=("kaiser", 10),
+            window_type=dsp.Window.Kaiser.with_extra_parameter(10),
+            at_start=True,
+        )
+        dsp.transfer_functions.window_ir(
+            h,
+            2**12,
+            adaptive=False,
+            window_type=dsp.Window.Kaiser.with_extra_parameter(10),
             at_start=True,
             offset_samples=200,
         )
@@ -110,7 +107,7 @@ class TestTransferFunctionsModule:
             h,
             2**12,
             adaptive=False,
-            window_type=["hann", "hamming"],
+            window_type=[dsp.Window.Hann, dsp.Window.Hamming],
             at_start=False,
             offset_samples=200,
         )
@@ -118,7 +115,10 @@ class TestTransferFunctionsModule:
             h,
             2**12,
             adaptive=True,
-            window_type=["hann", ("kaiser", 10)],
+            window_type=[
+                dsp.Window.Hann,
+                dsp.Window.Kaiser.with_extra_parameter(10),
+            ],
             at_start=False,
             offset_samples=200,
             left_to_right_flank_length_ratio=0.5,
@@ -127,7 +127,10 @@ class TestTransferFunctionsModule:
             h,
             2**15,
             adaptive=True,
-            window_type=["hann", ("kaiser", 10)],
+            window_type=[
+                dsp.Window.Hann,
+                dsp.Window.Kaiser.with_extra_parameter(10),
+            ],
             at_start=False,
             offset_samples=200,
             left_to_right_flank_length_ratio=0.5,
@@ -140,18 +143,20 @@ class TestTransferFunctionsModule:
         # ============ Even
         # Shorter
         h_, _ = dsp.transfer_functions.window_centered_ir(
-            h, len(h) - 10, window_type="hann"
+            h, len(h) - 10, window_type=dsp.Window.Hann
         )
         assert np.argmax(h_.time_data[:, 0]) == np.argmax(h_.window[:, 0])
         # Longer
         h_, _ = dsp.transfer_functions.window_centered_ir(
-            h, len(h) + 10, window_type="hann"
+            h, len(h) + 10, window_type=dsp.Window.Hann
         )
         assert np.argmax(h_.time_data[:, 0]) == np.argmax(h_.window[:, 0])
 
         # Try window with extra parameters
         h_, _ = dsp.transfer_functions.window_centered_ir(
-            h, len(h), window_type=("gauss", 5000)
+            h,
+            len(h),
+            window_type=dsp.Window.Gaussian.with_extra_parameter(5000),
         )
         assert np.argmax(h_.time_data[:, 0]) == np.argmax(
             h_.window[:, 0]
@@ -160,19 +165,17 @@ class TestTransferFunctionsModule:
         # ============= Odd
         # Shorter
         h.time_data = h.time_data[:-1]
-        h_, _ = dsp.transfer_functions.window_centered_ir(
-            h, len(h) - 10, window_type="hann"
-        )
+        h_, _ = dsp.transfer_functions.window_centered_ir(h, len(h) - 10)
         assert np.argmax(h_.time_data[:, 0]) == np.argmax(h_.window[:, 0])
         # Longer
-        h_, _ = dsp.transfer_functions.window_centered_ir(
-            h, len(h) + 10, window_type="hann"
-        )
+        h_, _ = dsp.transfer_functions.window_centered_ir(h, len(h) + 10)
         assert np.argmax(h_.time_data[:, 0]) == np.argmax(h_.window[:, 0])
 
         # Try window with extra parameters
         h_, _ = dsp.transfer_functions.window_centered_ir(
-            h, len(h), window_type=("gauss", 5000)
+            h,
+            len(h),
+            window_type=dsp.Window.Gaussian.with_extra_parameter(5000),
         )
         assert np.argmax(h_.time_data[:, 0]) == np.argmax(
             h_.window[:, 0]
@@ -181,19 +184,17 @@ class TestTransferFunctionsModule:
         # ============= Impulse on the second half, odd
         # Shorter
         h.time_data = h.time_data[::-1]
-        h_, _ = dsp.transfer_functions.window_centered_ir(
-            h, len(h) - 10, window_type="hann"
-        )
+        h_, _ = dsp.transfer_functions.window_centered_ir(h, len(h) - 10)
         assert np.argmax(h_.time_data[:, 0]) == np.argmax(h_.window[:, 0])
         # Longer
-        h_, _ = dsp.transfer_functions.window_centered_ir(
-            h, len(h) + 10, window_type="hann"
-        )
+        h_, _ = dsp.transfer_functions.window_centered_ir(h, len(h) + 10)
         assert np.argmax(h_.time_data[:, 0]) == np.argmax(h_.window[:, 0])
 
         # Try window with extra parameters
         h_, _ = dsp.transfer_functions.window_centered_ir(
-            h, len(h), window_type=("gauss", 5000)
+            h,
+            len(h),
+            window_type=dsp.Window.Gaussian.with_extra_parameter(5000),
         )
 
         assert np.argmax(h_.time_data[:, 0]) == np.argmax(
@@ -203,26 +204,26 @@ class TestTransferFunctionsModule:
         # ============= Impulse on the second half, even
         # Shorter
         h.time_data = h.time_data[:-1]
-        h_, _ = dsp.transfer_functions.window_centered_ir(
-            h, len(h) - 10, window_type="hann"
-        )
+        h_, _ = dsp.transfer_functions.window_centered_ir(h, len(h) - 10)
         assert np.argmax(h_.time_data[:, 0]) == np.argmax(h_.window[:, 0])
         # Longer
-        h_, _ = dsp.transfer_functions.window_centered_ir(
-            h, len(h) + 10, window_type="hann"
-        )
+        h_, _ = dsp.transfer_functions.window_centered_ir(h, len(h) + 10)
         assert np.argmax(h_.time_data[:, 0]) == np.argmax(h_.window[:, 0])
 
         # Try window with extra parameters
         h_, _ = dsp.transfer_functions.window_centered_ir(
-            h, len(h), window_type=("gauss", 5000)
+            h,
+            len(h),
+            window_type=dsp.Window.Gaussian.with_extra_parameter(5000),
         )
         assert np.argmax(h_.time_data[:, 0]) == np.argmax(
             h_.window[:, 0]
         ) and np.argmax(h.time_data[:, 0]) == np.argmax(h_.time_data[:, 0])
 
         # ============= Impulse in the middle, no changing lengths, even
-        d = dsp.generators.dirac(1024, 512, sampling_rate_hz=self.fs)
+        d = dsp.generators.dirac(
+            length_samples=1024, delay_samples=512, sampling_rate_hz=self.fs
+        )
         d2, _ = dsp.transfer_functions.window_centered_ir(d, len(d))
         assert (
             np.argmax(d.time_data[:, 0]) == np.argmax(d2.window[:, 0])
@@ -231,7 +232,9 @@ class TestTransferFunctionsModule:
         )
 
         # ============= Impulse in the middle, no changing lengths, odd
-        d = dsp.generators.dirac(1025, 513, sampling_rate_hz=self.fs)
+        d = dsp.generators.dirac(
+            length_samples=1025, delay_samples=513, sampling_rate_hz=self.fs
+        )
         d2, _ = dsp.transfer_functions.window_centered_ir(d, len(d))
         assert (
             np.argmax(d.time_data[:, 0]) == np.argmax(d2.window[:, 0])
@@ -286,15 +289,21 @@ class TestTransferFunctionsModule:
         dsp.transfer_functions.compute_transfer_function(
             self.y_st,
             self.x,
-            mode="H1",
             window_length_samples=1024,
+            mode=dsp.transfer_functions.TransferFunctionType.H1,
+        )
+        dsp.transfer_functions.compute_transfer_function(
+            self.y_st,
+            self.x,
+            window_length_samples=1024,
+            mode=dsp.transfer_functions.TransferFunctionType.H3,
         )
         # Single-channel with other windows
         h = dsp.transfer_functions.compute_transfer_function(
             self.y_m,
             self.x,
-            mode="H2",
             window_length_samples=1024,
+            mode=dsp.transfer_functions.TransferFunctionType.H2,
         )
         # Check that coherence is saved
         h.plot_coherence()
@@ -337,7 +346,7 @@ class TestTransferFunctionsModule:
             keep_original_length=False,
         )
         ir, _ = dsp.transfer_functions.window_ir(
-            ir, window_type="hann", total_length_samples=2**12, at_start=True
+            ir, total_length_samples=2**12, at_start=True
         )
         # Check only that some result is produced, validity should be checked
         # somewhere else
@@ -367,9 +376,7 @@ class TestTransferFunctionsModule:
             padding=False,
             keep_original_length=False,
         )
-        ir, _ = dsp.transfer_functions.window_ir(
-            ir, 2**12, window_type="hann", at_start=True
-        )
+        ir, _ = dsp.transfer_functions.window_ir(ir, 2**12, at_start=True)
         # Check only that some result is produced, validity should be checked
         # somewhere else
         # Only works for some signal types
@@ -396,9 +403,7 @@ class TestTransferFunctionsModule:
             padding=False,
             keep_original_length=False,
         )
-        ir, _ = dsp.transfer_functions.window_ir(
-            ir, 2**12, window_type="hann", at_start=True
-        )
+        ir, _ = dsp.transfer_functions.window_ir(ir, 2**12, at_start=True)
         # Check only that some result is produced, validity should be checked
         # somewhere else
         # Only works for some signal types
@@ -420,9 +425,7 @@ class TestTransferFunctionsModule:
             padding=False,
             keep_original_length=False,
         )
-        ir, _ = dsp.transfer_functions.window_ir(
-            ir, 2**12, window_type="hann", at_start=True
-        )
+        ir, _ = dsp.transfer_functions.window_ir(ir, 2**12, at_start=True)
         # Check only that some result is produced, validity should be checked
         # somewhere else
         # Only works for some signal types

@@ -21,7 +21,12 @@ from warnings import warn
 from scipy.fft import next_fast_len
 import sys
 
-from .standard.enums import SpectrumScaling, MagnitudeNormalization, FadeType
+from .standard.enums import (
+    SpectrumScaling,
+    MagnitudeNormalization,
+    FadeType,
+    Window,
+)
 
 
 def to_db(
@@ -118,9 +123,9 @@ def _find_nearest(points, vector) -> NDArray[np.int_]:
 def _calculate_window(
     points,
     window_length: int,
-    window_type: str | tuple | list = "hann",
-    at_start: bool = True,
-    inverse=False,
+    window_type: Window | list[Window],
+    at_start: bool,
+    inverse: bool,
 ) -> NDArray[np.float64]:
     """Creates a custom window with given indexes
 
@@ -131,15 +136,15 @@ def _calculate_window(
         window.
     window_length: int
         Length of the window.
-    window_type: str, list, tuple, optional
+    window_type: Window, list[Window]
         Type of window to use. Select from scipy.signal.windows. It can be a
         tuple with the window type and extra parameters or a list with two
-        window types. Default: `'hann'`.
-    at_start: bool, optional
-        Creates a half rising window at the start as well. Default: `True`.
-    inverse: bool, optional
+        window types.
+    at_start: bool
+        Creates a half rising window at the start as well.
+    inverse: bool
         When `True`, the window is inversed so that the middle section
-        contains 0. Default: False.
+        contains 0.
 
     Returns
     -------
@@ -148,13 +153,13 @@ def _calculate_window(
 
     """
     assert len(points) == 4, "For the custom window 4 points are needed"
-    if type(window_type) in (str, tuple):
-        left_window_type = window_type
-        right_window_type = window_type
+    if type(window_type) is Window:
+        left_window_type = window_type.to_scipy_format()
+        right_window_type = window_type.to_scipy_format()
     if type(window_type) is list:
         assert len(window_type) == 2, "There must be exactly two window types"
-        left_window_type = window_type[0]
-        right_window_type = window_type[1]
+        left_window_type = window_type[0].to_scipy_format()
+        right_window_type = window_type[1].to_scipy_format()
 
     idx_start_stop_f = [int(i) for i in points]
 

@@ -42,7 +42,8 @@ from ..standard import (
 from ..generators import dirac
 from ..filterbanks import linkwitz_riley_crossovers
 from ..tools import to_db
-from ..standard.enums import SpectrumMethod, MagnitudeNormalization
+from ..standard.enums import SpectrumMethod, MagnitudeNormalization, Window
+from .enums import TransferFunctionType
 
 
 def spectral_deconvolve(
@@ -50,7 +51,7 @@ def spectral_deconvolve(
     denum: Signal,
     apply_regularization: bool = True,
     start_stop_hz=None,
-    threshold_db=-30,
+    threshold_db: float = -30.0,
     padding: bool = False,
     keep_original_length: bool = False,
 ) -> ImpulseResponse:
@@ -73,7 +74,7 @@ def spectral_deconvolve(
         Pass `None` to use an automatic mode that recognizes the start and stop
         of the denominator (it assumes a chirp). If regularization is
         deactivated, `start_stop_hz` has to be set to `None`. Default: `None`.
-    threshold_db : int, optional
+    threshold_db : float, optional
         Threshold in dBFS for the automatic creation of the window.
         Default: -30.
     padding : bool, optional
@@ -167,7 +168,7 @@ def window_ir(
     total_length_samples: int,
     adaptive: bool = True,
     constant_percentage: float = 0.75,
-    window_type: str | tuple | list = "hann",
+    window_type: Window | list[Window] = Window.Hann,
     at_start: bool = True,
     offset_samples: int = 0,
     left_to_right_flank_length_ratio: float = 1.0,
@@ -190,14 +191,10 @@ def window_ir(
     constant_percentage : float, optional
         Percentage (between 0 and 1) of the window's length that should be
         constant value. Default: 0.75.
-    window_type : str, tuple, list, optional
-        Window function to be used for the flanks. Available selection from
-        scipy.signal.windows: `barthann`, `bartlett`, `blackman`,
-        `boxcar`, `cosine`, `hamming`, `hann`, `flattop`, `nuttall` and
-        others. Pass a tuple with window type and extra parameters if needed.
-        Pass a list containing two valid windows (str or tuple) to use
-        different windows for the left and right flanks respectively.
-        Default: `'hann'`.
+    window_type : Window, list[Window], optional
+        Window function to be used for the flanks. Pass a list containing two
+        windows to use different windows for the left and right flanks
+        respectively. Default: Hann.
     at_start : bool, optional
         Windows the start with a rising window as well as the end.
         Default: `True`.
@@ -277,7 +274,7 @@ def window_ir(
 def window_centered_ir(
     signal: ImpulseResponse,
     total_length_samples: int,
-    window_type: str | tuple = "hann",
+    window_type: Window = Window.Hann,
 ) -> tuple[ImpulseResponse, NDArray[np.float64]]:
     """This function windows an IR placing its peak in the middle. It trims
     it to the total length of the window or pads it to the desired length
@@ -289,12 +286,8 @@ def window_centered_ir(
         Signal to window
     total_length_samples: int
         Total window length in samples.
-    window_type: str, tuple, optional
-        Window function to be used. Available selection from
-        scipy.signal.windows: `barthann`, `bartlett`, `blackman`,
-        `boxcar`, `cosine`, `hamming`, `hann`, `flattop`, `nuttall` and
-        others. Pass a tuple with window type and extra parameters if needed,
-        like `('gauss', 8)`. Default: `hann`.
+    window_type: Window, optional
+        Window function to be used. Default: Hann.
 
     Returns
     -------
@@ -337,15 +330,14 @@ def window_centered_ir(
 def compute_transfer_function(
     output: Signal,
     input: Signal,
-    mode="h2",
-    window_length_samples: int = 1024,
+    window_length_samples: int,
+    mode: TransferFunctionType = TransferFunctionType.H2,
 ) -> Spectrum:
-    r"""Gets transfer function H1, H2 or H3 (for stochastic signals).
-    H1: for noise in the output signal. `Gxy/Gxx`.
-    H2: for noise in the input signal. `Gyy/Gyx`.
-    H3: for noise in both signals. `G_xy / abs(G_xy) * (G_yy/G_xx)**0.5`.
-    If the input signal only has one channel, it is assumed to be the input
-    for all of the channels of the output.
+    """Gets transfer function H1, H2 or H3 (for stochastic signals). If the
+    input signal only has one channel, it is assumed to be the input for all of
+    the channels of the output.
+
+    The spectrum parameters for the input will be used for the computation.
 
     Parameters
     ----------
@@ -353,12 +345,10 @@ def compute_transfer_function(
         Signal with output channels.
     input : `Signal`
         Signal with input channels.
-    mode : str, optional
-        Type of transfer function. `'h1'`, `'h2'` and `'h3'` are available.
-        Default: `'h2'`.
-    window_length_samples : int, optional
-        Window length for the IR. Spectrum has the length
-        window_length_samples // 2 + 1. Default: 1024.
+    window_length_samples : int
+        Window length for the IR. Spectrum has the length.
+    mode : TransferFunction, optional
+        Type of transfer function. Default: H2.
 
     Returns
     -------
@@ -371,12 +361,6 @@ def compute_transfer_function(
     - SNR can be gained from the coherence: `snr = coherence / (1 - coherence)`
 
     """
-    mode = mode.casefold()
-    assert mode in (
-        "h1".casefold(),
-        "h2".casefold(),
-        "h3".casefold(),
-    ), f"{mode} is not a valid mode. Use H1, H2 or H3"
     assert (
         input.sampling_rate_hz == output.sampling_rate_hz
     ), "Sampling rates do not match"
@@ -434,7 +418,7 @@ def compute_transfer_function(
                 window_length_samples=window_length_samples,
                 **spectrum_parameters,
             )
-        if mode == "h2".casefold():
+        if mode == TransferFunctionType.H2:
             G_yx = _welch(
                 output.time_data[:, n],
                 input.time_data[:, n_input],
@@ -450,12 +434,15 @@ def compute_transfer_function(
             **spectrum_parameters,
         )
 
-        if mode == "h1".casefold():
-            tf[:, n] = G_xy / G_xx
-        elif mode == "h2".casefold():
-            tf[:, n] = G_yy / G_yx
-        elif mode == "h3".casefold():
-            tf[:, n] = G_xy / np.abs(G_xy) * (G_yy / G_xx) ** 0.5
+        match mode:
+            case TransferFunctionType.H1:
+                tf[:, n] = G_xy / G_xx
+            case TransferFunctionType.H2:
+                tf[:, n] = G_yy / G_yx
+            case TransferFunctionType.H3:
+                tf[:, n] = G_xy / np.abs(G_xy) * (G_yy / G_xx) ** 0.5
+            case _:
+                raise ValueError("Unsupported transfer function type")
         coherence[:, n] = np.abs(G_xy) ** 2 / G_xx / G_yy
     spec = Spectrum(
         np.fft.rfftfreq(window_length_samples, 1 / input.sampling_rate_hz), tf
