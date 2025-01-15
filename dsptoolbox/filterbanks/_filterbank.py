@@ -742,7 +742,11 @@ class GammaToneFilterBank(FilterBank):
         delay_samples = int(np.round(self._delay * self.sampling_rate_hz))
 
         # apply filterbank to impulse to estimate the required values
-        d = dirac(delay_samples + 3, sampling_rate_hz=self.sampling_rate_hz)
+        d = dirac(
+            length_samples=self.sampling_rate_hz // 2,
+            delay_samples=delay_samples + 3,
+            sampling_rate_hz=self.sampling_rate_hz,
+        )
         d = self.filter_signal(d, mode=FilterBankMode.Parallel)
         d = d.get_all_bands(channel=0)
         real, imag = d.time_data, d.time_data_imaginary

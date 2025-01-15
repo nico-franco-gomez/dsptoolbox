@@ -59,9 +59,7 @@ class TestStandardModule:
 
         # ===== Fractional delays
         delay = 0.003301
-        noi = dsp.generators.noise(
-            "white", length_seconds=1, sampling_rate_hz=10_000
-        )
+        noi = dsp.generators.noise(length_seconds=1, sampling_rate_hz=10_000)
         noi_del = dsp.fractional_delay(noi, delay)
         td_previous_noi_del = noi_del.time_data.copy()  # Data does not change
         lat, corr = dsp.latency(noi_del, noi, 2)
@@ -386,25 +384,25 @@ class TestStandardModule:
         # Only functionality with multi-channel and single-channel data
         s = dsp.generators.oscillator(
             frequency_hz=500,
-            mode="triangle",
+            mode=dsp.generators.WaveForm.Triangle,
             sampling_rate_hz=5_000,
             number_of_channels=3,
             uncorrelated=True,
         )
-        env = dsp.envelope(s, "rms", 512)
+        env = dsp.envelope(s, False, 512)
         assert env.shape == s.time_data.shape
-        env = dsp.envelope(s, "analytic", None)
+        env = dsp.envelope(s, True, None)
         assert env.shape == s.time_data.shape
 
         s = dsp.generators.oscillator(
             frequency_hz=500,
-            mode="sawtooth",
+            mode=dsp.generators.WaveForm.Sawtooth,
             sampling_rate_hz=5_000,
             number_of_channels=1,
         )
-        env = dsp.envelope(s, "rms", 512)
+        env = dsp.envelope(s, False, 512)
         assert env.shape == s.time_data.shape
-        env = dsp.envelope(s, "analytic", None)
+        env = dsp.envelope(s, True, None)
         assert env.shape == s.time_data.shape
 
         fb = dsp.filterbanks.auditory_filters_gammatone(
@@ -519,34 +517,34 @@ class TestStandardModule:
         # Functionality
         fs_hz = 48000
         f = dsp.Filter.iir_filter(
-            8,
-            [500, 2e3],
-            dsp.FilterPassType.Bandpass,
-            dsp.IirDesignMethod.Bessel,
+            order=8,
+            frequency_hz=[500, 2e3],
+            type_of_pass=dsp.FilterPassType.Bandpass,
+            filter_design_method=dsp.IirDesignMethod.Bessel,
             sampling_rate_hz=fs_hz,
         )
         dsp.resample_filter(f, 24000)
         f = dsp.Filter.iir_filter(
-            5,
-            500,
-            dsp.FilterPassType.Lowpass,
-            dsp.IirDesignMethod.Bessel,
+            order=5,
+            frequency_hz=500,
+            type_of_pass=dsp.FilterPassType.Lowpass,
+            filter_design_method=dsp.IirDesignMethod.Bessel,
             sampling_rate_hz=fs_hz,
         )
         dsp.resample_filter(f, 24000)
         f = dsp.Filter.iir_filter(
-            8,
-            500,
-            dsp.FilterPassType.Highpass,
-            dsp.IirDesignMethod.Bessel,
+            order=8,
+            frequency_hz=500,
+            type_of_pass=dsp.FilterPassType.Highpass,
+            filter_design_method=dsp.IirDesignMethod.Bessel,
             sampling_rate_hz=fs_hz,
         )
         dsp.resample_filter(f, 24000)
         f = dsp.Filter.iir_filter(
-            7,
-            [500, 18e3],
-            dsp.FilterPassType.Bandpass,
-            dsp.IirDesignMethod.Bessel,
+            order=7,
+            frequency_hz=[500, 18e3],
+            type_of_pass=dsp.FilterPassType.Bandpass,
+            filter_design_method=dsp.IirDesignMethod.Bessel,
             sampling_rate_hz=fs_hz,
         )
 

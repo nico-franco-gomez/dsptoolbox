@@ -20,8 +20,8 @@ from .enums import NoiseType, ChirpType, WaveForm
 
 
 def noise(
-    sampling_rate_hz: int,
     length_seconds: float,
+    sampling_rate_hz: int,
     type_of_noise: NoiseType | float = NoiseType.White,
     peak_level_dbfs: float = -10.0,
     number_of_channels: int = 1,
@@ -32,10 +32,10 @@ def noise(
 
     Parameters
     ----------
-    sampling_rate_hz : int
-        Sampling rate in Hz.
     length_seconds : float
         Length of the generated signal in seconds.
+    sampling_rate_hz : int
+        Sampling rate in Hz.
     type_of_noise : NoiseType, float, optional
         Type of noise to generate. If a float is passed, it corresponds to
         `beta`, where `beta` is used to define the slope of the power spectral

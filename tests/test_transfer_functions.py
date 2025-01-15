@@ -9,7 +9,7 @@ class TestTransferFunctionsModule:
     y_st = dsp.Signal(join("examples", "data", "chirp_stereo.wav"))
     x = dsp.Signal(join("examples", "data", "chirp.wav"))
     fs = 5_000
-    audio_multi = dsp.generators.noise(2, 5_000, number_of_channels=3)
+    audio_multi = dsp.generators.noise(2.0, 5_000, number_of_channels=3)
 
     def test_deconvolve(self):
         # Only functionality is tested here

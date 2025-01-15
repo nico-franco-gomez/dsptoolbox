@@ -417,7 +417,12 @@ class FilterBank:
             mb = MultiBandSignal(same_sampling_rate=False)
             sr = self.sampling_rate_hz
             for ind, f in enumerate(self.filters):
-                d = dirac(length_samples, 0, 1, sr[ind])
+                d = dirac(
+                    length_samples,
+                    delay_samples=0,
+                    sampling_rate_hz=sr[ind],
+                    number_of_channels=1,
+                )
                 mb.add_band(
                     f.filter_signal(
                         d, activate_zi=test_zi, zero_phase=zero_phase

@@ -89,7 +89,9 @@ class TestDistancesModule:
         # Only functionality
         speech = dsp.Signal(join("examples", "data", "speech.flac"))
         noise = dsp.generators.noise(
-            peak_level_dbfs=-30, sampling_rate_hz=speech.sampling_rate_hz
+            length_seconds=1.0,
+            peak_level_dbfs=-30,
+            sampling_rate_hz=speech.sampling_rate_hz,
         )
         dsp.distances.snr(speech, noise)
         # Multichannel

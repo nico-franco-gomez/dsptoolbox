@@ -277,7 +277,11 @@ class KautzFilter(RealtimeFilter):
 
     def get_ir(self, length_samples: int) -> ImpulseResponse:
         """Return an impulse response from the Kautz filter."""
-        d = dirac(length_samples, 0, sampling_rate_hz=self.sampling_rate_hz)
+        d = dirac(
+            length_samples,
+            delay_samples=0,
+            sampling_rate_hz=self.sampling_rate_hz,
+        )
         return self.filter_signal(d)
 
     def __process_time_data_vector(

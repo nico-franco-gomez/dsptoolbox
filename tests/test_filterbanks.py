@@ -21,9 +21,7 @@ class TestFilterbanksModule:
             )
 
         # Test filtering
-        s = dsp.generators.noise(
-            dsp.generators.NoiseType.White, sampling_rate_hz=5_000
-        )
+        s = dsp.generators.noise(length_seconds=1.0, sampling_rate_hz=5_000)
         fb.filter_signal(s, mode=dsp.FilterBankMode.Parallel)
 
     def test_reconstructing_fractional_octave_bands(self):
@@ -49,7 +47,9 @@ class TestFilterbanksModule:
 
         # Reconstruct signal
         s = dsp.generators.noise(
-            type_of_noise=dsp.generators.NoiseType.Pink, sampling_rate_hz=4_000
+            length_seconds=1.0,
+            type_of_noise=dsp.generators.NoiseType.Pink,
+            sampling_rate_hz=4_000,
         )
         mb = fb.filter_signal(s, dsp.FilterBankMode.Parallel)
         fb.reconstruct(mb)
@@ -66,7 +66,9 @@ class TestFilterbanksModule:
         )
         fb = dsp.filterbanks.qmf_crossover(lp)
         s = dsp.generators.noise(
-            dsp.generators.NoiseType.White, sampling_rate_hz=fs_hz
+            length_seconds=1.0,
+            type_of_noise=dsp.generators.NoiseType.White,
+            sampling_rate_hz=fs_hz,
         )
         fb.filter_signal(
             s,
@@ -223,7 +225,7 @@ class TestFilterbanksModule:
     def test_pinking_filter(self):
         # Only functionality
         fs_hz = 44100
-        n = dsp.generators.noise(sampling_rate_hz=fs_hz)
+        n = dsp.generators.noise(length_seconds=1.0, sampling_rate_hz=fs_hz)
         n.set_spectrum_parameters(window_length_samples=1024)
         f = dsp.filterbanks.pinking_filter(3000, fs_hz)
         n2 = f.filter_signal(n)
@@ -231,7 +233,9 @@ class TestFilterbanksModule:
             [
                 n2,
                 dsp.generators.noise(
-                    dsp.generators.NoiseType.Pink, sampling_rate_hz=fs_hz
+                    length_seconds=1.0,
+                    type_of_noise=dsp.generators.NoiseType.Pink,
+                    sampling_rate_hz=fs_hz,
                 ),
             ]
         )
@@ -259,7 +263,7 @@ class TestFilterbanksModule:
     def test_gaussian_kernel(self):
         # Only functionality
         fs_hz = 44100
-        n = dsp.generators.noise(sampling_rate_hz=fs_hz)
+        n = dsp.generators.noise(length_seconds=1.0, sampling_rate_hz=fs_hz)
 
         # Get kernel and apply filtering
         f = dsp.filterbanks.gaussian_kernel(0.02, sampling_rate_hz=fs_hz)
@@ -310,7 +314,7 @@ class TestLatticeLadderFilter:
         assert np.all(np.isclose(c, c_expected, rtol=5))
 
     def test_lattice_filter_filtering(self):
-        n = dsp.generators.noise(sampling_rate_hz=200)
+        n = dsp.generators.noise(length_seconds=1.0, sampling_rate_hz=200)
         expected = sig.lfilter(self.b / 10, self.a, n.time_data.squeeze())
 
         from dsptoolbox.classes.lattice_ladder_filter import (
@@ -327,7 +331,7 @@ class TestLatticeLadderFilter:
     def test_convert_lattice_filter(self):
         fs = 44100
         # Second-order sections
-        n = dsp.generators.noise(sampling_rate_hz=fs)
+        n = dsp.generators.noise(length_seconds=1.0, sampling_rate_hz=fs)
         f = dsp.Filter.iir_filter(
             filter_design_method=dsp.IirDesignMethod.Bessel,
             order=9,
@@ -352,7 +356,7 @@ class TestLatticeLadderFilter:
         assert np.all(np.isclose(n1, n2))
 
         # FIR
-        n = dsp.generators.noise(sampling_rate_hz=fs)
+        n = dsp.generators.noise(length_seconds=1.0, sampling_rate_hz=fs)
         f = dsp.Filter(
             {dsp.FilterCoefficientsType.Ba: [[1, 13 / 24, 5 / 8, 1 / 3], [1]]},
             sampling_rate_hz=fs,

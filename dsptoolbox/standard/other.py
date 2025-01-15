@@ -23,7 +23,7 @@ from .._general_helpers import (
     _get_smoothing_factor_ema,
 )
 from ..tools import from_db
-from .enums import SpectrumType, InterpolationDomain
+from .enums import SpectrumType, InterpolationDomain, FilterBankMode
 
 
 def load_pkl_object(path: str):
@@ -214,7 +214,7 @@ def detrend(
 
 def envelope(
     signal: Signal | MultiBandSignal,
-    mode: str = "analytic",
+    analytic: bool = True,
     window_length_samples: int | None = None,
 ):
     """This function computes the envelope of a given signal by means of its
@@ -227,9 +227,10 @@ def envelope(
     signal : `Signal` or `MultiBandSignal`
         Time series for which to find the envelope. If it is a
         `MultiBandSignal`, it must have the same sampling rate for all bands.
-    mode : str {'analytic', 'rms'}, optional
-        Type of envelope. It either uses the hilbert transform to obtain the
-        analytic signal or RMS values. Default: `'analytic'`.
+    analytic : bool, optional
+        When True, the hilbert transform is used to obtain the envelope of the
+        analytic signal. Otherwise, a RMS envelope is computed with a boxcar
+        window. Default: True.
     window_length_samples : int, optional
         Window length (boxcar) to average the RMS values. Cannot be `None`
         if `mode = 'rms'`. Default: `None`.
@@ -241,16 +242,10 @@ def envelope(
         (time sample, band, channel) in case of `MultiBandSignal`.
 
     """
-    mode = mode.lower()
-    assert mode in (
-        "analytic",
-        "rms",
-    ), "Invalid mode. Use either analytic or rms."
-
     if isinstance(signal, Signal):
         signal = detrend(signal, 1)
 
-        if mode == "analytic":
+        if analytic:
             env = signal.time_data
             env = np.abs(hilbert(env, axis=0))
             return env
@@ -284,7 +279,9 @@ def envelope(
         )
         for ind, b in enumerate(signal.bands):
             rms_vec[:, ind, :] = envelope(
-                b, mode=mode, window_length_samples=window_length_samples
+                b,
+                analytic=analytic,
+                window_length_samples=window_length_samples,
             )
         return rms_vec
     else:
@@ -293,7 +290,7 @@ def envelope(
 
 def dither(
     s: Signal,
-    mode: str = "triangular",
+    triangular_distribution: bool = True,
     epsilon: float = float(np.finfo(np.float16).smallest_subnormal),
     noise_shaping_filterbank: FilterBank | None = None,
     truncate: bool = False,
@@ -306,10 +303,10 @@ def dither(
     ----------
     s : `Signal`
         Signal to apply dither to.
-    mode : str, optional
-        Type of probability distribution to use noise from. Choose from
-        `"rectangular"`, `"triangular"`. See notes and references for details.
-        Default: `"triangular"`.
+    triangular_distribution : bool, optional
+        Type of probability distribution to acquire noise from. When True,
+        a rectangular distribution is used, otherwise it is uniform.
+        Default: True.
     epsilon : float, optional
         Value that represents the quantization step. The default value supposes
         quantization to 16-bit floating point. It is obtained through numpy's
@@ -332,10 +329,10 @@ def dither(
     -----
     - The output signal has time samples with 16-bit precision, but the data
       type of the array is `np.float64` for consistency.
-    - `"rectangular"` mode applies noise with samples coming from a uniform
-      distribution [-epsilon/2, epsilon/2]. `"triangular"` has a triangle shape
+    - Rectangular distribution applies noise with samples coming from a uniform
+      distribution [-epsilon/2, epsilon/2]. Triangular has a triangle shape
       for the noise distribution with values between [-epsilon, epsilon]. See
-      [1] for more details on this.
+      [1] for more details.
     - Dither might be only necessary when lowering the bit-depth down to 16
       bits, though the 24-bit case might be relevant if the there are signal
       components with very low volumes.
@@ -347,22 +344,20 @@ def dither(
     - [1]: Lerch, Weinzierl. Handbuch der Audiotechnik: Chapter 14.
 
     """
-    mode = mode.lower()
+    triangular_distribution = triangular_distribution.lower()
     shape = s.time_data.shape
 
-    if mode == "rectangular":
+    if not triangular_distribution:
         noise = np.random.uniform(-epsilon / 2, epsilon / 2, size=shape)
-    elif mode == "triangular":
+    else:
         noise = np.random.uniform(
             -epsilon / 2, epsilon / 2, size=shape
         ) + np.random.uniform(-epsilon / 2, epsilon / 2, size=shape)
-    else:
-        raise ValueError(f"{mode} is not supported.")
 
     if noise_shaping_filterbank is not None:
         noise_s = Signal(None, noise, s.sampling_rate_hz)
         noise_s = noise_shaping_filterbank.filter_signal(
-            noise_s, mode="sequential"
+            noise_s, mode=FilterBankMode.Sequential
         )
         noise = noise_s.time_data
 

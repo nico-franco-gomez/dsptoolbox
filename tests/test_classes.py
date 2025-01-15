@@ -237,7 +237,9 @@ class TestSignal:
             s.plot_phase()
 
         # Plot signal with window and imaginary time data
-        d = dsp.generators.dirac(1024, 512, sampling_rate_hz=self.fs)
+        d = dsp.generators.dirac(
+            length_samples=1024, delay_samples=512, sampling_rate_hz=self.fs
+        )
         d, _ = dsp.transfer_functions.window_centered_ir(d, len(d))
         d = dsp.transforms.hilbert(d)
         d.plot_time()
@@ -442,16 +444,16 @@ class TestFilterClass:
         sos = dsp.Filter.iir_filter(
             6,
             100.0,
-            dsp.FilterPassType.Lowpass,
-            dsp.IirDesignMethod.Butterworth,
+            type_of_pass=dsp.FilterPassType.Lowpass,
+            filter_design_method=dsp.IirDesignMethod.Butterworth,
             sampling_rate_hz=self.fs,
         )
         assert sos.order == 6
         sos = dsp.Filter.iir_filter(
             5,
             100.0,
-            dsp.FilterPassType.Lowpass,
-            dsp.IirDesignMethod.Butterworth,
+            type_of_pass=dsp.FilterPassType.Lowpass,
+            filter_design_method=dsp.IirDesignMethod.Butterworth,
             sampling_rate_hz=self.fs,
         )
         assert sos.order == 5
@@ -927,15 +929,9 @@ class TestFilterBankClass:
         fb.add_filter(self.get_iir_filter())
         fb.add_filter(self.get_fir_filter(True))
 
-        s1 = dsp.generators.noise(
-            dsp.generators.NoiseType.White,
-            length_seconds=1,
-            sampling_rate_hz=self.fs,
-        )
+        s1 = dsp.generators.noise(length_seconds=1, sampling_rate_hz=self.fs)
         s2 = dsp.generators.noise(
-            dsp.generators.NoiseType.White,
-            length_seconds=2,
-            sampling_rate_hz=self.fs // 2,
+            length_seconds=2, sampling_rate_hz=self.fs // 2
         )
 
         mb = dsp.MultiBandSignal(bands=[s1, s2], same_sampling_rate=False)
@@ -1264,8 +1260,8 @@ class TestFilterTopologies:
         iir = dsp.Filter.iir_filter(
             4,
             1000.0,
-            dsp.FilterPassType.Lowpass,
-            dsp.IirDesignMethod.Butterworth,
+            type_of_pass=dsp.FilterPassType.Lowpass,
+            filter_design_method=dsp.IirDesignMethod.Butterworth,
             sampling_rate_hz=self.fs_hz,
         )
         llf = dsp.filterbanks.convert_into_lattice_filter(iir)
@@ -1337,8 +1333,8 @@ class TestFilterTopologies:
         iir_original = dsp.Filter.iir_filter(
             4,
             1000.0,
-            dsp.FilterPassType.Highpass,
-            dsp.IirDesignMethod.Butterworth,
+            type_of_pass=dsp.FilterPassType.Highpass,
+            filter_design_method=dsp.IirDesignMethod.Butterworth,
             sampling_rate_hz=self.fs_hz,
         )
         b, a = iir_original.get_coefficients(dsp.FilterCoefficientsType.Ba)
@@ -1475,7 +1471,10 @@ class TestFilterTopologies:
         b, a = ff.get_coefficients(dsp.FilterCoefficientsType.Ba)
         A, B, C, D = sig.tf2ss(b, a)
         noise = dsp.generators.noise(
-            -2.0, sampling_rate_hz=self.fs_hz, number_of_channels=2
+            length_seconds=1.0,
+            type_of_noise=-2.0,
+            sampling_rate_hz=self.fs_hz,
+            number_of_channels=2,
         )
         ff2 = dsp.filterbanks.StateSpaceFilter(A, B, C, D)
         ff2.set_n_channels(noise.number_of_channels)
