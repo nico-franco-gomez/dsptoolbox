@@ -18,6 +18,8 @@ from ._effects import (
 )
 from ..plots import general_plot
 from ..tools import to_db
+from ..standard.enums import SpectrumMethod, SpectrumScaling, Window
+from .enums import DistortionType
 
 from scipy.signal.windows import get_window
 import numpy as np
@@ -257,7 +259,7 @@ class SpectralSubtractor(AudioEffect):
     def set_advanced_parameters(
         self,
         overlap_percent: int = 50,
-        window_type: str = "hann",
+        window_type: Window = Window.Hann,
         noise_forgetting_factor: float = 0.9,
         subtraction_factor: float = 2,
         subtraction_exponent: float = 2,
@@ -271,8 +273,8 @@ class SpectralSubtractor(AudioEffect):
         ----------
         overlap_percent : int, optional
             Window overlap in percent. Default: 50.
-        window_type : str, optional
-            Window type to use. Default: `'hann'`.
+        window_type : Window, optional
+            Window type to use. Default: Hann.
         noise_forgetting_factor : float, optional
             This factor is used to average the noise spectrum in order to
             reduce distortions at the expense of responsiveness. It should
@@ -419,9 +421,11 @@ class SpectralSubtractor(AudioEffect):
             )
         else:
             self.window_length = (len(self.spectrum_to_subtract) - 1) * 2
-        self.window = get_window(self.window_type, self.window_length)
+        self.window = get_window(
+            self.window_type.to_scipy_format(), self.window_length
+        )
         self.window = np.clip(
-            get_window(self.window_type, self.window_length),
+            get_window(self.window_type.to_scipy_format(), self.window_length),
             a_min=1e-6,
             a_max=None,
         )
@@ -470,11 +474,11 @@ class SpectralSubtractor(AudioEffect):
                     release_time_ms=self.ad_release_time_ms,
                 )
                 noise["noise"].set_spectrum_parameters(
-                    method="welch",
+                    method=SpectrumMethod.WelchPeriodogram,
                     window_length_samples=len(self.window),
                     overlap_percent=self.overlap * 100,
                     window_type=self.window_type,
-                    scaling=None,
+                    scaling=SpectrumScaling.FFTBackward,
                 )
                 _, noise_psd = noise["noise"].get_spectrum()
             else:
@@ -592,7 +596,7 @@ class Distortion(AudioEffect):
         self,
         distortion_level: float = 20,
         post_gain_db: float = 0,
-        type_of_distortion: str = "arctan",
+        type_of_distortion: DistortionType = DistortionType.Arctan,
     ):
         """This effect adds non-linear distortion to an audio signal by
         clipping its waveform according to some specific function and
@@ -608,10 +612,9 @@ class Distortion(AudioEffect):
         post_gain_db : float, optional
             This is an additional gain stage in dB after the distortion has
             been applied. Default: 0.
-        type_of_distortion : str {'arctan', 'hard clip', 'soft clip'}, optional
-            This sets the type of non-linear distortion to be applied. The
-            three available types are `'arctan'`, `'hard clip'` and
-            `'soft clip'`. Default: `'arctan'`.
+        type_of_distortion : DistortionType, optional
+            This sets the type of non-linear distortion to be applied. Default:
+            Arctan.
 
         References
         ----------
@@ -635,7 +638,9 @@ class Distortion(AudioEffect):
 
     def set_advanced_parameters(
         self,
-        type_of_distortion="arctan",
+        type_of_distortion: (
+            DistortionType | list[DistortionType]
+        ) = DistortionType.Arctan,
         distortion_levels_db: NDArray[np.float64] = 20,
         mix_percent: NDArray[np.float64] = 100,
         offset_db: NDArray[np.float64] = -np.inf,
@@ -649,22 +654,12 @@ class Distortion(AudioEffect):
 
         Parameters
         ----------
-        type_of_distortion : list or str or callable, optional
-            Type of distortion to be applied. If it is a single string,
+        type_of_distortion : DistortionType, list[DistortionType], optional
+            Type of distortion to be applied. If it is a single DistortionType,
             it is applied to the signal and mixed with the clean signal
             according to the mixed parameter. If a list is passed, each entry
-            must be either a string corresponding to the supported modes
-            (`'arctan'`, `'hard clip'`, `'soft clip'`, `'clean'`) or a callable
-            containing a user-defined distortion. Its signature must be::
-
-                func(time_data: NDArray[np.float64],
-                     distortion_level_db: float, offset_db: float) \
-                        -> NDArray[np.float64]
-
-            The output data is assumed to have shape (time samples, channels)
-            as the input data. If a list is passed, `distortion_levels_db`,
-            `mix_percent` and `offset_db` must have the same length as the
-            list. Default: `'arctan'`.
+            must be either a string corresponding to the supported modes.
+            Default: Arctan.
         distortion_levels : NDArray[np.float64], optional
             This defines how strong the distortion effect is applied. It can
             vary according to the non-linear function. Usually, a range
@@ -749,31 +744,19 @@ class Distortion(AudioEffect):
 
         self.__distortion_funcs = []
         for dist in type_of_distortion:
-            if type(dist) is str:
-                dist = dist.lower()
-                if dist == "arctan":
+            match dist:
+                case DistortionType.Arctan:
                     self.__distortion_funcs.append(_arctan_distortion)
-                elif dist == "hard clip":
+                case DistortionType.HardClip:
                     self.__distortion_funcs.append(_hard_clip_distortion)
-                elif dist == "soft clip":
+                case DistortionType.SoftClip:
                     self.__distortion_funcs.append(_soft_clip_distortion)
-                elif dist == "clean":
+                case DistortionType.NoDistortion:
                     self.__distortion_funcs.append(_clean_signal)
-                else:
+                case _:
                     raise ValueError(
-                        f"The type of distortion {dist} is not implemented."
-                        + "Use either arctan, hard clip, soft clip or clean"
+                        "The type of distortion is not implemented."
                     )
-            else:
-                try:
-                    dist(np.zeros((100, 2)), 10, -np.inf)  # Some number
-                except Exception as e:
-                    raise ValueError(
-                        "Distortion as callable has not been defined "
-                        + "right: ",
-                        e,
-                    )
-                self.__distortion_funcs.append(dist)
 
     def _apply_this_effect(self, signal: Signal) -> Signal:
         """Internal method which applies distortion to the passed signal.
@@ -1016,7 +999,6 @@ class Compressor(AudioEffect):
             log=False,
             xlabel="Input Gain / dB",
             ylabel="Output Gain / dB",
-            returns=True,
         )
         ax.plot(gains_db, gains_mixed)
         ax.axvline(
@@ -1526,7 +1508,6 @@ class DigitalDelay(AudioEffect):
             log=False,
             xlabel="Time / ms",
             ylabel="Amplitude [dB]",
-            returns=True,
         )
         ax.set_ylim([-100, 1])
         ax.set_title("Delay – Repetitions decay")

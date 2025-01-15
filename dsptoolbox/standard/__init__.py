@@ -24,6 +24,23 @@ from .other import (
     merge_fir_filters,
     spectral_difference,
 )
+from .enums import (
+    SpectrumMethod,
+    SpectrumScaling,
+    FilterCoefficientsType,
+    BiquadEqType,
+    FilterBankMode,
+    FilterPassType,
+    IirDesignMethod,
+    MagnitudeNormalization,
+    SpectrumType,
+    InterpolationDomain,
+    InterpolationScheme,
+    InterpolationEdgeHandling,
+    FrequencySpacing,
+    Window,
+    FadeType,
+)
 
 __all__ = [
     # Append
@@ -54,4 +71,20 @@ __all__ = [
     "dither",
     "merge_fir_filters",
     "spectral_difference",
+    # Enums
+    "SpectrumMethod",
+    "SpectrumScaling",
+    "FilterCoefficientsType",
+    "BiquadEqType",
+    "FilterBankMode",
+    "FilterPassType",
+    "IirDesignMethod",
+    "MagnitudeNormalization",
+    "SpectrumType",
+    "InterpolationDomain",
+    "InterpolationScheme",
+    "InterpolationEdgeHandling",
+    "FrequencySpacing",
+    "Window",
+    "FadeType",
 ]

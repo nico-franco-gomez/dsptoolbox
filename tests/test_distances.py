@@ -1,8 +1,11 @@
 import dsptoolbox as dsp
 import pytest
 from os.path import join
+import os
 
-stereo_signal = dsp.Signal(join("examples", "data", "chirp_stereo.wav"))
+stereo_signal = dsp.Signal(
+    join(os.path.dirname(__file__), "..", "example_data", "chirp_stereo.wav")
+)
 
 
 class TestDistancesModule:
@@ -87,9 +90,15 @@ class TestDistancesModule:
 
     def test_snr(self):
         # Only functionality
-        speech = dsp.Signal(join("examples", "data", "speech.flac"))
+        speech = dsp.Signal(
+            join(
+                os.path.dirname(__file__), "..", "example_data", "speech.flac"
+            )
+        )
         noise = dsp.generators.noise(
-            peak_level_dbfs=-30, sampling_rate_hz=speech.sampling_rate_hz
+            length_seconds=1.0,
+            peak_level_dbfs=-30,
+            sampling_rate_hz=speech.sampling_rate_hz,
         )
         dsp.distances.snr(speech, noise)
         # Multichannel

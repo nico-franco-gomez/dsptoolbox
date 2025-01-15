@@ -3,6 +3,7 @@ from scipy.signal import resample_poly, bilinear_zpk
 
 from fractions import Fraction
 from ..classes import Signal, Filter
+from .enums import FilterCoefficientsType
 
 
 def resample(
@@ -60,7 +61,7 @@ def resample_filter(filter: Filter, new_sampling_rate_hz: int) -> Filter:
         Filter with new sampling rate.
 
     """
-    z, p, k = filter.get_coefficients("zpk")
+    z, p, k = filter.get_coefficients(FilterCoefficientsType.Zpk)
     add_to_poles = max(0, len(z) - len(p))
     add_to_zeros = max(0, len(p) - len(z))
 

@@ -21,8 +21,8 @@ class TestFilterbanksModule:
             )
 
         # Test filtering
-        s = dsp.generators.noise("white", sampling_rate_hz=5_000)
-        fb.filter_signal(s, mode="parallel")
+        s = dsp.generators.noise(length_seconds=1.0, sampling_rate_hz=5_000)
+        fb.filter_signal(s, mode=dsp.FilterBankMode.Parallel)
 
     def test_reconstructing_fractional_octave_bands(self):
         # Only functionality
@@ -46,29 +46,47 @@ class TestFilterbanksModule:
             )
 
         # Reconstruct signal
-        s = dsp.generators.noise(type_of_noise="pink", sampling_rate_hz=4_000)
-        mb = fb.filter_signal(s)
+        s = dsp.generators.noise(
+            length_seconds=1.0,
+            type_of_noise=dsp.generators.NoiseType.Pink,
+            sampling_rate_hz=4_000,
+        )
+        mb = fb.filter_signal(s, dsp.FilterBankMode.Parallel)
         fb.reconstruct(mb)
 
     def test_qmf_crossover(self):
         # Only functionality
         fs_hz = 4_000
         ny_hz = fs_hz // 2
-        lp = dsp.Filter(
-            "fir",
-            {"order": 10, "freqs": ny_hz // 2, "type_of_pass": "lowpass"},
+        lp = dsp.Filter.fir_filter(
+            order=10,
+            frequency_hz=ny_hz // 2,
+            type_of_pass=dsp.FilterPassType.Lowpass,
             sampling_rate_hz=fs_hz,
         )
         fb = dsp.filterbanks.qmf_crossover(lp)
-        s = dsp.generators.noise("white", sampling_rate_hz=fs_hz)
-        fb.filter_signal(
-            s, mode="parallel", activate_zi=False, downsample=False
+        s = dsp.generators.noise(
+            length_seconds=1.0,
+            type_of_noise=dsp.generators.NoiseType.White,
+            sampling_rate_hz=fs_hz,
         )
         fb.filter_signal(
-            s, mode="parallel", activate_zi=True, downsample=False
+            s,
+            mode=dsp.FilterBankMode.Parallel,
+            activate_zi=False,
+            downsample=False,
+        )
+        fb.filter_signal(
+            s,
+            mode=dsp.FilterBankMode.Parallel,
+            activate_zi=True,
+            downsample=False,
         )
         mb_ = fb.filter_signal(
-            s, mode="parallel", activate_zi=False, downsample=True
+            s,
+            mode=dsp.FilterBankMode.Parallel,
+            activate_zi=False,
+            downsample=True,
         )
 
         # Reconstruction
@@ -99,18 +117,19 @@ class TestFilterbanksModule:
 
     def test_weightning_filter(self):
         fs_hz = 5_000
-        dsp.filterbanks.weightning_filter("a", fs_hz)
-        dsp.filterbanks.weightning_filter("c", fs_hz)
+        dsp.filterbanks.weighting_filter(True, fs_hz)
+        dsp.filterbanks.weighting_filter(False, fs_hz)
 
     def test_complementary_filter_fir(self):
         fs_hz = 5000
-        f = dsp.Filter(
-            "fir",
-            {"type_of_pass": "highpass", "order": 120, "freqs": 400},
-            fs_hz,
+        f = dsp.Filter.fir_filter(
+            type_of_pass=dsp.FilterPassType.Highpass,
+            order=120,
+            frequency_hz=400,
+            sampling_rate_hz=fs_hz,
         )
         f2 = dsp.filterbanks.complementary_fir_filter(f)
-        coefficients = f.get_coefficients("ba")[0]
+        coefficients = f.get_coefficients(dsp.FilterCoefficientsType.Ba)[0]
 
         # Get perfect impulse
         h = np.zeros(len(coefficients))
@@ -118,14 +137,19 @@ class TestFilterbanksModule:
 
         # Assert that both filters summed give a perfect impulse
         assert np.all(
-            np.isclose(h, f2.get_coefficients("ba")[0] + coefficients)
+            np.isclose(
+                h,
+                f2.get_coefficients(dsp.FilterCoefficientsType.Ba)[0]
+                + coefficients,
+            )
         )
 
         # Check functionality for even length
-        f = dsp.Filter(
-            "fir",
-            {"type_of_pass": "lowpass", "order": 121, "freqs": 400},
-            fs_hz,
+        f = dsp.Filter.fir_filter(
+            type_of_pass=dsp.FilterPassType.Lowpass,
+            order=121,
+            frequency_hz=400,
+            sampling_rate_hz=fs_hz,
         )
         dsp.filterbanks.complementary_fir_filter(f)
 
@@ -136,7 +160,7 @@ class TestFilterbanksModule:
             [570, 2000], order=[2, 2], sampling_rate_hz=fs_hz
         )
         ir = fb.get_ir(length_samples=2**14).collapse()
-        ir.set_spectrum_parameters(method="standard")
+        ir.spectrum_method = dsp.SpectrumMethod.FFT
         _, sp = ir.get_spectrum()
 
         # Initialize with wrong length
@@ -157,7 +181,7 @@ class TestFilterbanksModule:
 
         # Phase linearizer – with interpolation
         ir = fb.get_ir(length_samples=2**9).collapse()
-        ir.set_spectrum_parameters(method="standard")
+        ir.spectrum_method = dsp.SpectrumMethod.FFT
         _, sp = ir.get_spectrum()
         pl = dsp.filterbanks.PhaseLinearizer(
             np.angle(sp[:, 0]), len(ir), fs_hz
@@ -201,12 +225,19 @@ class TestFilterbanksModule:
     def test_pinking_filter(self):
         # Only functionality
         fs_hz = 44100
-        n = dsp.generators.noise(sampling_rate_hz=fs_hz)
+        n = dsp.generators.noise(length_seconds=1.0, sampling_rate_hz=fs_hz)
         n.set_spectrum_parameters(window_length_samples=1024)
         f = dsp.filterbanks.pinking_filter(3000, fs_hz)
         n2 = f.filter_signal(n)
         n2 = dsp.append_signals(
-            [n2, dsp.generators.noise("pink", sampling_rate_hz=fs_hz)]
+            [
+                n2,
+                dsp.generators.noise(
+                    length_seconds=1.0,
+                    type_of_noise=dsp.generators.NoiseType.Pink,
+                    sampling_rate_hz=fs_hz,
+                ),
+            ]
         )
         n2 = dsp.append_signals([n2, n])
 
@@ -219,40 +250,20 @@ class TestFilterbanksModule:
         q = 2**0.5 / 2
 
         for eq_type in [
-            "peaking",
-            "lowpass",
-            "highpass",
-            "lowshelf",
-            "highshelf",
-            "bandpass",
+            dsp.BiquadEqType.Peaking,
+            dsp.BiquadEqType.Lowpass,
+            dsp.BiquadEqType.Highpass,
+            dsp.BiquadEqType.Lowshelf,
+            dsp.BiquadEqType.Highshelf,
+            dsp.BiquadEqType.BandpassPeak,
+            dsp.BiquadEqType.BandpassSkirt,
         ]:
             dsp.filterbanks.matched_biquad(eq_type, freq, gain_db, q, fs_hz)
-
-            # For comparison with usual biquads
-        #     f = dsp.filterbanks.matched_biquad(
-        #         eq_type, freq, gain_db, q, fs_hz
-        #     )
-        #     f2 = dsp.Filter(
-        #         "biquad",
-        #         {
-        #             "eq_type": eq_type
-        #             + ("_peak" if eq_type == "bandpass" else ""),
-        #             "freqs": freq,
-        #             "gain": gain_db,
-        #             "q": q,
-        #         },
-        #         fs_hz,
-        #     )
-        #     fb = dsp.FilterBank([f, f2])
-        #     fig, ax = fb.plot_magnitude(length_samples=2**13)
-        #     fig.suptitle(eq_type.capitalize())
-        #     ax.legend(["Matched", "Standard"])
-        # dsp.plots.show()
 
     def test_gaussian_kernel(self):
         # Only functionality
         fs_hz = 44100
-        n = dsp.generators.noise(sampling_rate_hz=fs_hz)
+        n = dsp.generators.noise(length_seconds=1.0, sampling_rate_hz=fs_hz)
 
         # Get kernel and apply filtering
         f = dsp.filterbanks.gaussian_kernel(0.02, sampling_rate_hz=fs_hz)
@@ -263,7 +274,7 @@ class TestFilterbanksModule:
         sigma = length / (2.0 * np.log(1 / 1e-2)) ** 0.5
         w = sig.windows.gaussian(length, sigma, True)
         w /= w.sum()
-        f = dsp.Filter("other", {"ba": [w, [1]]}, fs_hz)
+        f = dsp.Filter.from_ba(w, [1.0], fs_hz)
         n1 = dsp.append_signals([n1, f.filter_signal(n, zero_phase=False)])
 
         # n1.plot_time()
@@ -271,7 +282,11 @@ class TestFilterbanksModule:
 
     def test_arma(self):
         # Only functionality
-        rir = dsp.ImpulseResponse(os.path.join("examples", "data", "rir.wav"))
+        rir = dsp.ImpulseResponse(
+            os.path.join(
+                os.path.dirname(__file__), "..", "example_data", "rir.wav"
+            )
+        )
         dsp.filterbanks.arma(rir, 10, 0)
         dsp.filterbanks.arma(rir, 10, 1)
         dsp.filterbanks.arma(rir, 10, 11)
@@ -303,7 +318,7 @@ class TestLatticeLadderFilter:
         assert np.all(np.isclose(c, c_expected, rtol=5))
 
     def test_lattice_filter_filtering(self):
-        n = dsp.generators.noise(sampling_rate_hz=200)
+        n = dsp.generators.noise(length_seconds=1.0, sampling_rate_hz=200)
         expected = sig.lfilter(self.b / 10, self.a, n.time_data.squeeze())
 
         from dsptoolbox.classes.lattice_ladder_filter import (
@@ -320,15 +335,12 @@ class TestLatticeLadderFilter:
     def test_convert_lattice_filter(self):
         fs = 44100
         # Second-order sections
-        n = dsp.generators.noise(sampling_rate_hz=fs)
-        f = dsp.Filter(
-            "iir",
-            {
-                "filter_design_method": "bessel",
-                "order": 9,
-                "type_of_pass": "lowpass",
-                "freqs": 1000,
-            },
+        n = dsp.generators.noise(length_seconds=1.0, sampling_rate_hz=fs)
+        f = dsp.Filter.iir_filter(
+            filter_design_method=dsp.IirDesignMethod.Bessel,
+            order=9,
+            type_of_pass=dsp.FilterPassType.Lowpass,
+            frequency_hz=1000,
             sampling_rate_hz=fs,
         )
         new_f = dsp.filterbanks.convert_into_lattice_filter(f)
@@ -337,18 +349,20 @@ class TestLatticeLadderFilter:
         assert np.all(np.isclose(n1, n2))
 
         # BA
-        b, a = f.get_coefficients("ba")
-        f2 = dsp.Filter("other", {"ba": [b, a]}, f.sampling_rate_hz)
+        b, a = f.get_coefficients(dsp.FilterCoefficientsType.Ba)
+        f2 = dsp.Filter(
+            {dsp.FilterCoefficientsType.Ba: [b, a]},
+            f.sampling_rate_hz,
+        )
         new_f = dsp.filterbanks.convert_into_lattice_filter(f2)
         n1 = f2.filter_signal(n).time_data.squeeze()
         n2 = new_f.filter_signal(n).time_data.squeeze()
         assert np.all(np.isclose(n1, n2))
 
         # FIR
-        n = dsp.generators.noise(sampling_rate_hz=fs)
+        n = dsp.generators.noise(length_seconds=1.0, sampling_rate_hz=fs)
         f = dsp.Filter(
-            "other",
-            {"ba": [[1, 13 / 24, 5 / 8, 1 / 3], [1]]},
+            {dsp.FilterCoefficientsType.Ba: [[1, 13 / 24, 5 / 8, 1 / 3], [1]]},
             sampling_rate_hz=fs,
         )
         new_f = dsp.filterbanks.convert_into_lattice_filter(f)

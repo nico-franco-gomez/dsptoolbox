@@ -7,7 +7,7 @@ import numpy as np
 from scipy.signal import windows
 from numpy.typing import NDArray
 
-from .. import Signal
+from .. import Signal, MultiBandSignal
 from ..filterbanks import auditory_filters_gammatone
 from .._general_helpers import _find_nearest
 from ._distances import (
@@ -17,12 +17,13 @@ from ._distances import (
     _sisdr,
     _fw_snr_seg_per_channel,
 )
+from ..standard.enums import FilterBankMode, SpectrumMethod
 
 
 def log_spectral(
     insig1: Signal,
     insig2: Signal,
-    method: str = "welch",
+    method: SpectrumMethod = SpectrumMethod.WelchPeriodogram,
     f_range_hz=[20, 20000],
     energy_normalization: bool = True,
     spectrum_parameters: dict | None = None,
@@ -35,9 +36,8 @@ def log_spectral(
         Signal 1.
     insig2 : Signal
         Signal 2.
-    method : str, optional
-        Method to compute the spectrum. Choose from `'welch'` or `'standard'`.
-        Default: `'welch'`.
+    method : SpectrumMethod, optional
+        Method to compute the spectrum. Default: WelchPeriodogram.
     f_range_hz : array-like with length 2, optional
         Range of frequencies in which to compute the distance. When `None`,
         it is computed in all frequencies. Default: [20, 20000].
@@ -111,7 +111,7 @@ def log_spectral(
 def itakura_saito(
     insig1: Signal,
     insig2: Signal,
-    method: str = "welch",
+    method: SpectrumMethod = SpectrumMethod.WelchPeriodogram,
     f_range_hz=[20, 20000],
     energy_normalization: bool = True,
     spectrum_parameters: dict | None = None,
@@ -125,9 +125,8 @@ def itakura_saito(
         Signal 1.
     insig2 : Signal
         Signal 2.
-    method : str, optional
-        Method to compute the spectrum. Choose from `'welch'` or `'standard'`.
-        Default: `'welch'`.
+    method : SpectrumMethod, optional
+        Method to compute the spectrum. Default: WelchPeriodogram.
     f_range_hz : array-like with length 2, optional
         Range of frequencies in which to compute the distance. When `None`,
         it is computed in all frequencies. Default: [20, 20000].
@@ -379,8 +378,10 @@ def fw_snr_seg(
     aud_fb = auditory_filters_gammatone(
         frequency_range_hz=f_range, resolution=1, sampling_rate_hz=fs_hz
     )
-    x = aud_fb.filter_signal(x, mode="parallel")
-    xhat = aud_fb.filter_signal(xhat, mode="parallel")
+    x: MultiBandSignal = aud_fb.filter_signal(x, mode=FilterBankMode.Parallel)
+    xhat: MultiBandSignal = aud_fb.filter_signal(
+        xhat, mode=FilterBankMode.Parallel
+    )
     # SNR time-segmented with weighting function
     snr_per_channel = np.empty(xhat.number_of_channels)
     for n in range(xhat.number_of_channels):

@@ -13,6 +13,16 @@ from .signal import Signal
 from .filter import Filter
 from .filterbank import FilterBank
 from .._general_helpers import _check_format_in_path
+from ..standard.enums import (
+    FilterBankMode,
+    FrequencySpacing,
+    SpectrumType,
+    InterpolationDomain,
+    InterpolationEdgeHandling,
+    InterpolationScheme,
+    MagnitudeNormalization,
+    Window,
+)
 
 
 class Spectrum:
@@ -55,21 +65,10 @@ class Spectrum:
             raised if this is not the case. Default: False.
 
         """
-        scaling = sig._spectrum_parameters["scaling"]
         if complex:
-            if scaling is not None:
-                assert (
-                    "power" not in scaling
-                ), "Power scaling can not be used for a complex spectrum"
-            assert (
-                sig._spectrum_parameters["method"] == "standard"
-            ), "Method for obtaining a complex spectrum must be standard"
-        else:
-            if scaling is None:
-                if sig._spectrum_parameters["method"] == "standard":
-                    scaling = "amplitude"
-                else:
-                    scaling = "power"
+            assert sig.spectrum_scaling.outputs_complex_spectrum(
+                sig.spectrum_method
+            ), "Method or scaling do not deliver a complex spectrum"
 
         f, sp = sig.get_spectrum()
         if complex:
@@ -77,7 +76,12 @@ class Spectrum:
             return Spectrum(f, sp)
 
         return Spectrum(
-            f, np.abs(sp) if "amplitude" in scaling else np.abs(sp) ** 0.5
+            f,
+            (
+                np.abs(sp)
+                if sig.spectrum_scaling.is_amplitude_scaling()
+                else np.abs(sp) ** 0.5
+            ),
         )
 
     @staticmethod
@@ -106,7 +110,7 @@ class Spectrum:
     def from_filterbank(
         frequency_vector_hz: NDArray[np.float64],
         filter_bank: FilterBank,
-        mode: str = "sequential",
+        mode: FilterBankMode,
         complex: bool = False,
     ) -> "Spectrum":
         """Obtain spectrum from computing the transfer function of a filter
@@ -118,8 +122,8 @@ class Spectrum:
             Frequency vector to compute.
         filter_bank : FilterBank
             FilterBank to obtain the spectrum from.
-        mode : {"sequential", "parallel", "summed"} str, optional
-            Mode for the filter bank. Default: "sequential".
+        mode : FilterBankMode
+            Mode for the filter bank.
         complex : bool, optional
             When True, the complex spectrum is saved. Otherwise, it is the
             magnitude spectrum. Default: False.
@@ -147,7 +151,7 @@ class Spectrum:
         self.__frequency_vector_hz = f
 
     @property
-    def frequency_vector_type(self) -> str:
+    def frequency_vector_type(self) -> FrequencySpacing:
         return self.__frequency_vector_type
 
     @property
@@ -167,9 +171,9 @@ class Spectrum:
         assert (
             data.shape[0] == self.number_frequency_bins
         ), "Spectral data and frequency vector lengths do not match"
-        self.__is_magnitude_spectrum = not np.iscomplexobj(data)
+        is_magnitude = np.isrealobj(data)
         self.__spectral_data = data.astype(
-            np.float64 if self.is_magnitude else np.complex128
+            np.float64 if is_magnitude else np.complex128
         )
         if self.is_magnitude:
             assert np.all(
@@ -182,30 +186,38 @@ class Spectrum:
 
     @property
     def is_magnitude(self) -> bool:
-        return self.__is_magnitude_spectrum
+        return np.isrealobj(self.__spectral_data)
+
+    @property
+    def spectrum_type(self) -> SpectrumType:
+        if self.is_magnitude:
+            return SpectrumType.Magnitude
+        return SpectrumType.Complex
 
     @property
     def has_coherence(self) -> bool:
         return hasattr(self, "coherence")
 
     @staticmethod
-    def __check_frequency_vector_type(f_vec_hz: NDArray[np.float64]) -> str:
+    def __check_frequency_vector_type(
+        f_vec_hz: NDArray[np.float64],
+    ) -> FrequencySpacing:
         try:
             if np.all(
                 np.isclose(np.ediff1d(f_vec_hz), f_vec_hz[-1] - f_vec_hz[-2])
             ):
-                return "linear"
+                return FrequencySpacing.Linear
 
             if np.all(
                 np.isclose(
                     f_vec_hz[2:] / f_vec_hz[1:-1], f_vec_hz[-1] / f_vec_hz[-2]
                 )
             ):
-                return "logarithmic"
+                return FrequencySpacing.Logarithmic
         except Exception as e:
             print(e)
 
-        return "other"
+        return FrequencySpacing.Other
 
     def __len__(self):
         return self.number_frequency_bins
@@ -258,19 +270,30 @@ class Spectrum:
 
         """
         self.set_interpolator_parameters(
-            "power" if self.is_magnitude else "magphase",
+            (
+                InterpolationDomain.Power
+                if self.is_magnitude
+                else InterpolationDomain.MagnitudePhase
+            ),
             self.__int_scheme,
             self.__int_edges,
         )
         new_sp = self.get_interpolated_spectrum(
-            new_freqs_hz, "magnitude" if self.is_magnitude else "complex"
+            new_freqs_hz,
+            (
+                SpectrumType.Magnitude
+                if self.is_magnitude
+                else SpectrumType.Complex
+            ),
         )
         self.frequency_vector_hz = new_freqs_hz
         self.spectral_data = new_sp
         return self
 
     def get_interpolated_spectrum(
-        self, requested_frequency: NDArray[np.float64], output_type: str
+        self,
+        requested_frequency: NDArray[np.float64],
+        output_type: SpectrumType,
     ) -> NDArray:
         """Obtain an interpolated spectrum. Refer to
         `set_interpolator_parameters()` to modify the interpolation.
@@ -279,7 +302,7 @@ class Spectrum:
         ----------
         requested_frequency : NDArray[np.float64], None
             Frequencies to which to interpolate.
-        output_type :  str {"power", "magnitude", "complex", "db"}
+        output_type :  SpectrumType
             Output for the data.
 
         Returns
@@ -287,68 +310,57 @@ class Spectrum:
         NDArray
 
         """
-        output_type = output_type.lower()
-        assert output_type in (
-            "power",
-            "magnitude",
-            "complex",
-            "db",
-        ), "Output type is not supported"
-        if output_type == "complex":
+        if output_type == SpectrumType.Complex:
             assert not self.is_magnitude, "Complex output is not supported"
-            assert self.__int_domain in (
-                "complex",
-                "magphase",
-            ), "Interpolation domain must be complex for a complex output"
 
         inds_outside_left = requested_frequency < self.frequency_vector_hz[0]
         inds_outside_right = requested_frequency > self.frequency_vector_hz[-1]
-        if self.__int_edges == "error":
+        if self.__int_edges == InterpolationEdgeHandling.Error:
             assert 0 == np.sum(inds_outside_left | inds_outside_right), (
                 "Frequencies are not in the given range and edge handling "
                 + "does not support it"
             )
 
         # Input for interpolation depending on domain
-        if self.__int_domain == "power":
+        if self.__int_domain == InterpolationDomain.Power:
             if self.is_magnitude:
                 interp_data = self.spectral_data**2.0
             else:
                 interp_data = np.abs(self.spectral_data) ** 2.0
-        elif self.__int_domain == "magnitude":
+        elif self.__int_domain == InterpolationDomain.Magnitude:
             if self.is_magnitude:
                 interp_data = self.spectral_data
             else:
                 interp_data = np.abs(self.spectral_data)
-        elif self.__int_domain == "complex":
+        elif self.__int_domain == InterpolationDomain.Complex:
             interp_data = np.real(self.spectral_data)
             interp_data_imag = np.imag(self.spectral_data)
-        elif self.__int_domain == "magphase":
+        elif self.__int_domain == InterpolationDomain.MagnitudePhase:
             interp_data = np.abs(self.spectral_data)
             interp_data_imag = np.unwrap(np.angle(self.spectral_data), axis=0)
 
         # Get edge values
-        if self.__int_edges == "zero-pad":
+        if self.__int_edges == InterpolationEdgeHandling.ZeroPad:
             left_val = right_val = 0.0
         else:  # "extend"
             left_val = interp_data[0, ...]
             right_val = interp_data[-1, ...]
 
         # Interpolation and filling edges
-        if self.__int_scheme != "linear":
+        if self.__int_scheme != InterpolationScheme.Linear:
             func = (
                 int_sci.CubicSpline
-                if self.__int_scheme == "cubic"
+                if self.__int_scheme == InterpolationScheme.Cubic
                 else int_sci.PchipInterpolator
             )
             output = func(self.frequency_vector_hz, interp_data, axis=0)(
                 requested_frequency
             )
-            if self.__int_domain == "complex":
+            if self.__int_domain == InterpolationDomain.Complex:
                 output = output + 1j * func(
                     self.frequency_vector_hz, interp_data_imag, axis=0
                 )(requested_frequency)
-            elif self.__int_domain == "magphase":
+            elif self.__int_domain == InterpolationDomain.MagnitudePhase:
                 output = output * np.exp(
                     1j
                     * func(self.frequency_vector_hz, interp_data_imag, axis=0)(
@@ -364,9 +376,9 @@ class Spectrum:
             output = np.zeros(
                 (len(requested_frequency), self.number_of_channels),
                 dtype=(
-                    np.float64
-                    if self.__int_domain not in ("complex", "magphase")
-                    else np.complex128
+                    np.complex128
+                    if self.__int_domain.is_complex()
+                    else np.float64
                 ),
             )
             for ch in range(output.shape[1]):
@@ -378,7 +390,7 @@ class Spectrum:
                     right=right_val,
                 )
                 # Complex handling
-                if self.__int_domain == "complex":
+                if self.__int_domain == InterpolationDomain.Complex:
                     output[:, ch] += 1j * np.interp(
                         requested_frequency,
                         self.frequency_vector_hz,
@@ -386,7 +398,7 @@ class Spectrum:
                         left=left_val,
                         right=right_val,
                     )
-                elif self.__int_domain == "magphase":
+                elif self.__int_domain == InterpolationDomain.MagnitudePhase:
                     output[:, ch] = output[:, ch] * np.exp(
                         1j
                         * np.interp(
@@ -399,23 +411,23 @@ class Spectrum:
                     )
 
         # Output type
-        if output_type == "complex":
+        if output_type == SpectrumType.Complex:
             return output
-        elif output_type == "db":
-            if self.__int_domain in ("complex", "magphase"):
+        elif output_type == SpectrumType.Db:
+            if self.__int_domain.is_complex():
                 return to_db(np.abs(output), True)
-            return to_db(output, self.__int_domain == "magnitude")
-        elif output_type == "power":
-            if self.__int_domain in ("complex", "magphase"):
+            return to_db(output, self.__int_domain.is_linear())
+        elif output_type == SpectrumType.Power:
+            if self.__int_domain.is_complex():
                 return np.abs(output) ** 2.0
-            elif self.__int_domain == "magnitude":
+            elif self.__int_domain.is_linear():
                 return output**2.0
             else:  # "power"
                 return output
-        elif output_type == "magnitude":
-            if self.__int_domain in ("complex", "magphase"):
+        elif output_type == SpectrumType.Magnitude:
+            if self.__int_domain.is_complex():
                 return np.abs(output)
-            elif self.__int_domain == "magnitude":
+            elif self.__int_domain.is_linear():
                 return output
             else:  # "power"
                 return output**0.5
@@ -424,75 +436,41 @@ class Spectrum:
 
     def set_interpolator_parameters(
         self,
-        domain: str = "power",
-        scheme: str = "linear",
-        edges_handling: str = "zero-pad",
+        domain: InterpolationDomain = InterpolationDomain.Power,
+        scheme: InterpolationScheme = InterpolationScheme.Linear,
+        edges_handling: InterpolationEdgeHandling = InterpolationEdgeHandling.ZeroPad,
     ):
         """Set the parameters of the interpolator.
 
         Parameters
         ----------
-        domain : {"power", "magnitude", "complex", "magphase"} str, optional
-            Domain to use during the interpolation. Default: "power".
-        interpolation_scheme : {"linear", "cubic", "pchip"} str, optional
+        domain : InterpolationDomain, optional
+            Domain to use during the interpolation. Default: Power.
+        interpolation_scheme : InterpolationScheme, optional
             Type of interpolation to realize. See notes for details. Default:
-            "linear".
-        edges_handling : {"zero-pad", "extend", "error"} str, optional
+            Linear.
+        edges_handling : InterpolationEdgeHandling, optional
             Type of handling for interpolating outside the saved range. See
-            notes for details. Default: "zero-pad".
+            notes for details. Default: ZeroPad.
 
         Notes
         -----
         - The domain for spectrum interpolation defaults to power. This renders
           the most accurate results, though spectrum interpolation always has
-          some error if done directly on the frequency data. Zero-padding or
-          computing DFT directly is the correct way of obtaining the values of
-          different frequency bins.
-        - For complex and magphase domains, the underlying data must be
-          complex.
-        - The interpolation schemes are:
-
-            - linear: linear interpolation. It is the fastest and most stable.
-            - cubic: CubicSplines. It delivers smoother results, but can lead\
-              to overshooting and other interpolation artifacts.
-            - pchip: PchipInterpolator. It is a polynomial interpolator that\
-              avoids overshooting between interpolation points.
-
-        - Handling of edges:
-            - zero-pad: fills with 0 values the frequency bins outside the
-              range.
-            - extend: uses the values at the edges of the spectrum.
-            - error: raises an assertion error if frequency bins outside the
-              saved range are requested.
+          some error if done directly on the frequency data. Zero-padding the
+          time series or computing DFT directly is the correct way of obtaining
+          the values of different frequency bins.
 
         """
-        domain = domain.lower()
-        assert domain in (
-            "power",
-            "magnitude",
-            "complex",
-            "magphase",
-        ), "No supported interpolation domain"
-        if domain in ("complex", "magphase"):
+        if domain in (
+            InterpolationDomain.Complex,
+            InterpolationDomain.MagnitudePhase,
+        ):
             assert (
                 not self.is_magnitude
             ), "No complex interpolation is possible with this data"
         self.__int_domain = domain
-
-        scheme = scheme.lower()
-        assert scheme in (
-            "linear",
-            "cubic",
-            "pchip",
-        ), "Invalid interpolation scheme"
         self.__int_scheme = scheme
-
-        edges_handling = edges_handling.lower()
-        assert edges_handling in (
-            "zero-pad",
-            "extend",
-            "error",
-        ), "Handling of edges is not supported"
         self.__int_edges = edges_handling
         return self
 
@@ -533,7 +511,7 @@ class Spectrum:
         )
 
     def apply_octave_smoothing(
-        self, octave_fraction: float, window_type="hann"
+        self, octave_fraction: float, window_type: Window = Window.Hann
     ):
         """Apply octave smoothing (inplace) on the spectral data. When complex,
         the smoothing happens on the magnitude and phase representation.
@@ -543,10 +521,8 @@ class Spectrum:
         ----------
         octave_fraction : float
             Octave fraction across which to apply smoothing.
-        window_type : str, tuple(str, float)
-            Type of window to use. Refer to
-            `tools.fractional_octave_smoothing()` for details on the available
-            windows. Default: "hann".
+        window_type : Window, optional
+            Type of window to use. Default: Hann.
 
         Returns
         -------
@@ -564,11 +540,14 @@ class Spectrum:
             np.log2(
                 self.frequency_vector_hz[-1] / self.frequency_vector_hz[-2]
             )
-            if self.frequency_vector_type == "logarithmic"
+            if self.frequency_vector_type == FrequencySpacing.Linear
             else None
         )
 
-        if self.frequency_vector_type in ("linear", "logarithmic"):
+        if self.frequency_vector_type in (
+            FrequencySpacing.Linear,
+            FrequencySpacing.Logarithmic,
+        ):
             data = self.spectral_data
         else:  # Other: map to linear and interpolate
             data = self.get_interpolated_spectrum(
@@ -578,23 +557,27 @@ class Spectrum:
                     self.frequency_vector_hz[-1] - self.frequency_vector_hz[0],
                     endpoint=True,
                 ),
-                "magnitude" if self.is_magnitude else "complex",
+                (
+                    SpectrumType.Magnitude
+                    if self.is_magnitude
+                    else SpectrumType.Complex
+                ),
             )
 
         if self.is_magnitude:
             self.spectral_data = fractional_octave_smoothing(
-                data, beta, octave_fraction, window_type
+                data, beta, octave_fraction, window_type.to_scipy_format()
             )
             return self
 
         mag = fractional_octave_smoothing(
-            np.abs(data), beta, octave_fraction, window_type
+            np.abs(data), beta, octave_fraction, window_type.to_scipy_format()
         )
         ph = fractional_octave_smoothing(
             np.unwrap(np.angle(data), axis=0),
             beta,
             octave_fraction,
-            window_type,
+            window_type.to_scipy_format(),
         )
         self.spectral_data = mag * np.exp(1j * ph)
         return self
@@ -618,7 +601,7 @@ class Spectrum:
     def plot_magnitude(
         self,
         in_db: bool = True,
-        normalization: str | None = None,
+        normalization: MagnitudeNormalization = MagnitudeNormalization.NoNormalization,
         dynamic_range_db: float | None = 100.0,
     ):
         """Plot the magnitude spectrum.
@@ -627,31 +610,26 @@ class Spectrum:
         ----------
         in_db : bool, True
             When True, the data is converted to dB.
-        normalization : str {"1khz", "max", "energy"}, None, optional
-            Type of normalization (per-channel) to apply. Default: None.
+        normalization : MagnitudeNormalization, optional
+            Type of normalization (per-channel) to apply. Default:
+            NoNormalization.
         dynamic_range_db : float, None, optional
             Pass a dynamic range in order to constrain the plot. Use None
             to avoid it. Default: 100.
 
         """
-        if normalization is not None:
-            normalization = normalization.lower()
-            assert normalization in (
-                "1khz",
-                "max",
-                "energy",
-            ), "Normalization is invalid"
-            if normalization == "1khz":
+        if normalization != MagnitudeNormalization.NoNormalization:
+            if normalization == MagnitudeNormalization.OneKhz:
                 norm = self.get_interpolated_spectrum(
-                    [1000.0], output_type="magnitude"
+                    np.array([1000.0]), output_type=SpectrumType.Magnitude
                 )
-            elif normalization == "max":
+            elif normalization == MagnitudeNormalization.Max:
                 norm = (
                     np.max(np.abs(self.spectral_data), axis=0)
                     if not self.is_magnitude
                     else np.max(self.spectral_data, axis=0)
                 )
-            elif normalization == "energy":
+            elif normalization == MagnitudeNormalization.Energy:
                 norm = (self.get_energy() / self.number_frequency_bins) ** 0.5
         else:
             norm = np.ones(self.number_of_channels)
@@ -665,7 +643,6 @@ class Spectrum:
             log=True,
             labels=[f"Channel {i}" for i in range(self.number_of_channels)],
             ylabel="Magnitude / " + "dB" if in_db else "1",
-            returns=True,
         )
 
     def plot_coherence(self) -> tuple[Figure, list[Axes]]:
@@ -693,7 +670,6 @@ class Spectrum:
             range_x=None,
             xlabels="Frequency / Hz",
             range_y=[-0.1, 1.1],
-            returns=True,
         )
         return fig, ax
 
@@ -740,9 +716,15 @@ class Spectrum:
             else self.number_frequency_bins
         )
         if inclusive:
-            ind_high += 1
-            ind_high = min(ind_high, self.number_frequency_bins)
+            if f_upper_hz is not None:
+                ind_high += 1
+                ind_high = min(ind_high, self.number_frequency_bins)
+            if f_lower_hz is not None:
+                if self.frequency_vector_hz[ind_low] != f_lower_hz:
+                    ind_low -= 1
+                    ind_low = max(ind_low, 0)
         else:
-            ind_low += 1
+            if f_lower_hz is not None:
+                ind_low += 1
         assert ind_low < ind_high, "Slice is invalid"
         return slice(ind_low, ind_high)

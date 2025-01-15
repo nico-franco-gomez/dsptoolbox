@@ -39,8 +39,8 @@ def pad_trim(
                 in_the_end=in_the_end,
             )
         new_sig = signal.copy()
-        new_sig.clear_time_window()
         new_sig.time_data = new_time_data
+        return new_sig
     elif isinstance(signal, MultiBandSignal):
         assert (
             signal.same_sampling_rate
@@ -50,9 +50,9 @@ def pad_trim(
             new_sig.bands[ind] = pad_trim(
                 b, desired_length_samples, in_the_end
             )
+        return new_sig
     else:
         raise TypeError("Signal must be of type Signal or MultiBandSignal")
-    return new_sig
 
 
 def modify_signal_length(

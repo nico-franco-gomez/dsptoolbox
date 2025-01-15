@@ -2,19 +2,21 @@ import numpy as np
 from scipy.signal import check_COLA, windows
 from warnings import warn
 from numpy.typing import NDArray
+
 from ..standard._framed_signal_representation import _get_framed_signal
+from ..standard.enums import SpectrumScaling, Window
 
 
 def _welch(
     x: NDArray[np.float64],
     y: NDArray[np.float64] | None,
     fs_hz: int,
-    window_type: str = "hann",
-    window_length_samples: int = 1024,
-    overlap_percent=50,
-    detrend: bool = True,
-    average: str = "mean",
-    scaling: str | None = "power spectral density",
+    window_type: Window,
+    window_length_samples: int,
+    overlap_percent: float,
+    detrend: bool,
+    average: str,
+    scaling: SpectrumScaling,
 ) -> NDArray[np.float64]:
     """Cross spectral density computation with Welch's method.
 
@@ -27,24 +29,19 @@ def _welch(
         spectrum of `x` will be computed.
     fs_hz : int
         Sampling rate in Hz.
-    window_type : str, optional
-        Window type to be used. Refer to scipy.signal.windows for available
-        ones. Default: `'hann'`
-    window_length_samples : int, optional
+    window_type : Window
+        Window type to be used.
+    window_length_samples : int
         Window length to be used. Determines frequency resolution in the end.
-        Only powers of 2 are accepted. Default: 1024.
-    overlap_percent : int, optional
-        Overlap in percentage. Default: 50.
-    detrend : bool, optional
-        Detrending from each time segment (removing mean). Default: True.
-    average : str, optional
+        Only powers of 2 are accepted.
+    overlap_percent : float
+        Overlap in percentage.
+    detrend : bool
+        Detrending from each time segment (removing mean).
+    average : str
         Type of mean to be computed. Take `'mean'` or `'median'`.
-        Default: `'mean'`
-    scaling : str, optional
-        Scaling. Use `'power spectrum'`, `'power spectral density'`,
-        `'amplitude spectrum'` or `'amplitude spectral density'`. Pass `None`
-        to avoid any scaling. See references for details about scaling.
-        Default: `'power spectral density'`.
+    scaling : SpectrumScaling
+        Scaling. See references for details about scaling.
 
     Returns
     -------
@@ -102,24 +99,10 @@ def _welch(
     assert average in valid_average, (
         f"{average} is not valid. Use " + "either mean or median"
     )
-    valid_scaling = [
-        "power spectrum",
-        "power spectral density",
-        "amplitude spectrum",
-        "amplitude spectral density",
-        None,
-    ]
-    assert scaling in valid_scaling, (
-        f"{scaling} is not valid. Use "
-        + "power spectrum, power spectral density, amplitude spectrum, "
-        + "amplitude spectral density or None"
-    )
-    if scaling is None:
-        scaling = ""
 
     # Window and step
     window = windows.get_window(
-        window_type, window_length_samples, fftbins=True
+        window_type.to_scipy_format(), window_length_samples, fftbins=True
     )
     overlap_samples = int(overlap_percent / 100 * window_length_samples)
     step = window_length_samples - overlap_samples
@@ -157,11 +140,14 @@ def _welch(
             y_frames -= np.mean(y_frames, axis=0)
 
     if not autospectrum:
-        sp_frames = np.fft.rfft(x_frames, axis=0).conjugate() * np.fft.rfft(
-            y_frames, axis=0
-        )
+        sp_frames = np.fft.rfft(
+            x_frames, axis=0, norm=scaling.fft_norm()
+        ).conjugate() * np.fft.rfft(y_frames, axis=0, norm=scaling.fft_norm())
     else:
-        sp_frames = np.abs(np.fft.rfft(x_frames, axis=0)) ** 2.0
+        sp_frames = (
+            np.abs(np.fft.rfft(x_frames, axis=0, norm=scaling.fft_norm()))
+            ** 2.0
+        )
 
     # Direct averaging (much faster than averaging magnitude and phase)
     if average == "mean":
@@ -180,21 +166,14 @@ def _welch(
         csd /= bias
 
     # Weightning (with 2 because one-sided)
-    if scaling in ("power spectrum", "amplitude spectrum"):
-        factor = 2 / np.sum(window) ** 2
-    elif scaling in ("power spectral density", "amplitude spectral density"):
-        factor = 2 / (window @ window) / fs_hz
-        # With this factor, energy can be regained by integrating the psd
-        # while taking into account the frequency step
-    else:
-        factor = 1
+    if scaling.has_physical_units():
+        factor = scaling.get_scaling_factor(
+            window_length_samples, fs_hz, window
+        )
+        csd *= factor
+        csd[np.array([0, -1]), ...] /= 2
 
-    csd *= factor
-    if factor != 1:
-        csd[0, ...] /= 2
-        csd[-1, ...] /= 2
-
-    if "amplitude" in scaling:
+    if scaling.is_amplitude_scaling():
         csd = np.sqrt(csd)
 
     return csd
@@ -203,44 +182,42 @@ def _welch(
 def _stft(
     x: NDArray[np.float64],
     fs_hz: int,
-    window_length_samples: int = 2048,
-    window_type: str = "hann",
-    overlap_percent=50,
-    fft_length_samples: int | None = None,
-    detrend: bool = True,
-    padding: bool = False,
-    scaling: str | None = None,
+    window_length_samples: int,
+    window_type: Window,
+    overlap_percent: float,
+    fft_length_samples: int | None,
+    detrend: bool,
+    padding: bool,
+    scaling: SpectrumScaling,
 ):
     """Computes the STFT of a signal. Output matrix has (freqs_hz, seconds_s).
 
     Parameters
     ----------
     x : NDArray[np.float64]
-        First signal
+        (Multichannel) Time series.
     fs_hz : int
         Sampling rate in Hz.
-    window_length_samples : int, optional
+    window_length_samples : int
         Window length to be used. Determines frequency resolution in the end.
-        Only powers of 2 are accepted. Default: 1024.
-    window_type : str, optional
+        Only powers of 2 are accepted.
+    window_type : Window
         Window type to be used. Refer to scipy.signal.windows for available
-        ones. Default: `'hann'`
-    overlap_percent : int, optional
-        Overlap in percentage. Default: 50.
-    fft_length_samples : int, optional
+        ones.
+    overlap_percent : int
+        Overlap in percentage.
+    fft_length_samples : int
         Length of the FFT window for each time window. This affects
         the frequency resolution and can also crop the time window. Pass
-        `None` to use the window length. Default: `None`.
-    detrend : bool, optional
-        Detrending from each time segment (removing mean). Default: True.
-    padding : bool, optional
+        `None` to use the window length.
+    detrend : bool
+        Detrending from each time segment (removing mean).
+    padding : bool
         When `True`, the original signal is padded in the beginning and ending
         so that no energy is lost due to windowing when the COLA constraint is
-        met. Default: `False`.
-    scaling : str, optional
-        Scale as `"amplitude spectrum"`, `"amplitude spectral density"`,
-        `"power spectrum"` or `"power spectral density"`. Pass `None`
-        to avoid any scaling. See references for details. Default: `None`.
+        met.
+    scaling : SpectrumScaling, optional
+        Spectrum scaling.
 
     Returns
     -------
@@ -266,28 +243,13 @@ def _stft(
     assert overlap_percent >= 0 and overlap_percent < 100, (
         "overlap_percent" + " should be between 0 and 100"
     )
-    valid_scaling = [
-        "power spectrum",
-        "power spectral density",
-        "amplitude spectrum",
-        "amplitude spectral density",
-        None,
-    ]
-    assert scaling in valid_scaling, (
-        f"{scaling} is not valid. Use "
-        + "power spectrum, power spectral density, amplitude spectrum, "
-        + "amplitude spectral density or None"
-    )
-
-    if scaling is None:
-        scaling = ""
 
     if fft_length_samples is None:
         fft_length_samples = window_length_samples
 
     # Window and step
     window = windows.get_window(
-        window_type, window_length_samples, fftbins=True
+        window_type.to_scipy_format(), window_length_samples, fftbins=True
     )
     overlap_samples = int(overlap_percent / 100 * window_length_samples + 0.5)
     step = window_length_samples - overlap_samples
@@ -310,43 +272,38 @@ def _stft(
     if detrend:
         time_x -= np.mean(time_x, axis=0)
     # Spectra
-    stft = np.fft.rfft(time_x, axis=0, n=fft_length_samples)
+    stft = np.fft.rfft(
+        time_x, axis=0, n=fft_length_samples, norm=scaling.fft_norm()
+    )
+
     # Scaling
-    if scaling in ("power spectrum", "amplitude spectrum"):
-        factor = 2**0.5 / np.sum(window)
-    elif scaling in ("power spectral density", "amplitude spectral density"):
-        factor = (2 / (window @ window) / fs_hz) ** 0.5
-    else:
-        factor = 1
-
-    stft *= factor
-
-    if scaling:
+    if scaling.has_physical_units():
         stft[0, ...] /= 2**0.5
-
-    if scaling and fft_length_samples % 2 == 0:
-        stft[-1, ...] /= 2**0.5
-
-    if "power" in scaling:
-        stft = np.abs(stft) ** 2
+        if fft_length_samples % 2 == 0:
+            stft[-1, ...] /= 2**0.5
+        factor = scaling.get_scaling_factor(fft_length_samples, fs_hz, window)
+        if not scaling.is_amplitude_scaling():
+            stft = np.abs(stft) ** 2.0
+        stft *= factor
 
     time_s = np.linspace(0, len(x) / fs_hz, stft.shape[1])
     freqs_hz = np.fft.rfftfreq(len(window), 1 / fs_hz)
     return time_s, freqs_hz, stft
 
 
-def _csm(
+def _csm_welch(
     time_data: NDArray[np.float64],
     sampling_rate_hz: int,
-    window_length_samples: int = 1024,
-    window_type: str = "hann",
-    overlap_percent: int = 50,
-    detrend: bool = True,
-    average: str = "mean",
-    scaling: str = "power",
+    window_length_samples: int,
+    window_type: str,
+    overlap_percent: int,
+    detrend: bool,
+    average: str,
+    scaling: str,
 ):
-    """Computes the cross spectral matrix of a multichannel signal.
-    Output matrix has (frequency, channels, channels).
+    """Computes the cross spectral matrix of a multichannel signal using
+    welch's method for a periodogram. Output matrix has (frequency, channels,
+    channels).
 
     Parameters
     ----------
@@ -354,24 +311,20 @@ def _csm(
         Signal
     sampling_rate_hz : int
         Sampling rate in Hz.
-    window_length_samples : int, optional
+    window_length_samples : int
         Window length to be used. Determines frequency resolution in the end.
-        Only powers of 2 are accepted. Default: 1024.
-    window_type : str, optional
+        Only powers of 2 are accepted.
+    window_type : str
         Window type to be used. Refer to scipy.signal.windows for available
-        ones. Default: `'hann'`
-    overlap_percent : int, optional
-        Overlap in percentage. Default: 50.
-    detrend : bool, optional
-        Detrending from each time segment (removing mean). Default: True.
-    average : str, optional
+        ones.
+    overlap_percent : int
+        Overlap in percentage.
+    detrend : bool
+        Detrending from each time segment (removing mean).
+    average : str
         Type of mean to be computed. Take `'mean'` or `'median'`.
-        Default: `'mean'`
-    scaling : str, optional
-        Scaling. Use `'power spectrum'`, `'power spectral density'`,
-        `'amplitude spectrum'` or `'amplitude spectral density'`. Pass `None`
-        to avoid any scaling. See references for details about scaling.
-        Default: `'power spectral density'`.
+    scaling : SpectrumScaling
+        Scaling. See references for details about scaling.
 
     Returns
     -------
@@ -419,8 +372,85 @@ def _csm(
                 average=average,
                 scaling=scaling,
             )
+            # Half for summing the csm
             if ind1 == ind2:
                 csm[:, ind1, ind2] *= 0.5
     csm += np.swapaxes(csm, 1, 2).conjugate()
     f = np.fft.rfftfreq(window_length_samples, 1 / sampling_rate_hz)
     return f, csm
+
+
+def _csm_fft(
+    spectrum: NDArray[np.complex128],
+    scaling: SpectrumScaling,
+    window: NDArray[np.float64] | None,
+    sampling_rate_hz: int,
+) -> np.complex128:
+    """Compute the cross-spectral matrix from a multichannel complex spectrum.
+    It is assumed that the input spectrum has no scaling, i.e., FFTBackward
+    normalization.
+
+    Parameters
+    ----------
+    spectrum : NDArray[np.complex128]
+        Complex spectrum from which to compute the cross-spectral matrix.
+    scaling : SpectrumScaling
+        Output scaling.
+    window : NDArray[np.float64], None
+        Time window if it has been applied.
+    sampling_rate_hz : int
+        Sampling rate.
+
+    Returns
+    -------
+    np.complex128
+        Complex spectrum.
+
+    Notes
+    -----
+    - Output scalings from FFTNorms always deliver a squared, i.e., cross-
+      spectrum.
+
+    """
+    if window is not None:
+        assert (
+            window.shape[1] == spectrum.shape[1]
+        ), "Number of channels does not match"
+
+    number_of_channels = spectrum.shape[1]
+    csm = np.zeros(
+        (
+            spectrum.shape[0],
+            number_of_channels,
+            number_of_channels,
+        ),
+        dtype=np.complex128,
+    )
+    for ind1 in range(number_of_channels):
+        for ind2 in range(ind1, number_of_channels):
+            # Complex conjugate second signal and not first (like transposing
+            # the matrix)
+            csm[:, ind2, ind1] = (
+                spectrum[:, ind1].conjugate() * spectrum[:, ind2]
+            )
+            # Half for summing the csm
+            if ind1 == ind2:
+                csm[:, ind1, ind2] *= 0.5
+    csm += np.swapaxes(csm, 1, 2).conjugate()
+
+    # Handle scaling
+    if scaling == SpectrumScaling.FFTBackward:
+        return csm
+
+    # Fix DC and Nyquist because one-sided
+    csm[np.array([0, -1]), ...] /= 2.0
+
+    # Conversion
+    factor = SpectrumScaling.FFTBackward.conversion_factor(
+        scaling, spectrum.shape[0] // 2 + 1, sampling_rate_hz, window
+    )[:, None]
+    factor = np.repeat(factor, number_of_channels, axis=-1)
+    csm *= factor[None, ...]
+    if scaling.is_amplitude_scaling():
+        csm = np.sqrt(csm)
+    return csm

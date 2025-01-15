@@ -32,6 +32,22 @@ from .standard import (
     merge_fir_filters,
     spectral_difference,
     append_spectra,
+    # Enums
+    SpectrumScaling,
+    SpectrumMethod,
+    FilterCoefficientsType,
+    BiquadEqType,
+    FilterBankMode,
+    FilterPassType,
+    IirDesignMethod,
+    MagnitudeNormalization,
+    SpectrumType,
+    InterpolationDomain,
+    InterpolationScheme,
+    InterpolationEdgeHandling,
+    FrequencySpacing,
+    Window,
+    FadeType,
 )
 from .classes import (
     Filter,
@@ -98,6 +114,22 @@ __all__ = [
     "beamforming",
     "effects",
     "tools",
+    # Enums
+    "SpectrumScaling",
+    "SpectrumMethod",
+    "FilterCoefficientsType",
+    "BiquadEqType",
+    "FilterBankMode",
+    "FilterPassType",
+    "MagnitudeNormalization",
+    "SpectrumType",
+    "InterpolationDomain",
+    "InterpolationScheme",
+    "InterpolationEdgeHandling",
+    "FrequencySpacing",
+    "IirDesignMethod",
+    "Window",
+    "FadeType",
 ]
 
-__version__ = "0.4.8"
+__version__ = "0.5dev"

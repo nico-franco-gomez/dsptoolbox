@@ -5,6 +5,7 @@ from matplotlib.axes import Axes
 
 from .signal import Signal
 from ..tools import to_db
+from ..standard.enums import SpectrumMethod
 
 
 class ImpulseResponse(Signal):
@@ -14,6 +15,7 @@ class ImpulseResponse(Signal):
         time_data: NDArray[np.float64] | None = None,
         sampling_rate_hz: int | None = None,
         constrain_amplitude: bool = True,
+        activate_cache: bool = False,
     ):
         """Instantiate impulse response.
 
@@ -34,6 +36,10 @@ class ImpulseResponse(Signal):
             A warning is always shown when audio gets normalized and the used
             normalization factor is saved as `amplitude_scale_factor`.
             Default: `True`.
+        activate_cache : bool, optional
+            When True, spectra, CSM and STFT will be cached. They will not
+            be computed again if no parameters have changed. Set to False to
+            avoid caching altogether. Default: False.
 
         Returns
         -------
@@ -45,8 +51,9 @@ class ImpulseResponse(Signal):
             time_data,
             sampling_rate_hz,
             constrain_amplitude=constrain_amplitude,
+            activate_cache=activate_cache,
         )
-        self.set_spectrum_parameters(method="standard")
+        self.spectrum_method = SpectrumMethod.FFT
 
     @staticmethod
     def from_signal(signal: Signal):

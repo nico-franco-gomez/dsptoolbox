@@ -31,6 +31,7 @@ References:
   acoular package: http://acoular.org
 
 """
+
 from .beamforming import (
     Grid,
     Regular2DGrid,
@@ -47,6 +48,7 @@ from .beamforming import (
     MonopoleSource,
     mix_sources_on_array,
 )
+from .enums import SteeringVectorType
 
 __all__ = [
     "Grid",
@@ -63,4 +65,5 @@ __all__ = [
     "BeamformerDASTime",
     "MonopoleSource",
     "mix_sources_on_array",
+    "SteeringVectorType",
 ]

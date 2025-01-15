@@ -21,9 +21,9 @@ def _latency(
 
     """
     if in2 is None:
-        in2 = in1[:, 0][..., None]
-        in1 = np.atleast_2d(in1[:, 1:])
-        xcorr = correlate(in2, in1, mode="full")
+        in2_ = in1[:, 0][..., None]
+        in1_ = np.atleast_2d(in1[:, 1:])
+        xcorr = correlate(in2_, in1_, mode="full")
         peak_inds = np.argmax(np.abs(xcorr), axis=0)
     else:
         peak_inds = np.zeros(in1.shape[1], dtype=int)

@@ -5,12 +5,13 @@ from ..classes import Signal, MultiBandSignal, FilterBank, Filter
 from .._general_helpers import _normalize, _fade, _rms
 from ..tools import from_db
 from .resampling import resample
+from .enums import FadeType
 
 
 def normalize(
     sig: Signal | MultiBandSignal,
-    norm_dbfs: float = -6,
-    mode: str = "peak",
+    norm_dbfs: float,
+    peak_normalization: bool = True,
     each_channel: bool = False,
 ) -> Signal | MultiBandSignal:
     """Normalizes a signal to a given dBFS value. It either normalizes each
@@ -20,11 +21,11 @@ def normalize(
     ----------
     sig : `Signal` or `MultiBandSignal`
         Signal to be normalized.
-    norm_dbfs : float, optional
-        Value in dBFS to reach after normalization. Default: -6.
-    mode : str, {"peak", "rms"}, optional
-        Normalization mode. Either normalize peak or RMS value. See notes.
-        Default: "peak".
+    norm_dbfs : float
+        Value in dBFS to reach after normalization.
+    peak_normalization : bool, optional
+        When True, signal is normalized at peak. False uses RMS value.
+        See notes. Default: True.
     each_channel : bool, optional
         When `True`, each channel on its own is normalized. When `False`,
         the peak or rms value across all channels is regarded.
@@ -42,17 +43,15 @@ def normalize(
 
     """
     if isinstance(sig, Signal):
-        mode = mode.lower()
-        assert mode in ("peak", "rms"), "Normalization mode not supported"
         new_sig = sig.copy()
         new_sig.time_data = _normalize(
-            new_sig.time_data, norm_dbfs, mode, each_channel
+            new_sig.time_data, norm_dbfs, peak_normalization, each_channel
         )
     elif isinstance(sig, MultiBandSignal):
         new_sig = sig.copy()
         for ind in range(sig.number_of_bands):
             new_sig.bands[ind] = normalize(
-                sig.bands[ind], norm_dbfs, mode, each_channel
+                sig.bands[ind], norm_dbfs, peak_normalization, each_channel
             )
     else:
         raise TypeError(
@@ -63,7 +62,7 @@ def normalize(
 
 def fade(
     sig: Signal,
-    type_fade: str = "lin",
+    fade_type: FadeType,
     length_fade_seconds: float | None = None,
     at_start: bool = True,
     at_end: bool = True,
@@ -74,9 +73,8 @@ def fade(
     ----------
     sig : `Signal`
         Signal to apply fade to.
-    type_fade : {'exp', 'lin', 'log'} str, optional
-        Type of fading to be applied. Choose from `'exp'` (exponential),
-        `'lin'` (linear) or `'log'` (logarithmic). Default: `'lin'`.
+    fade_type : FadeType
+        Type of fading to be applied.
     length_fade_seconds : float, optional
         Fade length in seconds. If `None`, 2.5% of the signal's length is used
         for the fade. Default: `None`.
@@ -91,8 +89,6 @@ def fade(
         New Signal
 
     """
-    type_fade = type_fade.lower()
-    assert type_fade in ("lin", "exp", "log"), "Type of fade is invalid"
     assert (
         at_start or at_end
     ), "At least start or end of signal should be faded"
@@ -104,12 +100,12 @@ def fade(
 
     new_time_data = np.empty_like(sig.time_data)
     for n in range(sig.number_of_channels):
-        vec = sig.time_data[:, n]
+        vec = sig.time_data[:, n].copy()
         if at_start:
             new_time_data[:, n] = _fade(
                 vec,
                 length_fade_seconds,
-                mode=type_fade,
+                mode=fade_type,
                 sampling_rate_hz=sig.sampling_rate_hz,
                 at_start=True,
             )
@@ -117,7 +113,7 @@ def fade(
             new_time_data[:, n] = _fade(
                 vec,
                 length_fade_seconds,
-                mode=type_fade,
+                mode=fade_type,
                 sampling_rate_hz=sig.sampling_rate_hz,
                 at_start=False,
             )
@@ -259,11 +255,9 @@ def apply_gain(
         if len(gain_linear) == 1:
             gain_linear = gain_linear[0]
         new_sig = target.copy()
-        new_sig.time_data = new_sig.time_data * gain_linear
+        new_sig.time_data *= gain_linear
         if new_sig.time_data_imaginary is not None:
-            new_sig.time_data_imaginary = (
-                new_sig.time_data_imaginary * gain_linear
-            )
+            new_sig.time_data_imaginary *= gain_linear
         return new_sig
     elif isinstance(target, MultiBandSignal):
         new_mb = target.copy()
@@ -275,6 +269,8 @@ def apply_gain(
         gain_linear = from_db(np.atleast_1d(gain_db), True)
         if len(gain_linear) == 1:
             gain_linear = gain_linear[0]
+        if filter.has_zpk:
+            filter.zpk[-1] *= gain_linear
         if filter.has_sos:
             filter.sos[-1, :3] *= gain_linear
         else:

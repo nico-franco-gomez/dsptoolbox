@@ -1,6 +1,7 @@
 import dsptoolbox as dsp
 import numpy as np
 from os.path import join
+import os
 
 x = np.arange(0, 1.1, 0.25)
 y = x.copy()
@@ -55,9 +56,15 @@ class TestBeamformingModule:
         m.get_maximum_frequency_range()
 
     def test_steering_vector(self):
-        dsp.beamforming.SteeringVector(formulation="true location")
-        dsp.beamforming.SteeringVector(formulation="inverse")
-        dsp.beamforming.SteeringVector(formulation="true power")
+        dsp.beamforming.SteeringVector(
+            formulation=dsp.beamforming.SteeringVectorType.TrueLocation
+        )
+        dsp.beamforming.SteeringVector(
+            formulation=dsp.beamforming.SteeringVectorType.Inverse
+        )
+        dsp.beamforming.SteeringVector(
+            formulation=dsp.beamforming.SteeringVectorType.TruePower
+        )
 
         # Check for steering vector classic
         ma = dsp.beamforming.MicArray(self.points_uniform)
@@ -85,7 +92,9 @@ class TestBeamformingModule:
                     rt0 = dist(g.coordinates[i2, :], r0)
                     h[i0, i1, i2] = 1 / N * np.exp(-1j * kn * (rti - rt0))
 
-        st = dsp.beamforming.SteeringVector(formulation="classic")
+        st = dsp.beamforming.SteeringVector(
+            formulation=dsp.beamforming.SteeringVectorType.Classic
+        )
         h_intern = st.get_vector(k, g, ma)
 
         # Test for difference
@@ -106,7 +115,11 @@ class TestBeamformingModule:
         ns.get_signals_on_array(ma)
 
         # Multiple sources
-        sp = dsp.Signal(join("examples", "data", "speech.flac"))
+        sp = dsp.Signal(
+            join(
+                os.path.dirname(__file__), "..", "example_data", "speech.flac"
+            )
+        )
         sp = dsp.pad_trim(sp, 20_000)
         ns = dsp.generators.noise(
             length_seconds=0.5, sampling_rate_hz=sp.sampling_rate_hz
@@ -137,7 +150,9 @@ class TestBeamformingModule:
         g = dsp.beamforming.Regular2DGrid(xval, yval, ["x", "y"], value3=zval)
 
         # Steering vector
-        st = dsp.beamforming.SteeringVector(formulation="true location")
+        st = dsp.beamforming.SteeringVector(
+            formulation=dsp.beamforming.SteeringVectorType.TrueLocation
+        )
 
         # Create beamformer and plot setting
         bf = dsp.beamforming.BeamformerDASFrequency(s, ma, g, st)
@@ -184,7 +199,11 @@ class TestBeamformingModule:
         ma["z"] = np.zeros(len(ma["x"]))
         ma = dsp.beamforming.MicArray(ma)
         # Signal (simulated)
-        sp = dsp.Signal(join("examples", "data", "speech.flac"))
+        sp = dsp.Signal(
+            join(
+                os.path.dirname(__file__), "..", "example_data", "speech.flac"
+            )
+        )
         sp = dsp.pad_trim(sp, 20_000)
         ns = dsp.generators.noise(
             length_seconds=0.3, sampling_rate_hz=sp.sampling_rate_hz

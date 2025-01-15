@@ -3,55 +3,102 @@ import dsptoolbox as dsp
 import pytest
 from os.path import join
 import scipy.signal as sig
+import os
 
 
 class TestRoomAcousticsModule:
-    rir = dsp.ImpulseResponse(join("examples", "data", "rir.wav"))
+    rir = dsp.ImpulseResponse(
+        join(os.path.dirname(__file__), "..", "example_data", "rir.wav")
+    )
 
     def test_reverb_time(self):
         # Only functionality
-        dsp.room_acoustics.reverb_time(self.rir, mode="topt", ir_start=None)
-        dsp.room_acoustics.reverb_time(self.rir, mode="t20", ir_start=None)
-        dsp.room_acoustics.reverb_time(self.rir, mode="t30", ir_start=None)
-        dsp.room_acoustics.reverb_time(self.rir, mode="t60", ir_start=None)
+        dsp.room_acoustics.reverb_time(
+            self.rir,
+            mode=dsp.room_acoustics.ReverbTime.Adaptive,
+            ir_start=None,
+        )
+        dsp.room_acoustics.reverb_time(
+            self.rir, dsp.room_acoustics.ReverbTime.T20, ir_start=None
+        )
+        dsp.room_acoustics.reverb_time(
+            self.rir, dsp.room_acoustics.ReverbTime.T30, ir_start=None
+        )
+        dsp.room_acoustics.reverb_time(
+            self.rir, dsp.room_acoustics.ReverbTime.T60, ir_start=None
+        )
 
         dsp.room_acoustics.reverb_time(
-            self.rir, mode="edt", ir_start=None, automatic_trimming=False
+            self.rir,
+            dsp.room_acoustics.ReverbTime.EDT,
+            ir_start=None,
+            automatic_trimming=False,
         )
         dsp.room_acoustics.reverb_time(
-            self.rir, mode="t60", ir_start=None, automatic_trimming=False
+            self.rir,
+            dsp.room_acoustics.ReverbTime.T60,
+            ir_start=None,
+            automatic_trimming=False,
         )
         dsp.room_acoustics.reverb_time(
-            self.rir, mode="edt", ir_start=None, automatic_trimming=False
+            self.rir,
+            dsp.room_acoustics.ReverbTime.EDT,
+            ir_start=None,
+            automatic_trimming=False,
         )
 
         # Check Index
         ind = np.argmax(np.abs(self.rir.time_data))
-        dsp.room_acoustics.reverb_time(self.rir, mode="edt", ir_start=ind)
+        dsp.room_acoustics.reverb_time(
+            self.rir, dsp.room_acoustics.ReverbTime.EDT, ir_start=ind
+        )
         combined = dsp.append_signals([self.rir, self.rir])
         dsp.room_acoustics.reverb_time(
-            combined, mode="edt", ir_start=[ind, ind - 1]
+            combined,
+            dsp.room_acoustics.ReverbTime.EDT,
+            ir_start=[ind, ind - 1],
         )
 
         # Check MultiBandSignal
         fb = dsp.filterbanks.auditory_filters_gammatone(
             [500, 800], sampling_rate_hz=self.rir.sampling_rate_hz
         )
-        mb = fb.filter_signal(self.rir, zero_phase=True)
-        dsp.room_acoustics.reverb_time(mb, mode="t20", ir_start=None)
-        dsp.room_acoustics.reverb_time(mb, mode="t20", ir_start=ind)
+        mb = fb.filter_signal(
+            self.rir, dsp.FilterBankMode.Parallel, zero_phase=True
+        )
+        dsp.room_acoustics.reverb_time(
+            mb, dsp.room_acoustics.ReverbTime.T20, ir_start=None
+        )
+        dsp.room_acoustics.reverb_time(
+            mb, dsp.room_acoustics.ReverbTime.T20, ir_start=ind
+        )
 
-        mb = fb.filter_signal(combined, zero_phase=True)
-        dsp.room_acoustics.reverb_time(mb, mode="t20", ir_start=[ind, ind - 1])
+        mb = fb.filter_signal(
+            combined, dsp.FilterBankMode.Parallel, zero_phase=True
+        )
+        dsp.room_acoustics.reverb_time(
+            mb, dsp.room_acoustics.ReverbTime.T20, ir_start=[ind, ind - 1]
+        )
 
         starts = np.ones((mb.number_of_bands, mb.number_of_channels)) * ind
-        dsp.room_acoustics.reverb_time(mb, mode="t20", ir_start=starts)
+        dsp.room_acoustics.reverb_time(
+            mb, dsp.room_acoustics.ReverbTime.T20, ir_start=starts
+        )
 
     def test_room_modes(self):
         # Only functionality
         # Take a multi-channel signal in order to find modes
-        y = dsp.Signal(join("examples", "data", "chirp_stereo.wav"))
-        x = dsp.Signal(join("examples", "data", "chirp.wav"))
+        y = dsp.Signal(
+            join(
+                os.path.dirname(__file__),
+                "..",
+                "example_data",
+                "chirp_stereo.wav",
+            )
+        )
+        x = dsp.Signal(
+            join(os.path.dirname(__file__), "..", "example_data", "chirp.wav")
+        )
         h = dsp.transfer_functions.spectral_deconvolve(
             y, x, padding=True, keep_original_length=True
         )
@@ -63,7 +110,11 @@ class TestRoomAcousticsModule:
         dsp.room_acoustics.find_modes(h, f_range_hz=[50, 150], dist_hz=5)
 
     def test_convolve_rir_on_signal(self):
-        speech = dsp.Signal(join("examples", "data", "speech.flac"))
+        speech = dsp.Signal(
+            join(
+                os.path.dirname(__file__), "..", "example_data", "speech.flac"
+            )
+        )
         speech_2 = dsp.append_signals([speech, speech])
         result = dsp.room_acoustics.convolve_rir_on_signal(
             speech, self.rir, keep_peak_level=False, keep_length=True
@@ -173,19 +224,37 @@ class TestRoomAcousticsModule:
     def test_descriptors(self):
         # Only functionality
         # Single channel
-        dsp.room_acoustics.descriptors(self.rir, mode="d50")
-        dsp.room_acoustics.descriptors(self.rir, mode="c80")
-        dsp.room_acoustics.descriptors(self.rir, mode="ts")
-        dsp.room_acoustics.descriptors(self.rir, mode="br")
+        dsp.room_acoustics.descriptors(
+            self.rir, dsp.room_acoustics.RoomAcousticsDescriptor.D50
+        )
+        dsp.room_acoustics.descriptors(
+            self.rir, dsp.room_acoustics.RoomAcousticsDescriptor.C80
+        )
+        dsp.room_acoustics.descriptors(
+            self.rir, dsp.room_acoustics.RoomAcousticsDescriptor.CenterTime
+        )
+        dsp.room_acoustics.descriptors(
+            self.rir, dsp.room_acoustics.RoomAcousticsDescriptor.BassRatio
+        )
 
         # MultiBand
         fb = dsp.filterbanks.fractional_octave_bands(
             [125, 1000], sampling_rate_hz=self.rir.sampling_rate_hz
         )
-        rir_filt = fb.filter_signal(self.rir, zero_phase=True)
-        dsp.room_acoustics.descriptors(rir_filt, mode="d50")
-        dsp.room_acoustics.descriptors(rir_filt, mode="c80")
-        dsp.room_acoustics.descriptors(rir_filt, mode="ts")
+        rir_filt = fb.filter_signal(
+            self.rir, dsp.FilterBankMode.Parallel, zero_phase=True
+        )
+        dsp.room_acoustics.descriptors(
+            rir_filt, dsp.room_acoustics.RoomAcousticsDescriptor.D50
+        )
+        dsp.room_acoustics.descriptors(
+            rir_filt, dsp.room_acoustics.RoomAcousticsDescriptor.C80
+        )
+        dsp.room_acoustics.descriptors(
+            rir_filt, dsp.room_acoustics.RoomAcousticsDescriptor.CenterTime
+        )
 
         with pytest.raises(AssertionError):
-            dsp.room_acoustics.descriptors(rir_filt, mode="br")
+            dsp.room_acoustics.descriptors(
+                rir_filt, dsp.room_acoustics.RoomAcousticsDescriptor.BassRatio
+            )

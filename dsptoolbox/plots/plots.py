@@ -34,8 +34,7 @@ def general_plot(
     ylabel: str | None = None,
     info_box: str | None = None,
     tight_layout: bool = True,
-    returns: bool = False,
-) -> tuple[Figure, Axes] | None:
+) -> tuple[Figure, Axes]:
     """Generic plot template.
 
     Parameters
@@ -61,13 +60,10 @@ def general_plot(
         plot. Default: None.
     tight_layout: bool, optional
         When `True`, tight layout is activated. Default: `True`.
-    returns : bool, optional
-        When `True`, the figure and axis are returned. Default: `False`.
 
     Returns
     -------
     fig, ax
-        Returned only when `returns=True`.
 
     """
     fig, ax = plt.subplots(1, 1, figsize=(8, 5))
@@ -115,8 +111,7 @@ def general_plot(
         )
     if tight_layout:
         fig.tight_layout()
-    if returns:
-        return fig, ax
+    return fig, ax
 
 
 def general_subplots_line(
@@ -130,8 +125,7 @@ def general_subplots_line(
     ylabels=None,
     range_x=None,
     range_y=None,
-    returns: bool = False,
-) -> tuple[Figure, list[Axes]] | None:
+) -> tuple[Figure, list[Axes]]:
     """Generic plot template with subplots in one column or row.
 
     Parameters
@@ -158,13 +152,10 @@ def general_subplots_line(
         Range to show for x axis. Default: None.
     range_y : array-like, optional
         Range to show for y axis. Default: None.
-    returns : bool, optional
-        When `True`, the figure and axis are returned. Default: `False`.
 
     Returns
     -------
     fig, ax
-        Returned only when `returns=True`.
 
     """
     if matrix.ndim == 1:
@@ -213,8 +204,7 @@ def general_subplots_line(
     if type(xlabels) is str or len(xlabels) == 1:
         ax[-1].set_xlabel(xlabels)
     fig.tight_layout()
-    if returns:
-        return fig, ax
+    return fig, ax
 
 
 def general_matrix_plot(
@@ -230,8 +220,7 @@ def general_matrix_plot(
     colorbar: bool = True,
     cmap: str = "magma",
     lower_origin: bool = True,
-    returns: bool = False,
-) -> tuple[Figure, Axes] | None:
+) -> tuple[Figure, Axes]:
     """Generic plot template for a matrix's heatmap.
 
     Parameters
@@ -263,13 +252,10 @@ def general_matrix_plot(
     lower_origin : bool, optional
         When `True`, the origin of the vertical axis of the matrix is put
         below. Default: `True`.
-    returns : bool, optional
-        When `True`, the figure and axis are returned. Default: `False`.
 
     Returns
     -------
     fig, ax
-        Returned only when `returns=True`.
 
     """
     assert matrix.ndim == 2, "Only 2D-arrays are supported for this plot type"
@@ -338,5 +324,4 @@ def general_matrix_plot(
         ax.set_yticks(ticks)
         ax.get_yaxis().set_major_formatter(ScalarFormatter())
     fig.tight_layout()
-    if returns:
-        return fig, ax
+    return fig, ax
