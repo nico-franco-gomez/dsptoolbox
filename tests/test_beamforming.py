@@ -1,6 +1,7 @@
 import dsptoolbox as dsp
 import numpy as np
 from os.path import join
+import os
 
 x = np.arange(0, 1.1, 0.25)
 y = x.copy()
@@ -114,7 +115,11 @@ class TestBeamformingModule:
         ns.get_signals_on_array(ma)
 
         # Multiple sources
-        sp = dsp.Signal(join("examples", "data", "speech.flac"))
+        sp = dsp.Signal(
+            join(
+                os.path.dirname(__file__), "..", "example_data", "speech.flac"
+            )
+        )
         sp = dsp.pad_trim(sp, 20_000)
         ns = dsp.generators.noise(
             length_seconds=0.5, sampling_rate_hz=sp.sampling_rate_hz
@@ -194,7 +199,11 @@ class TestBeamformingModule:
         ma["z"] = np.zeros(len(ma["x"]))
         ma = dsp.beamforming.MicArray(ma)
         # Signal (simulated)
-        sp = dsp.Signal(join("examples", "data", "speech.flac"))
+        sp = dsp.Signal(
+            join(
+                os.path.dirname(__file__), "..", "example_data", "speech.flac"
+            )
+        )
         sp = dsp.pad_trim(sp, 20_000)
         ns = dsp.generators.noise(
             length_seconds=0.3, sampling_rate_hz=sp.sampling_rate_hz

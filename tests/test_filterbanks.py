@@ -282,7 +282,11 @@ class TestFilterbanksModule:
 
     def test_arma(self):
         # Only functionality
-        rir = dsp.ImpulseResponse(os.path.join("examples", "data", "rir.wav"))
+        rir = dsp.ImpulseResponse(
+            os.path.join(
+                os.path.dirname(__file__), "..", "example_data", "rir.wav"
+            )
+        )
         dsp.filterbanks.arma(rir, 10, 0)
         dsp.filterbanks.arma(rir, 10, 1)
         dsp.filterbanks.arma(rir, 10, 11)

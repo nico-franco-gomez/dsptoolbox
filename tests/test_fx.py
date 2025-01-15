@@ -5,11 +5,17 @@ Tests regarding functionality of audio fx
 import dsptoolbox as dsp
 import numpy as np
 from os.path import join
+import os
 
 
 class TestEffectsModule:
     speech = dsp.resample(
-        dsp.Signal(join("examples", "data", "speech.flac")), 8_000
+        dsp.Signal(
+            join(
+                os.path.dirname(__file__), "..", "example_data", "speech.flac"
+            )
+        ),
+        8_000,
     )
     fs_hz = speech.sampling_rate_hz
 
@@ -59,12 +65,17 @@ class TestEffectsModule:
     def testDistortion(self):
         """Test different distortion parameters."""
         dist = dsp.effects.Distortion(
-            distortion_level=25, post_gain_db=0, type_of_distortion="arctan"
+            distortion_level=25,
+            post_gain_db=0,
+            type_of_distortion=dsp.effects.DistortionType.Arctan,
         )
         dist.apply(self.speech)
 
         dist.set_advanced_parameters(
-            type_of_distortion=["arctan", "soft clip"],
+            type_of_distortion=[
+                dsp.effects.DistortionType.Arctan,
+                dsp.effects.DistortionType.SoftClip,
+            ],
             distortion_levels_db=[20, 40],
             mix_percent=[60, 40],
             offset_db=[-3, -np.inf],

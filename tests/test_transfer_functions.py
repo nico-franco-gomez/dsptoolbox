@@ -2,12 +2,21 @@ import dsptoolbox as dsp
 from os.path import join
 import numpy as np
 import pytest
+import os
 
 
 class TestTransferFunctionsModule:
-    y_m = dsp.Signal(join("examples", "data", "chirp_mono.wav"))
-    y_st = dsp.Signal(join("examples", "data", "chirp_stereo.wav"))
-    x = dsp.Signal(join("examples", "data", "chirp.wav"))
+    y_m = dsp.Signal(
+        join(os.path.dirname(__file__), "..", "example_data", "chirp_mono.wav")
+    )
+    y_st = dsp.Signal(
+        join(
+            os.path.dirname(__file__), "..", "example_data", "chirp_stereo.wav"
+        )
+    )
+    x = dsp.Signal(
+        join(os.path.dirname(__file__), "..", "example_data", "chirp.wav")
+    )
     fs = 5_000
     audio_multi = dsp.generators.noise(2.0, 5_000, number_of_channels=3)
 
@@ -441,11 +450,15 @@ class TestTransferFunctionsModule:
 
     def test_min_phase_ir(self):
         # Only functionality, computation is done using scipy's minimum phase
-        s = dsp.ImpulseResponse(join("examples", "data", "rir.wav"))
+        s = dsp.ImpulseResponse(
+            join(os.path.dirname(__file__), "..", "example_data", "rir.wav")
+        )
         s = dsp.transfer_functions.min_phase_ir(s)
 
     def test_combine_ir(self):
-        s = dsp.ImpulseResponse(join("examples", "data", "rir.wav"))
+        s = dsp.ImpulseResponse(
+            join(os.path.dirname(__file__), "..", "example_data", "rir.wav")
+        )
         dsp.transfer_functions.combine_ir_with_dirac(
             s, 1000, True, normalization=None
         )
@@ -476,11 +489,15 @@ class TestTransferFunctionsModule:
             peak_min_phase, dsp.transfer_functions.find_ir_latency(ir)
         )
 
-        ir = dsp.ImpulseResponse(join("examples", "data", "rir.wav"))
+        ir = dsp.ImpulseResponse(
+            join(os.path.dirname(__file__), "..", "example_data", "rir.wav")
+        )
         assert dsp.transfer_functions.find_ir_latency(ir) > 0
 
     def test_window_frequency_dependent(self):
-        s = dsp.ImpulseResponse(join("examples", "data", "rir.wav"))
+        s = dsp.ImpulseResponse(
+            join(os.path.dirname(__file__), "..", "example_data", "rir.wav")
+        )
         sp = dsp.transfer_functions.window_frequency_dependent(
             s, 10, 0, [100, 1000]
         )
@@ -495,7 +512,9 @@ class TestTransferFunctionsModule:
 
     def test_harmonics_from_chirp_ir(self):
         # Only functionality
-        ir = dsp.ImpulseResponse(join("examples", "data", "rir.wav"))
+        ir = dsp.ImpulseResponse(
+            join(os.path.dirname(__file__), "..", "example_data", "rir.wav")
+        )
         dsp.transfer_functions.harmonics_from_chirp_ir(
             ir,
             chirp_range_hz=[20, 20e3],
@@ -505,7 +524,9 @@ class TestTransferFunctionsModule:
 
     def test_harmonic_distortion_analysis(self):
         # Only functionality
-        ir = dsp.ImpulseResponse(join("examples", "data", "rir.wav"))
+        ir = dsp.ImpulseResponse(
+            join(os.path.dirname(__file__), "..", "example_data", "rir.wav")
+        )
         dsp.transfer_functions.harmonic_distortion_analysis(
             ir,
             chirp_range_hz=[20, 20e3],
@@ -529,7 +550,9 @@ class TestTransferFunctionsModule:
 
     def test_trim_rir(self):
         # Only functionality
-        ir = dsp.ImpulseResponse(join("examples", "data", "rir.wav"))
+        ir = dsp.ImpulseResponse(
+            join(os.path.dirname(__file__), "..", "example_data", "rir.wav")
+        )
         dsp.transfer_functions.trim_ir(ir)
         # Start offset way longer than rir (should be clipped to 0)
         assert (

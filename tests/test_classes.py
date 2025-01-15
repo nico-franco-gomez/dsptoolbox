@@ -11,10 +11,16 @@ import scipy.signal as sig
 from matplotlib.pyplot import close
 
 RIR_PATH = os.path.join(
-    os.path.dirname(__file__), "..", "examples", "data", "rir.wav"
+    os.path.dirname(__file__),
+    "..",
+    "example_data",
+    "rir.wav",
 )
 CHIRP_STEREO_PATH = os.path.join(
-    os.path.dirname(__file__), "..", "examples", "data", "chirp_stereo.wav"
+    os.path.dirname(__file__),
+    "..",
+    "example_data",
+    "chirp_stereo.wav",
 )
 
 
@@ -30,7 +36,9 @@ class TestSignal:
     complex_time_vec = time_vec + 1j * imag
 
     def test_importing_from_file(self):
-        path = join("examples", "data", "chirp.wav")
+        path = join(
+            os.path.dirname(__file__), "..", "example_data", "chirp.wav"
+        )
         s = dsp.Signal(path)
         s.number_of_channels
 
@@ -1177,7 +1185,7 @@ class TestImpulseResponse:
     seconds = 2
     d = dsp.generators.dirac(seconds * fs_hz, sampling_rate_hz=fs_hz)
 
-    path_rir = join("examples", "data", "rir.wav")
+    path_rir = join(os.path.dirname(__file__), "..", "example_data", "rir.wav")
 
     def get_ir(self):
         return dsp.ImpulseResponse.from_file(self.path_rir)
@@ -1418,7 +1426,11 @@ class TestFilterTopologies:
 
     def test_parallel_filterbank(self):
         # Only functionality
-        rir = dsp.ImpulseResponse(os.path.join("examples", "data", "rir.wav"))
+        rir = dsp.ImpulseResponse(
+            os.path.join(
+                os.path.dirname(__file__), "..", "example_data", "rir.wav"
+            )
+        )
         poles = np.logspace(
             np.log10(1e-2), np.log10(np.pi * 0.95), 3, endpoint=True
         )

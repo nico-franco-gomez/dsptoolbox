@@ -4,16 +4,25 @@ from os.path import join
 import numpy as np
 from matplotlib.pyplot import close
 from scipy.signal import hilbert
+import os
 
 
 class TestTransformsModule:
-    speech = dsp.Signal(join("examples", "data", "speech.flac"))
+    speech = dsp.Signal(
+        join(os.path.dirname(__file__), "..", "example_data", "speech.flac")
+    )
 
     def test_cepstrum(self):
         # Only functionality
-        dsp.transforms.cepstrum(self.speech, mode="power")
-        dsp.transforms.cepstrum(self.speech, mode="real")
-        dsp.transforms.cepstrum(self.speech, mode="complex")
+        dsp.transforms.cepstrum(
+            self.speech, mode=dsp.transforms.CepstrumType.Power
+        )
+        dsp.transforms.cepstrum(
+            self.speech, mode=dsp.transforms.CepstrumType.Real
+        )
+        dsp.transforms.cepstrum(
+            self.speech, mode=dsp.transforms.CepstrumType.Complex
+        )
 
     def test_log_mel_spectrogram(self):
         # Only functionality
@@ -183,7 +192,9 @@ class TestTransformsModule:
 
     def test_warp(self):
         # Only functionality
-        s = dsp.ImpulseResponse(join("examples", "data", "rir.wav"))
+        s = dsp.ImpulseResponse(
+            join(os.path.dirname(__file__), "..", "example_data", "rir.wav")
+        )
         dsp.transforms.warp(s, -0.6, True, 2**8)
         dsp.transforms.warp(s, 0.6, False, 2**8)
 

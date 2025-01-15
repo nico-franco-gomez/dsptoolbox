@@ -31,6 +31,7 @@ from ..transforms._transforms import (
 )
 from ..tools import to_db
 from ..standard.enums import FilterCoefficientsType, SpectrumMethod
+from .enums import CepstrumType
 
 import numpy as np
 from numpy.typing import NDArray
@@ -51,7 +52,7 @@ except ModuleNotFoundError as e:
 
 
 def cepstrum(
-    signal: Signal, mode="power"
+    signal: Signal, mode: CepstrumType = CepstrumType.Power
 ) -> NDArray[np.float64] | NDArray[np.complex128]:
     """Returns the cepstrum of a given signal in the Quefrency domain.
 
@@ -59,9 +60,8 @@ def cepstrum(
     ----------
     signal : Signal
         Signal to compute the cepstrum from.
-    mode : str, optional
-        Type of cepstrum. Supported modes are `'power'`, `'real'` and
-        `'complex'`. Default: `'power'`.
+    mode : CepstrumType, optional
+        Type of cepstrum. Default: Power.
 
     Returns
     -------
@@ -73,22 +73,15 @@ def cepstrum(
     https://de.wikipedia.org/wiki/Cepstrum
 
     """
-    mode = mode.lower()
-    assert mode in (
-        "power",
-        "complex",
-        "real",
-    ), f"{mode} is not a supported mode"
-
     signal.spectrum_method = SpectrumMethod.FFT
     _, sp = signal.get_spectrum()
 
-    if mode in ("power", "real"):
+    if mode in (CepstrumType.Power, CepstrumType.Real):
         ceps = np.abs(np.fft.irfft((2 * np.log(np.abs(sp))), axis=0)) ** 2.0
     else:
         phase = np.unwrap(np.angle(sp), axis=0)
         ceps = np.fft.irfft(np.log(np.abs(sp)) + 1j * phase, axis=0).real
-    if mode == "real":
+    if mode == CepstrumType.Real:
         ceps = (ceps**0.5) / 2.0
     return ceps
 

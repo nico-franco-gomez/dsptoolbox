@@ -44,6 +44,7 @@ from .transforms import (
     lpc,
     dft,
 )
+from .enums import CepstrumType
 
 __all__ = [
     "cepstrum",
@@ -63,4 +64,5 @@ __all__ = [
     "warp_filter",
     "lpc",
     "dft",
+    "CepstrumType",
 ]

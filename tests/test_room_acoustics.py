@@ -3,10 +3,13 @@ import dsptoolbox as dsp
 import pytest
 from os.path import join
 import scipy.signal as sig
+import os
 
 
 class TestRoomAcousticsModule:
-    rir = dsp.ImpulseResponse(join("examples", "data", "rir.wav"))
+    rir = dsp.ImpulseResponse(
+        join(os.path.dirname(__file__), "..", "example_data", "rir.wav")
+    )
 
     def test_reverb_time(self):
         # Only functionality
@@ -85,8 +88,17 @@ class TestRoomAcousticsModule:
     def test_room_modes(self):
         # Only functionality
         # Take a multi-channel signal in order to find modes
-        y = dsp.Signal(join("examples", "data", "chirp_stereo.wav"))
-        x = dsp.Signal(join("examples", "data", "chirp.wav"))
+        y = dsp.Signal(
+            join(
+                os.path.dirname(__file__),
+                "..",
+                "example_data",
+                "chirp_stereo.wav",
+            )
+        )
+        x = dsp.Signal(
+            join(os.path.dirname(__file__), "..", "example_data", "chirp.wav")
+        )
         h = dsp.transfer_functions.spectral_deconvolve(
             y, x, padding=True, keep_original_length=True
         )
@@ -98,7 +110,11 @@ class TestRoomAcousticsModule:
         dsp.room_acoustics.find_modes(h, f_range_hz=[50, 150], dist_hz=5)
 
     def test_convolve_rir_on_signal(self):
-        speech = dsp.Signal(join("examples", "data", "speech.flac"))
+        speech = dsp.Signal(
+            join(
+                os.path.dirname(__file__), "..", "example_data", "speech.flac"
+            )
+        )
         speech_2 = dsp.append_signals([speech, speech])
         result = dsp.room_acoustics.convolve_rir_on_signal(
             speech, self.rir, keep_peak_level=False, keep_length=True
