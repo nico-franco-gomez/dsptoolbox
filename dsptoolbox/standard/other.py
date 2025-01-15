@@ -344,7 +344,6 @@ def dither(
     - [1]: Lerch, Weinzierl. Handbuch der Audiotechnik: Chapter 14.
 
     """
-    triangular_distribution = triangular_distribution.lower()
     shape = s.time_data.shape
 
     if not triangular_distribution:
