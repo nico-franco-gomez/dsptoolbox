@@ -1,6 +1,7 @@
 """
 Tests regarding functionality of audio fx
 """
+
 import dsptoolbox as dsp
 import numpy as np
 from os.path import join
@@ -23,7 +24,7 @@ class TestEffectsModule:
         )
         specSub.set_advanced_parameters(
             overlap_percent=75,
-            window_type="hamming",
+            window_type=dsp.Window.Hamming,
             noise_forgetting_factor=0.95,
             subtraction_factor=3,
             subtraction_exponent=3,
@@ -41,7 +42,7 @@ class TestEffectsModule:
         )
         specSub.set_advanced_parameters(
             overlap_percent=50,
-            window_type="hamming",
+            window_type=dsp.Window.Hamming,
             noise_forgetting_factor=0.9,
             subtraction_factor=1,
             subtraction_exponent=1,

@@ -37,11 +37,15 @@ class TestRoomAcousticsModule:
         fb = dsp.filterbanks.auditory_filters_gammatone(
             [500, 800], sampling_rate_hz=self.rir.sampling_rate_hz
         )
-        mb = fb.filter_signal(self.rir, zero_phase=True)
+        mb = fb.filter_signal(
+            self.rir, dsp.FilterBankMode.Parallel, zero_phase=True
+        )
         dsp.room_acoustics.reverb_time(mb, mode="t20", ir_start=None)
         dsp.room_acoustics.reverb_time(mb, mode="t20", ir_start=ind)
 
-        mb = fb.filter_signal(combined, zero_phase=True)
+        mb = fb.filter_signal(
+            combined, dsp.FilterBankMode.Parallel, zero_phase=True
+        )
         dsp.room_acoustics.reverb_time(mb, mode="t20", ir_start=[ind, ind - 1])
 
         starts = np.ones((mb.number_of_bands, mb.number_of_channels)) * ind
@@ -182,7 +186,9 @@ class TestRoomAcousticsModule:
         fb = dsp.filterbanks.fractional_octave_bands(
             [125, 1000], sampling_rate_hz=self.rir.sampling_rate_hz
         )
-        rir_filt = fb.filter_signal(self.rir, zero_phase=True)
+        rir_filt = fb.filter_signal(
+            self.rir, dsp.FilterBankMode.Parallel, zero_phase=True
+        )
         dsp.room_acoustics.descriptors(rir_filt, mode="d50")
         dsp.room_acoustics.descriptors(rir_filt, mode="c80")
         dsp.room_acoustics.descriptors(rir_filt, mode="ts")

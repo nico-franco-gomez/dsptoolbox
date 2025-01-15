@@ -36,7 +36,6 @@ from .._general_helpers import (
 )
 from ..standard._standard_backend import _group_delay_direct
 from ..standard.enums import (
-    FilterType,
     FilterCoefficientsType,
     FilterBankMode,
     SpectrumMethod,
@@ -993,7 +992,7 @@ class BaseCrossover(FilterBank):
     # ======== Plotting =======================================================
     def plot_magnitude(
         self,
-        mode: str = "parallel",
+        mode: FilterBankMode = FilterBankMode.Parallel,
         range_hz=[20, 20e3],
         length_samples: int = 2048,
         test_zi: bool = False,
@@ -1024,14 +1023,14 @@ class BaseCrossover(FilterBank):
         )
 
         # Filtering and plot
-        if mode == "parallel":
+        if mode == FilterBankMode.Parallel:
             bs = self.filter_signal(
-                d, mode="parallel", activate_zi=test_zi, downsample=True
+                d, mode=mode, activate_zi=test_zi, downsample=True
             )
             specs = []
             f = bs.bands[0].get_spectrum()[0]
             for b in bs.bands:
-                b.set_spectrum_parameters(method="standard")
+                b.spectrum_method = SpectrumMethod.FFT
                 f, sp = _get_normalized_spectrum(
                     f,
                     np.squeeze(b.get_spectrum()[1]),
@@ -1053,11 +1052,11 @@ class BaseCrossover(FilterBank):
                 range_y=range_y,
                 tight_layout=False,
             )
-        elif mode == "sequential":
+        elif mode == FilterBankMode.Sequential:
             bs = self.filter_signal(
-                d, mode="sequential", activate_zi=test_zi, downsample=True
+                d, mode=mode, activate_zi=test_zi, downsample=True
             )
-            bs.set_spectrum_parameters(method="standard")
+            bs.spectrum_method = SpectrumMethod.FFT
             f, sp = bs.get_spectrum()
             f, sp = _get_normalized_spectrum(
                 f, np.squeeze(sp), f_range_hz=range_hz, normalize=None
@@ -1072,11 +1071,11 @@ class BaseCrossover(FilterBank):
                     for n in range(bs.number_of_channels)
                 ],
             )
-        elif mode == "summed":
+        elif mode == FilterBankMode.Summed:
             bs = self.filter_signal(
-                d, mode="summed", activate_zi=test_zi, downsample=True
+                d, mode=mode, activate_zi=test_zi, downsample=True
             )
-            bs.set_spectrum_parameters(method="standard")
+            bs.spectrum_method = SpectrumMethod.FFT
             f, sp = bs.get_spectrum()
             f, sp = _get_normalized_spectrum(
                 f, np.squeeze(sp), f_range_hz=range_hz, normalize=None
@@ -1143,7 +1142,7 @@ class QMFCrossover(BaseCrossover):
         - https://tinyurl.com/2a3frbyv
 
         """
-        if lowpass.filter_type == FilterType.Fir:
+        if not lowpass.is_iir:
             # Create highpass filter based on lowpass
             b_base, _ = lowpass.get_coefficients(
                 coefficients_mode=FilterCoefficientsType.Ba
@@ -1153,7 +1152,6 @@ class QMFCrossover(BaseCrossover):
             b_high[1::2] *= -1
             # Create filter
             highpass = Filter(
-                FilterType.Other,
                 {FilterCoefficientsType.Ba: [b_high, [1.0]]},
                 sampling_rate_hz=lowpass.sampling_rate_hz,
             )
@@ -1165,7 +1163,6 @@ class QMFCrossover(BaseCrossover):
             )
             zpk_new = [z_base * -1, p_base * -1, k_base]
             highpass = Filter(
-                FilterType.Other,
                 {FilterCoefficientsType.Zpk: zpk_new},
                 sampling_rate_hz=lowpass.sampling_rate_hz,
             )
@@ -1196,7 +1193,6 @@ class QMFCrossover(BaseCrossover):
             coefficients_mode=FilterCoefficientsType.Ba
         )
         hp_filter = Filter(
-            FilterType.Other,
             {FilterCoefficientsType.Ba: [-b, a]},
             sampling_rate_hz=lowpass.sampling_rate_hz,
         )

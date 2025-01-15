@@ -12,6 +12,7 @@ from .signal import Signal
 from .multibandsignal import MultiBandSignal
 from ..generators import dirac
 from .realtime_filter import RealtimeFilter
+from ..standard.enums import SpectrumMethod
 
 
 class StateVariableFilter(RealtimeFilter):
@@ -197,7 +198,7 @@ class StateVariableFilter(RealtimeFilter):
 
         """
         d = self.get_ir(length_samples).get_all_bands()
-        d.set_spectrum_parameters(method="standard")
+        d.spectrum_method = SpectrumMethod.FFT
         fig, ax = d.plot_magnitude(
             range_hz=range_hz,
             normalize=None,
@@ -228,7 +229,7 @@ class StateVariableFilter(RealtimeFilter):
 
         """
         d = self.get_ir(length_samples).get_all_bands()
-        d.set_spectrum_parameters(method="standard")
+        d.spectrum_method = SpectrumMethod.FFT
         fig, ax = d.plot_group_delay(range_hz=range_hz)
         ax.legend(["Lowpass", "Highpass", "Bandpass", "Allpass"])
         return fig, ax
@@ -257,7 +258,7 @@ class StateVariableFilter(RealtimeFilter):
 
         """
         d = self.get_ir(length_samples).get_all_bands()
-        d.set_spectrum_parameters(method="standard")
+        d.spectrum_method = SpectrumMethod.FFT
         fig, ax = d.plot_phase(range_hz=range_hz, unwrap=unwrap)
         ax.legend(["Lowpass", "Highpass", "Bandpass", "Allpass"])
         return fig, ax

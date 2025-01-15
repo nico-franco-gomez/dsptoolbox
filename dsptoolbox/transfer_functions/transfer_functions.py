@@ -42,7 +42,7 @@ from ..standard import (
 from ..generators import dirac
 from ..filterbanks import linkwitz_riley_crossovers
 from ..tools import to_db
-from ..standard.enums import FilterType
+from ..standard.enums import SpectrumMethod, MagnitudeNormalization
 
 
 def spectral_deconvolve(
@@ -117,9 +117,9 @@ def spectral_deconvolve(
         denum.time_data = _pad_trim(denum.time_data, original_length * 2)
     fft_length = original_length * 2 if padding else original_length
 
-    denum.set_spectrum_parameters(method="standard")
+    denum.spectrum_method = SpectrumMethod.FFT
+    num.spectrum_method = SpectrumMethod.FFT
     _, denum_fft = denum.get_spectrum()
-    num.set_spectrum_parameters(method="standard")
     freqs_hz, num_fft = num.get_spectrum()
     fs_hz = num.sampling_rate_hz
 
@@ -339,7 +339,6 @@ def compute_transfer_function(
     input: Signal,
     mode="h2",
     window_length_samples: int = 1024,
-    spectrum_parameters: dict | None = None,
 ) -> Spectrum:
     r"""Gets transfer function H1, H2 or H3 (for stochastic signals).
     H1: for noise in the output signal. `Gxy/Gxx`.
@@ -360,10 +359,6 @@ def compute_transfer_function(
     window_length_samples : int, optional
         Window length for the IR. Spectrum has the length
         window_length_samples // 2 + 1. Default: 1024.
-    spectrum_parameters : dict, optional
-        Extra parameters for the computation of the cross spectral densities
-        using welch's method. See `Signal.set_spectrum_parameters()`
-        for details. Default: empty dictionary.
 
     Returns
     -------
@@ -395,8 +390,12 @@ def compute_transfer_function(
         multichannel = False
     else:
         multichannel = True
-    if spectrum_parameters is None:
-        spectrum_parameters = {}
+
+    spectrum_parameters = input._spectrum_parameters.copy()
+    spectrum_parameters.pop("window_length_samples")
+    spectrum_parameters.pop("method")
+    spectrum_parameters.pop("smoothing")
+    spectrum_parameters.pop("pad_to_fast_length")
     assert (
         type(spectrum_parameters) is dict
     ), "Spectrum parameters should be passed as a dictionary"
@@ -809,7 +808,7 @@ def group_delay(
 
     if not analytic_computation:
         spec_parameters = signal._spectrum_parameters
-        signal.set_spectrum_parameters("standard")
+        signal.spectrum_method = SpectrumMethod.FFT
         sp = rfft_scipy(td, axis=0)
         signal._spectrum_parameters = spec_parameters
 
@@ -1197,16 +1196,12 @@ def filter_to_ir(fir: Filter | FilterBank) -> ImpulseResponse:
 
     """
     if isinstance(fir, Filter):
-        assert (
-            fir.filter_type == FilterType.Fir
-        ), "This is only valid for FIR filters"
+        assert not fir.is_iir, "This is only valid for FIR filters"
         return ImpulseResponse.from_time_data(
             fir.ba[0].copy(), sampling_rate_hz=fir.sampling_rate_hz
         )
     elif isinstance(fir, FilterBank):
-        assert all(
-            [f.filter_type == FilterType.Fir for f in fir]
-        ), "Filter types must be fir"
+        assert all([not f.is_iir for f in fir]), "Filter types must be fir"
         assert (
             fir.same_sampling_rate
         ), "Only valid for filter banks with consistent sampling rate"
@@ -1606,14 +1601,13 @@ def harmonic_distortion_analysis(
     # Accumulator for spectrum of harmonics
     sp_thd = np.zeros(len(freqs))
 
-    scaling = ir2._spectrum_parameters["scaling"]
-    if scaling is None:
-        quadratic_spectrum = False
-    else:
-        quadratic_spectrum = "power" in scaling
+    quadratic_spectrum = not ir2.spectrum_scaling.is_amplitude_scaling()
 
     if generate_plot:
-        fig, ax = ir2.plot_magnitude(smoothing=smoothing, normalize=None)
+        fig, ax = ir2.plot_magnitude(
+            smoothing=smoothing,
+            normalize=MagnitudeNormalization.NoNormalization,
+        )
 
     for i in range(len(harm)):
         if not passed_harmonics:

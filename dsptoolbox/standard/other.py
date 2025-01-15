@@ -23,7 +23,7 @@ from .._general_helpers import (
     _get_smoothing_factor_ema,
 )
 from ..tools import from_db
-from .enums import FilterType, SpectrumType, InterpolationDomain
+from .enums import SpectrumType, InterpolationDomain
 
 
 def load_pkl_object(path: str):
@@ -395,9 +395,7 @@ def merge_fir_filters(filters: list[Filter] | FilterBank) -> Filter:
     """
     fir = filters.filters if isinstance(filters, FilterBank) else filters
     assert len(fir) > 1, "There must be at least two filters to combine"
-    assert all(
-        [f.filter_type == FilterType.Fir for f in fir]
-    ), "Some filter is not FIR"
+    assert all([not f.is_iir for f in fir]), "Some filter is not FIR"
     assert all(
         [fir[0].sampling_rate_hz == f.sampling_rate_hz for f in fir]
     ), "Sampling rates do not match"

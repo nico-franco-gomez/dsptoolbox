@@ -31,7 +31,6 @@ from ._filterbank import (
 )
 from ..standard._standard_backend import _kaiser_window_fractional
 from ..standard.enums import (
-    FilterType,
     FilterCoefficientsType,
     BiquadEqType,
     FilterPassType,
@@ -214,10 +213,11 @@ def reconstructing_fractional_octave_bands(
 
     filters = []
     for i in range(time.shape[0]):
-        config = {}
-        config[FilterCoefficientsType.Ba] = [time[i, :], [1]]
         filters.append(
-            Filter(FilterType.Other, config, sampling_rate_hz=sampling_rate_hz)
+            Filter(
+                {FilterCoefficientsType.Ba: [time[i, :], [1.0]]},
+                sampling_rate_hz=sampling_rate_hz,
+            )
         )
     filt_bank = FilterBank(filters=filters)
 
@@ -301,11 +301,7 @@ def auditory_filters_gammatone(
             np.atleast_2d([1, 0, 0, 1, -coefficients[bb], 0]), (4, 1)
         )
         sos_section[3, 0] = normalizations[bb]
-        f = Filter(
-            FilterType.Other,
-            {FilterCoefficientsType.Sos: sos_section},
-            sampling_rate_hz,
-        )
+        f = Filter({FilterCoefficientsType.Sos: sos_section}, sampling_rate_hz)
         f.warning_if_complex = False
         filters.append(f)
 
@@ -405,14 +401,11 @@ def fractional_octave_bands(
             top = FilterPassType.Highpass
             freqs = lower[ind]
 
-        f = Filter(
-            FilterType.Iir,
-            dict(
-                type_of_pass=top,
-                filter_design_method=IirDesignMethod.Butterworth,
-                order=filter_order,
-                freqs=freqs,
-            ),
+        f = Filter.iir_filter(
+            order=filter_order,
+            frequency_hz=freqs,
+            type_of_pass=top,
+            filter_design_method=IirDesignMethod.Butterworth,
             sampling_rate_hz=sampling_rate_hz,
         )
         octave_filter_bank.add_filter(f)
@@ -486,9 +479,7 @@ def complementary_fir_filter(fir: Filter) -> Filter:
       response of both filters.
 
     """
-    assert (
-        fir.filter_type == FilterType.Fir
-    ), "Filter prototype must be an FIR filter"
+    assert not fir.is_iir, "Filter prototype must be an FIR filter"
     b = fir.ba[0].copy()
     odd_length = len(b) % 2 == 1
 
@@ -527,7 +518,7 @@ def convert_into_lattice_filter(filt: Filter) -> LatticeLadderFilter:
       this, an assertion error is raised.
 
     """
-    if filt.filter_type == FilterType.Iir:
+    if filt.is_iir:
         if filt.has_sos:
             sos = filt.get_coefficients(FilterCoefficientsType.Sos)
             k, c = _get_lattice_ladder_coefficients_iir_sos(sos)
@@ -695,11 +686,7 @@ def matched_biquad(
         case _:
             raise ValueError("Unsupported Eq type")
 
-    return Filter(
-        FilterType.Other,
-        {FilterCoefficientsType.Ba: ba},
-        sampling_rate_hz,
-    )
+    return Filter({FilterCoefficientsType.Ba: ba}, sampling_rate_hz)
 
 
 def gaussian_kernel(

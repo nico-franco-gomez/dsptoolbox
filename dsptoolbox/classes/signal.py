@@ -34,6 +34,7 @@ from ..standard.enums import (
     SpectrumScaling,
     SpectrumMethod,
     MagnitudeNormalization,
+    Window,
 )
 
 
@@ -348,7 +349,7 @@ class Signal:
         smoothing: int = 0,
         pad_to_fast_length: bool = True,
         window_length_samples: int = 1024,
-        window_type: str = "hann",
+        window_type: Window = Window.Hann,
         overlap_percent: float = 50,
         detrend: bool = True,
         average: str = "mean",
@@ -374,10 +375,8 @@ class Signal:
             have a length that is fast for computing the FFT. Default: True.
         window_length_samples : int, optional
             Window size. Default: 1024.
-        window_type : str, optional
-            Choose type of window. `scipy.signal.windows.get_window()` is used.
-            Pass a tuple if the window needs extra parameters, e.g.,
-            ('chebwin', 50). Default: `'hann'`.
+        window_type : Window, optional
+            Choose type of window. Default: Hann.
         overlap_percent : float, optional
             Overlap in percent. Default: 50.
         detrend : bool, optional
@@ -462,7 +461,7 @@ class Signal:
     def set_spectrogram_parameters(
         self,
         window_length_samples: int = 1024,
-        window_type: str = "hann",
+        window_type: Window = Window.Hann,
         overlap_percent: float = 50.0,
         fft_length_samples: int | None = None,
         detrend: bool = False,
@@ -476,8 +475,8 @@ class Signal:
         ----------
         window_length_samples : int, optional
             Window size. Default: 1024.
-        window_type : str, optional
-            Type of window to use. Default: `'hann'`.
+        window_type : Window, optional
+            Type of window to use. Default: Hann.
         overlap_percent : float, optional
             Overlap in percent. Default: 50.
         fft_length_samples : int, optional

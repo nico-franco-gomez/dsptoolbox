@@ -54,13 +54,10 @@ class TestFilterbanksModule:
         # Only functionality
         fs_hz = 4_000
         ny_hz = fs_hz // 2
-        lp = dsp.Filter(
-            dsp.FilterType.Fir,
-            {
-                "order": 10,
-                "freqs": ny_hz // 2,
-                "type_of_pass": dsp.FilterPassType.Lowpass,
-            },
+        lp = dsp.Filter.fir_filter(
+            order=10,
+            frequency_hz=ny_hz // 2,
+            type_of_pass=dsp.FilterPassType.Lowpass,
             sampling_rate_hz=fs_hz,
         )
         fb = dsp.filterbanks.qmf_crossover(lp)
@@ -117,14 +114,11 @@ class TestFilterbanksModule:
 
     def test_complementary_filter_fir(self):
         fs_hz = 5000
-        f = dsp.Filter(
-            dsp.FilterType.Fir,
-            {
-                "type_of_pass": dsp.FilterPassType.Highpass,
-                "order": 120,
-                "freqs": 400,
-            },
-            fs_hz,
+        f = dsp.Filter.fir_filter(
+            type_of_pass=dsp.FilterPassType.Highpass,
+            order=120,
+            frequency_hz=400,
+            sampling_rate_hz=fs_hz,
         )
         f2 = dsp.filterbanks.complementary_fir_filter(f)
         coefficients = f.get_coefficients(dsp.FilterCoefficientsType.Ba)[0]
@@ -143,14 +137,11 @@ class TestFilterbanksModule:
         )
 
         # Check functionality for even length
-        f = dsp.Filter(
-            dsp.FilterType.Fir,
-            {
-                "type_of_pass": dsp.FilterPassType.Lowpass,
-                "order": 121,
-                "freqs": 400,
-            },
-            fs_hz,
+        f = dsp.Filter.fir_filter(
+            type_of_pass=dsp.FilterPassType.Lowpass,
+            order=121,
+            frequency_hz=400,
+            sampling_rate_hz=fs_hz,
         )
         dsp.filterbanks.complementary_fir_filter(f)
 
@@ -161,7 +152,7 @@ class TestFilterbanksModule:
             [570, 2000], order=[2, 2], sampling_rate_hz=fs_hz
         )
         ir = fb.get_ir(length_samples=2**14).collapse()
-        ir.set_spectrum_parameters(method="standard")
+        ir.spectrum_method = dsp.SpectrumMethod.FFT
         _, sp = ir.get_spectrum()
 
         # Initialize with wrong length
@@ -182,7 +173,7 @@ class TestFilterbanksModule:
 
         # Phase linearizer – with interpolation
         ir = fb.get_ir(length_samples=2**9).collapse()
-        ir.set_spectrum_parameters(method="standard")
+        ir.spectrum_method = dsp.SpectrumMethod.FFT
         _, sp = ir.get_spectrum()
         pl = dsp.filterbanks.PhaseLinearizer(
             np.angle(sp[:, 0]), len(ir), fs_hz
@@ -253,27 +244,6 @@ class TestFilterbanksModule:
             dsp.BiquadEqType.BandpassSkirt,
         ]:
             dsp.filterbanks.matched_biquad(eq_type, freq, gain_db, q, fs_hz)
-
-            # For comparison with usual biquads
-        #     f = dsp.filterbanks.matched_biquad(
-        #         eq_type, freq, gain_db, q, fs_hz
-        #     )
-        #     f2 = dsp.Filter(
-        #         "biquad",
-        #         {
-        #             "eq_type": eq_type
-        #             + ("_peak" if eq_type == "bandpass" else ""),
-        #             "freqs": freq,
-        #             "gain": gain_db,
-        #             "q": q,
-        #         },
-        #         fs_hz,
-        #     )
-        #     fb = dsp.FilterBank([f, f2])
-        #     fig, ax = fb.plot_magnitude(length_samples=2**13)
-        #     fig.suptitle(eq_type.capitalize())
-        #     ax.legend(["Matched", "Standard"])
-        # dsp.plots.show()
 
     def test_gaussian_kernel(self):
         # Only functionality
@@ -347,14 +317,11 @@ class TestLatticeLadderFilter:
         fs = 44100
         # Second-order sections
         n = dsp.generators.noise(sampling_rate_hz=fs)
-        f = dsp.Filter(
-            dsp.FilterType.Iir,
-            {
-                "filter_design_method": dsp.IirDesignMethod.Bessel,
-                "order": 9,
-                "type_of_pass": dsp.FilterPassType.Lowpass,
-                "freqs": 1000,
-            },
+        f = dsp.Filter.iir_filter(
+            filter_design_method=dsp.IirDesignMethod.Bessel,
+            order=9,
+            type_of_pass=dsp.FilterPassType.Lowpass,
+            frequency_hz=1000,
             sampling_rate_hz=fs,
         )
         new_f = dsp.filterbanks.convert_into_lattice_filter(f)
@@ -365,7 +332,6 @@ class TestLatticeLadderFilter:
         # BA
         b, a = f.get_coefficients(dsp.FilterCoefficientsType.Ba)
         f2 = dsp.Filter(
-            dsp.FilterType.Other,
             {dsp.FilterCoefficientsType.Ba: [b, a]},
             f.sampling_rate_hz,
         )
@@ -377,7 +343,6 @@ class TestLatticeLadderFilter:
         # FIR
         n = dsp.generators.noise(sampling_rate_hz=fs)
         f = dsp.Filter(
-            dsp.FilterType.Other,
             {dsp.FilterCoefficientsType.Ba: [[1, 13 / 24, 5 / 8, 1 / 3], [1]]},
             sampling_rate_hz=fs,
         )

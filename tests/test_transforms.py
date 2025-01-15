@@ -43,7 +43,9 @@ class TestTransformsModule:
             range_hz=None,
             n_bands=40,
             generate_plot=False,
-            stft_parameters=dict(window_type=("chebwin", 40)),
+            stft_parameters=dict(
+                window_type=dsp.Window.Chebwin.with_extra_parameter(40)
+            ),
         )
 
         # Raise Assertion error if set range is larger than the nyquist
@@ -77,7 +79,10 @@ class TestTransformsModule:
         with pytest.raises(AssertionError):
             dsp.transforms.plot_waterfall(self.speech, dynamic_range_db=-10)
         dsp.transforms.plot_waterfall(
-            self.speech, stft_parameters=dict(window_type=("chebwin", 40))
+            self.speech,
+            stft_parameters=dict(
+                window_type=dsp.Window.Chebwin.with_extra_parameter(40)
+            ),
         )
 
     def test_mfcc(self):
@@ -190,11 +195,11 @@ class TestTransformsModule:
 
     def test_warp_filter(self):
         # Only functionality
-        i = dsp.Filter.new_iir_filter(
+        i = dsp.Filter.iir_filter(
             3,
             100.0,
-            dsp.FilterPassType.Highpass,
-            "butter",
+            type_of_pass=dsp.FilterPassType.Highpass,
+            filter_design_method=dsp.IirDesignMethod.Butterworth,
             sampling_rate_hz=24000,
         )
         dsp.transforms.warp_filter(i, -0.6)
@@ -213,7 +218,7 @@ class TestTransformsModule:
 
     def test_dft(self):
         s = dsp.pad_trim(self.speech, 20_000)
-        s.set_spectrum_parameters("standard")
+        s.spectrum_method = dsp.SpectrumMethod.FFT
         f, spectrum = s.get_spectrum()
 
         select = slice(20, 40)

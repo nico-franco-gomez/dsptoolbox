@@ -284,7 +284,7 @@ def _filter_on_signal_ba(
     channels,
     zi: list | None,
     zero_phase: bool,
-    filter_type: str,
+    is_fir: bool,
     warning_on_complex_output: bool,
 ):
     """Takes in a `Signal` object and filters selected channels. Exports a new
@@ -306,7 +306,7 @@ def _filter_on_signal_ba(
     zero_phase : bool
         Uses zero-phase filtering on signal. Be aware that the filter
         is doubled in this case.
-    filter_type : str
+    is_fir : bool
         Filter type. When FIR, an own implementation of lfilter is used,
         otherwise scipy.signal.lfilter is used.
     warning_on_complex_output: bool
@@ -323,14 +323,10 @@ def _filter_on_signal_ba(
     """
     # Take lfilter function, might be a different one depending if filter is
     # FIR or IIR
-    if filter_type == "fir":
+    if is_fir:
         lfilter = _lfilter_fir
-    elif filter_type in ("iir", "biquad"):
-        lfilter = sig.lfilter
     else:
-        raise ValueError(
-            f"{filter_type} is not supported. Use either fir or iir"
-        )
+        lfilter = sig.lfilter
 
     # Time Data
     new_time_data = signal.time_data.copy()

@@ -18,6 +18,7 @@ from ._effects import (
 )
 from ..plots import general_plot
 from ..tools import to_db
+from ..standard.enums import SpectrumMethod, SpectrumScaling, Window
 
 from scipy.signal.windows import get_window
 import numpy as np
@@ -257,7 +258,7 @@ class SpectralSubtractor(AudioEffect):
     def set_advanced_parameters(
         self,
         overlap_percent: int = 50,
-        window_type: str = "hann",
+        window_type: Window = Window.Hann,
         noise_forgetting_factor: float = 0.9,
         subtraction_factor: float = 2,
         subtraction_exponent: float = 2,
@@ -271,8 +272,8 @@ class SpectralSubtractor(AudioEffect):
         ----------
         overlap_percent : int, optional
             Window overlap in percent. Default: 50.
-        window_type : str, optional
-            Window type to use. Default: `'hann'`.
+        window_type : Window, optional
+            Window type to use. Default: Hann.
         noise_forgetting_factor : float, optional
             This factor is used to average the noise spectrum in order to
             reduce distortions at the expense of responsiveness. It should
@@ -419,9 +420,11 @@ class SpectralSubtractor(AudioEffect):
             )
         else:
             self.window_length = (len(self.spectrum_to_subtract) - 1) * 2
-        self.window = get_window(self.window_type, self.window_length)
+        self.window = get_window(
+            self.window_type.to_scipy_format(), self.window_length
+        )
         self.window = np.clip(
-            get_window(self.window_type, self.window_length),
+            get_window(self.window_type.to_scipy_format(), self.window_length),
             a_min=1e-6,
             a_max=None,
         )
@@ -470,11 +473,11 @@ class SpectralSubtractor(AudioEffect):
                     release_time_ms=self.ad_release_time_ms,
                 )
                 noise["noise"].set_spectrum_parameters(
-                    method="welch",
+                    method=SpectrumMethod.WelchPeriodogram,
                     window_length_samples=len(self.window),
                     overlap_percent=self.overlap * 100,
                     window_type=self.window_type,
-                    scaling=None,
+                    scaling=SpectrumScaling.FFTBackward,
                 )
                 _, noise_psd = noise["noise"].get_spectrum()
             else:

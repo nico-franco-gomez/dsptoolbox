@@ -278,7 +278,7 @@ class TestSignal:
         # Use parameters just like librosa for validation
         s.set_spectrogram_parameters(
             window_length_samples=1024,
-            window_type="hann",
+            window_type=dsp.Window.Hann,
             overlap_percent=50,
             fft_length_samples=4096,
             detrend=False,
@@ -288,7 +288,7 @@ class TestSignal:
         t, f, stft = s.get_spectrogram()
         s.set_spectrogram_parameters(
             window_length_samples=1024,
-            window_type="hann",
+            window_type=dsp.Window.Hann,
             overlap_percent=50,
             fft_length_samples=None,
             detrend=False,
@@ -402,27 +402,21 @@ class TestFilterClass:
 
         # FIR
         f = dsp.Filter(
-            filter_type=dsp.FilterType.Other,
-            filter_configuration={
-                dsp.FilterCoefficientsType.Ba: [self.fir, 1]
-            },
+            filter_coefficients={dsp.FilterCoefficientsType.Ba: [self.fir, 1]},
             sampling_rate_hz=self.fs,
         )
-        condfir = f.filter_type == dsp.FilterType.Fir
+        assert f.is_fir
         b, _ = f.ba
-        condfir = condfir and np.all(b == self.fir)
+        assert np.all(b == self.fir)
 
         # IIR
         f = dsp.Filter(
-            filter_type=dsp.FilterType.Other,
-            filter_configuration={dsp.FilterCoefficientsType.Sos: self.iir},
+            filter_coefficients={dsp.FilterCoefficientsType.Sos: self.iir},
             sampling_rate_hz=self.fs,
         )
-        condiir = f.filter_type == dsp.FilterType.Iir
+        assert f.is_iir
         sos = f.sos
-        condiir = condiir and np.all(sos == self.iir)
-
-        assert condfir and condiir
+        assert np.all(sos == self.iir)
 
     def test_filter_properties(self):
         iir = dsp.Filter.from_ba(*self.iir_ba, sampling_rate_hz=self.fs)
@@ -445,7 +439,7 @@ class TestFilterClass:
         assert iir.order == self.iir.shape[0] * 2
 
         # Check order with sos
-        sos = dsp.Filter.new_iir_filter(
+        sos = dsp.Filter.iir_filter(
             6,
             100.0,
             dsp.FilterPassType.Lowpass,
@@ -453,7 +447,7 @@ class TestFilterClass:
             sampling_rate_hz=self.fs,
         )
         assert sos.order == 6
-        sos = dsp.Filter.new_iir_filter(
+        sos = dsp.Filter.iir_filter(
             5,
             100.0,
             dsp.FilterPassType.Lowpass,
@@ -542,7 +536,7 @@ class TestFilterClass:
 
     def test_other_functionalities(self):
         #
-        dsp.Filter.new_fir_from_file(RIR_PATH)
+        dsp.Filter.fir_from_file(RIR_PATH)
 
         #
         f = self.get_iir()
@@ -564,14 +558,11 @@ class TestFilterClass:
         f = self.get_fir()
         f.get_transfer_function(freqs)
 
-        f = dsp.Filter(
-            dsp.FilterType.Biquad,
-            filter_configuration={
-                "eq_type": dsp.BiquadEqType.Peaking,
-                "freqs": 200,
-                "gain": 3,
-                "q": 0.7,
-            },
+        f = dsp.Filter.biquad(
+            eq_type=dsp.BiquadEqType.Peaking,
+            frequency_hz=200,
+            gain_db=3,
+            q=0.7,
             sampling_rate_hz=self.fs,
         )
         f.get_transfer_function(freqs)
@@ -602,8 +593,7 @@ class TestFilterClass:
             window="flattop",
         )
         f = dsp.Filter(
-            dsp.FilterType.Other,
-            filter_configuration={dsp.FilterCoefficientsType.Ba: [b, 1]},
+            filter_coefficients={dsp.FilterCoefficientsType.Ba: [b, 1]},
             sampling_rate_hz=self.fs,
         )
         # Time vector
@@ -628,8 +618,7 @@ class TestFilterClass:
             window="flattop",
         )
         f = dsp.Filter(
-            dsp.FilterType.Other,
-            filter_configuration={dsp.FilterCoefficientsType.Ba: [b, 1]},
+            filter_coefficients={dsp.FilterCoefficientsType.Ba: [b, 1]},
             sampling_rate_hz=self.fs,
         )
         assert len(f) == len(b)
@@ -643,15 +632,14 @@ class TestFilterClass:
             window="flattop",
         )
         f = dsp.Filter(
-            dsp.FilterType.Other,
-            filter_configuration={dsp.FilterCoefficientsType.Ba: [b, 1]},
+            filter_coefficients={dsp.FilterCoefficientsType.Ba: [b, 1]},
             sampling_rate_hz=self.fs,
         )
         assert f.order == len(b) - 1
 
     def test_group_delay(self):
         f_log = dsp.tools.log_frequency_vector([20, 20e3], 128)
-        bb = dsp.Filter.new_biquad(
+        bb = dsp.Filter.biquad(
             eq_type=dsp.BiquadEqType.Peaking,
             frequency_hz=300,
             gain_db=10,
@@ -675,47 +663,42 @@ class TestFilterClass:
 class TestFilterBankClass:
     fs = 44100
 
+    def get_iir_filter(self) -> dsp.Filter:
+        return dsp.Filter.iir_filter(
+            5,
+            frequency_hz=[1510, 2000],
+            type_of_pass=dsp.FilterPassType.Bandpass,
+            filter_design_method=dsp.IirDesignMethod.Bessel,
+            sampling_rate_hz=self.fs,
+        )
+
+    def get_fir_filter(self, other_sampling_rate=False) -> dsp.Filter:
+        return dsp.Filter.fir_filter(
+            order=150,
+            frequency_hz=[1500, 2000],
+            type_of_pass=dsp.FilterPassType.Bandpass,
+            sampling_rate_hz=(
+                self.fs if not other_sampling_rate else self.fs // 2
+            ),
+        )
+
     def test_create_filter_bank(self):
         # Create filter bank sequentially
         fb = dsp.FilterBank()
-        config = dict(
-            order=5,
-            freqs=[1510, 2000],
-            type_of_pass=dsp.FilterPassType.Bandpass,
-            filter_design_method=dsp.IirDesignMethod.Bessel,
-        )
-        fb.add_filter(
-            dsp.Filter(dsp.FilterType.Iir, config, sampling_rate_hz=self.fs)
-        )
+        fb.add_filter(self.get_iir_filter())
 
         assert fb.number_of_filters == 1
         assert fb.sampling_rate_hz == self.fs
 
-        config = dict(
-            order=150,
-            freqs=[1500, 2000],
-            type_of_pass=dsp.FilterPassType.Bandpass,
-        )
-        fb.add_filter(dsp.Filter(dsp.FilterType.Fir, config, self.fs))
+        fb.add_filter(self.get_fir_filter())
 
         assert fb.number_of_filters == 2
         assert fb.sampling_rate_hz == self.fs
 
         # Create filter bank passing a list
         filters = []
-        config = dict(
-            order=5,
-            freqs=[1501, 2000],
-            type_of_pass=dsp.FilterPassType.Bandpass,
-            filter_design_method=dsp.IirDesignMethod.Bessel,
-        )
-        filters.append(dsp.Filter(dsp.FilterType.Iir, config, self.fs))
-        config = dict(
-            order=150,
-            freqs=[1500, 2000],
-            type_of_pass=dsp.FilterPassType.Bandpass,
-        )
-        filters.append(dsp.Filter(dsp.FilterType.Fir, config, self.fs))
+        filters.append(self.get_iir_filter())
+        filters.append(self.get_fir_filter())
         fb = dsp.FilterBank(
             filters=filters,
             same_sampling_rate=True,
@@ -733,21 +716,8 @@ class TestFilterBankClass:
     def test_plots(self):
         # Create
         fb = dsp.FilterBank()
-        config = dict(
-            order=5,
-            freqs=[1502, 2000],
-            type_of_pass=dsp.FilterPassType.Bandpass,
-            filter_design_method=dsp.IirDesignMethod.Bessel,
-        )
-        fb.add_filter(
-            dsp.Filter(dsp.FilterType.Iir, config, sampling_rate_hz=self.fs)
-        )
-        config = dict(
-            order=150,
-            freqs=[1500, 2000],
-            type_of_pass=dsp.FilterPassType.Bandpass,
-        )
-        fb.add_filter(dsp.Filter(dsp.FilterType.Fir, config, self.fs))
+        fb.add_filter(self.get_iir_filter())
+        fb.add_filter(self.get_fir_filter())
 
         # Get plots
         fb.plot_magnitude(mode=dsp.FilterBankMode.Parallel)
@@ -767,22 +737,8 @@ class TestFilterBankClass:
 
     def test_filterbank_functionalities(self):
         fb = dsp.FilterBank()
-
-        config = dict(
-            order=5,
-            freqs=[1500, 2000],
-            type_of_pass=dsp.FilterPassType.Bandpass,
-            filter_design_method=dsp.IirDesignMethod.Bessel,
-        )
-        fb.add_filter(
-            dsp.Filter(dsp.FilterType.Iir, config, sampling_rate_hz=self.fs)
-        )
-        config = dict(
-            order=150,
-            freqs=[1500, 2000],
-            type_of_pass=dsp.FilterPassType.Bandpass,
-        )
-        fb.add_filter(dsp.Filter(dsp.FilterType.Fir, config, self.fs))
+        fb.add_filter(self.get_iir_filter())
+        fb.add_filter(self.get_fir_filter())
 
         assert fb.number_of_filters == 2
         assert fb.sampling_rate_hz == self.fs
@@ -793,7 +749,7 @@ class TestFilterBankClass:
         assert fb.sampling_rate_hz == self.fs
 
         # Readd
-        fb.add_filter(dsp.Filter(dsp.FilterType.Fir, config, self.fs))
+        fb.add_filter(self.get_fir_filter())
         assert fb.number_of_filters == 2
         assert fb.sampling_rate_hz == self.fs
 
@@ -817,21 +773,8 @@ class TestFilterBankClass:
     def test_filtering(self):
         # Create
         fb = dsp.FilterBank()
-        config = dict(
-            order=5,
-            freqs=[1500, 2000],
-            type_of_pass=dsp.FilterPassType.Bandpass,
-            filter_design_method=dsp.IirDesignMethod.Bessel,
-        )
-        fb.add_filter(
-            dsp.Filter(dsp.FilterType.Iir, config, sampling_rate_hz=self.fs)
-        )
-        config = dict(
-            order=150,
-            freqs=[1500, 2000],
-            type_of_pass=dsp.FilterPassType.Bandpass,
-        )
-        fb.add_filter(dsp.Filter(dsp.FilterType.Fir, config, self.fs))
+        fb.add_filter(self.get_iir_filter())
+        fb.add_filter(self.get_fir_filter())
 
         t_vec = np.random.normal(0, 0.01, (self.fs * 3, 2))
         s = dsp.Signal(None, t_vec, self.fs)
@@ -915,25 +858,12 @@ class TestFilterBankClass:
 
     def test_multirate(self):
         fb = dsp.FilterBank(same_sampling_rate=False)
-        config = dict(
-            order=5,
-            freqs=[1500, 2000],
-            type_of_pass=dsp.FilterPassType.Bandpass,
-            filter_design_method=dsp.IirDesignMethod.Bessel,
-        )
-        fb.add_filter(
-            dsp.Filter(dsp.FilterType.Iir, config, sampling_rate_hz=self.fs)
-        )
+        fb.add_filter(self.get_iir_filter())
 
         assert fb.number_of_filters == 1
         assert fb.sampling_rate_hz == [self.fs]
 
-        config = dict(
-            order=150,
-            freqs=[1500, 2000],
-            type_of_pass=dsp.FilterPassType.Bandpass,
-        )
-        fb.add_filter(dsp.Filter(dsp.FilterType.Fir, config, self.fs // 2))
+        fb.add_filter(self.get_fir_filter(True))
 
         assert fb.number_of_filters == 2
         assert fb.sampling_rate_hz == [self.fs, self.fs // 2]
@@ -944,7 +874,7 @@ class TestFilterBankClass:
         assert fb.sampling_rate_hz == [self.fs // 2]
 
         # Readd
-        fb.add_filter(dsp.Filter(dsp.FilterType.Fir, config, self.fs))
+        fb.add_filter(self.get_fir_filter())
         assert fb.number_of_filters == 2
         assert fb.sampling_rate_hz == [self.fs // 2, self.fs]
 
@@ -956,39 +886,13 @@ class TestFilterBankClass:
         # Should not be possible to create
         with pytest.raises(AssertionError):
             fb = dsp.FilterBank(same_sampling_rate=True)
-            config = dict(
-                order=5,
-                freqs=[1500, 2000],
-                type_of_pass=dsp.FilterPassType.Bandpass,
-                filter_design_method=dsp.IirDesignMethod.Bessel,
-            )
-            fb.add_filter(
-                dsp.Filter(
-                    dsp.FilterType.Iir, config, sampling_rate_hz=self.fs
-                )
-            )
-            config = dict(
-                order=150,
-                freqs=[1500, 2000],
-                type_of_pass=dsp.FilterPassType.Bandpass,
-            )
-            fb.add_filter(dsp.Filter(dsp.FilterType.Fir, config, self.fs // 2))
+            fb.add_filter(self.get_iir_filter())
+            fb.add_filter(self.get_fir_filter(True))
 
         # Create filter bank passing a list
         filters = []
-        config = dict(
-            order=5,
-            freqs=[1500, 2000],
-            type_of_pass=dsp.FilterPassType.Bandpass,
-            filter_design_method=dsp.IirDesignMethod.Bessel,
-        )
-        filters.append(dsp.Filter(dsp.FilterType.Iir, config, self.fs))
-        config = dict(
-            order=150,
-            freqs=[1500, 2000],
-            type_of_pass=dsp.FilterPassType.Bandpass,
-        )
-        filters.append(dsp.Filter(dsp.FilterType.Fir, config, self.fs // 2))
+        filters.append(self.get_iir_filter())
+        filters.append(self.get_fir_filter(True))
         fb = dsp.FilterBank(
             filters=filters,
             same_sampling_rate=False,
@@ -1008,22 +912,8 @@ class TestFilterBankClass:
     def test_plotting_multirate(self):
         # Should not fail but no plots are created
         fb = dsp.FilterBank(same_sampling_rate=False)
-
-        config = dict(
-            order=5,
-            freqs=[1500, 2000],
-            type_of_pass=dsp.FilterPassType.Bandpass,
-            filter_design_method=dsp.IirDesignMethod.Bessel,
-        )
-        fb.add_filter(
-            dsp.Filter(dsp.FilterType.Iir, config, sampling_rate_hz=self.fs)
-        )
-        config = dict(
-            order=150,
-            freqs=[1500, 2000],
-            type_of_pass=dsp.FilterPassType.Bandpass,
-        )
-        fb.add_filter(dsp.Filter(dsp.FilterType.Fir, config, self.fs // 2))
+        fb.add_filter(self.get_iir_filter())
+        fb.add_filter(self.get_fir_filter(True))
 
         fb.plot_magnitude(dsp.FilterBankMode.Parallel)
         fb.plot_phase(dsp.FilterBankMode.Parallel)
@@ -1034,21 +924,8 @@ class TestFilterBankClass:
 
     def test_filtering_multirate_multiband(self):
         fb = dsp.FilterBank(same_sampling_rate=False)
-        config = dict(
-            order=5,
-            freqs=[1500, 2000],
-            type_of_pass=dsp.FilterPassType.Bandpass,
-            filter_design_method=dsp.IirDesignMethod.Bessel,
-        )
-        fb.add_filter(
-            dsp.Filter(dsp.FilterType.Iir, config, sampling_rate_hz=self.fs)
-        )
-        config = dict(
-            order=150,
-            freqs=[1500, 2000],
-            type_of_pass=dsp.FilterPassType.Bandpass,
-        )
-        fb.add_filter(dsp.Filter(dsp.FilterType.Fir, config, self.fs // 2))
+        fb.add_filter(self.get_iir_filter())
+        fb.add_filter(self.get_fir_filter(True))
 
         s1 = dsp.generators.noise(
             "white", length_seconds=1, sampling_rate_hz=self.fs
@@ -1069,42 +946,16 @@ class TestFilterBankClass:
 
     def test_iterator(self):
         fb = dsp.FilterBank(same_sampling_rate=False)
-        config = dict(
-            order=5,
-            freqs=[1500, 2000],
-            type_of_pass=dsp.FilterPassType.Bandpass,
-            filter_design_method=dsp.IirDesignMethod.Bessel,
-        )
-        fb.add_filter(
-            dsp.Filter(dsp.FilterType.Iir, config, sampling_rate_hz=self.fs)
-        )
-        config = dict(
-            order=150,
-            freqs=[1500, 2000],
-            type_of_pass=dsp.FilterPassType.Bandpass,
-        )
-        fb.add_filter(dsp.Filter(dsp.FilterType.Fir, config, self.fs // 2))
+        fb.add_filter(self.get_iir_filter())
+        fb.add_filter(self.get_fir_filter(True))
         for n in fb:
             assert dsp.Filter == type(n)
 
     def test_transfer_function(self):
         # Create
-        fb = dsp.FilterBank()
-        config = dict(
-            order=5,
-            freqs=[1500, 2000],
-            type_of_pass=dsp.FilterPassType.Bandpass,
-            filter_design_method=dsp.IirDesignMethod.Bessel,
-        )
-        fb.add_filter(
-            dsp.Filter(dsp.FilterType.Iir, config, sampling_rate_hz=self.fs)
-        )
-        config = dict(
-            order=150,
-            freqs=[1500, 2000],
-            type_of_pass=dsp.FilterPassType.Bandpass,
-        )
-        fb.add_filter(dsp.Filter(dsp.FilterType.Fir, config, self.fs))
+        fb = dsp.FilterBank(same_sampling_rate=False)
+        fb.add_filter(self.get_iir_filter())
+        fb.add_filter(self.get_fir_filter())
 
         freqs = np.linspace(1, 2e3, 400)
         fb.get_transfer_function(freqs, mode=dsp.FilterBankMode.Parallel)
@@ -1406,7 +1257,7 @@ class TestFilterTopologies:
         n = self.get_noise()
 
         # IIR sos
-        iir = dsp.Filter.new_iir_filter(
+        iir = dsp.Filter.iir_filter(
             4,
             1000.0,
             dsp.FilterPassType.Lowpass,
@@ -1479,7 +1330,7 @@ class TestFilterTopologies:
             dsp.plots.show()
 
     def test_iir_filter(self):
-        iir_original = dsp.Filter.new_iir_filter(
+        iir_original = dsp.Filter.iir_filter(
             4,
             1000.0,
             dsp.FilterPassType.Highpass,
@@ -1497,11 +1348,11 @@ class TestFilterTopologies:
         np.testing.assert_allclose(td, sig.lfilter(b, a, n.time_data[:, 0]))
 
     def test_fir_filter(self):
-        fir_original = dsp.Filter.new_fir_filter(
+        fir_original = dsp.Filter.fir_filter(
             25,
             1000.0,
-            dsp.FilterPassType.Lowpass,
-            dsp.Window.Blackman,
+            type_of_pass=dsp.FilterPassType.Lowpass,
+            window=dsp.Window.Blackman,
             sampling_rate_hz=self.fs_hz,
         )
         b, _ = fir_original.get_coefficients(dsp.FilterCoefficientsType.Ba)
@@ -1614,7 +1465,7 @@ class TestFilterTopologies:
 
     def test_state_space_filtering(self):
         # Check filter's output against usual TDF2 implementation
-        ff = dsp.Filter.new_biquad(
+        ff = dsp.Filter.biquad(
             dsp.BiquadEqType.Peaking, 100, 6, 0.7, self.fs_hz
         )
         b, a = ff.get_coefficients(dsp.FilterCoefficientsType.Ba)
@@ -1639,7 +1490,7 @@ class TestSpectrum:
     def get_spectrum_from_filter(self, freqs=None, complex=False):
         """Get some spectrum from a filter. If `freqs=None`, it is a
         logarithmic vector."""
-        filt = dsp.Filter.new_biquad(
+        filt = dsp.Filter.biquad(
             dsp.BiquadEqType.Peaking, 500.0, 10.0, 1.0, 48000
         )
         return dsp.Spectrum.from_filter(

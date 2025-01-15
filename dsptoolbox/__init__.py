@@ -35,7 +35,6 @@ from .standard import (
     # Enums
     SpectrumScaling,
     SpectrumMethod,
-    FilterType,
     FilterCoefficientsType,
     BiquadEqType,
     FilterBankMode,
@@ -118,7 +117,6 @@ __all__ = [
     # Enums
     "SpectrumScaling",
     "SpectrumMethod",
-    "FilterType",
     "FilterCoefficientsType",
     "BiquadEqType",
     "FilterBankMode",

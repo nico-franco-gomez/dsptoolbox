@@ -11,7 +11,7 @@ from .filterbank import FilterBank
 from .filter import Filter
 from .signal import Signal
 from ..generators import dirac
-from ..standard.enums import FilterType, FilterCoefficientsType
+from ..standard.enums import FilterCoefficientsType
 
 
 class ParallelFilter(RealtimeFilter):
@@ -267,7 +267,7 @@ class ParallelFilter(RealtimeFilter):
         assert hasattr(self, "filter_bank"), "Filter bank needed"
         self.iir: list[IIRFilter] = []
         for f in self.filter_bank:
-            if f.filter_type == FilterType.Fir:
+            if not f.is_iir:
                 self.fir = FIRFilter(
                     f.get_coefficients(FilterCoefficientsType.Ba)[0]
                 )

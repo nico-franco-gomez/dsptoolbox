@@ -22,6 +22,12 @@ from ._room_acoustics import (
 from .._general_helpers import _find_nearest, _pad_trim
 from ..standard import pad_trim
 from ..tools import to_db
+from ..standard.enums import (
+    IirDesignMethod,
+    FilterPassType,
+    SpectrumMethod,
+    FilterBankMode,
+)
 
 
 def reverb_time(
@@ -184,7 +190,7 @@ def find_modes(
     assert (
         type(signal) is ImpulseResponse
     ), "This is only valid for an impulse response"
-    signal.set_spectrum_parameters("standard")
+    signal.spectrum_method = SpectrumMethod.FFT
 
     # Pad signal to have a resolution of around 1 Hz
     length = signal.sampling_rate_hz
@@ -455,14 +461,11 @@ def generate_synthetic_rir(
 
     # Bandpass signal in order to have a realistic audio signal representation
     if apply_bandpass:
-        f = Filter(
-            "iir",
-            dict(
-                order=12,
-                filter_design_method="butter",
-                type_of_pass="bandpass",
-                freqs=[30, (sampling_rate_hz // 2) * 0.9],
-            ),
+        f = Filter.iir_filter(
+            order=12,
+            frequency_hz=[20.0, (sampling_rate_hz // 2) * 0.9],
+            filter_design_method=IirDesignMethod.Butterworth,
+            type_of_pass=FilterPassType.Bandpass,
             sampling_rate_hz=sampling_rate_hz,
         )
         rir_output = f.filter_signal(rir_output)
@@ -567,7 +570,7 @@ def _bass_ratio(rir: ImpulseResponse) -> NDArray[np.float64]:
     fb = fractional_octave_bands(
         [125, 1000], filter_order=10, sampling_rate_hz=rir.sampling_rate_hz
     )
-    rir_multi = fb.filter_signal(rir, zero_phase=True)
+    rir_multi = fb.filter_signal(rir, FilterBankMode.Parallel, zero_phase=True)
     rt, _ = reverb_time(rir_multi)
     br = np.zeros(rir.number_of_channels)
     for ch in range(rir.number_of_channels):

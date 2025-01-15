@@ -4,14 +4,14 @@ from warnings import warn
 from numpy.typing import NDArray
 
 from ..standard._framed_signal_representation import _get_framed_signal
-from ..standard.enums import SpectrumScaling
+from ..standard.enums import SpectrumScaling, Window
 
 
 def _welch(
     x: NDArray[np.float64],
     y: NDArray[np.float64] | None,
     fs_hz: int,
-    window_type: str,
+    window_type: Window,
     window_length_samples: int,
     overlap_percent: float,
     detrend: bool,
@@ -29,9 +29,8 @@ def _welch(
         spectrum of `x` will be computed.
     fs_hz : int
         Sampling rate in Hz.
-    window_type : str
-        Window type to be used. Refer to `scipy.signal.windows` for available
-        ones.
+    window_type : Window
+        Window type to be used.
     window_length_samples : int
         Window length to be used. Determines frequency resolution in the end.
         Only powers of 2 are accepted.
@@ -103,7 +102,7 @@ def _welch(
 
     # Window and step
     window = windows.get_window(
-        window_type, window_length_samples, fftbins=True
+        window_type.to_scipy_format(), window_length_samples, fftbins=True
     )
     overlap_samples = int(overlap_percent / 100 * window_length_samples)
     step = window_length_samples - overlap_samples
@@ -184,7 +183,7 @@ def _stft(
     x: NDArray[np.float64],
     fs_hz: int,
     window_length_samples: int,
-    window_type: str,
+    window_type: Window,
     overlap_percent: float,
     fft_length_samples: int | None,
     detrend: bool,
@@ -199,28 +198,26 @@ def _stft(
         (Multichannel) Time series.
     fs_hz : int
         Sampling rate in Hz.
-    window_length_samples : int, optional
+    window_length_samples : int
         Window length to be used. Determines frequency resolution in the end.
-        Only powers of 2 are accepted. Default: 1024.
-    window_type : str, optional
+        Only powers of 2 are accepted.
+    window_type : Window
         Window type to be used. Refer to scipy.signal.windows for available
-        ones. Default: `'hann'`
-    overlap_percent : int, optional
-        Overlap in percentage. Default: 50.
-    fft_length_samples : int, optional
+        ones.
+    overlap_percent : int
+        Overlap in percentage.
+    fft_length_samples : int
         Length of the FFT window for each time window. This affects
         the frequency resolution and can also crop the time window. Pass
-        `None` to use the window length. Default: `None`.
-    detrend : bool, optional
-        Detrending from each time segment (removing mean). Default: True.
-    padding : bool, optional
+        `None` to use the window length.
+    detrend : bool
+        Detrending from each time segment (removing mean).
+    padding : bool
         When `True`, the original signal is padded in the beginning and ending
         so that no energy is lost due to windowing when the COLA constraint is
-        met. Default: `False`.
-    scaling : str, optional
-        Scale as `"amplitude spectrum"`, `"amplitude spectral density"`,
-        `"power spectrum"` or `"power spectral density"`. Pass `None`
-        to avoid any scaling. See references for details. Default: `None`.
+        met.
+    scaling : SpectrumScaling, optional
+        Spectrum scaling.
 
     Returns
     -------
@@ -252,7 +249,7 @@ def _stft(
 
     # Window and step
     window = windows.get_window(
-        window_type, window_length_samples, fftbins=True
+        window_type.to_scipy_format(), window_length_samples, fftbins=True
     )
     overlap_samples = int(overlap_percent / 100 * window_length_samples + 0.5)
     step = window_length_samples - overlap_samples

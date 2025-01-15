@@ -243,7 +243,7 @@ class TestTransferFunctionsModule:
         s = self.audio_multi.time_data[:200, 0]
         s = dsp.ImpulseResponse(None, s, self.fs)
         f = dsp.transfer_functions.ir_to_filter(s, channel=0)
-        b, _ = f.get_coefficients(mode=dsp.FilterCoefficientsType.Ba)
+        b, _ = f.get_coefficients(dsp.FilterCoefficientsType.Ba)
         assert np.all(b == s.time_data[:, 0])
         assert f.sampling_rate_hz == s.sampling_rate_hz
 
@@ -255,10 +255,11 @@ class TestTransferFunctionsModule:
 
     def test_filter_to_ir(self):
         order = 216
-        f = dsp.Filter(
-            dsp.FilterType.Fir,
-            dict(order=order, freqs=1000, type_of_pass="highpass"),
-            self.fs,
+        f = dsp.Filter.fir_filter(
+            order=order,
+            frequency_hz=1000,
+            type_of_pass=dsp.FilterPassType.Highpass,
+            sampling_rate_hz=self.fs,
         )
         s = dsp.transfer_functions.filter_to_ir(f)
         assert s.time_data.shape[0] == order + 1
@@ -270,10 +271,12 @@ class TestTransferFunctionsModule:
         assert len(ir) == order + 1
 
         with pytest.raises(AssertionError):
-            f = dsp.Filter(
-                "iir",
-                dict(order=10, freqs=1000, type_of_pass="highpass"),
-                self.fs,
+            f = dsp.Filter.iir_filter(
+                order=10,
+                frequency_hz=1000,
+                filter_design_method=dsp.IirDesignMethod.Butterworth,
+                type_of_pass=dsp.FilterPassType.Highpass,
+                sampling_rate_hz=self.fs,
             )
             dsp.transfer_functions.filter_to_ir(f)
 
@@ -285,7 +288,6 @@ class TestTransferFunctionsModule:
             self.x,
             mode="H1",
             window_length_samples=1024,
-            spectrum_parameters=None,
         )
         # Single-channel with other windows
         h = dsp.transfer_functions.compute_transfer_function(
@@ -293,7 +295,6 @@ class TestTransferFunctionsModule:
             self.x,
             mode="H2",
             window_length_samples=1024,
-            spectrum_parameters=dict(window_type=("chebwin", 40)),
         )
         # Check that coherence is saved
         h.plot_coherence()
@@ -311,7 +312,7 @@ class TestTransferFunctionsModule:
 
     def test_min_phase_from_mag(self):
         # Only functionality is tested
-        self.y_st.set_spectrum_parameters(method="standard")
+        self.y_st.set_spectrum_parameters(method=dsp.SpectrumMethod.FFT)
         f, sp = self.y_st.get_spectrum()
         dsp.transfer_functions.min_phase_from_mag(
             sp, self.y_st.sampling_rate_hz
@@ -319,7 +320,7 @@ class TestTransferFunctionsModule:
 
     def test_lin_phase_from_mag(self):
         # Only functionality is tested here
-        self.y_st.set_spectrum_parameters(method="standard")
+        self.y_st.set_spectrum_parameters(method=dsp.SpectrumMethod.FFT)
         f, sp = self.y_st.get_spectrum()
         dsp.transfer_functions.lin_phase_from_mag(
             sp, self.y_st.sampling_rate_hz, group_delay_ms="minimum"
@@ -329,7 +330,7 @@ class TestTransferFunctionsModule:
         ir = dsp.transfer_functions.spectral_deconvolve(
             self.y_st,
             self.x,
-            apply_regularization="regularized",
+            apply_regularization=True,
             start_stop_hz=None,
             threshold_db=-30,
             padding=False,
@@ -360,7 +361,7 @@ class TestTransferFunctionsModule:
         ir = dsp.transfer_functions.spectral_deconvolve(
             self.y_st,
             self.x,
-            apply_regularization="regularized",
+            apply_regularization=True,
             start_stop_hz=None,
             threshold_db=-30,
             padding=False,
@@ -389,7 +390,7 @@ class TestTransferFunctionsModule:
         ir = dsp.transfer_functions.spectral_deconvolve(
             self.y_st,
             self.x,
-            apply_regularization="regularized",
+            apply_regularization=True,
             start_stop_hz=None,
             threshold_db=-30,
             padding=False,
@@ -413,7 +414,7 @@ class TestTransferFunctionsModule:
         ir = dsp.transfer_functions.spectral_deconvolve(
             self.y_st,
             self.x,
-            apply_regularization="regularized",
+            apply_regularization=True,
             start_stop_hz=None,
             threshold_db=-30,
             padding=False,
@@ -481,7 +482,9 @@ class TestTransferFunctionsModule:
             s, 10, 0, [100, 1000]
         )
 
-        fig, ax = s.plot_magnitude(normalize=None)
+        fig, ax = s.plot_magnitude(
+            normalize=dsp.MagnitudeNormalization.NoNormalization
+        )
         ax.plot(
             sp.frequency_vector_hz, 20 * np.log10(np.abs(sp.spectral_data))
         )

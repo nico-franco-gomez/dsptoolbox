@@ -29,7 +29,6 @@ from .._general_helpers import _check_format_in_path, _pad_trim
 from ..tools import to_db
 from ..standard.enums import (
     FilterCoefficientsType,
-    FilterType,
     BiquadEqType,
     FilterPassType,
     IirDesignMethod,
@@ -47,100 +46,60 @@ class Filter:
     # ======== Constructor and initializers ===================================
     def __init__(
         self,
-        filter_type: FilterType = FilterType.Biquad,
-        filter_configuration: dict | None = None,
-        sampling_rate_hz: int | None = None,
+        filter_coefficients: dict,
+        sampling_rate_hz: int,
     ):
         """The Filter class contains all parameters and metadata needed for
         using a digital filter.
 
-        Constructor
-        -----------
-        A dictionary containing the filter configuration parameters should
-        be passed. It is a wrapper around `scipy.signal.iirfilter`,
-        `scipy.signal.firwin` and `_biquad_coefficients`. See down below for
-        the parameters needed for creating the filters. Alternatively, you can
-        pass directly the filter coefficients while setting
-        `filter_type = "other"`.
-
         Parameters
         ----------
-        filter_type : FilterType, optional
-            Filter type. Default: creates a dummy biquad bell filter with no
-            gain.
-        filter_configuration : dict, optional
-            Dictionary containing configuration for the filter.
-            Default: some dummy parameters.
-        sampling_rate_hz : int, optional
-            Sampling rate in Hz for the digital filter. Default: `None`.
+        filter_coefficients : dict
+            Dictionary containing configuration for the filter. The dictionary
+            must exclusively contain one of the following keys:
+            - FilterCoefficientsType.Zpk
+            - FilterCoefficientsType.Sos
+            - FilterCoefficientsType.Ba
 
-        Notes
-        -----
-        For `iir`:
-            Keys: order, freqs, type_of_pass, filter_design_method (optional),
-            bandpass ripple (optional), stopband ripple (optional).
-
-            - order (int): Filter order
-            - freqs (float, array-like): array with len 2 when "bandpass"
-              or "bandstop".
-            - type_of_pass (FilterPassType).
-            - filter_design_method (IirDesignMethod): Default: Butterworth.
-            - passband_ripple (float): maximum passband ripple in dB for
-              "ellip" and "cheby1".
-            - stopband_attenuation (float): minimum stopband attenuation in dB
-              for "ellip" and "cheby2".
-
-        For `fir`:
-            Keys: order, freqs, type_of_pass, window (optional).
-
-            - order (int): Filter order, i.e., number of taps - 1.
-            - freqs (float, array-like): array with len 2 when "bandpass"
-              or "bandstop".
-            - type_of_pass (FilterPassType).
-            - window (Window): Window to be used. Default: Hamming.
-
-        For `biquad`:
-            Keys: eq_type, freqs, gain, q.
-
-            - eq_type (BiquadEqType).
-            - freqs: float.
-            - gain (float): in dB.
-            - q (float): Q-factor.
-
-        For `other` or `general`:
-            Keys: ba or sos or zpk of type FilterType.
-
-        Methods
-        -------
-        General
-            set_filter_parameters, get_filter_metadata, get_ir.
-        Plots or prints
-            show_filter_parameters, plot_magnitude, plot_group_delay,
-            plot_phase, plot_zp.
-        Filtering
-            filter_signal, filter_and_resample_signal.
+        sampling_rate_hz : int
+            Sampling rate in Hz for the digital filter.
 
         """
         self.warning_if_complex = True
         self.sampling_rate_hz = sampling_rate_hz
-        if filter_configuration is None:
-            filter_configuration = {
-                "eq_type": BiquadEqType.Peaking,
-                "freqs": 1000,
-                "gain": 0,
-                "q": 1,
-            }
-        self.__set_filter_parameters(filter_type, filter_configuration)
+        assert (
+            (FilterCoefficientsType.Ba in filter_coefficients)
+            ^ (FilterCoefficientsType.Sos in filter_coefficients)
+            ^ (FilterCoefficientsType.Zpk in filter_coefficients)
+        ), (
+            "Only (and at least) one type of filter coefficients "
+            + "should be passed to create a filter"
+        )
+        if FilterCoefficientsType.Zpk in filter_coefficients:
+            self.zpk = filter_coefficients[FilterCoefficientsType.Zpk]
+            self.sos = sig.zpk2sos(*self.zpk, analog=False)
+        elif FilterCoefficientsType.Sos in filter_coefficients:
+            self.sos = filter_coefficients[FilterCoefficientsType.Sos]
+        elif FilterCoefficientsType.Ba in filter_coefficients:
+            b, a = filter_coefficients[FilterCoefficientsType.Ba]
+            self.ba = [np.atleast_1d(b), np.atleast_1d(a)]
+            self.__normalize_ba_coefficients()
+
+        # Update Metadata about the Filter
+        self.info: dict = {}
+        self.info["order"] = self.order
+        self.info["sampling_rate_hz"] = self.sampling_rate_hz
+        self.info["filter_type"] = "iir" if self.is_iir else "fir"
 
     @staticmethod
-    def new_iir_filter(
+    def iir_filter(
         order: int,
         frequency_hz: float | ArrayLike,
         type_of_pass: FilterPassType,
-        filter_design_method: IirDesignMethod,
+        sampling_rate_hz: int,
+        filter_design_method: IirDesignMethod = IirDesignMethod.Butterworth,
         passband_ripple_db: float | None = None,
         stopband_attenuation_db: float | None = None,
-        sampling_rate_hz: int | None = None,
     ) -> "Filter":
         """Return an IIR filter using `scipy.signal.iirfilter`. IIR filters are
         always implemented as SOS by default.
@@ -153,36 +112,39 @@ class Filter:
             Frequency or frequencies of the filter in Hz.
         type_of_pass : FilterPassType
             Type of pass.
-        filter_design_method : IirDesignMethod
-            Design method for the IIR filter.
+        sampling_rate_hz : int
+            Sampling rate in Hz.
+        filter_design_method : IirDesignMethod, optional
+            Design method for the IIR filter. Default: Butterworth.
         passband_ripple_db : float, None, optional
             Passband ripple in dB for "cheby1" and "ellip". Default: None.
         stopband_attenuation_db : float, None, optional
             Minimum stopband attenutation in dB for "cheby2" and "ellip".
             Default: None.
-        sampling_rate_hz : int
-            Sampling rate in Hz.
 
         Returns
         -------
         Filter
 
         """
+        zpk = sig.iirfilter(
+            N=order,
+            Wn=frequency_hz,
+            btype=type_of_pass.to_str(),
+            analog=False,
+            fs=sampling_rate_hz,
+            ftype=filter_design_method.to_scipy_str(),
+            rp=passband_ripple_db,
+            rs=stopband_attenuation_db,
+            output="zpk",
+        )
         return Filter(
-            FilterType.Iir,
-            {
-                "order": order,
-                "freqs": frequency_hz,
-                "type_of_pass": type_of_pass,
-                "filter_design_method": filter_design_method,
-                "passband_ripple": passband_ripple_db,
-                "stopband_attenuation": stopband_attenuation_db,
-            },
+            {FilterCoefficientsType.Zpk: zpk},
             sampling_rate_hz,
         )
 
     @staticmethod
-    def new_biquad(
+    def biquad(
         eq_type: BiquadEqType,
         frequency_hz: float | ArrayLike,
         gain_db: float,
@@ -215,23 +177,25 @@ class Filter:
 
         """
         return Filter(
-            FilterType.Biquad,
             {
-                "eq_type": eq_type,
-                "freqs": frequency_hz,
-                "gain": gain_db,
-                "q": q,
+                FilterCoefficientsType.Ba: _biquad_coefficients(
+                    eq_type=eq_type,
+                    frequency_hz=frequency_hz,
+                    gain_db=gain_db,
+                    q=q,
+                    fs_hz=sampling_rate_hz,
+                )
             },
             sampling_rate_hz,
         )
 
     @staticmethod
-    def new_fir_filter(
+    def fir_filter(
         order: int,
         frequency_hz: float | ArrayLike,
         type_of_pass: FilterPassType,
-        window: Window,
-        sampling_rate_hz: int | None = None,
+        sampling_rate_hz: int,
+        window: Window = Window.Hamming,
     ) -> "Filter":
         """Design an FIR filter using `scipy.signal.firwin`.
 
@@ -243,10 +207,10 @@ class Filter:
             Frequency or frequencies of the filter in Hz.
         type_of_pass : FilterPassType
             Type of filter pass.
-        window : Window
-            Window to apply to the FIR filter.
         sampling_rate_hz : int
             Sampling rate in Hz.
+        window : Window, optional
+            Window to apply to the FIR filter. Default: Hamming.
 
         Returns
         -------
@@ -254,12 +218,21 @@ class Filter:
 
         """
         return Filter(
-            FilterType.Fir,
             {
-                "order": order,
-                "freqs": frequency_hz,
-                "type_of_pass": type_of_pass,
-                "window": window,
+                FilterCoefficientsType.Ba: [
+                    sig.firwin(
+                        numtaps=order + 1,
+                        cutoff=frequency_hz,
+                        window=(
+                            window.to_scipy_format()
+                            if window is not None
+                            else Window.Hamming.to_scipy_format()
+                        ),
+                        pass_zero=type_of_pass.to_str(),
+                        fs=sampling_rate_hz,
+                    ),
+                    np.asarray([1.0]),
+                ]
             },
             sampling_rate_hz,
         )
@@ -287,11 +260,7 @@ class Filter:
         Filter
 
         """
-        return Filter(
-            FilterType.Other,
-            {FilterCoefficientsType.Ba: [b, a]},
-            sampling_rate_hz,
-        )
+        return Filter({FilterCoefficientsType.Ba: [b, a]}, sampling_rate_hz)
 
     @staticmethod
     def from_sos(
@@ -312,11 +281,7 @@ class Filter:
         Filter
 
         """
-        return Filter(
-            FilterType.Other,
-            {FilterCoefficientsType.Sos: sos},
-            sampling_rate_hz,
-        )
+        return Filter({FilterCoefficientsType.Sos: sos}, sampling_rate_hz)
 
     @staticmethod
     def from_zpk(
@@ -344,13 +309,11 @@ class Filter:
 
         """
         return Filter(
-            FilterType.Other,
-            {FilterCoefficientsType.Zpk: [z, p, k]},
-            sampling_rate_hz,
+            {FilterCoefficientsType.Zpk: [z, p, k]}, sampling_rate_hz
         )
 
     @staticmethod
-    def new_fir_from_file(path: str, channel: int = 0) -> "Filter":
+    def fir_from_file(path: str, channel: int = 0) -> "Filter":
         """Read an FIR filter from an audio file.
 
         Parameters
@@ -422,14 +385,16 @@ class Filter:
         self.__warning_if_complex = new_warning
 
     @property
-    def filter_type(self) -> FilterType:
+    def is_iir(self) -> bool:
         if hasattr(self, "sos"):
-            return FilterType.Iir
+            return True
 
         a = self.ba[1]
-        if len(a) == 1 and a[0] == 1.0:
-            return FilterType.Fir
-        return FilterType.Iir
+        return not (len(a) == 1 and a[0] == 1.0)
+
+    @property
+    def is_fir(self) -> bool:
+        return not self.is_iir
 
     @property
     def ba(self) -> list[NDArray[np.float64 | np.complex128]]:
@@ -591,7 +556,7 @@ class Filter:
                 channels=channels,
                 zi=zi_old,
                 zero_phase=zero_phase,
-                filter_type=self.filter_type.name.lower(),
+                is_fir=self.is_fir,
                 warning_on_complex_output=self.warning_if_complex,
             )
         if activate_zi:
@@ -636,7 +601,7 @@ class Filter:
         )
 
         # Check if standard or polyphase representation is to be used
-        if self.filter_type == FilterType.Fir:
+        if self.is_fir:
             polyphase = True
         else:
             if not hasattr(self, "ba"):
@@ -674,86 +639,6 @@ class Filter:
         new_sig.time_data = new_time_data
         return new_sig
 
-    # ======== Setters ========================================================
-    def __set_filter_parameters(
-        self, filter_type: FilterType, filter_configuration: dict
-    ):
-        if filter_type == FilterType.Iir:
-            if "filter_design_method" not in filter_configuration:
-                filter_configuration["filter_design_method"] = (
-                    IirDesignMethod.Butterworth
-                )
-            if "passband_ripple" not in filter_configuration:
-                filter_configuration["passband_ripple"] = None
-            if "stopband_attenuation" not in filter_configuration:
-                filter_configuration["stopband_attenuation"] = None
-            self.zpk = sig.iirfilter(
-                N=filter_configuration["order"],
-                Wn=filter_configuration["freqs"],
-                btype=filter_configuration["type_of_pass"].to_str(),
-                analog=False,
-                fs=self.sampling_rate_hz,
-                ftype=filter_configuration[
-                    "filter_design_method"
-                ].to_scipy_str(),
-                rp=filter_configuration["passband_ripple"],
-                rs=filter_configuration["stopband_attenuation"],
-                output="zpk",
-            )
-            self.sos = sig.zpk2sos(*self.zpk)
-        elif filter_type == FilterType.Fir:
-            # Preparing parameters
-            if "window" not in filter_configuration:
-                filter_configuration["window"] = Window.Hamming
-            # Filter creation
-            self.ba = [
-                sig.firwin(
-                    numtaps=filter_configuration["order"] + 1,
-                    cutoff=filter_configuration["freqs"],
-                    window=filter_configuration["window"].to_scipy_format(),
-                    pass_zero=filter_configuration["type_of_pass"].to_str(),
-                    fs=self.sampling_rate_hz,
-                ),
-                np.asarray([1.0]),
-            ]
-        elif filter_type == FilterType.Biquad:
-            # Filter creation
-            self.ba = _biquad_coefficients(
-                eq_type=filter_configuration["eq_type"],
-                fs_hz=self.sampling_rate_hz,
-                frequency_hz=filter_configuration["freqs"],
-                gain_db=filter_configuration["gain"],
-                q=filter_configuration["q"],
-            )
-        else:
-            assert (
-                (FilterCoefficientsType.Ba in filter_configuration)
-                ^ (FilterCoefficientsType.Sos in filter_configuration)
-                ^ (FilterCoefficientsType.Zpk in filter_configuration)
-            ), (
-                "Only (and at least) one type of filter coefficients "
-                + "should be passed to create a filter"
-            )
-            if FilterCoefficientsType.Zpk in filter_configuration:
-                self.zpk = filter_configuration[FilterCoefficientsType.Zpk]
-                self.sos = sig.zpk2sos(*self.zpk, analog=False)
-            elif FilterCoefficientsType.Sos in filter_configuration:
-                self.sos = filter_configuration[FilterCoefficientsType.Sos]
-            elif FilterCoefficientsType.Ba in filter_configuration:
-                b, a = filter_configuration[FilterCoefficientsType.Ba]
-                self.ba = [np.atleast_1d(b), np.atleast_1d(a)]
-                self.__normalize_ba_coefficients()
-
-        filter_configuration["order"] = self.order
-
-        # Update Metadata about the Filter
-        self.info: dict = filter_configuration
-        self.info["sampling_rate_hz"] = self.sampling_rate_hz
-        self.info["filter_type"] = self.filter_type
-        if "filter_id" not in self.info:
-            self.info["filter_id"] = None
-        return self
-
     # ======== Check type =====================================================
     def __normalize_ba_coefficients(self):
         """Internal method to check filter type (if FIR or IIR) and update
@@ -789,7 +674,7 @@ class Filter:
 
     def _get_metadata_string(self):
         """Helper for creating a string containing all filter info."""
-        txt = f"""Filter – ID: {self.info["filter_id"]}\n"""
+        txt = """Filter:\n"""
         temp = ""
         for _ in range(len(txt)):
             temp += "-"
@@ -818,7 +703,7 @@ class Filter:
 
         """
         # FIR with no zero phase filtering
-        if self.filter_type == FilterType.Fir and not zero_phase:
+        if self.is_fir and not zero_phase:
             b = self.ba[0].copy()
             if length_samples < len(b):
                 warn(
@@ -871,7 +756,7 @@ class Filter:
             frequency_vector_hz.max() < self.sampling_rate_hz / 2
         ), "Queried frequency vector has values larger than nyquist"
 
-        if self.filter_type == FilterType.Iir and hasattr(self, "sos"):
+        if self.is_iir and hasattr(self, "sos"):
             return sig.sosfreqz(
                 self.sos, frequency_vector_hz, fs=self.sampling_rate_hz
             )[1]
@@ -1234,9 +1119,7 @@ class Filter:
             Axes.
 
         """
-        assert (
-            self.filter_type == FilterType.Fir
-        ), "Plotting taps is only valid for FIR filters"
+        assert self.is_fir, "Plotting taps is only valid for FIR filters"
         t = np.arange(0, len(self)) / self.sampling_rate_hz
         txt = self._get_metadata_string() if show_info_box else None
         return general_plot(

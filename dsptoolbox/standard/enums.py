@@ -245,22 +245,6 @@ class FilterCoefficientsType(Enum):
     Ba = auto()
 
 
-class FilterType(Enum):
-    """Filter types supported for filter class.
-
-    - IIR.
-    - FIR.
-    - Biquad: second-order IIR filter. Used commonly for EQ's.
-    - Other: can be either IIR or FIR. This is checked after initialization.
-
-    """
-
-    Iir = auto()
-    Fir = auto()
-    Biquad = auto()
-    Other = auto()
-
-
 class BiquadEqType(Enum):
     Lowpass = auto()
     Highpass = auto()

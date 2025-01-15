@@ -30,7 +30,7 @@ from ..transforms._transforms import (
     _dft_backend,
 )
 from ..tools import to_db
-from ..standard.enums import FilterCoefficientsType
+from ..standard.enums import FilterCoefficientsType, SpectrumMethod
 
 import numpy as np
 from numpy.typing import NDArray
@@ -80,7 +80,7 @@ def cepstrum(
         "real",
     ), f"{mode} is not a supported mode"
 
-    signal.set_spectrum_parameters(method="standard")
+    signal.spectrum_method = SpectrumMethod.FFT
     _, sp = signal.get_spectrum()
 
     if mode in ("power", "real"):
@@ -173,7 +173,6 @@ def log_mel_spectrogram(
             ylabel="Frequency / Mel",
             xlabel="Time / s",
             ylog=False,
-            returns=True,
         )
         return time_s, f_mel, log_mel_sp, fig, ax
     return time_s, f_mel, log_mel_sp
@@ -300,11 +299,7 @@ def plot_waterfall(
         sig.set_spectrogram_parameters(**stft_parameters)
     t, f, stft = sig.get_spectrogram()
 
-    if sig._spectrum_parameters["scaling"] is None:
-        amplitude_scaling = True
-    else:
-        amplitude_scaling = "amplitude" in sig._spectrum_parameters["scaling"]
-
+    amplitude_scaling = sig.spectrum_scaling.is_amplitude_scaling()
     fig, ax = plt.subplots(figsize=(10, 8), subplot_kw=dict(projection="3d"))
     tt, ff = np.meshgrid(t, f)
     ax.plot_surface(
@@ -424,7 +419,6 @@ def mfcc(
             range_y=[f_mel[0], f_mel[-1]],
             xlabel="Time / s",
             ylabel="Cepstral coefficients",
-            returns=True,
         )
         return time_s, f_mel, mfcc, fig, ax
     return time_s, f_mel, mfcc
@@ -535,14 +529,21 @@ def istft(
         }
 
     window = get_window(
-        parameters["window_type"], parameters["window_length_samples"]
+        parameters["window_type"].to_scipy_format(),
+        parameters["window_length_samples"],
     )
 
-    if parameters["scaling"]:
-        stft /= np.sqrt(2 / np.sum(window) ** 2)
-
-    td_framed = np.fft.irfft(stft, axis=0, n=parameters["fft_length_samples"])
+    td_framed = np.fft.irfft(
+        stft,
+        axis=0,
+        n=parameters["fft_length_samples"],
+        norm=parameters["scaling"].fft_norm(),
+    )
     td_framed = td_framed[: parameters["window_length_samples"], ...]
+    if parameters["scaling"].has_physical_units():
+        td_framed /= parameters["scaling"].get_scaling_factor(
+            parameters["fft_length_samples"], sampling_rate_hz, window
+        )
 
     # Reconstruct from framed representation to continuous
     step = int((1 - parameters["overlap_percent"] / 100) * len(window))

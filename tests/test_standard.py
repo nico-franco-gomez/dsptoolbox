@@ -326,12 +326,11 @@ class TestStandardModule:
             dsp.detrend(s, polynomial_order=-10)
 
     def test_load_pkl_object(self):
-        f = dsp.Filter(
-            dsp.FilterType.Fir,
-            dict(
-                order=216, freqs=1000, type_of_pass=dsp.FilterPassType.Highpass
-            ),
-            self.fs,
+        f = dsp.Filter.fir_filter(
+            order=216,
+            frequency_hz=1000,
+            type_of_pass=dsp.FilterPassType.Highpass,
+            sampling_rate_hz=self.fs,
         )
         f.save_filter(os.path.join("tests", "f"))
         dsp.load_pkl_object(os.path.join("tests", "f"))
@@ -417,15 +416,12 @@ class TestStandardModule:
 
         fb = dsp.FilterBank(
             [
-                dsp.Filter(
-                    dsp.FilterType.Biquad,
-                    {
-                        "freqs": 500,
-                        "q": 1,
-                        "gain": 2,
-                        "eq_type": dsp.BiquadEqType.Peaking,
-                    },
-                    self.audio_multi.sampling_rate_hz,
+                dsp.Filter.biquad(
+                    eq_type=dsp.BiquadEqType.Peaking,
+                    frequency_hz=500,
+                    gain_db=2,
+                    q=1,
+                    sampling_rate_hz=self.audio_multi.sampling_rate_hz,
                 )
             ]
         )
@@ -472,7 +468,7 @@ class TestStandardModule:
         )
 
         # Filter
-        iir = dsp.Filter.new_biquad(
+        iir = dsp.Filter.biquad(
             dsp.BiquadEqType.Peaking, 500.0, 0.0, 0.7, self.fs
         )
         output_level1 = dsp.rms(iir.filter_signal(self.audio_multi))
@@ -519,7 +515,7 @@ class TestStandardModule:
     def test_resample_filter(self):
         # Functionality
         fs_hz = 48000
-        f = dsp.Filter.new_iir_filter(
+        f = dsp.Filter.iir_filter(
             8,
             [500, 2e3],
             dsp.FilterPassType.Bandpass,
@@ -527,7 +523,7 @@ class TestStandardModule:
             sampling_rate_hz=fs_hz,
         )
         dsp.resample_filter(f, 24000)
-        f = dsp.Filter.new_iir_filter(
+        f = dsp.Filter.iir_filter(
             5,
             500,
             dsp.FilterPassType.Lowpass,
@@ -535,7 +531,7 @@ class TestStandardModule:
             sampling_rate_hz=fs_hz,
         )
         dsp.resample_filter(f, 24000)
-        f = dsp.Filter.new_iir_filter(
+        f = dsp.Filter.iir_filter(
             8,
             500,
             dsp.FilterPassType.Highpass,
@@ -543,7 +539,7 @@ class TestStandardModule:
             sampling_rate_hz=fs_hz,
         )
         dsp.resample_filter(f, 24000)
-        f = dsp.Filter.new_iir_filter(
+        f = dsp.Filter.iir_filter(
             7,
             [500, 18e3],
             dsp.FilterPassType.Bandpass,
@@ -642,11 +638,11 @@ class TestStandardModule:
         dsp.modify_signal_length(mb, 1.5, -0.5)
 
     def test_merge_fir_filters(self):
-        f1 = dsp.Filter.new_fir_filter(
+        f1 = dsp.Filter.fir_filter(
             50,
             100.0,
-            dsp.FilterPassType.Lowpass,
-            dsp.Window.Hamming,
+            type_of_pass=dsp.FilterPassType.Lowpass,
+            window=dsp.Window.Hamming,
             sampling_rate_hz=self.fs,
         )
 
@@ -667,7 +663,7 @@ class TestStandardModule:
             dsp.merge_fir_filters([f1])
 
         with pytest.raises(AssertionError):
-            iir = dsp.Filter.new_biquad(
+            iir = dsp.Filter.biquad(
                 dsp.BiquadEqType.LowpassFirstOrder, 50.0, -3.0, 0.7, self.fs
             )
             dsp.merge_fir_filters([f1, iir])
@@ -677,7 +673,7 @@ class TestStandardModule:
             dsp.merge_fir_filters([f1, f2])
 
     def test_spectral_difference(self):
-        filt = dsp.Filter.new_biquad(
+        filt = dsp.Filter.biquad(
             dsp.BiquadEqType.Peaking, 500.0, 10.0, 1.0, 48000
         )
         spec = dsp.Spectrum.from_filter(
@@ -685,7 +681,7 @@ class TestStandardModule:
         )
         spec_flat = dsp.Spectrum.from_filter(
             dsp.tools.log_frequency_vector([20, 20e3], 128),
-            dsp.Filter.new_biquad(
+            dsp.Filter.biquad(
                 dsp.BiquadEqType.Peaking, 500.0, 0.0, 1.0, 48000
             ),
             False,
