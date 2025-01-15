@@ -765,13 +765,15 @@ class Filter:
         assert (
             b.ndim == 1 and a.ndim == 1
         ), "Only one dimension for the coefficients is valid"
+
         # Trim zeros for a
         a = np.atleast_1d(np.trim_zeros(a))
-        # Check length of a coefficients and decide filter type
+
+        # Change to FIR and normalize if only one a coefficient
         if len(a) == 1:
             b /= a[0]
             a = a / a[0]
-        self.ba[0], self.ba[1] = b, a
+            self.ba[0], self.ba[1] = b, a
 
     # ======== Getters ========================================================
     def get_filter_metadata(self):
