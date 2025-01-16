@@ -2,14 +2,23 @@ import dsptoolbox as dsp
 from os.path import join
 import numpy as np
 import pytest
+import os
 
 
 class TestTransferFunctionsModule:
-    y_m = dsp.Signal(join("examples", "data", "chirp_mono.wav"))
-    y_st = dsp.Signal(join("examples", "data", "chirp_stereo.wav"))
-    x = dsp.Signal(join("examples", "data", "chirp.wav"))
+    y_m = dsp.Signal(
+        join(os.path.dirname(__file__), "..", "example_data", "chirp_mono.wav")
+    )
+    y_st = dsp.Signal(
+        join(
+            os.path.dirname(__file__), "..", "example_data", "chirp_stereo.wav"
+        )
+    )
+    x = dsp.Signal(
+        join(os.path.dirname(__file__), "..", "example_data", "chirp.wav")
+    )
     fs = 5_000
-    audio_multi = dsp.generators.noise("white", 2, 5_000, number_of_channels=3)
+    audio_multi = dsp.generators.noise(2.0, 5_000, number_of_channels=3)
 
     def test_deconvolve(self):
         # Only functionality is tested here
@@ -17,7 +26,7 @@ class TestTransferFunctionsModule:
         dsp.transfer_functions.spectral_deconvolve(
             self.y_m,
             self.x,
-            mode="regularized",
+            apply_regularization=True,
             start_stop_hz=None,
             threshold_db=-30,
             padding=False,
@@ -26,7 +35,7 @@ class TestTransferFunctionsModule:
         dsp.transfer_functions.spectral_deconvolve(
             self.y_st,
             self.x,
-            mode="regularized",
+            apply_regularization=True,
             start_stop_hz=None,
             threshold_db=-30,
             padding=False,
@@ -35,28 +44,9 @@ class TestTransferFunctionsModule:
         dsp.transfer_functions.spectral_deconvolve(
             self.y_st,
             self.x,
-            mode="regularized",
+            apply_regularization=True,
             start_stop_hz=[30, 15e3],
             threshold_db=None,
-            padding=False,
-            keep_original_length=False,
-        )
-        # Window
-        dsp.transfer_functions.spectral_deconvolve(
-            self.y_m,
-            self.x,
-            mode="window",
-            start_stop_hz=None,
-            threshold_db=-30,
-            padding=False,
-            keep_original_length=False,
-        )
-        dsp.transfer_functions.spectral_deconvolve(
-            self.y_m,
-            self.x,
-            mode="window",
-            start_stop_hz=[30, 15e3],
-            threshold_db=-30,
             padding=False,
             keep_original_length=False,
         )
@@ -64,7 +54,7 @@ class TestTransferFunctionsModule:
         dsp.transfer_functions.spectral_deconvolve(
             self.y_m,
             self.x,
-            mode="standard",
+            apply_regularization=False,
             start_stop_hz=None,
             threshold_db=None,
             padding=False,
@@ -73,7 +63,7 @@ class TestTransferFunctionsModule:
         dsp.transfer_functions.spectral_deconvolve(
             self.y_m,
             self.x,
-            mode="standard",
+            apply_regularization=False,
             start_stop_hz=None,
             threshold_db=None,
             padding=True,
@@ -82,7 +72,7 @@ class TestTransferFunctionsModule:
         dsp.transfer_functions.spectral_deconvolve(
             self.y_m,
             self.x,
-            mode="standard",
+            apply_regularization=False,
             start_stop_hz=None,
             threshold_db=None,
             padding=True,
@@ -97,31 +87,28 @@ class TestTransferFunctionsModule:
         )
         h = dsp.pad_trim(h, 2**13)
 
-        dsp.transfer_functions.window_ir(
-            h, 2**11, window_type="hann", at_start=True
-        )
-        dsp.transfer_functions.window_ir(
-            h, 2**11, window_type="hann", at_start=False
-        )
-        dsp.transfer_functions.window_ir(
-            h, 2**15, window_type="hann", at_start=True
-        )
+        dsp.transfer_functions.window_ir(h, 2**11, at_start=True)
+        dsp.transfer_functions.window_ir(h, 2**11, at_start=False)
+        dsp.transfer_functions.window_ir(h, 2**15, at_start=True)
         # Try window with extra parameters
-        dsp.transfer_functions.window_ir(
-            h, 2**12, window_type=("kaiser", 10), at_start=True
-        )
         dsp.transfer_functions.window_ir(
             h,
             2**12,
-            adaptive=False,
-            window_type=("kaiser", 10),
+            window_type=dsp.Window.Kaiser.with_extra_parameter(10),
             at_start=True,
         )
         dsp.transfer_functions.window_ir(
             h,
             2**12,
             adaptive=False,
-            window_type=("kaiser", 10),
+            window_type=dsp.Window.Kaiser.with_extra_parameter(10),
+            at_start=True,
+        )
+        dsp.transfer_functions.window_ir(
+            h,
+            2**12,
+            adaptive=False,
+            window_type=dsp.Window.Kaiser.with_extra_parameter(10),
             at_start=True,
             offset_samples=200,
         )
@@ -129,7 +116,7 @@ class TestTransferFunctionsModule:
             h,
             2**12,
             adaptive=False,
-            window_type=["hann", "hamming"],
+            window_type=[dsp.Window.Hann, dsp.Window.Hamming],
             at_start=False,
             offset_samples=200,
         )
@@ -137,7 +124,10 @@ class TestTransferFunctionsModule:
             h,
             2**12,
             adaptive=True,
-            window_type=["hann", ("kaiser", 10)],
+            window_type=[
+                dsp.Window.Hann,
+                dsp.Window.Kaiser.with_extra_parameter(10),
+            ],
             at_start=False,
             offset_samples=200,
             left_to_right_flank_length_ratio=0.5,
@@ -146,7 +136,10 @@ class TestTransferFunctionsModule:
             h,
             2**15,
             adaptive=True,
-            window_type=["hann", ("kaiser", 10)],
+            window_type=[
+                dsp.Window.Hann,
+                dsp.Window.Kaiser.with_extra_parameter(10),
+            ],
             at_start=False,
             offset_samples=200,
             left_to_right_flank_length_ratio=0.5,
@@ -159,18 +152,20 @@ class TestTransferFunctionsModule:
         # ============ Even
         # Shorter
         h_, _ = dsp.transfer_functions.window_centered_ir(
-            h, len(h) - 10, window_type="hann"
+            h, len(h) - 10, window_type=dsp.Window.Hann
         )
         assert np.argmax(h_.time_data[:, 0]) == np.argmax(h_.window[:, 0])
         # Longer
         h_, _ = dsp.transfer_functions.window_centered_ir(
-            h, len(h) + 10, window_type="hann"
+            h, len(h) + 10, window_type=dsp.Window.Hann
         )
         assert np.argmax(h_.time_data[:, 0]) == np.argmax(h_.window[:, 0])
 
         # Try window with extra parameters
         h_, _ = dsp.transfer_functions.window_centered_ir(
-            h, len(h), window_type=("gauss", 5000)
+            h,
+            len(h),
+            window_type=dsp.Window.Gaussian.with_extra_parameter(5000),
         )
         assert np.argmax(h_.time_data[:, 0]) == np.argmax(
             h_.window[:, 0]
@@ -179,19 +174,17 @@ class TestTransferFunctionsModule:
         # ============= Odd
         # Shorter
         h.time_data = h.time_data[:-1]
-        h_, _ = dsp.transfer_functions.window_centered_ir(
-            h, len(h) - 10, window_type="hann"
-        )
+        h_, _ = dsp.transfer_functions.window_centered_ir(h, len(h) - 10)
         assert np.argmax(h_.time_data[:, 0]) == np.argmax(h_.window[:, 0])
         # Longer
-        h_, _ = dsp.transfer_functions.window_centered_ir(
-            h, len(h) + 10, window_type="hann"
-        )
+        h_, _ = dsp.transfer_functions.window_centered_ir(h, len(h) + 10)
         assert np.argmax(h_.time_data[:, 0]) == np.argmax(h_.window[:, 0])
 
         # Try window with extra parameters
         h_, _ = dsp.transfer_functions.window_centered_ir(
-            h, len(h), window_type=("gauss", 5000)
+            h,
+            len(h),
+            window_type=dsp.Window.Gaussian.with_extra_parameter(5000),
         )
         assert np.argmax(h_.time_data[:, 0]) == np.argmax(
             h_.window[:, 0]
@@ -200,19 +193,17 @@ class TestTransferFunctionsModule:
         # ============= Impulse on the second half, odd
         # Shorter
         h.time_data = h.time_data[::-1]
-        h_, _ = dsp.transfer_functions.window_centered_ir(
-            h, len(h) - 10, window_type="hann"
-        )
+        h_, _ = dsp.transfer_functions.window_centered_ir(h, len(h) - 10)
         assert np.argmax(h_.time_data[:, 0]) == np.argmax(h_.window[:, 0])
         # Longer
-        h_, _ = dsp.transfer_functions.window_centered_ir(
-            h, len(h) + 10, window_type="hann"
-        )
+        h_, _ = dsp.transfer_functions.window_centered_ir(h, len(h) + 10)
         assert np.argmax(h_.time_data[:, 0]) == np.argmax(h_.window[:, 0])
 
         # Try window with extra parameters
         h_, _ = dsp.transfer_functions.window_centered_ir(
-            h, len(h), window_type=("gauss", 5000)
+            h,
+            len(h),
+            window_type=dsp.Window.Gaussian.with_extra_parameter(5000),
         )
 
         assert np.argmax(h_.time_data[:, 0]) == np.argmax(
@@ -222,26 +213,26 @@ class TestTransferFunctionsModule:
         # ============= Impulse on the second half, even
         # Shorter
         h.time_data = h.time_data[:-1]
-        h_, _ = dsp.transfer_functions.window_centered_ir(
-            h, len(h) - 10, window_type="hann"
-        )
+        h_, _ = dsp.transfer_functions.window_centered_ir(h, len(h) - 10)
         assert np.argmax(h_.time_data[:, 0]) == np.argmax(h_.window[:, 0])
         # Longer
-        h_, _ = dsp.transfer_functions.window_centered_ir(
-            h, len(h) + 10, window_type="hann"
-        )
+        h_, _ = dsp.transfer_functions.window_centered_ir(h, len(h) + 10)
         assert np.argmax(h_.time_data[:, 0]) == np.argmax(h_.window[:, 0])
 
         # Try window with extra parameters
         h_, _ = dsp.transfer_functions.window_centered_ir(
-            h, len(h), window_type=("gauss", 5000)
+            h,
+            len(h),
+            window_type=dsp.Window.Gaussian.with_extra_parameter(5000),
         )
         assert np.argmax(h_.time_data[:, 0]) == np.argmax(
             h_.window[:, 0]
         ) and np.argmax(h.time_data[:, 0]) == np.argmax(h_.time_data[:, 0])
 
         # ============= Impulse in the middle, no changing lengths, even
-        d = dsp.generators.dirac(1024, 512, sampling_rate_hz=self.fs)
+        d = dsp.generators.dirac(
+            length_samples=1024, delay_samples=512, sampling_rate_hz=self.fs
+        )
         d2, _ = dsp.transfer_functions.window_centered_ir(d, len(d))
         assert (
             np.argmax(d.time_data[:, 0]) == np.argmax(d2.window[:, 0])
@@ -250,7 +241,9 @@ class TestTransferFunctionsModule:
         )
 
         # ============= Impulse in the middle, no changing lengths, odd
-        d = dsp.generators.dirac(1025, 513, sampling_rate_hz=self.fs)
+        d = dsp.generators.dirac(
+            length_samples=1025, delay_samples=513, sampling_rate_hz=self.fs
+        )
         d2, _ = dsp.transfer_functions.window_centered_ir(d, len(d))
         assert (
             np.argmax(d.time_data[:, 0]) == np.argmax(d2.window[:, 0])
@@ -262,24 +255,40 @@ class TestTransferFunctionsModule:
         s = self.audio_multi.time_data[:200, 0]
         s = dsp.ImpulseResponse(None, s, self.fs)
         f = dsp.transfer_functions.ir_to_filter(s, channel=0)
-        b, _ = f.get_coefficients(mode="ba")
+        b, _ = f.get_coefficients(dsp.FilterCoefficientsType.Ba)
         assert np.all(b == s.time_data[:, 0])
         assert f.sampling_rate_hz == s.sampling_rate_hz
 
+        # To filter bank
+        fb = dsp.transfer_functions.ir_to_filter(
+            dsp.ImpulseResponse.from_signal(self.audio_multi), channel=None
+        )
+        assert len(fb) == self.audio_multi.number_of_channels
+
     def test_filter_to_ir(self):
-        f = dsp.Filter(
-            "fir",
-            dict(order=216, freqs=1000, type_of_pass="highpass"),
-            self.fs,
+        order = 216
+        f = dsp.Filter.fir_filter(
+            order=order,
+            frequency_hz=1000,
+            type_of_pass=dsp.FilterPassType.Highpass,
+            sampling_rate_hz=self.fs,
         )
         s = dsp.transfer_functions.filter_to_ir(f)
-        assert s.time_data.shape[0] == 216 + 1
+        assert s.time_data.shape[0] == order + 1
+
+        # From filter bank
+        fb = dsp.FilterBank([f] * 2)
+        ir = dsp.transfer_functions.filter_to_ir(fb)
+        assert ir.number_of_channels == len(fb)
+        assert len(ir) == order + 1
 
         with pytest.raises(AssertionError):
-            f = dsp.Filter(
-                "iir",
-                dict(order=10, freqs=1000, type_of_pass="highpass"),
-                self.fs,
+            f = dsp.Filter.iir_filter(
+                order=10,
+                frequency_hz=1000,
+                filter_design_method=dsp.IirDesignMethod.Butterworth,
+                type_of_pass=dsp.FilterPassType.Highpass,
+                sampling_rate_hz=self.fs,
             )
             dsp.transfer_functions.filter_to_ir(f)
 
@@ -289,20 +298,23 @@ class TestTransferFunctionsModule:
         dsp.transfer_functions.compute_transfer_function(
             self.y_st,
             self.x,
-            mode="H1",
             window_length_samples=1024,
-            spectrum_parameters=None,
+            mode=dsp.transfer_functions.TransferFunctionType.H1,
+        )
+        dsp.transfer_functions.compute_transfer_function(
+            self.y_st,
+            self.x,
+            window_length_samples=1024,
+            mode=dsp.transfer_functions.TransferFunctionType.H3,
         )
         # Single-channel with other windows
-        h, h_numpy, coh = dsp.transfer_functions.compute_transfer_function(
+        h = dsp.transfer_functions.compute_transfer_function(
             self.y_m,
             self.x,
-            mode="H2",
             window_length_samples=1024,
-            spectrum_parameters=dict(window_type=("chebwin", 40)),
+            mode=dsp.transfer_functions.TransferFunctionType.H2,
         )
         # Check that coherence is saved
-        h.get_coherence()
         h.plot_coherence()
         # dsp.plots.show()
 
@@ -313,12 +325,12 @@ class TestTransferFunctionsModule:
         dsp.transfer_functions.average_irs(h, normalize_energy=True)
         # h1.plot_magnitude()
         dsp.transfer_functions.average_irs(h, normalize_energy=False)
-        dsp.transfer_functions.average_irs(h, mode="spectral")
+        dsp.transfer_functions.average_irs(h, time_average=False)
         # h2.plot_magnitude()
 
     def test_min_phase_from_mag(self):
         # Only functionality is tested
-        self.y_st.set_spectrum_parameters(method="standard")
+        self.y_st.set_spectrum_parameters(method=dsp.SpectrumMethod.FFT)
         f, sp = self.y_st.get_spectrum()
         dsp.transfer_functions.min_phase_from_mag(
             sp, self.y_st.sampling_rate_hz
@@ -326,7 +338,7 @@ class TestTransferFunctionsModule:
 
     def test_lin_phase_from_mag(self):
         # Only functionality is tested here
-        self.y_st.set_spectrum_parameters(method="standard")
+        self.y_st.set_spectrum_parameters(method=dsp.SpectrumMethod.FFT)
         f, sp = self.y_st.get_spectrum()
         dsp.transfer_functions.lin_phase_from_mag(
             sp, self.y_st.sampling_rate_hz, group_delay_ms="minimum"
@@ -336,23 +348,28 @@ class TestTransferFunctionsModule:
         ir = dsp.transfer_functions.spectral_deconvolve(
             self.y_st,
             self.x,
-            mode="regularized",
+            apply_regularization=True,
             start_stop_hz=None,
             threshold_db=-30,
             padding=False,
             keep_original_length=False,
         )
         ir, _ = dsp.transfer_functions.window_ir(
-            ir, window_type="hann", total_length_samples=2**12, at_start=True
+            ir, total_length_samples=2**12, at_start=True
         )
         # Check only that some result is produced, validity should be checked
         # somewhere else
-        dsp.transfer_functions.group_delay(ir, method="matlab")
-        dsp.transfer_functions.group_delay(ir, method="direct")
+        dsp.transfer_functions.group_delay(ir, analytic_computation=True)
+        dsp.transfer_functions.group_delay(ir, analytic_computation=False)
 
-        dsp.transfer_functions.group_delay(ir, method="matlab", smoothing=4)
         dsp.transfer_functions.group_delay(
-            ir, method="direct", smoothing=4, remove_ir_latency=True
+            ir, analytic_computation=True, smoothing=4
+        )
+        dsp.transfer_functions.group_delay(
+            ir,
+            analytic_computation=False,
+            smoothing=4,
+            remove_ir_latency=True,
         )
 
         # Single-channel plausibility check
@@ -362,15 +379,13 @@ class TestTransferFunctionsModule:
         ir = dsp.transfer_functions.spectral_deconvolve(
             self.y_st,
             self.x,
-            mode="regularized",
+            apply_regularization=True,
             start_stop_hz=None,
             threshold_db=-30,
             padding=False,
             keep_original_length=False,
         )
-        ir, _ = dsp.transfer_functions.window_ir(
-            ir, 2**12, window_type="hann", at_start=True
-        )
+        ir, _ = dsp.transfer_functions.window_ir(ir, 2**12, at_start=True)
         # Check only that some result is produced, validity should be checked
         # somewhere else
         # Only works for some signal types
@@ -391,15 +406,13 @@ class TestTransferFunctionsModule:
         ir = dsp.transfer_functions.spectral_deconvolve(
             self.y_st,
             self.x,
-            mode="regularized",
+            apply_regularization=True,
             start_stop_hz=None,
             threshold_db=-30,
             padding=False,
             keep_original_length=False,
         )
-        ir, _ = dsp.transfer_functions.window_ir(
-            ir, 2**12, window_type="hann", at_start=True
-        )
+        ir, _ = dsp.transfer_functions.window_ir(ir, 2**12, at_start=True)
         # Check only that some result is produced, validity should be checked
         # somewhere else
         # Only works for some signal types
@@ -415,15 +428,13 @@ class TestTransferFunctionsModule:
         ir = dsp.transfer_functions.spectral_deconvolve(
             self.y_st,
             self.x,
-            mode="regularized",
+            apply_regularization=True,
             start_stop_hz=None,
             threshold_db=-30,
             padding=False,
             keep_original_length=False,
         )
-        ir, _ = dsp.transfer_functions.window_ir(
-            ir, 2**12, window_type="hann", at_start=True
-        )
+        ir, _ = dsp.transfer_functions.window_ir(ir, 2**12, at_start=True)
         # Check only that some result is produced, validity should be checked
         # somewhere else
         # Only works for some signal types
@@ -439,11 +450,15 @@ class TestTransferFunctionsModule:
 
     def test_min_phase_ir(self):
         # Only functionality, computation is done using scipy's minimum phase
-        s = dsp.ImpulseResponse(join("examples", "data", "rir.wav"))
+        s = dsp.ImpulseResponse(
+            join(os.path.dirname(__file__), "..", "example_data", "rir.wav")
+        )
         s = dsp.transfer_functions.min_phase_ir(s)
 
     def test_combine_ir(self):
-        s = dsp.ImpulseResponse(join("examples", "data", "rir.wav"))
+        s = dsp.ImpulseResponse(
+            join(os.path.dirname(__file__), "..", "example_data", "rir.wav")
+        )
         dsp.transfer_functions.combine_ir_with_dirac(
             s, 1000, True, normalization=None
         )
@@ -474,22 +489,32 @@ class TestTransferFunctionsModule:
             peak_min_phase, dsp.transfer_functions.find_ir_latency(ir)
         )
 
-        ir = dsp.ImpulseResponse(join("examples", "data", "rir.wav"))
+        ir = dsp.ImpulseResponse(
+            join(os.path.dirname(__file__), "..", "example_data", "rir.wav")
+        )
         assert dsp.transfer_functions.find_ir_latency(ir) > 0
 
     def test_window_frequency_dependent(self):
-        s = dsp.ImpulseResponse(join("examples", "data", "rir.wav"))
-        f, sp = dsp.transfer_functions.window_frequency_dependent(
+        s = dsp.ImpulseResponse(
+            join(os.path.dirname(__file__), "..", "example_data", "rir.wav")
+        )
+        sp = dsp.transfer_functions.window_frequency_dependent(
             s, 10, 0, [100, 1000]
         )
 
-        fig, ax = s.plot_magnitude(normalize=None)
-        ax.plot(f, 20 * np.log10(np.abs(sp)))
+        fig, ax = s.plot_magnitude(
+            normalize=dsp.MagnitudeNormalization.NoNormalization
+        )
+        ax.plot(
+            sp.frequency_vector_hz, 20 * np.log10(np.abs(sp.spectral_data))
+        )
         print()
 
     def test_harmonics_from_chirp_ir(self):
         # Only functionality
-        ir = dsp.ImpulseResponse(join("examples", "data", "rir.wav"))
+        ir = dsp.ImpulseResponse(
+            join(os.path.dirname(__file__), "..", "example_data", "rir.wav")
+        )
         dsp.transfer_functions.harmonics_from_chirp_ir(
             ir,
             chirp_range_hz=[20, 20e3],
@@ -499,7 +524,9 @@ class TestTransferFunctionsModule:
 
     def test_harmonic_distortion_analysis(self):
         # Only functionality
-        ir = dsp.ImpulseResponse(join("examples", "data", "rir.wav"))
+        ir = dsp.ImpulseResponse(
+            join(os.path.dirname(__file__), "..", "example_data", "rir.wav")
+        )
         dsp.transfer_functions.harmonic_distortion_analysis(
             ir,
             chirp_range_hz=[20, 20e3],
@@ -523,12 +550,21 @@ class TestTransferFunctionsModule:
 
     def test_trim_rir(self):
         # Only functionality
-        ir = dsp.ImpulseResponse(join("examples", "data", "rir.wav"))
-        dsp.transfer_functions.trim_ir(ir)
+        ir = dsp.ImpulseResponse(
+            join(os.path.dirname(__file__), "..", "example_data", "rir.wav")
+        )
+        dsp.transfer_functions.trim_ir(ir, 0)
+        dsp.transfer_functions.trim_ir(ir, None)
         # Start offset way longer than rir (should be clipped to 0)
         assert (
             ir.time_data[0, 0]
             == dsp.transfer_functions.trim_ir(ir, start_offset_s=3)[
+                0
+            ].time_data[0, 0]
+        )
+        assert (
+            ir.time_data[0, 0]
+            == dsp.transfer_functions.trim_ir(ir, start_offset_s=None)[
                 0
             ].time_data[0, 0]
         )

@@ -15,10 +15,10 @@ from ._transfer_functions import (
     _get_harmonic_times,
     _trim_ir,
 )
-from ..classes import Signal, Filter, ImpulseResponse
+from ..classes import Signal, Filter, ImpulseResponse, FilterBank, Spectrum
 from ..classes.filter_helpers import _group_delay_filter
 from .._general_helpers import (
-    _remove_ir_latency_from_phase,
+    _remove_ir_latency_from_phase_min_phase,
     _min_phase_ir_from_real_cepstrum,
     _get_minimum_phase_spectrum_from_real_cepstrum,
     _find_frequencies_above_threshold,
@@ -26,30 +26,37 @@ from .._general_helpers import (
     _correct_for_real_phase_spectrum,
     _get_fractional_impulse_peak_index,
     _interpolate_fr,
-)
-from .._standard import (
-    _welch,
-    _minimum_phase,
-    _group_delay_direct,
     _pad_trim,
 )
-from ..standard_functions import (
+from ..standard._standard_backend import (
+    _minimum_phase,
+    _group_delay_direct,
+)
+from ..standard._spectral_methods import _welch
+from ..standard import (
     fractional_delay,
-    merge_signals,
+    append_signals,
     normalize,
     latency,
 )
 from ..generators import dirac
 from ..filterbanks import linkwitz_riley_crossovers
 from ..tools import to_db
+from ..standard.enums import (
+    SpectrumMethod,
+    MagnitudeNormalization,
+    Window,
+    SpectrumScaling,
+)
+from .enums import TransferFunctionType
 
 
 def spectral_deconvolve(
     num: Signal,
     denum: Signal,
-    mode: str = "regularized",
+    apply_regularization: bool = True,
     start_stop_hz=None,
-    threshold_db=-30,
+    threshold_db: float = -30.0,
     padding: bool = False,
     keep_original_length: bool = False,
 ) -> ImpulseResponse:
@@ -63,18 +70,16 @@ def spectral_deconvolve(
         Signal to deconvolve from.
     denum : `Signal`
         Signal to deconvolve.
-    mode : str, optional
-        `'window'` uses a spectral window in the numerator. `'regularized'`
-        uses a regularized inversion. `'standard'` uses direct deconvolution.
-        Default: `'regularized'`.
+    apply_regularization : bool, optional
+        When True, a regularization window is applied for avoiding noise
+        outside the excitation frequency region. Default: True.
     start_stop_hz : array-like or `None`, optional
         This is a vector of length 2 or 4 with frequency values that define the
-        area of the denominator that has some energy. This is only relevant for
-        `'window'` and `'regularized'`. Pass `None` to use an automatic mode
-        that recognizes the start and stop of the denominator
-        (it assumes a chirp). If mode is standard, `start_stop_hz` has to be
-        set to `None`. Default: `None`.
-    threshold_db : int, optional
+        area of the denominator that has some energy during the regularization.
+        Pass `None` to use an automatic mode that recognizes the start and stop
+        of the denominator (it assumes a chirp). If regularization is
+        deactivated, `start_stop_hz` has to be set to `None`. Default: `None`.
+    threshold_db : float, optional
         Threshold in dBFS for the automatic creation of the window.
         Default: -30.
     padding : bool, optional
@@ -106,13 +111,7 @@ def spectral_deconvolve(
     assert (
         num.sampling_rate_hz == denum.sampling_rate_hz
     ), "Sampling rates do not match"
-    mode = mode.lower()
-    assert mode in (
-        "regularized",
-        "window",
-        "standard",
-    ), f"{mode} is not supported. Use regularized, window or None"
-    if mode == "standard":
+    if not apply_regularization:
         assert (
             start_stop_hz is None
         ), "No start_stop_hz vector can be passed when using standard mode"
@@ -124,9 +123,9 @@ def spectral_deconvolve(
         denum.time_data = _pad_trim(denum.time_data, original_length * 2)
     fft_length = original_length * 2 if padding else original_length
 
-    denum.set_spectrum_parameters(method="standard")
+    denum.spectrum_method = SpectrumMethod.FFT
+    num.spectrum_method = SpectrumMethod.FFT
     _, denum_fft = denum.get_spectrum()
-    num.set_spectrum_parameters(method="standard")
     freqs_hz, num_fft = num.get_spectrum()
     fs_hz = num.sampling_rate_hz
 
@@ -134,18 +133,20 @@ def spectral_deconvolve(
 
     for n in range(num.number_of_channels):
         n_denum = 0 if multichannel else n
-        if mode != "standard":
+        if apply_regularization:
             if start_stop_hz is None:
                 start_stop_hz = _find_frequencies_above_threshold(
                     denum_fft[:, n_denum], freqs_hz, threshold_db
                 )
             if len(start_stop_hz) == 2:
-                temp = []
-                temp.append(start_stop_hz[0] / np.sqrt(2))
-                temp.append(start_stop_hz[0])
-                temp.append(start_stop_hz[1])
-                temp.append(np.min([start_stop_hz[1] * np.sqrt(2), fs_hz / 2]))
-                start_stop_hz = temp
+                start_stop_hz = np.array(
+                    [
+                        start_stop_hz[0] / np.sqrt(2),
+                        start_stop_hz[0],
+                        start_stop_hz[1],
+                        np.min([start_stop_hz[1] * np.sqrt(2), fs_hz / 2]),
+                    ]
+                )
             elif len(start_stop_hz) == 4:
                 pass
             else:
@@ -158,7 +159,7 @@ def spectral_deconvolve(
             freqs_hz,
             fft_length,
             start_stop_hz=start_stop_hz,
-            mode=mode,
+            regularized=apply_regularization,
         )
     new_sig = ImpulseResponse(None, new_time_data, num.sampling_rate_hz)
     if padding:
@@ -172,7 +173,7 @@ def window_ir(
     total_length_samples: int,
     adaptive: bool = True,
     constant_percentage: float = 0.75,
-    window_type: str | tuple | list = "hann",
+    window_type: Window | list[Window] = Window.Hann,
     at_start: bool = True,
     offset_samples: int = 0,
     left_to_right_flank_length_ratio: float = 1.0,
@@ -195,14 +196,10 @@ def window_ir(
     constant_percentage : float, optional
         Percentage (between 0 and 1) of the window's length that should be
         constant value. Default: 0.75.
-    window_type : str, tuple, list, optional
-        Window function to be used for the flanks. Available selection from
-        scipy.signal.windows: `barthann`, `bartlett`, `blackman`,
-        `boxcar`, `cosine`, `hamming`, `hann`, `flattop`, `nuttall` and
-        others. Pass a tuple with window type and extra parameters if needed.
-        Pass a list containing two valid windows (str or tuple) to use
-        different windows for the left and right flanks respectively.
-        Default: `'hann'`.
+    window_type : Window, list[Window], optional
+        Window function to be used for the flanks. Pass a list containing two
+        windows to use different windows for the left and right flanks
+        respectively. Default: Hann.
     at_start : bool, optional
         Windows the start with a rising window as well as the end.
         Default: `True`.
@@ -282,7 +279,7 @@ def window_ir(
 def window_centered_ir(
     signal: ImpulseResponse,
     total_length_samples: int,
-    window_type: str | tuple = "hann",
+    window_type: Window = Window.Hann,
 ) -> tuple[ImpulseResponse, NDArray[np.float64]]:
     """This function windows an IR placing its peak in the middle. It trims
     it to the total length of the window or pads it to the desired length
@@ -294,12 +291,8 @@ def window_centered_ir(
         Signal to window
     total_length_samples: int
         Total window length in samples.
-    window_type: str, tuple, optional
-        Window function to be used. Available selection from
-        scipy.signal.windows: `barthann`, `bartlett`, `blackman`,
-        `boxcar`, `cosine`, `hamming`, `hann`, `flattop`, `nuttall` and
-        others. Pass a tuple with window type and extra parameters if needed,
-        like `('gauss', 8)`. Default: `hann`.
+    window_type: Window, optional
+        Window function to be used. Default: Hann.
 
     Returns
     -------
@@ -342,16 +335,14 @@ def window_centered_ir(
 def compute_transfer_function(
     output: Signal,
     input: Signal,
-    mode="h2",
-    window_length_samples: int = 1024,
-    spectrum_parameters: dict | None = None,
-) -> tuple[ImpulseResponse, NDArray[np.complex128], NDArray[np.float64]]:
-    r"""Gets transfer function H1, H2 or H3 (for stochastic signals).
-    H1: for noise in the output signal. `Gxy/Gxx`.
-    H2: for noise in the input signal. `Gyy/Gyx`.
-    H3: for noise in both signals. `G_xy / abs(G_xy) * (G_yy/G_xx)**0.5`.
-    If the input signal only has one channel, it is assumed to be the input
-    for all of the channels of the output.
+    window_length_samples: int,
+    mode: TransferFunctionType = TransferFunctionType.H2,
+) -> Spectrum:
+    """Gets transfer function H1, H2 or H3 (for stochastic signals). If the
+    input signal only has one channel, it is assumed to be the input for all of
+    the channels of the output.
+
+    The spectrum parameters for the input will be used for the computation.
 
     Parameters
     ----------
@@ -359,39 +350,22 @@ def compute_transfer_function(
         Signal with output channels.
     input : `Signal`
         Signal with input channels.
-    mode : str, optional
-        Type of transfer function. `'h1'`, `'h2'` and `'h3'` are available.
-        Default: `'h2'`.
-    window_length_samples : int, optional
-        Window length for the IR. Spectrum has the length
-        window_length_samples // 2 + 1. Default: 1024.
-    spectrum_parameters : dict, optional
-        Extra parameters for the computation of the cross spectral densities
-        using welch's method. See `Signal.set_spectrum_parameters()`
-        for details. Default: empty dictionary.
+    window_length_samples : int
+        Window length for the IR. Spectrum has the length.
+    mode : TransferFunction, optional
+        Type of transfer function. Default: H2.
 
     Returns
     -------
-    tf_sig : `ImpulseResponse`
-        Transfer functions as `ImpulseResponse` object. Coherences are also
-        computed and saved in the `ImpulseResponse` object.
-    tf : NDArray[np.complex128]
-        Complex transfer function as type NDArray[np.complex128] with shape
-        (frequency, channel).
-    coherence : NDArray[np.float64]
-        Coherence of the measurement with shape (frequency, channel).
+    spec : `Spectrum`
+        Transfer functions as Spectrum. Coherences are also computed and saved
+        as `coherence` attribute.
 
     Notes
     -----
     - SNR can be gained from the coherence: `snr = coherence / (1 - coherence)`
 
     """
-    mode = mode.casefold()
-    assert mode in (
-        "h1".casefold(),
-        "h2".casefold(),
-        "h3".casefold(),
-    ), f"{mode} is not a valid mode. Use H1, H2 or H3"
     assert (
         input.sampling_rate_hz == output.sampling_rate_hz
     ), "Sampling rates do not match"
@@ -405,8 +379,12 @@ def compute_transfer_function(
         multichannel = False
     else:
         multichannel = True
-    if spectrum_parameters is None:
-        spectrum_parameters = {}
+
+    spectrum_parameters = input._spectrum_parameters.copy()
+    spectrum_parameters.pop("window_length_samples")
+    spectrum_parameters.pop("method")
+    spectrum_parameters.pop("smoothing")
+    spectrum_parameters.pop("pad_to_fast_length")
     assert (
         type(spectrum_parameters) is dict
     ), "Spectrum parameters should be passed as a dictionary"
@@ -445,7 +423,7 @@ def compute_transfer_function(
                 window_length_samples=window_length_samples,
                 **spectrum_parameters,
             )
-        if mode == "h2".casefold():
+        if mode == TransferFunctionType.H2:
             G_yx = _welch(
                 output.time_data[:, n],
                 input.time_data[:, n_input],
@@ -461,24 +439,27 @@ def compute_transfer_function(
             **spectrum_parameters,
         )
 
-        if mode == "h1".casefold():
-            tf[:, n] = G_xy / G_xx
-        elif mode == "h2".casefold():
-            tf[:, n] = G_yy / G_yx
-        elif mode == "h3".casefold():
-            tf[:, n] = G_xy / np.abs(G_xy) * (G_yy / G_xx) ** 0.5
+        match mode:
+            case TransferFunctionType.H1:
+                tf[:, n] = G_xy / G_xx
+            case TransferFunctionType.H2:
+                tf[:, n] = G_yy / G_yx
+            case TransferFunctionType.H3:
+                tf[:, n] = G_xy / np.abs(G_xy) * (G_yy / G_xx) ** 0.5
+            case _:
+                raise ValueError("Unsupported transfer function type")
         coherence[:, n] = np.abs(G_xy) ** 2 / G_xx / G_yy
-    tf_sig = ImpulseResponse(
-        None,
-        np.fft.irfft(tf, axis=0, n=window_length_samples),
-        output.sampling_rate_hz,
+    spec = Spectrum(
+        np.fft.rfftfreq(window_length_samples, 1 / input.sampling_rate_hz), tf
     )
-    tf_sig.set_coherence(coherence)
-    return tf_sig, tf, coherence
+    spec.set_coherence(coherence)
+    return spec
 
 
 def average_irs(
-    signal: ImpulseResponse, mode: str = "time", normalize_energy: bool = True
+    signal: ImpulseResponse,
+    time_average: bool = True,
+    normalize_energy: bool = True,
 ) -> ImpulseResponse:
     """Averages all channels of a given IR. It can either use a time domain
     average while time-aligning all channels to the one with the longest
@@ -488,11 +469,10 @@ def average_irs(
     ----------
     signal : `ImpulseResponse`
         Signal with channels to be averaged over.
-    mode : str, optional
-        It can be either `"time"` or `"spectral"`. When `"time"` is selected,
-        the IRs are time-aligned to the channel with the largest latency
-        and then averaged in the time domain. `"spectral"` averages directly
-        the magnitude and phase of each IR. Default: `"time"`.
+    time_average : bool, optional
+        When True, the IRs are time-aligned to the channel with the largest
+        (minimum-phase) latency and then averaged in the time domain. False
+        averages directly the magnitude and phase of each IR. Default: True.
     normalize_energy : bool, optional
         When `True`, the energy of all spectra is normalized to the first
         channel's energy and then averaged. Beware that normalization factors
@@ -508,11 +488,6 @@ def average_irs(
     assert (
         type(signal) is ImpulseResponse
     ), "This is only valid for an impulse response"
-    mode = mode.lower()
-    assert mode in (
-        "time",
-        "spectral",
-    ), "Invalid mode. Use either time or spectral"
     assert (
         signal.number_of_channels > 1
     ), "Signal has only one channel so no meaningful averaging can be done"
@@ -523,7 +498,7 @@ def average_irs(
         energies /= energies[0]
         avg_sig.time_data = avg_sig.time_data * energies
 
-    if mode == "spectral":
+    if not time_average:
         # Obtain channel magnitude and phase spectra
         _, sp = signal.get_spectrum()
         mag = np.abs(sp)
@@ -555,7 +530,6 @@ def average_irs(
         new_time_data = np.mean(avg_sig.time_data, axis=1)
 
     avg_sig.time_data = new_time_data
-    avg_sig.clear_time_window()
     return avg_sig
 
 
@@ -726,7 +700,7 @@ def lin_phase_from_mag(
 
 def min_phase_ir(
     sig: ImpulseResponse,
-    method: str = "real cepstrum",
+    use_real_cepstrum: bool = True,
     padding_factor: int = 8,
 ) -> ImpulseResponse:
     """Returns same IR with minimum phase. Two methods are available for
@@ -738,10 +712,9 @@ def min_phase_ir(
     ----------
     sig : `ImpulseResponse`
         IR for which to compute minimum phase IR.
-    method : str, optional
-        For general cases, `'real cepstrum'`. If the IR is symmetric (like a
-        linear-phase filter), `'equiripple'` is recommended.
-        Default: `'real cepstrum'`.
+    use_real_cepstrum : bool, optional
+        Set to True for general cases. If the IR is symmetric (like a
+        linear-phase filter), False is recommended. Default: True.
     padding_factor : int, optional
         Zero-padding to a length corresponding to
         `current_length * padding_factor` can be done, in order to avoid time
@@ -757,13 +730,9 @@ def min_phase_ir(
         type(sig) is ImpulseResponse
     ), "This is only valid for an impulse response"
     assert padding_factor > 1, "Padding factor should be at least 1"
-    method = method.lower()
-    assert method in ("real cepstrum", "equiripple"), (
-        f"{method} is not valid. Use either real cepstrum or " + "equiripple"
-    )
     new_time_data = sig.time_data
 
-    if method == "real cepstrum":
+    if use_real_cepstrum:
         new_time_data = _min_phase_ir_from_real_cepstrum(
             new_time_data, padding_factor
         )
@@ -782,13 +751,12 @@ def min_phase_ir(
 
     min_phase_sig = sig.copy()
     min_phase_sig.time_data = new_time_data[: len(sig)]
-    min_phase_sig.clear_time_window()
     return min_phase_sig
 
 
 def group_delay(
     signal: Signal,
-    method="matlab",
+    analytic_computation: bool = True,
     smoothing: int = 0,
     remove_ir_latency: bool = False,
 ) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
@@ -798,11 +766,11 @@ def group_delay(
     ----------
     signal : `Signal`
         Signal for which to compute group delay.
-    method : str, optional
-        `'direct'` uses gradient with unwrapped phase. `'matlab'` uses
-        this implementation:
+    analytic_computation : bool, optional
+        When True, this implementation is used: \
         https://www.dsprelated.com/freebooks/filters/Phase_Group_Delay.html.
-        Default: `'matlab'`.
+        Otherwise, the numerical gradient of the unwrapped phase response is
+        used. Default: True.
     smoothing : int, optional
         Octave fraction by which to apply smoothing. `0` avoids any smoothing
         of the group delay. Default: `0`.
@@ -819,12 +787,6 @@ def group_delay(
         Matrix containing group delays in seconds with shape (gd, channel).
 
     """
-    method = method.lower()
-    assert method in (
-        "direct",
-        "matlab",
-    ), f"{method} is not valid. Use direct or matlab"
-
     length_time_signal = (
         next_fast_length_fft(signal.time_data.shape[0] * 8, True)
         if remove_ir_latency
@@ -834,9 +796,9 @@ def group_delay(
     f = np.fft.rfftfreq(td.shape[0], 1 / signal.sampling_rate_hz)
     group_delays = np.zeros((length_time_signal // 2 + 1, td.shape[1]))
 
-    if method == "direct":
+    if not analytic_computation:
         spec_parameters = signal._spectrum_parameters
-        signal.set_spectrum_parameters("standard")
+        signal.spectrum_method = SpectrumMethod.FFT
         sp = rfft_scipy(td, axis=0)
         signal._spectrum_parameters = spec_parameters
 
@@ -844,7 +806,7 @@ def group_delay(
             assert (
                 type(signal) is ImpulseResponse
             ), "This is only valid for an impulse response"
-            sp = _remove_ir_latency_from_phase(
+            sp = _remove_ir_latency_from_phase_min_phase(
                 f, np.angle(sp), signal.time_data, signal.sampling_rate_hz, 1
             )
         for n in range(signal.number_of_channels):
@@ -860,14 +822,16 @@ def group_delay(
             )
 
     if smoothing != 0:
-        group_delays = _fractional_octave_smoothing(group_delays, smoothing)
+        group_delays = _fractional_octave_smoothing(
+            group_delays, None, smoothing
+        )
 
     return f, group_delays
 
 
 def minimum_phase(
     signal: ImpulseResponse,
-    method: str = "real cepstrum",
+    use_real_cepstrum: bool = True,
     padding_factor: int = 8,
 ) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
     """Gives back a matrix containing the minimum phase signal for each
@@ -879,9 +843,9 @@ def minimum_phase(
     ----------
     signal : `Signal`
         IR for which to compute the minimum phase.
-    method : str, optional
-        Selects the method to use. `'real cepstrum'` is of general use.
-        `'equiripple'` is for symmetric IR (e.g. linear-phase FIR filters).
+    use_real_cepstrum : bool, optional
+        Set to True for general cases. If the IR is symmetric (like a
+        linear-phase filter), False is recommended. Default: True.
     padding_factor : int, optional
         Zero-padding to a length corresponding to at least
         `current_length * padding_factor` can be done in order to avoid time
@@ -898,13 +862,8 @@ def minimum_phase(
     assert (
         type(signal) is ImpulseResponse
     ), "This is only valid for an impulse response"
-    method = method.lower()
-    assert method in (
-        "real cepstrum",
-        "equiripple",
-    ), f"{method} is not valid. Use real cepstrum or equiripple"
 
-    if method == "equiripple":
+    if not use_real_cepstrum:
         f = np.fft.rfftfreq(
             signal.time_data.shape[0], d=1 / signal.sampling_rate_hz
         )
@@ -972,7 +931,7 @@ def minimum_group_delay(
     for n in range(signal.number_of_channels):
         min_gd[:, n] = _group_delay_direct(min_phases[:, n], f[1] - f[0])
     if smoothing != 0:
-        min_gd = _fractional_octave_smoothing(min_gd, smoothing)
+        min_gd = _fractional_octave_smoothing(min_gd, None, smoothing)
     return f, min_gd
 
 
@@ -1015,7 +974,7 @@ def excess_group_delay(
     f, gd = group_delay(
         signal,
         smoothing=0,
-        method="direct",
+        analytic_computation=False,
         remove_ir_latency=remove_ir_latency,
     )
 
@@ -1027,7 +986,7 @@ def excess_group_delay(
     ex_gd = gd - min_gd
 
     if smoothing != 0:
-        ex_gd = _fractional_octave_smoothing(ex_gd, smoothing)
+        ex_gd = _fractional_octave_smoothing(ex_gd, None, smoothing)
 
     return f_min, ex_gd
 
@@ -1087,7 +1046,7 @@ def combine_ir_with_dirac(
         "peak",
         None,
     ), "Invalid normalization parameter"
-    ir = normalize(ir)
+    ir = normalize(ir, 0.0)
     latencies_samples = _get_fractional_impulse_peak_index(ir.time_data)
 
     # Make impulse
@@ -1107,7 +1066,7 @@ def combine_ir_with_dirac(
         imp_ch = fractional_delay(
             imp_ch, delay_seconds=delay_seconds, keep_length=True
         )
-        imp = merge_signals(imp, imp_ch)
+        imp = append_signals([imp, imp_ch])
 
         # Save polarity for each channel using sample prior to peak
         polarity[ch] *= np.sign(
@@ -1142,13 +1101,15 @@ def combine_ir_with_dirac(
     # Combine
     combined_ir = ir.copy()
     combined_ir.time_data = td_ir + td_imp * polarity[None, ...]
-    combined_ir = normalize(combined_ir)
+    combined_ir = normalize(combined_ir, 0.0)
     return combined_ir
 
 
 def ir_to_filter(
-    signal: ImpulseResponse, channel: int = 0, phase_mode: str = "direct"
-) -> Filter:
+    signal: ImpulseResponse,
+    channel: int | None = 0,
+    phase_mode: str = "direct",
+) -> Filter | FilterBank:
     """This function takes in an impulse response and turns the selected
     channel into an FIR filter. With `phase_mode` it is possible
     to use minimum phase or minimum linear phase.
@@ -1158,24 +1119,24 @@ def ir_to_filter(
     signal : `Signal`
         Signal to be converted into a filter.
     channel : int, optional
-        Channel of the signal to be used. Default: 0.
-    phase_mode : {'direct', 'min', 'lin'} str, optional
-        Phase of the FIR filter. Choose from `'direct'` (no changes to phase),
-        `'min'` (minimum phase) or `'lin'` (minimum linear phase).
-        Default: `'direct'`.
+        Channel of the signal to be used. If None, all channels are used and
+        the return is a FilterBank with each channel as an FIR filter. This
+        also applies for a signal with a single channel. Default: 0.
+    phase_mode : {"direct", "min", "lin"} str, optional
+        Phase of the FIR filter. Choose from "direct" (no changes to phase),
+        "min" (minimum phase) or "lin" (minimum linear phase).
+        Default: "direct".
 
     Returns
     -------
-    filt : `Filter`
-        FIR filter object.
+    filt : Filter or FilterBank
+        (FIR) Filter from a single channel or FilterBank with FIR filters from
+        each channel.
 
     """
     assert (
         type(signal) is ImpulseResponse
     ), "This is only valid for an impulse response"
-    assert (
-        channel < signal.number_of_channels
-    ), f"Signal does not have a channel {channel}"
     phase_mode = phase_mode.lower()
     assert phase_mode in (
         "direct",
@@ -1184,44 +1145,63 @@ def ir_to_filter(
     ), f"""{phase_mode} is not valid. Choose from ('direct', 'min', 'lin')"""
 
     # Choose channel
-    signal = signal.get_channels(channel)
+    signal = signal.get_channels(channel) if channel is not None else signal
 
     # Change phase
     if phase_mode == "min":
         f, sp = signal.get_spectrum()
-        signal = min_phase_from_mag(np.abs(sp), signal.sampling_rate_hz)
+        signal = min_phase_from_mag(
+            np.abs(sp), signal.sampling_rate_hz, len(signal)
+        )
     elif phase_mode == "lin":
         f, sp = signal.get_spectrum()
-        signal = lin_phase_from_mag(np.abs(sp), signal.sampling_rate_hz)
-    b = signal.time_data[:, 0]
-    a = [1]
-    filt = Filter(
-        "other", {"ba": [b, a]}, sampling_rate_hz=signal.sampling_rate_hz
-    )
-    return filt
+        signal = lin_phase_from_mag(
+            np.abs(sp), signal.sampling_rate_hz, len(signal)
+        )
+
+    filters = []
+    for ch in signal:
+        filt = Filter.from_ba(ch, [1.0], signal.sampling_rate_hz)
+        if channel is not None:
+            return filt
+        filters.append(filt)
+    return FilterBank(filters)
 
 
-def filter_to_ir(fir: Filter) -> ImpulseResponse:
-    """Takes in an FIR filter and converts it into an IR by taking its
-    b coefficients.
+def filter_to_ir(fir: Filter | FilterBank) -> ImpulseResponse:
+    """Takes in an FIR filter or multiple filters in a filter bank and converts
+    them into an IR by taking its b coefficients.
 
     Parameters
     ----------
-    fir : `Filter`
-        Filter containing an FIR filter.
+    fir : Filter or FilterBank
+        Filter containing an FIR filter. In case of a FilterBank, all filters
+        should be FIR.
 
     Returns
     -------
-    new_sig : `Signal`
-        New IR signal.
+    new_sig : ImpulseResponse
+        New IR. If the input was a FilterBank, the ImpulseResponse has multiple
+        channels. Its length always corresponds to the longest filter.
 
     """
-    assert (
-        fir.filter_type == "fir"
-    ), "This is only valid is only available for FIR filters"
-    b, _ = fir.get_coefficients(mode="ba")
-    new_sig = ImpulseResponse(None, b, sampling_rate_hz=fir.sampling_rate_hz)
-    return new_sig
+    if isinstance(fir, Filter):
+        assert not fir.is_iir, "This is only valid for FIR filters"
+        return ImpulseResponse.from_time_data(
+            fir.ba[0].copy(), sampling_rate_hz=fir.sampling_rate_hz
+        )
+    elif isinstance(fir, FilterBank):
+        assert all([not f.is_iir for f in fir]), "Filter types must be fir"
+        assert (
+            fir.same_sampling_rate
+        ), "Only valid for filter banks with consistent sampling rate"
+        length_samples = max([len(f) for f in fir])
+        td = np.zeros((length_samples, len(fir)), dtype=np.float64)
+        for ind, f in enumerate(fir):
+            td[: len(f), ind] = f.ba[0].copy()
+        return ImpulseResponse.from_time_data(td, fir.sampling_rate_hz)
+    else:
+        raise TypeError("Unsupported type")
 
 
 def window_frequency_dependent(
@@ -1229,9 +1209,9 @@ def window_frequency_dependent(
     cycles: int,
     channel: int | None = None,
     frequency_range_hz: list | None = None,
-    scaling: str | None = None,
-    end_window_value: float = 0.5,
-):
+    scaling: SpectrumScaling = SpectrumScaling.FFTBackward,
+    end_window_value: float = 0.01,
+) -> Spectrum:
     """A spectrum with frequency-dependent windowing defined by cycles is
     returned. To this end, a variable gaussian window is applied.
 
@@ -1247,27 +1227,23 @@ def window_frequency_dependent(
     cycles : int
         Number of cycles to include for each frequency bin. It defines
         the window lengths.
-    channel : int, optional
+    channel : int, None, optional
         Selected channel to compute the spectrum. Pass `None` to take all
         channels. Default: `None`.
-    frequency_range_hz : list of length 2, optional
+    frequency_range_hz : list of length 2, None, optional
         Frequency range to extract spectrum. Use `None` to compute the whole
         spectrum. Default: `None`.
-    scaling : str, optional
-        Scaling for the spectrum. Choose from `"amplitude spectrum"`,
-        `"amplitude spectral density"`, `"fft"` or `None`. The first two take
-        the window into account. `"fft"` scales the forward FFT by `1/N**0.5`
-        and `None` leaves the spectrum completely unscaled. Default: `None`.
+    scaling : SpectrumScaling, optional
+        Scaling for the spectrum. Power scalings are not supported. Default:
+        FFTBackward (no scaling).
     end_window_value : float, optional
         This is the value that the gaussian window should have at its width.
-        Default: 0.5.
+        Default: 0.01.
 
     Returns
     -------
-    f : NDArray[np.float64]
-        Frequency vector.
-    spec : NDArray[np.complex128]
-        Complex spectrum with shape (frequency, channel).
+    Spectrum
+        Complex spectrum.
 
     Notes
     -----
@@ -1288,34 +1264,27 @@ def window_frequency_dependent(
     assert (
         type(ir) is ImpulseResponse
     ), "This is only valid for an impulse response"
-    scaling = scaling if scaling is None else scaling.lower()
-    assert scaling in (
-        "amplitude spectrum",
-        "amplitude spectral density",
-        "fft",
-        None,
-    ), f"{scaling} is an unsupported scaling option."
 
     fs = ir.sampling_rate_hz
     if frequency_range_hz is not None:
         assert len(frequency_range_hz) == 2
-        frequency_range_hz = np.sort(frequency_range_hz)
+        selected_f_range_hz = np.sort(frequency_range_hz).astype(int).tolist()
     else:
-        frequency_range_hz = [0, fs // 2]
+        selected_f_range_hz = [0, fs // 2]
 
     if channel is None:
-        channel = np.arange(ir.number_of_channels)
+        selected_channels = np.arange(ir.number_of_channels)
     else:
-        channel = np.atleast_1d(channel)
+        selected_channels = np.atleast_1d(channel)
 
-    td = ir.time_data[:, channel]
+    td = ir.time_data[:, selected_channels]
 
     # Optimal length for FFT
     fast_length = next_fast_length_fft(td.shape[0], True)
     td = np.pad(td, ((0, fast_length - td.shape[0]), (0, 0)))
 
     f = np.fft.rfftfreq(td.shape[0], 1 / fs)
-    inds = (f >= frequency_range_hz[0]) & (f <= frequency_range_hz[1])
+    inds = (f >= selected_f_range_hz[0]) & (f <= selected_f_range_hz[1])
     inds_f = np.arange(len(f))[inds]
     f = f[inds]
 
@@ -1342,38 +1311,48 @@ def window_frequency_dependent(
         n[:, ch] = np.arange(-ind_max[ch], td.shape[0] - ind_max[ch])
 
     # Scaling function
-    if scaling == "amplitude spectrum":
+    if scaling == SpectrumScaling.AmplitudeSpectrum:
 
         def scaling_func(window: NDArray[np.float64]):
-            return 2**0.5 / np.sum(window, axis=0, keepdims=True)
+            return 2.0**0.5 / np.sum(window, axis=0, keepdims=True)
 
-    elif scaling == "amplitude spectral density":
+    elif scaling == SpectrumScaling.AmplitudeSpectralDensity:
 
         def scaling_func(window: NDArray[np.float64]):
             return (
-                2
-                / np.sum(window**2, axis=0, keepdims=True)
+                2.0
+                / np.sum(window**2.0, axis=0, keepdims=True)
                 / ir.sampling_rate_hz
             ) ** 0.5
 
-    elif scaling == "fft":
+    elif scaling == SpectrumScaling.FFTOrthogonal:
         scaling_value = fast_length**-0.5
 
         def scaling_func(window: NDArray[np.float64]):
             return scaling_value
 
-    else:
+    elif scaling == SpectrumScaling.FFTBackward:
 
         def scaling_func(window: NDArray[np.float64]):
             return 1
 
+    elif scaling == SpectrumScaling.FFTBackward:
+
+        scaling_value = 1.0 / fast_length
+
+        def scaling_func(window: NDArray[np.float64]):
+            return 1
+
+    else:
+        raise ValueError("Unsupported spectrum scaling")
+
     # Precompute some window factors
-    n = -0.5 * (n / half) ** 2
-    alpha = (alpha_factor / cycles_per_freq_samples) ** 2
+    n = -0.5 * (n / half) ** 2.0
+    alpha = (alpha_factor / cycles_per_freq_samples) ** 2.0
     for ind, ind_f in enumerate(inds_f):
         w = np.exp(alpha[ind] * n)
         spec[ind, :] = rfft_scipy(w * td, axis=0)[ind_f] * scaling_func(w)
-    return f, spec
+    return Spectrum(f, spec)
 
 
 def find_ir_latency(
@@ -1388,8 +1367,8 @@ def find_ir_latency(
     compare_to_min_phase_ir : bool, optional
         When True, the latency is found by comparing the latency of the IR in
         relation to its minimum phase equivalent. When False, the peak in the
-        time data is searched. Both cases are done with subsample accuracy.
-        Default: True.
+        time data is searched. Both cases are done with subsample accuracy. For
+        the former, the padding factor 8 is used. Default: True.
 
     Returns
     -------
@@ -1533,8 +1512,8 @@ def harmonic_distortion_analysis(
     Returns
     -------
     dict
-        A dictionary containing each spectrum is returned. Each item is a list
-        with form [frequency vector, spectrum]. Its keys are:
+        A dictionary containing each spectrum is returned. Each item is of type
+        Spectrum. Its keys are:
             - "1": spectrum of the fundamental.
             - "2": spectrum of the second harmonic.
             - "3": ...
@@ -1613,14 +1592,13 @@ def harmonic_distortion_analysis(
     # Accumulator for spectrum of harmonics
     sp_thd = np.zeros(len(freqs))
 
-    scaling = ir2._spectrum_parameters["scaling"]
-    if scaling is None:
-        quadratic_spectrum = False
-    else:
-        quadratic_spectrum = "power" in scaling
+    quadratic_spectrum = not ir2.spectrum_scaling.is_amplitude_scaling()
 
     if generate_plot:
-        fig, ax = ir2.plot_magnitude(smoothing=smoothing, normalize=None)
+        fig, ax = ir2.plot_magnitude(
+            smoothing=smoothing,
+            normalize=MagnitudeNormalization.NoNormalization,
+        )
 
     for i in range(len(harm)):
         if not passed_harmonics:
@@ -1643,7 +1621,7 @@ def harmonic_distortion_analysis(
         )
 
         # Save in dictionary
-        d[f"{i + 2}"] = [f, sp]
+        d[f"{i + 2}"] = Spectrum(f, sp**0.5 if quadratic_spectrum else sp)
 
         # Make plot
         if generate_plot:
@@ -1677,7 +1655,7 @@ def harmonic_distortion_analysis(
     thd_n.set_spectrum_parameters(**ir2._spectrum_parameters)
     f_thd_n, sp_thd_n = thd_n.get_spectrum()
     if not quadratic_spectrum:
-        sp_thd_n = np.abs(sp_thd_n) ** 2
+        sp_thd_n = np.abs(sp_thd_n) ** 2.0
 
     if generate_plot:
         ax.plot(
@@ -1692,15 +1670,15 @@ def harmonic_distortion_analysis(
         )
         d["plot"] = [fig, ax]
 
-    d["thd_n"] = [f_thd_n, sp_thd_n]
-    d["thd"] = [freqs_thd, sp_thd]
+    d["thd_n"] = Spectrum(f_thd_n, sp_thd_n**0.5)
+    d["thd"] = Spectrum(freqs_thd, sp_thd**0.5)
 
     return d
 
 
 def trim_ir(
     ir: ImpulseResponse,
-    channel: int = 0,
+    channel: int | None = None,
     start_offset_s: float | None = 20e-3,
 ) -> tuple[ImpulseResponse, int, int]:
     """Trim an IR in the beginning and end. This method acts only on one
@@ -1713,8 +1691,10 @@ def trim_ir(
     ----------
     ir : `ImpulseResponse`
         Impulse response to trim.
-    channel : int, optional
-        Channel to take from `rir`. Default: 0.
+    channel : int, None, optional
+        Channel to take from `rir`. Pass None to apply to all channels and
+        return a multichannel signal that has the largest time boundaries found
+        across all channels. Default: None.
     start_offset_s : float, None, optional
         This is the time prior to the peak value that is left after trimming.
         Pass 0 to start the IR one sample prior to peak value or a very big
@@ -1758,15 +1738,32 @@ def trim_ir(
         if start_offset_s is None
         else start_offset_s
     )
-
     assert start_offset_s >= 0, "Offset must be at least 0"
-    trimmed_rir = ir.get_channels(channel)
-    td = trimmed_rir.time_data.squeeze()
-    start, stop, _ = _trim_ir(
-        td,
-        ir.sampling_rate_hz,
-        start_offset_s,
-    )
-    trimmed_rir.time_data = td[start:stop]
-    trimmed_rir.clear_time_window()
+
+    # Single-channel case
+    if channel is not None:
+        trimmed_rir = ir.get_channels(channel)
+        td = trimmed_rir.time_data.squeeze()
+        start, stop, _ = _trim_ir(
+            td,
+            ir.sampling_rate_hz,
+            start_offset_s,
+        )
+        trimmed_rir.time_data = td[start:stop]
+        return trimmed_rir, start, stop
+
+    starts = np.zeros(ir.number_of_channels, dtype=np.int_)
+    stops = starts.copy()
+
+    for ch in range(ir.number_of_channels):
+        starts[ch], stops[ch], _ = _trim_ir(
+            ir.time_data[:, ch],
+            ir.sampling_rate_hz,
+            start_offset_s,
+        )
+
+    start = int(np.min(starts))
+    stop = int(np.max(stops))
+    trimmed_rir = ir.copy()
+    trimmed_rir.time_data = trimmed_rir.time_data[start:stop, ...]
     return trimmed_rir, start, stop

@@ -10,7 +10,7 @@ from .._general_helpers import _find_nearest
 from ..tools import to_db
 
 
-def _zp_plot(z, p, returns: bool = False):
+def _zp_plot(z, p):
     fig, ax = plt.subplots(1, 1, figsize=(5, 5))
     x = np.linspace(-1, 1, 100, endpoint=True)
     yP = np.sqrt(1 - x**2)
@@ -28,11 +28,10 @@ def _zp_plot(z, p, returns: bool = False):
     ax.plot(np.real(p), np.imag(p), "x", label="Poles")
     ax.legend()
     fig.tight_layout()
-    if returns:
-        return fig, ax
+    return fig, ax
 
 
-def _csm_plot(f, csm, range_x=None, log=True, with_phase=True, returns=True):
+def _csm_plot(f, csm, range_x=None, log=True, with_phase=True):
     """Function to plot cross-spectral matrix. Since it is very specialized,
     it is not in the plots module.
 
@@ -75,5 +74,4 @@ def _csm_plot(f, csm, range_x=None, log=True, with_phase=True, returns=True):
             if c2 == ch - 1:
                 axRight.set_ylabel("rad")
     fig.tight_layout()
-    if returns:
-        return fig, ax
+    return fig, ax

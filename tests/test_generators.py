@@ -8,68 +8,68 @@ class TestGeneratorsModule:
     def test_noise(self):
         # Only functionality
         dsp.generators.noise(
-            type_of_noise="white",
+            type_of_noise=dsp.generators.NoiseType.White,
             length_seconds=2,
             sampling_rate_hz=5_000,
             peak_level_dbfs=-20,
             number_of_channels=3,
-            fade="log",
+            fade=dsp.FadeType.Logarithmic,
             padding_end_seconds=1,
         )
         dsp.generators.noise(
-            type_of_noise="pink",
+            type_of_noise=dsp.generators.NoiseType.Pink,
             length_seconds=2,
             sampling_rate_hz=5_000,
             peak_level_dbfs=-20,
             number_of_channels=3,
-            fade="log",
+            fade=dsp.FadeType.Logarithmic,
             padding_end_seconds=1,
         )
         dsp.generators.noise(
-            type_of_noise="red",
+            type_of_noise=dsp.generators.NoiseType.Red,
             length_seconds=2,
             sampling_rate_hz=5_000,
             peak_level_dbfs=-20,
             number_of_channels=3,
-            fade="log",
+            fade=dsp.FadeType.Logarithmic,
             padding_end_seconds=1,
         )
         dsp.generators.noise(
-            type_of_noise="blue",
+            type_of_noise=dsp.generators.NoiseType.Blue,
             length_seconds=2,
             sampling_rate_hz=5_000,
             peak_level_dbfs=-20,
             number_of_channels=3,
-            fade="log",
+            fade=dsp.FadeType.Logarithmic,
             padding_end_seconds=1,
         )
         dsp.generators.noise(
-            type_of_noise="violet",
+            type_of_noise=dsp.generators.NoiseType.Violet,
             length_seconds=2,
             sampling_rate_hz=5_000,
             peak_level_dbfs=-20,
             number_of_channels=3,
-            fade="log",
+            fade=dsp.FadeType.Logarithmic,
             padding_end_seconds=1,
         )
         dsp.generators.noise(
-            type_of_noise="grey",
+            type_of_noise=dsp.generators.NoiseType.Grey,
             length_seconds=2,
             sampling_rate_hz=5_000,
             peak_level_dbfs=-20,
             number_of_channels=3,
-            fade="log",
+            fade=dsp.FadeType.Logarithmic,
             padding_end_seconds=1,
         )
 
         # Other parameters
         dsp.generators.noise(
-            type_of_noise="white",
+            type_of_noise=dsp.generators.NoiseType.White,
             length_seconds=2,
             sampling_rate_hz=5_000,
             peak_level_dbfs=-20,
             number_of_channels=1,
-            fade="log",
+            fade=dsp.FadeType.Logarithmic,
             padding_end_seconds=0,
         )
 
@@ -79,47 +79,47 @@ class TestGeneratorsModule:
             sampling_rate_hz=5_000,
             peak_level_dbfs=-20,
             number_of_channels=1,
-            fade="log",
+            fade=dsp.FadeType.Logarithmic,
             padding_end_seconds=0,
         )
 
         # Peak level over 0 dBFS
         with pytest.raises(AssertionError):
             dsp.generators.noise(
-                type_of_noise="white",
+                type_of_noise=dsp.generators.NoiseType.White,
                 length_seconds=2,
                 sampling_rate_hz=5_000,
                 peak_level_dbfs=20,
                 number_of_channels=1,
-                fade="log",
+                fade=dsp.FadeType.Logarithmic,
                 padding_end_seconds=0,
             )
 
     def test_chirp(self):
         # Only functionality
         dsp.generators.chirp(
-            type_of_chirp="log",
+            type_of_chirp=dsp.generators.ChirpType.Logarithmic,
             range_hz=None,
             length_seconds=2,
             sampling_rate_hz=10_000,
             peak_level_dbfs=-10,
             number_of_channels=2,
-            fade="log",
+            fade=dsp.FadeType.Logarithmic,
             padding_end_seconds=1,
         )
         dsp.generators.chirp(
-            type_of_chirp="lin",
+            type_of_chirp=dsp.generators.ChirpType.Linear,
             range_hz=None,
             length_seconds=2,
             sampling_rate_hz=10_000,
             peak_level_dbfs=-10,
             number_of_channels=2,
-            fade="log",
+            fade=dsp.FadeType.Logarithmic,
             padding_end_seconds=1,
         )
 
         dsp.generators.chirp(
-            type_of_chirp="lin",
+            type_of_chirp=dsp.generators.ChirpType.Linear,
             range_hz=[100, 4000],
             length_seconds=2,
             sampling_rate_hz=10_000,
@@ -129,13 +129,13 @@ class TestGeneratorsModule:
             padding_end_seconds=0,
         )
         dsp.generators.chirp(
-            type_of_chirp="lin",
+            type_of_chirp=dsp.generators.ChirpType.Linear,
             range_hz=[100, 4000],
             length_seconds=1,
             sampling_rate_hz=10_000,
             peak_level_dbfs=-10,
             number_of_channels=1,
-            fade="lin",
+            fade=dsp.FadeType.Linear,
             padding_end_seconds=0,
         )
 
@@ -147,7 +147,7 @@ class TestGeneratorsModule:
         s2 = dsp.generators.chirp(
             length_seconds=1,
             sampling_rate_hz=fs,
-            type_of_chirp="log",
+            type_of_chirp=dsp.generators.ChirpType.Logarithmic,
             fade=None,
             peak_level_dbfs=0,
             phase_offset=np.pi / 2,  # Offset because scipy uses cosine
@@ -165,7 +165,7 @@ class TestGeneratorsModule:
         s2 = dsp.generators.chirp(
             length_seconds=1,
             sampling_rate_hz=fs,
-            type_of_chirp="log",
+            type_of_chirp=dsp.generators.ChirpType.Logarithmic,
             fade=None,
             peak_level_dbfs=0,
             phase_offset=np.pi / 2,  # Offset because scipy uses cosine
@@ -176,25 +176,25 @@ class TestGeneratorsModule:
 
         with pytest.raises(AssertionError):
             dsp.generators.chirp(
-                type_of_chirp="lin",
+                type_of_chirp=dsp.generators.ChirpType.Linear,
                 range_hz=[100, 7000],
                 length_seconds=1,
                 sampling_rate_hz=10_000,
                 peak_level_dbfs=-10,
                 number_of_channels=1,
-                fade="lin",
+                fade=dsp.FadeType.Linear,
                 padding_end_seconds=0,
             )
 
         nominal_duration_seconds = 1.0
         _, sync_duration_seconds = dsp.generators.chirp(
-            type_of_chirp="sync-log",
+            type_of_chirp=dsp.generators.ChirpType.SyncLog,
             range_hz=[20, 4e3],
             length_seconds=nominal_duration_seconds,
             sampling_rate_hz=10_000,
             peak_level_dbfs=-10,
             number_of_channels=2,
-            fade="log",
+            fade=dsp.FadeType.Logarithmic,
             padding_end_seconds=1,
         )
         assert abs(nominal_duration_seconds - sync_duration_seconds) < 0.1
@@ -211,57 +211,19 @@ class TestGeneratorsModule:
             sampling_rate_hz=5_000,
         )
 
-    def test_harmonic(self):
-        # Only functionality
-        dsp.generators.harmonic(
-            frequency_hz=1000,
-            length_seconds=2,
-            sampling_rate_hz=5_000,
-            peak_level_dbfs=-5,
-            number_of_channels=3,
-            uncorrelated=False,
-            fade="log",
-            padding_end_seconds=1,
-        )
-        dsp.generators.harmonic(
-            frequency_hz=1000,
-            length_seconds=2,
-            sampling_rate_hz=5_000,
-            peak_level_dbfs=-5,
-            number_of_channels=1,
-            uncorrelated=False,
-            fade="lin",
-            padding_end_seconds=0,
-        )
-        dsp.generators.harmonic(
-            frequency_hz=1000,
-            length_seconds=1,
-            sampling_rate_hz=5_000,
-            peak_level_dbfs=-5,
-            number_of_channels=3,
-            uncorrelated=True,
-            fade=None,
-            padding_end_seconds=0,
-        )
-
-        with pytest.raises(AssertionError):
-            dsp.generators.harmonic(
-                frequency_hz=4000,
-                length_seconds=1,
-                sampling_rate_hz=5_000,
-                peak_level_dbfs=-5,
-                number_of_channels=3,
-                uncorrelated=True,
-                fade=None,
-                padding_end_seconds=0,
-            )
-
     def test_oscillator(self):
         # Only functionality
         dsp.generators.oscillator(
             frequency_hz=150,
             sampling_rate_hz=5_000,
-            mode="triangle",
+            mode=dsp.generators.WaveForm.Harmonic,
+            number_of_channels=2,
+            uncorrelated=False,
+        )
+        dsp.generators.oscillator(
+            frequency_hz=150,
+            sampling_rate_hz=5_000,
+            mode=dsp.generators.WaveForm.Triangle,
             number_of_channels=2,
             uncorrelated=False,
         )
@@ -269,14 +231,14 @@ class TestGeneratorsModule:
             frequency_hz=150,
             sampling_rate_hz=3_000,
             harmonic_cutoff_hz=1_000,
-            mode="sawtooth",
+            mode=dsp.generators.WaveForm.Sawtooth,
             number_of_channels=2,
             uncorrelated=True,
         )
         dsp.generators.oscillator(
             frequency_hz=1000,
             sampling_rate_hz=10_000,
-            mode="square",
+            mode=dsp.generators.WaveForm.Square,
             number_of_channels=1,
             uncorrelated=False,
         )

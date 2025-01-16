@@ -6,7 +6,6 @@ measurements and testing audio streams
 import sounddevice as sd
 from .. import Signal
 from .._general_helpers import _normalize
-from ._audio_io import standard_callback
 
 default_config = sd.default
 
@@ -263,7 +262,10 @@ def play_and_record(
     if normalized_dbfs is not None:
         assert normalized_dbfs <= 0, "Only values beneath 0 dBFS are allowed"
         play_data = _normalize(
-            play_data, dbfs=normalized_dbfs, mode="peak", per_channel=False
+            play_data,
+            dbfs=normalized_dbfs,
+            peak_normalization="peak",
+            per_channel=False,
         )
 
     if device is not None:
@@ -386,7 +388,10 @@ def play(
     if normalized_dbfs is not None:
         assert normalized_dbfs <= 0, "Only values beneath 0 dBFS are allowed"
         play_data = _normalize(
-            play_data, dbfs=normalized_dbfs, mode="peak", per_channel=False
+            play_data,
+            dbfs=normalized_dbfs,
+            peak_normalization="peak",
+            per_channel=False,
         )
     #
     if device is not None:
@@ -400,73 +405,6 @@ def play(
         blocking=True,
     )
     print("Playback has ended\n")
-
-
-def play_through_stream(
-    signal: Signal,
-    blocksize: int = 2048,
-    audio_callback=standard_callback,
-    device: str | None = None,
-):
-    """Plays a signal using a stream and a callback function.
-    See `sounddevice.OutputStream` for extensive information about
-    functionalities.
-
-    NOTE: The `Signal`'s channel shape must match the device's
-    output channels. The start of the signal can be set using `Signal`'s method
-    `set_streaming_position`.
-
-    Parameters
-    ----------
-    signal : `Signal`
-        Signal to be reproduced.
-    blocksize : int, optional
-        Block size used for the stream. Powers of two are recommended.
-        Default: 2048.
-    audio_callback : callable, optional
-        This is the core of the stream! Callback modifies the signal as it is
-        passed to the audio device. `audio_callback` is a function that takes
-        in a signal object and passes a valid sounddevice callback.
-        There can be preprocessing but it shouldn't change the total length
-        of the signal! Refer to `standard_callback` for an example.
-        Their signatures are::
-
-            audio_callback(signal: Signal) -> callable
-
-            callback(outdata: NDArray[np.float64], frames: int,
-                     time: CData, status: CallbackFlags) -> None
-
-        See `sounddevice`'s examples of callbacks for more general
-        information. Default: `standard_callback`.
-    device : str, optional
-        Device to be used in the audio stream. Pass `None` to use the default
-        device. Default: `None`.
-
-    References
-    ----------
-    - https://python-sounddevice.readthedocs.io/en/0.4.5/
-
-    """
-
-    if not hasattr(signal, "streaming_position"):
-        signal.set_streaming_position()
-
-    duration_samples = signal.time_data.shape[0] - signal.streaming_position
-    duration_ms = int(duration_samples / signal.sampling_rate_hz * 1000)
-
-    if device is not None:
-        sd.default.device = device
-
-    try:
-        with sd.OutputStream(
-            signal.sampling_rate_hz,
-            blocksize=blocksize,
-            callback=audio_callback(signal),
-            channels=signal.number_of_channels,
-        ):
-            sd.sleep(duration_ms + 5)
-    except Exception as e:
-        print(e)
 
 
 def CallbackStop():

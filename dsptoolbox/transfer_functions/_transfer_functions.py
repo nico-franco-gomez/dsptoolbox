@@ -16,6 +16,7 @@ from .._general_helpers import (
     _get_chirp_rate,
 )
 from ..tools import to_db, time_smoothing
+from ..standard.enums import Window
 
 
 def _spectral_deconvolve(
@@ -23,36 +24,23 @@ def _spectral_deconvolve(
     denum_fft: NDArray[np.complex128],
     freqs_hz,
     time_signal_length: int,
-    mode="regularized",
-    start_stop_hz=None,
+    regularized: bool,
+    start_stop_hz,
 ) -> NDArray[np.complex128]:
     assert num_fft.shape == denum_fft.shape, "Shapes do not match"
     assert len(freqs_hz) == len(num_fft), "Frequency vector does not match"
 
-    if mode == "regularized":
+    if regularized:
         # Regularized division
         ids = _find_nearest(start_stop_hz, freqs_hz)
-        eps = _calculate_window(ids, len(freqs_hz), inverse=True) * 10 ** (
-            30 / 20
-        )
+        eps = _calculate_window(
+            ids, len(freqs_hz), Window.Hann, True, inverse=True
+        ) * 10 ** (30 / 20)
         denum_reg = denum_fft.conj() / (np.abs(denum_fft) ** 2 + eps)
         new_time_data = np.fft.irfft(num_fft * denum_reg, n=time_signal_length)
-    elif mode == "window":
-        ids = _find_nearest(start_stop_hz, freqs_hz)
-        window = _calculate_window(ids, len(freqs_hz), inverse=False)
-        window += 10 ** (-200 / 10)
-        num_fft_n = num_fft * window
-        new_time_data = np.fft.irfft(
-            np.divide(num_fft_n, denum_fft), n=time_signal_length
-        )
-    elif mode == "standard":
+    else:
         new_time_data = np.fft.irfft(
             np.divide(num_fft, denum_fft), n=time_signal_length
-        )
-    else:
-        raise ValueError(
-            f"{mode} is not supported. Choose window"
-            + ", regularized or standard"
         )
     return new_time_data
 
@@ -60,12 +48,12 @@ def _spectral_deconvolve(
 def _window_this_ir_tukey(
     vec,
     total_length: int,
-    window_type: str | tuple | list = "hann",
-    constant_percentage: float = 0.75,
-    at_start: bool = True,
-    offset_samples: int = 0,
-    left_to_right_flank_ratio: float = 1.0,
-    adaptive_window: bool = True,
+    window_type: Window | list[Window],
+    constant_percentage: float,
+    at_start: bool,
+    offset_samples: int,
+    left_to_right_flank_ratio: float,
+    adaptive_window: bool,
 ) -> tuple[NDArray[np.float64], NDArray[np.float64], int]:
     """This function finds the index of the impulse and trims or windows it
     accordingly. Window used and the start sample are returned.
@@ -149,7 +137,7 @@ def _window_this_ir_tukey(
         total_length,
     ]
     window = _calculate_window(
-        points, total_length, window_type, at_start=at_start
+        points, total_length, window_type, at_start=at_start, inverse=False
     )
 
     if not adaptive_window:
@@ -164,7 +152,7 @@ def _window_this_ir_tukey(
 
 
 def _window_this_ir(
-    vec, total_length: int, window_type: str = "hann", window_parameter=None
+    vec, total_length: int, window_type: Window
 ) -> tuple[NDArray[np.float64], NDArray[np.float64], int]:
     """This function windows an impulse response by placing the peak exactly
     in the middle of the window. It trims or pads at the end if needed. The
@@ -180,8 +168,6 @@ def _window_this_ir(
         Sample position of the start.
 
     """
-    if window_parameter is not None and type(window_type) is str:
-        window_type = (window_type, window_parameter)
     peak_ind = np.argmax(np.abs(vec))
     half_length = total_length // 2
     centered_impulse_and_even = (
@@ -194,7 +180,7 @@ def _window_this_ir(
         vec = vec[::-1]
         peak_ind = len(vec) - peak_ind - 1
 
-    w = get_window(window_type, half_length * 2 + 1, False)
+    w = get_window(window_type.to_scipy_format(), half_length * 2 + 1, False)
 
     # Define start index for time data and window
     if peak_ind - half_length < 0:

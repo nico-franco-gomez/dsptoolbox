@@ -34,7 +34,13 @@ from .._general_helpers import (
     __yw_ar_estimation,
     __burg_ar_estimation,
 )
-from .._standard import _group_delay_direct
+from ..standard._standard_backend import _group_delay_direct
+from ..standard.enums import (
+    FilterCoefficientsType,
+    FilterBankMode,
+    SpectrumMethod,
+    SpectrumScaling,
+)
 
 
 # ============== First implementation
@@ -210,7 +216,7 @@ class LRFilterBank:
     def filter_signal(
         self,
         s: Signal,
-        mode: str = "parallel",
+        mode: FilterBankMode = FilterBankMode.Parallel,
         activate_zi: bool = False,
         zero_phase: bool = False,
     ) -> MultiBandSignal | Signal:
@@ -222,9 +228,8 @@ class LRFilterBank:
         ----------
         s : `Signal`
             Signal to be filtered.
-        mode : str, optional
-            Way to apply filter bank to the signal. Supported modes are:
-            `'parallel'`, `'summed'`. Default: `'parallel'`.
+        mode : FilterBankMode, optional
+            Way to apply filter bank to the signal. Default: Parallel.
         activate_zi : bool, optional
             When `True`, the zi's are activated for filtering.
             Default: `False`.
@@ -237,18 +242,12 @@ class LRFilterBank:
             A MultiBandSignal object containing all bands and all channels.
 
         """
-        mode = mode.lower()
-        assert mode in (
-            "parallel",
-            "sequential",
-            "summed",
-        ), f"{mode} is not a valid mode. Use parallel, sequential or summed"
-        if mode == "sequential":
+        if mode == FilterBankMode.Sequential:
             warn(
                 "sequential mode is not supported for this filter bank. "
                 + "It is automatically changed to summed"
             )
-            mode = "summed"
+            mode = FilterBankMode.Summed
         assert (
             s.sampling_rate_hz == self.sampling_rate_hz
         ), "Sampling rates do not match"
@@ -258,7 +257,7 @@ class LRFilterBank:
         new_time_data = np.zeros(
             (s.time_data.shape[0], s.number_of_channels, self.number_of_bands)
         )
-        in_sig = s.time_data
+        in_sig = s.time_data.copy()
 
         # Filter with zi
         if activate_zi:
@@ -321,8 +320,9 @@ class LRFilterBank:
             filterbank_order=self.order,
         )
         out_sig = MultiBandSignal(bands=b, same_sampling_rate=True, info=d)
-        if mode == "summed":
-            out_sig = out_sig.collapse()
+        if mode == FilterBankMode.Summed:
+            return out_sig.collapse()
+
         return out_sig
 
     # ======== Update zi's and backend filtering ============================
@@ -376,8 +376,8 @@ class LRFilterBank:
     # ======== IR =============================================================
     def get_ir(
         self,
-        length_samples: int = 1024,
-        mode: str = "parallel",
+        length_samples: int,
+        mode: FilterBankMode = FilterBankMode.Parallel,
         zero_phase: bool = False,
     ) -> ImpulseResponse | MultiBandSignal:
         """Returns impulse response from the filter bank. For this filter
@@ -386,12 +386,12 @@ class LRFilterBank:
 
         Parameters
         ----------
-        length_samples : int, optional
+        length_samples : int
             Impulse length in samples. This defines the resolution of the
-            plot. Default: 2048.
-        mode : str, optional
+            plot.
+        mode : FilterBankMode, optional
             Way to apply filter bank to the signal. Supported modes are:
-            `'parallel'`, `'summed'`. Default: `'parallel'`.
+            `'parallel'`, `'summed'`. Default: Parallel.
         zero_phase : bool, optional
             When `True`, zero-phase filtering is done. Default: `False`.
 
@@ -414,7 +414,7 @@ class LRFilterBank:
     def plot_magnitude(
         self,
         range_hz=[20, 20e3],
-        mode: str = "parallel",
+        mode: FilterBankMode = FilterBankMode.Parallel,
         length_samples: int = 2048,
         test_zi: bool = False,
         zero_phase: bool = False,
@@ -426,9 +426,9 @@ class LRFilterBank:
         ----------
         range_hz : array_like, optional
             Range of Hz to plot. Default: [20, 20e3].
-        mode : str, optional
+        mode : FilterBankMode, optional
             Way to apply filter bank to the signal. Supported modes are:
-            `'parallel'`. Default: `'parallel'`.
+            `'parallel'`. Default: Parallel.
         length_samples : int, optional
             Impulse length in samples. This defines the resolution of the
             plot. Default: 2048.
@@ -444,8 +444,7 @@ class LRFilterBank:
             Figure and axes of the plot
 
         """
-        mode = mode.lower()
-        if mode != "parallel":
+        if mode != FilterBankMode.Parallel:
             warn(
                 "Plotting for LRFilterBank is only supported with parallel "
                 + "mode. Setting to parallel"
@@ -458,19 +457,27 @@ class LRFilterBank:
             sampling_rate_hz=self.sampling_rate_hz,
         )
         bs = self.filter_signal(
-            d, mode="parallel", activate_zi=test_zi, zero_phase=zero_phase
+            d,
+            mode=FilterBankMode.Parallel,
+            activate_zi=test_zi,
+            zero_phase=zero_phase,
         )
         specs = []
         f = bs.bands[0].get_spectrum()[0]
         summed = []
         for b in bs.bands:
-            b.set_spectrum_parameters(method="standard")
+            b.spectrum_method = SpectrumMethod.FFT
+            b.spectrum_scaling = SpectrumScaling.FFTBackward
             summed.append(b.time_data[:, 0])
+            f, sp_band = b.get_spectrum()
             f, sp = _get_normalized_spectrum(
                 f,
-                np.squeeze(b.get_spectrum()[1]),
+                sp_band,
+                is_amplitude_scaling=b.spectrum_scaling.is_amplitude_scaling(),
                 f_range_hz=range_hz,
                 normalize=None,
+                phase=False,
+                calibrated_data=False,
             )
             specs.append(np.squeeze(sp))
         specs = np.array(specs).T
@@ -479,7 +486,6 @@ class LRFilterBank:
             specs,
             range_hz,
             ylabel="Magnitude / dB",
-            returns=True,
             labels=[f"Filter {h}" for h in range(bs.number_of_bands)],
             range_y=[-30, 10],
         )
@@ -487,7 +493,13 @@ class LRFilterBank:
         summed = np.sum(np.array(summed).T, axis=1)
         sp_summed = np.fft.rfft(summed)
         f_s, sp_summed = _get_normalized_spectrum(
-            f, sp_summed, f_range_hz=range_hz, normalize=None
+            f,
+            sp_summed,
+            is_amplitude_scaling=True,
+            f_range_hz=range_hz,
+            normalize=None,
+            phase=False,
+            calibrated_data=False,
         )
         ax.plot(
             f_s,
@@ -502,7 +514,7 @@ class LRFilterBank:
     def plot_phase(
         self,
         range_hz=[20, 20e3],
-        mode: str = "parallel",
+        mode: FilterBankMode = FilterBankMode.Parallel,
         length_samples: int = 2048,
         test_zi: bool = False,
         zero_phase: bool = True,
@@ -514,9 +526,9 @@ class LRFilterBank:
         ----------
         range_hz : array-like, optional
             Range of Hz to plot. Default: [20, 20e3].
-        mode : str, optional
+        mode : FilterBankMode, optional
             Way to apply filter bank to the signal. Supported modes are:
-            `'parallel'`, `'summed'`. Default: `'parallel'`.
+            `'parallel'`, `'summed'`. Default: Parallel.
         length_samples : int, optional
             Impulse length in samples. This defines the resolution of the
             plot. Default: 2048.
@@ -534,10 +546,9 @@ class LRFilterBank:
             Figure and axes of the plot
 
         """
-        mode = mode.lower()
         assert mode in (
-            "parallel",
-            "summed",
+            FilterBankMode.Parallel,
+            FilterBankMode.Summed,
         ), f"{mode} is not supported. Use either parallel or summed"
         d = dirac(
             length_samples=length_samples,
@@ -545,9 +556,9 @@ class LRFilterBank:
             sampling_rate_hz=self.sampling_rate_hz,
         )
 
-        if mode == "parallel":
+        if mode == FilterBankMode.Parallel:
             bs = self.filter_signal(
-                d, mode="parallel", activate_zi=test_zi, zero_phase=zero_phase
+                d, mode=mode, activate_zi=test_zi, zero_phase=zero_phase
             )
             phase = []
             f = bs.bands[0].get_spectrum()[0]
@@ -555,9 +566,9 @@ class LRFilterBank:
                 phase.append(np.angle(b.get_spectrum()[1]))
             phase = np.squeeze(np.array(phase).T)
             labels = [f"Filter {h}" for h in range(bs.number_of_bands)]
-        elif mode == "summed":
+        elif mode == FilterBankMode.Summed:
             bs = self.filter_signal(
-                d, mode="summed", activate_zi=test_zi, zero_phase=zero_phase
+                d, mode=mode, activate_zi=test_zi, zero_phase=zero_phase
             )
             f, phase = bs.get_spectrum()
             phase = np.angle(phase)
@@ -570,7 +581,6 @@ class LRFilterBank:
             phase,
             range_hz,
             ylabel="Phase / rad",
-            returns=True,
             labels=labels,
         )
         return fig, ax
@@ -578,7 +588,7 @@ class LRFilterBank:
     def plot_group_delay(
         self,
         range_hz=[20, 20e3],
-        mode: str = "parallel",
+        mode: FilterBankMode = FilterBankMode.Parallel,
         length_samples: int = 2048,
         test_zi: bool = False,
         zero_phase: bool = False,
@@ -589,9 +599,9 @@ class LRFilterBank:
         ----------
         range_hz : array-like, optional
             Range of Hz to plot. Default: [20, 20e3].
-        mode : str, optional
+        mode : FilterBankMode, optional
             Way to apply filter bank to the signal. Supported modes are:
-            `'parallel'`, `'summed'`. Default: `'parallel'`.
+            `'parallel'`, `'summed'`. Default: Parallel.
         length_samples : int, optional
             Impulse length in samples. This defines the resolution of the
             plot. Default: 2048.
@@ -604,22 +614,20 @@ class LRFilterBank:
         Returns
         -------
         fig, ax
-            Returned only when `returns=True`.
 
         """
-        mode = mode.lower()
         assert mode in (
-            "parallel",
-            "summed",
+            FilterBankMode.Parallel,
+            FilterBankMode.Summed,
         ), f"{mode} is not supported. Use either parallel or summed"
         d = dirac(
             length_samples=length_samples,
             number_of_channels=1,
             sampling_rate_hz=self.sampling_rate_hz,
         )
-        if mode == "parallel":
+        if mode == FilterBankMode.Parallel:
             bs = self.filter_signal(
-                d, mode="parallel", activate_zi=test_zi, zero_phase=zero_phase
+                d, mode=mode, activate_zi=test_zi, zero_phase=zero_phase
             )
             gd = []
             f = bs.bands[0].get_spectrum()[0]
@@ -631,9 +639,9 @@ class LRFilterBank:
                 )
             gd = np.squeeze(np.array(gd).T) * 1e3
             labels = [f"Filter {h}" for h in range(bs.number_of_bands)]
-        elif mode == "summed":
+        elif mode == FilterBankMode.Summed:
             bs = self.filter_signal(
-                d, mode="summed", activate_zi=test_zi, zero_phase=zero_phase
+                d, mode=mode, activate_zi=test_zi, zero_phase=zero_phase
             )
             f, sp = bs.get_spectrum()
             gd = _group_delay_direct(sp.squeeze(), delta_f=f[1] - f[0]) * 1e3
@@ -643,7 +651,6 @@ class LRFilterBank:
             gd,
             range_hz,
             ylabel="Group delay / ms",
-            returns=True,
             labels=labels,
         )
 
@@ -735,8 +742,12 @@ class GammaToneFilterBank(FilterBank):
         delay_samples = int(np.round(self._delay * self.sampling_rate_hz))
 
         # apply filterbank to impulse to estimate the required values
-        d = dirac(delay_samples + 3, sampling_rate_hz=self.sampling_rate_hz)
-        d = self.filter_signal(d, mode="parallel")
+        d = dirac(
+            length_samples=self.sampling_rate_hz // 2,
+            delay_samples=delay_samples + 3,
+            sampling_rate_hz=self.sampling_rate_hz,
+        )
+        d = self.filter_signal(d, mode=FilterBankMode.Parallel)
         d = d.get_all_bands(channel=0)
         real, imag = d.time_data, d.time_data_imaginary
 
@@ -927,7 +938,7 @@ class BaseCrossover(FilterBank):
     def filter_signal(
         self,
         signal: Signal,
-        mode: str = "parallel",
+        mode: FilterBankMode,
         activate_zi: bool = False,
         downsample: bool = False,
     ) -> Signal | MultiBandSignal:
@@ -936,12 +947,6 @@ class BaseCrossover(FilterBank):
                 signal, mode, activate_zi, zero_phase=False
             )
         # ========== In case of downsampling while filtering ==================
-        mode = mode.lower()
-        assert mode in (
-            "parallel",
-            "sequential",
-            "summed",
-        ), f"{mode} is not a valid mode. Use parallel, sequential or summed"
         assert (
             signal.sampling_rate_hz == self.sampling_rate_hz
         ), "Sampling rates do not match"
@@ -991,7 +996,7 @@ class BaseCrossover(FilterBank):
     # ======== Plotting =======================================================
     def plot_magnitude(
         self,
-        mode: str = "parallel",
+        mode: FilterBankMode = FilterBankMode.Parallel,
         range_hz=[20, 20e3],
         length_samples: int = 2048,
         test_zi: bool = False,
@@ -1022,14 +1027,14 @@ class BaseCrossover(FilterBank):
         )
 
         # Filtering and plot
-        if mode == "parallel":
+        if mode == FilterBankMode.Parallel:
             bs = self.filter_signal(
-                d, mode="parallel", activate_zi=test_zi, downsample=True
+                d, mode=mode, activate_zi=test_zi, downsample=True
             )
             specs = []
             f = bs.bands[0].get_spectrum()[0]
             for b in bs.bands:
-                b.set_spectrum_parameters(method="standard")
+                b.spectrum_method = SpectrumMethod.FFT
                 f, sp = _get_normalized_spectrum(
                     f,
                     np.squeeze(b.get_spectrum()[1]),
@@ -1047,16 +1052,15 @@ class BaseCrossover(FilterBank):
                 specs,
                 range_hz,
                 ylabel="Magnitude / dB",
-                returns=True,
                 labels=[f"Filter {h}" for h in range(bs.number_of_bands)],
                 range_y=range_y,
                 tight_layout=False,
             )
-        elif mode == "sequential":
+        elif mode == FilterBankMode.Sequential:
             bs = self.filter_signal(
-                d, mode="sequential", activate_zi=test_zi, downsample=True
+                d, mode=mode, activate_zi=test_zi, downsample=True
             )
-            bs.set_spectrum_parameters(method="standard")
+            bs.spectrum_method = SpectrumMethod.FFT
             f, sp = bs.get_spectrum()
             f, sp = _get_normalized_spectrum(
                 f, np.squeeze(sp), f_range_hz=range_hz, normalize=None
@@ -1066,17 +1070,16 @@ class BaseCrossover(FilterBank):
                 sp,
                 range_hz,
                 ylabel="Magnitude / dB",
-                returns=True,
                 labels=[
                     f"Sequential - Channel {n}"
                     for n in range(bs.number_of_channels)
                 ],
             )
-        elif mode == "summed":
+        elif mode == FilterBankMode.Summed:
             bs = self.filter_signal(
-                d, mode="summed", activate_zi=test_zi, downsample=True
+                d, mode=mode, activate_zi=test_zi, downsample=True
             )
-            bs.set_spectrum_parameters(method="standard")
+            bs.spectrum_method = SpectrumMethod.FFT
             f, sp = bs.get_spectrum()
             f, sp = _get_normalized_spectrum(
                 f, np.squeeze(sp), f_range_hz=range_hz, normalize=None
@@ -1086,7 +1089,6 @@ class BaseCrossover(FilterBank):
                 sp,
                 range_hz,
                 ylabel="Magnitude / dB",
-                returns=True,
                 labels=["Summed"],
             )
         return fig, ax
@@ -1144,26 +1146,28 @@ class QMFCrossover(BaseCrossover):
         - https://tinyurl.com/2a3frbyv
 
         """
-        if lowpass.filter_type == "fir":
+        if not lowpass.is_iir:
             # Create highpass filter based on lowpass
-            b_base, _ = lowpass.get_coefficients(mode="ba")
+            b_base, _ = lowpass.get_coefficients(
+                coefficients_mode=FilterCoefficientsType.Ba
+            )
             b_high = b_base.copy()
             # H1(z) = H0(-z) <-> odd coefficients are multiplied by -1
             b_high[1::2] *= -1
             # Create filter
             highpass = Filter(
-                "other",
-                dict(ba=[b_high, [1]]),
+                {FilterCoefficientsType.Ba: [b_high, [1.0]]},
                 sampling_rate_hz=lowpass.sampling_rate_hz,
             )
             # Type of filter bank
             self.fir_filterbank = True
         else:
-            z_base, p_base, k_base = lowpass.get_coefficients(mode="zpk")
+            z_base, p_base, k_base = lowpass.get_coefficients(
+                coefficients_mode=FilterCoefficientsType.Zpk
+            )
             zpk_new = [z_base * -1, p_base * -1, k_base]
             highpass = Filter(
-                "other",
-                dict(zpk=zpk_new),
+                {FilterCoefficientsType.Zpk: zpk_new},
                 sampling_rate_hz=lowpass.sampling_rate_hz,
             )
             # Type of filter bank
@@ -1189,112 +1193,18 @@ class QMFCrossover(BaseCrossover):
         - https://tinyurl.com/2a3frbyv
 
         """
-        b, a = lowpass.get_coefficients(mode="ba")
+        b, a = lowpass.get_coefficients(
+            coefficients_mode=FilterCoefficientsType.Ba
+        )
         hp_filter = Filter(
-            "other",
-            dict(ba=[-b, a]),
+            {FilterCoefficientsType.Ba: [-b, a]},
             sampling_rate_hz=lowpass.sampling_rate_hz,
         )
         return [lowpass, hp_filter]
 
 
-# Not Working so far
-# class CQFCrossover(BaseCrossover):
-#     """This class contains methods for the creation of conjugate quadrature
-#     filters, with which perfect (magnitude) reconstruction can be achieved.
-#     Since these filters do not generally have linear phase, there might be
-#     some phase distortion after reconstruction.
-
-#     """
-#     def __init__(self, lowpass: Filter):
-#         """Create a conjugate quadrature filters crossover based on a lowpass
-#         filter prototype.
-
-#         Parameters
-#         ----------
-#         lowpass : `Filter`
-#             Lowpass filter prototype.
-
-#         References
-#         ----------
-#         - https://tinyurl.com/2cssq2oa
-
-#         """
-#         if 'freqs' in lowpass.info:
-#             if lowpass.info['freqs'] != lowpass.sampling_rate_hz//4:
-#                 warn('Cut-off frequency for lowpass filter should be half ' +
-#                      'the nyquist frequency.')
-#         # Create FilterBank
-#         super().__init__(
-#             analysis_filters=self._get_analysis_filters(lowpass),
-#             synthesis_filters=self._get_synthesis_filters(lowpass),
-#             info=dict(Info='Quadrature mirror filters crossover'))
-
-#     def _get_analysis_filters(self, lowpass: Filter):
-#         """Create and return analysis filters based on a lowpass prototype.
-
-#         Parameters
-#         ----------
-#         lowpass : `Filter`
-#             Lowpass prototype.
-
-#         Returns
-#         -------
-#         analysis_filters : list
-#             List containing exactly two analysis filters. The first one is
-#             the passed lowpass prototype.
-
-#         References
-#         ----------
-#         - https://tinyurl.com/2cssq2oa
-
-#         """
-#         if lowpass.filter_type == 'fir':
-#             # Create highpass filter based on lowpass
-#             b_base, _ = lowpass.get_coefficients(mode='ba')
-#             b_high = b_base.copy()
-#             b_high = np.flip(b_high)
-#             b_high[::2] *= -1
-#             # Create filter
-#             highpass = Filter(
-#                 'other', dict(ba=[b_high, [1]]),
-#                 sampling_rate_hz=lowpass.sampling_rate_hz)
-#             # Type of filter bank
-#             self.fir_filterbank = True
-#         else:
-#             raise ValueError('This type of crossover is only supported ' +
-#                              'for FIR filters')
-#         return [lowpass, highpass]
-
-#     def _get_synthesis_filters(self, lowpass: Filter):
-#         """Create and return synthesis filters based on a lowpass prototype.
-
-#         Parameters
-#         ----------
-#         lowpass : `Filter`
-#             Lowpass prototype.
-
-#         Returns
-#         -------
-#         synthesis_filters : list
-#             List containing exactly two synthesis filters.
-
-#         References
-#         ----------
-#         - https://tinyurl.com/2cssq2oa
-
-#         """
-#         b, a = lowpass.get_coefficients(mode='ba')
-#         lp_filter = Filter('other', dict(ba=[np.flip(b), a]),
-#                            sampling_rate_hz=lowpass.sampling_rate_hz)
-#         b[::2] *= -1
-#         hp_filter = Filter('other', dict(ba=[b, a]),
-#                            sampling_rate_hz=lowpass.sampling_rate_hz)
-#         return [lp_filter, hp_filter]
-
-
 def _crossover_downsample(
-    signal: Signal, filters: list, mode: str, down_factor: int = 2
+    signal: Signal, filters: list, mode: FilterBankMode, down_factor: int = 2
 ) -> Signal | MultiBandSignal:
     """Apply crossover and downsample on signal.
 
@@ -1305,9 +1215,8 @@ def _crossover_downsample(
     filters : list
         List containing filters to use. Since it is a crossover, it should
         have 2 filters.
-    mode : str
-        Mode of filtering. Choose from `'parallel'`, `'sequential'` and
-        `'summed'`.
+    mode : FilterBankMode
+        Mode of filtering.
     down_factor : int, optional
         Down factor for decimation. Default: 2.
 
@@ -1319,7 +1228,7 @@ def _crossover_downsample(
     """
     n_filt = len(filters)
     assert n_filt == 2, "A crossover should contain exactly 2 filters"
-    if mode == "parallel":
+    if mode == FilterBankMode.Parallel:
         ss = []
         for n in range(n_filt):
             ss.append(
@@ -1330,7 +1239,7 @@ def _crossover_downsample(
                 )
             )
         out_sig = MultiBandSignal(ss, same_sampling_rate=True)
-    elif mode == "sequential":
+    elif mode == FilterBankMode.Sequential:
         out_sig = signal.copy()
         for n in range(n_filt):
             out_sig = filters[n].filter_and_resample_signal(

@@ -48,3 +48,12 @@ FilterBank
    :special-members: [, __init__, ]
    :undoc-members:
    :show-inheritance:
+
+Spectrum
+----------------------------------
+
+.. automodule:: dsptoolbox.classes.spectrum
+   :members:
+   :special-members: [, __init__, ]
+   :undoc-members:
+   :show-inheritance:

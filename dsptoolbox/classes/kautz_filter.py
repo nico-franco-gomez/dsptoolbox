@@ -133,6 +133,7 @@ class KautzFilter(RealtimeFilter):
         assert self.n_real_poles == len(c_real)
         self.coefficients_real_poles = c_real
         self.coefficients_complex_poles = c_complex
+        return self
 
     def __compute_filters(self):
         self.__filters_real: list[IIRFilter] = []
@@ -261,6 +262,7 @@ class KautzFilter(RealtimeFilter):
         )
 
         self.sampling_rate_hz = ir.sampling_rate_hz
+        return self
 
     def filter_signal(self, signal: Signal) -> Signal:
         """Filter a whole signal with the Kautz filter."""
@@ -275,7 +277,11 @@ class KautzFilter(RealtimeFilter):
 
     def get_ir(self, length_samples: int) -> ImpulseResponse:
         """Return an impulse response from the Kautz filter."""
-        d = dirac(length_samples, 0, sampling_rate_hz=self.sampling_rate_hz)
+        d = dirac(
+            length_samples,
+            delay_samples=0,
+            sampling_rate_hz=self.sampling_rate_hz,
+        )
         return self.filter_signal(d)
 
     def __process_time_data_vector(
@@ -359,10 +365,12 @@ class KautzFilter(RealtimeFilter):
         assert (
             ir.number_of_channels == 1
         ), "Only a single-channel IR is supported"
-        td = ir.time_data.squeeze()
-        poles = KautzFilter.__find_optimal_poles_for_ir(order, iterations, td)
+        poles = KautzFilter.__find_optimal_poles_for_ir(
+            order, iterations, ir.time_data.squeeze().copy()
+        )
         self.__set_poles(poles)
         self.fit_coefficients_to_ir(ir)
+        return self
 
     @staticmethod
     def __find_optimal_poles_for_ir(

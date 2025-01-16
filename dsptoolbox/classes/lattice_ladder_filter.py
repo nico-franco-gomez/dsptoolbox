@@ -138,7 +138,7 @@ class LatticeLadderFilter(RealtimeFilter):
             signal.sampling_rate_hz == self.sampling_rate_hz
         ), "Sampling rates do not match"
 
-        td = signal.time_data
+        td = signal.time_data.copy()
 
         if self.n_channels != signal.number_of_channels:
             warn(

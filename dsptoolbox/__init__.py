@@ -9,12 +9,13 @@ Collection of dsp, audio and acoustics-related functions.
 
 """
 
-from .standard_functions import (
+from .standard import (
     latency,
-    merge_signals,
-    merge_filterbanks,
+    append_signals,
+    append_filterbanks,
     pad_trim,
     fractional_delay,
+    delay,
     activity_detector,
     fade,
     normalize,
@@ -23,12 +24,30 @@ from .standard_functions import (
     load_pkl_object,
     detrend,
     rms,
-    CalibrationData,
     envelope,
     dither,
     apply_gain,
     resample_filter,
     modify_signal_length,
+    merge_filters,
+    spectral_difference,
+    append_spectra,
+    # Enums
+    SpectrumScaling,
+    SpectrumMethod,
+    FilterCoefficientsType,
+    BiquadEqType,
+    FilterBankMode,
+    FilterPassType,
+    IirDesignMethod,
+    MagnitudeNormalization,
+    SpectrumType,
+    InterpolationDomain,
+    InterpolationScheme,
+    InterpolationEdgeHandling,
+    FrequencySpacing,
+    Window,
+    FadeType,
 )
 from .classes import (
     Filter,
@@ -36,7 +55,9 @@ from .classes import (
     Signal,
     ImpulseResponse,
     MultiBandSignal,
+    Spectrum,
 )
+from .classes.calibration_data import CalibrationData
 from . import transfer_functions
 from . import distances
 from . import room_acoustics
@@ -56,26 +77,31 @@ __all__ = [
     "MultiBandSignal",
     "Filter",
     "FilterBank",
+    "Spectrum",
+    "CalibrationData",
     # Functions in standard module
     "latency",
     "pad_trim",
     "fade",
-    "merge_signals",
-    "merge_filterbanks",
+    "append_signals",
+    "append_filterbanks",
     "resample",
     "activity_detector",
     "normalize",
     "fractional_delay",
+    "delay",
     "true_peak_level",
     "load_pkl_object",
     "detrend",
     "rms",
-    "CalibrationData",
     "envelope",
     "dither",
     "apply_gain",
     "resample_filter",
     "modify_signal_length",
+    "merge_filters",
+    "spectral_difference",
+    "append_spectra",
     # Modules
     "transfer_functions",
     "distances",
@@ -88,6 +114,22 @@ __all__ = [
     "beamforming",
     "effects",
     "tools",
+    # Enums
+    "SpectrumScaling",
+    "SpectrumMethod",
+    "FilterCoefficientsType",
+    "BiquadEqType",
+    "FilterBankMode",
+    "FilterPassType",
+    "MagnitudeNormalization",
+    "SpectrumType",
+    "InterpolationDomain",
+    "InterpolationScheme",
+    "InterpolationEdgeHandling",
+    "FrequencySpacing",
+    "IirDesignMethod",
+    "Window",
+    "FadeType",
 ]
 
-__version__ = "0.4.8"
+__version__ = "0.5"

@@ -22,7 +22,7 @@ Use pip to install dsptoolbox
 
     $ pip install dsptoolbox
 
-(Requires Python 3.10 or higher)
+(Requires Python 3.11 or higher)
 
 In order to install the package successfully using Linux, you need to install
 PortAudio manually, since installing `sounddevice`_ will not do it automatically. To do this,
@@ -34,6 +34,8 @@ run the following commands on your console:
 
 If this does not work properly for some reason, refer to the documentation for
 `sounddevice`_ or `PortAudio`_.
+
+For ASIO support on Windows, refer to `sounddevice`_.
 
 .. _documentation: http://dsptoolbox.readthedocs.io/
 .. _examples: https://github.com/nico-franco-gomez/dsptoolbox/tree/main/examples

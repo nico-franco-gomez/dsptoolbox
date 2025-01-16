@@ -7,7 +7,10 @@ from ..classes.filter import Filter
 from ..classes.impulse_response import ImpulseResponse
 from ..classes.multibandsignal import MultiBandSignal
 from ..plots import general_matrix_plot
-from .._standard import _reconstruct_framed_signal, _get_framed_signal
+from ..standard._framed_signal_representation import (
+    _get_framed_signal,
+    _reconstruct_framed_signal,
+)
 from .._general_helpers import (
     _hz2mel,
     _mel2hz,
@@ -27,6 +30,8 @@ from ..transforms._transforms import (
     _dft_backend,
 )
 from ..tools import to_db
+from ..standard.enums import FilterCoefficientsType, SpectrumMethod
+from .enums import CepstrumType
 
 import numpy as np
 from numpy.typing import NDArray
@@ -47,7 +52,7 @@ except ModuleNotFoundError as e:
 
 
 def cepstrum(
-    signal: Signal, mode="power"
+    signal: Signal, mode: CepstrumType = CepstrumType.Power
 ) -> NDArray[np.float64] | NDArray[np.complex128]:
     """Returns the cepstrum of a given signal in the Quefrency domain.
 
@@ -55,9 +60,8 @@ def cepstrum(
     ----------
     signal : Signal
         Signal to compute the cepstrum from.
-    mode : str, optional
-        Type of cepstrum. Supported modes are `'power'`, `'real'` and
-        `'complex'`. Default: `'power'`.
+    mode : CepstrumType, optional
+        Type of cepstrum. Default: Power.
 
     Returns
     -------
@@ -69,22 +73,15 @@ def cepstrum(
     https://de.wikipedia.org/wiki/Cepstrum
 
     """
-    mode = mode.lower()
-    assert mode in (
-        "power",
-        "complex",
-        "real",
-    ), f"{mode} is not a supported mode"
-
-    signal.set_spectrum_parameters(method="standard")
+    signal.spectrum_method = SpectrumMethod.FFT
     _, sp = signal.get_spectrum()
 
-    if mode in ("power", "real"):
+    if mode in (CepstrumType.Power, CepstrumType.Real):
         ceps = np.abs(np.fft.irfft((2 * np.log(np.abs(sp))), axis=0)) ** 2.0
     else:
         phase = np.unwrap(np.angle(sp), axis=0)
         ceps = np.fft.irfft(np.log(np.abs(sp)) + 1j * phase, axis=0).real
-    if mode == "real":
+    if mode == CepstrumType.Real:
         ceps = (ceps**0.5) / 2.0
     return ceps
 
@@ -169,7 +166,6 @@ def log_mel_spectrogram(
             ylabel="Frequency / Mel",
             xlabel="Time / s",
             ylog=False,
-            returns=True,
         )
         return time_s, f_mel, log_mel_sp, fig, ax
     return time_s, f_mel, log_mel_sp
@@ -296,11 +292,7 @@ def plot_waterfall(
         sig.set_spectrogram_parameters(**stft_parameters)
     t, f, stft = sig.get_spectrogram()
 
-    if sig._spectrum_parameters["scaling"] is None:
-        amplitude_scaling = True
-    else:
-        amplitude_scaling = "amplitude" in sig._spectrum_parameters["scaling"]
-
+    amplitude_scaling = sig.spectrum_scaling.is_amplitude_scaling()
     fig, ax = plt.subplots(figsize=(10, 8), subplot_kw=dict(projection="3d"))
     tt, ff = np.meshgrid(t, f)
     ax.plot_surface(
@@ -420,7 +412,6 @@ def mfcc(
             range_y=[f_mel[0], f_mel[-1]],
             xlabel="Time / s",
             ylabel="Cepstral coefficients",
-            returns=True,
         )
         return time_s, f_mel, mfcc, fig, ax
     return time_s, f_mel, mfcc
@@ -531,14 +522,21 @@ def istft(
         }
 
     window = get_window(
-        parameters["window_type"], parameters["window_length_samples"]
+        parameters["window_type"].to_scipy_format(),
+        parameters["window_length_samples"],
     )
 
-    if parameters["scaling"]:
-        stft /= np.sqrt(2 / np.sum(window) ** 2)
-
-    td_framed = np.fft.irfft(stft, axis=0, n=parameters["fft_length_samples"])
+    td_framed = np.fft.irfft(
+        stft,
+        axis=0,
+        n=parameters["fft_length_samples"],
+        norm=parameters["scaling"].fft_norm(),
+    )
     td_framed = td_framed[: parameters["window_length_samples"], ...]
+    if parameters["scaling"].has_physical_units():
+        td_framed /= parameters["scaling"].get_scaling_factor(
+            parameters["fft_length_samples"], sampling_rate_hz, window
+        )
 
     # Reconstruct from framed representation to continuous
     step = int((1 - parameters["overlap_percent"] / 100) * len(window))
@@ -1183,7 +1181,7 @@ def warp_filter(filter: Filter, warping_factor: float) -> Filter:
 
     """
     assert abs(warping_factor) < 1.0, "Warping factor must be less than 1."
-    z, p, k = filter.get_coefficients("zpk")
+    z, p, k = filter.get_coefficients(FilterCoefficientsType.Zpk)
     p = (warping_factor + p) / (1 + warping_factor * p)
     z = (warping_factor + z) / (1 + warping_factor * z)
     if len(p) > len(z):

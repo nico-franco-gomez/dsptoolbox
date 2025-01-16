@@ -150,6 +150,12 @@ class MultiBandSignal:
         return self.bands[0].length_seconds if self.bands else 0.0
 
     @property
+    def is_complex_signal(self) -> bool:
+        if not self.bands:
+            return False
+        return self.bands[0].is_complex_signal
+
+    @property
     def length_samples(self) -> list[int] | int:
         if not self.bands:
             return 0
@@ -212,6 +218,7 @@ class MultiBandSignal:
                 bs.insert(index, sig)
             self.bands = bs
         self._generate_metadata()
+        return self
 
     def remove_band(self, index: int = -1, return_band: bool = False):
         """Removes a band from the `MultiBandSignal`.
@@ -233,6 +240,7 @@ class MultiBandSignal:
         self._generate_metadata()
         if return_band:
             return f
+        return self
 
     def swap_bands(self, new_order):
         """Rearranges the bands in the new given order.
@@ -260,6 +268,7 @@ class MultiBandSignal:
         ), "There are repeated indexes in the new order vector"
         n_b = [self.bands[i] for i in new_order]
         self.bands = n_b
+        return self
 
     def collapse(self) -> Signal:
         """Collapses MultiBandSignal by summing all of its bands and returning
@@ -284,13 +293,13 @@ class MultiBandSignal:
                 initial += self.bands[n].time_data
                 initial += self.bands[n].time_data_imaginary * 1j
         new_sig = self.bands[0].copy()
-        new_sig.clear_time_window()
         new_sig.time_data = initial
         return new_sig
 
     def show_info(self):
         """Show information about the `MultiBandSignal`."""
         print(self._get_metadata_str())
+        return self
 
     def _get_metadata_str(self):
         txt = ""
@@ -427,20 +436,19 @@ class MultiBandSignal:
             return td
 
     # ======== Saving and copying =============================================
-    def save_signal(self, path: str = "multibandsignal"):
+    def save_signal(self, path: str):
         """Saves the `MultiBandSignal` object as a pickle.
 
         Parameters
         ----------
-        path : str, optional
-            Path for the signal to be saved. Use only folder/folder/name
-            (without format). Default: `'multibandsignal'`
-            (local folder, object named multibandsignal).
+        path : str
+            Path for the multiband signal to be saved with format `.pkl`.
 
         """
         path = _check_format_in_path(path, "pkl")
         with open(path, "wb") as data_file:
             dump(self, data_file, HIGHEST_PROTOCOL)
+        return self
 
     def copy(self):
         """Returns a copy of the object.

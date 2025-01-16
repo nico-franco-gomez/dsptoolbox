@@ -62,6 +62,7 @@ from .transfer_functions import (
     harmonic_distortion_analysis,
     trim_ir,
 )
+from .enums import TransferFunctionType
 
 __all__ = [
     "spectral_deconvolve",
@@ -84,4 +85,5 @@ __all__ = [
     "harmonics_from_chirp_ir",
     "harmonic_distortion_analysis",
     "trim_ir",
+    "TransferFunctionType",
 ]

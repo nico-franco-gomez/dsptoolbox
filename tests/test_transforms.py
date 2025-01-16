@@ -4,16 +4,25 @@ from os.path import join
 import numpy as np
 from matplotlib.pyplot import close
 from scipy.signal import hilbert
+import os
 
 
 class TestTransformsModule:
-    speech = dsp.Signal(join("examples", "data", "speech.flac"))
+    speech = dsp.Signal(
+        join(os.path.dirname(__file__), "..", "example_data", "speech.flac")
+    )
 
     def test_cepstrum(self):
         # Only functionality
-        dsp.transforms.cepstrum(self.speech, mode="power")
-        dsp.transforms.cepstrum(self.speech, mode="real")
-        dsp.transforms.cepstrum(self.speech, mode="complex")
+        dsp.transforms.cepstrum(
+            self.speech, mode=dsp.transforms.CepstrumType.Power
+        )
+        dsp.transforms.cepstrum(
+            self.speech, mode=dsp.transforms.CepstrumType.Real
+        )
+        dsp.transforms.cepstrum(
+            self.speech, mode=dsp.transforms.CepstrumType.Complex
+        )
 
     def test_log_mel_spectrogram(self):
         # Only functionality
@@ -43,7 +52,9 @@ class TestTransformsModule:
             range_hz=None,
             n_bands=40,
             generate_plot=False,
-            stft_parameters=dict(window_type=("chebwin", 40)),
+            stft_parameters=dict(
+                window_type=dsp.Window.Chebwin.with_extra_parameter(40)
+            ),
         )
 
         # Raise Assertion error if set range is larger than the nyquist
@@ -77,7 +88,10 @@ class TestTransformsModule:
         with pytest.raises(AssertionError):
             dsp.transforms.plot_waterfall(self.speech, dynamic_range_db=-10)
         dsp.transforms.plot_waterfall(
-            self.speech, stft_parameters=dict(window_type=("chebwin", 40))
+            self.speech,
+            stft_parameters=dict(
+                window_type=dsp.Window.Chebwin.with_extra_parameter(40)
+            ),
         )
 
     def test_mfcc(self):
@@ -166,7 +180,7 @@ class TestTransformsModule:
         dsp.transforms.hilbert(s_mb)
 
     def test_stereo_mid_side(self):
-        sp = dsp.merge_signals(self.speech, self.speech)
+        sp = dsp.append_signals([self.speech, self.speech])
         sp_aft = dsp.transforms.stereo_mid_side(sp, True)
         sp_aft = dsp.transforms.stereo_mid_side(sp_aft, False)
         assert np.all(np.isclose(sp.time_data, sp_aft.time_data))
@@ -178,7 +192,9 @@ class TestTransformsModule:
 
     def test_warp(self):
         # Only functionality
-        s = dsp.ImpulseResponse(join("examples", "data", "rir.wav"))
+        s = dsp.ImpulseResponse(
+            join(os.path.dirname(__file__), "..", "example_data", "rir.wav")
+        )
         dsp.transforms.warp(s, -0.6, True, 2**8)
         dsp.transforms.warp(s, 0.6, False, 2**8)
 
@@ -190,8 +206,12 @@ class TestTransformsModule:
 
     def test_warp_filter(self):
         # Only functionality
-        i = dsp.Filter.iir_design(
-            3, 100.0, "highpass", "butter", sampling_rate_hz=24000
+        i = dsp.Filter.iir_filter(
+            3,
+            100.0,
+            type_of_pass=dsp.FilterPassType.Highpass,
+            filter_design_method=dsp.IirDesignMethod.Butterworth,
+            sampling_rate_hz=24000,
         )
         dsp.transforms.warp_filter(i, -0.6)
         # dsp.FilterBank([i, ii]).plot_magnitude(length_samples=2**14)
@@ -209,7 +229,7 @@ class TestTransformsModule:
 
     def test_dft(self):
         s = dsp.pad_trim(self.speech, 20_000)
-        s.set_spectrum_parameters("standard")
+        s.spectrum_method = dsp.SpectrumMethod.FFT
         f, spectrum = s.get_spectrum()
 
         select = slice(20, 40)

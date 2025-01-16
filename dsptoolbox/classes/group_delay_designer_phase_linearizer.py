@@ -43,7 +43,7 @@ class GroupDelayDesigner:
     def set_parameters(
         self,
         delay_increase_ms: float = 0.0,
-        additional_length_samples: int = 0,
+        additional_length_samples: int | None = 0,
         trapezoidal_integration: bool = True,
     ):
         """Set parameters for the FIR filter.
@@ -58,7 +58,8 @@ class GroupDelayDesigner:
             When obtaining the group delay, some energy might leak into the
             latest samples. Through this parameter, the last samples can
             be retained at the expense of a longer filter. Pass 0 to retain
-            only the theoretical minimum. Default: 0.
+            only the theoretical minimum. Pass None to return the whole
+            computed IR. Default: 0.
         trapezoidal_integration : bool, optional
             In order to obtain a phase response, the desired group delay must
             be integrated using a numerical integration method. Trapezoidal
@@ -70,9 +71,10 @@ class GroupDelayDesigner:
         assert (
             delay_increase_ms >= 0
         ), "Delay increase must be larger than zero"
-        assert (
-            additional_length_samples >= 0
-        ), "Additional length must be 0 or greater"
+        if additional_length_samples is not None:
+            assert (
+                additional_length_samples >= 0
+            ), "Additional length must be 0 or greater"
         self.group_delay_increase_ms = delay_increase_ms
         self.trapezoidal_integration = trapezoidal_integration
         self.additional_length_samples = additional_length_samples
@@ -174,15 +176,18 @@ class GroupDelayDesigner:
             add_extra_sample = new_phase[-1] % np.pi > np.pi / 2.0
             new_phase = _correct_for_real_phase_spectrum(new_phase)
 
-        # Convert to time domain and trim
+        # Convert to time domain
         ir = np.fft.irfft(np.exp(1j * new_phase), gd_time_length_samples)
-        trim_length = int(
-            max_delay_samples_synthesized
-            + 1
-            + add_extra_sample
-            + self.additional_length_samples
-        )
-        ir = _pad_trim(ir, trim_length)
+
+        # Trim
+        if self.additional_length_samples is not None:
+            trim_length = int(
+                max_delay_samples_synthesized
+                + 1
+                + add_extra_sample
+                + self.additional_length_samples
+            )
+            ir = _pad_trim(ir, trim_length)
         return ir
 
 

@@ -11,6 +11,7 @@ from .filterbank import FilterBank
 from .filter import Filter
 from .signal import Signal
 from ..generators import dirac
+from ..standard.enums import FilterCoefficientsType
 
 
 class ParallelFilter(RealtimeFilter):
@@ -107,6 +108,7 @@ class ParallelFilter(RealtimeFilter):
             if delay_iir_samples is None
             else delay_iir_samples
         )
+        return self
 
     def set_coefficients(
         self,
@@ -135,6 +137,7 @@ class ParallelFilter(RealtimeFilter):
         else:
             self.__fir_coefficients = np.array([])
         self.n_fir = len(self.__fir_coefficients)
+        return self
 
     def fit_to_ir(self, ir: ImpulseResponse):
         """Fit the filter coefficients of this filter bank to an IR using the
@@ -240,6 +243,7 @@ class ParallelFilter(RealtimeFilter):
             self.__fir_coefficients = ff
 
         self.__compute_filter_bank()
+        return self
 
     def __compute_filter_bank(self):
         fb = FilterBank(
@@ -263,10 +267,14 @@ class ParallelFilter(RealtimeFilter):
         assert hasattr(self, "filter_bank"), "Filter bank needed"
         self.iir: list[IIRFilter] = []
         for f in self.filter_bank:
-            if f.filter_type == "fir":
-                self.fir = FIRFilter(f.get_coefficients("ba")[0])
+            if not f.is_iir:
+                self.fir = FIRFilter(
+                    f.get_coefficients(FilterCoefficientsType.Ba)[0]
+                )
             else:
-                self.iir.append(IIRFilter(*f.get_coefficients("ba")))
+                self.iir.append(
+                    IIRFilter(*f.get_coefficients(FilterCoefficientsType.Ba))
+                )
         if self.delay_iir_samples > 0:
             self.iir_delay = FIRFilter(
                 np.array(self.delay_iir_samples * [0.0] + [1.0])

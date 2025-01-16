@@ -29,7 +29,13 @@ from ._filterbank import (
     _get_matched_bandpass_eq,
     _get_matched_shelving_eq,
 )
-from .._standard import _kaiser_window_fractional
+from ..standard._standard_backend import _kaiser_window_fractional
+from ..standard.enums import (
+    FilterCoefficientsType,
+    BiquadEqType,
+    FilterPassType,
+    IirDesignMethod,
+)
 
 
 def linkwitz_riley_crossovers(
@@ -207,10 +213,11 @@ def reconstructing_fractional_octave_bands(
 
     filters = []
     for i in range(time.shape[0]):
-        config = {}
-        config["ba"] = [time[i, :], [1]]
         filters.append(
-            Filter("other", config, sampling_rate_hz=sampling_rate_hz)
+            Filter(
+                {FilterCoefficientsType.Ba: [time[i, :], [1.0]]},
+                sampling_rate_hz=sampling_rate_hz,
+            )
         )
     filt_bank = FilterBank(filters=filters)
 
@@ -294,7 +301,7 @@ def auditory_filters_gammatone(
             np.atleast_2d([1, 0, 0, 1, -coefficients[bb], 0]), (4, 1)
         )
         sos_section[3, 0] = normalizations[bb]
-        f = Filter("other", {"sos": sos_section}, sampling_rate_hz)
+        f = Filter({FilterCoefficientsType.Sos: sos_section}, sampling_rate_hz)
         f.warning_if_complex = False
         filters.append(f)
 
@@ -388,20 +395,17 @@ def fractional_octave_bands(
     octave_filter_bank = FilterBank()
 
     for ind in range(len(lower)):
-        top = "bandpass"
+        top = FilterPassType.Bandpass
         freqs = [lower[ind], upper[ind]]
         if upper[ind] > sampling_rate_hz // 2:
-            top = "highpass"
+            top = FilterPassType.Highpass
             freqs = lower[ind]
 
-        f = Filter(
-            "iir",
-            dict(
-                type_of_pass=top,
-                filter_design_method="butter",
-                order=filter_order,
-                freqs=freqs,
-            ),
+        f = Filter.iir_filter(
+            order=filter_order,
+            frequency_hz=freqs,
+            type_of_pass=top,
+            filter_design_method=IirDesignMethod.Butterworth,
             sampling_rate_hz=sampling_rate_hz,
         )
         octave_filter_bank.add_filter(f)
@@ -409,23 +413,24 @@ def fractional_octave_bands(
     return octave_filter_bank
 
 
-def weightning_filter(
-    weightning: str = "a", sampling_rate_hz: int | None = None
+def weighting_filter(
+    a_weighting: bool = True, sampling_rate_hz: int | None = None
 ):
-    """Returns a digital IIR weightning filter according to [1]. The
+    """Returns a digital IIR weighting filter according to [1]. The
     approximation is based on the coefficients given in [2].
 
     Parameters
     ----------
-    weightning : {'a', 'c'} str, optional
-        Type of weightning. Choose between `'a'` or `'c'`. Default: `'a'`.
+    a_weighting : bool, optional
+        When True, an A-Weighting filter is returned, otherwise it is
+        C-Weighting. Default: True.
     sampling_rate_hz : int
         Sampling rate for the digital filter.
 
     Returns
     -------
-    weightning_filter : `Filter`
-        Weightning filter.
+    weighting_filter : `Filter`
+        Weighting filter.
 
     References
     ----------
@@ -433,12 +438,7 @@ def weightning_filter(
     - [2]: https://en.wikipedia.org/wiki/A-weighting
 
     """
-    weightning = weightning.lower()
-    assert weightning in (
-        "a",
-        "c",
-    ), "Invalid type of weightning. Use either a or c"
-    if weightning == "a":
+    if a_weighting:
         z = [0, 0, 0, 0]
         k = 7.39705e9
         p = [-129.4, -129.4, -676.7, -4636, -76655, -76655]
@@ -446,11 +446,10 @@ def weightning_filter(
         z = [0, 0]
         k = 5.91797e9
         p = [-129.4, -129.4, -76655, -76655]
-    coeff = bilinear_zpk(z, p, k, sampling_rate_hz)
-    weightning_filter = Filter(
-        "other", dict(zpk=coeff), sampling_rate_hz=sampling_rate_hz
+    return Filter.from_zpk(
+        *bilinear_zpk(z, p, k, sampling_rate_hz),
+        sampling_rate_hz,
     )
-    return weightning_filter
 
 
 def complementary_fir_filter(fir: Filter) -> Filter:
@@ -480,7 +479,7 @@ def complementary_fir_filter(fir: Filter) -> Filter:
       response of both filters.
 
     """
-    assert fir.filter_type == "fir", "Filter prototype must be an FIR filter"
+    assert not fir.is_iir, "Filter prototype must be an FIR filter"
     b = fir.ba[0].copy()
     odd_length = len(b) % 2 == 1
 
@@ -492,7 +491,7 @@ def complementary_fir_filter(fir: Filter) -> Filter:
         h = np.sinc(np.arange(-len(b) // 2 + 1, len(b) // 2 + 1) - 0.5)
         b = h * _kaiser_window_fractional(len(h), 60, 0.5) - b
 
-    fir_complementary = Filter("other", {"ba": [b, [1]]}, fir.sampling_rate_hz)
+    fir_complementary = Filter.from_ba(b, [1.0], fir.sampling_rate_hz)
     return fir_complementary
 
 
@@ -519,26 +518,25 @@ def convert_into_lattice_filter(filt: Filter) -> LatticeLadderFilter:
       this, an assertion error is raised.
 
     """
-    if filt.filter_type in ("iir", "biquad"):
-        if hasattr(filt, "sos"):
-            sos = filt.get_coefficients("sos")
+    if filt.is_iir:
+        if filt.has_sos:
+            sos = filt.get_coefficients(FilterCoefficientsType.Sos)
             k, c = _get_lattice_ladder_coefficients_iir_sos(sos)
-        else:
-            b, a = filt.get_coefficients("ba")
-            k, c = _get_lattice_ladder_coefficients_iir(b, a)
-        new_filt = LatticeLadderFilter(k, c, filt.sampling_rate_hz)
-    elif filt.filter_type == "fir":
-        b, a = filt.get_coefficients("ba")
-        b /= b[0]
-        k = _get_lattice_coefficients_fir(b)
-        assert np.all(np.abs(k) < 1), (
-            "Some reflection coefficient was "
-            + "equal or larger than zero, this is not supported"
-        )
-        new_filt = LatticeLadderFilter(k, None, filt.sampling_rate_hz)
-    else:
-        raise ValueError(f"Unsupported filter type: {filt.filter_type}")
-    return new_filt
+            return LatticeLadderFilter(k, c, filt.sampling_rate_hz)
+
+        b, a = filt.get_coefficients(FilterCoefficientsType.Ba)
+        k, c = _get_lattice_ladder_coefficients_iir(b, a)
+        return LatticeLadderFilter(k, c, filt.sampling_rate_hz)
+
+    # FIR
+    b, a = filt.get_coefficients(FilterCoefficientsType.Ba)
+    b /= b[0]
+    k = _get_lattice_coefficients_fir(b)
+    assert np.all(np.abs(k) < 1), (
+        "Some reflection coefficient was "
+        + "equal or larger than zero, this is not supported"
+    )
+    return LatticeLadderFilter(k, None, filt.sampling_rate_hz)
 
 
 def pinking_filter(frequency_0_db: float, sampling_rate_hz: int) -> Filter:
@@ -577,13 +575,11 @@ def pinking_filter(frequency_0_db: float, sampling_rate_hz: int) -> Filter:
     # Obtain desired gain from response at frequency point
     h = freqz_zpk(z, p, k, [frequency_0_db], fs=sampling_rate_hz)[1]
     k /= np.abs(h)
-    return Filter(
-        "other", {"zpk": [z, p, k]}, sampling_rate_hz=sampling_rate_hz
-    )
+    return Filter.from_zpk(z, p, k, sampling_rate_hz=sampling_rate_hz)
 
 
 def matched_biquad(
-    eq_type: str,
+    eq_type: BiquadEqType,
     freq_hz: float,
     gain_db: float,
     q: float,
@@ -597,7 +593,7 @@ def matched_biquad(
 
     Parameters
     ----------
-    eq_type : str
+    eq_type : BiquadEqType
         Type of biquad filter to create. Choose from "peaking", "lowpass",
         "highpass", "bandpass", "lowshelf", "highshelf".
     freq_hz : float
@@ -655,56 +651,49 @@ def matched_biquad(
     - [5]: M. Vicanek. Matched Two-Pole Digital Shelving Filters. 2024.
 
     """
-    eq_type = eq_type.lower()
-    assert eq_type in (
-        "peaking",
-        "lowpass",
-        "highpass",
-        "lowshelf",
-        "highshelf",
-        "bandpass",
-    ), f"{eq_type} is not valid as eq type"
     assert (
         freq_hz > 0 and freq_hz < sampling_rate_hz / 2
     ), f"{freq_hz} is not a valid frequency"
     assert q > 0, "Quality factor must be greater than zero"
 
     match eq_type:
-        case "peaking":
+        case BiquadEqType.Peaking:
             ba = _get_matched_peaking_eq(
                 freq_hz, gain_db, q, q_factor, sampling_rate_hz
             )
-        case "lowpass":
+        case BiquadEqType.Lowpass:
             ba = _get_matched_lowpass_eq(freq_hz, gain_db, q, sampling_rate_hz)
-        case "highpass":
+        case BiquadEqType.Highpass:
             ba = _get_matched_highpass_eq(
                 freq_hz, gain_db, q, sampling_rate_hz
             )
-        case "bandpass":
+        case BiquadEqType.BandpassPeak:
             ba = _get_matched_bandpass_eq(
                 freq_hz, gain_db, q, sampling_rate_hz
             )
-        case "lowshelf":
+        case BiquadEqType.BandpassSkirt:
+            ba = _get_matched_bandpass_eq(
+                freq_hz, gain_db, q, sampling_rate_hz
+            )
+        case BiquadEqType.Lowshelf:
             ba = _get_matched_shelving_eq(
                 freq_hz, gain_db, sampling_rate_hz, True
             )
-        case "highshelf":
+        case BiquadEqType.Highshelf:
             ba = _get_matched_shelving_eq(
                 freq_hz, gain_db, sampling_rate_hz, False
             )
+        case _:
+            raise ValueError("Unsupported Eq type")
 
-    return Filter(
-        "other",
-        {"ba": ba},
-        sampling_rate_hz,
-    )
+    return Filter({FilterCoefficientsType.Ba: ba}, sampling_rate_hz)
 
 
 def gaussian_kernel(
     kernel_length_seconds: float,
     kernel_boundary_value: float = 1e-2,
     approximation_order: int = 12,
-    sampling_rate_hz: int = None,
+    sampling_rate_hz: int | None = None,
 ):
     """Approximate a gaussian FIR window with a first-order IIR approximation
     kernel according to [1]. The resulting filter must be applied using
@@ -766,4 +755,4 @@ def gaussian_kernel(
     sos = tf2sos(b, a)
     sos = np.repeat(sos, K, axis=0)
 
-    return Filter("other", {"sos": sos}, sampling_rate_hz)
+    return Filter.from_sos(sos, sampling_rate_hz)

@@ -21,6 +21,13 @@ from warnings import warn
 from scipy.fft import next_fast_len
 import sys
 
+from .standard.enums import (
+    SpectrumScaling,
+    MagnitudeNormalization,
+    FadeType,
+    Window,
+)
+
 
 def to_db(
     x: NDArray[np.float64],
@@ -116,9 +123,9 @@ def _find_nearest(points, vector) -> NDArray[np.int_]:
 def _calculate_window(
     points,
     window_length: int,
-    window_type: str | tuple | list = "hann",
-    at_start: bool = True,
-    inverse=False,
+    window_type: Window | list[Window],
+    at_start: bool,
+    inverse: bool,
 ) -> NDArray[np.float64]:
     """Creates a custom window with given indexes
 
@@ -129,15 +136,15 @@ def _calculate_window(
         window.
     window_length: int
         Length of the window.
-    window_type: str, list, tuple, optional
+    window_type: Window, list[Window]
         Type of window to use. Select from scipy.signal.windows. It can be a
         tuple with the window type and extra parameters or a list with two
-        window types. Default: `'hann'`.
-    at_start: bool, optional
-        Creates a half rising window at the start as well. Default: `True`.
-    inverse: bool, optional
+        window types.
+    at_start: bool
+        Creates a half rising window at the start as well.
+    inverse: bool
         When `True`, the window is inversed so that the middle section
-        contains 0. Default: False.
+        contains 0.
 
     Returns
     -------
@@ -146,13 +153,13 @@ def _calculate_window(
 
     """
     assert len(points) == 4, "For the custom window 4 points are needed"
-    if type(window_type) in (str, tuple):
-        left_window_type = window_type
-        right_window_type = window_type
+    if type(window_type) is Window:
+        left_window_type = window_type.to_scipy_format()
+        right_window_type = window_type.to_scipy_format()
     if type(window_type) is list:
         assert len(window_type) == 2, "There must be exactly two window types"
-        left_window_type = window_type[0]
-        right_window_type = window_type[1]
+        left_window_type = window_type[0].to_scipy_format()
+        right_window_type = window_type[1].to_scipy_format()
 
     idx_start_stop_f = [int(i) for i in points]
 
@@ -183,13 +190,13 @@ def _calculate_window(
 
 def _get_normalized_spectrum(
     f,
-    spectra: NDArray[np.float64],
-    scaling: str = "amplitude",
-    f_range_hz=[20, 20000],
-    normalize: str | None = None,
-    smoothing: int = 0,
-    phase=False,
-    calibrated_data: bool = False,
+    spectra: NDArray[np.complex128 | np.float64],
+    is_amplitude_scaling: bool,
+    f_range_hz,
+    normalize: MagnitudeNormalization,
+    smoothing: int,
+    phase: bool,
+    calibrated_data: bool,
 ) -> (
     tuple[NDArray[np.float64], NDArray[np.float64]]
     | tuple[NDArray[np.float64], NDArray[np.float64], NDArray[np.float64]]
@@ -202,28 +209,25 @@ def _get_normalized_spectrum(
     ----------
     f : NDArray[np.float64]
         Frequency vector.
-    spectra : NDArray[np.float64]
-        Spectrum matrix.
-    scaling : str, optional
+    spectra : NDArray[np.complex128 | np.complex128]
+        Spectrum matrix. It can be the power or amplitude representation.
+        Complex spectrum is assumed to have amplitude scaling.
+    is_amplitude_scaling : bool
         Information about whether the spectrum is scaled as an amplitude or
-        power. Choose from `'amplitude'` or `'power'`. Default: `'amplitude'`.
+        power.
     f_range_hz : array-like with length 2
         Range of frequencies to get the normalized spectrum back.
-        Default: [20, 20e3].
-    normalize : str, optional
-        Normalize spectrum (per channel). Choose from `'1k'` (for 1 kHz),
-        `'max'` (maximum value) or `None` for no normalization. The
-        normalization for 1 kHz uses a linear interpolation for getting the
-        value at 1 kHz regardless of the frequency resolution. Default: `None`.
-    smoothing : int, optional
+    normalize : MagnitudeNormalization
+        Normalize spectrum (per channel).
+    smoothing : int
         1/smoothing-fractional octave band smoothing for magnitude spectra.
-        Pass `0` for no smoothing. Default: 0.
-    phase : bool, optional
+        Pass `0` for no smoothing.
+    phase : bool
         When `True`, phase spectra are also returned. Smoothing is also
-        applied to the unwrapped phase. Default: `False`.
-    calibrated_data : bool, optional
+        applied to the unwrapped phase.
+    calibrated_data : bool
         When `True`, it is assumed that the time data has been calibrated
-        to be in Pascal so that it is scaled by p0=20e-6 Pa. Default: `False`.
+        to be in Pascal so that it is scaled by p0=20e-6 Pa.
 
     Returns
     -------
@@ -236,16 +240,9 @@ def _get_normalized_spectrum(
 
     Notes
     -----
-    - The spectrum is clipped at -800 dB by default when standard or -400 dB
-      when welch method is used.
+    - The spectrum is clipped according to `tools.to_db()`.
 
     """
-    if normalize is not None:
-        normalize = normalize.lower()
-        assert normalize in ("1k", "max"), (
-            f"{normalize} is not a valid normalization mode. Please use "
-            + "1k or max"
-        )
     # Shaping
     one_dimensional = False
     if spectra.ndim < 2:
@@ -258,16 +255,19 @@ def _get_normalized_spectrum(
             + "possible since the spectra are not complex"
         )
     # Factor
-    if scaling == "amplitude":
-        scale_factor = 20e-6 if calibrated_data and normalize is None else 1
-        amplitude_scaling = True
-    elif scaling == "power":
-        scale_factor = 4e-10 if calibrated_data and normalize is None else 1
-        amplitude_scaling = False
+    if is_amplitude_scaling:
+        scale_factor = (
+            20e-6
+            if calibrated_data
+            and normalize == MagnitudeNormalization.NoNormalization
+            else 1
+        )
     else:
-        raise ValueError(
-            f"{scaling} is not supported. Please select amplitude or "
-            + "power scaling"
+        scale_factor = (
+            4e-10
+            if calibrated_data
+            and normalize == MagnitudeNormalization.NoNormalization
+            else 1
         )
 
     if f_range_hz is not None:
@@ -283,45 +283,66 @@ def _get_normalized_spectrum(
         id2 = len(f)
 
     spectra = spectra[id1:id2]
+    mag_spectra = np.abs(spectra)
     f = f[id1:id2]
 
-    mag_spectra = np.abs(spectra)
-
     if smoothing != 0:
-        if scaling == "amplitude":
-            mag_spectra = _fractional_octave_smoothing(mag_spectra, smoothing)
-        else:  # Smoothing always in amplitude representation
+        if is_amplitude_scaling:
             mag_spectra = (
-                _fractional_octave_smoothing(mag_spectra**0.5, smoothing) ** 2
+                _fractional_octave_smoothing(mag_spectra, None, smoothing)
+                if is_amplitude_scaling
+                else (
+                    # Smoothing always in amplitude representation
+                    _fractional_octave_smoothing(
+                        mag_spectra**0.5, None, smoothing
+                    )
+                    ** 2
+                )
             )
 
-    mag_spectra = to_db(mag_spectra / scale_factor, amplitude_scaling, 500)
+    mag_spectra_db = to_db(
+        mag_spectra / scale_factor, is_amplitude_scaling, 500
+    )
 
-    if normalize is not None:
-        for i in range(spectra.shape[1]):
-            if normalize == "1k":
-                mag_spectra[:, i] -= _get_exact_gain_1khz(f, mag_spectra[:, i])
-            else:
-                mag_spectra[:, i] -= np.max(mag_spectra[:, i])
+    if normalize == MagnitudeNormalization.OneKhz:
+        normalization_db = np.array(
+            [
+                _get_exact_gain_1khz(f, mag_spectra_db[:, i])
+                for i in range(spectra.shape[1])
+            ]
+        )
+    elif normalize == MagnitudeNormalization.Max:
+        normalization_db = np.max(mag_spectra_db, axis=0)
+    elif normalize == MagnitudeNormalization.Energy:
+        normalization_db = to_db(
+            np.mean(
+                mag_spectra**2.0 if is_amplitude_scaling else mag_spectra,
+                axis=0,
+            ),
+            False,
+        )
+    else:
+        normalization_db = np.zeros(mag_spectra_db.shape[1])
+    mag_spectra_db -= normalization_db[None, :]
 
     if phase:
         phase_spectra = np.angle(spectra)
         if smoothing != 0:
             phase_spectra = _wrap_phase(
                 _fractional_octave_smoothing(
-                    np.unwrap(phase_spectra, axis=0), smoothing
+                    np.unwrap(phase_spectra, axis=0), None, smoothing
                 )
             )
 
     if one_dimensional:
-        mag_spectra = np.squeeze(mag_spectra)
+        mag_spectra_db = np.squeeze(mag_spectra_db)
         if phase:
             phase_spectra = np.squeeze(phase_spectra)
 
     if phase:
-        return f, mag_spectra, phase_spectra
+        return f, mag_spectra_db, phase_spectra
 
-    return f, mag_spectra
+    return f, mag_spectra_db
 
 
 def _find_frequencies_above_threshold(
@@ -337,12 +358,15 @@ def _find_frequencies_above_threshold(
 
 
 def _pad_trim(
-    vector: NDArray[np.float64],
+    vector: NDArray,
     desired_length: int,
     axis: int = 0,
     in_the_end: bool = True,
-) -> NDArray[np.float64]:
+) -> NDArray:
     """Pads (with zeros) or trim (depending on size and desired length)."""
+    if vector.shape[axis] == desired_length:
+        return vector.copy()
+
     throw_axis = False
     if vector.ndim < 2:
         assert axis == 0, "You can only pad along the 0 axis"
@@ -417,7 +441,10 @@ def _compute_number_frames(
 
 
 def _normalize(
-    s: NDArray[np.float64], dbfs: float, mode: str, per_channel: bool
+    s: NDArray[np.float64],
+    dbfs: float,
+    peak_normalization: bool,
+    per_channel: bool,
 ) -> NDArray[np.float64]:
     """Normalizes a signal.
 
@@ -428,9 +455,8 @@ def _normalize(
         be in the outer axis.
     dbfs: float
         dbfs value to normalize to.
-    mode: str, optional
-        Mode of normalization, `peak` uses the signal maximum absolute value,
-        `rms` uses Root mean square value
+    peak_normalization: Bool
+        Mode of normalization. True -> `peak`, False -> `rms`.
 
     Returns
     -------
@@ -438,19 +464,14 @@ def _normalize(
         Normalized signal.
 
     """
-    assert mode in ("peak", "rms"), (
-        "Mode of normalization is not "
-        + "available. Select either peak or rms"
-    )
-
     onedim = s.ndim == 1
     if onedim:
         s = s[..., None]
 
     factor = from_db(dbfs, True)
-    if mode == "peak":
+    if peak_normalization:
         factor /= np.max(np.abs(s), axis=0 if per_channel else None)
-    elif mode == "rms":
+    else:
         factor /= _rms(s if per_channel else s.flatten())
     s_norm = s * factor
 
@@ -485,10 +506,10 @@ def _amplify_db(s: NDArray[np.float64], db: float) -> NDArray[np.float64]:
 
 def _fade(
     s: NDArray[np.float64],
-    length_seconds: float = 0.1,
-    mode: str = "exp",
-    sampling_rate_hz: int = 48000,
-    at_start: bool = True,
+    length_seconds: float,
+    mode: FadeType,
+    sampling_rate_hz: int,
+    at_start: bool,
 ) -> NDArray[np.float64]:
     """Create a fade in signal.
 
@@ -496,16 +517,14 @@ def _fade(
     ----------
     s : NDArray[np.float64]
         np.array to be faded.
-    length_seconds : float, optional
-        Length of fade in seconds. Default: 0.1.
-    mode : str, optional
-        Type of fading. Options are `'exp'`, `'lin'`, `'log'`.
-        Default: `'lin'`.
-    sampling_rate_hz : int, optional
-        Sampling rate. Default: 48000.
-    at_start : bool, optional
+    length_seconds : float
+        Length of fade in seconds.
+    mode : FadeType
+        Type of fading.
+    sampling_rate_hz : int
+        Sampling rate.
+    at_start : bool
         When `True`, the start is faded. When `False`, the end.
-        Default: `True`.
 
     Returns
     -------
@@ -513,12 +532,9 @@ def _fade(
         Faded vector.
 
     """
-    mode = mode.lower()
-    assert mode in (
-        "exp",
-        "lin",
-        "log",
-    ), f"{mode} is not supported. Choose from exp, lin, log."
+    if mode == FadeType.NoFade:
+        return s
+
     assert length_seconds > 0, "Only positive lengths"
     l_samples = int(length_seconds * sampling_rate_hz)
     assert len(s) > l_samples, "Signal is shorter than the desired fade"
@@ -531,12 +547,12 @@ def _fade(
     else:
         assert s.ndim == 2, "Fade only supports 1D and 2D vectors"
 
-    if mode == "exp":
+    if mode == FadeType.Exponential:
         db = np.linspace(-100, 0, l_samples)
         fade = 10 ** (db / 20)
-    elif mode == "lin":
+    elif mode == FadeType.Linear:
         fade = np.linspace(0, 1, l_samples)
-    else:
+    else:  # FadeType.Logarithmic
         # The constant 50 could be an extra parameter for the user...
         fade = np.log10(np.linspace(1, 50 * 10**0.5, l_samples))
         fade /= fade[-1]
@@ -573,6 +589,7 @@ def _gaussian_window_sigma(window_length: int, alpha: float = 2.5) -> float:
 
 def _fractional_octave_smoothing(
     vector: NDArray[np.float64],
+    bin_spacing_octaves: float | None = None,
     num_fractions: int = 3,
     window_type="hann",
     window_vec: NDArray[np.float64] | None = None,
@@ -587,6 +604,9 @@ def _fractional_octave_smoothing(
     vector : NDArray[np.float64]
         Vector to be smoothed. It is assumed that the first axis is to
         be smoothed.
+    bin_spacing_octaves : float, None, optional
+        Spacing between frequency bins in octaves. If None, it is assumed that
+        the vector is linearly spaced. Default: None.
     num_fractions : int, optional
         Fraction of octave to be smoothed across. Default: 3 (third band).
     window_type : str, optional
@@ -613,23 +633,21 @@ def _fractional_octave_smoothing(
     - https://github.com/pyfar/pyfar
 
     """
-    if window_type is not None:
-        assert window_vec is None, (
-            "Set window_vec to None if you wish to create the window "
-            + "within the function"
-        )
-    if window_vec is not None:
-        assert window_type is None, (
-            "Set window_type to None if you wish to pass a vector to use "
-            + "as window"
-        )
-    # Linear and logarithmic frequency vector
-    N = len(vector)
-    l1 = np.arange(N, dtype=np.float64)
-    k_log = (N) ** (l1 / (N - 1))
-    l1 += 1.0
-    beta = np.log2(k_log[1])
+    lin_spaced = bin_spacing_octaves is None
 
+    if lin_spaced:
+        # Linear and logarithmic frequency vector
+        N = len(vector)
+        l1 = np.arange(N, dtype=np.float64)
+        k_log = (N) ** (l1 / (N - 1))
+        l1 += 1.0
+        beta = np.log2(k_log[1])
+        # Interpolate to logarithmic scale
+        vector = PchipInterpolator(l1, vector, axis=0)(k_log)
+    else:
+        beta = bin_spacing_octaves
+
+    # Smooth
     # Window length always odd, so that delay can be easily compensated
     n_window = int(1 / (num_fractions * beta) + 0.5)  # Round
     n_window += 1 - n_window % 2  # Ensure odd length
@@ -650,6 +668,7 @@ def _fractional_octave_smoothing(
             window_type is None
         ), "When using a window as a vector, window type should be None"
         window = window_vec
+
     # Dimension handling
     one_dim = False
     if vector.ndim == 1:
@@ -659,14 +678,11 @@ def _fractional_octave_smoothing(
     # Normalize window
     window /= window.sum()
 
-    # Interpolate to logarithmic scale
-    vec_log = PchipInterpolator(l1, vector, axis=0)(k_log)
-
     # Smoothe by convolving with window (output is centered)
     n_window_half = n_window // 2
     smoothed = oaconvolve(
         np.pad(
-            vec_log,
+            vector,
             ((n_window_half, n_window_half - (1 - n_window % 2)), (0, 0)),
             mode="edge",
         ),
@@ -674,18 +690,24 @@ def _fractional_octave_smoothing(
         mode="valid",
         axes=0,
     )
+    if one_dim:
+        smoothed = smoothed.squeeze()
 
     # Interpolate back to linear scale
-    vec_final = interp1d(
-        k_log, smoothed, kind="linear", copy=False, assume_sorted=True, axis=0
-    )(l1)
-    if one_dim:
-        vec_final = vec_final.squeeze()
+    if lin_spaced:
+        smoothed = interp1d(
+            k_log,
+            smoothed,
+            kind="linear",
+            copy=False,
+            assume_sorted=True,
+            axis=0,
+        )(l1)
 
-    # Avoid any negative values (numerical errors)
+    # Avoid any negative values
     if clip_values:
-        vec_final = np.clip(vec_final, a_min=0, a_max=None)
-    return vec_final
+        smoothed = np.clip(smoothed, a_min=0, a_max=None)
+    return smoothed
 
 
 def _frequency_weightning(
@@ -1191,7 +1213,7 @@ def _correct_for_real_phase_spectrum(phase_spectrum: NDArray[np.float64]):
 
 def _scale_spectrum(
     spectrum: NDArray[np.float64] | NDArray[np.complex128],
-    mode: str | None,
+    scaling: SpectrumScaling,
     time_length_samples: int,
     sampling_rate_hz: int,
     window: NDArray[np.float64] | None = None,
@@ -1204,12 +1226,11 @@ def _scale_spectrum(
     ----------
     spectrum : NDArray[np.float64] | NDArray[np.complex128]
         Spectrum to scale. It is assumed that the frequency bins are along
-        the first dimension.
-    mode : str, None
-        Type of scaling to use. `"power spectral density"`, `"power spectrum"`,
-        `"amplitude spectral density"`, `"amplitude spectrum"`. Pass `None`
-        to avoid any scaling and return the same spectrum. Using a power
-        representation will returned the squared spectrum.
+        the first dimension. No FFT normalization should have been applied to
+        it.
+    scaling : SpectrumScaling
+        Type of scaling to use. Using a power representation will returned the
+        squared spectrum.
     time_length_samples : int
         Original length of the time data.
     sampling_rate_hz : int
@@ -1237,38 +1258,20 @@ def _scale_spectrum(
         spectrum.shape[0] * 2 - 1,
     ), "Time length does not match"
 
-    if mode is None:
-        return spectrum
+    factor = scaling.get_scaling_factor(
+        time_length_samples, sampling_rate_hz, window
+    )
 
-    mode = mode.lower()
-    assert mode in (
-        "amplitude spectral density",
-        "amplitude spectrum",
-        "power spectral density",
-        "power spectrum",
-    ), f"{mode} is not a supported mode"
-
-    if "spectral density" in mode:
-        if window is None:
-            factor = (2 / time_length_samples / sampling_rate_hz) ** 0.5
-        else:
-            factor = (
-                2 / np.sum(window**2, axis=0, keepdims=True) / sampling_rate_hz
-            ) ** 0.5
-    elif "spectrum" in mode:
-        if window is None:
-            factor = 2**0.5 / time_length_samples
-        else:
-            factor = 2**0.5 / np.sum(window, axis=0, keepdims=True)
-
-    spectrum *= factor
-
+    # One-sided fix for DC and Nyquist (assuming input was linear)
     spectrum[0] /= 2**0.5
     if time_length_samples % 2 == 0:
         spectrum[-1] /= 2**0.5
 
-    if "power" in mode:
+    # Amplitude vs. Power
+    if not scaling.is_amplitude_scaling():
         spectrum = np.abs(spectrum) ** 2
+
+    spectrum *= factor
 
     return spectrum
 
@@ -1364,7 +1367,7 @@ def _get_fractional_impulse_peak_index(
     return latency_samples + start_offset
 
 
-def _remove_ir_latency_from_phase(
+def _remove_ir_latency_from_phase_min_phase(
     freqs: NDArray[np.float64],
     phase: NDArray[np.float64],
     time_data: NDArray[np.float64],
@@ -1394,7 +1397,74 @@ def _remove_ir_latency_from_phase(
 
     """
     min_ir = _min_phase_ir_from_real_cepstrum(time_data, padding_factor)
-    delays_s = _fractional_latency(time_data, min_ir) / sampling_rate_hz
+    return _remove_ir_latency_from_phase(
+        freqs, phase, _fractional_latency(time_data, min_ir), sampling_rate_hz
+    )
+
+
+def _remove_ir_latency_from_phase_peak(
+    freqs: NDArray[np.float64],
+    phase: NDArray[np.float64],
+    time_data: NDArray[np.float64],
+    sampling_rate_hz: int,
+):
+    """
+    Remove the impulse delay from a phase response.
+
+    Parameters
+    ----------
+    freqs : NDArray[np.float64]
+        Frequency vector.
+    phase : NDArray[np.float64]
+        Phase vector.
+    time_data : NDArray[np.float64]
+        Corresponding time signal.
+    sampling_rate_hz : int
+        Sample rate.
+
+    Returns
+    -------
+    new_phase : NDArray[np.float64]
+        New phase response without impulse delay.
+
+    """
+    return _remove_ir_latency_from_phase(
+        freqs,
+        phase,
+        _get_fractional_impulse_peak_index(time_data),
+        sampling_rate_hz,
+    )
+
+
+def _remove_ir_latency_from_phase(
+    freqs: NDArray[np.float64],
+    phase: NDArray[np.float64],
+    latency_samples: NDArray,
+    sampling_rate_hz: int,
+):
+    """
+    Remove the impulse delay from a phase response.
+
+    Parameters
+    ----------
+    freqs : NDArray[np.float64]
+        Frequency vector.
+    phase : NDArray[np.float64]
+        Phase vector.
+    latency_samples : NDArray
+        Latency per channel to remove in samples.
+    sampling_rate_hz : int
+        Sampling rate in Hz.
+
+    Returns
+    -------
+    new_phase : NDArray[np.float64]
+        New phase response without impulse delay.
+
+    """
+    assert latency_samples.ndim == 1
+    assert len(latency_samples) == phase.shape[1]
+    delays_s = latency_samples / sampling_rate_hz
     return _wrap_phase(phase + 2 * np.pi * freqs[:, None] * delays_s[None, :])
 
 
@@ -1513,9 +1583,9 @@ def _fractional_latency(
 
     """
     if td2 is None:
-        td2 = td1[:, 0][..., None]
-        td1 = np.atleast_2d(td1[:, 1:])
-        xcor = correlate(td2, td1)
+        td2_ = td1[:, 0][..., None]
+        td1_ = np.atleast_2d(td1[:, 1:])
+        xcor = correlate(td2_, td1_)
     else:
         xcor = np.zeros((td1.shape[0] + td2.shape[0] - 1, td2.shape[1]))
         for i in range(td2.shape[1]):
@@ -1541,17 +1611,17 @@ def _interpolate_fr(
         Frequency response to be interpolated.
     f_target : NDArray[np.float64]
         Target frequency vector.
-    mode : str, None, {"db2amplitude", "amplitude2db", "power2db",\
-            "power2amplitude", "amplitude2power"}, optional
-        Convert between amplitude, power or dB representation during the
-        interpolation step. For instance, using the modes "db2power" means
-        input in dB, interpolation in power spectrum, output in dB. Available
-        modes are "db2amplitude", "amplitude2db", "power2db",
-        "power2amplitude", "amplitude2power". Pass None to avoid any
+    mode : str {"db2amplitude", "amplitude2db", "power2db",\
+            "power2amplitude", "amplitude2power"}, None, optional
+        Convert between amplitude, power or dB representation during the\
+        interpolation step. For instance, using the modes "db2power" means\
+        input in dB, interpolation in power spectrum, output in dB. Available\
+        modes are "db2amplitude", "amplitude2db", "power2db",\
+        "power2amplitude", "amplitude2power". Pass None to avoid any\
         conversion. Default: None.
-    interpolation_scheme : str, {"linear", "quadratic", "cubic"}, optional
-        Type of interpolation to use. See `scipy.interpolation.interp1d` for
-        details. Choose from "quadratic" or "cubic" splines, or "linear".
+    interpolation_scheme : str {"linear", "quadratic", "cubic"}, optional
+        Type of interpolation to use. See `scipy.interpolation.interp1d` for\
+        details. Choose from "quadratic" or "cubic" splines, or "linear".\
         Default: "linear".
 
     Returns
