@@ -203,8 +203,7 @@ def detrend(
     """
     if isinstance(sig, Signal):
         assert polynomial_order >= 0, "Polynomial order should be positive"
-        td = sig.time_data
-        new_td = _detrend(td, polynomial_order)
+        new_td = _detrend(sig.time_data.copy(), polynomial_order)
         detrended_sig = sig.copy()
         detrended_sig.time_data = new_td
         return detrended_sig
