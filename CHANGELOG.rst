@@ -14,6 +14,41 @@ adheres to `Semantic Versioning <http://semver.org/spec/v2.0.0.html>`_.
 - Validation for results from tests in every module (so far many tests are
   only regarding functionality)
 
+`0.5 <https://pypi.org/project/dsptoolbox/0.5>`_ - 
+---------------------
+Added
+~~~~~
+- Various properties were added to `Signal` and `Filter` class. They are mostly
+  computed dynamically
+- `Spectrum` class that can handle magnitude and complex, multi-channel spectra
+- Multiple enums in each module were added in order to replace all string
+  parameters across the code base
+- `Filter` has now `plot_taps()` for FIR filters
+- `merge_filters` can now merge FIR or IIR filters with each other by
+  convolving and appending SOS, respectively
+- `Filter` can now start FIR filters from files
+- `apply_gain` can now be applied to filters and filter banks
+- `delay` function was applied to apply delay integer delays to signals. This
+  is considerably more efficient than using `fractional_delay`
+- `fractional_octave_smoothing` can now be applied to logarithmically spaced
+  data
+- `spectral_difference` computes the magnitude or complex difference between
+  spectra
+- `trim_ir` can now be applied to multichannel signals directly
+
+Misc
+~~~~
+- `Filter` was thoroughly refactored. Its constructor is now simpler.
+- `Signal` does not do implicit copies of the time data anymore and was largely
+  refactored
+- documentation and type annotations fixes
+- renamed `merge_filterbanks` and `merge_signals` to `append_filterbanks` and
+  `append_signals`. Now they can also get a list with more than 2 objects
+- replaced binary string parameters with booleans across code base
+- most classes have builder-pattern-like behavior that return the object when
+  it has been modified
+
+
 `0.4.8 <https://pypi.org/project/dsptoolbox/0.4.8>`_ - 
 ---------------------
 Added
