@@ -1678,7 +1678,7 @@ def harmonic_distortion_analysis(
 
 def trim_ir(
     ir: ImpulseResponse,
-    channel: int = 0,
+    channel: int | None = None,
     start_offset_s: float | None = 20e-3,
 ) -> tuple[ImpulseResponse, int, int]:
     """Trim an IR in the beginning and end. This method acts only on one
@@ -1691,8 +1691,10 @@ def trim_ir(
     ----------
     ir : `ImpulseResponse`
         Impulse response to trim.
-    channel : int, optional
-        Channel to take from `rir`. Default: 0.
+    channel : int, None, optional
+        Channel to take from `rir`. Pass None to apply to all channels and
+        return a multichannel signal that has the largest time boundaries found
+        across all channels. Default: None.
     start_offset_s : float, None, optional
         This is the time prior to the peak value that is left after trimming.
         Pass 0 to start the IR one sample prior to peak value or a very big
@@ -1736,15 +1738,32 @@ def trim_ir(
         if start_offset_s is None
         else start_offset_s
     )
-
     assert start_offset_s >= 0, "Offset must be at least 0"
-    trimmed_rir = ir.get_channels(channel)
-    td = trimmed_rir.time_data.squeeze()
-    start, stop, _ = _trim_ir(
-        td,
-        ir.sampling_rate_hz,
-        start_offset_s,
-    )
-    trimmed_rir.time_data = td[start:stop]
-    trimmed_rir.clear_time_window()
+
+    # Single-channel case
+    if channel is not None:
+        trimmed_rir = ir.get_channels(channel)
+        td = trimmed_rir.time_data.squeeze()
+        start, stop, _ = _trim_ir(
+            td,
+            ir.sampling_rate_hz,
+            start_offset_s,
+        )
+        trimmed_rir.time_data = td[start:stop]
+        return trimmed_rir, start, stop
+
+    starts = np.zeros(ir.number_of_channels, dtype=np.int_)
+    stops = starts.copy()
+
+    for ch in range(ir.number_of_channels):
+        starts[ch], stops[ch], _ = _trim_ir(
+            ir.time_data[:, ch],
+            ir.sampling_rate_hz,
+            start_offset_s,
+        )
+
+    start = int(np.min(starts))
+    stop = int(np.max(stops))
+    trimmed_rir = ir.copy()
+    trimmed_rir.time_data = trimmed_rir.time_data[start:stop, ...]
     return trimmed_rir, start, stop
