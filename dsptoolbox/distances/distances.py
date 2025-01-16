@@ -7,7 +7,7 @@ import numpy as np
 from scipy.signal import windows
 from numpy.typing import NDArray
 
-from .. import Signal, MultiBandSignal
+from .. import Signal
 from ..filterbanks import auditory_filters_gammatone
 from .._general_helpers import _find_nearest
 from ._distances import (
@@ -90,7 +90,7 @@ def log_spectral(
 
     psd1 = np.abs(spec1)
     psd2 = np.abs(spec2)
-    if method == "standard":
+    if insig1.spectrum_scaling.is_amplitude_scaling():
         psd1 = psd1**2
         psd2 = psd2**2
 
@@ -179,7 +179,7 @@ def itakura_saito(
 
     psd1 = np.abs(spec1)
     psd2 = np.abs(spec2)
-    if method == "standard":
+    if insig1.spectrum_scaling.is_amplitude_scaling():
         psd1 = psd1**2
         psd2 = psd2**2
 
@@ -378,19 +378,17 @@ def fw_snr_seg(
     aud_fb = auditory_filters_gammatone(
         frequency_range_hz=f_range, resolution=1, sampling_rate_hz=fs_hz
     )
-    x: MultiBandSignal = aud_fb.filter_signal(x, mode=FilterBankMode.Parallel)
-    xhat: MultiBandSignal = aud_fb.filter_signal(
-        xhat, mode=FilterBankMode.Parallel
-    )
+    x_bands = aud_fb.filter_signal(x, mode=FilterBankMode.Parallel)
+    xhat_bands = aud_fb.filter_signal(xhat, mode=FilterBankMode.Parallel)
     # SNR time-segmented with weighting function
-    snr_per_channel = np.empty(xhat.number_of_channels)
-    for n in range(xhat.number_of_channels):
-        xhat_ = xhat.get_all_bands(n).time_data
+    snr_per_channel = np.empty(xhat_bands.number_of_channels)
+    for n in range(xhat_bands.number_of_channels):
+        xhat_ = xhat_bands.get_all_bands(n).time_data
         if multichannel:
             n_original = 0
         else:
             n_original = n
-        x_ = x.get_all_bands(n_original).time_data
+        x_ = x_bands.get_all_bands(n_original).time_data
         snr_per_channel[n] = _fw_snr_seg_per_channel(
             x_,
             xhat_,

@@ -6,70 +6,72 @@ import os
 
 
 class TestFilterbanksModule:
+
+    fs = 5000
+
+    def get_noise(self):
+        return dsp.generators.noise(
+            length_seconds=1.0, sampling_rate_hz=self.fs
+        )
+
     def test_linkwitz(self):
         # Only functionality
         fb = dsp.filterbanks.linkwitz_riley_crossovers(
-            [500, 1000], order=4, sampling_rate_hz=5_000
+            [500, 1000], order=4, sampling_rate_hz=self.fs
         )
         with pytest.raises(AssertionError):
             dsp.filterbanks.linkwitz_riley_crossovers(
-                [500, 1000], order=[2, 4, 4], sampling_rate_hz=5_000
+                [500, 1000], order=[2, 4, 4], sampling_rate_hz=self.fs
             )
         with pytest.raises(AssertionError):
             dsp.filterbanks.linkwitz_riley_crossovers(
-                [500, 5000], order=4, sampling_rate_hz=5_000
+                [500, 5000], order=4, sampling_rate_hz=self.fs
             )
 
         # Test filtering
-        s = dsp.generators.noise(length_seconds=1.0, sampling_rate_hz=5_000)
+        s = self.get_noise()
         fb.filter_signal(s, mode=dsp.FilterBankMode.Parallel)
 
     def test_reconstructing_fractional_octave_bands(self):
         # Only functionality
-        dsp.filterbanks.reconstructing_fractional_octave_bands(
+        n = self.get_noise()
+        fb = dsp.filterbanks.reconstructing_fractional_octave_bands(
             octave_fraction=1,
             frequency_range_hz=[63, 1024],
             overlap=0.5,
             slope=1,
             n_samples=2**10,
-            sampling_rate_hz=5_000,
+            sampling_rate_hz=self.fs,
         )
+        fb.filter_signal(n, dsp.FilterBankMode.Parallel)
+        fb.filter_signal(n, dsp.FilterBankMode.Summed)
 
     def test_auditory_filters_gammatone(self):
         # Only functionality
         fb = dsp.filterbanks.auditory_filters_gammatone(
-            frequency_range_hz=[500, 1000], sampling_rate_hz=4_000
+            frequency_range_hz=[500, 1000], sampling_rate_hz=self.fs
         )
         with pytest.raises(AssertionError):
             dsp.filterbanks.auditory_filters_gammatone(
-                frequency_range_hz=[500, 3000], sampling_rate_hz=4_000
+                frequency_range_hz=[500, 3000], sampling_rate_hz=self.fs
             )
 
         # Reconstruct signal
-        s = dsp.generators.noise(
-            length_seconds=1.0,
-            type_of_noise=dsp.generators.NoiseType.Pink,
-            sampling_rate_hz=4_000,
-        )
-        mb = fb.filter_signal(s, dsp.FilterBankMode.Parallel)
+        n = self.get_noise()
+        mb = fb.filter_signal(n, dsp.FilterBankMode.Parallel)
         fb.reconstruct(mb)
 
     def test_qmf_crossover(self):
         # Only functionality
-        fs_hz = 4_000
-        ny_hz = fs_hz // 2
+        ny_hz = self.fs // 2
         lp = dsp.Filter.fir_filter(
             order=10,
             frequency_hz=ny_hz // 2,
             type_of_pass=dsp.FilterPassType.Lowpass,
-            sampling_rate_hz=fs_hz,
+            sampling_rate_hz=self.fs,
         )
         fb = dsp.filterbanks.qmf_crossover(lp)
-        s = dsp.generators.noise(
-            length_seconds=1.0,
-            type_of_noise=dsp.generators.NoiseType.White,
-            sampling_rate_hz=fs_hz,
-        )
+        s = self.get_noise()
         fb.filter_signal(
             s,
             mode=dsp.FilterBankMode.Parallel,

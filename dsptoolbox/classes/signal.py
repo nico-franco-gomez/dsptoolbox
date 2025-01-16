@@ -458,6 +458,15 @@ class Signal:
         self.__spectrum_state_update = True
         self.__csm_state_update = True
 
+    @property
+    def spectrum_smoothing(self) -> float:
+        return self._spectrum_parameters["smoothing"]
+
+    @spectrum_smoothing.setter
+    def spectrum_smoothing(self, new_smoothing):
+        assert new_smoothing >= 0.0, "Smoothing must be positive or zero"
+        self._spectrum_parameters["smoothing"] = float(new_smoothing)
+
     def set_spectrogram_parameters(
         self,
         window_length_samples: int = 1024,
