@@ -273,7 +273,7 @@ class TestStandardModule:
         assert np.all(np.isclose(np.abs(lat), [150, 0, 0]))
 
     def test_delay(self):
-        # Delay in seconds
+        # Delay
         delay_samp = 150
 
         # All channels

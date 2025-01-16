@@ -553,11 +553,18 @@ class TestTransferFunctionsModule:
         ir = dsp.ImpulseResponse(
             join(os.path.dirname(__file__), "..", "example_data", "rir.wav")
         )
-        dsp.transfer_functions.trim_ir(ir)
+        dsp.transfer_functions.trim_ir(ir, 0)
+        dsp.transfer_functions.trim_ir(ir, None)
         # Start offset way longer than rir (should be clipped to 0)
         assert (
             ir.time_data[0, 0]
             == dsp.transfer_functions.trim_ir(ir, start_offset_s=3)[
+                0
+            ].time_data[0, 0]
+        )
+        assert (
+            ir.time_data[0, 0]
+            == dsp.transfer_functions.trim_ir(ir, start_offset_s=None)[
                 0
             ].time_data[0, 0]
         )
