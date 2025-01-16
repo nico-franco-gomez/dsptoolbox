@@ -1,7 +1,7 @@
 # use:
-scipy~=1.14
+scipy~=1.15
 numpy~=2.0
-soundfile~=0.12
+soundfile~=0.13
 sounddevice~=0.5
 numba~=0.60;python_version<='3.12'
 
