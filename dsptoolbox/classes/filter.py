@@ -752,7 +752,7 @@ class Filter:
             frequency_vector_hz.ndim == 1
         ), "Frequency vector can only have one dimension"
         assert (
-            frequency_vector_hz.max() < self.sampling_rate_hz / 2
+            frequency_vector_hz.max() <= self.sampling_rate_hz / 2
         ), "Queried frequency vector has values larger than nyquist"
 
         if self.is_iir and hasattr(self, "sos"):
