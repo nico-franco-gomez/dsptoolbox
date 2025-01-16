@@ -1227,10 +1227,10 @@ def window_frequency_dependent(
     cycles : int
         Number of cycles to include for each frequency bin. It defines
         the window lengths.
-    channel : int, optional
+    channel : int, None, optional
         Selected channel to compute the spectrum. Pass `None` to take all
         channels. Default: `None`.
-    frequency_range_hz : list of length 2, optional
+    frequency_range_hz : list of length 2, None, optional
         Frequency range to extract spectrum. Use `None` to compute the whole
         spectrum. Default: `None`.
     scaling : SpectrumScaling, optional
@@ -1268,23 +1268,23 @@ def window_frequency_dependent(
     fs = ir.sampling_rate_hz
     if frequency_range_hz is not None:
         assert len(frequency_range_hz) == 2
-        frequency_range_hz = np.sort(frequency_range_hz)
+        selected_f_range_hz = np.sort(frequency_range_hz).astype(int).tolist()
     else:
-        frequency_range_hz = [0, fs // 2]
+        selected_f_range_hz = [0, fs // 2]
 
     if channel is None:
-        channel = np.arange(ir.number_of_channels)
+        selected_channels = np.arange(ir.number_of_channels)
     else:
-        channel = np.atleast_1d(channel)
+        selected_channels = np.atleast_1d(channel)
 
-    td = ir.time_data[:, channel]
+    td = ir.time_data[:, selected_channels]
 
     # Optimal length for FFT
     fast_length = next_fast_length_fft(td.shape[0], True)
     td = np.pad(td, ((0, fast_length - td.shape[0]), (0, 0)))
 
     f = np.fft.rfftfreq(td.shape[0], 1 / fs)
-    inds = (f >= frequency_range_hz[0]) & (f <= frequency_range_hz[1])
+    inds = (f >= selected_f_range_hz[0]) & (f <= selected_f_range_hz[1])
     inds_f = np.arange(len(f))[inds]
     f = f[inds]
 
