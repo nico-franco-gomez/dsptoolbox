@@ -35,7 +35,6 @@ def resample(
     u, d = ratio.as_integer_ratio()
     new_time_data = resample_poly(sig.time_data, up=u, down=d, axis=0)
     new_sig = sig.copy()
-    new_sig.clear_time_window()
     new_sig.time_data = new_time_data * (d / u) if rescaling else new_time_data
     new_sig.sampling_rate_hz = desired_sampling_rate_hz
     return new_sig

@@ -293,7 +293,6 @@ class MultiBandSignal:
                 initial += self.bands[n].time_data
                 initial += self.bands[n].time_data_imaginary * 1j
         new_sig = self.bands[0].copy()
-        new_sig.clear_time_window()
         new_sig.time_data = initial
         return new_sig
 

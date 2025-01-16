@@ -267,7 +267,6 @@ def fractional_delay(
 
         # =========== give out object =========================================
         out_sig = sig.copy()
-        out_sig.clear_time_window()
         out_sig.time_data = new_time_data
 
     elif isinstance(sig, MultiBandSignal):
@@ -367,7 +366,6 @@ def delay(
             new_time_data = new_time_data[: sig.time_data.shape[0], :]
 
         out_sig = sig.copy()
-        out_sig.clear_time_window()
         out_sig.time_data = new_time_data
     elif isinstance(sig, MultiBandSignal):
         new_bands = []

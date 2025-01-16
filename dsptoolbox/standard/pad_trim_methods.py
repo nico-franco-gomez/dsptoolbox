@@ -119,7 +119,6 @@ def modify_signal_length(
         else:
             td = td[:end_samples, ...]
         new_sig.time_data = td
-        new_sig.clear_time_window()
         return new_sig
     elif isinstance(signal, MultiBandSignal):
         bands = []
