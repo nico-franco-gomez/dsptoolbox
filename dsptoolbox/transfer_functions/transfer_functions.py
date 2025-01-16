@@ -42,7 +42,12 @@ from ..standard import (
 from ..generators import dirac
 from ..filterbanks import linkwitz_riley_crossovers
 from ..tools import to_db
-from ..standard.enums import SpectrumMethod, MagnitudeNormalization, Window
+from ..standard.enums import (
+    SpectrumMethod,
+    MagnitudeNormalization,
+    Window,
+    SpectrumScaling,
+)
 from .enums import TransferFunctionType
 
 
@@ -525,7 +530,6 @@ def average_irs(
         new_time_data = np.mean(avg_sig.time_data, axis=1)
 
     avg_sig.time_data = new_time_data
-    avg_sig.clear_time_window()
     return avg_sig
 
 
@@ -747,7 +751,6 @@ def min_phase_ir(
 
     min_phase_sig = sig.copy()
     min_phase_sig.time_data = new_time_data[: len(sig)]
-    min_phase_sig.clear_time_window()
     return min_phase_sig
 
 
@@ -1206,7 +1209,7 @@ def window_frequency_dependent(
     cycles: int,
     channel: int | None = None,
     frequency_range_hz: list | None = None,
-    scaling: str | None = None,
+    scaling: SpectrumScaling = SpectrumScaling.FFTBackward,
     end_window_value: float = 0.01,
 ) -> Spectrum:
     """A spectrum with frequency-dependent windowing defined by cycles is
@@ -1230,11 +1233,9 @@ def window_frequency_dependent(
     frequency_range_hz : list of length 2, optional
         Frequency range to extract spectrum. Use `None` to compute the whole
         spectrum. Default: `None`.
-    scaling : str, optional
-        Scaling for the spectrum. Choose from `"amplitude spectrum"`,
-        `"amplitude spectral density"`, `"fft"` or `None`. The first two take
-        the window into account. `"fft"` scales the forward FFT by `1/N**0.5`
-        and `None` leaves the spectrum completely unscaled. Default: `None`.
+    scaling : SpectrumScaling, optional
+        Scaling for the spectrum. Power scalings are not supported. Default:
+        FFTBackward (no scaling).
     end_window_value : float, optional
         This is the value that the gaussian window should have at its width.
         Default: 0.01.
@@ -1263,13 +1264,6 @@ def window_frequency_dependent(
     assert (
         type(ir) is ImpulseResponse
     ), "This is only valid for an impulse response"
-    scaling = scaling if scaling is None else scaling.lower()
-    assert scaling in (
-        "amplitude spectrum",
-        "amplitude spectral density",
-        "fft",
-        None,
-    ), f"{scaling} is an unsupported scaling option."
 
     fs = ir.sampling_rate_hz
     if frequency_range_hz is not None:
@@ -1317,34 +1311,44 @@ def window_frequency_dependent(
         n[:, ch] = np.arange(-ind_max[ch], td.shape[0] - ind_max[ch])
 
     # Scaling function
-    if scaling == "amplitude spectrum":
+    if scaling == SpectrumScaling.AmplitudeSpectrum:
 
         def scaling_func(window: NDArray[np.float64]):
-            return 2**0.5 / np.sum(window, axis=0, keepdims=True)
+            return 2.0**0.5 / np.sum(window, axis=0, keepdims=True)
 
-    elif scaling == "amplitude spectral density":
+    elif scaling == SpectrumScaling.AmplitudeSpectralDensity:
 
         def scaling_func(window: NDArray[np.float64]):
             return (
-                2
-                / np.sum(window**2, axis=0, keepdims=True)
+                2.0
+                / np.sum(window**2.0, axis=0, keepdims=True)
                 / ir.sampling_rate_hz
             ) ** 0.5
 
-    elif scaling == "fft":
+    elif scaling == SpectrumScaling.FFTOrthogonal:
         scaling_value = fast_length**-0.5
 
         def scaling_func(window: NDArray[np.float64]):
             return scaling_value
 
-    else:
+    elif scaling == SpectrumScaling.FFTBackward:
 
         def scaling_func(window: NDArray[np.float64]):
             return 1
 
+    elif scaling == SpectrumScaling.FFTBackward:
+
+        scaling_value = 1.0 / fast_length
+
+        def scaling_func(window: NDArray[np.float64]):
+            return 1
+
+    else:
+        raise ValueError("Unsupported spectrum scaling")
+
     # Precompute some window factors
-    n = -0.5 * (n / half) ** 2
-    alpha = (alpha_factor / cycles_per_freq_samples) ** 2
+    n = -0.5 * (n / half) ** 2.0
+    alpha = (alpha_factor / cycles_per_freq_samples) ** 2.0
     for ind, ind_f in enumerate(inds_f):
         w = np.exp(alpha[ind] * n)
         spec[ind, :] = rfft_scipy(w * td, axis=0)[ind_f] * scaling_func(w)
