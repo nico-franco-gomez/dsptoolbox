@@ -97,8 +97,6 @@ def spectral_deconvolve(
         Deconvolved signal.
 
     """
-    num = num.copy()
-    denum = denum.copy()
     assert (
         num.time_data.shape[0] == denum.time_data.shape[0]
     ), "Lengths do not match for spectral deconvolution"
@@ -117,12 +115,13 @@ def spectral_deconvolve(
             start_stop_hz is None
         ), "No start_stop_hz vector can be passed when using standard mode"
 
+    num = num.copy()
+    denum = denum.copy()
     original_length = num.time_data.shape[0]
 
     if padding:
         num.time_data = _pad_trim(num.time_data, original_length * 2)
         denum.time_data = _pad_trim(denum.time_data, original_length * 2)
-    fft_length = original_length * 2 if padding else original_length
 
     denum.spectrum_method = SpectrumMethod.FFT
     num.spectrum_method = SpectrumMethod.FFT
@@ -152,13 +151,13 @@ def spectral_deconvolve(
                 pass
             else:
                 raise ValueError(
-                    "start_stop_hz vector should have 2 or 4" + " values"
+                    "start_stop_hz vector should have 2 or 4 values"
                 )
         new_time_data[:, n] = _spectral_deconvolve(
             num_fft[:, n],
             denum_fft[:, n_denum],
             freqs_hz,
-            fft_length,
+            original_length * 2 if padding else original_length,
             start_stop_hz=start_stop_hz,
             regularized=apply_regularization,
         )
