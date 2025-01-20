@@ -177,7 +177,7 @@ def window_ir(
     at_start: bool = True,
     offset_samples: int = 0,
     left_to_right_flank_length_ratio: float = 1.0,
-) -> tuple[ImpulseResponse, NDArray[np.float64]]:
+) -> tuple[ImpulseResponse, NDArray]:
     """Windows an IR with trimming and selection of constant valued length.
     This is equivalent to a tukey window whose flanks can be selected to be
     any type. The peak of the impulse response is aligned to correspond to
@@ -216,7 +216,7 @@ def window_ir(
     -------
     new_sig : `ImpulseResponse`
         Windowed signal. The used window is also saved under `new_sig.window`.
-    start_positions_samples : NDArray[np.float64]
+    start_positions_samples : NDArray
         This array contains the position index of the start of the IR in
         each channel of the original IR (relative to the possibly padded
         windowed IR).
@@ -280,7 +280,7 @@ def window_centered_ir(
     signal: ImpulseResponse,
     total_length_samples: int,
     window_type: Window = Window.Hann,
-) -> tuple[ImpulseResponse, NDArray[np.float64]]:
+) -> tuple[ImpulseResponse, NDArray]:
     """This function windows an IR placing its peak in the middle. It trims
     it to the total length of the window or pads it to the desired length
     (padding in the end, window has `total_length`).
@@ -298,7 +298,7 @@ def window_centered_ir(
     -------
     new_sig : `ImpulseResponse`
         Windowed signal. The used window is also saved under `new_sig.window`.
-    start_positions_samples : NDArray[np.float64]
+    start_positions_samples : NDArray
         This array contains the position index of the start of the IR in
         each channel of the original IR.
 
