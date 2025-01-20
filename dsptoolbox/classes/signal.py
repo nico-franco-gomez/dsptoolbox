@@ -1513,6 +1513,7 @@ class Signal:
         )
         new_signal.calibrated_signal = self.calibrated_signal
         new_signal.activate_cache = self.activate_cache
+        new_signal.amplitude_scale_factor = self.amplitude_scale_factor
         new_signal._spectrum_parameters = deepcopy(self._spectrum_parameters)
         new_signal._spectrogram_parameters = deepcopy(
             self._spectrogram_parameters
