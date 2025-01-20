@@ -381,14 +381,15 @@ def compute_transfer_function(
     else:
         multichannel = True
 
+    # Get rid of unnecessary spectrum parameters
     spectrum_parameters = input._spectrum_parameters.copy()
+    assert (
+        type(spectrum_parameters) is dict
+    ), "Spectrum parameters should be passed as a dictionary"
     spectrum_parameters.pop("window_length_samples")
     spectrum_parameters.pop("method")
     spectrum_parameters.pop("smoothing")
     spectrum_parameters.pop("pad_to_fast_length")
-    assert (
-        type(spectrum_parameters) is dict
-    ), "Spectrum parameters should be passed as a dictionary"
 
     coherence = np.zeros(
         (window_length_samples // 2 + 1, output.number_of_channels)

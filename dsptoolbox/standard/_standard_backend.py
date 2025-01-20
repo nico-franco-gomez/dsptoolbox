@@ -3,7 +3,7 @@ Backend for standard functions
 """
 
 import numpy as np
-from scipy.signal import correlate, windows, hilbert
+from scipy.signal import correlate, hilbert
 from scipy.special import iv as bessel_first_mod
 from numpy.typing import NDArray
 
@@ -12,8 +12,8 @@ from ..helpers.spectrum_utilities import _wrap_phase
 
 def _latency(
     in1: NDArray[np.float64],
-    in2: NDArray[np.float64] | None = None,
-    polynomial_points: int = 0,
+    in2: NDArray[np.float64] | None,
+    polynomial_points: int,
 ):
     """Computes the latency between two functions using the correlation method.
     The variable polynomial_points is only a dummy to share the same function
@@ -361,7 +361,7 @@ def _indices_above_threshold_dbfs(
     # Power in dB
     time_power = time_vec.squeeze() ** 2
 
-    momentary_gain = np.zeros(len(time_power))
+    momentary_gain = np.zeros(len(time_power), dtype=np.float64)
     for i in np.arange(1, len(time_power)):
         if momentary_gain[i] > time_power[i - 1]:
             coeff = attack_smoothing_coeff
@@ -372,7 +372,7 @@ def _indices_above_threshold_dbfs(
         momentary_gain[i] = (
             coeff * time_power[i] + (1 - coeff) * momentary_gain[i - 1]
         )
-    momentary_gain = 10 * np.log10(momentary_gain)
+    momentary_gain = 10.0 * np.log10(momentary_gain)
 
     # Get Indices above threshold
     indices_above = momentary_gain > threshold_dbfs

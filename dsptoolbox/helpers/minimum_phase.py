@@ -110,5 +110,8 @@ def _remove_ir_latency_from_phase_min_phase(
     """
     min_ir = _min_phase_ir_from_real_cepstrum(time_data, padding_factor)
     return _remove_ir_latency_from_phase(
-        freqs, phase, _fractional_latency(time_data, min_ir), sampling_rate_hz
+        freqs,
+        phase,
+        _fractional_latency(time_data, min_ir, 1),
+        sampling_rate_hz,
     )

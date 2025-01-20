@@ -100,8 +100,8 @@ def _get_fractional_impulse_peak_index(
 
 def _fractional_latency(
     td1: NDArray[np.float64],
-    td2: NDArray[np.float64] | None = None,
-    polynomial_points: int = 1,
+    td2: NDArray[np.float64] | None,
+    polynomial_points: int,
 ):
     """This function computes the sub-sample latency between two signals using
     Zero-Crossing of the analytic (hilbert transformed) correlation function.
@@ -113,15 +113,14 @@ def _fractional_latency(
     ----------
     td1 : `np.ndaray`
         Delayed version of the signal.
-    td2 : NDArray[np.float64], optional
+    td2 : NDArray[np.float64]
         Original version of the signal. If `None` is passed, the latencies
         are computed between the first channel of td1 and every other.
-        Default: `None`.
-    polynomial_points : int, optional
+    polynomial_points : int
         This corresponds to the number of points taken around the root in order
         to fit a polynomial. Accuracy might improve with higher orders but
         it could also lead to ill-conditioned polynomials. In case root finding
-        is not successful, integer latency values are returned. Default: 1.
+        is not successful, integer latency values are returned.
 
     Returns
     -------

@@ -23,7 +23,7 @@ def _spectral_deconvolve(
     time_signal_length: int,
     regularized: bool,
     start_stop_hz,
-) -> NDArray[np.complex128]:
+):
     assert num_fft.shape == denum_fft.shape, "Shapes do not match"
     assert len(freqs_hz) == len(num_fft), "Frequency vector does not match"
 
@@ -71,13 +71,13 @@ def _window_this_ir_tukey(
     right_flank_length = flank_length_total - left_flank_length
 
     # Maximum
-    impulse_index = np.argmax(np.abs(vec))
+    impulse_index = int(np.argmax(np.abs(vec)))
 
     if not adaptive_window:
         # If offset and impulse index are outside or inside
         padding_left = 0
         if impulse_index - offset_samples < 0:
-            pad_length = -(impulse_index - offset_samples)
+            pad_length = int(-(impulse_index - offset_samples))
             vec = np.pad(vec, ((pad_length, 0)))
             start_sample += pad_length
             padding_left += pad_length
@@ -86,7 +86,7 @@ def _window_this_ir_tukey(
 
         # If left flank is longer than the amount of samples expected
         if impulse_index - left_flank_length < 0:
-            pad_length = -(impulse_index - left_flank_length)
+            pad_length = int(-(impulse_index - left_flank_length))
             vec = np.pad(vec, ((pad_length, 0)))
             start_sample += pad_length
             padding_left += pad_length
@@ -165,7 +165,7 @@ def _window_this_ir(
         Sample position of the start.
 
     """
-    peak_ind = np.argmax(np.abs(vec))
+    peak_ind = int(np.argmax(np.abs(vec)))
     half_length = total_length // 2
     centered_impulse_and_even = (
         peak_ind + half_length == len(vec) and len(vec) % 2 == 0
@@ -382,7 +382,7 @@ def _trim_ir(
     if safety_distance_to_noise_floor_db != 0.0:
         end_point = __find_index_above_noise_floor(
             envelope[:end_point],
-            to_db(np.var(time_data[stop:]), False),
+            float(to_db(np.var(time_data[stop:]), False)),
             np.abs(safety_distance_to_noise_floor_db),
         )
         stop = end_point + start_index + impulse_index

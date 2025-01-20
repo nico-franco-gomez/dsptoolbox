@@ -152,7 +152,7 @@ def _fade(
 
 
 def to_db(
-    x: NDArray[np.float64],
+    x: NDArray,
     amplitude_input: bool,
     dynamic_range_db: float | None = None,
     min_value: float | None = float(np.finfo(np.float64).smallest_normal),
@@ -162,7 +162,7 @@ def to_db(
 
     Parameters
     ----------
-    x : NDArray[np.float64]
+    x : NDArray
         Array to convert to dB.
     amplitude_input : bool
         Set to True if the values in x are in their linear form. False means

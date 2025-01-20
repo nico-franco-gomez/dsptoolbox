@@ -108,7 +108,7 @@ class FilterBank:
         return self
 
     @property
-    def sampling_rate_hz(self) -> int | NDArray[np.int_]:
+    def sampling_rate_hz(self) -> int | list[int]:
         return self.__sampling_rate_hz
 
     @sampling_rate_hz.setter

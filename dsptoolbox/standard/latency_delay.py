@@ -16,7 +16,7 @@ def latency(
     in1: Signal | MultiBandSignal,
     in2: Signal | MultiBandSignal | None = None,
     polynomial_points: int = 0,
-) -> tuple[NDArray[np.float64] | NDArray[np.int_], NDArray[np.float64]]:
+) -> tuple[NDArray, NDArray[np.float64]]:
     """Computes latency between two signals using the correlation method.
     If there is no second signal, the latency between the first and the other
     channels is computed. `in1` is to be understood as a delayed version
@@ -153,7 +153,7 @@ def latency(
                 lags[band, :], correlations[band, :] = latency(
                     in1.bands[band], None, polynomial_points=polynomial_points
                 )
-        return lags
+        return lags, correlations
     else:
         raise TypeError(
             "Signals must either be type Signal or MultiBandSignal"

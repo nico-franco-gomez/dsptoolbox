@@ -317,11 +317,10 @@ class Room:
         self.volume = volume_m3
         self.area = area_m2
 
-        assert (t60_s is None) ^ (absorption_coefficient is None), (
-            "Either reverberation time or absorption coefficient should "
-            + "not be None"
-        )
         if t60_s is None:
+            assert (
+                absorption_coefficient is not None
+            ), "Absorption coefficient should not be None"
             assert (
                 absorption_coefficient > 0 and absorption_coefficient <= 1
             ), "Absorption coefficient should be ]0, 1]"
@@ -330,6 +329,7 @@ class Room:
                 0.161 * self.volume / self.area / self.absorption_coefficient
             )
         if absorption_coefficient is None:
+            assert t60_s is not None, "T60 should not be None"
             absorption_coefficient = 0.161 * self.volume / self.area / t60_s
             assert (
                 absorption_coefficient > 0 and absorption_coefficient <= 1
@@ -897,8 +897,10 @@ def _add_reverberant_tail_noise(
     noise /= np.max(noise)
 
     # Find right amplitude by looking at a window around start of noise
-    window = 100
-    window = rir[-noise_length - window // 2 : -noise_length + window // 2]
+    window_length = 100
+    window = rir[
+        -noise_length - window_length // 2 : -noise_length + window_length // 2
+    ]
     gain = np.median(window[window != 0]) * 0.5
     noise *= gain
 
@@ -1256,38 +1258,3 @@ def _compute_energy_decay_curve(
 
     edc = to_db(edc, False)
     return edc - edc[0]
-
-
-if __name__ == "__main__":
-    print()
-    # r = Room(200, 100, 0.35, None)
-    # print(r.absorption_coefficient)
-    # print(r.modal_density(100, c=343))
-    # r = Room(200, 100, None, 0.1)
-    # print(r.t60_s)
-    r = ShoeboxRoom([3, 4, 5], absorption_coefficient=0.9)
-
-    f = np.linspace(50, 1000, 2000)
-    p1 = r.get_analytical_transfer_function(
-        [1, 1, 1], [2, 2, 2], freqs=f, max_mode_order=15, generate_plot=False
-    )[0]
-
-    # Detailed absorption
-    d = {}
-    for i in ["north", "south", "east", "west", "floor", "ceiling"]:
-        # d[i] = 0.1
-        # d[i] = np.random.normal(0.5, 0.01, size=6)
-        d[i] = np.random.uniform(0.1, 0.9, size=3)
-    d["north"] = 0.6
-    d["south"] = [0.1, 0.1, 0.1, 0.1, 0.1]
-    r.add_detailed_absorption(d)
-    print(r.detailed_absorption["center_frequencies"])
-    p2 = r.get_analytical_transfer_function(
-        [1, 1, 1], [2, 2, 2], freqs=f, max_mode_order=15, generate_plot=False
-    )[0]
-    import matplotlib.pyplot as plt
-
-    plt.semilogx(f, to_db(p1, True), label="mean alpha")
-    plt.semilogx(f, to_db(p2, True), label="detailed alpha")
-    plt.legend()
-    plt.show()
