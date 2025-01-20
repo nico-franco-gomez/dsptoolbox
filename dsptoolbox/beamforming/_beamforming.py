@@ -6,7 +6,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from seaborn import set_style
 from numpy.typing import NDArray
-from .._general_helpers import _euclidean_distance_matrix
+from ..helpers.other import _euclidean_distance_matrix
 
 set_style("whitegrid")
 

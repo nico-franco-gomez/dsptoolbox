@@ -4,7 +4,6 @@ from ..standard._framed_signal_representation import (
     _get_framed_signal,
     _reconstruct_framed_signal,
 )
-from .._general_helpers import _get_next_power_2, _rms, _pad_trim
 from ._effects import (
     _arctan_distortion,
     _clean_signal,
@@ -17,7 +16,8 @@ from ._effects import (
     get_time_period_from_musical_rhythm,
 )
 from ..plots import general_plot
-from ..tools import to_db
+from ..helpers.other import _get_next_power_2, _pad_trim
+from ..helpers.gain_and_level import _rms, to_db
 from ..standard.enums import SpectrumMethod, SpectrumScaling, Window
 from .enums import DistortionType
 

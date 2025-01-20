@@ -6,7 +6,7 @@ from pickle import dump, HIGHEST_PROTOCOL
 from warnings import warn
 
 from .signal import Signal
-from .._general_helpers import _check_format_in_path
+from ..helpers.other import _check_format_in_path
 
 
 class MultiBandSignal:

@@ -6,8 +6,8 @@ import matplotlib.pyplot as plt
 from matplotlib.ticker import ScalarFormatter
 import numpy as np
 
-from .._general_helpers import _find_nearest
-from ..tools import to_db
+from ..helpers.other import find_nearest_points_index_in_vector
+from ..helpers.gain_and_level import to_db
 
 
 def _zp_plot(z, p):
@@ -38,7 +38,7 @@ def _csm_plot(f, csm, range_x=None, log=True, with_phase=True):
     """
     ch = csm.shape[1]
     if range_x is not None:
-        id0, id1 = _find_nearest(range_x, f)
+        id0, id1 = find_nearest_points_index_in_vector(range_x, f)
     else:
         id0, id1 = 0, -1
     f = f[id0:id1]

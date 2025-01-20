@@ -7,7 +7,7 @@ from ..classes import (
     FilterBank,
     Spectrum,
 )
-from .._general_helpers import _pad_trim
+from ..helpers.other import _pad_trim
 from .enums import SpectrumType
 
 

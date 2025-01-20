@@ -9,13 +9,10 @@ from scipy.stats import pearsonr
 from warnings import warn
 from numpy.typing import NDArray
 
-from .._general_helpers import (
-    _find_nearest,
-    _calculate_window,
-    _pad_trim,
-    _get_chirp_rate,
-)
-from ..tools import to_db, time_smoothing
+from ..helpers.other import _pad_trim, find_nearest_points_index_in_vector
+from ..helpers.gain_and_level import to_db
+from ..helpers.windows import calculate_tukey_like_window as _calculate_window
+from ..tools import time_smoothing
 from ..standard.enums import Window
 
 
@@ -32,7 +29,7 @@ def _spectral_deconvolve(
 
     if regularized:
         # Regularized division
-        ids = _find_nearest(start_stop_hz, freqs_hz)
+        ids = find_nearest_points_index_in_vector(start_stop_hz, freqs_hz)
         eps = _calculate_window(
             ids, len(freqs_hz), Window.Hann, True, inverse=True
         ) * 10 ** (30 / 20)
@@ -217,6 +214,31 @@ def _window_this_ir(
         w = w[::-1]
 
     return td, w, ind_low_td
+
+
+def _get_chirp_rate(range_hz: list, length_seconds: float) -> float:
+    """Compute the chirp rate based on the frequency range of the exponential
+    chirp and its duration.
+
+    Parameters
+    ----------
+    range_hz : list with length 2
+        Range of the exponential chirp.
+    length_seconds : float
+        Chirp's length in seconds.
+
+    Returns
+    -------
+    float
+        The chirp rate in octaves/second.
+
+    """
+    range_hz_array = np.atleast_1d(range_hz)
+    assert range_hz_array.shape == (
+        2,
+    ), "Range must contain exactly two elements."
+    range_hz_array = np.sort(range_hz_array)
+    return np.log2(range_hz_array[1] / range_hz_array[0]) / length_seconds
 
 
 def _get_harmonic_times(

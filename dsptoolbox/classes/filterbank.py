@@ -6,6 +6,7 @@ from matplotlib.figure import Figure
 from matplotlib.axes import Axes
 from numpy.typing import NDArray
 
+
 from .signal import Signal
 from .impulse_response import ImpulseResponse
 from .multibandsignal import MultiBandSignal
@@ -13,7 +14,8 @@ from .filter import Filter
 from .filter_helpers import _filterbank_on_signal
 from ..generators import dirac
 from ..plots import general_plot
-from .._general_helpers import _get_normalized_spectrum, _check_format_in_path
+from ..helpers.other import _check_format_in_path
+from ..helpers.spectrum_utilities import _get_normalized_spectrum
 from ..standard._standard_backend import _group_delay_direct
 from ..standard.enums import SpectrumMethod, SpectrumScaling, FilterBankMode
 

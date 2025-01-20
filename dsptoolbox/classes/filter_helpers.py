@@ -9,7 +9,7 @@ from numpy.typing import NDArray
 
 from .signal import Signal
 from .multibandsignal import MultiBandSignal
-from .._general_helpers import _polyphase_decomposition
+from ..helpers.polyphase import _polyphase_decomposition
 from ..standard.enums import BiquadEqType, FilterBankMode
 
 

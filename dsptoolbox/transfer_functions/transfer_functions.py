@@ -15,19 +15,20 @@ from ._transfer_functions import (
     _get_harmonic_times,
     _trim_ir,
 )
+from ..helpers.spectrum_utilities import (
+    _correct_for_real_phase_spectrum,
+    _interpolate_fr,
+)
+from ..helpers.minimum_phase import (
+    _get_minimum_phase_spectrum_from_real_cepstrum,
+    _min_phase_ir_from_real_cepstrum,
+    _remove_ir_latency_from_phase_min_phase,
+)
+from ..helpers.smoothing import _fractional_octave_smoothing
+from ..helpers.latency import _get_fractional_impulse_peak_index
+from ..helpers.other import find_frequencies_above_threshold, _pad_trim
 from ..classes import Signal, Filter, ImpulseResponse, FilterBank, Spectrum
 from ..classes.filter_helpers import _group_delay_filter
-from .._general_helpers import (
-    _remove_ir_latency_from_phase_min_phase,
-    _min_phase_ir_from_real_cepstrum,
-    _get_minimum_phase_spectrum_from_real_cepstrum,
-    _find_frequencies_above_threshold,
-    _fractional_octave_smoothing,
-    _correct_for_real_phase_spectrum,
-    _get_fractional_impulse_peak_index,
-    _interpolate_fr,
-    _pad_trim,
-)
 from ..standard._standard_backend import (
     _minimum_phase,
     _group_delay_direct,
@@ -41,7 +42,7 @@ from ..standard import (
 )
 from ..generators import dirac
 from ..filterbanks import linkwitz_riley_crossovers
-from ..tools import to_db
+from ..helpers.gain_and_level import to_db
 from ..standard.enums import (
     SpectrumMethod,
     MagnitudeNormalization,
@@ -135,7 +136,7 @@ def spectral_deconvolve(
         n_denum = 0 if multichannel else n
         if apply_regularization:
             if start_stop_hz is None:
-                start_stop_hz = _find_frequencies_above_threshold(
+                start_stop_hz = find_frequencies_above_threshold(
                     denum_fft[:, n_denum], freqs_hz, threshold_db
                 )
             if len(start_stop_hz) == 2:

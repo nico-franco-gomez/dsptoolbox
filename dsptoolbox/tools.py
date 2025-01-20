@@ -11,19 +11,23 @@ from numpy.typing import NDArray
 from typing import Any
 from scipy.interpolate import interp1d
 
-from ._general_helpers import (
-    _fractional_octave_smoothing as fractional_octave_smoothing,
-    _wrap_phase as wrap_phase,
-    _get_smoothing_factor_ema as get_smoothing_factor_ema,
+from .helpers.gain_and_level import to_db
+from .helpers.bytes_conversion import _array_to_bytes_24bits
+from .helpers.spectrum_utilities import (
     _interpolate_fr as interpolate_fr,
-    _time_smoothing as time_smoothing,
     _scale_spectrum as scale_spectrum,
-    _array_to_bytes_24bits,
-    _bytes_to_array_24bits,
-    to_db,
-    from_db,
+    _wrap_phase as wrap_phase,
 )
-
+from .helpers.smoothing import (
+    _fractional_octave_smoothing as fractional_octave_smoothing,
+    _get_smoothing_factor_ema as get_smoothing_factor_ema,
+    _time_smoothing as time_smoothing,
+)
+from .helpers.gain_and_level import from_db
+from .helpers.other import _get_next_power_2 as next_power_2
+from .helpers.bytes_conversion import (
+    _bytes_to_array_24bits,
+)
 from .standard._standard_backend import (
     _center_frequencies_fractional_octaves_iec,
     _exact_center_frequencies_fractional_octaves,
@@ -509,4 +513,5 @@ __all__ = [
     "framed_signal",
     "reconstruct_from_framed_signal",
     "convert_sample_representation",
+    "next_power_2",
 ]

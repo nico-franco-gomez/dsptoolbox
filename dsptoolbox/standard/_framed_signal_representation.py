@@ -2,7 +2,7 @@ import numpy as np
 from scipy.signal import windows
 from numpy.typing import NDArray
 
-from .._general_helpers import _pad_trim, _compute_number_frames
+from ..helpers.other import _compute_number_frames, _pad_trim
 from ._standard_backend import _get_window_envelope
 
 

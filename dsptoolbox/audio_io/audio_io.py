@@ -5,7 +5,7 @@ measurements and testing audio streams
 
 import sounddevice as sd
 from .. import Signal
-from .._general_helpers import _normalize
+from ..helpers.gain_and_level import _normalize
 
 default_config = sd.default
 

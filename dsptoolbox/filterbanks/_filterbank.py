@@ -26,14 +26,10 @@ from ..classes import (
     Filter,
     ImpulseResponse,
 )
-
 from ..generators import dirac
 from ..plots import general_plot
-from .._general_helpers import (
-    _get_normalized_spectrum,
-    __yw_ar_estimation,
-    __burg_ar_estimation,
-)
+from ..helpers.spectrum_utilities import _get_normalized_spectrum
+from ..helpers.ar_estimation import _burg_ar_estimation, _yw_ar_estimation
 from ..standard._standard_backend import _group_delay_direct
 from ..standard.enums import (
     FilterCoefficientsType,
@@ -1611,9 +1607,9 @@ def arma(
 
     match method_ar:
         case "yule-walker":
-            a = __yw_ar_estimation(ir.time_data[:, 0], order_a)[0]
+            a = _yw_ar_estimation(ir.time_data[:, 0], order_a)[0]
         case "burg":
-            a = __burg_ar_estimation(ir.time_data[:, 0], order_a)[0]
+            a = _burg_ar_estimation(ir.time_data[:, 0], order_a)[0]
         case _:
             raise ValueError(f"{method_ar}: Method is not supported")
 

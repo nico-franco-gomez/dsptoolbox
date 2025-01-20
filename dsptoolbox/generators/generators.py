@@ -5,14 +5,12 @@ used
 """
 
 import numpy as np
+
+from ..helpers.frequency_conversion import _frequency_weightning
+from ..helpers.gain_and_level import _fade, _normalize
+from ..helpers.other import _pad_trim
 from ..classes.signal import Signal
 from ..classes.impulse_response import ImpulseResponse
-from .._general_helpers import (
-    _normalize,
-    _fade,
-    _pad_trim,
-    _frequency_weightning,
-)
 from ..classes.filter_helpers import _impulse
 from ._generators import _sync_log_chirp
 from ..standard.enums import FadeType

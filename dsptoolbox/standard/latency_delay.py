@@ -3,13 +3,13 @@ from numpy.typing import NDArray
 from scipy.signal import oaconvolve
 from warnings import warn
 
-from ..classes import Signal, MultiBandSignal
-from ._standard_backend import _latency, _fractional_delay_filter
-from .._general_helpers import (
-    _pad_trim,
+from ..helpers.latency import (
     _fractional_latency,
     _get_correlation_of_latencies,
 )
+from ..helpers.other import _pad_trim
+from ..classes import Signal, MultiBandSignal
+from ._standard_backend import _latency, _fractional_delay_filter
 
 
 def latency(

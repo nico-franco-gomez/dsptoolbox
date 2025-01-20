@@ -10,16 +10,16 @@ from matplotlib.figure import Figure
 from matplotlib.axes import Axes
 from numpy.typing import NDArray
 
-from ..classes import Signal
-from .. import fractional_delay, append_signals, pad_trim
-from .._general_helpers import (
+from ..helpers.other import (
     _get_fractional_octave_bandwidth,
-    _find_nearest,
+    find_nearest_points_index_in_vector,
     _pad_trim,
 )
+from ..helpers.gain_and_level import to_db
+from ..classes import Signal
+from .. import fractional_delay, append_signals, pad_trim
 from ._beamforming import BasePoints, _clean_sc_deconvolve
 from ..plots import general_matrix_plot
-from ..tools import to_db
 from .enums import SteeringVectorType
 
 try:
@@ -889,7 +889,7 @@ class BeamformerDASFrequency(BeamformerGridded):
 
         print("...Steering vector...")
         # Frequency selection, wave numbers and steering vector
-        ids = _find_nearest(self.f_range_hz, f)
+        ids = find_nearest_points_index_in_vector(self.f_range_hz, f)
         id1, id2 = ids[0], ids[1]
         # In case of only one frequency bin
         if id1 == id2:
@@ -1005,7 +1005,7 @@ class BeamformerCleanSC(BeamformerGridded):
 
         print("...Steering vector...")
         # Frequency selection, wave numbers and steering vector
-        ids = _find_nearest(self.f_range_hz, f)
+        ids = find_nearest_points_index_in_vector(self.f_range_hz, f)
         id1, id2 = ids[0], ids[1]
         # In case of only one frequency bin
         if id1 == id2:
@@ -1126,7 +1126,7 @@ class BeamformerOrthogonal(BeamformerGridded):
 
         print("...Steering vector...")
         # Frequency selection, wave numbers and steering vector
-        ids = _find_nearest(self.f_range_hz, f)
+        ids = find_nearest_points_index_in_vector(self.f_range_hz, f)
         id1, id2 = ids[0], ids[1]
         # In case of only one frequency bin
         if id1 == id2:
@@ -1228,7 +1228,7 @@ class BeamformerFunctional(BeamformerGridded):
 
         print("...Steering vector...")
         # Frequency selection, wave numbers and steering vector
-        ids = _find_nearest(self.f_range_hz, f)
+        ids = find_nearest_points_index_in_vector(self.f_range_hz, f)
         id1, id2 = ids[0], ids[1]
         # In case of only one frequency bin
         if id1 == id2:
@@ -1329,7 +1329,7 @@ class BeamformerMVDR(BeamformerGridded):
 
         print("...Steering vector...")
         # Frequency selection, wave numbers and steering vector
-        ids = _find_nearest(self.f_range_hz, f)
+        ids = find_nearest_points_index_in_vector(self.f_range_hz, f)
         id1, id2 = ids[0], ids[1]
         # In case of only one frequency bin
         if id1 == id2:

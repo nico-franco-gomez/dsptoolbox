@@ -1,7 +1,7 @@
 import numpy as np
 
 from ..classes import Signal, MultiBandSignal
-from .._general_helpers import _pad_trim
+from ..helpers.other import _pad_trim
 
 
 def pad_trim(

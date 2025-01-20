@@ -2,8 +2,7 @@ import numpy as np
 from numpy.typing import NDArray
 
 from ..classes import Signal, MultiBandSignal, FilterBank, Filter
-from .._general_helpers import _normalize, _fade, _rms
-from ..tools import from_db
+from ..helpers.gain_and_level import _fade, from_db, _normalize, _rms
 from .resampling import resample
 from .enums import FadeType
 

@@ -7,9 +7,10 @@ from numpy.typing import NDArray
 from scipy.stats import pearsonr
 from warnings import warn
 
+from ..helpers.gain_and_level import to_db, from_db
 from ..plots import general_plot
 from ..transfer_functions._transfer_functions import _trim_ir
-from ..tools import from_db, to_db, time_smoothing
+from ..tools import time_smoothing
 from .enums import ReverbTime
 
 

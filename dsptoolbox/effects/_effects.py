@@ -2,7 +2,7 @@
 Backend for the effects module
 """
 
-from .._general_helpers import _get_smoothing_factor_ema
+from ..helpers.smoothing import _get_smoothing_factor_ema
 from ..plots import general_plot
 import numpy as np
 from numpy.typing import NDArray

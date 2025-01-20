@@ -9,7 +9,7 @@ from numpy.typing import NDArray
 
 from .. import Signal
 from ..filterbanks import auditory_filters_gammatone
-from .._general_helpers import _find_nearest
+from ..helpers.other import find_nearest_points_index_in_vector
 from ._distances import (
     _log_spectral_distance,
     _itakura_saito_measure,
@@ -94,7 +94,7 @@ def log_spectral(
         psd1 = psd1**2
         psd2 = psd2**2
 
-    ids = _find_nearest(f_range_hz, f)
+    ids = find_nearest_points_index_in_vector(f_range_hz, f)
     f = f[ids[0] : ids[1]]
 
     distances = np.zeros(insig1.number_of_channels)
@@ -183,7 +183,7 @@ def itakura_saito(
         psd1 = psd1**2
         psd2 = psd2**2
 
-    ids = _find_nearest(f_range_hz, f)
+    ids = find_nearest_points_index_in_vector(f_range_hz, f)
     f = f[ids[0] : ids[1]]
 
     distances = np.zeros(insig1.number_of_channels)

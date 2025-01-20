@@ -19,9 +19,9 @@ from ._room_acoustics import (
     _c80_from_rir,
     _ts_from_rir,
 )
-from .._general_helpers import _find_nearest, _pad_trim
 from ..standard import pad_trim
-from ..tools import to_db
+from ..helpers.other import _pad_trim, find_nearest_points_index_in_vector
+from ..helpers.gain_and_level import to_db
 from ..standard.enums import (
     IirDesignMethod,
     FilterPassType,
@@ -192,7 +192,7 @@ def find_modes(
     f, sp = signal.get_spectrum()
 
     # Setting up frequency range
-    ids = _find_nearest(f_range_hz, f)
+    ids = find_nearest_points_index_in_vector(f_range_hz, f)
     f = f[ids[0] : ids[1]]
     df = f[1] - f[0]
 

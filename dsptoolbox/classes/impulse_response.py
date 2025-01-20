@@ -4,7 +4,7 @@ from matplotlib.figure import Figure
 from matplotlib.axes import Axes
 
 from .signal import Signal
-from ..tools import to_db
+from ..helpers.gain_and_level import to_db
 from ..standard.enums import SpectrumMethod
 
 

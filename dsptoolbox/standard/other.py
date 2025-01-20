@@ -7,6 +7,7 @@ from scipy.signal import (
 )
 from warnings import warn
 
+
 from ..classes import (
     Signal,
     MultiBandSignal,
@@ -18,11 +19,9 @@ from ._standard_backend import (
     _indices_above_threshold_dbfs,
     _detrend,
 )
-from .._general_helpers import (
-    _check_format_in_path,
-    _get_smoothing_factor_ema,
-)
-from ..tools import from_db
+from ..helpers.smoothing import _get_smoothing_factor_ema
+from ..helpers.other import _check_format_in_path
+from ..helpers.gain_and_level import from_db
 from .enums import (
     SpectrumType,
     InterpolationDomain,

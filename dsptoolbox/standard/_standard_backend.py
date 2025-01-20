@@ -7,7 +7,7 @@ from scipy.signal import correlate, windows, hilbert
 from scipy.special import iv as bessel_first_mod
 from numpy.typing import NDArray
 
-from .._general_helpers import _wrap_phase
+from ..helpers.spectrum_utilities import _wrap_phase
 
 
 def _latency(

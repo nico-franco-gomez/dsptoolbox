@@ -25,8 +25,8 @@ from .filter_helpers import (
 )
 from .plots import _zp_plot
 from ..plots import general_plot
-from .._general_helpers import _check_format_in_path, _pad_trim
-from ..tools import to_db
+from ..helpers.other import _pad_trim, _check_format_in_path
+from ..helpers.gain_and_level import to_db
 from ..standard.enums import (
     FilterCoefficientsType,
     BiquadEqType,

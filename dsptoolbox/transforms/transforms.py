@@ -2,6 +2,8 @@
 Here are methods considered as somewhat special or less common.
 """
 
+from ..helpers.frequency_conversion import _hz2mel, _mel2hz
+from ..helpers.ar_estimation import _burg_ar_estimation, _yw_ar_estimation
 from ..classes.signal import Signal
 from ..classes.filter import Filter
 from ..classes.impulse_response import ImpulseResponse
@@ -11,12 +13,8 @@ from ..standard._framed_signal_representation import (
     _get_framed_signal,
     _reconstruct_framed_signal,
 )
-from .._general_helpers import (
-    _hz2mel,
-    _mel2hz,
+from ..helpers.other import (
     _pad_trim,
-    __yw_ar_estimation,
-    __burg_ar_estimation,
 )
 from ..room_acoustics._room_acoustics import _find_ir_start
 from ..transforms._transforms import (
@@ -29,7 +27,7 @@ from ..transforms._transforms import (
     _get_warping_factor,
     _dft_backend,
 )
-from ..tools import to_db
+from ..helpers.gain_and_level import to_db
 from ..standard.enums import FilterCoefficientsType, SpectrumMethod
 from .enums import CepstrumType
 
@@ -1256,9 +1254,9 @@ def lpc(
     td *= window[:, None, None]
 
     a, var = (
-        __burg_ar_estimation(td, order)
+        _burg_ar_estimation(td, order)
         if method_ar == "burg"
-        else __yw_ar_estimation(td, order)
+        else _yw_ar_estimation(td, order)
     )
 
     if not synthesize_encoded_signal:

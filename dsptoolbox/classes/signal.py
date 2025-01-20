@@ -13,23 +13,28 @@ from scipy.signal import oaconvolve
 from numpy.typing import NDArray, ArrayLike
 from scipy.fft import rfft, next_fast_len
 
-from ..plots import general_plot, general_subplots_line, general_matrix_plot
-from .plots import _csm_plot
-from .._general_helpers import (
+from ..helpers.spectrum_utilities import (
     _get_normalized_spectrum,
-    _pad_trim,
-    _find_nearest,
-    _fractional_octave_smoothing,
-    _check_format_in_path,
     _scale_spectrum,
     _wrap_phase,
-    _remove_ir_latency_from_phase_min_phase,
-    _remove_ir_latency_from_phase_peak,
-    _remove_ir_latency_from_phase,
 )
+from ..helpers.minimum_phase import _remove_ir_latency_from_phase_min_phase
+from ..helpers.smoothing import _fractional_octave_smoothing
+from ..helpers.latency import (
+    _remove_ir_latency_from_phase,
+    _remove_ir_latency_from_phase_peak,
+)
+from ..helpers.other import (
+    _check_format_in_path,
+    find_nearest_points_index_in_vector,
+    _pad_trim,
+)
+from ..helpers.gain_and_level import to_db
+
+from ..plots import general_plot, general_subplots_line, general_matrix_plot
+from .plots import _csm_plot
 from ..standard._standard_backend import _group_delay_direct
 from ..standard._spectral_methods import _welch, _stft, _csm_welch, _csm_fft
-from ..tools import to_db
 from ..standard.enums import (
     SpectrumScaling,
     SpectrumMethod,
@@ -366,7 +371,7 @@ class Signal:
             Smoothing across (`1/smoothing`) octave bands. It will only be
             applied on the spectrum. Smoothes
             magnitude AND phase. For accesing the smoothing algorithm, refer to
-            `dsptoolbox._general_helpers._fractional_octave_smoothing()`.
+            `dsptoolbox.tools.fractional_octave_smoothing()`.
             If smoothing is applied here, `Signal.get_spectrum()` returns
             the smoothed spectrum, but plotting ignores this parameter.
             Default: 0 (no smoothing).
@@ -1282,7 +1287,7 @@ class Signal:
         # Select channel
         stft = stft[:, :, channel_number]
 
-        ids = _find_nearest([20, 20000], f)
+        ids = find_nearest_points_index_in_vector([20, 20000], f)
         if ids[0] == 0:
             ids[0] += 1
         f = f[ids[0] : ids[1]]
