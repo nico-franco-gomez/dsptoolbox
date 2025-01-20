@@ -255,9 +255,11 @@ class Signal:
                 # Imaginary part is also scaled by same factor as real part
                 if new_time_data_imag is not None:
                     new_time_data_imag /= time_data_max
-                self.amplitude_scale_factor = 1 / time_data_max
+                self.amplitude_scale_factor = 1.0 / time_data_max
             else:
-                self.amplitude_scale_factor = 1
+                self.amplitude_scale_factor = 1.0
+        else:
+            self.amplitude_scale_factor = 1.0
 
         # Set time data (real and imaginary)
         self.__time_data = new_time_data
@@ -705,9 +707,7 @@ class Signal:
             "Indexes of new channels have to be smaller than the number "
             + f"of channels {self.number_of_channels}"
         )
-        new_sig = self.copy()
-        new_sig.time_data = self.time_data[:, channels]
-        return new_sig
+        return self.copy_with_new_time_data(self.time_data[:, channels].copy())
 
     def sum_channels(self) -> "Signal":
         """Return a copy of the signal where all channels are summed into one.
@@ -718,10 +718,9 @@ class Signal:
             New signal with a single channel.
 
         """
-        new_sig = self.copy()
-        new_sig.time_data = np.sum(new_sig.time_data, axis=1)
-        new_sig.clear_time_window()
-        return new_sig
+        return self.copy_with_new_time_data(
+            np.sum(self.time_data, axis=1, keepdims=True)
+        )
 
     def clear_time_window(self) -> "Signal":
         """Deletes the time window of the signal in case there is any."""

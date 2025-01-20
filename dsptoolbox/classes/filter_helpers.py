@@ -267,8 +267,7 @@ def _filter_on_signal(
 
     # Create new signal
     new_time_data[:, channels] = y
-    new_signal = signal.copy()
-    new_signal.time_data = new_time_data
+    new_signal = signal.copy_with_new_time_data(new_time_data)
 
     # zi packing
     if zi is not None:
@@ -369,8 +368,7 @@ def _filter_on_signal_ba(
 
     # Create new signal
     new_time_data[:, channels] = y
-    new_signal = signal.copy()
-    new_signal.time_data = new_time_data
+    new_signal = signal.copy_with_new_time_data(new_time_data)
 
     # zi packing
     if zi is not None:
@@ -425,12 +423,14 @@ def _filterbank_on_signal(
                 )
             )
         out_sig = MultiBandSignal(ss, same_sampling_rate=same_sampling_rate)
+        return out_sig
     elif mode == FilterBankMode.Sequential:
         out_sig = signal.copy()
         for n in range(n_filt):
             out_sig = filters[n].filter_signal(
                 out_sig, activate_zi=activate_zi, zero_phase=zero_phase
             )
+        return out_sig
     else:
         new_time_data = np.zeros(
             (signal.time_data.shape[0], signal.number_of_channels, n_filt)
@@ -441,9 +441,7 @@ def _filterbank_on_signal(
             )
             new_time_data[:, :, n] = s.time_data
         new_time_data = np.sum(new_time_data, axis=-1)
-        out_sig = signal.copy()
-        out_sig.time_data = new_time_data
-    return out_sig
+        return signal.copy_with_new_time_data(new_time_data)
 
 
 def _lfilter_fir(

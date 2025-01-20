@@ -266,8 +266,8 @@ def fractional_delay(
             new_time_data = new_time_data[: sig.time_data.shape[0], :]
 
         # =========== give out object =========================================
-        out_sig = sig.copy()
-        out_sig.time_data = new_time_data
+        out_sig = sig.copy_with_new_time_data(new_time_data)
+        return out_sig
 
     elif isinstance(sig, MultiBandSignal):
         new_bands = []
@@ -284,12 +284,12 @@ def fractional_delay(
                 )
             )
         out_sig.bands = new_bands
+        return out_sig
     else:
         raise TypeError(
             "Passed signal should be either type Signal or "
             + "MultiBandSignal"
         )
-    return out_sig
 
 
 def delay(
@@ -365,17 +365,16 @@ def delay(
         if keep_length:
             new_time_data = new_time_data[: sig.time_data.shape[0], :]
 
-        out_sig = sig.copy()
-        out_sig.time_data = new_time_data
+        return sig.copy_with_new_time_data(new_time_data)
     elif isinstance(sig, MultiBandSignal):
         new_bands = []
         out_sig = sig.copy()
         for b in sig.bands:
             new_bands.append(delay(b, delay_samples, channels, keep_length))
         out_sig.bands = new_bands
+        return out_sig
     else:
         raise TypeError(
             "Passed signal should be either type Signal or "
             + "MultiBandSignal"
         )
-    return out_sig

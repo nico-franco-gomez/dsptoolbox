@@ -271,9 +271,7 @@ class KautzFilter(RealtimeFilter):
         ), "Sampling rates do not match"
 
         new_td = self.__process_time_data_vector(signal.time_data, False)
-        new_sig = signal.copy()
-        new_sig.time_data = new_td
-        return new_sig
+        return signal.copy_with_new_time_data(new_td)
 
     def get_ir(self, length_samples: int) -> ImpulseResponse:
         """Return an impulse response from the Kautz filter."""

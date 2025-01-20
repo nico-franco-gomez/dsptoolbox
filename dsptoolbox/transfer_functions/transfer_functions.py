@@ -270,8 +270,7 @@ def window_ir(
             adaptive,
         )
 
-    new_sig = signal.copy()
-    new_sig.time_data = new_time_data
+    new_sig = signal.copy_with_new_time_data(new_time_data)
     new_sig.set_window(window)
     return new_sig, start_positions_samples
 
@@ -326,8 +325,7 @@ def window_centered_ir(
             signal.time_data[:, n], total_length_samples, window_type
         )
 
-    new_sig = signal.copy()
-    new_sig.time_data = new_time_data
+    new_sig = signal.copy_with_new_time_data(new_time_data)
     new_sig.set_window(window)
     return new_sig, start_positions_samples
 
@@ -497,7 +495,7 @@ def average_irs(
     if normalize_energy:
         energies = np.sum(signal.time_data**2, axis=0)
         energies /= energies[0]
-        avg_sig.time_data = avg_sig.time_data * energies
+        avg_sig.time_data *= energies
 
     if not time_average:
         # Obtain channel magnitude and phase spectra
@@ -513,7 +511,7 @@ def average_irs(
 
         # New time data and signal object
         new_time_data = np.fft.irfft(
-            new_sp[..., None], n=signal.time_data.shape[0], axis=0
+            new_sp[..., None], n=signal.length_samples, axis=0
         )
     else:
         latencies = find_ir_latency(signal)
@@ -750,9 +748,7 @@ def min_phase_ir(
                 sig.time_data[:, ch], method="hilbert", n_fft=length_fft
             )[: new_time_data.shape[0]]
 
-    min_phase_sig = sig.copy()
-    min_phase_sig.time_data = new_time_data[: len(sig)]
-    return min_phase_sig
+    return sig.copy_with_new_time_data(new_time_data[: len(sig)])
 
 
 def group_delay(
@@ -1100,10 +1096,10 @@ def combine_ir_with_dirac(
         td_imp *= ir_peak / imp_peak
 
     # Combine
-    combined_ir = ir.copy()
-    combined_ir.time_data = td_ir + td_imp * polarity[None, ...]
-    combined_ir = normalize(combined_ir, 0.0)
-    return combined_ir
+    combined_ir = ir.copy_with_new_time_data(
+        td_ir + td_imp * polarity[None, ...]
+    )
+    return normalize(combined_ir, 0.0)
 
 
 def ir_to_filter(
@@ -1452,8 +1448,7 @@ def harmonics_from_chirp_ir(
     time_harmonics_samples = np.insert(time_harmonics_samples, 0, len(td))
 
     # Dummy to obtain all metadata of the IR
-    ir_dummy = ir.copy()
-    ir_dummy.time_data = ir.time_data[:10]
+    ir_dummy = ir.copy_with_new_time_data(ir.time_data[:10])
 
     harmonics = []
     for nh in range(n_harmonics):
@@ -1468,10 +1463,7 @@ def harmonics_from_chirp_ir(
             * offset_percentage
         )
         snippet = td[min_ind:max_ind, 0]
-
-        new_harmonic = ir_dummy.copy()
-        new_harmonic.time_data = snippet
-        harmonics.append(new_harmonic)
+        harmonics.append(ir_dummy.copy_with_new_time_data(snippet))
     return harmonics
 
 
@@ -1765,6 +1757,8 @@ def trim_ir(
 
     start = int(np.min(starts))
     stop = int(np.max(stops))
-    trimmed_rir = ir.copy()
-    trimmed_rir.time_data = trimmed_rir.time_data[start:stop, ...]
-    return trimmed_rir, start, stop
+    return (
+        ir.copy_with_new_time_data(ir.time_data[start:stop, ...].copy()),
+        start,
+        stop,
+    )

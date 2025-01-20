@@ -164,9 +164,7 @@ class LatticeLadderFilter(RealtimeFilter):
                 "No implementation for all-pole IIR filtering"
             )
 
-        filtered_signal = signal.copy()
-        filtered_signal.time_data = td
-        return filtered_signal
+        return signal.copy_with_new_time_data(td)
 
     def process_sample(self, x: float, channel: int):
         """Filtering using a lattice ladder structure (general IIR filter). The

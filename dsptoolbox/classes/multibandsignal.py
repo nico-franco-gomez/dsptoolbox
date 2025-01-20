@@ -292,9 +292,7 @@ class MultiBandSignal:
             for n in range(len(self.bands)):
                 initial += self.bands[n].time_data
                 initial += self.bands[n].time_data_imaginary * 1j
-        new_sig = self.bands[0].copy()
-        new_sig.time_data = initial
-        return new_sig
+        return self.bands[0].copy_with_new_time_data(initial)
 
     def show_info(self):
         """Show information about the `MultiBandSignal`."""

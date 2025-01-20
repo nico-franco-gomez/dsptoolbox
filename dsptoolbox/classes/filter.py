@@ -633,9 +633,8 @@ class Filter:
                 polyphase=polyphase,
             )
 
-        new_sig = signal.copy()
+        new_sig = signal.copy_with_new_time_data(new_time_data)
         new_sig.sampling_rate_hz = new_sampling_rate_hz
-        new_sig.time_data = new_time_data
         return new_sig
 
     # ======== Check type =====================================================

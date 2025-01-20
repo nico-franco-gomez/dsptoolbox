@@ -556,8 +556,7 @@ def istft(
 
     if original_signal is not None:
         td = _pad_trim(td, original_signal.time_data.shape[0])
-        reconstructed_signal = original_signal.copy()
-        reconstructed_signal.time_data = td
+        reconstructed_signal = original_signal.copy_with_new_time_data(td)
     else:
         reconstructed_signal = Signal(
             None, time_data=td, sampling_rate_hz=sampling_rate_hz
@@ -773,7 +772,6 @@ def hilbert(
     """
     if isinstance(signal, Signal):
         td = signal.time_data
-
         sp = np.fft.fft(td, axis=0)
         if len(td) % 2 == 0:
             nyquist = len(td) // 2
@@ -783,8 +781,7 @@ def hilbert(
             sp[1 : (len(td) + 1) // 2, :] *= 2
             sp[(len(td) + 1) // 2 :, :] = 0
 
-        analytic = signal.copy()
-        analytic.time_data = np.fft.ifft(sp, axis=0)
+        return signal.copy_with_new_time_data(np.fft.ifft(sp, axis=0))
     elif type(signal) is MultiBandSignal:
         new_mb = signal.copy()
         for ind, b in enumerate(new_mb):
@@ -792,7 +789,6 @@ def hilbert(
         return new_mb
     else:
         raise TypeError("Signal does not have a valid type")
-    return analytic
 
 
 def vqt(
@@ -934,14 +930,12 @@ def stereo_mid_side(signal: Signal, forward: bool) -> Signal:
     assert (
         signal.number_of_channels == 2
     ), "Signal must have exactly two channels"
-    new_sig = signal.copy()
-    td = signal.time_data
+    td = signal.time_data.copy()
     td[:, 0] = signal.time_data[:, 0] + signal.time_data[:, 1]
     td[:, 1] = signal.time_data[:, 0] - signal.time_data[:, 1]
     if forward:
         td /= 2
-    new_sig.time_data = td
-    return new_sig
+    return signal.copy_with_new_time_data(td)
 
 
 def laguerre(signal: Signal, warping_factor: float) -> Signal:
@@ -1007,9 +1001,7 @@ def laguerre(signal: Signal, warping_factor: float) -> Signal:
         xx = lfilter(b, a, xx, axis=0)
         output[i, :] = xx[-1, :]
 
-    out = signal.copy()
-    out.time_data = output
-    return out
+    return signal.copy_with_new_time_data(output)
 
 
 def warp(
@@ -1115,8 +1107,7 @@ def warp(
         total_length = td.shape[0]
 
     td = _warp_time_series(td[:total_length, ...], warping_factor)
-    warped_ir = ir.copy()
-    warped_ir.time_data = td
+    warped_ir = ir.copy_with_new_time_data(td)
 
     if approximation_warping_factor:
         return warped_ir, warping_factor

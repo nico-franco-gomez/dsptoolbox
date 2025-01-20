@@ -272,9 +272,7 @@ def convolve_rir_on_signal(
         new_peak_levels = np.max(np.abs(new_time_data), axis=0)
         new_time_data *= (old_peak_levels / new_peak_levels)[None, ...]
 
-    new_sig = signal.copy()
-    new_sig.time_data = new_time_data
-    return new_sig
+    return signal.copy_with_new_time_data(new_time_data)
 
 
 def find_ir_start(
