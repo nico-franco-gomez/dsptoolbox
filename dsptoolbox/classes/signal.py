@@ -1494,6 +1494,31 @@ class Signal:
         """
         return deepcopy(self)
 
+    def copy_with_new_time_data(self, new_time_data: ArrayLike) -> "Signal":
+        """Copy all attributes of the signal but with new time data.
+
+        Parameters
+        ----------
+        new_time_data : ArrayLike
+            New valid time data.
+
+        Returns
+        -------
+        Signal
+            Signal with new time data
+
+        """
+        new_signal = Signal.from_time_data(
+            new_time_data, self.sampling_rate_hz, self.constrain_amplitude
+        )
+        new_signal.calibrated_signal = self.calibrated_signal
+        new_signal.activate_cache = self.activate_cache
+        new_signal._spectrum_parameters = deepcopy(self._spectrum_parameters)
+        new_signal._spectrogram_parameters = deepcopy(
+            self._spectrogram_parameters
+        )
+        return new_signal
+
     def _get_metadata_string(self) -> str:
         """Helper for creating a string containing all signal info."""
         txt = ""

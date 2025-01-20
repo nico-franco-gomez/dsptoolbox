@@ -367,6 +367,9 @@ class TestSignal:
             nn.sum_channels().time_data, np.sum(n, axis=1, keepdims=True)
         )
 
+    def test_copy_with_new_time_data(self):
+        assert False
+
 
 class TestFilterClass:
     """Tests for the Filter class.

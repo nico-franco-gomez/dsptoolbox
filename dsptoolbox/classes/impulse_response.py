@@ -226,3 +226,8 @@ class ImpulseResponse(Signal):
                     alpha=0.75,
                 )
         return fig, ax
+
+    def copy_with_new_time_data(self, new_time_data) -> "ImpulseResponse":
+        return ImpulseResponse.from_signal(
+            super().copy_with_new_time_data(new_time_data)
+        )
