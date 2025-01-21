@@ -84,10 +84,10 @@ class LRFilterBank:
         """
         if info is None:
             info = {}
-        if type(order) is int:
-            order = np.ones(len(freqs)) * order
         freqs = np.atleast_1d(np.asarray(freqs).squeeze())
         order = np.atleast_1d(np.asarray(order).squeeze())
+        if len(order) == 1:
+            order = np.ones(len(freqs)) * order
         assert np.max(freqs) <= sampling_rate_hz // 2, (
             "Highest frequency is above nyquist frequency for the given "
             + "sampling rate"
