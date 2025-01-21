@@ -1100,7 +1100,7 @@ class Signal:
     def plot_spl(
         self,
         normalize_at_peak: bool = False,
-        range_db: float | None = 100.0,
+        dynamic_range_db: float | None = 100.0,
         window_length_s: float = 0.0,
     ) -> tuple[Figure, list[Axes]]:
         """Plots the momentary sound pressure level (dB or dBFS) of each
@@ -1112,10 +1112,10 @@ class Signal:
         normalize_at_peak : bool, optional
             When `True`, each channel gets normalize by its peak value.
             Default: `False`.
-        range_db : float, optional
+        dynamic_range_db : float, optional
             This is the range in dB used for plotting. Each plot will be in the
-            range [peak + 1 - range_db, peak + 1]. Pass `None` to avoid setting
-            any range. Default: 100.
+            range [peak + 1 - dynamic_range_db, peak + 1]. Pass `None` to avoid
+            setting any range. Default: 100.
         window_length_s : float, optional
             When different than 0, a moving average along the time axis is done
             with the given length. Default: 0.
@@ -1154,7 +1154,7 @@ class Signal:
             complex_etc = to_db(
                 td_squared_imaginary,
                 False,
-                500 if range_db is None else range_db,
+                500 if dynamic_range_db is None else dynamic_range_db,
             )
 
         etc = to_db(td_squared, False, 500)
@@ -1196,9 +1196,9 @@ class Signal:
         for n in range(self.number_of_channels):
             if self.is_complex_signal:
                 ax[n].plot(self.time_vector_s, complex_etc[:, n], alpha=0.75)
-            if range_db is not None:
+            if dynamic_range_db is not None:
                 ax[n].set_ylim(
-                    [max_values[n] - np.abs(range_db), max_values[n]]
+                    [max_values[n] - np.abs(dynamic_range_db), max_values[n]]
                 )
         return fig, ax
 
