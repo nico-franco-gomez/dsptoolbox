@@ -42,9 +42,10 @@ def normalize(
 
     """
     if isinstance(sig, Signal):
-        new_sig = sig.copy()
-        new_sig.time_data = _normalize(
-            new_sig.time_data, norm_dbfs, peak_normalization, each_channel
+        return sig.copy_with_new_time_data(
+            _normalize(
+                sig.time_data, norm_dbfs, peak_normalization, each_channel
+            )
         )
     elif isinstance(sig, MultiBandSignal):
         new_sig = sig.copy()
@@ -52,11 +53,11 @@ def normalize(
             new_sig.bands[ind] = normalize(
                 sig.bands[ind], norm_dbfs, peak_normalization, each_channel
             )
+        return new_sig
     else:
         raise TypeError(
             "Type of signal is not valid. Use either Signal or MultiBandSignal"
         )
-    return new_sig
 
 
 def fade(
