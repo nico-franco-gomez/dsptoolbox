@@ -309,7 +309,7 @@ class LRFilterBank:
         for n in range(self.number_of_bands):
             # Extract if signal is ImpulseResponse or Signal and create
             # accordingly
-            b.append(type(s)(None, new_time_data[:, :, n], s.sampling_rate_hz))
+            b.append(s.copy_with_new_time_data(new_time_data[:, :, n]))
         d = dict(
             readme="MultiBandSignal made using Linkwitz-Riley filter bank",
             filterbank_freqs=self.freqs,
