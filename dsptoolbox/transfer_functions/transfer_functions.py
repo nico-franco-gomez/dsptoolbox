@@ -1758,7 +1758,7 @@ def trim_ir(
     start = int(np.min(starts))
     stop = int(np.max(stops))
     return (
-        ir.copy_with_new_time_data(ir.time_data[start:stop, ...].copy()),
+        ir.copy_with_new_time_data(ir.time_data[start:stop, ...]),
         start,
         stop,
     )
