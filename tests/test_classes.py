@@ -154,7 +154,7 @@ class TestSignal:
         assert np.all(self.time_vec[:, 0][..., None] == ch.time_data)
 
         # Try to get a channel that does not exist
-        with pytest.raises(AssertionError):
+        with pytest.raises(IndexError):
             s.get_channels(self.channels + 10)
 
         # Swap channels
