@@ -733,15 +733,6 @@ class Signal:
 
         """
         channels = np.atleast_1d(np.asarray(channels).squeeze())
-        if channels.ndim > 1:
-            raise ValueError(
-                "Parameter channels must be only an object broadcastable to "
-                + "1D Array"
-            )
-        assert all(channels < self.number_of_channels), (
-            "Indexes of new channels have to be smaller than the number "
-            + f"of channels {self.number_of_channels}"
-        )
         return self.copy_with_new_time_data(self.time_data[:, channels].copy())
 
     def sum_channels(self) -> "Signal":
@@ -1065,8 +1056,6 @@ class Signal:
             Axes.
 
         """
-        if not hasattr(self, "time_vector_s"):
-            self._generate_time_vector()
         fig, ax = general_subplots_line(
             self.time_vector_s,
             self.time_data,
@@ -1075,11 +1064,9 @@ class Signal:
             xlabels="Time / s",
         )
 
-        plot_complex = self.time_data_imaginary is not None
-
         for n in range(self.number_of_channels):
             mx = np.max(np.abs(self.time_data[:, n])) * 1.1
-            if plot_complex:
+            if self.is_complex_signal:
                 ax[n].plot(
                     self.time_vector_s,
                     self.time_data_imaginary[:, n],
@@ -1155,7 +1142,7 @@ class Signal:
 
         if normalize_at_peak:
             etc -= peak_values
-            if complex_data:
+            if self.is_complex_signal:
                 complex_etc -= peak_values
 
         db_type = "dBFS"
@@ -1165,7 +1152,7 @@ class Signal:
             etc -= factor
             peak_values -= factor
             db_type = "dB"
-            if complex_data:
+            if self.is_complex_signal:
                 complex_etc -= factor
 
         fig, ax = general_subplots_line(
@@ -1187,7 +1174,7 @@ class Signal:
         )
 
         for n in range(self.number_of_channels):
-            if complex_data:
+            if self.is_complex_signal:
                 ax[n].plot(self.time_vector_s, complex_etc[:, n], alpha=0.75)
             if range_db is not None:
                 ax[n].set_ylim(
