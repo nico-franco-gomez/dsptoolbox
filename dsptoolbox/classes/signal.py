@@ -715,6 +715,7 @@ class Signal:
             new_order
         ), "There are repeated indexes in the new order vector"
         self.time_data = self.time_data[:, new_order]
+        self.__update_state()
         return self
 
     def get_channels(self, channels) -> "Signal":
