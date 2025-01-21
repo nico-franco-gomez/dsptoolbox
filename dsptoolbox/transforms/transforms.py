@@ -1097,17 +1097,18 @@ def warp(
     approximation_warping_factor = type(warping_factor) is str
     warping_factor = _get_warping_factor(warping_factor, ir.sampling_rate_hz)
 
-    td = ir.time_data
+    td = ir.time_data.copy()
     if shift_ir:
         for ch in range(ir.number_of_channels):
             start = _find_ir_start(td[:, ch], -20)
             td[:, ch] = np.roll(td[:, ch], -start)
 
-    if total_length is None:
-        total_length = td.shape[0]
-
-    td = _warp_time_series(td[:total_length, ...], warping_factor)
-    warped_ir = ir.copy_with_new_time_data(td)
+    warped_ir = ir.copy_with_new_time_data(
+        _warp_time_series(
+            td if total_length is None else td[:total_length, ...],
+            warping_factor,
+        )
+    )
 
     if approximation_warping_factor:
         return warped_ir, warping_factor

@@ -1256,8 +1256,9 @@ def _crossover_downsample(
                 new_sampling_rate_hz=signal.sampling_rate_hz // down_factor,
             )
             new_time_data[:, :, n] = s.time_data
-        new_time_data = np.sum(new_time_data, axis=-1)
-        out_sig = signal.copy_with_new_time_data(new_time_data)
+        out_sig = signal.copy_with_new_time_data(
+            np.sum(new_time_data, axis=-1)
+        )
         out_sig.sampling_rate_hz = signal.sampling_rate_hz // down_factor
     return out_sig
 

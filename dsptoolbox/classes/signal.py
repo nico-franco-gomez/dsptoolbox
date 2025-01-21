@@ -734,7 +734,7 @@ class Signal:
 
         """
         channels = np.atleast_1d(np.asarray(channels).squeeze())
-        return self.copy_with_new_time_data(self.time_data[:, channels].copy())
+        return self.copy_with_new_time_data(self.time_data[:, channels])
 
     def sum_channels(self) -> "Signal":
         """Return a copy of the signal where all channels are summed into one.
@@ -1524,7 +1524,21 @@ class Signal:
         Signal
             Signal with new time data
 
+        Notes
+        -----
+        - This signal object will own the time data alone, so when passing an
+          array, it is checked whether its memory belongs to another array or
+          not. If so, a copy is made.
+
         """
+        # Copy if the underlying memory belongs to another array
+        if isinstance(new_time_data, np.ndarray):
+            new_time_data = (
+                new_time_data
+                if new_time_data.base is None
+                else new_time_data.copy()
+            )
+        #
         new_signal = Signal.from_time_data(
             new_time_data, self.sampling_rate_hz, self.constrain_amplitude
         )

@@ -269,9 +269,9 @@ class KautzFilter(RealtimeFilter):
         assert (
             signal.sampling_rate_hz == self.sampling_rate_hz
         ), "Sampling rates do not match"
-
-        new_td = self.__process_time_data_vector(signal.time_data, False)
-        return signal.copy_with_new_time_data(new_td)
+        return signal.copy_with_new_time_data(
+            self.__process_time_data_vector(signal.time_data, False)
+        )
 
     def get_ir(self, length_samples: int) -> ImpulseResponse:
         """Return an impulse response from the Kautz filter."""
