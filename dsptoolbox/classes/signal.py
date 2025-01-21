@@ -104,7 +104,6 @@ class Signal:
         """
         # Handling amplitude
         self.constrain_amplitude = constrain_amplitude
-        self.scale_factor = None
         self.calibrated_signal = False
         self.activate_cache = activate_cache
         # State tracker
