@@ -655,7 +655,7 @@ class Spectrum:
         return plots.general_plot(
             self.frequency_vector_hz,
             data,
-            log=True,
+            log_x=True,
             labels=[f"Channel {i}" for i in range(self.number_of_channels)],
             ylabel="Magnitude / " + "dB" if in_db else "1",
         )
@@ -677,7 +677,7 @@ class Spectrum:
             matrix=self.coherence,
             column=True,
             sharey=True,
-            log=True,
+            log_x=True,
             ylabels=[
                 rf"$\gamma^2$ Coherence {n}"
                 for n in range(self.number_of_channels)
