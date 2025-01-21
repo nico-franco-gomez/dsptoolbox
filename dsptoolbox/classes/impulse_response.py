@@ -75,7 +75,6 @@ class ImpulseResponse(Signal):
             signal.constrain_amplitude,
         )
         ir.calibrated_signal = signal.calibrated_signal
-        ir.amplitude_scale_factor = signal.amplitude_scale_factor
         ir.time_data_imaginary = signal.time_data_imaginary
         return ir
 

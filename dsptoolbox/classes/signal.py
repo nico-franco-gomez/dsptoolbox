@@ -229,7 +229,7 @@ class Signal:
             + "too many dimensions for time data. Dimensions should"
             + " be [time samples, channels]"
         )
-        if len(new_time_data.shape) < 2:
+        if new_time_data.ndim < 2:
             new_time_data = new_time_data[..., None]
 
         # Assume always that there are more time samples than channels
@@ -243,10 +243,14 @@ class Signal:
         else:
             new_time_data_imag = None
 
-        # Normalization for real time data
+        # Normalization
         if self.constrain_amplitude:
             time_data_max = np.max(np.abs(new_time_data))
-            if time_data_max > 1:
+            if new_time_data_imag is not None:
+                time_data_max = max(
+                    time_data_max, np.max(np.abs(new_time_data_imag))
+                )
+            if time_data_max > 1.0:
                 new_time_data /= time_data_max
                 warn(
                     "Signal was over 0 dBFS, normalizing to 0 dBFS "
@@ -255,11 +259,11 @@ class Signal:
                 # Imaginary part is also scaled by same factor as real part
                 if new_time_data_imag is not None:
                     new_time_data_imag /= time_data_max
-                self.amplitude_scale_factor = 1.0 / time_data_max
+                self.__amplitude_scale_factor = 1.0 / time_data_max
             else:
-                self.amplitude_scale_factor = 1.0
+                self.__amplitude_scale_factor = 1.0
         else:
-            self.amplitude_scale_factor = 1.0
+            self.__amplitude_scale_factor = 1.0
 
         # Set time data (real and imaginary)
         self.__time_data = new_time_data
@@ -267,6 +271,18 @@ class Signal:
         self.__update_state()
 
         self.clear_time_window()
+
+    @property
+    def amplitude_scale_factor(self) -> float:
+        """This is the scaling factor (multiplied) when the amplitude is
+        automatically constrained to the range [-1., 1.].
+
+        This factor is computed by checking peak amplitude of the real and
+        imaginary parts of the time signal independently. The largest peak
+        value is then used as the normalization factor for both.
+
+        """
+        return self.__amplitude_scale_factor
 
     @property
     def sampling_rate_hz(self) -> int:
@@ -1512,7 +1528,6 @@ class Signal:
         )
         new_signal.calibrated_signal = self.calibrated_signal
         new_signal.activate_cache = self.activate_cache
-        new_signal.amplitude_scale_factor = self.amplitude_scale_factor
         new_signal._spectrum_parameters = deepcopy(self._spectrum_parameters)
         new_signal._spectrogram_parameters = deepcopy(
             self._spectrogram_parameters
