@@ -124,7 +124,6 @@ class MultiBandSignal:
                         + "constant sampling rate"
                     )
         self.__bands = new_bands
-        self._generate_metadata()
 
     @property
     def same_sampling_rate(self) -> bool:
@@ -177,23 +176,21 @@ class MultiBandSignal:
         return iter(self.bands)
 
     def __str__(self):
-        return self._get_metadata_str()
+        return self.metadata_str
 
-    def _generate_metadata(self):
-        """Generates an information dictionary with metadata about the
-        `MultiBandSignal`.
-
-        """
-        if not hasattr(self, "info"):
-            self.info = {}
-        self.info["number_of_bands"] = self.number_of_bands
+    @property
+    def metadata(self) -> dict:
+        """Metadata."""
+        info = {}
+        info["number_of_bands"] = self.number_of_bands
         if self.bands:
-            self.info["same_sampling_rate"] = self.same_sampling_rate
+            info["same_sampling_rate"] = self.same_sampling_rate
             if self.same_sampling_rate:
                 if hasattr(self, "sampling_rate_hz"):
-                    self.info["sampling_rate_hz"] = self.sampling_rate_hz
-                self.info["length_samples"] = self.length_samples
-            self.info["number_of_channels"] = self.number_of_channels
+                    info["sampling_rate_hz"] = self.sampling_rate_hz
+                info["length_samples"] = self.length_samples
+            info["number_of_channels"] = self.number_of_channels
+        return info
 
     # ======== Add and remove =================================================
     def add_band(self, sig: Signal, index: int = -1):
@@ -217,7 +214,6 @@ class MultiBandSignal:
             else:
                 bs.insert(index, sig)
             self.bands = bs
-        self._generate_metadata()
         return self
 
     def remove_band(self, index: int = -1, return_band: bool = False):
@@ -237,7 +233,6 @@ class MultiBandSignal:
         bs = self.bands.copy()
         f = bs.pop(index)
         self.bands = bs
-        self._generate_metadata()
         if return_band:
             return f
         return self
@@ -296,14 +291,16 @@ class MultiBandSignal:
 
     def show_info(self):
         """Show information about the `MultiBandSignal`."""
-        print(self._get_metadata_str())
+        print(self.metadata_str)
         return self
 
-    def _get_metadata_str(self):
+    @property
+    def metadata_str(self) -> str:
         txt = ""
-        for k in self.info:
+        md = self.metadata | self.info
+        for k in md:
             txt += f""" | {str(k).replace('_', ' ').
-                           capitalize()}: {self.info[k]}"""
+                           capitalize()}: {md[k]}"""
         txt = "Multiband signal:" + txt
         txt += "\n"
         txt += "–" * len(txt)

@@ -126,9 +126,7 @@ def append_signals(
                 )
             new_bands.append(new_band)
         return MultiBandSignal(
-            new_bands,
-            same_sampling_rate=signals[0].same_sampling_rate,
-            info=signals[0].info,
+            new_bands, same_sampling_rate=signals[0].same_sampling_rate
         )
     else:
         raise ValueError(
