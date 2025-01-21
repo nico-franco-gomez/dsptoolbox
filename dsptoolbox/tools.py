@@ -436,7 +436,7 @@ def convert_sample_representation(
             if input_format not in ("f32", "f64"):
                 bits_input = int(input_format[1:])
                 input_format_to_read = eval(
-                    f"np.{"int" if signed_input else "uint"}{bits_input}"
+                    f"""np.{"int" if signed_input else "uint"}{bits_input}"""
                 )
             else:
                 input_format_to_read = eval(f"np.{input_format}")

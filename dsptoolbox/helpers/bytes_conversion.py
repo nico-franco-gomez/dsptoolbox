@@ -36,7 +36,7 @@ def _bytes_to_array_24bits(vector: bytes, signed_input: bool):
     assert (
         len(vector) % 3 == 0
     ), "Vector should have a length with 3-bytes sized samples"
-    output_format = eval(f"np.{"int" if signed_input else "uint"}32")
+    output_format = eval(f"""np.{"int" if signed_input else "uint"}32""")
     values = [
         int.from_bytes(vector[n : n + 3], sys.byteorder, signed=signed_input)
         for n in range(0, len(vector), 3)
