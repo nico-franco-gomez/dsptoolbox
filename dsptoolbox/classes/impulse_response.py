@@ -2,6 +2,7 @@ import numpy as np
 from numpy.typing import NDArray
 from matplotlib.figure import Figure
 from matplotlib.axes import Axes
+from copy import deepcopy
 
 from .signal import Signal
 from ..helpers.gain_and_level import to_db
@@ -228,6 +229,15 @@ class ImpulseResponse(Signal):
         return fig, ax
 
     def copy_with_new_time_data(self, new_time_data) -> "ImpulseResponse":
-        return ImpulseResponse.from_signal(
-            super().copy_with_new_time_data(new_time_data)
+        new_signal = ImpulseResponse.from_time_data(
+            new_time_data, self.sampling_rate_hz
         )
+        new_signal.calibrated_signal = self.calibrated_signal
+        new_signal.activate_cache = self.activate_cache
+        new_signal._spectrum_parameters = deepcopy(self._spectrum_parameters)
+        new_signal._spectrogram_parameters = deepcopy(
+            self._spectrogram_parameters
+        )
+        if self.spectrum_method != SpectrumMethod.FFT:
+            new_signal.spectrum_method = SpectrumMethod.FFT
+        return new_signal
