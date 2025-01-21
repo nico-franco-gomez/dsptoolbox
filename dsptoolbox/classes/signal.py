@@ -309,12 +309,15 @@ class Signal:
 
     @property
     def time_vector_s(self) -> NDArray[np.float64]:
+        """Corresponding time vector for the signal."""
         if self.__time_vector_update:
             self._generate_time_vector()
         return self.__time_vector_s
 
     @property
     def time_data_imaginary(self) -> NDArray[np.float64] | None:
+        """Imaginary part of the time data saved as np.float64. It can be None
+        meaning that the signal is purely real."""
         if self.__time_data_imaginary is None:
             return None
         return self.__time_data_imaginary.copy()
@@ -329,10 +332,19 @@ class Signal:
 
     @property
     def is_complex_signal(self) -> bool:
+        """When True, this signal contains an imaginary part."""
         return self.time_data_imaginary is not None
 
     @property
     def constrain_amplitude(self) -> bool:
+        """When True, the amplitude of the signal is always constrained to the
+        [-1., 1.] range. It will be automatically scaled if it surpasses these
+        values so that peak values are either -1. or 1. Use False to avoid
+        any amplitude scaling.
+
+        If this is triggered, the scaling factor is also saved in the signal.
+
+        """
         return self.__constrain_amplitude
 
     @constrain_amplitude.setter
@@ -346,6 +358,8 @@ class Signal:
 
     @property
     def calibrated_signal(self) -> bool:
+        """When True, this signal has been (amplitude) calibrated, so that it
+        represents sound pressure in Pa."""
         return self.__calibrated_signal
 
     @calibrated_signal.setter
@@ -354,13 +368,15 @@ class Signal:
         self.__calibrated_signal = ncs
 
     def __len__(self):
+        """Length of time signal in samples."""
         return self.time_data.shape[0]
 
     def __str__(self):
+        """Metadata of the signal."""
         return self._get_metadata_string()
 
     def __iter__(self):
-        """Iterate over the channels of the signal. No modification to the
+        """Iterate over the channels of the signal. Modifications to the
         samples can be done through these slices."""
         return iter(
             [self.time_data[:, x] for x in range(self.number_of_channels)]
@@ -461,6 +477,7 @@ class Signal:
 
     @property
     def spectrum_scaling(self) -> SpectrumScaling:
+        """Selected scaling for the spectrum."""
         return self._spectrum_parameters["scaling"]
 
     @spectrum_scaling.setter
@@ -472,6 +489,7 @@ class Signal:
 
     @property
     def spectrum_method(self) -> SpectrumMethod:
+        """Spectrum computation method."""
         return self._spectrum_parameters["method"]
 
     @spectrum_method.setter
@@ -483,6 +501,7 @@ class Signal:
 
     @property
     def spectrum_smoothing(self) -> float:
+        """Smoothing of spectrum in fraction of octaves."""
         return self._spectrum_parameters["smoothing"]
 
     @spectrum_smoothing.setter
@@ -910,10 +929,6 @@ class Signal:
         spectrogram : NDArray[np.complex128]
             Complex spectrogram with shape (frequency, time, channel).
 
-        Notes
-        -----
-        - No scaling is performed while computing the DFT coefficients.
-
         """
         condition = (
             not hasattr(self, "spectrogram")
@@ -1197,12 +1212,12 @@ class Signal:
             When different than 0, smoothing is applied to the group delay
             along the (1/smoothing) octave band. This only affects the values
             in the plot. Default: 0.
-        remove_ir_latency : str ["peak", "min_phase"], ArrayLike,\
-                None, optional
+        remove_ir_latency : str {"peak", "min_phase"}, ArrayLike, None,\
+                optional
             If the signal is an impulse response, the delay of the impulse can
             be removed. IR delay removal options are:
 
-            - str ["peak" or "min_phase"]: By regarding its delay in relation
+            - str {"peak" or "min_phase"}: By regarding its delay in relation
               to the minimum-phase equivalent or its peak in the time signal.
             - ArrayLike: Delay in samples to remove from each channel.
             - None: no latency removal.
@@ -1354,12 +1369,12 @@ class Signal:
             When different than 0, the phase response is smoothed across the
             1/smoothing-octave band. This only applies smoothing to the plot
             data. Default: 0.
-        remove_ir_latency : str ["peak", "min_phase"], ArrayLike,\
+        remove_ir_latency : str {"peak", "min_phase"}, ArrayLike,\
                 None, optional
             If the signal is an impulse response, the delay of the impulse can
             be removed. IR delay removal options are:
 
-            - str ["peak" or "min_phase"]: By regarding its delay in relation
+            - str {"peak" or "min_phase"}: By regarding its delay in relation
               to the minimum-phase equivalent or its peak in the time signal.
             - ArrayLike: Delay in samples to remove from each channel.
             - None: no latency removal.
