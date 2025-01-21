@@ -107,10 +107,7 @@ class Signal:
         self.calibrated_signal = False
         self.activate_cache = activate_cache
         # State tracker
-        self.__spectrum_state_update = True
-        self.__csm_state_update = True
-        self.__spectrogram_state_update = True
-        self.__time_vector_update = True
+        self.__update_state()
         # Import data
         if path is not None:
             assert time_data is None, (
