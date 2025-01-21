@@ -1125,8 +1125,7 @@ class Signal:
             window /= len(window)
             td_squared = oaconvolve(td_squared, window, mode="same", axes=0)
 
-        complex_data = self.time_data_imaginary is not None
-        if complex_data:
+        if self.is_complex_signal:
             td_squared_imaginary = self.time_data_imaginary**2.0
             if window_length_s > 0:
                 td_squared_imaginary = oaconvolve(
