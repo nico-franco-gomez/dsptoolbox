@@ -1,5 +1,5 @@
 import numpy as np
-from numpy.typing import NDArray
+from numpy.typing import NDArray, ArrayLike
 from matplotlib.figure import Figure
 from matplotlib.axes import Axes
 from copy import deepcopy
@@ -228,9 +228,19 @@ class ImpulseResponse(Signal):
                 )
         return fig, ax
 
-    def copy_with_new_time_data(self, new_time_data) -> "ImpulseResponse":
+    def copy_with_new_time_data(
+        self, new_time_data: ArrayLike
+    ) -> "ImpulseResponse":
+        # Copy if the underlying memory belongs to another array
+        if isinstance(new_time_data, np.ndarray):
+            new_time_data = (
+                new_time_data
+                if new_time_data.base is None
+                else new_time_data.copy()
+            )
+        #
         new_signal = ImpulseResponse.from_time_data(
-            new_time_data, self.sampling_rate_hz
+            new_time_data, self.sampling_rate_hz, self.constrain_amplitude
         )
         new_signal.calibrated_signal = self.calibrated_signal
         new_signal.activate_cache = self.activate_cache
