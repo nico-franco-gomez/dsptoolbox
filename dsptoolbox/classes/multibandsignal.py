@@ -310,9 +310,10 @@ class MultiBandSignal:
         for ind, f1 in enumerate(self.bands):
             txt += "\n"
             txt += f"Signal {ind}:"
-            for kf in f1.info:
+            md = f1.metadata
+            for kf in md:
                 txt += f""" | {str(kf).replace('_', ' ').
-                               capitalize()}: {f1.info[kf]}"""
+                               capitalize()}: {md[kf]}"""
         return txt
 
     # ======== Getters ========================================================
