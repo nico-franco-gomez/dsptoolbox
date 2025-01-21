@@ -320,7 +320,7 @@ class Signal:
         meaning that the signal is purely real."""
         if self.__time_data_imaginary is None:
             return None
-        return self.__time_data_imaginary.copy()
+        return self.__time_data_imaginary
 
     @time_data_imaginary.setter
     def time_data_imaginary(self, new_imag: NDArray[np.float64]):
