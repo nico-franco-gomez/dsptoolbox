@@ -135,7 +135,6 @@ class Signal:
         self.time_data = time_data
         self.set_spectrum_parameters()
         self.set_spectrogram_parameters()
-        self._generate_metadata()
 
     @staticmethod
     def from_file(path: str):
@@ -192,21 +191,33 @@ class Signal:
         self.__csm_state_update = True
         self.__spectrogram_state_update = True
         self.__time_vector_update = True
-        self._generate_metadata()
 
-    def _generate_metadata(self):
-        """Generates an information dictionary with metadata about the
-        signal.
+    @property
+    def metadata(self) -> dict:
+        """Return dictionary with metadata about the signal."""
+        info = {}
+        info["sampling_rate_hz"] = self.sampling_rate_hz
+        info["number_of_channels"] = self.number_of_channels
+        info["signal_length_samples"] = self.length_samples
+        info["signal_length_seconds"] = self.length_seconds
+        info["constrain_amplitude"] = self.constrain_amplitude
+        info["amplitude_scale_factor"] = self.amplitude_scale_factor
+        info["is_complex_signal"] = self.is_complex_signal
+        return info
 
-        """
-        if not hasattr(self, "info"):
-            self.info = {}
-        self.info["sampling_rate_hz"] = self.sampling_rate_hz
-        self.info["number_of_channels"] = self.number_of_channels
-        self.info["signal_length_samples"] = self.time_data.shape[0]
-        self.info["signal_length_seconds"] = (
-            self.time_data.shape[0] / self.sampling_rate_hz
-        )
+    @property
+    def metadata_str(self) -> str:
+        """Generate string with metadata about the signal."""
+        metadata = self.metadata
+        txt = ""
+        temp = ""
+        for _ in range(len(txt)):
+            temp += "-"
+        txt += temp + "\n"
+        for k in metadata.keys():
+            txt += f"""{str(k).replace('_', ' ').
+                        capitalize()}: {metadata[k]}\n"""
+        return txt
 
     def _generate_time_vector(self):
         """Internal method to generate a time vector on demand."""
@@ -218,6 +229,10 @@ class Signal:
     # ======== Properties and setters =========================================
     @property
     def time_data(self) -> NDArray[np.float64]:
+        """Array with time samples. Its shape is always (time samples,
+        channels) and data type np.float64.
+
+        """
         return self.__time_data
 
     @time_data.setter
@@ -373,7 +388,7 @@ class Signal:
 
     def __str__(self):
         """Metadata of the signal."""
-        return self._get_metadata_string()
+        return self.metadata_str
 
     def __iter__(self):
         """Iterate over the channels of the signal. Modifications to the
@@ -1550,19 +1565,7 @@ class Signal:
         )
         return new_signal
 
-    def _get_metadata_string(self) -> str:
-        """Helper for creating a string containing all signal info."""
-        txt = ""
-        temp = ""
-        for n in range(len(txt)):
-            temp += "-"
-        txt += temp + "\n"
-        for k in self.info.keys():
-            txt += f"""{str(k).replace('_', ' ').
-                        capitalize()}: {self.info[k]}\n"""
-        return txt
-
     def show_info(self):
         """Prints all the signal information to the console."""
-        print(self._get_metadata_string())
+        print(self.metadata_str)
         return self
