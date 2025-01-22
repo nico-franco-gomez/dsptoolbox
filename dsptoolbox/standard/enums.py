@@ -8,7 +8,7 @@ class SpectrumMethod(Enum):
     """Methods to compute a spectrum.
     - Welch: produces a spectrum that is averaged over time. If it is the
       autospectrum, it is always real-valued (magnitude or power). If it is
-      a cross-spectrum, then it is complex.
+      a cross-spectrum, it is complex.
     - FFT: produces the spectrum of a deterministic signal or an impulse
       response using a DFT directly on the time signal.
 
@@ -34,9 +34,11 @@ class SpectrumScaling(Enum):
     -----
     - FFT scalings just normalized by the length of the data but have no direct
       physical units, since they do not regard windows or sampling rates.
-    - Power (magnitude-squared) scalings always deliver real data, i.e., no
-      complex spectra.
-    - Amplitude scalings can deliver complex or real (magnitude) spectra.
+    - Power (magnitude-squared) scalings usually deliver real data, i.e., no
+      complex spectra. This is not the case for cross-spectral matrices (CSM),
+      where the power scalings do deliver complex cross-spectra.
+    - Amplitude scalings can deliver complex or real (magnitude) spectra
+      depending on the applied method to compute the spectrum.
 
     """
 
