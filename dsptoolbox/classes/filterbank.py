@@ -124,7 +124,7 @@ class FilterBank:
             self.__sampling_rate_hz = [int(s) for s in new_sampling_rate_hz]
 
     @property
-    def filters(self) -> list:
+    def filters(self) -> list[Filter]:
         return self.__filters
 
     @filters.setter
