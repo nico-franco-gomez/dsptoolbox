@@ -256,7 +256,7 @@ def apply_gain(
         new_sig = target.copy_with_new_time_data(
             target.time_data * gain_linear
         )
-        if new_sig.time_data_imaginary is not None:
+        if new_sig.is_complex_signal:
             new_sig.time_data_imaginary *= gain_linear
         return new_sig
     elif isinstance(target, MultiBandSignal):
