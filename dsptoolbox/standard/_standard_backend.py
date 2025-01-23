@@ -33,7 +33,9 @@ def _latency(
     return in1.shape[0] - peak_inds - 1
 
 
-def _group_delay_direct(phase: NDArray[np.float64], delta_f: float = 1):
+def _group_delay_direct(
+    phase: NDArray[np.float64 | np.complex128], delta_f: float = 1
+) -> NDArray[np.float64]:
     """Computes group delay by differentiation of the unwrapped phase.
 
     Parameters
