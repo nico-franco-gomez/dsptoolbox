@@ -580,8 +580,6 @@ class TestFilterClass:
 
         #
         f = self.get_iir()
-        f.get_filter_metadata()
-        f._get_metadata_string()
         f.show_info()
         print(f)
         f.copy()
