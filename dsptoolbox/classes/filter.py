@@ -412,7 +412,18 @@ class Filter:
             else:
                 coeff = coeff.astype(np.float64)
             ba[ind] = coeff
-        self.__ba = ba
+
+        # Check lengths while trimming
+        b, a = ba
+        # Trim zeros for a
+        a = np.atleast_1d(np.trim_zeros(a.copy(), "b"))
+        # Change to FIR and normalize if only one a coefficient
+        if len(a) == 1:
+            b /= a[0]
+            a = a / a[0]
+            self.__ba = [b, a]
+        else:
+            self.__ba = ba
 
     @property
     def sos(self) -> NDArray[np.float64 | np.complex128]:
@@ -636,27 +647,6 @@ class Filter:
         new_sig = signal.copy_with_new_time_data(new_time_data)
         new_sig.sampling_rate_hz = new_sampling_rate_hz
         return new_sig
-
-    # ======== Check type =====================================================
-    def __normalize_ba_coefficients(self):
-        """Internal method to check filter type (if FIR or IIR) and update
-        its filter type.
-
-        """
-        # Get filter coefficients
-        b, a = self.ba[0], self.ba[1]
-        assert (
-            b.ndim == 1 and a.ndim == 1
-        ), "Only one dimension for the coefficients is valid"
-
-        # Trim zeros for a
-        a = np.atleast_1d(np.trim_zeros(a))
-
-        # Change to FIR and normalize if only one a coefficient
-        if len(a) == 1:
-            b /= a[0]
-            a = a / a[0]
-            self.ba[0], self.ba[1] = b, a
 
     # ======== Getters ========================================================
     def get_filter_metadata(self):
