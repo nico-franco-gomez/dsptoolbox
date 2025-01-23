@@ -1103,19 +1103,14 @@ class QMFCrossover(BaseCrossover):
         Parameters
         ----------
         lowpass : `Filter`
-            Lowpass filter prototype.
+            Lowpass filter prototype. Cut-off frequency for lowpass filter
+            should be half the nyquist frequency.
 
         References
         ----------
         - https://tinyurl.com/2a3frbyv
 
         """
-        if "freqs" in lowpass.info:
-            if lowpass.info["freqs"] != lowpass.sampling_rate_hz // 4:
-                warn(
-                    "Cut-off frequency for lowpass filter should be half "
-                    + "the nyquist frequency."
-                )
         # Create FilterBank
         super().__init__(
             analysis_filters=self._get_analysis_filters(lowpass),
