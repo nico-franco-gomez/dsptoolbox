@@ -226,7 +226,8 @@ class MultiBandSignal:
             will be erased. When -1, last band is erased.
             Default: -1.
         return_band : bool, optional
-            When `True`, the erased band is returned. Default: `False`.
+            When `True`, the erased band is returned. Otherwise, the
+            multibandsignal is returned. Default: `False`.
 
         """
         assert self.bands, "There are no filters to remove"

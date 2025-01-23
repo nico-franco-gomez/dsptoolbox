@@ -236,7 +236,8 @@ class FilterBank:
             will be erased. When -1, last filter is erased.
             Default: -1.
         return_filter : bool, optional
-            When `True`, the erased filter is returned. Default: `False`.
+            When `True`, the erased filter is returned. Otherwise, the
+            filterbank instance is returned. Default: `False`.
 
         """
         assert self.filters, "There are no filters to remove"
