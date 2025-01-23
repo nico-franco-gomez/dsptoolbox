@@ -83,13 +83,6 @@ class Filter:
         elif FilterCoefficientsType.Ba in filter_coefficients:
             b, a = filter_coefficients[FilterCoefficientsType.Ba]
             self.ba = [np.atleast_1d(b), np.atleast_1d(a)]
-            self.__normalize_ba_coefficients()
-
-        # Update Metadata about the Filter
-        self.info: dict = {}
-        self.info["order"] = self.order
-        self.info["sampling_rate_hz"] = self.sampling_rate_hz
-        self.info["filter_type"] = "iir" if self.is_iir else "fir"
 
     @staticmethod
     def iir_filter(
@@ -360,6 +353,33 @@ class Filter:
         return self
 
     @property
+    def metadata(self) -> dict:
+        """Get a dictionary with metadata about the filter properties."""
+        info: dict = {}
+        info["order"] = self.order
+        info["sampling_rate_hz"] = self.sampling_rate_hz
+        info["filter_type"] = "iir" if self.is_iir else "fir"
+        info["has_sos"] = self.has_sos
+        info["has_zpk"] = self.has_zpk
+        return info
+
+    @property
+    def metadata_str(self) -> str:
+        """Get a string with metadata about the filter properties."""
+        txt = """Filter:\n"""
+        temp = ""
+        for _ in range(len(txt)):
+            temp += "-"
+        txt += temp + "\n"
+        metadata = self.metadata
+        for k in metadata:
+            if k == "ba":
+                continue
+            txt += f"""{str(k).replace("_", " ").
+                        capitalize()}: {metadata[k]}\n"""
+        return txt
+
+    @property
     def sampling_rate_hz(self):
         return self.__sampling_rate_hz
 
@@ -386,7 +406,7 @@ class Filter:
 
     @property
     def is_iir(self) -> bool:
-        if hasattr(self, "sos"):
+        if self.has_sos:
             return True
 
         a = self.ba[1]
@@ -469,7 +489,7 @@ class Filter:
         return self.order + 1
 
     def __str__(self):
-        return self._get_metadata_string()
+        return self.metadata_str
 
     # ======== Filtering ======================================================
     def filter_signal(
@@ -649,31 +669,6 @@ class Filter:
         return new_sig
 
     # ======== Getters ========================================================
-    def get_filter_metadata(self):
-        """Returns filter metadata.
-
-        Returns
-        -------
-        info : dict
-            Dictionary containing all filter metadata.
-
-        """
-        return self.info
-
-    def _get_metadata_string(self):
-        """Helper for creating a string containing all filter info."""
-        txt = """Filter:\n"""
-        temp = ""
-        for _ in range(len(txt)):
-            temp += "-"
-        txt += temp + "\n"
-        for k in self.info.keys():
-            if k == "ba":
-                continue
-            txt += f"""{str(k).replace("_", " ").
-                        capitalize()}: {self.info[k]}\n"""
-        return txt
-
     def get_ir(
         self, length_samples: int = 512, zero_phase: bool = False
     ) -> ImpulseResponse:
@@ -785,14 +780,7 @@ class Filter:
         )[1]
         return gd / self.sampling_rate_hz if in_seconds else gd
 
-    def get_coefficients(
-        self, coefficients_mode: FilterCoefficientsType
-    ) -> (
-        list[NDArray[np.float64]]
-        | NDArray[np.float64]
-        | tuple[NDArray[np.complex128], NDArray[np.complex128], float]
-        | None
-    ):
+    def get_coefficients(self, coefficients_mode: FilterCoefficientsType):
         """Return a copy of the filter coefficients.
 
         Parameters
@@ -811,7 +799,7 @@ class Filter:
 
         """
         if coefficients_mode == FilterCoefficientsType.Sos:
-            if hasattr(self, "sos"):
+            if self.has_sos:
                 return self.sos.copy()
             if self.order > 500:
                 warn(
@@ -820,19 +808,19 @@ class Filter:
                 )
             return sig.tf2sos(self.ba[0], self.ba[1])
         elif coefficients_mode == FilterCoefficientsType.Ba:
-            if hasattr(self, "sos"):
+            if self.has_sos:
                 return sig.sos2tf(self.sos)
             return deepcopy(self.ba)
         elif coefficients_mode == FilterCoefficientsType.Zpk:
-            if hasattr(self, "zpk"):
+            if self.has_zpk:
                 return tuple(deepcopy(self.zpk))
-            elif hasattr(self, "sos"):
+            elif self.has_sos:
                 return sig.sos2zpk(self.sos)
 
             # Check if filter is too long
             if self.order > 500:
                 warn(
-                    "Order is above 500. Computing SOS might take a "
+                    "Order is above 500. Computing zpk might take a "
                     + "long time"
                 )
             return sig.tf2zpk(self.ba[0], self.ba[1])
@@ -844,7 +832,7 @@ class Filter:
     # ======== Plots and prints ===============================================
     def show_info(self):
         """Prints all the filter parameters to the console."""
-        print(self._get_metadata_string())
+        print(self.metadata_str)
 
     def plot_magnitude(
         self,
@@ -891,13 +879,13 @@ class Filter:
             length_samples = self.order + 100
             warn(
                 f"length_samples ({length_samples}) is shorter than the "
-                + f"""filter order {self.info['order']}. Length will be """
+                + f"""filter order {self.order}. Length will be """
                 + "automatically extended."
             )
         ir = self.get_ir(length_samples=length_samples, zero_phase=zero_phase)
         fig, ax = ir.plot_magnitude(range_hz, normalize, show_info_box=False)
         if show_info_box:
-            txt = self._get_metadata_string()
+            txt = self.metadata_str
             ax.text(
                 0.1,
                 0.5,
@@ -939,7 +927,7 @@ class Filter:
             length_samples = self.order + 100
             warn(
                 f"length_samples ({length_samples}) is shorter than the "
-                + f"""filter order {self.info['order']}. Length will be """
+                + f"""filter order {self.order}. Length will be """
                 + "automatically extended."
             )
         if hasattr(self, "sos"):
@@ -961,7 +949,7 @@ class Filter:
             ylabel="Group delay / ms",
         )
         if show_info_box:
-            txt = self._get_metadata_string()
+            txt = self.metadata_str
             ax.text(
                 0.1,
                 0.5,
@@ -1012,13 +1000,13 @@ class Filter:
             length_samples = self.order + 1
             warn(
                 f"length_samples ({length_samples}) is shorter than the "
-                + f"""filter order {self.info['order']}. Length will be """
+                + f"""filter order {self.order}. Length will be """
                 + "automatically extended."
             )
         ir = self.get_ir(length_samples=length_samples)
         fig, ax = ir.plot_phase(range_hz, unwrap)
         if show_info_box:
-            txt = self._get_metadata_string()
+            txt = self.metadata_str
             ax.text(
                 0.1,
                 0.5,
@@ -1046,25 +1034,14 @@ class Filter:
             Axes.
 
         """
-        # Ask explicitely if filter is very long
-        if self.order > 500:
-            inp = None
-            while inp not in ("y", "n"):
-                inp = input(
-                    "This filter has a large order "
-                    + f"""({self.info['order']}). Are you sure you want to"""
-                    + " plot zeros and poles? Computation might take long "
-                    + "time. (y/n)"
-                )
-                inp = inp.lower()
-                if inp == "y":
-                    break
-                if inp == "n":
-                    return None
-        #
-        if hasattr(self, "sos"):
+        if self.has_zpk:
+            z, p, k = self.zpk
+        elif self.has_sos:
             z, p, k = sig.sos2zpk(self.sos)
         else:
+            # Ask explicitely if filter is very long
+            if self.order > 500:
+                warn("Filter order is over 500. Computing zpk might take long")
             z, p, k = sig.tf2zpk(self.ba[0], self.ba[1])
         fig, ax = _zp_plot(z, p)
         ax.text(
@@ -1075,7 +1052,7 @@ class Filter:
             verticalalignment="top",
         )
         if show_info_box:
-            txt = self._get_metadata_string()
+            txt = self.metadata_str
             ax.text(
                 0.1,
                 0.5,
@@ -1109,7 +1086,7 @@ class Filter:
         """
         assert self.is_fir, "Plotting taps is only valid for FIR filters"
         t = np.arange(0, len(self)) / self.sampling_rate_hz
-        txt = self._get_metadata_string() if show_info_box else None
+        txt = self.metadata_str if show_info_box else None
         return general_plot(
             t,
             to_db(self.ba[0], True) if in_db else self.ba[0],
