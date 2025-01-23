@@ -154,7 +154,7 @@ class TestSignal:
         assert np.all(self.time_vec[:, 0][..., None] == ch.time_data)
 
         # Try to get a channel that does not exist
-        with pytest.raises(AssertionError):
+        with pytest.raises(IndexError):
             s.get_channels(self.channels + 10)
 
         # Swap channels
@@ -367,6 +367,36 @@ class TestSignal:
             nn.sum_channels().time_data, np.sum(n, axis=1, keepdims=True)
         )
 
+    def test_copy_with_new_time_data(self):
+        n = dsp.Signal.from_time_data(self.time_vec, self.fs, False)
+
+        #
+        n.spectrum_method = dsp.SpectrumMethod.FFT
+        n.spectrum_scaling = dsp.SpectrumScaling.PowerSpectrum
+        n.set_spectrogram_parameters(256, window_type=dsp.Window.Blackman)
+        n2 = n.copy_with_new_time_data(np.zeros((100, 1)))
+
+        #
+        assert n2.spectrum_scaling == dsp.SpectrumScaling.PowerSpectrum
+        assert n2.spectrum_method == dsp.SpectrumMethod.FFT
+        assert n2._spectrogram_parameters["window_length_samples"] == 256
+        assert n2._spectrogram_parameters["window_type"] == dsp.Window.Blackman
+        assert n2.constrain_amplitude == n.constrain_amplitude
+        assert n2.time_data_imaginary == n.time_data_imaginary
+
+        # === Complex
+        n_comp = dsp.Signal.from_time_data(
+            self.complex_time_vec, self.fs, True
+        )
+        n2_comp = n_comp.copy_with_new_time_data(np.zeros((100, 1)))
+        assert not n2_comp.is_complex_signal
+
+        # === Check slicing and ownership
+        n = dsp.Signal.from_time_data(np.zeros((100, 2)), self.fs)
+        n2 = n.copy_with_new_time_data(n.time_data[:, 0])
+        n.time_data[0, ...] = 1.0
+        assert np.all(n2.time_data[0] == 0.0)
+
 
 class TestFilterClass:
     """Tests for the Filter class.
@@ -550,8 +580,6 @@ class TestFilterClass:
 
         #
         f = self.get_iir()
-        f.get_filter_metadata()
-        f._get_metadata_string()
         f.show_info()
         print(f)
         f.copy()

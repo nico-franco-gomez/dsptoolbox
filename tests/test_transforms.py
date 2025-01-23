@@ -156,27 +156,27 @@ class TestTransformsModule:
 
     def test_hilbert(self):
         # Results compared with scipy hilbert
-        s = dsp.transforms.hilbert(self.speech)
+        speech = self.speech.copy()
+        speech.constrain_amplitude = False
+        s = dsp.transforms.hilbert(speech)
         s = s.time_data + s.time_data_imaginary * 1j
-        s2 = self.speech.time_data
+        s2 = speech.time_data
 
         s2 = hilbert(s2, axis=0)
-        assert np.all(np.isclose(s, s2))
+        np.testing.assert_allclose(s, s2)
 
         # Now other length (even vs. odd)
-        s = dsp.transforms.hilbert(
-            dsp.pad_trim(self.speech, len(self.speech) - 1)
-        )
+        s = dsp.transforms.hilbert(dsp.pad_trim(speech, len(speech) - 1))
         s = s.time_data + s.time_data_imaginary * 1j
-        s2 = self.speech.time_data[:-1, ...]
+        s2 = speech.time_data[:-1, ...]
 
         s2 = hilbert(s2, axis=0)
-        assert np.all(np.isclose(s, s2))
+        np.testing.assert_allclose(s, s2)
 
         # Functionality for multiband signals
         s_mb = dsp.filterbanks.linkwitz_riley_crossovers(
-            [400], 2, self.speech.sampling_rate_hz
-        ).filter_signal(self.speech)
+            [400], 2, speech.sampling_rate_hz
+        ).filter_signal(speech)
         dsp.transforms.hilbert(s_mb)
 
     def test_stereo_mid_side(self):

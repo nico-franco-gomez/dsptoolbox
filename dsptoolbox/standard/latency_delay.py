@@ -3,20 +3,20 @@ from numpy.typing import NDArray
 from scipy.signal import oaconvolve
 from warnings import warn
 
-from ..classes import Signal, MultiBandSignal
-from ._standard_backend import _latency, _fractional_delay_filter
-from .._general_helpers import (
-    _pad_trim,
+from ..helpers.latency import (
     _fractional_latency,
     _get_correlation_of_latencies,
 )
+from ..helpers.other import _pad_trim
+from ..classes import Signal, MultiBandSignal
+from ._standard_backend import _latency, _fractional_delay_filter
 
 
 def latency(
     in1: Signal | MultiBandSignal,
     in2: Signal | MultiBandSignal | None = None,
     polynomial_points: int = 0,
-) -> tuple[NDArray[np.float64] | NDArray[np.int_], NDArray[np.float64]]:
+) -> tuple[NDArray, NDArray[np.float64]]:
     """Computes latency between two signals using the correlation method.
     If there is no second signal, the latency between the first and the other
     channels is computed. `in1` is to be understood as a delayed version
@@ -153,7 +153,7 @@ def latency(
                 lags[band, :], correlations[band, :] = latency(
                     in1.bands[band], None, polynomial_points=polynomial_points
                 )
-        return lags
+        return lags, correlations
     else:
         raise TypeError(
             "Signals must either be type Signal or MultiBandSignal"
@@ -266,8 +266,8 @@ def fractional_delay(
             new_time_data = new_time_data[: sig.time_data.shape[0], :]
 
         # =========== give out object =========================================
-        out_sig = sig.copy()
-        out_sig.time_data = new_time_data
+        out_sig = sig.copy_with_new_time_data(new_time_data)
+        return out_sig
 
     elif isinstance(sig, MultiBandSignal):
         new_bands = []
@@ -284,12 +284,12 @@ def fractional_delay(
                 )
             )
         out_sig.bands = new_bands
+        return out_sig
     else:
         raise TypeError(
             "Passed signal should be either type Signal or "
             + "MultiBandSignal"
         )
-    return out_sig
 
 
 def delay(
@@ -365,17 +365,16 @@ def delay(
         if keep_length:
             new_time_data = new_time_data[: sig.time_data.shape[0], :]
 
-        out_sig = sig.copy()
-        out_sig.time_data = new_time_data
+        return sig.copy_with_new_time_data(new_time_data)
     elif isinstance(sig, MultiBandSignal):
         new_bands = []
         out_sig = sig.copy()
         for b in sig.bands:
             new_bands.append(delay(b, delay_samples, channels, keep_length))
         out_sig.bands = new_bands
+        return out_sig
     else:
         raise TypeError(
             "Passed signal should be either type Signal or "
             + "MultiBandSignal"
         )
-    return out_sig

@@ -15,19 +15,20 @@ from ._transfer_functions import (
     _get_harmonic_times,
     _trim_ir,
 )
+from ..helpers.spectrum_utilities import (
+    _correct_for_real_phase_spectrum,
+    _interpolate_fr,
+)
+from ..helpers.minimum_phase import (
+    _get_minimum_phase_spectrum_from_real_cepstrum,
+    _min_phase_ir_from_real_cepstrum,
+    _remove_ir_latency_from_phase_min_phase,
+)
+from ..helpers.smoothing import _fractional_octave_smoothing
+from ..helpers.latency import _get_fractional_impulse_peak_index
+from ..helpers.other import find_frequencies_above_threshold, _pad_trim
 from ..classes import Signal, Filter, ImpulseResponse, FilterBank, Spectrum
 from ..classes.filter_helpers import _group_delay_filter
-from .._general_helpers import (
-    _remove_ir_latency_from_phase_min_phase,
-    _min_phase_ir_from_real_cepstrum,
-    _get_minimum_phase_spectrum_from_real_cepstrum,
-    _find_frequencies_above_threshold,
-    _fractional_octave_smoothing,
-    _correct_for_real_phase_spectrum,
-    _get_fractional_impulse_peak_index,
-    _interpolate_fr,
-    _pad_trim,
-)
 from ..standard._standard_backend import (
     _minimum_phase,
     _group_delay_direct,
@@ -41,7 +42,7 @@ from ..standard import (
 )
 from ..generators import dirac
 from ..filterbanks import linkwitz_riley_crossovers
-from ..tools import to_db
+from ..helpers.gain_and_level import to_db
 from ..standard.enums import (
     SpectrumMethod,
     MagnitudeNormalization,
@@ -96,8 +97,6 @@ def spectral_deconvolve(
         Deconvolved signal.
 
     """
-    num = num.copy()
-    denum = denum.copy()
     assert (
         num.time_data.shape[0] == denum.time_data.shape[0]
     ), "Lengths do not match for spectral deconvolution"
@@ -116,12 +115,13 @@ def spectral_deconvolve(
             start_stop_hz is None
         ), "No start_stop_hz vector can be passed when using standard mode"
 
+    num = num.copy()
+    denum = denum.copy()
     original_length = num.time_data.shape[0]
 
     if padding:
         num.time_data = _pad_trim(num.time_data, original_length * 2)
         denum.time_data = _pad_trim(denum.time_data, original_length * 2)
-    fft_length = original_length * 2 if padding else original_length
 
     denum.spectrum_method = SpectrumMethod.FFT
     num.spectrum_method = SpectrumMethod.FFT
@@ -135,7 +135,7 @@ def spectral_deconvolve(
         n_denum = 0 if multichannel else n
         if apply_regularization:
             if start_stop_hz is None:
-                start_stop_hz = _find_frequencies_above_threshold(
+                start_stop_hz = find_frequencies_above_threshold(
                     denum_fft[:, n_denum], freqs_hz, threshold_db
                 )
             if len(start_stop_hz) == 2:
@@ -151,13 +151,13 @@ def spectral_deconvolve(
                 pass
             else:
                 raise ValueError(
-                    "start_stop_hz vector should have 2 or 4" + " values"
+                    "start_stop_hz vector should have 2 or 4 values"
                 )
         new_time_data[:, n] = _spectral_deconvolve(
             num_fft[:, n],
             denum_fft[:, n_denum],
             freqs_hz,
-            fft_length,
+            original_length * 2 if padding else original_length,
             start_stop_hz=start_stop_hz,
             regularized=apply_regularization,
         )
@@ -177,7 +177,7 @@ def window_ir(
     at_start: bool = True,
     offset_samples: int = 0,
     left_to_right_flank_length_ratio: float = 1.0,
-) -> tuple[ImpulseResponse, NDArray[np.float64]]:
+) -> tuple[ImpulseResponse, NDArray]:
     """Windows an IR with trimming and selection of constant valued length.
     This is equivalent to a tukey window whose flanks can be selected to be
     any type. The peak of the impulse response is aligned to correspond to
@@ -216,7 +216,7 @@ def window_ir(
     -------
     new_sig : `ImpulseResponse`
         Windowed signal. The used window is also saved under `new_sig.window`.
-    start_positions_samples : NDArray[np.float64]
+    start_positions_samples : NDArray
         This array contains the position index of the start of the IR in
         each channel of the original IR (relative to the possibly padded
         windowed IR).
@@ -270,8 +270,7 @@ def window_ir(
             adaptive,
         )
 
-    new_sig = signal.copy()
-    new_sig.time_data = new_time_data
+    new_sig = signal.copy_with_new_time_data(new_time_data)
     new_sig.set_window(window)
     return new_sig, start_positions_samples
 
@@ -280,7 +279,7 @@ def window_centered_ir(
     signal: ImpulseResponse,
     total_length_samples: int,
     window_type: Window = Window.Hann,
-) -> tuple[ImpulseResponse, NDArray[np.float64]]:
+) -> tuple[ImpulseResponse, NDArray]:
     """This function windows an IR placing its peak in the middle. It trims
     it to the total length of the window or pads it to the desired length
     (padding in the end, window has `total_length`).
@@ -298,7 +297,7 @@ def window_centered_ir(
     -------
     new_sig : `ImpulseResponse`
         Windowed signal. The used window is also saved under `new_sig.window`.
-    start_positions_samples : NDArray[np.float64]
+    start_positions_samples : NDArray
         This array contains the position index of the start of the IR in
         each channel of the original IR.
 
@@ -326,8 +325,7 @@ def window_centered_ir(
             signal.time_data[:, n], total_length_samples, window_type
         )
 
-    new_sig = signal.copy()
-    new_sig.time_data = new_time_data
+    new_sig = signal.copy_with_new_time_data(new_time_data)
     new_sig.set_window(window)
     return new_sig, start_positions_samples
 
@@ -380,14 +378,15 @@ def compute_transfer_function(
     else:
         multichannel = True
 
+    # Get rid of unnecessary spectrum parameters
     spectrum_parameters = input._spectrum_parameters.copy()
+    assert (
+        type(spectrum_parameters) is dict
+    ), "Spectrum parameters should be passed as a dictionary"
     spectrum_parameters.pop("window_length_samples")
     spectrum_parameters.pop("method")
     spectrum_parameters.pop("smoothing")
     spectrum_parameters.pop("pad_to_fast_length")
-    assert (
-        type(spectrum_parameters) is dict
-    ), "Spectrum parameters should be passed as a dictionary"
 
     coherence = np.zeros(
         (window_length_samples // 2 + 1, output.number_of_channels)
@@ -496,7 +495,7 @@ def average_irs(
     if normalize_energy:
         energies = np.sum(signal.time_data**2, axis=0)
         energies /= energies[0]
-        avg_sig.time_data = avg_sig.time_data * energies
+        avg_sig.time_data *= energies
 
     if not time_average:
         # Obtain channel magnitude and phase spectra
@@ -512,7 +511,7 @@ def average_irs(
 
         # New time data and signal object
         new_time_data = np.fft.irfft(
-            new_sp[..., None], n=signal.time_data.shape[0], axis=0
+            new_sp[..., None], n=signal.length_samples, axis=0
         )
     else:
         latencies = find_ir_latency(signal)
@@ -749,9 +748,7 @@ def min_phase_ir(
                 sig.time_data[:, ch], method="hilbert", n_fft=length_fft
             )[: new_time_data.shape[0]]
 
-    min_phase_sig = sig.copy()
-    min_phase_sig.time_data = new_time_data[: len(sig)]
-    return min_phase_sig
+    return sig.copy_with_new_time_data(new_time_data[: len(sig)])
 
 
 def group_delay(
@@ -1099,10 +1096,10 @@ def combine_ir_with_dirac(
         td_imp *= ir_peak / imp_peak
 
     # Combine
-    combined_ir = ir.copy()
-    combined_ir.time_data = td_ir + td_imp * polarity[None, ...]
-    combined_ir = normalize(combined_ir, 0.0)
-    return combined_ir
+    combined_ir = ir.copy_with_new_time_data(
+        td_ir + td_imp * polarity[None, ...]
+    )
+    return normalize(combined_ir, 0.0)
 
 
 def ir_to_filter(
@@ -1451,8 +1448,7 @@ def harmonics_from_chirp_ir(
     time_harmonics_samples = np.insert(time_harmonics_samples, 0, len(td))
 
     # Dummy to obtain all metadata of the IR
-    ir_dummy = ir.copy()
-    ir_dummy.time_data = ir.time_data[:10]
+    ir_dummy = ir.copy_with_new_time_data(ir.time_data[:10])
 
     harmonics = []
     for nh in range(n_harmonics):
@@ -1467,10 +1463,7 @@ def harmonics_from_chirp_ir(
             * offset_percentage
         )
         snippet = td[min_ind:max_ind, 0]
-
-        new_harmonic = ir_dummy.copy()
-        new_harmonic.time_data = snippet
-        harmonics.append(new_harmonic)
+        harmonics.append(ir_dummy.copy_with_new_time_data(snippet))
     return harmonics
 
 
@@ -1764,6 +1757,8 @@ def trim_ir(
 
     start = int(np.min(starts))
     stop = int(np.max(stops))
-    trimmed_rir = ir.copy()
-    trimmed_rir.time_data = trimmed_rir.time_data[start:stop, ...]
-    return trimmed_rir, start, stop
+    return (
+        ir.copy_with_new_time_data(ir.time_data[start:stop, ...]),
+        start,
+        stop,
+    )

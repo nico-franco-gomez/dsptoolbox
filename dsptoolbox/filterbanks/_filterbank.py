@@ -26,14 +26,10 @@ from ..classes import (
     Filter,
     ImpulseResponse,
 )
-
 from ..generators import dirac
 from ..plots import general_plot
-from .._general_helpers import (
-    _get_normalized_spectrum,
-    __yw_ar_estimation,
-    __burg_ar_estimation,
-)
+from ..helpers.spectrum_utilities import _get_normalized_spectrum
+from ..helpers.ar_estimation import _burg_ar_estimation, _yw_ar_estimation
 from ..standard._standard_backend import _group_delay_direct
 from ..standard.enums import (
     FilterCoefficientsType,
@@ -88,10 +84,10 @@ class LRFilterBank:
         """
         if info is None:
             info = {}
-        if type(order) is int:
-            order = np.ones(len(freqs)) * order
         freqs = np.atleast_1d(np.asarray(freqs).squeeze())
         order = np.atleast_1d(np.asarray(order).squeeze())
+        if len(order) == 1:
+            order = np.ones(len(freqs)) * order
         assert np.max(freqs) <= sampling_rate_hz // 2, (
             "Highest frequency is above nyquist frequency for the given "
             + "sampling rate"
@@ -313,7 +309,7 @@ class LRFilterBank:
         for n in range(self.number_of_bands):
             # Extract if signal is ImpulseResponse or Signal and create
             # accordingly
-            b.append(type(s)(None, new_time_data[:, :, n], s.sampling_rate_hz))
+            b.append(s.copy_with_new_time_data(new_time_data[:, :, n]))
         d = dict(
             readme="MultiBandSignal made using Linkwitz-Riley filter bank",
             filterbank_freqs=self.freqs,
@@ -1107,19 +1103,14 @@ class QMFCrossover(BaseCrossover):
         Parameters
         ----------
         lowpass : `Filter`
-            Lowpass filter prototype.
+            Lowpass filter prototype. Cut-off frequency for lowpass filter
+            should be half the nyquist frequency.
 
         References
         ----------
         - https://tinyurl.com/2a3frbyv
 
         """
-        if "freqs" in lowpass.info:
-            if lowpass.info["freqs"] != lowpass.sampling_rate_hz // 4:
-                warn(
-                    "Cut-off frequency for lowpass filter should be half "
-                    + "the nyquist frequency."
-                )
         # Create FilterBank
         super().__init__(
             analysis_filters=self._get_analysis_filters(lowpass),
@@ -1260,10 +1251,10 @@ def _crossover_downsample(
                 new_sampling_rate_hz=signal.sampling_rate_hz // down_factor,
             )
             new_time_data[:, :, n] = s.time_data
-        new_time_data = np.sum(new_time_data, axis=-1)
-        out_sig = signal.copy()
+        out_sig = signal.copy_with_new_time_data(
+            np.sum(new_time_data, axis=-1)
+        )
         out_sig.sampling_rate_hz = signal.sampling_rate_hz // down_factor
-        out_sig.time_data = new_time_data
     return out_sig
 
 
@@ -1611,9 +1602,9 @@ def arma(
 
     match method_ar:
         case "yule-walker":
-            a = __yw_ar_estimation(ir.time_data[:, 0], order_a)[0]
+            a = _yw_ar_estimation(ir.time_data[:, 0], order_a)[0]
         case "burg":
-            a = __burg_ar_estimation(ir.time_data[:, 0], order_a)[0]
+            a = _burg_ar_estimation(ir.time_data[:, 0], order_a)[0]
         case _:
             raise ValueError(f"{method_ar}: Method is not supported")
 

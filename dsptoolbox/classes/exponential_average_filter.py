@@ -1,6 +1,6 @@
 import numpy as np
 
-from .._general_helpers import _get_smoothing_factor_ema
+from ..helpers.smoothing import _get_smoothing_factor_ema
 from .realtime_filter import RealtimeFilter
 
 

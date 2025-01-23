@@ -1,7 +1,7 @@
 import numpy as np
 
 from ..classes import Signal, MultiBandSignal
-from .._general_helpers import _pad_trim
+from ..helpers.other import _pad_trim
 
 
 def pad_trim(
@@ -38,9 +38,7 @@ def pad_trim(
                 desired_length_samples,
                 in_the_end=in_the_end,
             )
-        new_sig = signal.copy()
-        new_sig.time_data = new_time_data
-        return new_sig
+        return signal.copy_with_new_time_data(new_time_data)
     elif isinstance(signal, MultiBandSignal):
         assert (
             signal.same_sampling_rate

@@ -14,6 +14,33 @@ adheres to `Semantic Versioning <http://semver.org/spec/v2.0.0.html>`_.
 - Validation for results from tests in every module (so far many tests are
   only regarding functionality)
 
+`0.5.1 <https://pypi.org/project/dsptoolbox/0.5.1>`_ -
+---------------------
+Added
+~~~~~
+- `get_next_power_2` in ``tools``
+- `copy_with_new_time_data` for `Signal` and `ImpulseResponse`
+- property `is_complex_signal` in `Signal`
+
+Bugfix
+~~~~~~
+- fixed assertion where transfer function of `Filter` could not compute nyquist
+- amplitude_scale_factor in `Signal` can only be read as property but not set
+  by user. It is acquired when setting the time data
+- metadata and metadata_str properties are computed on-demand for every class
+- removed unused attribute `scale_factor` in `Signal`
+- modify some f-Strings so that they are also compatible with python 3.11
+- passing a single frequency to `linkwitz_riley_crossover` is now supported
+
+Misc
+~~~~
+- memory footprint was reduced to minimum due to avoidance of copying multiple
+  times at different stages
+- added python 3.13 support
+- file structure of helpers was rearranged for more clarity
+- requirements for different python versions were specified
+- fixed type annotations
+
 `0.5 <https://pypi.org/project/dsptoolbox/0.5>`_ - 
 ---------------------
 Added

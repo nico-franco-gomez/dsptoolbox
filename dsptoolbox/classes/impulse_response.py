@@ -1,10 +1,11 @@
 import numpy as np
-from numpy.typing import NDArray
+from numpy.typing import NDArray, ArrayLike
 from matplotlib.figure import Figure
 from matplotlib.axes import Axes
+from copy import deepcopy
 
 from .signal import Signal
-from ..tools import to_db
+from ..helpers.gain_and_level import to_db
 from ..standard.enums import SpectrumMethod
 
 
@@ -74,7 +75,7 @@ class ImpulseResponse(Signal):
             signal.sampling_rate_hz,
             signal.constrain_amplitude,
         )
-        ir.amplitude_scale_factor = signal.amplitude_scale_factor
+        ir.calibrated_signal = signal.calibrated_signal
         ir.time_data_imaginary = signal.time_data_imaginary
         return ir
 
@@ -226,3 +227,27 @@ class ImpulseResponse(Signal):
                     alpha=0.75,
                 )
         return fig, ax
+
+    def copy_with_new_time_data(
+        self, new_time_data: ArrayLike
+    ) -> "ImpulseResponse":
+        # Copy if the underlying memory belongs to another array
+        if isinstance(new_time_data, np.ndarray):
+            new_time_data = (
+                new_time_data
+                if new_time_data.base is None
+                else new_time_data.copy()
+            )
+        #
+        new_signal = ImpulseResponse.from_time_data(
+            new_time_data, self.sampling_rate_hz, self.constrain_amplitude
+        )
+        new_signal.calibrated_signal = self.calibrated_signal
+        new_signal.activate_cache = self.activate_cache
+        new_signal._spectrum_parameters = deepcopy(self._spectrum_parameters)
+        new_signal._spectrogram_parameters = deepcopy(
+            self._spectrogram_parameters
+        )
+        if self.spectrum_method != SpectrumMethod.FFT:
+            new_signal.spectrum_method = SpectrumMethod.FFT
+        return new_signal

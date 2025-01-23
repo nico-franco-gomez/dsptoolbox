@@ -313,9 +313,7 @@ class ParallelFilter(RealtimeFilter):
 
         for n_sos in range(self.__sos.shape[0]):
             output += sig.sosfilt(self.__sos[n_sos, :][None, :], td, axis=0)
-        new_sig = signal.copy()
-        new_sig.time_data = output
-        return new_sig
+        return signal.copy_with_new_time_data(output)
 
     def get_ir(self, length_samples: int):
         """Get an impulse response from the filter bank."""

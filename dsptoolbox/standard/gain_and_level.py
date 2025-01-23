@@ -2,8 +2,7 @@ import numpy as np
 from numpy.typing import NDArray
 
 from ..classes import Signal, MultiBandSignal, FilterBank, Filter
-from .._general_helpers import _normalize, _fade, _rms
-from ..tools import from_db
+from ..helpers.gain_and_level import _fade, from_db, _normalize, _rms, to_db
 from .resampling import resample
 from .enums import FadeType
 
@@ -43,9 +42,10 @@ def normalize(
 
     """
     if isinstance(sig, Signal):
-        new_sig = sig.copy()
-        new_sig.time_data = _normalize(
-            new_sig.time_data, norm_dbfs, peak_normalization, each_channel
+        return sig.copy_with_new_time_data(
+            _normalize(
+                sig.time_data, norm_dbfs, peak_normalization, each_channel
+            )
         )
     elif isinstance(sig, MultiBandSignal):
         new_sig = sig.copy()
@@ -53,11 +53,11 @@ def normalize(
             new_sig.bands[ind] = normalize(
                 sig.bands[ind], norm_dbfs, peak_normalization, each_channel
             )
+        return new_sig
     else:
         raise TypeError(
             "Type of signal is not valid. Use either Signal or MultiBandSignal"
         )
-    return new_sig
 
 
 def fade(
@@ -117,9 +117,7 @@ def fade(
                 sampling_rate_hz=sig.sampling_rate_hz,
                 at_start=False,
             )
-    new_sig = sig.copy()
-    new_sig.time_data = new_time_data
-    return new_sig
+    return sig.copy_with_new_time_data(new_time_data)
 
 
 def true_peak_level(
@@ -150,17 +148,18 @@ def true_peak_level(
     if isinstance(signal, Signal):
         sig = signal.copy()
         # Reduce gain by 12.04 dB
-        down_factor = 10 ** (-12.04 / 20)
+        down_factor = from_db(-12.04, True)
         up_factor = 1 / down_factor
         sig.time_data *= down_factor
         # Resample by 4
         sig_over = resample(sig, sig.sampling_rate_hz * 4)
-        true_peak_levels = 20 * np.log10(
-            np.max(np.abs(sig_over.time_data), axis=0) * up_factor
+        true_peak_levels = to_db(
+            np.max(np.abs(sig_over.time_data), axis=0) * up_factor, True
         )
-        peak_levels = 20 * np.log10(
-            np.max(np.abs(sig.time_data), axis=0) * up_factor
+        peak_levels = to_db(
+            np.max(np.abs(sig.time_data), axis=0) * up_factor, True
         )
+        return true_peak_levels, peak_levels
     elif isinstance(signal, MultiBandSignal):
         true_peak_levels = np.empty(
             (signal.number_of_bands, signal.number_of_channels)
@@ -168,11 +167,11 @@ def true_peak_level(
         peak_levels = np.empty_like(true_peak_levels)
         for ind, b in enumerate(signal.bands):
             true_peak_levels[ind, :], peak_levels[ind, :] = true_peak_level(b)
+        return true_peak_levels, peak_levels
     else:
         raise TypeError(
             "Passed signal must be of type Signal or MultiBandSignal"
         )
-    return true_peak_levels, peak_levels
 
 
 def rms(
@@ -254,9 +253,10 @@ def apply_gain(
         gain_linear = from_db(np.atleast_1d(gain_db), True)
         if len(gain_linear) == 1:
             gain_linear = gain_linear[0]
-        new_sig = target.copy()
-        new_sig.time_data *= gain_linear
-        if new_sig.time_data_imaginary is not None:
+        new_sig = target.copy_with_new_time_data(
+            target.time_data * gain_linear
+        )
+        if new_sig.is_complex_signal:
             new_sig.time_data_imaginary *= gain_linear
         return new_sig
     elif isinstance(target, MultiBandSignal):

@@ -5,7 +5,9 @@ Backend for distance measures
 import numpy as np
 from scipy.integrate import simpson
 from numpy.typing import NDArray
-from .._general_helpers import _compute_number_frames, _pad_trim, _rms
+
+from ..helpers.gain_and_level import _rms
+from ..helpers.other import _pad_trim, _compute_number_frames
 
 
 def _log_spectral_distance(

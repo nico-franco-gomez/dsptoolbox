@@ -2,6 +2,8 @@
 Here are methods considered as somewhat special or less common.
 """
 
+from ..helpers.frequency_conversion import _hz2mel, _mel2hz
+from ..helpers.ar_estimation import _burg_ar_estimation, _yw_ar_estimation
 from ..classes.signal import Signal
 from ..classes.filter import Filter
 from ..classes.impulse_response import ImpulseResponse
@@ -11,12 +13,8 @@ from ..standard._framed_signal_representation import (
     _get_framed_signal,
     _reconstruct_framed_signal,
 )
-from .._general_helpers import (
-    _hz2mel,
-    _mel2hz,
+from ..helpers.other import (
     _pad_trim,
-    __yw_ar_estimation,
-    __burg_ar_estimation,
 )
 from ..room_acoustics._room_acoustics import _find_ir_start
 from ..transforms._transforms import (
@@ -29,7 +27,7 @@ from ..transforms._transforms import (
     _get_warping_factor,
     _dft_backend,
 )
-from ..tools import to_db
+from ..helpers.gain_and_level import to_db
 from ..standard.enums import FilterCoefficientsType, SpectrumMethod
 from .enums import CepstrumType
 
@@ -558,8 +556,7 @@ def istft(
 
     if original_signal is not None:
         td = _pad_trim(td, original_signal.time_data.shape[0])
-        reconstructed_signal = original_signal.copy()
-        reconstructed_signal.time_data = td
+        reconstructed_signal = original_signal.copy_with_new_time_data(td)
     else:
         reconstructed_signal = Signal(
             None, time_data=td, sampling_rate_hz=sampling_rate_hz
@@ -775,7 +772,6 @@ def hilbert(
     """
     if isinstance(signal, Signal):
         td = signal.time_data
-
         sp = np.fft.fft(td, axis=0)
         if len(td) % 2 == 0:
             nyquist = len(td) // 2
@@ -785,8 +781,7 @@ def hilbert(
             sp[1 : (len(td) + 1) // 2, :] *= 2
             sp[(len(td) + 1) // 2 :, :] = 0
 
-        analytic = signal.copy()
-        analytic.time_data = np.fft.ifft(sp, axis=0)
+        return signal.copy_with_new_time_data(np.fft.ifft(sp, axis=0))
     elif type(signal) is MultiBandSignal:
         new_mb = signal.copy()
         for ind, b in enumerate(new_mb):
@@ -794,7 +789,6 @@ def hilbert(
         return new_mb
     else:
         raise TypeError("Signal does not have a valid type")
-    return analytic
 
 
 def vqt(
@@ -936,14 +930,12 @@ def stereo_mid_side(signal: Signal, forward: bool) -> Signal:
     assert (
         signal.number_of_channels == 2
     ), "Signal must have exactly two channels"
-    new_sig = signal.copy()
-    td = signal.time_data
+    td = signal.time_data.copy()
     td[:, 0] = signal.time_data[:, 0] + signal.time_data[:, 1]
     td[:, 1] = signal.time_data[:, 0] - signal.time_data[:, 1]
     if forward:
         td /= 2
-    new_sig.time_data = td
-    return new_sig
+    return signal.copy_with_new_time_data(td)
 
 
 def laguerre(signal: Signal, warping_factor: float) -> Signal:
@@ -1009,9 +1001,7 @@ def laguerre(signal: Signal, warping_factor: float) -> Signal:
         xx = lfilter(b, a, xx, axis=0)
         output[i, :] = xx[-1, :]
 
-    out = signal.copy()
-    out.time_data = output
-    return out
+    return signal.copy_with_new_time_data(output)
 
 
 def warp(
@@ -1107,18 +1097,18 @@ def warp(
     approximation_warping_factor = type(warping_factor) is str
     warping_factor = _get_warping_factor(warping_factor, ir.sampling_rate_hz)
 
-    td = ir.time_data
+    td = ir.time_data.copy()
     if shift_ir:
         for ch in range(ir.number_of_channels):
             start = _find_ir_start(td[:, ch], -20)
             td[:, ch] = np.roll(td[:, ch], -start)
 
-    if total_length is None:
-        total_length = td.shape[0]
-
-    td = _warp_time_series(td[:total_length, ...], warping_factor)
-    warped_ir = ir.copy()
-    warped_ir.time_data = td
+    warped_ir = ir.copy_with_new_time_data(
+        _warp_time_series(
+            td if total_length is None else td[:total_length, ...],
+            warping_factor,
+        )
+    )
 
     if approximation_warping_factor:
         return warped_ir, warping_factor
@@ -1256,9 +1246,9 @@ def lpc(
     td *= window[:, None, None]
 
     a, var = (
-        __burg_ar_estimation(td, order)
+        _burg_ar_estimation(td, order)
         if method_ar == "burg"
-        else __yw_ar_estimation(td, order)
+        else _yw_ar_estimation(td, order)
     )
 
     if not synthesize_encoded_signal:

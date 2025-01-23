@@ -7,12 +7,13 @@ from matplotlib.figure import Figure
 from matplotlib.axes import Axes
 from pickle import dump, HIGHEST_PROTOCOL
 
-from ..tools import to_db, fractional_octave_smoothing
+from ..tools import fractional_octave_smoothing
 from .. import plots
 from .signal import Signal
 from .filter import Filter
 from .filterbank import FilterBank
-from .._general_helpers import _check_format_in_path
+from ..helpers.gain_and_level import to_db
+from ..helpers.other import _check_format_in_path
 from ..standard.enums import (
     FilterBankMode,
     FrequencySpacing,

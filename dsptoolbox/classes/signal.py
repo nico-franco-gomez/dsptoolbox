@@ -13,23 +13,28 @@ from scipy.signal import oaconvolve
 from numpy.typing import NDArray, ArrayLike
 from scipy.fft import rfft, next_fast_len
 
-from ..plots import general_plot, general_subplots_line, general_matrix_plot
-from .plots import _csm_plot
-from .._general_helpers import (
+from ..helpers.spectrum_utilities import (
     _get_normalized_spectrum,
-    _pad_trim,
-    _find_nearest,
-    _fractional_octave_smoothing,
-    _check_format_in_path,
     _scale_spectrum,
     _wrap_phase,
-    _remove_ir_latency_from_phase_min_phase,
-    _remove_ir_latency_from_phase_peak,
-    _remove_ir_latency_from_phase,
 )
+from ..helpers.minimum_phase import _remove_ir_latency_from_phase_min_phase
+from ..helpers.smoothing import _fractional_octave_smoothing
+from ..helpers.latency import (
+    _remove_ir_latency_from_phase,
+    _remove_ir_latency_from_phase_peak,
+)
+from ..helpers.other import (
+    _check_format_in_path,
+    find_nearest_points_index_in_vector,
+    _pad_trim,
+)
+from ..helpers.gain_and_level import to_db
+
+from ..plots import general_plot, general_subplots_line, general_matrix_plot
+from .plots import _csm_plot
 from ..standard._standard_backend import _group_delay_direct
 from ..standard._spectral_methods import _welch, _stft, _csm_welch, _csm_fft
-from ..tools import to_db
 from ..standard.enums import (
     SpectrumScaling,
     SpectrumMethod,
@@ -99,14 +104,10 @@ class Signal:
         """
         # Handling amplitude
         self.constrain_amplitude = constrain_amplitude
-        self.scale_factor = None
         self.calibrated_signal = False
         self.activate_cache = activate_cache
         # State tracker
-        self.__spectrum_state_update = True
-        self.__csm_state_update = True
-        self.__spectrogram_state_update = True
-        self.__time_vector_update = True
+        self.__update_state()
         # Import data
         if path is not None:
             assert time_data is None, (
@@ -130,7 +131,6 @@ class Signal:
         self.time_data = time_data
         self.set_spectrum_parameters()
         self.set_spectrogram_parameters()
-        self._generate_metadata()
 
     @staticmethod
     def from_file(path: str):
@@ -187,21 +187,33 @@ class Signal:
         self.__csm_state_update = True
         self.__spectrogram_state_update = True
         self.__time_vector_update = True
-        self._generate_metadata()
 
-    def _generate_metadata(self):
-        """Generates an information dictionary with metadata about the
-        signal.
+    @property
+    def metadata(self) -> dict:
+        """Return dictionary with metadata about the signal."""
+        info = {}
+        info["sampling_rate_hz"] = self.sampling_rate_hz
+        info["number_of_channels"] = self.number_of_channels
+        info["signal_length_samples"] = self.length_samples
+        info["signal_length_seconds"] = self.length_seconds
+        info["constrain_amplitude"] = self.constrain_amplitude
+        info["amplitude_scale_factor"] = self.amplitude_scale_factor
+        info["is_complex_signal"] = self.is_complex_signal
+        return info
 
-        """
-        if not hasattr(self, "info"):
-            self.info = {}
-        self.info["sampling_rate_hz"] = self.sampling_rate_hz
-        self.info["number_of_channels"] = self.number_of_channels
-        self.info["signal_length_samples"] = self.time_data.shape[0]
-        self.info["signal_length_seconds"] = (
-            self.time_data.shape[0] / self.sampling_rate_hz
-        )
+    @property
+    def metadata_str(self) -> str:
+        """Generate string with metadata about the signal."""
+        metadata = self.metadata
+        txt = ""
+        temp = ""
+        for _ in range(len(txt)):
+            temp += "-"
+        txt += temp + "\n"
+        for k in metadata.keys():
+            txt += f"""{str(k).replace('_', ' ').
+                        capitalize()}: {metadata[k]}\n"""
+        return txt
 
     def _generate_time_vector(self):
         """Internal method to generate a time vector on demand."""
@@ -213,6 +225,10 @@ class Signal:
     # ======== Properties and setters =========================================
     @property
     def time_data(self) -> NDArray[np.float64]:
+        """Array with time samples. Its shape is always (time samples,
+        channels) and data type np.float64.
+
+        """
         return self.__time_data
 
     @time_data.setter
@@ -224,7 +240,7 @@ class Signal:
             + "too many dimensions for time data. Dimensions should"
             + " be [time samples, channels]"
         )
-        if len(new_time_data.shape) < 2:
+        if new_time_data.ndim < 2:
             new_time_data = new_time_data[..., None]
 
         # Assume always that there are more time samples than channels
@@ -238,10 +254,14 @@ class Signal:
         else:
             new_time_data_imag = None
 
-        # Normalization for real time data
+        # Normalization
         if self.constrain_amplitude:
             time_data_max = np.max(np.abs(new_time_data))
-            if time_data_max > 1:
+            if new_time_data_imag is not None:
+                time_data_max = max(
+                    time_data_max, np.max(np.abs(new_time_data_imag))
+                )
+            if time_data_max > 1.0:
                 new_time_data /= time_data_max
                 warn(
                     "Signal was over 0 dBFS, normalizing to 0 dBFS "
@@ -250,9 +270,11 @@ class Signal:
                 # Imaginary part is also scaled by same factor as real part
                 if new_time_data_imag is not None:
                     new_time_data_imag /= time_data_max
-                self.amplitude_scale_factor = 1 / time_data_max
+                self.__amplitude_scale_factor = 1.0 / time_data_max
             else:
-                self.amplitude_scale_factor = 1
+                self.__amplitude_scale_factor = 1.0
+        else:
+            self.__amplitude_scale_factor = 1.0
 
         # Set time data (real and imaginary)
         self.__time_data = new_time_data
@@ -260,6 +282,18 @@ class Signal:
         self.__update_state()
 
         self.clear_time_window()
+
+    @property
+    def amplitude_scale_factor(self) -> float:
+        """This is the scaling factor (multiplied) when the amplitude is
+        automatically constrained to the range [-1., 1.].
+
+        This factor is computed by checking peak amplitude of the real and
+        imaginary parts of the time signal independently. The largest peak
+        value is then used as the normalization factor for both.
+
+        """
+        return self.__amplitude_scale_factor
 
     @property
     def sampling_rate_hz(self) -> int:
@@ -286,15 +320,18 @@ class Signal:
 
     @property
     def time_vector_s(self) -> NDArray[np.float64]:
+        """Corresponding time vector for the signal."""
         if self.__time_vector_update:
             self._generate_time_vector()
         return self.__time_vector_s
 
     @property
     def time_data_imaginary(self) -> NDArray[np.float64] | None:
+        """Imaginary part of the time data saved as np.float64. It can be None
+        meaning that the signal is purely real."""
         if self.__time_data_imaginary is None:
             return None
-        return self.__time_data_imaginary.copy()
+        return self.__time_data_imaginary
 
     @time_data_imaginary.setter
     def time_data_imaginary(self, new_imag: NDArray[np.float64]):
@@ -306,10 +343,19 @@ class Signal:
 
     @property
     def is_complex_signal(self) -> bool:
+        """When True, this signal contains an imaginary part."""
         return self.time_data_imaginary is not None
 
     @property
     def constrain_amplitude(self) -> bool:
+        """When True, the amplitude of the signal is always constrained to the
+        [-1., 1.] range. It will be automatically scaled if it surpasses these
+        values so that peak values are either -1. or 1. Use False to avoid
+        any amplitude scaling.
+
+        If this is triggered, the scaling factor is also saved in the signal.
+
+        """
         return self.__constrain_amplitude
 
     @constrain_amplitude.setter
@@ -323,6 +369,8 @@ class Signal:
 
     @property
     def calibrated_signal(self) -> bool:
+        """When True, this signal has been (amplitude) calibrated, so that it
+        represents sound pressure in Pa."""
         return self.__calibrated_signal
 
     @calibrated_signal.setter
@@ -331,13 +379,15 @@ class Signal:
         self.__calibrated_signal = ncs
 
     def __len__(self):
+        """Length of time signal in samples."""
         return self.time_data.shape[0]
 
     def __str__(self):
-        return self._get_metadata_string()
+        """Metadata of the signal."""
+        return self.metadata_str
 
     def __iter__(self):
-        """Iterate over the channels of the signal. No modification to the
+        """Iterate over the channels of the signal. Modifications to the
         samples can be done through these slices."""
         return iter(
             [self.time_data[:, x] for x in range(self.number_of_channels)]
@@ -366,7 +416,7 @@ class Signal:
             Smoothing across (`1/smoothing`) octave bands. It will only be
             applied on the spectrum. Smoothes
             magnitude AND phase. For accesing the smoothing algorithm, refer to
-            `dsptoolbox._general_helpers._fractional_octave_smoothing()`.
+            `dsptoolbox.tools.fractional_octave_smoothing()`.
             If smoothing is applied here, `Signal.get_spectrum()` returns
             the smoothed spectrum, but plotting ignores this parameter.
             Default: 0 (no smoothing).
@@ -438,6 +488,7 @@ class Signal:
 
     @property
     def spectrum_scaling(self) -> SpectrumScaling:
+        """Selected scaling for the spectrum."""
         return self._spectrum_parameters["scaling"]
 
     @spectrum_scaling.setter
@@ -449,6 +500,7 @@ class Signal:
 
     @property
     def spectrum_method(self) -> SpectrumMethod:
+        """Spectrum computation method."""
         return self._spectrum_parameters["method"]
 
     @spectrum_method.setter
@@ -460,6 +512,7 @@ class Signal:
 
     @property
     def spectrum_smoothing(self) -> float:
+        """Smoothing of spectrum in fraction of octaves."""
         return self._spectrum_parameters["smoothing"]
 
     @spectrum_smoothing.setter
@@ -673,6 +726,7 @@ class Signal:
             new_order
         ), "There are repeated indexes in the new order vector"
         self.time_data = self.time_data[:, new_order]
+        self.__update_state()
         return self
 
     def get_channels(self, channels) -> "Signal":
@@ -691,18 +745,7 @@ class Signal:
 
         """
         channels = np.atleast_1d(np.asarray(channels).squeeze())
-        if channels.ndim > 1:
-            raise ValueError(
-                "Parameter channels must be only an object broadcastable to "
-                + "1D Array"
-            )
-        assert all(channels < self.number_of_channels), (
-            "Indexes of new channels have to be smaller than the number "
-            + f"of channels {self.number_of_channels}"
-        )
-        new_sig = self.copy()
-        new_sig.time_data = self.time_data[:, channels]
-        return new_sig
+        return self.copy_with_new_time_data(self.time_data[:, channels])
 
     def sum_channels(self) -> "Signal":
         """Return a copy of the signal where all channels are summed into one.
@@ -713,10 +756,9 @@ class Signal:
             New signal with a single channel.
 
         """
-        new_sig = self.copy()
-        new_sig.time_data = np.sum(new_sig.time_data, axis=1)
-        new_sig.clear_time_window()
-        return new_sig
+        return self.copy_with_new_time_data(
+            np.sum(self.time_data, axis=1, keepdims=True)
+        )
 
     def clear_time_window(self) -> "Signal":
         """Deletes the time window of the signal in case there is any."""
@@ -890,10 +932,6 @@ class Signal:
         spectrogram : NDArray[np.complex128]
             Complex spectrogram with shape (frequency, time, channel).
 
-        Notes
-        -----
-        - No scaling is performed while computing the DFT coefficients.
-
         """
         condition = (
             not hasattr(self, "spectrogram")
@@ -1030,8 +1068,6 @@ class Signal:
             Axes.
 
         """
-        if not hasattr(self, "time_vector_s"):
-            self._generate_time_vector()
         fig, ax = general_subplots_line(
             self.time_vector_s,
             self.time_data,
@@ -1040,11 +1076,9 @@ class Signal:
             xlabels="Time / s",
         )
 
-        plot_complex = self.time_data_imaginary is not None
-
         for n in range(self.number_of_channels):
             mx = np.max(np.abs(self.time_data[:, n])) * 1.1
-            if plot_complex:
+            if self.is_complex_signal:
                 ax[n].plot(
                     self.time_vector_s,
                     self.time_data_imaginary[:, n],
@@ -1102,8 +1136,7 @@ class Signal:
             window /= len(window)
             td_squared = oaconvolve(td_squared, window, mode="same", axes=0)
 
-        complex_data = self.time_data_imaginary is not None
-        if complex_data:
+        if self.is_complex_signal:
             td_squared_imaginary = self.time_data_imaginary**2.0
             if window_length_s > 0:
                 td_squared_imaginary = oaconvolve(
@@ -1120,7 +1153,7 @@ class Signal:
 
         if normalize_at_peak:
             etc -= peak_values
-            if complex_data:
+            if self.is_complex_signal:
                 complex_etc -= peak_values
 
         db_type = "dBFS"
@@ -1130,7 +1163,7 @@ class Signal:
             etc -= factor
             peak_values -= factor
             db_type = "dB"
-            if complex_data:
+            if self.is_complex_signal:
                 complex_etc -= factor
 
         fig, ax = general_subplots_line(
@@ -1152,7 +1185,7 @@ class Signal:
         )
 
         for n in range(self.number_of_channels):
-            if complex_data:
+            if self.is_complex_signal:
                 ax[n].plot(self.time_vector_s, complex_etc[:, n], alpha=0.75)
             if range_db is not None:
                 ax[n].set_ylim(
@@ -1177,12 +1210,12 @@ class Signal:
             When different than 0, smoothing is applied to the group delay
             along the (1/smoothing) octave band. This only affects the values
             in the plot. Default: 0.
-        remove_ir_latency : str ["peak", "min_phase"], ArrayLike,\
-                None, optional
+        remove_ir_latency : str {"peak", "min_phase"}, ArrayLike, None,\
+                optional
             If the signal is an impulse response, the delay of the impulse can
             be removed. IR delay removal options are:
 
-            - str ["peak" or "min_phase"]: By regarding its delay in relation
+            - str {"peak" or "min_phase"}: By regarding its delay in relation
               to the minimum-phase equivalent or its peak in the time signal.
             - ArrayLike: Delay in samples to remove from each channel.
             - None: no latency removal.
@@ -1282,7 +1315,7 @@ class Signal:
         # Select channel
         stft = stft[:, :, channel_number]
 
-        ids = _find_nearest([20, 20000], f)
+        ids = find_nearest_points_index_in_vector([20, 20000], f)
         if ids[0] == 0:
             ids[0] += 1
         f = f[ids[0] : ids[1]]
@@ -1334,12 +1367,12 @@ class Signal:
             When different than 0, the phase response is smoothed across the
             1/smoothing-octave band. This only applies smoothing to the plot
             data. Default: 0.
-        remove_ir_latency : str ["peak", "min_phase"], ArrayLike,\
+        remove_ir_latency : str {"peak", "min_phase"}, ArrayLike,\
                 None, optional
             If the signal is an impulse response, the delay of the impulse can
             be removed. IR delay removal options are:
 
-            - str ["peak" or "min_phase"]: By regarding its delay in relation
+            - str {"peak" or "min_phase"}: By regarding its delay in relation
               to the minimum-phase equivalent or its peak in the time signal.
             - ArrayLike: Delay in samples to remove from each channel.
             - None: no latency removal.
@@ -1489,19 +1522,46 @@ class Signal:
         """
         return deepcopy(self)
 
-    def _get_metadata_string(self) -> str:
-        """Helper for creating a string containing all signal info."""
-        txt = ""
-        temp = ""
-        for n in range(len(txt)):
-            temp += "-"
-        txt += temp + "\n"
-        for k in self.info.keys():
-            txt += f"""{str(k).replace('_', ' ').
-                        capitalize()}: {self.info[k]}\n"""
-        return txt
+    def copy_with_new_time_data(self, new_time_data: ArrayLike) -> "Signal":
+        """Copy all attributes of the signal but with new time data.
+
+        Parameters
+        ----------
+        new_time_data : ArrayLike
+            New valid time data.
+
+        Returns
+        -------
+        Signal
+            Signal with new time data
+
+        Notes
+        -----
+        - This signal object will own the time data alone, so when passing an
+          array, it is checked whether its memory belongs to another array or
+          not. If so, a copy is made.
+
+        """
+        # Copy if the underlying memory belongs to another array
+        if isinstance(new_time_data, np.ndarray):
+            new_time_data = (
+                new_time_data
+                if new_time_data.base is None
+                else new_time_data.copy()
+            )
+        #
+        new_signal = Signal.from_time_data(
+            new_time_data, self.sampling_rate_hz, self.constrain_amplitude
+        )
+        new_signal.calibrated_signal = self.calibrated_signal
+        new_signal.activate_cache = self.activate_cache
+        new_signal._spectrum_parameters = deepcopy(self._spectrum_parameters)
+        new_signal._spectrogram_parameters = deepcopy(
+            self._spectrogram_parameters
+        )
+        return new_signal
 
     def show_info(self):
         """Prints all the signal information to the console."""
-        print(self._get_metadata_string())
+        print(self.metadata_str)
         return self

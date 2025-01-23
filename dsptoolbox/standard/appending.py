@@ -7,7 +7,7 @@ from ..classes import (
     FilterBank,
     Spectrum,
 )
-from .._general_helpers import _pad_trim
+from ..helpers.other import _pad_trim
 from .enums import SpectrumType
 
 
@@ -126,9 +126,7 @@ def append_signals(
                 )
             new_bands.append(new_band)
         return MultiBandSignal(
-            new_bands,
-            same_sampling_rate=signals[0].same_sampling_rate,
-            info=signals[0].info,
+            new_bands, same_sampling_rate=signals[0].same_sampling_rate
         )
     else:
         raise ValueError(

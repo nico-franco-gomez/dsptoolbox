@@ -4,7 +4,8 @@ import numpy as np
 from scipy.integrate import cumulative_trapezoid, cumulative_simpson
 from scipy.interpolate import PchipInterpolator
 from numpy.typing import NDArray
-from .._general_helpers import _correct_for_real_phase_spectrum, _pad_trim
+from ..helpers.spectrum_utilities import _correct_for_real_phase_spectrum
+from ..helpers.other import _pad_trim
 from warnings import warn
 
 
@@ -232,7 +233,7 @@ class PhaseLinearizer(GroupDelayDesigner):
     def set_parameters(
         self,
         delay_increase_percent: float = 100.0,
-        additional_length_samples: int = 0,
+        additional_length_samples: int | None = 0,
         trapezoidal_integration: bool = True,
     ):
         """Set parameters for the FIR filter.
@@ -249,7 +250,8 @@ class PhaseLinearizer(GroupDelayDesigner):
             When obtaining the group delay, some energy might leak into the
             latest samples. Through this parameter, the last samples can
             be retained at the expense of a longer filter. Pass 0 to retain
-            only the theoretical minimum. Default: 0.
+            only the theoretical minimum or None for the whole computed IR.
+            Default: 0.
         trapezoidal_integration : bool, optional
             In order to obtain a phase response, the desired group delay must
             be integrated using a numerical integration method. Trapezoidal

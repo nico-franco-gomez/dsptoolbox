@@ -9,13 +9,10 @@ from scipy.stats import pearsonr
 from warnings import warn
 from numpy.typing import NDArray
 
-from .._general_helpers import (
-    _find_nearest,
-    _calculate_window,
-    _pad_trim,
-    _get_chirp_rate,
-)
-from ..tools import to_db, time_smoothing
+from ..helpers.other import _pad_trim, find_nearest_points_index_in_vector
+from ..helpers.gain_and_level import to_db
+from ..helpers.windows import calculate_tukey_like_window as _calculate_window
+from ..tools import time_smoothing
 from ..standard.enums import Window
 
 
@@ -26,13 +23,13 @@ def _spectral_deconvolve(
     time_signal_length: int,
     regularized: bool,
     start_stop_hz,
-) -> NDArray[np.complex128]:
+):
     assert num_fft.shape == denum_fft.shape, "Shapes do not match"
     assert len(freqs_hz) == len(num_fft), "Frequency vector does not match"
 
     if regularized:
         # Regularized division
-        ids = _find_nearest(start_stop_hz, freqs_hz)
+        ids = find_nearest_points_index_in_vector(start_stop_hz, freqs_hz)
         eps = _calculate_window(
             ids, len(freqs_hz), Window.Hann, True, inverse=True
         ) * 10 ** (30 / 20)
@@ -74,13 +71,13 @@ def _window_this_ir_tukey(
     right_flank_length = flank_length_total - left_flank_length
 
     # Maximum
-    impulse_index = np.argmax(np.abs(vec))
+    impulse_index = int(np.argmax(np.abs(vec)))
 
     if not adaptive_window:
         # If offset and impulse index are outside or inside
         padding_left = 0
         if impulse_index - offset_samples < 0:
-            pad_length = -(impulse_index - offset_samples)
+            pad_length = int(-(impulse_index - offset_samples))
             vec = np.pad(vec, ((pad_length, 0)))
             start_sample += pad_length
             padding_left += pad_length
@@ -89,7 +86,7 @@ def _window_this_ir_tukey(
 
         # If left flank is longer than the amount of samples expected
         if impulse_index - left_flank_length < 0:
-            pad_length = -(impulse_index - left_flank_length)
+            pad_length = int(-(impulse_index - left_flank_length))
             vec = np.pad(vec, ((pad_length, 0)))
             start_sample += pad_length
             padding_left += pad_length
@@ -168,7 +165,7 @@ def _window_this_ir(
         Sample position of the start.
 
     """
-    peak_ind = np.argmax(np.abs(vec))
+    peak_ind = int(np.argmax(np.abs(vec)))
     half_length = total_length // 2
     centered_impulse_and_even = (
         peak_ind + half_length == len(vec) and len(vec) % 2 == 0
@@ -217,6 +214,31 @@ def _window_this_ir(
         w = w[::-1]
 
     return td, w, ind_low_td
+
+
+def _get_chirp_rate(range_hz: list, length_seconds: float) -> float:
+    """Compute the chirp rate based on the frequency range of the exponential
+    chirp and its duration.
+
+    Parameters
+    ----------
+    range_hz : list with length 2
+        Range of the exponential chirp.
+    length_seconds : float
+        Chirp's length in seconds.
+
+    Returns
+    -------
+    float
+        The chirp rate in octaves/second.
+
+    """
+    range_hz_array = np.atleast_1d(range_hz)
+    assert range_hz_array.shape == (
+        2,
+    ), "Range must contain exactly two elements."
+    range_hz_array = np.sort(range_hz_array)
+    return np.log2(range_hz_array[1] / range_hz_array[0]) / length_seconds
 
 
 def _get_harmonic_times(
@@ -360,7 +382,7 @@ def _trim_ir(
     if safety_distance_to_noise_floor_db != 0.0:
         end_point = __find_index_above_noise_floor(
             envelope[:end_point],
-            to_db(np.var(time_data[stop:]), False),
+            float(to_db(np.var(time_data[stop:]), False)),
             np.abs(safety_distance_to_noise_floor_db),
         )
         stop = end_point + start_index + impulse_index

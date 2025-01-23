@@ -4,7 +4,6 @@ from ..standard._framed_signal_representation import (
     _get_framed_signal,
     _reconstruct_framed_signal,
 )
-from .._general_helpers import _get_next_power_2, _rms, _pad_trim
 from ._effects import (
     _arctan_distortion,
     _clean_signal,
@@ -17,7 +16,8 @@ from ._effects import (
     get_time_period_from_musical_rhythm,
 )
 from ..plots import general_plot
-from ..tools import to_db
+from ..helpers.other import _get_next_power_2, _pad_trim
+from ..helpers.gain_and_level import _rms, to_db
 from ..standard.enums import SpectrumMethod, SpectrumScaling, Window
 from .enums import DistortionType
 
@@ -512,9 +512,7 @@ class SpectralSubtractor(AudioEffect):
             new_td, new_td.shape[0] - len(self.window), in_the_end=False
         )
 
-        denoised_signal = signal.copy()
-        denoised_signal.time_data = new_td
-        return denoised_signal
+        return signal.copy_with_new_time_data(new_td)
 
     def _apply_adaptive_mode(self, signal: Signal) -> Signal:
         """Spectral Subtraction in adaptive mode."""
@@ -580,9 +578,7 @@ class SpectralSubtractor(AudioEffect):
             new_td, new_td.shape[0] - len(self.window), in_the_end=False
         )
 
-        denoised_signal = signal.copy()
-        denoised_signal.time_data = new_td
-        return denoised_signal
+        return signal.copy_with_new_time_data(new_td)
 
 
 class Distortion(AudioEffect):
@@ -788,9 +784,7 @@ class Distortion(AudioEffect):
 
         new_td = self._add_gain_in_db(new_td, self.post_gain_db)
 
-        distorted_signal = signal.copy()
-        distorted_signal.time_data = new_td
-        return distorted_signal
+        return signal.copy_with_new_time_data(new_td)
 
 
 class Compressor(AudioEffect):
@@ -1058,9 +1052,7 @@ class Compressor(AudioEffect):
         # Post-compression gain
         td = self._add_gain_in_db(td, self.pre_gain_db)
 
-        compressed_sig = signal.copy()
-        compressed_sig.time_data = td
-        return compressed_sig
+        return signal.copy_with_new_time_data(td)
 
 
 class Tremolo(AudioEffect):
@@ -1150,10 +1142,9 @@ class Tremolo(AudioEffect):
         else:
             modulation_signal = _pad_trim(self.modulator.copy(), len(signal))
         modulation_signal = np.abs(modulation_signal * self.depth + 1)
-
-        modulated_signal = signal.copy()
-        modulated_signal.time_data *= modulation_signal[..., None]
-        return modulated_signal
+        return signal.copy_with_new_time_data(
+            signal.time_data * modulation_signal[..., None]
+        )
 
 
 class Chorus(AudioEffect):
@@ -1382,9 +1373,7 @@ class Chorus(AudioEffect):
 
         new_td = self._restore_peak_values(_pad_trim(new_td, le))
 
-        modulated_signal = signal.copy()
-        modulated_signal.time_data = new_td
-        return modulated_signal
+        return signal.copy_with_new_time_data(new_td)
 
 
 class DigitalDelay(AudioEffect):
@@ -1534,6 +1523,4 @@ class DigitalDelay(AudioEffect):
 
         td = self._restore_peak_values(td)
 
-        delayed_signal = signal.copy()
-        delayed_signal.time_data = td
-        return delayed_signal
+        return signal.copy_with_new_time_data(td)

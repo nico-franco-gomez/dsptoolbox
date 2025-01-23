@@ -6,6 +6,7 @@ from matplotlib.figure import Figure
 from matplotlib.axes import Axes
 from numpy.typing import NDArray
 
+
 from .signal import Signal
 from .impulse_response import ImpulseResponse
 from .multibandsignal import MultiBandSignal
@@ -13,7 +14,8 @@ from .filter import Filter
 from .filter_helpers import _filterbank_on_signal
 from ..generators import dirac
 from ..plots import general_plot
-from .._general_helpers import _get_normalized_spectrum, _check_format_in_path
+from ..helpers.other import _check_format_in_path
+from ..helpers.spectrum_utilities import _get_normalized_spectrum
 from ..standard._standard_backend import _group_delay_direct
 from ..standard.enums import SpectrumMethod, SpectrumScaling, FilterBankMode
 
@@ -79,17 +81,41 @@ class FilterBank:
             [Filter.from_ba(ch, [1.0], ir.sampling_rate_hz) for ch in iter(ir)]
         )
 
-    def _generate_metadata(self):
-        """Generates the info dictionary with metadata about the FilterBank."""
-        self.info = {}
-        self.info["number_of_filters"] = self.number_of_filters
-        self.info["same_sampling_rate"] = self.same_sampling_rate
+    @property
+    def metadata(self) -> dict:
+        """Get a dictionary with metadata about the filter bank properties."""
+        info = {}
+        info["number_of_filters"] = self.number_of_filters
+        info["same_sampling_rate"] = self.same_sampling_rate
         if self.same_sampling_rate:
             if hasattr(self, "sampling_rate_hz"):
-                self.info["sampling_rate_hz"] = self.sampling_rate_hz
-        self.info["types_of_filters"] = tuple(
-            set([f.info["filter_type"] for f in self.filters])
+                info["sampling_rate_hz"] = self.sampling_rate_hz
+        info["types_of_filters"] = tuple(
+            set([f.metadata["filter_type"] for f in self.filters])
         )
+        return info
+
+    @property
+    def metadata_str(self) -> str:
+        """Get a string with metadata about the filter bank properties."""
+        txt = ""
+        info = self.metadata
+        for k in info:
+            txt += f""" | {str(k).replace('_', ' ').
+                           capitalize()}: {info[k]}"""
+        txt = "Filter Bank:" + txt
+        txt += "\n"
+        txt += "–" * len(txt)
+        for ind, f1 in enumerate(self.filters):
+            txt += "\n"
+            txt += f"Filter {ind}:"
+            filter_metadata = f1.metadata
+            for kf in filter_metadata:
+                if kf == "ba":
+                    continue
+                txt += f""" | {str(kf).replace('_', ' ').
+                               capitalize()}: {filter_metadata[kf]}"""
+        return txt
 
     def initialize_zi(self, number_of_channels: int = 1):
         """Initiates the zi of the filters for the given number of channels.
@@ -106,7 +132,7 @@ class FilterBank:
         return self
 
     @property
-    def sampling_rate_hz(self) -> int | NDArray[np.int_]:
+    def sampling_rate_hz(self) -> int | list[int]:
         return self.__sampling_rate_hz
 
     @sampling_rate_hz.setter
@@ -122,7 +148,7 @@ class FilterBank:
             self.__sampling_rate_hz = [int(s) for s in new_sampling_rate_hz]
 
     @property
-    def filters(self) -> list:
+    def filters(self) -> list[Filter]:
         return self.__filters
 
     @filters.setter
@@ -149,7 +175,6 @@ class FilterBank:
                         f.sampling_rate_hz == self.sampling_rate_hz
                     ), "Sampling rates do not match"
         self.__filters = new_filters
-        self._generate_metadata()
 
     @property
     def number_of_filters(self) -> int:
@@ -162,7 +187,7 @@ class FilterBank:
         return iter(self.filters)
 
     def __str__(self):
-        return self._get_metadata_str()
+        return self.metadata_str
 
     @property
     def same_sampling_rate(self) -> bool:
@@ -199,12 +224,9 @@ class FilterBank:
             else:
                 fs.insert(index, filt)
             self.filters = fs
-        self._generate_metadata()
         return self
 
-    def remove_filter(
-        self, index: int = -1, return_filter: bool = False
-    ) -> None | Filter:
+    def remove_filter(self, index: int = -1, return_filter: bool = False):
         """Removes a filter from the filter bank.
 
         Parameters
@@ -214,7 +236,8 @@ class FilterBank:
             will be erased. When -1, last filter is erased.
             Default: -1.
         return_filter : bool, optional
-            When `True`, the erased filter is returned. Default: `False`.
+            When `True`, the erased filter is returned. Otherwise, the
+            filterbank instance is returned. Default: `False`.
 
         """
         assert self.filters, "There are no filters to remove"
@@ -433,7 +456,7 @@ class FilterBank:
         # Obtain biggest filter order from FilterBank
         max_order = 0
         for b in self.filters:
-            max_order = max(max_order, b.info["order"])
+            max_order = max(max_order, b.order)
         if max_order > length_samples:
             warn(
                 f"Filter order {max_order} is longer than {length_samples}."
@@ -501,26 +524,8 @@ class FilterBank:
     # ======== Prints and plots ===============================================
     def show_info(self):
         """Show information about the filter bank."""
-        print(self._get_metadata_str())
+        print(self.metadata_str)
         return self
-
-    def _get_metadata_str(self):
-        txt = ""
-        for k in self.info:
-            txt += f""" | {str(k).replace('_', ' ').
-                           capitalize()}: {self.info[k]}"""
-        txt = "Filter Bank:" + txt
-        txt += "\n"
-        txt += "–" * len(txt)
-        for ind, f1 in enumerate(self.filters):
-            txt += "\n"
-            txt += f"Filter {ind}:"
-            for kf in f1.info:
-                if kf == "ba":
-                    continue
-                txt += f""" | {str(kf).replace('_', ' ').
-                               capitalize()}: {f1.info[kf]}"""
-        return txt
 
     def plot_magnitude(
         self,
@@ -565,7 +570,7 @@ class FilterBank:
         # Length handling
         max_order = 0
         for b in self.filters:
-            max_order = max(max_order, b.info["order"])
+            max_order = max(max_order, b.order)
         if max_order > length_samples:
             warn(
                 f"Filter order {max_order} is longer than {length_samples}."
@@ -705,7 +710,7 @@ class FilterBank:
         # Length handling
         max_order = 0
         for b in self.filters:
-            max_order = max(max_order, b.info["order"])
+            max_order = max(max_order, b.order)
         if max_order > length_samples:
             warn(
                 f"Filter order {max_order} is longer than {length_samples}."
@@ -728,12 +733,12 @@ class FilterBank:
             f = bs.bands[0].get_spectrum()[0]
             for b in bs.bands:
                 phase.append(np.angle(b.get_spectrum()[1]))
-            phase = np.squeeze(np.array(phase).T)
+            phase_plot = np.squeeze(np.array(phase).T)
             if unwrap:
-                phase = np.unwrap(phase, axis=0)
+                phase_plot = np.unwrap(phase_plot, axis=0)
             fig, ax = general_plot(
                 f,
-                phase,
+                phase_plot,
                 range_hz,
                 ylabel="Phase / rad",
                 labels=[f"Filter {h}" for h in range(bs.number_of_bands)],
@@ -813,7 +818,7 @@ class FilterBank:
         # Length handling
         max_order = 0
         for b in self.filters:
-            max_order = max(max_order, b.info["order"])
+            max_order = max(max_order, b.order)
         if max_order > length_samples:
             warn(
                 f"Filter order {max_order} is longer than {length_samples}."
@@ -840,10 +845,10 @@ class FilterBank:
                         np.squeeze(b.get_spectrum()[1]), delta_f=f[1] - f[0]
                     )
                 )
-            gd = np.squeeze(np.array(gd).T) * 1e3
+            gd_plot = np.squeeze(np.array(gd).T) * 1e3
             fig, ax = general_plot(
                 f,
-                gd,
+                gd_plot,
                 range_hz,
                 ylabel="Group delay / ms",
                 labels=[f"Filter {h}" for h in range(bs.number_of_bands)],

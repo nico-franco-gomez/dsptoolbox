@@ -7,6 +7,7 @@ from scipy.signal import (
 )
 from warnings import warn
 
+
 from ..classes import (
     Signal,
     MultiBandSignal,
@@ -18,11 +19,9 @@ from ._standard_backend import (
     _indices_above_threshold_dbfs,
     _detrend,
 )
-from .._general_helpers import (
-    _check_format_in_path,
-    _get_smoothing_factor_ema,
-)
-from ..tools import from_db
+from ..helpers.smoothing import _get_smoothing_factor_ema
+from ..helpers.other import _check_format_in_path
+from ..helpers.gain_and_level import from_db
 from .enums import (
     SpectrumType,
     InterpolationDomain,
@@ -197,16 +196,15 @@ def detrend(
 
     Returns
     -------
-    detrended_sig : Signal
+    Signal
         Detrended signal.
 
     """
     if isinstance(sig, Signal):
         assert polynomial_order >= 0, "Polynomial order should be positive"
-        new_td = _detrend(sig.time_data.copy(), polynomial_order)
-        detrended_sig = sig.copy()
-        detrended_sig.time_data = new_td
-        return detrended_sig
+        return sig.copy_with_new_time_data(
+            _detrend(sig.time_data.copy(), polynomial_order)
+        )
     elif isinstance(sig, MultiBandSignal):
         detrended_sig = sig.copy()
         for n in range(sig.number_of_bands):
@@ -364,15 +362,12 @@ def dither(
         )
         noise = noise_s.time_data
 
-    new_s = s.copy()
-
     if truncate:
-        new_s.time_data = (
-            (new_s.time_data + noise).astype(np.float16)
-        ).astype(np.float64)
-    else:
-        new_s.time_data = new_s.time_data + noise
-    return new_s
+        return s.copy_with_new_time_data(
+            (s.time_data + noise).astype(np.float16).astype(np.float64)
+        )
+
+    return s.copy_with_new_time_data(s.time_data + noise)
 
 
 def merge_filters(filters: list[Filter] | FilterBank) -> Filter:
