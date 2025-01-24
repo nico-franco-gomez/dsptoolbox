@@ -8,6 +8,7 @@ from matplotlib import colormaps as cm
 from matplotlib.figure import Figure
 from matplotlib.axes import Axes
 from numpy import array, max, min, arange
+from numpy.typing import NDArray
 
 try:
     from seaborn import set_style
@@ -24,8 +25,8 @@ def show():
 
 
 def general_plot(
-    x,
-    matrix,
+    x: NDArray | None,
+    matrix: NDArray,
     range_x=None,
     range_y=None,
     log: bool = True,
@@ -40,7 +41,7 @@ def general_plot(
     Parameters
     ----------
     x : array-like
-        Vector for x axis. Pass `None` to ignore.
+        Vector for x axis. Pass `None` to generate automatically.
     matrix : NDArray[np.float64]
         Matrix with data to plot.
     range_x : array-like, optional
@@ -77,11 +78,10 @@ def general_plot(
         if type(labels) not in (list, tuple):
             assert type(labels) is str, "labels should be a list or a string"
             labels = [labels]
-    for n in range(matrix.shape[1]):
-        if labels is not None:
-            ax.plot(x, matrix[:, n], label=labels[n])
-        else:
-            ax.plot(x, matrix[:, n])
+    if labels is not None:
+        ax.plot(x, matrix, label=labels[n])
+    else:
+        ax.plot(x, matrix)
     if log:
         ax.set_xscale("log")
         ticks = array([20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000])
@@ -115,8 +115,8 @@ def general_plot(
 
 
 def general_subplots_line(
-    x,
-    matrix,
+    x: NDArray | None,
+    matrix: NDArray,
     column: bool = True,
     sharex: bool = True,
     sharey: bool = False,
@@ -131,7 +131,8 @@ def general_subplots_line(
     Parameters
     ----------
     x : array-like
-        Vector for x axis.
+        Vector for x axis. The same x vector is used for all subplots. Pass
+        `None` to generate automatically.
     matrix : NDArray[np.float64]
         Matrix with data to plot.
     column : bool, optional
@@ -181,6 +182,8 @@ def general_subplots_line(
         )
     if number_of_channels == 1:
         ax = [ax]
+    if x is None:
+        x = arange(matrix.shape[0])
     for n in range(number_of_channels):
         ax[n].plot(x, matrix[:, n])
         if log:
