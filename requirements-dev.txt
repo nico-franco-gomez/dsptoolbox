@@ -13,6 +13,7 @@ pytest # tests
 ipykernel
 ipympl
 notebook
+ipywidgets
 
 # docs:
 furo # theme
