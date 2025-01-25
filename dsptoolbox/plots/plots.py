@@ -79,7 +79,7 @@ def general_plot(
             assert type(labels) is str, "labels should be a list or a string"
             labels = [labels]
     if labels is not None:
-        ax.plot(x, matrix, label=labels[n])
+        ax.plot(x, matrix, label=labels)
     else:
         ax.plot(x, matrix)
     if log:
@@ -240,10 +240,6 @@ def general_plot_two_axes(
         ax.set_ylim(range_y1)
     if range_y2 is not None:
         ax2.set_ylim(range_y2)
-    if labels1 is not None:
-        ax.legend()
-    if labels2 is not None:
-        ax2.legend()
     if y1label is not None:
         ax.set_ylabel(y1label)
     if y2label is not None:
@@ -259,6 +255,10 @@ def general_plot_two_axes(
             verticalalignment="top",
             bbox=dict(boxstyle="round", facecolor="grey", alpha=0.75),
         )
+    if labels1 is not None:
+        ax.legend()
+    if labels2 is not None:
+        ax2.legend()
     if tight_layout:
         fig.tight_layout()
     return fig, ax
