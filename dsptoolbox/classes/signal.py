@@ -1282,8 +1282,7 @@ class Signal:
         logfreqs: bool = True,
         dynamic_range_db: float = 50,
     ) -> tuple[Figure, Axes]:
-        """Plots STFT matrix of the given channel. The levels in the plot can
-        go down until -400 dB.
+        """Plots STFT matrix of the given channel.
 
         Parameters
         ----------

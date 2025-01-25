@@ -36,7 +36,9 @@ def _get_exact_gain_1khz(
     f : NDArray[np.float64]
         Frequency vector.
     sp : NDArray[np.float64]
-        Spectrum. It can be in dB or not.
+        Spectrum. It can be in dB or not. It can have multiple dimensions, but
+        the first dimension is always used (it must be the frequency
+        dimension).
 
     Returns
     -------
