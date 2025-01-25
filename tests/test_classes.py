@@ -1254,6 +1254,12 @@ class TestImpulseResponse:
         rir.plot_spl()
         # dsp.plots.show()
 
+    def test_other_plotting(self):
+        rir = self.get_ir()
+        rir.plot_bode()
+        rir.plot_bode(show_group_delay=True)
+        # dsp.plots.show()
+
 
 class TestFilterTopologies:
     fs_hz = 24_000
