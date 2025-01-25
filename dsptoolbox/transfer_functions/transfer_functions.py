@@ -791,7 +791,6 @@ def group_delay(
     )
     td = _pad_trim(signal.time_data, length_time_signal)
     f = np.fft.rfftfreq(td.shape[0], 1 / signal.sampling_rate_hz)
-    group_delays = np.zeros((length_time_signal // 2 + 1, td.shape[1]))
 
     if not analytic_computation:
         spec_parameters = signal._spectrum_parameters
@@ -806,9 +805,9 @@ def group_delay(
             sp = _remove_ir_latency_from_phase_min_phase(
                 f, np.angle(sp), signal.time_data, signal.sampling_rate_hz, 1
             )
-        for n in range(signal.number_of_channels):
-            group_delays[:, n] = _group_delay_direct(sp[:, n], f[1] - f[0])
+        group_delays = _group_delay_direct(sp, f[1] - f[0])
     else:
+        group_delays = np.zeros((length_time_signal // 2 + 1, td.shape[1]))
         for n in range(signal.number_of_channels):
             b = td[:, n]
             if remove_ir_latency:
@@ -924,9 +923,7 @@ def minimum_group_delay(
         type(signal) is ImpulseResponse
     ), "This is only valid for an impulse response"
     f, min_phases = minimum_phase(signal, padding_factor=padding_factor)
-    min_gd = np.zeros_like(min_phases)
-    for n in range(signal.number_of_channels):
-        min_gd[:, n] = _group_delay_direct(min_phases[:, n], f[1] - f[0])
+    min_gd = _group_delay_direct(min_phases, f[1] - f[0])
     if smoothing != 0:
         min_gd = _fractional_octave_smoothing(min_gd, None, smoothing)
     return f, min_gd

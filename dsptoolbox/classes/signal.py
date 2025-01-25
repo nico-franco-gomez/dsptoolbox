@@ -1262,9 +1262,7 @@ class Signal:
                 f, ph, delays_samples, self.sampling_rate_hz
             )
 
-        gd = np.zeros((len(f), self.number_of_channels))
-        for n in range(self.number_of_channels):
-            gd[:, n] = _group_delay_direct(ph[:, n], f[1] - f[0])
+        gd = _group_delay_direct(ph, f[1] - f[0])
 
         if smoothing != 0:
             gd = _fractional_octave_smoothing(gd, None, smoothing)

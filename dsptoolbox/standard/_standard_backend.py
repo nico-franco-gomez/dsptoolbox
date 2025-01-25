@@ -56,9 +56,11 @@ def _group_delay_direct(
     if np.iscomplexobj(phase):
         phase = np.angle(phase)
     if delta_f != 1:
-        gd = -np.gradient(np.unwrap(phase), delta_f) / np.pi / 2
+        gd = (
+            -np.gradient(np.unwrap(phase, axis=0), delta_f, axis=0) / np.pi / 2
+        )
     else:
-        gd = -np.gradient(np.unwrap(phase))
+        gd = -np.gradient(np.unwrap(phase, axis=0), axis=0)
     return gd
 
 
