@@ -537,24 +537,23 @@ def average_irs(
 
 
 def min_phase_from_mag(
-    spectrum: NDArray[np.float64],
+    spectrum: Spectrum,
     sampling_rate_hz: int,
-    original_length_time_data: int | None = None,
+    ir_length_samples: int | None = None,
 ) -> ImpulseResponse:
     """Returns a minimum-phase signal from a magnitude spectrum using
     the discrete hilbert transform.
 
     Parameters
     ----------
-    spectrum : NDArray[np.float64]
-        Spectrum (no scaling) with only positive frequencies.
+    spectrum : Spectrum
+        Spectrum with only positive frequencies.
     sampling_rate_hz : int
-        Signal's sampling rate in Hz.
-    original_length_time_data : int, optional
-        Original length for the time data that gave the spectrum. This is
-        necessary for reconstruction of the time data since the first half
-        of the spectrum (only positive frequencies) is ambiguous. Pass `None`
-        to assume an even length. Default: `None`.
+        Sampling rate in Hz for output impulse response.
+    ir_length_samples : int, None, optional
+        Pass to define the frequency resolution during computation and the
+        final length of the impulse response. Pass None to use some estimate
+        which might suffice for most cases. Default: None.
 
     Returns
     -------
@@ -566,31 +565,32 @@ def min_phase_from_mag(
     - https://en.wikipedia.org/wiki/Minimum_phase
 
     """
-    if spectrum.ndim < 2:
-        spectrum = spectrum[..., None]
-    assert spectrum.ndim < 3, "Spectrum should have shape (bins, channels)"
-    if spectrum.shape[0] < spectrum.shape[1]:
-        spectrum = spectrum.T
-    if original_length_time_data is None:
-        original_length_time_data = (spectrum.shape[0] - 1) * 2
-    assert original_length_time_data in (
-        (spectrum.shape[0] - 1) * 2,
-        (spectrum.shape[0] - 1) * 2 + 1,
-    ), (
-        f"Passed length {original_length_time_data} is not valid for the "
-        + f"given spectrum with shape {spectrum.shape}"
+    # Use very conservative estimate for most cases
+    delta_f_hz = (
+        0.5
+        if ir_length_samples is None
+        else sampling_rate_hz / ir_length_samples
+    )
+
+    # Frequency vector
+    f_vec, delta_f_hz, original_length_time_data = (
+        _get_frequency_vector_with_frequency_resolution(
+            delta_f_hz, sampling_rate_hz
+        )
+    )
+
+    # Get interpolated magnitude spectrum
+    mag_spectrum = spectrum.get_interpolated_spectrum(
+        f_vec, SpectrumType.Magnitude
     )
 
     phase = _minimum_phase(
-        np.abs(spectrum), False, True, original_length_time_data % 2 == 1
+        mag_spectrum, False, True, original_length_time_data % 2 == 1
     )
     time_data = np.fft.irfft(
-        spectrum * np.exp(1j * phase), axis=0, n=original_length_time_data
+        mag_spectrum * np.exp(1j * phase), axis=0, n=original_length_time_data
     )
-    sig_min_phase = ImpulseResponse(
-        None, time_data=time_data, sampling_rate_hz=sampling_rate_hz
-    )
-    return sig_min_phase
+    return ImpulseResponse.from_time_data(time_data, sampling_rate_hz)
 
 
 def lin_phase_from_mag(
@@ -1175,9 +1175,8 @@ def ir_to_filter(
 
     # Change phase
     if phase_mode == "min":
-        f, sp = signal.get_spectrum()
         signal = min_phase_from_mag(
-            np.abs(sp), signal.sampling_rate_hz, len(signal)
+            Spectrum.from_signal(signal), signal.sampling_rate_hz, len(signal)
         )
     elif phase_mode == "lin":
         signal = lin_phase_from_mag(

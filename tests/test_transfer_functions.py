@@ -335,9 +335,12 @@ class TestTransferFunctionsModule:
     def test_min_phase_from_mag(self):
         # Only functionality is tested
         self.y_st.set_spectrum_parameters(method=dsp.SpectrumMethod.FFT)
-        f, sp = self.y_st.get_spectrum()
+        spec = dsp.Spectrum.from_signal(self.y_st)
         dsp.transfer_functions.min_phase_from_mag(
-            sp, self.y_st.sampling_rate_hz
+            spec, self.y_st.sampling_rate_hz
+        )
+        dsp.transfer_functions.min_phase_from_mag(
+            spec, self.y_st.sampling_rate_hz, ir_length_samples=self.fs
         )
 
     def test_lin_phase_from_mag(self):
