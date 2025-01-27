@@ -540,3 +540,38 @@ except ModuleNotFoundError as e:
             window /= window.sum()
             spectrum[i, ...] = window @ input_spectrum[ind_low:ind_high]
         return spectrum
+
+
+def _get_frequency_vector_with_frequency_resolution(
+    delta_f_hz: float, sampling_rate_hz: int
+) -> tuple[NDArray[np.float64], float, int]:
+    """Generate a frequency vector based on a given frequency resolution. The
+    returned frequency resolution can differ slightly. Nyquist is always
+    contained, i.e., frequency vector corresponds to an even-length time
+    signal.
+
+    Parameters
+    ----------
+    delta_f_hz : float
+        Desired frequency resolution.
+    sampling_rate_hz : int
+        Sampling rate to regard.
+
+    Returns
+    -------
+    NDArray[np.float64]
+        Frequency vector in Hz.
+    delta_f_hz : float
+        Final frequency resolution in Hz.
+    length_time_data_samples : int
+        Corresponding length of time data to the frequency vector
+
+    """
+    nyquist_hz = sampling_rate_hz / 2.0
+    length_f_vec = int(nyquist_hz / delta_f_hz + 0.5)
+    if length_f_vec % 2 == 0:
+        length_f_vec += 1  # Ensure odd length
+    f_vec = np.linspace(0.0, nyquist_hz, length_f_vec, endpoint=True)
+    delta_f_hz = f_vec[1]
+    length_time_data_samples = (length_f_vec - 1) * 2
+    return f_vec, delta_f_hz, length_time_data_samples
