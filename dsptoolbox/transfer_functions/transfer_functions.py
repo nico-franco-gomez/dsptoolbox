@@ -658,6 +658,7 @@ def lin_phase_from_mag(
             group_delay_ms == "minimum"
         ), "Group delay should be set to minimum"
         minimum_group_delay = True
+        group_delay_s = group_delay_ms
     elif type(group_delay_ms) in (float, int):
         group_delay_s = group_delay_ms / 1000
     else:
