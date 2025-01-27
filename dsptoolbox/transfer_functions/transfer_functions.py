@@ -557,7 +557,7 @@ def min_phase_from_mag(
 
     Returns
     -------
-    sig_min_phase : `ImpulseResponse`
+    `ImpulseResponse`
         Signal with same magnitude spectrum but minimum phase.
 
     References
@@ -630,14 +630,15 @@ def lin_phase_from_mag(
 
     Returns
     -------
-    sig_lin_phase : `ImpulseResponse`
+    `ImpulseResponse`
         Impulse response with same magnitude spectrum but linear phase. Its
         length is always twice the delay.
 
     """
     # Check group delay ms parameter
     minimum_group_delay = group_delay_ms is None
-    check_causality = not minimum_group_delay
+    # Only check causality when necessary and requested
+    check_causality = not minimum_group_delay and check_causality
     if not minimum_group_delay:
         group_delay_s = group_delay_ms / 1000.0
 
@@ -675,7 +676,6 @@ def lin_phase_from_mag(
             np.max(min_gd, axis=0) + 1e-3
         )  # add 1 ms as safety factor
 
-        # Check
         if check_causality:
             for n in range(len(group_delay_to_use_s)):
                 assert group_delay_to_use_s[n] <= group_delay_s, (
@@ -722,8 +722,7 @@ def lin_phase_from_mag(
     time_data = _pad_trim(
         time_data, int(2 * max(group_delay_to_use_s) * sampling_rate_hz + 0.5)
     )
-    lin_phase_ir = ImpulseResponse.from_time_data(time_data, sampling_rate_hz)
-    return lin_phase_ir
+    return ImpulseResponse.from_time_data(time_data, sampling_rate_hz)
 
 
 def min_phase_ir(
@@ -750,7 +749,7 @@ def min_phase_ir(
 
     Returns
     -------
-    min_phase_sig : `ImpulseResponse`
+    `ImpulseResponse`
         Minimum-phase IR as time signal.
 
     """
