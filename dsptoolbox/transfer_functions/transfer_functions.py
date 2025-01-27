@@ -690,6 +690,16 @@ def lin_phase_from_mag(
         else:
             group_delay_to_use_s = group_delay_s
 
+        # Check group delay will not wrap around time data
+        assert (
+            group_delay_to_use_s * 2
+            <= original_length_time_data / sampling_rate_hz
+        ), (
+            "Group delay is longer than frequency resolution allows. "
+            + "Increase frequency resolution to at least "
+            + f"{sampling_rate_hz / (group_delay_s * 2)} Hz"
+        )
+
         phase = -2 * np.pi * f_vec * group_delay_to_use_s
         if spectrum_has_nyquist:
             phase = _correct_for_real_phase_spectrum(phase)
