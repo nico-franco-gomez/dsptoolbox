@@ -219,7 +219,7 @@ class TestSignal:
         s.plot_magnitude()
         s.plot_magnitude(show_info_box=True)
         s.plot_time()
-        s.plot_spectrogram(channel_number=0, logfreqs=True)
+        s.plot_spectrogram(channel_number=0, log_freqs=True)
         s.plot_csm()
         s.plot_csm(with_phase=False)
         s.plot_spl(False)

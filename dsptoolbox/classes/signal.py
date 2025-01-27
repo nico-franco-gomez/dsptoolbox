@@ -1288,7 +1288,7 @@ class Signal:
     def plot_spectrogram(
         self,
         channel_number: int = 0,
-        logfreqs: bool = True,
+        log_freqs: bool = True,
         dynamic_range_db: float = 50,
     ) -> tuple[Figure, Axes]:
         """Plots STFT matrix of the given channel.
@@ -1347,7 +1347,7 @@ class Signal:
             ylabel="Frequency / Hz",
             zlabel=zlabel,
             xlog=False,
-            ylog=logfreqs,
+            ylog=log_freqs,
             colorbar=True,
         )
         return fig, ax
@@ -1446,7 +1446,7 @@ class Signal:
         return fig, ax
 
     def plot_csm(
-        self, range_hz=[20, 20e3], logx: bool = True, with_phase: bool = True
+        self, range_hz=[20, 20e3], with_phase: bool = True
     ) -> tuple[Figure, Axes]:
         """Plots the cross spectral matrix of the multichannel signal.
 
@@ -1454,8 +1454,6 @@ class Signal:
         ----------
         range_hz : array-like with length 2, optional
             Range of Hz to be showed. Default: [20, 20e3].
-        logx : bool, optional
-            Logarithmic x axis. Default: `True`.
         with_phase : bool, optional
             When `True`, the unwrapped phase is also plotted. Default: `True`.
 
@@ -1468,7 +1466,7 @@ class Signal:
 
         """
         f, csm = self.get_csm()
-        fig, ax = _csm_plot(f, csm, range_hz, logx, with_phase)
+        fig, ax = _csm_plot(f, csm, range_hz, True, with_phase)
         return fig, ax
 
     # ======== Saving and copy ================================================
