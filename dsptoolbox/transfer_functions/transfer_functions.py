@@ -15,6 +15,7 @@ from ._transfer_functions import (
     _get_harmonic_times,
     _trim_ir,
     _complex_smoothing_backend,
+    _get_frequency_vector_with_frequency_resolution,
 )
 from ..helpers.spectrum_utilities import (
     _correct_for_real_phase_spectrum,
@@ -50,6 +51,7 @@ from ..standard.enums import (
     MagnitudeNormalization,
     Window,
     SpectrumScaling,
+    SpectrumType,
 )
 from .enums import TransferFunctionType, SmoothingDomain
 
@@ -592,11 +594,11 @@ def min_phase_from_mag(
 
 
 def lin_phase_from_mag(
-    spectrum: NDArray[np.float64],
+    spectrum: Spectrum,
     sampling_rate_hz: int,
-    original_length_time_data: int | None = None,
-    group_delay_ms: str | float = "minimum",
+    group_delay_ms: float | None = None,
     check_causality: bool = True,
+    minimum_group_delay_factor: float = 1.0,
 ) -> ImpulseResponse:
     """Returns a linear phase signal from a magnitude spectrum. It is possible
     to return the smallest causal group delay by checking the minimum phase
@@ -609,23 +611,22 @@ def lin_phase_from_mag(
 
     Parameters
     ----------
-    spectrum : NDArray[np.float64]
-        (Magnitude) Spectrum with only positive frequencies and 0.
+    spectrum : Spectrum
+        Spectrum with only positive frequencies and 0.
     sampling_rate_hz : int
-        Signal's sampling rate in Hz.
-    original_length_time_data : int, optional
-        Original length for the time data that gave the spectrum. This is
-        necessary for reconstruction of the time data since the first half
-        of the spectrum (only positive frequencies) is ambiguous. Pass `None`
-        to assume an even length. Default: `None`.
-    group_delay_ms : str or float, optional
+        Sampling rate in Hz for the output impulse response.
+    group_delay_ms : float, None, optional
         Constant group delay that the phase should have for all channels
-        (in ms). Pass `'minimum'` to create a signal with the minimum linear
-        phase possible (that is different for each channel).
-        Default: `'minimum'`.
+        (in ms). Pass None to create a signal with the minimum linear
+        phase possible by regarding the minimum-phase response (it is different
+        for each channel). Default: None.
     check_causality : bool, optional
         When `True`, it is assessed for each channel that the given group
         delay is not lower than the minimum group delay. Default: `True`.
+    minimum_group_delay_factor : float, optional
+        When computing from the group delay from the minimum group delay, the
+        magnitude response can be distorted for low frequencies. Increase this
+        factor to add delay and correct this distortion. Default: 1.
 
     Returns
     -------
@@ -634,87 +635,95 @@ def lin_phase_from_mag(
         length is always twice the delay.
 
     """
-    # Check spectrum
-    if spectrum.ndim < 2:
-        spectrum = spectrum[..., None]
-    assert spectrum.ndim < 3, "Spectrum should have shape (bins, channels)"
-    if spectrum.shape[0] < spectrum.shape[1]:
-        spectrum = spectrum.T
-    if original_length_time_data is None:
-        original_length_time_data = (spectrum.shape[0] - 1) * 2
-    assert original_length_time_data in (
-        (spectrum.shape[0] - 1) * 2,
-        (spectrum.shape[0] - 1) * 2 + 1,
-    ), (
-        f"Passed length {original_length_time_data} is not valid for the "
-        + f"given spectrum with shape {spectrum.shape}"
-    )
-
-    spectrum = np.abs(spectrum)
-
     # Check group delay ms parameter
-    minimum_group_delay = False
-    if type(group_delay_ms) is str:
-        group_delay_ms = group_delay_ms.lower()
-        assert (
-            group_delay_ms == "minimum"
-        ), "Group delay should be set to minimum"
-        minimum_group_delay = True
-        group_delay_s = group_delay_ms
-    elif type(group_delay_ms) in (float, int):
-        group_delay_s = group_delay_ms / 1000
+    minimum_group_delay = group_delay_ms is None
+    check_causality = not minimum_group_delay
+    if not minimum_group_delay:
+        group_delay_s = group_delay_ms / 1000.0
+
+    if minimum_group_delay:
+        # Use very conservative estimate for most cases
+        delta_f_hz = 0.5
     else:
-        raise TypeError("group_delay_ms must be either str, float or int")
+        # Get minimum frequency resolution
+        delta_f_hz = (
+            1.0 / (group_delay_s * 2.0) * 0.9
+        )  # Ensure good resolution by taking 0.9 of minimum
 
     # Frequency vector
-    f_vec = np.fft.rfftfreq(original_length_time_data, 1 / sampling_rate_hz)
-    delta_f = f_vec[1] - f_vec[0]
-    spectrum_has_nyquist = original_length_time_data % 2 == 0
+    f_vec, delta_f_hz, original_length_time_data = (
+        _get_frequency_vector_with_frequency_resolution(
+            delta_f_hz, sampling_rate_hz
+        )
+    )
 
-    # New spectrum
-    lin_spectrum = np.empty(spectrum.shape, dtype=np.complex128)
-    for n in range(spectrum.shape[1]):
-        if check_causality or minimum_group_delay:
-            min_phase = _minimum_phase(
-                spectrum[:, n], odd_length=original_length_time_data % 2 == 1
-            )
-            min_gd = _group_delay_direct(min_phase, delta_f)
-            group_delay_to_use_s = (
-                np.max(min_gd) + 1e-3
-            )  # add 1 ms as safety factor
-            if check_causality and type(group_delay_s) is not str:
-                assert group_delay_to_use_s <= group_delay_s, (
+    # Get interpolated magnitude spectrum
+    mag_spectrum = spectrum.get_interpolated_spectrum(
+        f_vec, SpectrumType.Magnitude
+    )
+
+    if check_causality or minimum_group_delay:
+        assert (
+            minimum_group_delay_factor >= 1.0
+        ), "Minimum group delay factor should at least be 1"
+        min_phase = _minimum_phase(
+            mag_spectrum,
+            odd_length=original_length_time_data % 2 == 1,
+        )
+        min_gd = _group_delay_direct(min_phase, delta_f_hz)
+        group_delay_to_use_s = minimum_group_delay_factor * (
+            np.max(min_gd, axis=0) + 1e-3
+        )  # add 1 ms as safety factor
+
+        # Check
+        if check_causality:
+            for n in range(len(group_delay_to_use_s)):
+                assert group_delay_to_use_s[n] <= group_delay_s, (
                     f"Given group delay {group_delay_s * 1000} ms is lower "
                     + "than minimal group delay "
                     + f"{group_delay_to_use_s * 1000} ms for "
                     + f"channel {n}"
                 )
-                group_delay_to_use_s = group_delay_s
-        else:
-            group_delay_to_use_s = group_delay_s
+            group_delay_to_use_s = (
+                np.ones(spectrum.number_of_channels) * group_delay_s
+            )
 
-        # Check group delay will not wrap around time data
-        assert (
+        if np.any(
             group_delay_to_use_s * 2
-            <= original_length_time_data / sampling_rate_hz
-        ), (
-            "Group delay is longer than frequency resolution allows. "
-            + "Increase frequency resolution to at least "
-            + f"{sampling_rate_hz / (group_delay_s * 2)} Hz"
+            > original_length_time_data / sampling_rate_hz
+        ):
+            # New resolution
+            delta_f_hz = 1.0 / (max(group_delay_to_use_s) * 2) * 0.9
+            f_vec, delta_f_hz, original_length_time_data = (
+                _get_frequency_vector_with_frequency_resolution(
+                    delta_f_hz, sampling_rate_hz
+                )
+            )
+            mag_spectrum = spectrum.get_interpolated_spectrum(
+                f_vec, SpectrumType.Magnitude
+            )
+    else:
+        group_delay_to_use_s = (
+            np.ones(spectrum.number_of_channels) * group_delay_s
         )
 
-        phase = -2 * np.pi * f_vec * group_delay_to_use_s
-        if spectrum_has_nyquist:
-            phase = _correct_for_real_phase_spectrum(phase)
-        lin_spectrum[:, n] = spectrum[:, n] * np.exp(1j * phase)
-    time_data = np.fft.irfft(lin_spectrum, axis=0, n=original_length_time_data)
+    # New spectrum
+    time_data = np.fft.irfft(
+        mag_spectrum
+        * np.exp(
+            1j
+            * _correct_for_real_phase_spectrum(
+                -2 * np.pi * f_vec[:, None] * group_delay_to_use_s[None, :]
+            )
+        ),
+        axis=0,
+        n=original_length_time_data,
+    )
     time_data = _pad_trim(
-        time_data, int(2 * group_delay_to_use_s * sampling_rate_hz + 0.5)
+        time_data, int(2 * max(group_delay_to_use_s) * sampling_rate_hz + 0.5)
     )
-    sig_lin_phase = ImpulseResponse(
-        None, time_data=time_data, sampling_rate_hz=sampling_rate_hz
-    )
-    return sig_lin_phase
+    lin_phase_ir = ImpulseResponse.from_time_data(time_data, sampling_rate_hz)
+    return lin_phase_ir
 
 
 def min_phase_ir(
@@ -1171,9 +1180,8 @@ def ir_to_filter(
             np.abs(sp), signal.sampling_rate_hz, len(signal)
         )
     elif phase_mode == "lin":
-        f, sp = signal.get_spectrum()
         signal = lin_phase_from_mag(
-            np.abs(sp), signal.sampling_rate_hz, len(signal)
+            Spectrum.from_signal(signal), signal.sampling_rate_hz, len(signal)
         )
 
     filters = []
