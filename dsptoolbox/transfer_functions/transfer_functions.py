@@ -608,7 +608,7 @@ def lin_phase_from_mag(
     Parameters
     ----------
     spectrum : NDArray[np.float64]
-        Spectrum with only positive frequencies and 0.
+        (Magnitude) Spectrum with only positive frequencies and 0.
     sampling_rate_hz : int
         Signal's sampling rate in Hz.
     original_length_time_data : int, optional
