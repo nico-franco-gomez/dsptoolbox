@@ -259,6 +259,10 @@ class TestTransferFunctionsModule:
         assert np.all(b == s.time_data[:, 0])
         assert f.sampling_rate_hz == s.sampling_rate_hz
 
+        # Functionality in other cases
+        f = dsp.transfer_functions.ir_to_filter(s, channel=0, phase_mode="min")
+        f = dsp.transfer_functions.ir_to_filter(s, channel=0, phase_mode="lin")
+
         # To filter bank
         fb = dsp.transfer_functions.ir_to_filter(
             dsp.ImpulseResponse.from_signal(self.audio_multi), channel=None
@@ -339,9 +343,31 @@ class TestTransferFunctionsModule:
     def test_lin_phase_from_mag(self):
         # Only functionality is tested here
         self.y_st.set_spectrum_parameters(method=dsp.SpectrumMethod.FFT)
-        f, sp = self.y_st.get_spectrum()
+        spec = dsp.Spectrum.from_signal(self.y_st)
         dsp.transfer_functions.lin_phase_from_mag(
-            sp, self.y_st.sampling_rate_hz, group_delay_ms="minimum"
+            spec,
+            self.y_st.sampling_rate_hz,
+            group_delay_ms=None,
+        )
+        dsp.transfer_functions.lin_phase_from_mag(
+            spec,
+            self.y_st.sampling_rate_hz,
+            group_delay_ms=500.0,
+            check_causality=False,
+        )
+
+        with pytest.raises(AssertionError):
+            dsp.transfer_functions.lin_phase_from_mag(
+                spec,
+                self.y_st.sampling_rate_hz,
+                group_delay_ms=1.0,
+                check_causality=True,
+            )
+        dsp.transfer_functions.lin_phase_from_mag(
+            spec,
+            self.y_st.sampling_rate_hz,
+            group_delay_ms=None,
+            minimum_group_delay_factor=10.0,
         )
 
     def test_group_delay(self):
