@@ -720,3 +720,95 @@ class TestStandardModule:
             octave_fraction_smoothing=12.0,
             dynamic_range_db=None,
         )
+
+    def test_trim_with_level_threshold(self):
+        s = np.zeros(1000)
+
+        # ===== Single-channel
+        ones_slice = slice(len(s) // 3, len(s) // 2)
+
+        threshold_db = -50.0
+        fill_value = dsp.tools.from_db(threshold_db + 1, True)
+
+        s[ones_slice] = fill_value
+
+        # Start and end
+        np.testing.assert_array_equal(
+            dsp.trim_with_level_threshold(
+                dsp.Signal.from_time_data(s, self.fs), threshold_db, True, True
+            )[0].time_data.squeeze(),
+            s[ones_slice],
+        )
+        # End
+        np.testing.assert_array_equal(
+            dsp.trim_with_level_threshold(
+                dsp.Signal.from_time_data(s, self.fs),
+                threshold_db,
+                False,
+                True,
+            )[0].time_data.squeeze(),
+            s[: ones_slice.stop],
+        )
+        # Start
+        np.testing.assert_array_equal(
+            dsp.trim_with_level_threshold(
+                dsp.Signal.from_time_data(s, self.fs),
+                threshold_db,
+                True,
+                False,
+            )[0].time_data.squeeze(),
+            s[ones_slice.start :],
+        )
+        # None
+        with pytest.raises(AssertionError):
+            dsp.trim_with_level_threshold(
+                dsp.Signal.from_time_data(s, self.fs),
+                threshold_db,
+                False,
+                False,
+            )
+
+        # ===== Multi-channel
+        s = np.zeros((1000, 2))
+        ones_slice = slice(len(s) // 3, len(s) // 2)
+        s[ones_slice.start + 5 : ones_slice.stop - 5, 0] = fill_value
+        s[ones_slice, 1] = fill_value
+
+        threshold_db = -50.0
+        fill_value = dsp.tools.from_db(threshold_db + 1, True)
+
+        # Start and end
+        np.testing.assert_array_equal(
+            dsp.trim_with_level_threshold(
+                dsp.Signal.from_time_data(s, self.fs), threshold_db, True, True
+            )[0].time_data,
+            s[ones_slice],
+        )
+        # End
+        np.testing.assert_array_equal(
+            dsp.trim_with_level_threshold(
+                dsp.Signal.from_time_data(s, self.fs),
+                threshold_db,
+                False,
+                True,
+            )[0].time_data,
+            s[: ones_slice.stop],
+        )
+        # Start
+        np.testing.assert_array_equal(
+            dsp.trim_with_level_threshold(
+                dsp.Signal.from_time_data(s, self.fs),
+                threshold_db,
+                True,
+                False,
+            )[0].time_data,
+            s[ones_slice.start :],
+        )
+        # None
+        with pytest.raises(AssertionError):
+            dsp.trim_with_level_threshold(
+                dsp.Signal.from_time_data(s, self.fs),
+                threshold_db,
+                False,
+                False,
+            )

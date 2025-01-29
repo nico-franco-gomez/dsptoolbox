@@ -2,6 +2,7 @@ import numpy as np
 
 from ..classes import Signal, MultiBandSignal
 from ..helpers.other import _pad_trim
+from ..tools import from_db
 
 
 def pad_trim(
@@ -127,3 +128,63 @@ def modify_signal_length(
         return new_mb
     else:
         raise TypeError("Unsupported type")
+
+
+def trim_with_level_threshold(
+    signal: Signal,
+    threshold_db: float,
+    at_start: bool = True,
+    at_end: bool = True,
+) -> tuple[Signal, int, int]:
+    """Trim a signal by discarding the edge samples below a certain threshold.
+
+    Parameters
+    ----------
+    signal : Signal
+        Signal to be trimmed. If it is multichannel, it is trimmed to the
+        minimum index at start and the maximum at end across all channels.
+    threshold_db : float
+        (Inclusive) Threshold for trimming. Generally in dBFS, but it can be
+        in dBSPL if the signal has been calibrated.
+    at_start : bool, optional
+        Activate trimming in the beginning. Default: True.
+    at_end : bool, optional
+        Activate trimming in the end. Default: True.
+
+    Returns
+    -------
+    Signal
+        Copy of input signal with trimmed time series.
+    int
+        Start index in the original array.
+    int
+        Stop index in the original array.
+
+    """
+    assert at_start or at_end, "Either start or end should be trimmed"
+
+    threshold_linear = from_db(threshold_db, True)
+    above_threshold = np.where(np.abs(signal.time_data) >= threshold_linear)
+    if at_start:
+        indices_along_first_axis = above_threshold[0][
+            : signal.number_of_channels
+        ]
+        start = int(np.min(indices_along_first_axis))
+    else:
+        start = 0
+
+    if at_end:
+        indices_along_first_axis = above_threshold[0][
+            -signal.number_of_channels :
+        ]
+        stop = min(
+            signal.length_samples, int(np.max(indices_along_first_axis)) + 1
+        )
+    else:
+        stop = signal.length_samples
+
+    return (
+        signal.copy_with_new_time_data(signal.time_data[start:stop]),
+        start,
+        stop,
+    )
