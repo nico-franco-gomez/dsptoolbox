@@ -75,6 +75,7 @@ from ..classes.state_space_filter import StateSpaceFilter
 from ..classes.group_delay_designer_phase_linearizer import (
     PhaseLinearizer,
     GroupDelayDesigner,
+    FirDesigner,
 )
 
 __all__ = [
@@ -88,6 +89,7 @@ __all__ = [
     "convert_into_lattice_filter",
     "LatticeLadderFilter",
     "PhaseLinearizer",
+    "FirDesigner",
     "IIRFilter",
     "FIRFilter",
     "ParallelFilter",
