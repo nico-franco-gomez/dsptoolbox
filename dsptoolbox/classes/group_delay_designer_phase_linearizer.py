@@ -161,7 +161,9 @@ class GroupDelayDesigner:
             )
             target_gd = PchipInterpolator(
                 frequency_vector_hz, target_gd, extrapolate=True
-            )(new_freqs) * (gd_time_length_samples / len(new_freqs))
+            )(new_freqs) * (
+                gd_time_length_samples / new_gd_time_length_samples
+            )
             gd_time_length_samples = new_gd_time_length_samples
 
         # Get new phase using group target group delay
