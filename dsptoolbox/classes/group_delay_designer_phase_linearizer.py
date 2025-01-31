@@ -137,18 +137,18 @@ class GroupDelayDesigner:
 
         # Interpolate if phase response is not much longer than maximum
         # expected delay to increase frequency resolution
-        if max_delay_samples_synthesized * 20 > gd_time_length_samples:
+        if max_delay_samples_synthesized * 10 > gd_time_length_samples:
             warn(
                 f"Phase response (length {gd_time_length_samples}) "
                 + "is not much longer than maximum expected "
                 + f"group delay {max_delay_samples_synthesized} (less "
-                + "than 20 times longer). Spectrum interpolation "
+                + "than 10 times longer). Spectrum interpolation "
                 + "is triggered, but it is recommended to pass a phase "
                 + "spectrum with finer resolution!"
             )
             # Define new time length for the group delay
             new_gd_time_length_samples = (
-                int(max_delay_samples_synthesized * 20) + 1
+                int(max_delay_samples_synthesized * 10) + 1
             )
             # Ensure even length
             new_gd_time_length_samples += new_gd_time_length_samples % 2
