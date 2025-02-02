@@ -51,6 +51,7 @@ class FirDesigner:
         delay_increase_ms: float = 0.0,
         additional_length_samples: int | None = 0,
         trapezoidal_integration: bool = True,
+        ensure_integer_delay: bool = False,
     ):
         """Set parameters for the FIR filter.
 
@@ -72,6 +73,9 @@ class FirDesigner:
             or Simpson integration can be used. The former tends to be more
             stable but delivers less smooth responses. It will be activated
             when True, otherwise, pass False to use Simpson. Default: True.
+        ensure_integer_delay : bool, optional
+            When True, integer delay for the phase response is ensured by
+            forcing nyquist frequency to be exclusively real. Default: False.
 
         """
         assert (
@@ -84,6 +88,7 @@ class FirDesigner:
         self.group_delay_increase_ms = delay_increase_ms
         self.trapezoidal_integration = trapezoidal_integration
         self.additional_length_samples = additional_length_samples
+        self.ensure_integer_delay = ensure_integer_delay
         return self
 
     def _set_targets(
@@ -197,7 +202,7 @@ class FirDesigner:
 
         # Correct if nyquist is given
         add_extra_sample = False
-        if gd_time_length_samples % 2 == 0:
+        if gd_time_length_samples % 2 == 0 and self.ensure_integer_delay:
             add_extra_sample = new_phase[-1] % np.pi > np.pi / 2.0
             new_phase = _correct_for_real_phase_spectrum(new_phase)
 
@@ -298,6 +303,7 @@ class PhaseLinearizer(GroupDelayDesigner):
         delay_increase_percent: float = 100.0,
         additional_length_samples: int | None = 0,
         trapezoidal_integration: bool = True,
+        ensure_integer_delay: bool = False,
     ):
         """Set parameters for the FIR filter.
 
@@ -321,6 +327,9 @@ class PhaseLinearizer(GroupDelayDesigner):
             or Simpson can be used. The former tends to be more stable but
             delivers less smooth responses. It will be activated when True,
             otherwise, pass False to use Simpson. Default: True.
+        ensure_integer_delay : bool, optional
+            When True, integer delay for the phase response is ensured by
+            forcing nyquist frequency to be exclusively real. Default: False.
 
         """
         assert (
@@ -328,7 +337,10 @@ class PhaseLinearizer(GroupDelayDesigner):
         ), "Delay increase must be larger than zero"
         self.group_delay_increase_factor = 1 + delay_increase_percent / 100
         return super().set_parameters(
-            0.0, additional_length_samples, trapezoidal_integration
+            0.0,
+            additional_length_samples,
+            trapezoidal_integration,
+            ensure_integer_delay=ensure_integer_delay,
         )
 
     def __get_group_delay(self, phase_response) -> NDArray[np.float64]:
