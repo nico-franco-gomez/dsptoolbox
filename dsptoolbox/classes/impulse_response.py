@@ -179,7 +179,7 @@ class ImpulseResponse(Signal):
     def plot_spl(
         self,
         normalize_at_peak: bool = False,
-        range_db: float | None = 100.0,
+        dynamic_range_db: float | None = 100.0,
         window_length_s: float = 0.0,
     ) -> tuple[Figure, list[Axes]]:
         """Plots the momentary sound pressure level (dB or dBFS) of each
@@ -191,10 +191,10 @@ class ImpulseResponse(Signal):
         normalize_at_peak : bool, optional
             When `True`, each channel gets normalize by its peak value.
             Default: `False`.
-        range_db : float, optional
+        dynamic_range_db : float, optional
             This is the range in dB used for plotting. Each plot will be in the
-            range [peak + 1 - range_db, peak + 1]. Pass `None` to avoid setting
-            any range. Default: 100.
+            range [peak + 1 - dynamic_range_db, peak + 1]. Pass `None` to avoid
+            setting any range. Default: 100.
         window_length_s : float, optional
             When different than 0, a moving average along the time axis is done
             with the given length. Default: 0.
@@ -216,7 +216,7 @@ class ImpulseResponse(Signal):
 
         """
         fig, ax = super().plot_spl(
-            normalize_at_peak, range_db, window_length_s
+            normalize_at_peak, dynamic_range_db, window_length_s
         )
 
         peak_values = to_db(np.max(np.abs(self.time_data), axis=0), True)
