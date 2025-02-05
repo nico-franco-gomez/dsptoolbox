@@ -1533,12 +1533,13 @@ def harmonic_distortion_analysis(
     Notes
     -----
     - The scaling of the spectrum is always done as set with
-      `set_spectrum_parameters()` of the original IR. THD and THD+N are always
-      returned with their quadratic (power) form. All spectra are in amplitude
-      or power values according to `scaling`, but not in dB.
+      `set_spectrum_parameters()` of the original IR.
     - Distortion in percentage can be computed by dividing `thd` by the
       spectrum of the fundamental. They have the same frequency resolution
       but `thd` has a trimmed frequency vector.
+    - THD in percent is usually defined in audio by the amplitude ratios
+      instead of the power ratios, as is common for other fields. See
+      https://de.wikipedia.org/wiki/Total_Harmonic_Distortion.
     - Passing `chirp_range_hz` with a list of IRs will still have an effect on
       the upper limit frequency of each harmonic.
 
@@ -1594,13 +1595,14 @@ def harmonic_distortion_analysis(
     d: dict = {}
 
     # Spectrum of fundamental
+    quadratic_spectrum = not ir2.spectrum_scaling.is_amplitude_scaling()
     freqs, base_spectrum = ir2.get_spectrum()
-    d["1"] = [freqs, base_spectrum.squeeze()]
+    d["1"] = Spectrum(
+        freqs, (base_spectrum**0.5 if quadratic_spectrum else base_spectrum)
+    )
 
     # Accumulator for spectrum of harmonics
     sp_thd = np.zeros(len(freqs))
-
-    quadratic_spectrum = not ir2.spectrum_scaling.is_amplitude_scaling()
 
     if generate_plot:
         fig, ax = ir2.plot_magnitude(
