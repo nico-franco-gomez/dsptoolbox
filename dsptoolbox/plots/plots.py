@@ -8,6 +8,7 @@ from matplotlib import colormaps as cm
 from matplotlib.figure import Figure
 from matplotlib.axes import Axes
 from numpy import array, max, min, arange
+from numpy.typing import NDArray
 
 try:
     from seaborn import set_style
@@ -24,8 +25,8 @@ def show():
 
 
 def general_plot(
-    x,
-    matrix,
+    x: NDArray | None,
+    matrix: NDArray,
     range_x=None,
     range_y=None,
     log: bool = True,
@@ -40,7 +41,7 @@ def general_plot(
     Parameters
     ----------
     x : array-like
-        Vector for x axis. Pass `None` to ignore.
+        Vector for x axis. Pass `None` to generate automatically.
     matrix : NDArray[np.float64]
         Matrix with data to plot.
     range_x : array-like, optional
@@ -77,11 +78,10 @@ def general_plot(
         if type(labels) not in (list, tuple):
             assert type(labels) is str, "labels should be a list or a string"
             labels = [labels]
-    for n in range(matrix.shape[1]):
-        if labels is not None:
-            ax.plot(x, matrix[:, n], label=labels[n])
-        else:
-            ax.plot(x, matrix[:, n])
+    if labels is not None:
+        ax.plot(x, matrix, label=labels)
+    else:
+        ax.plot(x, matrix)
     if log:
         ax.set_xscale("log")
         ticks = array([20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000])
@@ -114,9 +114,159 @@ def general_plot(
     return fig, ax
 
 
+def general_plot_two_axes(
+    x1: NDArray | None,
+    matrix1: NDArray,
+    x2: NDArray | None,
+    matrix2: NDArray,
+    range_x=None,
+    range_y1=None,
+    range_y2=None,
+    log_x: bool = True,
+    labels1=None,
+    labels2=None,
+    xlabel: str = "Frequency / Hz",
+    y1label: str | None = None,
+    y2label: str | None = None,
+    y1_linestyle: str | None = None,
+    y2_linestyle: str | None = None,
+    y1_alpha: float = 1.0,
+    y2_alpha: float = 1.0,
+    info_box: str | None = None,
+    tight_layout: bool = True,
+) -> tuple[Figure, Axes]:
+    """Plot template for two y-axis with the same x-axis.
+
+    Parameters
+    ----------
+    x1 : array-like
+        Vector for x axis. Pass `None` to generate automatically.
+    matrix1 : NDArray[np.float64]
+        Matrix with data to plot. The first dimension is expected to match the
+        x data.
+    x2 : array-like
+        Vector for x axis. Pass `None` to generate automatically.
+    matrix2 : NDArray[np.float64]
+        Matrix with data to plot. The first dimension is expected to match the
+        x data.
+    range_x : array-like, optional
+        Range to show for x axis. Default: None.
+    range_y1 : array-like, optional
+        Range to show for y axis. Default: None.
+    range_y2 : array-like, optional
+        Range to show for second y axis. Default: None.
+    log_x : bool, optional
+        Show x axis as logarithmic. Default: `True`.
+    labels1 : list or str, optional
+        Labels for the drawn lines as list of strings. Default: `None`.
+    labels2 : list or str, optional
+        Labels for the drawn lines as list of strings. Default: `None`.
+    xlabel : str, optional
+        Label for x axis. Default: None.
+    y1label : str, optional
+        Label for y axis. Default: None.
+    y2label : str, optional
+        Label for y axis. Default: None.
+    y1_linestyle : str, None, optional
+        Line style for first axis. Default: None.
+    y2_linestyle : str, None, optional
+        Line style for second axis. Default: None.
+    y1_alpha : float, optional
+        Alpha value for first axis. Default: 1.
+    y2_alpha : float, optional
+        Alpha value for second axis. Default: 1.
+    info_box : str, optional
+        String containing extra information to be shown in a info box on the
+        plot. Default: None.
+    tight_layout: bool, optional
+        When `True`, tight layout is activated. Default: `True`.
+
+    Returns
+    -------
+    fig, ax
+
+    """
+    fig, ax = plt.subplots(1, 1, figsize=(8, 5))
+    ax2 = ax.twinx()
+
+    # ====== First axis
+    if matrix1.ndim == 1:
+        matrix1 = matrix1[..., None]
+    elif matrix1.ndim > 2:
+        raise ValueError("Only 1D and 2D-arrays are supported")
+    if x1 is None:
+        x1 = arange(matrix1.shape[0])
+    if labels1 is not None:
+        if type(labels1) not in (list, tuple):
+            assert type(labels1) is str, "labels should be a list or a string"
+            labels1 = [labels1]
+    if labels1 is not None:
+        ax.plot(
+            x1, matrix1, label=labels1, linestyle=y1_linestyle, alpha=y1_alpha
+        )
+    else:
+        ax.plot(x1, matrix1, linestyle=y1_linestyle, alpha=y1_alpha)
+    # ======
+
+    # ====== Second axis
+    if matrix2.ndim == 1:
+        matrix2 = matrix2[..., None]
+    elif matrix2.ndim > 2:
+        raise ValueError("Only 1D and 2D-arrays are supported")
+    if x2 is None:
+        x2 = arange(matrix2.shape[0])
+    if labels2 is not None:
+        if type(labels2) not in (list, tuple):
+            assert type(labels2) is str, "labels should be a list or a string"
+            labels2 = [labels2]
+    if labels2 is not None:
+        ax2.plot(
+            x2, matrix2, label=labels2, linestyle=y2_linestyle, alpha=y2_alpha
+        )
+    else:
+        ax2.plot(x2, matrix2, linestyle=y2_linestyle, alpha=y2_alpha)
+    # ======
+    if log_x:
+        ax.set_xscale("log")
+        ticks = array([20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000])
+        if range_x is not None:
+            ticks = ticks[(ticks > range_x[0]) & (ticks < range_x[-1])]
+        ax.set_xticks(ticks)
+        ax.get_xaxis().set_major_formatter(ScalarFormatter())
+    ax.xaxis.grid(True, which="minor")
+    if range_x is not None:
+        ax.set_xlim(range_x)
+    if range_y1 is not None:
+        ax.set_ylim(range_y1)
+    if range_y2 is not None:
+        ax2.set_ylim(range_y2)
+    if y1label is not None:
+        ax.set_ylabel(y1label)
+    if y2label is not None:
+        ax2.set_ylabel(y2label)
+    if xlabel is not None:
+        ax.set_xlabel(xlabel)
+    if info_box is not None:
+        ax.text(
+            0.1,
+            0.5,
+            info_box,
+            transform=ax.transAxes,
+            verticalalignment="top",
+            bbox=dict(boxstyle="round", facecolor="grey", alpha=0.75),
+        )
+    if labels1 is not None:
+        ax.legend()
+    if labels2 is not None:
+        ax2.legend()
+    if tight_layout:
+        fig.tight_layout()
+    return fig, ax
+
+
 def general_subplots_line(
-    x,
-    matrix,
+    x: NDArray | None,
+    matrix: NDArray,
     column: bool = True,
     sharex: bool = True,
     sharey: bool = False,
@@ -131,7 +281,8 @@ def general_subplots_line(
     Parameters
     ----------
     x : array-like
-        Vector for x axis.
+        Vector for x axis. The same x vector is used for all subplots. Pass
+        `None` to generate automatically.
     matrix : NDArray[np.float64]
         Matrix with data to plot.
     column : bool, optional
@@ -181,6 +332,8 @@ def general_subplots_line(
         )
     if number_of_channels == 1:
         ax = [ax]
+    if x is None:
+        x = arange(matrix.shape[0])
     for n in range(number_of_channels):
         ax[n].plot(x, matrix[:, n])
         if log:

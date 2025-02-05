@@ -9,25 +9,30 @@ from ..helpers.other import _pad_trim
 from warnings import warn
 
 
-class GroupDelayDesigner:
-    """This class designs an FIR filter with a desired group delay response."""
+class FirDesigner:
+    """This class designs an FIR filter with a desired magnitude and group
+    delay response."""
 
     def __init__(
         self,
+        target_magnitude_response: NDArray[np.float64],
         target_group_delay_s: NDArray[np.float64],
         time_data_length_samples: int,
         sampling_rate_hz: int,
     ):
-        """GroupDelayDesigner creates an FIR filter with a desired group delay
-        response. Use the method `set_parameters` to define specific design
-        parameters.
+        """This class creates an FIR filter with a desired magnitude and
+        group delay response. Use the method `set_parameters` to define
+        specific design parameters.
 
         Parameters
         ----------
+        target_magnitude_response : NDArray[np.float64]
+            Target magnitude response (linear units). It is expected to contain
+            the whole positive frequency spectrum (including dc and eventually
+            nyquist) and be linearly spaced.
         target_group_delay_s : NDArray[np.float64]
-            Target group delay in seconds. It is expected to contain the whole
-            positive frequency spectrum (including dc and eventually nyquist)
-            and be linearly spaced.
+            Target group delay in seconds. It must have the same dimensions as
+            the target magnitude response.
         time_data_length_samples : NDArray[np.float64]
             Length of the time signal that corresponds to the frequency vector
             of `target_group_delay_s`.
@@ -38,7 +43,7 @@ class GroupDelayDesigner:
         """
         self.time_data_length_samples = time_data_length_samples
         self.sampling_rate_hz = sampling_rate_hz
-        self._set_target_group_delay_s(target_group_delay_s)
+        self._set_targets(target_magnitude_response, target_group_delay_s)
         self.set_parameters()
 
     def set_parameters(
@@ -46,6 +51,7 @@ class GroupDelayDesigner:
         delay_increase_ms: float = 0.0,
         additional_length_samples: int | None = 0,
         trapezoidal_integration: bool = True,
+        ensure_integer_delay: bool = False,
     ):
         """Set parameters for the FIR filter.
 
@@ -67,6 +73,9 @@ class GroupDelayDesigner:
             or Simpson integration can be used. The former tends to be more
             stable but delivers less smooth responses. It will be activated
             when True, otherwise, pass False to use Simpson. Default: True.
+        ensure_integer_delay : bool, optional
+            When True, integer delay for the phase response is ensured by
+            forcing nyquist frequency to be exclusively real. Default: False.
 
         """
         assert (
@@ -79,10 +88,13 @@ class GroupDelayDesigner:
         self.group_delay_increase_ms = delay_increase_ms
         self.trapezoidal_integration = trapezoidal_integration
         self.additional_length_samples = additional_length_samples
+        self.ensure_integer_delay = ensure_integer_delay
         return self
 
-    def _set_target_group_delay_s(
-        self, target_group_delay_s: NDArray[np.float64]
+    def _set_targets(
+        self,
+        target_magnitude_response: NDArray[np.float64],
+        target_group_delay_s: NDArray[np.float64],
     ):
         """Set target group delay to use instead of phase response.
 
@@ -101,6 +113,10 @@ class GroupDelayDesigner:
             f"Target group delay with length {len(target_group_delay_s)} and "
             + f"length {self.time_data_length_samples} do not match."
         )
+        assert len(target_group_delay_s) == len(
+            target_magnitude_response
+        ), "Lengths do not match"
+        self.target_magnitude_response = target_magnitude_response
         self.target_group_delay_s = target_group_delay_s
 
     def _get_unscaled_preprocessed_group_delay(self) -> NDArray[np.float64]:
@@ -130,6 +146,7 @@ class GroupDelayDesigner:
     def __design(self) -> NDArray[np.float64]:
         """Compute filter."""
         target_gd = self._get_unscaled_preprocessed_group_delay()
+        target_magnitude = self.target_magnitude_response
         max_delay_samples_synthesized = int(
             np.max(target_gd) * self._get_group_delay_factor_in_samples() + 1
         )
@@ -137,18 +154,18 @@ class GroupDelayDesigner:
 
         # Interpolate if phase response is not much longer than maximum
         # expected delay to increase frequency resolution
-        if max_delay_samples_synthesized * 20 > gd_time_length_samples:
+        if max_delay_samples_synthesized * 10 > gd_time_length_samples:
             warn(
                 f"Phase response (length {gd_time_length_samples}) "
                 + "is not much longer than maximum expected "
                 + f"group delay {max_delay_samples_synthesized} (less "
-                + "than 20 times longer). Spectrum interpolation "
+                + "than 10 times longer). Spectrum interpolation "
                 + "is triggered, but it is recommended to pass a phase "
                 + "spectrum with finer resolution!"
             )
             # Define new time length for the group delay
             new_gd_time_length_samples = (
-                int(max_delay_samples_synthesized * 20) + 1
+                int(max_delay_samples_synthesized * 10) + 1
             )
             # Ensure even length
             new_gd_time_length_samples += new_gd_time_length_samples % 2
@@ -161,8 +178,20 @@ class GroupDelayDesigner:
             )
             target_gd = PchipInterpolator(
                 frequency_vector_hz, target_gd, extrapolate=True
-            )(new_freqs) * (gd_time_length_samples / len(new_freqs))
+            )(new_freqs) * (
+                gd_time_length_samples / new_gd_time_length_samples
+            )
             gd_time_length_samples = new_gd_time_length_samples
+
+            # Interpolate in power spectrum
+            target_magnitude = (
+                PchipInterpolator(
+                    frequency_vector_hz,
+                    target_magnitude**2.0,
+                    extrapolate=True,
+                )(new_freqs)
+                ** 0.5
+            )
 
         # Get new phase using group target group delay
         new_phase = (
@@ -173,12 +202,14 @@ class GroupDelayDesigner:
 
         # Correct if nyquist is given
         add_extra_sample = False
-        if gd_time_length_samples % 2 == 0:
+        if gd_time_length_samples % 2 == 0 and self.ensure_integer_delay:
             add_extra_sample = new_phase[-1] % np.pi > np.pi / 2.0
             new_phase = _correct_for_real_phase_spectrum(new_phase)
 
         # Convert to time domain
-        ir = np.fft.irfft(np.exp(1j * new_phase), gd_time_length_samples)
+        ir = np.fft.irfft(
+            target_magnitude * np.exp(1j * new_phase), gd_time_length_samples
+        )
 
         # Trim
         if self.additional_length_samples is not None:
@@ -190,6 +221,41 @@ class GroupDelayDesigner:
             )
             ir = _pad_trim(ir, trim_length)
         return ir
+
+
+class GroupDelayDesigner(FirDesigner):
+    """This class designs an FIR filter with a desired group delay response."""
+
+    def __init__(
+        self,
+        target_group_delay_s: NDArray[np.float64],
+        time_data_length_samples: int,
+        sampling_rate_hz: int,
+    ):
+        """GroupDelayDesigner creates an FIR filter with a desired group delay
+        response. Use the method `set_parameters` to define specific design
+        parameters.
+
+        Parameters
+        ----------
+        target_group_delay_s : NDArray[np.float64]
+            Target group delay in seconds. It is expected to contain the whole
+            positive frequency spectrum (including dc and eventually nyquist)
+            and be linearly spaced.
+        time_data_length_samples : NDArray[np.float64]
+            Length of the time signal that corresponds to the frequency vector
+            of `target_group_delay_s`.
+        sampling_rate_hz : int
+            Sampling rate to design the filter. It corresponds to the implicit
+            frequency vector of the group delay.
+
+        """
+        super().__init__(
+            np.ones_like(target_group_delay_s),
+            target_group_delay_s,
+            time_data_length_samples,
+            sampling_rate_hz,
+        )
 
 
 class PhaseLinearizer(GroupDelayDesigner):
@@ -228,13 +294,16 @@ class PhaseLinearizer(GroupDelayDesigner):
         target_group_delay_s = (
             self._get_target_group_delay_in_seconds_from_phase()
         )
-        self._set_target_group_delay_s(target_group_delay_s)
+        self._set_targets(
+            np.ones_like(target_group_delay_s), target_group_delay_s
+        )
 
     def set_parameters(
         self,
         delay_increase_percent: float = 100.0,
         additional_length_samples: int | None = 0,
         trapezoidal_integration: bool = True,
+        ensure_integer_delay: bool = False,
     ):
         """Set parameters for the FIR filter.
 
@@ -258,6 +327,9 @@ class PhaseLinearizer(GroupDelayDesigner):
             or Simpson can be used. The former tends to be more stable but
             delivers less smooth responses. It will be activated when True,
             otherwise, pass False to use Simpson. Default: True.
+        ensure_integer_delay : bool, optional
+            When True, integer delay for the phase response is ensured by
+            forcing nyquist frequency to be exclusively real. Default: False.
 
         """
         assert (
@@ -265,7 +337,10 @@ class PhaseLinearizer(GroupDelayDesigner):
         ), "Delay increase must be larger than zero"
         self.group_delay_increase_factor = 1 + delay_increase_percent / 100
         return super().set_parameters(
-            0.0, additional_length_samples, trapezoidal_integration
+            0.0,
+            additional_length_samples,
+            trapezoidal_integration,
+            ensure_integer_delay=ensure_integer_delay,
         )
 
     def __get_group_delay(self, phase_response) -> NDArray[np.float64]:

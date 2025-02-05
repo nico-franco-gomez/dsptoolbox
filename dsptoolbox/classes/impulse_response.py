@@ -6,7 +6,16 @@ from copy import deepcopy
 
 from .signal import Signal
 from ..helpers.gain_and_level import to_db
-from ..standard.enums import SpectrumMethod
+from ..standard.enums import SpectrumMethod, MagnitudeNormalization
+from ..plots import general_plot_two_axes
+
+from ..helpers.spectrum_utilities import _get_exact_gain_1khz
+from ..helpers.latency import (
+    _remove_ir_latency_from_phase,
+    _remove_ir_latency_from_phase_peak,
+)
+from ..helpers.minimum_phase import _remove_ir_latency_from_phase_min_phase
+from ..standard._standard_backend import _group_delay_direct
 
 
 class ImpulseResponse(Signal):
@@ -144,6 +153,29 @@ class ImpulseResponse(Signal):
         self.window = window
         return self
 
+    def plot_time(self) -> tuple[Figure, list[Axes]]:
+        """Plots time signals.
+
+        Returns
+        -------
+        fig : `matplotlib.figure.Figure`
+            Figure.
+        ax : list of `matplotlib.axes.Axes`
+            Axes.
+
+        """
+        fig, ax = super().plot_time()
+        if hasattr(self, "window"):
+            mx = np.max(np.abs(self.time_data), axis=0)
+
+            for n in range(self.number_of_channels):
+                ax[n].plot(
+                    self.time_vector_s,
+                    self.window[:, n] * mx[n],
+                    alpha=0.75,
+                )
+        return fig, ax
+
     def plot_spl(
         self,
         normalize_at_peak: bool = False,
@@ -205,28 +237,114 @@ class ImpulseResponse(Signal):
                 )
         return fig, ax
 
-    def plot_time(self) -> tuple[Figure, list[Axes]]:
-        """Plots time signals.
+    def plot_bode(
+        self,
+        range_hz=[20, 20e3],
+        normalize: MagnitudeNormalization = MagnitudeNormalization.NoNormalization,
+        range_db=None,
+        show_group_delay: bool = False,
+        range_rad_s=None,
+        smoothing: int = 0,
+        remove_ir_latency: str | None | ArrayLike = None,
+    ) -> tuple[Figure, Axes]:
+        """Create a bode plot where magnitude and phase response are plotted
+        together.
+
+        Parameters
+        ----------
+        range_hz : array-like with length 2, optional
+            Range for which to plot the magnitude response.
+            Default: [20, 20000].
+        normalize : MagnitudeNormalization, optional
+            Mode for normalization. Default: NoNormalization.
+        range_db : array-like with length 2, optional
+            Range in dB for which to plot the magnitude response.
+            Default: None.
+        show_group_delay : bool, optional
+            When True, the group delay is shown instead of the phase response.
+            It is computed with the numerical derivative of the phase response.
+            Default: False.
+        range_s : array-like with length 2, optional
+            Range for plotting the group delay or phase response. Default:
+            None.
+        smoothing : int, optional
+            Smoothing across the (1/smoothing) octave band. It only applies to
+            the plot data and not to `get_spectrum()`. It is applied to both
+            magnitude and phase/group delay response. Default: 0
+            (no smoothing).
+        remove_ir_latency : str {"peak", "min_phase"}, ArrayLike,\
+                None, optional
+            If the signal is an impulse response, the delay of the impulse can
+            be removed. IR delay removal options are:
+
+            - str {"peak" or "min_phase"}: By regarding its delay in relation
+              to the minimum-phase equivalent or its peak in the time signal.
+            - ArrayLike: Delay in samples to remove from each channel.
+            - None: no latency removal.
+
+            Default: None.
 
         Returns
         -------
         fig : `matplotlib.figure.Figure`
             Figure.
-        ax : list of `matplotlib.axes.Axes`
+        ax : `matplotlib.axes.Axes`
             Axes.
 
         """
-        fig, ax = super().plot_time()
-        if hasattr(self, "window"):
-            mx = np.max(np.abs(self.time_data), axis=0)
+        prior_smoothing = self.spectrum_smoothing
+        self.spectrum_smoothing = smoothing
+        f, sp = self.get_spectrum()
+        self.spectrum_smoothing = prior_smoothing
+        sp_abs = np.abs(sp)
 
-            for n in range(self.number_of_channels):
-                ax[n].plot(
-                    self.time_vector_s,
-                    self.window[:, n] * mx[n],
-                    alpha=0.75,
-                )
-        return fig, ax
+        if normalize == MagnitudeNormalization.OneKhz:
+            sp_abs /= _get_exact_gain_1khz(f, sp_abs)[None, ...]
+        elif normalize == MagnitudeNormalization.Max:
+            sp_abs /= np.max(sp_abs, axis=0, keepdims=True)
+        elif normalize == MagnitudeNormalization.Energy:
+            sp_abs /= np.mean(sp_abs**2.0, axis=0, keepdims=True) ** 0.5
+
+        phase = np.angle(sp)
+        if remove_ir_latency is None:
+            pass
+        elif type(remove_ir_latency) is str:
+            match remove_ir_latency.lower():
+                case "peak":
+                    phase = _remove_ir_latency_from_phase_peak(
+                        f, phase, self.time_data, self.sampling_rate_hz
+                    )
+                case "min_phase":
+                    phase = _remove_ir_latency_from_phase_min_phase(
+                        f, phase, self.time_data, self.sampling_rate_hz, 8
+                    )
+                case _:
+                    raise ValueError("No valid latency removal")
+        else:
+            delays_samples = np.atleast_1d(remove_ir_latency)
+            phase = _remove_ir_latency_from_phase(
+                f, phase, delays_samples, self.sampling_rate_hz
+            )
+
+        return general_plot_two_axes(
+            f,
+            to_db(sp_abs, True),
+            f,
+            (
+                _group_delay_direct(phase, f[1] - f[0])
+                if show_group_delay
+                else phase
+            ),
+            range_x=range_hz,
+            range_y1=range_db,
+            range_y2=range_rad_s,
+            log_x=True,
+            labels1=[f"Channel {n}" for n in range(self.number_of_channels)],
+            y1label="Magnitude / dB",
+            y2label=("Group Delay / s" if show_group_delay else "Phase / rad"),
+            y2_linestyle="dashed",
+            y2_alpha=0.6,
+        )
 
     def copy_with_new_time_data(
         self, new_time_data: ArrayLike

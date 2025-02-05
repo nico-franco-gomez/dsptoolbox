@@ -14,6 +14,31 @@ adheres to `Semantic Versioning <http://semver.org/spec/v2.0.0.html>`_.
 - Validation for results from tests in every module (so far many tests are
   only regarding functionality)
 
+`0.5.2 <https://pypi.org/project/dsptoolbox/0.5.2>`_ -
+---------------------
+Added
+~~~~~
+- added new plot in ``plots`` with two y-axis on the same plot
+- ``plot_bode`` to `ImpulseResponse`
+- utility function `trim_with_level_threshold`
+- `FirDesigner` in ``filter_banks``
+- introduced `ensure_integer_delay` parameter for FirDesigner
+
+Bugfix
+~~~~~~
+- `GroupDelayDesigner` was fixed when using interpolation to increase the
+  frequency resolution. The threshold for triggering the interpolation step is
+  now less strict
+- fixed a bug where `harmonic_distortion_analysis` did not deliver the right
+  type for the spectrum of the fundamental
+
+Misc
+~~~~
+- made group delay computation faster
+- fixes and additions to documentation
+- requirements for devs were improved
+- more type annotations in ``plots``
+
 `0.5.1 <https://pypi.org/project/dsptoolbox/0.5.1>`_ -
 ---------------------
 Added

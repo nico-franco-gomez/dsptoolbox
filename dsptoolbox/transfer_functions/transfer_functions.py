@@ -608,7 +608,7 @@ def lin_phase_from_mag(
     Parameters
     ----------
     spectrum : NDArray[np.float64]
-        Spectrum with only positive frequencies and 0.
+        (Magnitude) Spectrum with only positive frequencies and 0.
     sampling_rate_hz : int
         Signal's sampling rate in Hz.
     original_length_time_data : int, optional
@@ -627,8 +627,9 @@ def lin_phase_from_mag(
 
     Returns
     -------
-    sig_lin_phase : `Signal`
-        Signal with same magnitude spectrum but linear phase.
+    sig_lin_phase : `ImpulseResponse`
+        Impulse response with same magnitude spectrum but linear phase. Its
+        length is always twice the delay.
 
     """
     # Check spectrum
@@ -657,8 +658,9 @@ def lin_phase_from_mag(
             group_delay_ms == "minimum"
         ), "Group delay should be set to minimum"
         minimum_group_delay = True
+        group_delay_s = group_delay_ms
     elif type(group_delay_ms) in (float, int):
-        group_delay_ms /= 1000
+        group_delay_s = group_delay_ms / 1000
     else:
         raise TypeError("group_delay_ms must be either str, float or int")
 
@@ -675,22 +677,38 @@ def lin_phase_from_mag(
                 spectrum[:, n], odd_length=original_length_time_data % 2 == 1
             )
             min_gd = _group_delay_direct(min_phase, delta_f)
-            gd_ms = np.max(min_gd) + 1e-3  # add 1 ms as safety factor
-            if check_causality and type(group_delay_ms) is not str:
-                assert gd_ms <= group_delay_ms, (
-                    f"Given group delay {group_delay_ms * 1000} ms is lower "
-                    + f"than minimal group delay {gd_ms * 1000} ms for "
+            group_delay_to_use_s = (
+                np.max(min_gd) + 1e-3
+            )  # add 1 ms as safety factor
+            if check_causality and type(group_delay_s) is not str:
+                assert group_delay_to_use_s <= group_delay_s, (
+                    f"Given group delay {group_delay_s * 1000} ms is lower "
+                    + "than minimal group delay "
+                    + f"{group_delay_to_use_s * 1000} ms for "
                     + f"channel {n}"
                 )
-                gd_ms = group_delay_ms
+                group_delay_to_use_s = group_delay_s
         else:
-            gd_ms = group_delay_ms
+            group_delay_to_use_s = group_delay_s
 
-        phase = -2 * np.pi * f_vec * gd_ms
+        # Check group delay will not wrap around time data
+        assert (
+            group_delay_to_use_s * 2
+            <= original_length_time_data / sampling_rate_hz
+        ), (
+            "Group delay is longer than frequency resolution allows. "
+            + "Increase frequency resolution to at least "
+            + f"{sampling_rate_hz / (group_delay_s * 2)} Hz"
+        )
+
+        phase = -2 * np.pi * f_vec * group_delay_to_use_s
         if spectrum_has_nyquist:
             phase = _correct_for_real_phase_spectrum(phase)
         lin_spectrum[:, n] = spectrum[:, n] * np.exp(1j * phase)
     time_data = np.fft.irfft(lin_spectrum, axis=0, n=original_length_time_data)
+    time_data = _pad_trim(
+        time_data, int(2 * group_delay_to_use_s * sampling_rate_hz + 0.5)
+    )
     sig_lin_phase = ImpulseResponse(
         None, time_data=time_data, sampling_rate_hz=sampling_rate_hz
     )
@@ -791,7 +809,6 @@ def group_delay(
     )
     td = _pad_trim(signal.time_data, length_time_signal)
     f = np.fft.rfftfreq(td.shape[0], 1 / signal.sampling_rate_hz)
-    group_delays = np.zeros((length_time_signal // 2 + 1, td.shape[1]))
 
     if not analytic_computation:
         spec_parameters = signal._spectrum_parameters
@@ -806,9 +823,9 @@ def group_delay(
             sp = _remove_ir_latency_from_phase_min_phase(
                 f, np.angle(sp), signal.time_data, signal.sampling_rate_hz, 1
             )
-        for n in range(signal.number_of_channels):
-            group_delays[:, n] = _group_delay_direct(sp[:, n], f[1] - f[0])
+        group_delays = _group_delay_direct(sp, f[1] - f[0])
     else:
+        group_delays = np.zeros((length_time_signal // 2 + 1, td.shape[1]))
         for n in range(signal.number_of_channels):
             b = td[:, n]
             if remove_ir_latency:
@@ -924,9 +941,7 @@ def minimum_group_delay(
         type(signal) is ImpulseResponse
     ), "This is only valid for an impulse response"
     f, min_phases = minimum_phase(signal, padding_factor=padding_factor)
-    min_gd = np.zeros_like(min_phases)
-    for n in range(signal.number_of_channels):
-        min_gd[:, n] = _group_delay_direct(min_phases[:, n], f[1] - f[0])
+    min_gd = _group_delay_direct(min_phases, f[1] - f[0])
     if smoothing != 0:
         min_gd = _fractional_octave_smoothing(min_gd, None, smoothing)
     return f, min_gd
@@ -1518,12 +1533,13 @@ def harmonic_distortion_analysis(
     Notes
     -----
     - The scaling of the spectrum is always done as set with
-      `set_spectrum_parameters()` of the original IR. THD and THD+N are always
-      returned with their quadratic (power) form. All spectra are in amplitude
-      or power values according to `scaling`, but not in dB.
+      `set_spectrum_parameters()` of the original IR.
     - Distortion in percentage can be computed by dividing `thd` by the
       spectrum of the fundamental. They have the same frequency resolution
       but `thd` has a trimmed frequency vector.
+    - THD in percent is usually defined in audio by the amplitude ratios
+      instead of the power ratios, as is common for other fields. See
+      https://de.wikipedia.org/wiki/Total_Harmonic_Distortion.
     - Passing `chirp_range_hz` with a list of IRs will still have an effect on
       the upper limit frequency of each harmonic.
 
@@ -1579,13 +1595,14 @@ def harmonic_distortion_analysis(
     d: dict = {}
 
     # Spectrum of fundamental
+    quadratic_spectrum = not ir2.spectrum_scaling.is_amplitude_scaling()
     freqs, base_spectrum = ir2.get_spectrum()
-    d["1"] = [freqs, base_spectrum.squeeze()]
+    d["1"] = Spectrum(
+        freqs, (base_spectrum**0.5 if quadratic_spectrum else base_spectrum)
+    )
 
     # Accumulator for spectrum of harmonics
     sp_thd = np.zeros(len(freqs))
-
-    quadratic_spectrum = not ir2.spectrum_scaling.is_amplitude_scaling()
 
     if generate_plot:
         fig, ax = ir2.plot_magnitude(

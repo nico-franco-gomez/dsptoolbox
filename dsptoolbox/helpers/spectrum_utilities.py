@@ -36,7 +36,9 @@ def _get_exact_gain_1khz(
     f : NDArray[np.float64]
         Frequency vector.
     sp : NDArray[np.float64]
-        Spectrum. It can be in dB or not.
+        Spectrum. It can be in dB or not. It can have multiple dimensions, but
+        the first dimension is always used (it must be the frequency
+        dimension).
 
     Returns
     -------
@@ -233,9 +235,23 @@ def _correct_for_real_phase_spectrum(phase_spectrum: NDArray[np.float64]):
 
     """
     factor = phase_spectrum[-1] % np.pi
-    return (
-        phase_spectrum
-        - np.linspace(0, 1, len(phase_spectrum), endpoint=True) * factor
+
+    # Single dimension
+    if phase_spectrum.ndim == 1:
+        return (
+            phase_spectrum
+            - np.linspace(0, 1, len(phase_spectrum), endpoint=True) * factor
+        )
+
+    # Two dims
+    assert phase_spectrum.ndim == 2, "More than 2 dimensions are not supported"
+    return phase_spectrum - (
+        np.repeat(
+            np.linspace(0, 1, len(phase_spectrum), endpoint=True)[..., None],
+            phase_spectrum.shape[1],
+            axis=1,
+        )
+        * factor[None, ...]
     )
 
 

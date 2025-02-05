@@ -32,6 +32,7 @@ from .standard import (
     merge_filters,
     spectral_difference,
     append_spectra,
+    trim_with_level_threshold,
     # Enums
     SpectrumScaling,
     SpectrumMethod,
@@ -82,6 +83,7 @@ __all__ = [
     # Functions in standard module
     "latency",
     "pad_trim",
+    "trim_with_level_threshold",
     "fade",
     "append_signals",
     "append_filterbanks",
@@ -132,4 +134,4 @@ __all__ = [
     "FadeType",
 ]
 
-__version__ = "0.5.1"
+__version__ = "0.5.2"

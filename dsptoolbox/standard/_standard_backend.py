@@ -56,9 +56,11 @@ def _group_delay_direct(
     if np.iscomplexobj(phase):
         phase = np.angle(phase)
     if delta_f != 1:
-        gd = -np.gradient(np.unwrap(phase), delta_f) / np.pi / 2
+        gd = (
+            -np.gradient(np.unwrap(phase, axis=0), delta_f, axis=0) / np.pi / 2
+        )
     else:
-        gd = -np.gradient(np.unwrap(phase))
+        gd = -np.gradient(np.unwrap(phase, axis=0), axis=0)
     return gd
 
 
@@ -80,7 +82,7 @@ def _minimum_phase(
         positive and negative frequencies. Otherwise, the negative frequencies
         are obtained by mirroring the spectrum. Default: `False`.
     uwrapped : bool, optional
-        If `True`, the unwrapped phase is given. Default: `True`.
+        If `True`, the unwrapped phase is returned. Default: `True`.
     odd_length : bool, optional
         When `True`, it is assumed that the underlying time data of the half
         spectrum had an odd length. Default: `False`.
@@ -110,9 +112,7 @@ def _minimum_phase(
         hilbert(np.log(np.clip(magnitude, a_min=1e-40, a_max=None)), axis=0)
     )[:original_length]
 
-    if not unwrapped:
-        minimum_phase = _wrap_phase(minimum_phase)
-    return minimum_phase
+    return minimum_phase if unwrapped else _wrap_phase(minimum_phase)
 
 
 def _center_frequencies_fractional_octaves_iec(

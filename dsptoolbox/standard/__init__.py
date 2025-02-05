@@ -12,7 +12,11 @@ to `standard`).
 
 from .appending import append_filterbanks, append_signals, append_spectra
 from .latency_delay import latency, delay, fractional_delay
-from .pad_trim_methods import pad_trim, modify_signal_length
+from .pad_trim_methods import (
+    pad_trim,
+    modify_signal_length,
+    trim_with_level_threshold,
+)
 from .resampling import resample, resample_filter
 from .gain_and_level import apply_gain, normalize, fade, true_peak_level, rms
 from .other import (
@@ -54,6 +58,7 @@ __all__ = [
     # Padding and trimming
     "pad_trim",
     "modify_signal_length",
+    "trim_with_level_threshold",
     # Resampling
     "resample",
     "resample_filter",

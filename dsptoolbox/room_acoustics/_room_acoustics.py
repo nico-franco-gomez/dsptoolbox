@@ -541,7 +541,7 @@ class ShoeboxRoom(Room):
             Array containing the frequencies of the room modes as well as
             their characteristics (orders in each room dimension. This is
             necessary to know if it is an axial, a tangential or oblique mode).
-            Its shape is (mode, frequency and order xyz).
+            Its shape is (mode frequency, order x, order y, order z).
 
         """
         max_order += 1

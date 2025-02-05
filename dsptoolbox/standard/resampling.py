@@ -7,7 +7,7 @@ from .enums import FilterCoefficientsType
 
 
 def resample(
-    sig: Signal, desired_sampling_rate_hz: int, rescaling: bool = True
+    sig: Signal, desired_sampling_rate_hz: int, rescaling: bool = False
 ) -> Signal:
     """Resamples signal to the desired sampling rate using
     `scipy.signal.resample_poly` with an efficient polyphase representation.
@@ -20,6 +20,8 @@ def resample(
         Sampling rate to convert the signal to.
     rescaling : bool, optional
         When True, the data is rescaled by dividing by the resampling factor.
+        This retains the magnitude scaling when regarding the unscaled
+        spectrum. Default: False.
 
     Returns
     -------
