@@ -134,7 +134,7 @@ def general_plot_two_axes(
     y2_alpha: float = 1.0,
     info_box: str | None = None,
     tight_layout: bool = True,
-) -> tuple[Figure, Axes]:
+) -> tuple[Figure, list[Axes]]:
     """Plot template for two y-axis with the same x-axis.
 
     Parameters
@@ -183,7 +183,7 @@ def general_plot_two_axes(
 
     Returns
     -------
-    fig, ax
+    fig, [ax, ax2]
 
     """
     fig, ax = plt.subplots(1, 1, figsize=(8, 5))
@@ -261,7 +261,7 @@ def general_plot_two_axes(
         ax2.legend()
     if tight_layout:
         fig.tight_layout()
-    return fig, ax
+    return fig, [ax, ax2]
 
 
 def general_subplots_line(

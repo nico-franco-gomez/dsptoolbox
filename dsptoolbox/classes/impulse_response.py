@@ -246,7 +246,7 @@ class ImpulseResponse(Signal):
         range_rad_s=None,
         smoothing: int = 0,
         remove_ir_latency: str | None | ArrayLike = None,
-    ) -> tuple[Figure, Axes]:
+    ) -> tuple[Figure, list[Axes]]:
         """Create a bode plot where magnitude and phase response are plotted
         together.
 
@@ -288,8 +288,8 @@ class ImpulseResponse(Signal):
         -------
         fig : `matplotlib.figure.Figure`
             Figure.
-        ax : `matplotlib.axes.Axes`
-            Axes.
+        ax : list of `matplotlib.axes.Axes`
+            List containing the two axes of the plot.
 
         """
         prior_smoothing = self.spectrum_smoothing
