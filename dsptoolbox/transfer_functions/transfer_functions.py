@@ -46,6 +46,7 @@ from ..filterbanks import linkwitz_riley_crossovers
 from ..helpers.gain_and_level import to_db, from_db
 from ..standard.enums import (
     SpectrumMethod,
+    SpectrumType,
     MagnitudeNormalization,
     Window,
     SpectrumScaling,
@@ -1529,8 +1530,12 @@ def harmonic_distortion_analysis(
             - "1": spectrum of the fundamental.
             - "2": spectrum of the second harmonic.
             - "3": ...
-            - "thd": Total harmonic distortion.
-            - "thd_n": Total harmonic distortion + noise.
+            - "thd": Total harmonic distortion. The spectrum is shifted to the
+              frequency that caused the distortion.
+            - "thd_percent": Total harmonic distortion normalized by the linear
+              response. It is shifted as `thd` and returned in percent.
+            - "thd_n": Total harmonic distortion + noise. This spectrum is not
+              shifted to the frequency that caused the distortion.
             - "plot": a list with matplotlib's [figure, axes]. This is only
               returned if the plot was generated.
 
@@ -1538,9 +1543,6 @@ def harmonic_distortion_analysis(
     -----
     - The scaling of the spectrum is always done as set with
       `set_spectrum_parameters()` of the original IR.
-    - Distortion in percentage can be computed by dividing `thd` by the
-      spectrum of the fundamental. They have the same frequency resolution
-      but `thd` has a trimmed frequency vector.
     - THD in percent is usually defined in audio by the amplitude ratios
       instead of the power ratios, as is common for other fields. See
       https://de.wikipedia.org/wiki/Total_Harmonic_Distortion.
@@ -1686,6 +1688,15 @@ def harmonic_distortion_analysis(
 
     d["thd_n"] = Spectrum(f_thd_n, sp_thd_n**0.5)
     d["thd"] = Spectrum(freqs_thd, sp_thd**0.5)
+    d["thd_percent"] = Spectrum(
+        d["thd"].frequency_vector_hz,
+        # (Magnitude) ratio of `THD / fundamental`
+        d["thd"].spectral_data
+        / d["1"].get_interpolated_spectrum(
+            d["thd"].frequency_vector_hz, SpectrumType.Magnitude
+        )
+        * 100.0,
+    )
 
     return d
 
