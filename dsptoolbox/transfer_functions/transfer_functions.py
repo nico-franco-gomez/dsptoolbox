@@ -51,8 +51,6 @@ from ..standard.enums import (
     SpectrumType,
     MagnitudeNormalization,
     Window,
-    SpectrumScaling,
-    SpectrumType,
 )
 from .enums import TransferFunctionType, SmoothingDomain
 
