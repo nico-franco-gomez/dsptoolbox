@@ -16,6 +16,24 @@ class TransferFunctionType(Enum):
 
 
 class SmoothingDomain(Enum):
+    """These are the different domains to realize smoothing:
+
+    - RealImaginary: directly on spectrum (real and imaginary).
+    - PowerPhase: Power and phase separately.
+    - MagnitudePhase.
+    - Power: smoothing on power response, phase response is maintained.
+    - Magnitude: smoothing on magnitude response, phase response is maintained.
+    - EquivalentComplex: smoothing on power response, phase is obtained from
+      the smoothed `RealImaginary` variant. This is the scheme proposed as
+      equivalent complex smoothing by [1].
+
+    References
+    ----------
+    - [1]: GENERALIZED FRACTIONAL OCTAVE SMOOTHING OF  AUDIO / ACOUSTIC
+      RESPONSES. PANAGIOTIS D. HATZIANTONIOU AND JOHN N. MOURJOPOULOS.
+
+    """
+
     PowerPhase = auto()
     RealImaginary = auto()
     MagnitudePhase = auto()

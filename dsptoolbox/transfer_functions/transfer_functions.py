@@ -1799,9 +1799,9 @@ def complex_smoothing(
     ir : ImpulseResponse
         Impulse response to apply smoothing to.
     octave_fraction : float
-        Width of smoothing range in octaves.
+        Width of smoothing range in fraction of octaves.
     smoothing_domain : SmoothingDomain
-        Type of smoothing to use.
+        Domain to use during the smoothing step.
     window : Window
         Type of window to use.
 

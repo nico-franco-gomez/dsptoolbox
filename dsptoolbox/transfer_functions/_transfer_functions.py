@@ -444,16 +444,23 @@ try:
         frequency_vector: NDArray[np.float64],
         window_y: NDArray[np.float64],
     ):
-        """Parallel backend of complex smoothing."""
+        """Parallel backend of complex smoothing. This function expects a
+        linearly-spaced frequency vector."""
         window_x = np.linspace(
             np.float64(-1.0), np.float64(1.0), len(window_y)
         )
+        delta_f = frequency_vector[1] - frequency_vector[0]
+        factor = 2.0 ** (1.0 / octave_fraction / 2.0)
+        max_index = len(frequency_vector)
         for i in nb.prange(len(input_spectrum)):
-            factor = 2 ** (1 / octave_fraction / 2)
-            f_low = frequency_vector[i] / factor
-            f_high = frequency_vector[i] * factor
-            ind_low = np.searchsorted(frequency_vector, f_low)
-            ind_high = np.searchsorted(frequency_vector, f_high) + 1
+            f0 = frequency_vector[i]
+            f_low = f0 / factor
+            f_high = f0 * factor
+            ind_low = i - int((f0 - f_low) / delta_f + 0.5)
+            ind_high = i + int((f_high - f0) / delta_f + 0.5) + 1
+
+            ind_low = max(ind_low, 0)
+            ind_high = min(ind_high, max_index)
 
             if ind_low + 2 >= ind_high:
                 spectrum[i, ...] = input_spectrum[i, ...].copy()
@@ -479,14 +486,21 @@ except ModuleNotFoundError as e:
         frequency_vector: NDArray[np.float64],
         window_y: NDArray[np.float64],
     ):
-        """Sequential backend of complex smoothing."""
+        """Sequential backend of complex smoothing. This function expects a
+        linearly-spaced frequency vector."""
         window_x = np.linspace(-1.0, 1.0, len(window_y), endpoint=True)
+        delta_f = frequency_vector[1] - frequency_vector[0]
+        factor = 2.0 ** (1.0 / octave_fraction / 2.0)
+        max_index = len(frequency_vector)
         for i in np.arange(len(input_spectrum)):
-            factor = 2 ** (1 / octave_fraction / 2)
-            f_low = frequency_vector[i] / factor
-            f_high = frequency_vector[i] * factor
-            ind_low = np.searchsorted(frequency_vector, f_low)
-            ind_high = np.searchsorted(frequency_vector, f_high) + 1
+            f0 = frequency_vector[i]
+            f_low = f0 / factor
+            f_high = f0 * factor
+            ind_low = i - int((f0 - f_low) / delta_f + 0.5)
+            ind_high = i + int((f_high - f0) / delta_f + 0.5) + 1
+
+            ind_low = max(ind_low, 0)
+            ind_high = min(ind_high, max_index)
 
             if ind_low + 2 >= ind_high:
                 spectrum[i, ...] = input_spectrum[i, ...].copy()
