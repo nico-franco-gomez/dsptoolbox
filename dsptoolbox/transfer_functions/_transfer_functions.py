@@ -436,6 +436,9 @@ try:
             nb.types.Array(nb.float64, 1, "C"),
         ),
         parallel=True,
+        # cache=True,
+        nopython=True,
+        nogil=True,
     )
     def _complex_smoothing_backend(
         octave_fraction: np.float64,
@@ -459,16 +462,27 @@ try:
             ind_low = i - int((f0 - f_low) / delta_f + 0.5)
             ind_high = i + int((f_high - f0) / delta_f + 0.5) + 1
 
+            # Necessary window length for right shape
+            window_length = ind_high - ind_low
+
+            # Boundaries of window
             ind_low = max(ind_low, 0)
             ind_high = min(ind_high, max_index)
+
+            # Selection
+            effective_window_length = ind_high - ind_low
 
             if ind_low + 2 >= ind_high:
                 spectrum[i, ...] = input_spectrum[i, ...].copy()
                 continue
 
             window = np.interp(
-                np.logspace(np.log10(3.0), np.log10(1.0), ind_high - ind_low)
-                - 2.0,
+                (
+                    np.logspace(np.log10(3.0), np.log10(1.0), window_length)[
+                        :effective_window_length
+                    ]
+                    - 2.0
+                ),
                 window_x,
                 window_y,
             ).astype(np.complex128)
@@ -499,16 +513,27 @@ except ModuleNotFoundError as e:
             ind_low = i - int((f0 - f_low) / delta_f + 0.5)
             ind_high = i + int((f_high - f0) / delta_f + 0.5) + 1
 
+            # Necessary window length for right shape
+            window_length = ind_high - ind_low
+
+            # Boundaries of window
             ind_low = max(ind_low, 0)
             ind_high = min(ind_high, max_index)
+
+            # Selection
+            effective_window_length = ind_high - ind_low
 
             if ind_low + 2 >= ind_high:
                 spectrum[i, ...] = input_spectrum[i, ...].copy()
                 continue
 
             window = np.interp(
-                np.logspace(np.log10(3.0), np.log10(1.0), ind_high - ind_low)
-                - 2.0,
+                (
+                    np.logspace(np.log10(3.0), np.log10(1.0), window_length)[
+                        :effective_window_length
+                    ]
+                    - 2.0
+                ),
                 window_x,
                 window_y,
             ).astype(np.complex128)

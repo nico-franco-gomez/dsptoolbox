@@ -1791,7 +1791,7 @@ def complex_smoothing(
     smoothing_domain: SmoothingDomain,
     window: Window = Window.Hann,
 ) -> Spectrum:
-    """Complex smoothing of an impulse response using logarithmic width given
+    """Complex smoothing of an impulse response using logarithmic spacing given
     in octaves. This is done according to [1].
 
     Parameters
@@ -1815,10 +1815,14 @@ def complex_smoothing(
       RESPONSES. PANAGIOTIS D. HATZIANTONIOU AND JOHN N. MOURJOPOULOS.
 
     """
+    assert octave_fraction > 0.0, "Octave fraction must be greater than 0"
     f, sp = ir.get_spectrum()
 
-    window_values = window(2000, True)
+    # Get a window prototype – mapping to logarithmic space is done through
+    # interpolation
+    window_values = window(3000, True)
     output_sp = np.zeros_like(sp)
+
     match smoothing_domain:
         case SmoothingDomain.RealImaginary:
             output_sp = _complex_smoothing_backend(
