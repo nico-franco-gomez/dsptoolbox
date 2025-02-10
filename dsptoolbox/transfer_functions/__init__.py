@@ -37,6 +37,7 @@ Analyze TF/IR:
 - `find_ir_latency()`
 - `harmonics_from_chirp_ir()`
 - `harmonic_distortion_analysis()`
+- `complex_smoothing()`
 
 """
 
@@ -61,8 +62,9 @@ from .transfer_functions import (
     harmonics_from_chirp_ir,
     harmonic_distortion_analysis,
     trim_ir,
+    complex_smoothing,
 )
-from .enums import TransferFunctionType
+from .enums import TransferFunctionType, SmoothingDomain
 
 __all__ = [
     "spectral_deconvolve",
@@ -85,5 +87,7 @@ __all__ = [
     "harmonics_from_chirp_ir",
     "harmonic_distortion_analysis",
     "trim_ir",
+    "complex_smoothing",
     "TransferFunctionType",
+    "SmoothingDomain",
 ]

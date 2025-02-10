@@ -14,6 +14,7 @@ from ._transfer_functions import (
     _window_this_ir,
     _get_harmonic_times,
     _trim_ir,
+    _complex_smoothing_backend,
 )
 from ..helpers.spectrum_utilities import (
     _correct_for_real_phase_spectrum,
@@ -42,14 +43,14 @@ from ..standard import (
 )
 from ..generators import dirac
 from ..filterbanks import linkwitz_riley_crossovers
-from ..helpers.gain_and_level import to_db
+from ..helpers.gain_and_level import to_db, from_db
 from ..standard.enums import (
     SpectrumMethod,
     MagnitudeNormalization,
     Window,
     SpectrumScaling,
 )
-from .enums import TransferFunctionType
+from .enums import TransferFunctionType, SmoothingDomain
 
 
 def spectral_deconvolve(
@@ -1782,3 +1783,93 @@ def trim_ir(
         start,
         stop,
     )
+
+
+def complex_smoothing(
+    ir: ImpulseResponse,
+    octave_fraction: float,
+    smoothing_domain: SmoothingDomain,
+    window: Window = Window.Hann,
+) -> Spectrum:
+    """Complex smoothing of an impulse response using logarithmic width given
+    in octaves. This is done according to [1].
+
+    Parameters
+    ----------
+    ir : ImpulseResponse
+        Impulse response to apply smoothing to.
+    octave_fraction : float
+        Width of smoothing range in octaves.
+    smoothing_domain : SmoothingDomain
+        Type of smoothing to use.
+    window : Window
+        Type of window to use.
+
+    Returns
+    -------
+    Spectrum
+
+    References
+    ----------
+    - [1]: GENERALIZED FRACTIONAL OCTAVE SMOOTHING OF  AUDIO / ACOUSTIC
+      RESPONSES. PANAGIOTIS D. HATZIANTONIOU AND JOHN N. MOURJOPOULOS.
+
+    """
+    f, sp = ir.get_spectrum()
+
+    window_values = window(2000, True)
+    output_sp = np.zeros_like(sp)
+    match smoothing_domain:
+        case SmoothingDomain.RealImaginary:
+            output_sp = _complex_smoothing_backend(
+                octave_fraction, sp, output_sp, f, window_values
+            )
+        case SmoothingDomain.MagnitudePhase:
+            sp = np.abs(sp) + 1j * np.unwrap(np.angle(sp), axis=0)
+            output_sp = _complex_smoothing_backend(
+                octave_fraction, sp, output_sp, f, window_values
+            )
+            output_sp = np.real(output_sp) * np.exp(1j * np.imag(output_sp))
+        case SmoothingDomain.PowerPhase:
+            sp = np.abs(sp) ** 2.0 + 1j * np.unwrap(np.angle(sp), axis=0)
+            output_sp = _complex_smoothing_backend(
+                octave_fraction, sp, output_sp, f, window_values
+            )
+            output_sp = np.real(output_sp) ** 0.5 * np.exp(
+                1j * np.imag(output_sp)
+            )
+        case SmoothingDomain.Power:
+            sp_modified = (np.abs(sp) ** 2.0).astype(np.complex128)
+            output_sp = _complex_smoothing_backend(
+                octave_fraction, sp_modified, output_sp, f, window_values
+            )
+            output_sp = np.real(output_sp) ** 0.5 * np.exp(1j * np.angle(sp))
+        case SmoothingDomain.Magnitude:
+            sp_modified = np.abs(sp).astype(np.complex128)
+            output_sp = _complex_smoothing_backend(
+                octave_fraction, sp_modified, output_sp, f, window_values
+            )
+            output_sp = np.real(output_sp) * np.exp(1j * np.angle(sp))
+        case SmoothingDomain.EquivalentComplex:
+            # Apply complex smoothing
+            output_sp = _complex_smoothing_backend(
+                octave_fraction, sp, output_sp, f, window_values
+            )
+
+            # Apply power smoothing
+            output2 = np.zeros_like(output_sp)
+            output2 = _complex_smoothing_backend(
+                octave_fraction,
+                (np.abs(sp) ** 2.0).astype(np.complex128),
+                output2,
+                f,
+                window_values,
+            )
+
+            # Combine power with phase of complex smoothing
+            output_sp = np.real(output2) ** 0.5 * np.exp(
+                1j * np.angle(output_sp)
+            )
+        case _:
+            raise ValueError("Invalid smoothing domain")
+    return Spectrum(f, output_sp)

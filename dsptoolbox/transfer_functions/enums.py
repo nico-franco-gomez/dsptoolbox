@@ -13,3 +13,12 @@ class TransferFunctionType(Enum):
     H1 = auto()
     H2 = auto()
     H3 = auto()
+
+
+class SmoothingDomain(Enum):
+    PowerPhase = auto()
+    RealImaginary = auto()
+    MagnitudePhase = auto()
+    Power = auto()
+    Magnitude = auto()
+    EquivalentComplex = auto()

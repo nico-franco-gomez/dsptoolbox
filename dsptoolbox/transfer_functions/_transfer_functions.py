@@ -422,3 +422,82 @@ def __find_index_above_noise_floor(
         int(len(envelope) * min_retain_length_percentage / 100.0 + 0.5),
         len(envelope),
     )
+
+
+try:
+    import numba as nb
+
+    @nb.jit(
+        nb.types.Array(nb.complex128, 2, "C")(
+            nb.types.float64,
+            nb.types.Array(nb.complex128, 2, "C"),
+            nb.types.Array(nb.complex128, 2, "C"),
+            nb.types.Array(nb.float64, 1, "C"),
+            nb.types.Array(nb.float64, 1, "C"),
+        ),
+        parallel=True,
+    )
+    def _complex_smoothing_backend(
+        octave_fraction: np.float64,
+        input_spectrum: NDArray[np.complex128],
+        spectrum: NDArray[np.complex128],
+        frequency_vector: NDArray[np.float64],
+        window_y: NDArray[np.float64],
+    ):
+        """Parallel backend of complex smoothing."""
+        window_x = np.linspace(
+            np.float64(-1.0), np.float64(1.0), len(window_y)
+        )
+        for i in nb.prange(len(input_spectrum)):
+            factor = 2 ** (1 / octave_fraction / 2)
+            f_low = frequency_vector[i] / factor
+            f_high = frequency_vector[i] * factor
+            ind_low = np.searchsorted(frequency_vector, f_low)
+            ind_high = np.searchsorted(frequency_vector, f_high) + 1
+
+            if ind_low + 2 >= ind_high:
+                spectrum[i, ...] = input_spectrum[i, ...].copy()
+                continue
+
+            window = np.interp(
+                np.logspace(np.log10(3.0), np.log10(1.0), ind_high - ind_low)
+                - 2.0,
+                window_x,
+                window_y,
+            ).astype(np.complex128)
+            window /= window.sum()
+            spectrum[i, ...] = window @ input_spectrum[ind_low:ind_high]
+        return spectrum
+
+except ModuleNotFoundError as e:
+    print("Numba is not installed: ", e)
+
+    def _complex_smoothing_backend(
+        octave_fraction: np.float64,
+        input_spectrum: NDArray[np.complex128],
+        spectrum: NDArray[np.complex128],
+        frequency_vector: NDArray[np.float64],
+        window_y: NDArray[np.float64],
+    ):
+        """Sequential backend of complex smoothing."""
+        window_x = np.linspace(-1.0, 1.0, len(window_y), endpoint=True)
+        for i in np.arange(len(input_spectrum)):
+            factor = 2 ** (1 / octave_fraction / 2)
+            f_low = frequency_vector[i] / factor
+            f_high = frequency_vector[i] * factor
+            ind_low = np.searchsorted(frequency_vector, f_low)
+            ind_high = np.searchsorted(frequency_vector, f_high) + 1
+
+            if ind_low + 2 >= ind_high:
+                spectrum[i, ...] = input_spectrum[i, ...].copy()
+                continue
+
+            window = np.interp(
+                np.logspace(np.log10(3.0), np.log10(1.0), ind_high - ind_low)
+                - 2.0,
+                window_x,
+                window_y,
+            ).astype(np.complex128)
+            window /= window.sum()
+            spectrum[i, ...] = window @ input_spectrum[ind_low:ind_high]
+        return spectrum

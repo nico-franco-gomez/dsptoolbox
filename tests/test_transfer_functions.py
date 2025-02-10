@@ -568,3 +568,6 @@ class TestTransferFunctionsModule:
                 0
             ].time_data[0, 0]
         )
+
+    def test_complex_smoothing(self):
+        assert False
