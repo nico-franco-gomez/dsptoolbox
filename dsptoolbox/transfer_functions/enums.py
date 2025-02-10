@@ -18,9 +18,9 @@ class TransferFunctionType(Enum):
 class SmoothingDomain(Enum):
     """These are the different domains to realize smoothing:
 
-    - RealImaginary: directly on spectrum (real and imaginary).
-    - PowerPhase: Power and phase separately.
-    - MagnitudePhase.
+    - RealImaginary: smoothing directly on spectrum (real and imaginary).
+    - PowerPhase: Smoothing on power and phase separately.
+    - MagnitudePhase: Smoothing on magnitude and phase separately.
     - Power: smoothing on power response, phase response is maintained.
     - Magnitude: smoothing on magnitude response, phase response is maintained.
     - EquivalentComplex: smoothing on power response, phase is obtained from
@@ -34,8 +34,8 @@ class SmoothingDomain(Enum):
 
     """
 
-    PowerPhase = auto()
     RealImaginary = auto()
+    PowerPhase = auto()
     MagnitudePhase = auto()
     Power = auto()
     Magnitude = auto()
