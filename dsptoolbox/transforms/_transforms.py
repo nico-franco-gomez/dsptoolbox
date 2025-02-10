@@ -482,6 +482,7 @@ try:
             nb.types.Array(nb.complex128, 2, "C"),
         ),
         parallel=True,
+        cache=True,
     )
     def _dft_backend(
         time_data: NDArray[np.complex128],
