@@ -16,6 +16,7 @@ from ._transfer_functions import (
     _trim_ir,
     _complex_smoothing_backend,
     _get_frequency_vector_with_frequency_resolution,
+    _fdw_backend,
 )
 from ..helpers.spectrum_utilities import (
     _correct_for_real_phase_spectrum,
@@ -1230,18 +1231,16 @@ def filter_to_ir(fir: Filter | FilterBank) -> ImpulseResponse:
 def window_frequency_dependent(
     ir: ImpulseResponse,
     cycles: int,
-    channel: int | None = None,
-    frequency_range_hz: list | None = None,
-    scaling: SpectrumScaling = SpectrumScaling.FFTBackward,
-    end_window_value: float = 0.01,
+    end_window_value_db: float = -50.0,
 ) -> Spectrum:
     """A spectrum with frequency-dependent windowing defined by cycles is
     returned. To this end, a variable gaussian window is applied.
 
     A width of 5 cycles means that there are 5 periods of each frequency
-    before the window values hit `end_window_value`.
+    before the window values hit `end_window_value_db`.
 
-    This is computed only for real-valued signals (positive frequencies).
+    The output spectrum can be converted to a time series with a IRFFT. Its
+    frequency vector has linear resolution.
 
     Parameters
     ----------
@@ -1250,18 +1249,9 @@ def window_frequency_dependent(
     cycles : int
         Number of cycles to include for each frequency bin. It defines
         the window lengths.
-    channel : int, None, optional
-        Selected channel to compute the spectrum. Pass `None` to take all
-        channels. Default: `None`.
-    frequency_range_hz : list of length 2, None, optional
-        Frequency range to extract spectrum. Use `None` to compute the whole
-        spectrum. Default: `None`.
-    scaling : SpectrumScaling, optional
-        Scaling for the spectrum. Power scalings are not supported. Default:
-        FFTBackward (no scaling).
-    end_window_value : float, optional
-        This is the value that the gaussian window should have at its width.
-        Default: 0.01.
+    end_window_value_db : float, optional
+        This is the value that the gaussian window should have at its given
+        width in dB. It must be below 0 dB. Default: -50.
 
     Returns
     -------
@@ -1275,107 +1265,61 @@ def window_frequency_dependent(
       should be somewhat larger than the longest window (this depends on the
       number of cycles and lowest frequency).
     - The length of the IR should be as short as possible for a fast
-      computation. If a large band should be computed, it is recommended to
-      divide into smaller bands with shorter lengths for higher frequencies.
+      computation. This implementation will use numba, if available, for
+      parallelizing the computation.
     - The implemented method is a straight-forward windowing in the time domain
-      for each respective frequency bin. Warping the IR is a more flexible
-      approach but not necessarily faster for IR with optimal lengths.
-    - Scaling is available but leaving the spectrum unscaled seems to be the
-      correct way to obtain the spectrum.
+      for each respective frequency bin. Warping the IR is another valid
+      approach, but its frequency resolution will not be linear.
 
     """
     assert (
         type(ir) is ImpulseResponse
     ), "This is only valid for an impulse response"
+    assert end_window_value_db < 0.0, "Window ends must be less than 0 dB"
 
+    end_window_value = from_db(end_window_value_db, True)
     fs = ir.sampling_rate_hz
-    if frequency_range_hz is not None:
-        assert len(frequency_range_hz) == 2
-        selected_f_range_hz = np.sort(frequency_range_hz).astype(int).tolist()
-    else:
-        selected_f_range_hz = [0, fs // 2]
 
-    if channel is None:
-        selected_channels = np.arange(ir.number_of_channels)
-    else:
-        selected_channels = np.atleast_1d(channel)
-
-    td = ir.time_data[:, selected_channels]
-
-    # Optimal length for FFT
-    fast_length = next_fast_length_fft(td.shape[0], True)
-    td = np.pad(td, ((0, fast_length - td.shape[0]), (0, 0)))
-
-    f = np.fft.rfftfreq(td.shape[0], 1 / fs)
-    inds = (f >= selected_f_range_hz[0]) & (f <= selected_f_range_hz[1])
-    inds_f = np.arange(len(f))[inds]
-    f = f[inds]
-
-    # Samples for each frequency according to number of cycles
-    if f[0] == 0:
-        if len(f) > 1:
-            f[0] = f[1]
+    # Avoid 0. frequency
+    f = np.fft.rfftfreq(ir.length_samples, 1 / fs)[1:]
     cycles_per_freq_samples = np.round(fs / f * cycles).astype(int)
-    if len(f) > 1:
-        if f[0] == f[1]:
-            f[0] = 0
-
-    spec = np.zeros((len(f), td.shape[1]), dtype=np.complex128)
+    spec = np.zeros((len(f), ir.number_of_channels), dtype=np.complex128)
 
     # Alpha such that window is exactly end_window_value after the number of
     # required samples for each frequency
-    half = (td.shape[0] - 1) / 2
+    half = (ir.length_samples - 1) / 2
     alpha_factor = np.log(1 / (end_window_value) ** 2) ** 0.5 * half
 
     # Construct window vectors
-    ind_max = np.argmax(np.abs(td), axis=0)
-    n = np.zeros_like(td)
-    for ch in range(td.shape[1]):
-        n[:, ch] = np.arange(-ind_max[ch], td.shape[0] - ind_max[ch])
-
-    # Scaling function
-    if scaling == SpectrumScaling.AmplitudeSpectrum:
-
-        def scaling_func(window: NDArray[np.float64]):
-            return 2.0**0.5 / np.sum(window, axis=0, keepdims=True)
-
-    elif scaling == SpectrumScaling.AmplitudeSpectralDensity:
-
-        def scaling_func(window: NDArray[np.float64]):
-            return (
-                2.0
-                / np.sum(window**2.0, axis=0, keepdims=True)
-                / ir.sampling_rate_hz
-            ) ** 0.5
-
-    elif scaling == SpectrumScaling.FFTOrthogonal:
-        scaling_value = fast_length**-0.5
-
-        def scaling_func(window: NDArray[np.float64]):
-            return scaling_value
-
-    elif scaling == SpectrumScaling.FFTBackward:
-
-        def scaling_func(window: NDArray[np.float64]):
-            return 1
-
-    elif scaling == SpectrumScaling.FFTBackward:
-
-        scaling_value = 1.0 / fast_length
-
-        def scaling_func(window: NDArray[np.float64]):
-            return 1
-
-    else:
-        raise ValueError("Unsupported spectrum scaling")
+    ind_max = np.argmax(np.abs(ir.time_data), axis=0)
+    n = np.zeros_like(ir.time_data)
+    for ch in range(ir.number_of_channels):
+        n[:, ch] = np.arange(-ind_max[ch], ir.length_samples - ind_max[ch])
 
     # Precompute some window factors
-    n = -0.5 * (n / half) ** 2.0
-    alpha = (alpha_factor / cycles_per_freq_samples) ** 2.0
-    for ind, ind_f in enumerate(inds_f):
-        w = np.exp(alpha[ind] * n)
-        spec[ind, :] = rfft_scipy(w * td, axis=0)[ind_f] * scaling_func(w)
-    return Spectrum(f, spec)
+    n = (-0.5 * (n / half) ** 2.0).astype(np.complex128)
+    alpha = ((alpha_factor / cycles_per_freq_samples) ** 2.0).astype(
+        np.complex128
+    )
+
+    freqs_normalized = (f * (ir.length_samples / fs)).astype(np.complex128)
+    dft_factor = np.repeat(
+        -2j
+        * np.pi
+        * np.linspace(0.0, 1.0, ir.length_samples, endpoint=False)[..., None],
+        repeats=ir.number_of_channels,
+        axis=1,
+    )
+
+    spec = _fdw_backend(
+        ir.time_data.astype(np.complex128),
+        freqs_normalized,
+        dft_factor,
+        spec,
+        alpha,
+        n,
+    )
+    return Spectrum(np.hstack([0.0, f]), np.pad(spec, ((1, 0), (0, 0))))
 
 
 def find_ir_latency(

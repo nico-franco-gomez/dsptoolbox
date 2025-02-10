@@ -527,9 +527,7 @@ class TestTransferFunctionsModule:
         s = dsp.ImpulseResponse(
             join(os.path.dirname(__file__), "..", "example_data", "rir.wav")
         )
-        sp = dsp.transfer_functions.window_frequency_dependent(
-            s, 10, 0, [100, 1000]
-        )
+        sp = dsp.transfer_functions.window_frequency_dependent(s, 10)
 
         fig, ax = s.plot_magnitude(
             normalize=dsp.MagnitudeNormalization.NoNormalization

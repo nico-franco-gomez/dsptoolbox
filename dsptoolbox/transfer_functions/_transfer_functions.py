@@ -490,6 +490,37 @@ try:
             spectrum[i, ...] = window @ input_spectrum[ind_low:ind_high]
         return spectrum
 
+    @nb.jit(
+        nb.types.Array(nb.complex128, 2, "C")(
+            nb.types.Array(nb.complex128, 2, "C"),  # Time data
+            nb.types.Array(nb.complex128, 1, "C"),  # Frequencies (normalized)
+            nb.types.Array(nb.complex128, 2, "C"),  # DFT factor
+            nb.types.Array(nb.complex128, 2, "C"),  # Spectrum
+            nb.types.Array(nb.complex128, 1, "C"),  # Alpha (Gaussian window)
+            nb.types.Array(
+                nb.complex128, 2, "C"
+            ),  # Peak index vector (window)
+        ),
+        parallel=True,
+        cache=True,
+    )
+    def _fdw_backend(
+        time_data: NDArray[np.complex128],
+        freqs_normalized: NDArray[np.complex128],
+        dft_factor: NDArray[np.complex128],
+        spectrum: NDArray[np.complex128],
+        alpha: NDArray[np.complex128],
+        n: NDArray[np.complex128],
+    ):
+        """Parallel backend for frequency-dependent windowing."""
+        for ind in nb.prange(len(freqs_normalized)):
+            spectrum[ind, :] = np.sum(
+                np.exp(dft_factor * freqs_normalized[ind] + alpha[ind] * n)
+                * time_data,
+                axis=0,
+            )
+        return spectrum
+
 except ModuleNotFoundError as e:
     print("Numba is not installed: ", e)
 
@@ -539,6 +570,23 @@ except ModuleNotFoundError as e:
             ).astype(np.complex128)
             window /= window.sum()
             spectrum[i, ...] = window @ input_spectrum[ind_low:ind_high]
+        return spectrum
+
+    def _fdw_backend(
+        time_data: NDArray[np.complex128],
+        freqs_normalized: NDArray[np.complex128],
+        dft_factor: NDArray[np.complex128],
+        spectrum: NDArray[np.complex128],
+        alpha: NDArray[np.complex128],
+        n: NDArray[np.complex128],
+    ):
+        """Sequential backend for frequency-dependent windowing."""
+        for ind in np.arange(len(freqs_normalized)):
+            spectrum[ind, :] = np.sum(
+                np.exp(dft_factor * freqs_normalized[ind] + alpha[ind] * n)
+                * time_data,
+                axis=0,
+            )
         return spectrum
 
 
