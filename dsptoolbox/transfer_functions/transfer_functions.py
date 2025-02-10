@@ -1008,7 +1008,7 @@ def combine_ir_with_dirac(
     crossover_frequency: float,
     take_lower_band: bool,
     order: int = 8,
-    normalization: str | None = None,
+    normalization: str | float | None = None,
 ) -> ImpulseResponse:
     """Combine an IR with a perfect impulse at a given crossover frequency
     using a linkwitz-riley crossover. Forward-Backward filtering is done so
@@ -1028,12 +1028,14 @@ def combine_ir_with_dirac(
         `False` delivers the opposite result.
     order : int, optional
         Crossover order. Default: 8.
-    normalization : str, optional
+    normalization : str, float, optional
         `'energy'` means that the band of the perfect dirac impulse is
         normalized so that it matches the energy contained in the band of the
         impulse response. `'peak'` means that peak value is matched for both
         bands. `None` avoids any normalization (Impulse response is always
-        normalized prior to computation). Default: `None`.
+        normalized prior to computation). Alternatively, a value in dB can be
+        passed in order to scale the dirac part of the resulting impulse.
+        Default: `None`.
 
     Returns
     -------
@@ -1051,13 +1053,12 @@ def combine_ir_with_dirac(
     assert (
         type(ir) is ImpulseResponse
     ), "This is only valid for an impulse response"
-    if normalization is not None:
+    if normalization is not None and type(normalization) is str:
         normalization = normalization.lower()
-    assert normalization in (
-        "energy",
-        "peak",
-        None,
-    ), "Invalid normalization parameter"
+        assert normalization in (
+            "energy",
+            "peak",
+        ), "Invalid normalization parameter"
     ir = normalize(ir, 0.0)
     latencies_samples = _get_fractional_impulse_peak_index(ir.time_data)
 
@@ -1109,6 +1110,8 @@ def combine_ir_with_dirac(
         ir_peak = np.max(np.abs(td_ir), axis=0)
         imp_peak = np.max(np.abs(td_imp), axis=0)
         td_imp *= ir_peak / imp_peak
+    elif type(normalization) in (float, int, np.floating, np.int_):
+        td_imp *= from_db(normalization, True)
 
     # Combine
     combined_ir = ir.copy_with_new_time_data(

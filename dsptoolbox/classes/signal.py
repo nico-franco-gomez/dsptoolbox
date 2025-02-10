@@ -1046,6 +1046,9 @@ class Signal:
                 y_extra = " (normalized @ peak)"
             case MagnitudeNormalization.Energy:
                 y_extra = " (normalized with average energy)"
+            case _:
+                raise ValueError("No valid normalization")
+
         fig, ax = general_plot(
             f,
             mag_db,

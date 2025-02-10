@@ -519,6 +519,8 @@ class FilterBank:
                 h = np.ones(len(frequency_vector_hz), dtype=np.complex128)
                 for ind, f in enumerate(self.filters):
                     h += f.get_transfer_function(frequency_vector_hz)
+            case _:
+                raise ValueError("No valid mode")
         return h
 
     # ======== Prints and plots ===============================================
