@@ -436,7 +436,7 @@ try:
             nb.types.Array(nb.float64, 1, "C"),
         ),
         parallel=True,
-        # cache=True,
+        cache=True,
         nopython=True,
         nogil=True,
     )
