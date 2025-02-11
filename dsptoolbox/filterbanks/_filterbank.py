@@ -1087,6 +1087,8 @@ class BaseCrossover(FilterBank):
                 ylabel="Magnitude / dB",
                 labels=["Summed"],
             )
+        else:
+            raise ValueError("Invalid filter bank mode")
         return fig, ax
 
 

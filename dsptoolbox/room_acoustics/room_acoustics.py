@@ -44,7 +44,7 @@ def reverb_time(
     signal : `ImpulseResponse` or `MultiBandSignal`
         IR for which to compute reverberation times.
     mode : ReverbTime, optional
-        Reverberation time mode. Default: Topt.
+        Reverberation time mode. Default: Adaptive.
     ir_start : int or array-like, NDArray[np.int_], optional
         If it is an integer, it is assumed as the start of the IR for all
         channels (and all bands). For more specific cases, pass a 1d-array
@@ -78,7 +78,7 @@ def reverb_time(
     - The energy decay curve is computed while removing the noise energy
       according to [3] and regarding the compensation energy as explained
       by [1] and [2]. If too much noise is detected, its removal is avoided.
-    - The method "Topt" is implemented as explained by the documentation of
+    - The method "Adaptive" is implemented as explained by the documentation of
       [4].
     - A correlation coefficient of -1 means there is a perfectly linear
       relation between time and energy decay, which is an optimal estimation.

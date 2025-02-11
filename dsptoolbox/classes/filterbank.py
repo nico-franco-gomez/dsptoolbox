@@ -664,6 +664,8 @@ class FilterBank:
                 ylabel="Magnitude / dB",
                 labels=["Summed"],
             )
+        else:
+            raise ValueError("Invalid filter bank mode")
         return fig, ax
 
     def plot_phase(
@@ -775,6 +777,8 @@ class FilterBank:
                 ylabel="Phase / rad",
                 labels=["Summed"],
             )
+        else:
+            raise ValueError("Invalid filter bank mode")
         return fig, ax
 
     def plot_group_delay(
@@ -881,6 +885,8 @@ class FilterBank:
                 ylabel="Group delay / ms",
                 labels=["Summed"],
             )
+        else:
+            raise ValueError("Invalid filter bank mode")
         return fig, ax
 
     # ======== Saving and export ==============================================
