@@ -264,11 +264,6 @@ class Spectrum:
         -------
         self
 
-        Notes
-        -----
-        - If the spectrum is complex, the interpolation domain will be
-          magphase. Otherwise, it will be power.
-
         """
         self.set_interpolator_parameters(
             (
