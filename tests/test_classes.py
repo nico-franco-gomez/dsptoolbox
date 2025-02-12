@@ -556,6 +556,13 @@ class TestFilterClass:
         f.plot_magnitude(normalize=dsp.MagnitudeNormalization.OneKhz)
         f.plot_magnitude(normalize=dsp.MagnitudeNormalization.Max)
         f.plot_magnitude(normalize=dsp.MagnitudeNormalization.Energy)
+        f.plot_magnitude(
+            normalize=dsp.MagnitudeNormalization.OneKhzFirstChannel
+        )
+        f.plot_magnitude(normalize=dsp.MagnitudeNormalization.MaxFirstChannel)
+        f.plot_magnitude(
+            normalize=dsp.MagnitudeNormalization.EnergyFirstChannel
+        )
 
         with pytest.raises(AssertionError):
             f.plot_taps()
@@ -1926,4 +1933,14 @@ class TestSpectrum:
         )
         sp.plot_magnitude(
             False, dsp.MagnitudeNormalization.NoNormalization, None
+        )
+
+        sp.plot_magnitude(
+            False, dsp.MagnitudeNormalization.OneKhzFirstChannel, None
+        )
+        sp.plot_magnitude(
+            False, dsp.MagnitudeNormalization.MaxFirstChannel, None
+        )
+        sp.plot_magnitude(
+            False, dsp.MagnitudeNormalization.EnergyFirstChannel, None
         )

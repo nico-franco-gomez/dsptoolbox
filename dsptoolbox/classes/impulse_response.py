@@ -298,12 +298,23 @@ class ImpulseResponse(Signal):
         self.spectrum_smoothing = prior_smoothing
         sp_abs = np.abs(sp)
 
-        if normalize == MagnitudeNormalization.OneKhz:
-            sp_abs /= _get_exact_gain_1khz(f, sp_abs)[None, ...]
-        elif normalize == MagnitudeNormalization.Max:
-            sp_abs /= np.max(sp_abs, axis=0, keepdims=True)
-        elif normalize == MagnitudeNormalization.Energy:
-            sp_abs /= np.mean(sp_abs**2.0, axis=0, keepdims=True) ** 0.5
+        match normalize:
+            case MagnitudeNormalization.OneKhz:
+                sp_abs /= _get_exact_gain_1khz(f, sp_abs)[None, ...]
+            case MagnitudeNormalization.OneKhzFirstChannel:
+                sp_abs /= _get_exact_gain_1khz(f, sp_abs[:, 0])
+            case MagnitudeNormalization.Max:
+                sp_abs /= np.max(sp_abs, axis=0, keepdims=True)
+            case MagnitudeNormalization.MaxFirstChannel:
+                sp_abs /= np.max(sp_abs[:, 0], axis=0)
+            case MagnitudeNormalization.Energy:
+                sp_abs /= np.mean(sp_abs**2.0, axis=0, keepdims=True) ** 0.5
+            case MagnitudeNormalization.EnergyFirstChannel:
+                sp_abs /= np.mean(sp_abs[:, 0] ** 2.0, axis=0) ** 0.5
+            case MagnitudeNormalization.NoNormalization:
+                pass
+            case _:
+                raise ValueError("No valid normalization value")
 
         phase = np.angle(sp)
         if remove_ir_latency is None:

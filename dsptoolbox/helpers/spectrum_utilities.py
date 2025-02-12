@@ -183,13 +183,34 @@ def _get_normalized_spectrum(
                     for i in range(spectra.shape[1])
                 ]
             )
+        case MagnitudeNormalization.OneKhzFirstChannel:
+            normalization_db = np.ones(
+                spectra.shape[1]
+            ) * _get_exact_gain_1khz(f, mag_spectra_db[:, 0])
         case MagnitudeNormalization.Max:
             normalization_db = np.max(mag_spectra_db, axis=0)
+        case MagnitudeNormalization.MaxFirstChannel:
+            normalization_db = np.max(
+                mag_spectra_db[:, 0], axis=0, keepdims=True
+            )
         case MagnitudeNormalization.Energy:
             normalization_db = to_db(
                 np.mean(
                     mag_spectra**2.0 if is_amplitude_scaling else mag_spectra,
                     axis=0,
+                ),
+                False,
+            )
+        case MagnitudeNormalization.EnergyFirstChannel:
+            normalization_db = to_db(
+                np.mean(
+                    (
+                        mag_spectra[:, 0] ** 2.0
+                        if is_amplitude_scaling
+                        else mag_spectra
+                    ),
+                    axis=0,
+                    keepdims=True,
                 ),
                 False,
             )

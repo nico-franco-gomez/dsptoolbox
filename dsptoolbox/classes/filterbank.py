@@ -17,7 +17,12 @@ from ..plots import general_plot
 from ..helpers.other import _check_format_in_path
 from ..helpers.spectrum_utilities import _get_normalized_spectrum
 from ..standard._standard_backend import _group_delay_direct
-from ..standard.enums import SpectrumMethod, SpectrumScaling, FilterBankMode
+from ..standard.enums import (
+    SpectrumMethod,
+    SpectrumScaling,
+    FilterBankMode,
+    MagnitudeNormalization,
+)
 
 
 class FilterBank:
@@ -599,7 +604,7 @@ class FilterBank:
                     *b.get_spectrum(),
                     b.spectrum_scaling.is_amplitude_scaling(),
                     f_range_hz=range_hz,
-                    normalize=None,
+                    normalize=MagnitudeNormalization.NoNormalization,
                     smoothing=0.0,
                     phase=False,
                     calibrated_data=False,
@@ -627,7 +632,7 @@ class FilterBank:
                 *bs.get_spectrum(),
                 bs.spectrum_scaling.is_amplitude_scaling(),
                 f_range_hz=range_hz,
-                normalize=None,
+                normalize=MagnitudeNormalization.NoNormalization,
                 smoothing=0.0,
                 phase=False,
                 calibrated_data=False,
@@ -652,7 +657,7 @@ class FilterBank:
                 sp,
                 bs.spectrum_scaling.is_amplitude_scaling(),
                 f_range_hz=range_hz,
-                normalize=None,
+                normalize=MagnitudeNormalization.NoNormalization,
                 smoothing=0.0,
                 phase=False,
                 calibrated_data=False,
