@@ -257,6 +257,7 @@ class BiquadEqType(Enum):
     BandpassPeak = auto()
     LowpassFirstOrder = auto()
     HighpassFirstOrder = auto()
+    AllpassFirstOrder = auto()
     Allpass = auto()
     Notch = auto()
     Inverter = auto()

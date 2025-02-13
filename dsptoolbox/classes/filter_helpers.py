@@ -123,6 +123,14 @@ def _biquad_coefficients(
             a[0] = 1.0 + K
             a[1] = 1.0 - K
             a[2] = 0.0
+        case BiquadEqType.AllpassFirstOrder:
+            K = 1.0 / np.tan(Omega / 2.0)
+            b[0] = (1.0 - K) * A
+            b[1] = (1.0 + K) * A
+            b[2] = 0.0
+            a[0] = 1.0 + K
+            a[1] = 1.0 - K
+            a[2] = 0.0
         case BiquadEqType.Inverter:
             b[0] = A
             b[1] = 0.0

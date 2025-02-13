@@ -612,6 +612,25 @@ class TestFilterClass:
         )
         f.get_transfer_function(freqs)
 
+    def test_all_biquads(self):
+        # Only functionality
+        for t in [
+            dsp.BiquadEqType.Allpass,
+            dsp.BiquadEqType.AllpassFirstOrder,
+            dsp.BiquadEqType.BandpassPeak,
+            dsp.BiquadEqType.BandpassSkirt,
+            dsp.BiquadEqType.Highpass,
+            dsp.BiquadEqType.HighpassFirstOrder,
+            dsp.BiquadEqType.Highshelf,
+            dsp.BiquadEqType.Inverter,
+            dsp.BiquadEqType.Lowpass,
+            dsp.BiquadEqType.LowpassFirstOrder,
+            dsp.BiquadEqType.Lowshelf,
+            dsp.BiquadEqType.Notch,
+            dsp.BiquadEqType.Peaking,
+        ]:
+            dsp.Filter.biquad(t, 100.0, 2.0, 0.7, 2000)
+
     def test_filter_and_resampling_IIR(self):
         f = self.get_iir()
 
