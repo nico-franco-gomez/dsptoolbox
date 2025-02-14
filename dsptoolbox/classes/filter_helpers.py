@@ -123,6 +123,14 @@ def _biquad_coefficients(
             a[0] = 1.0 + K
             a[1] = 1.0 - K
             a[2] = 0.0
+        case BiquadEqType.AllpassFirstOrder:
+            K = 1.0 / np.tan(Omega / 2.0)
+            b[0] = (1.0 - K) * A
+            b[1] = (1.0 + K) * A
+            b[2] = 0.0
+            a[0] = 1.0 + K
+            a[1] = 1.0 - K
+            a[2] = 0.0
         case BiquadEqType.Inverter:
             b[0] = A
             b[1] = 0.0
@@ -414,34 +422,39 @@ def _filterbank_on_signal(
 
     """
     n_filt = len(filters)
-    if mode == FilterBankMode.Parallel:
-        ss = []
-        for n in range(n_filt):
-            ss.append(
-                filters[n].filter_signal(
+    match mode:
+        case FilterBankMode.Parallel:
+            ss = []
+            for n in range(n_filt):
+                ss.append(
+                    filters[n].filter_signal(
+                        signal, activate_zi=activate_zi, zero_phase=zero_phase
+                    )
+                )
+            out_sig = MultiBandSignal(
+                ss, same_sampling_rate=same_sampling_rate
+            )
+            return out_sig
+        case FilterBankMode.Sequential:
+            out_sig = signal.copy()
+            for n in range(n_filt):
+                out_sig = filters[n].filter_signal(
+                    out_sig, activate_zi=activate_zi, zero_phase=zero_phase
+                )
+            return out_sig
+        case FilterBankMode.Summed:
+            new_time_data = np.zeros(
+                (signal.time_data.shape[0], signal.number_of_channels, n_filt)
+            )
+            for n in range(n_filt):
+                s = filters[n].filter_signal(
                     signal, activate_zi=activate_zi, zero_phase=zero_phase
                 )
-            )
-        out_sig = MultiBandSignal(ss, same_sampling_rate=same_sampling_rate)
-        return out_sig
-    elif mode == FilterBankMode.Sequential:
-        out_sig = signal.copy()
-        for n in range(n_filt):
-            out_sig = filters[n].filter_signal(
-                out_sig, activate_zi=activate_zi, zero_phase=zero_phase
-            )
-        return out_sig
-    else:
-        new_time_data = np.zeros(
-            (signal.time_data.shape[0], signal.number_of_channels, n_filt)
-        )
-        for n in range(n_filt):
-            s = filters[n].filter_signal(
-                signal, activate_zi=activate_zi, zero_phase=zero_phase
-            )
-            new_time_data[:, :, n] = s.time_data
-        new_time_data = np.sum(new_time_data, axis=-1)
-        return signal.copy_with_new_time_data(new_time_data)
+                new_time_data[:, :, n] = s.time_data
+            new_time_data = np.sum(new_time_data, axis=-1)
+            return signal.copy_with_new_time_data(new_time_data)
+        case _:
+            raise ValueError("Invalid filter bank apply mode")
 
 
 def _lfilter_fir(

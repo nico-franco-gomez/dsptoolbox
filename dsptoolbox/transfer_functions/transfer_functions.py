@@ -14,6 +14,7 @@ from ._transfer_functions import (
     _window_this_ir,
     _get_harmonic_times,
     _trim_ir,
+    _complex_smoothing_backend,
 )
 from ..helpers.spectrum_utilities import (
     _correct_for_real_phase_spectrum,
@@ -42,14 +43,15 @@ from ..standard import (
 )
 from ..generators import dirac
 from ..filterbanks import linkwitz_riley_crossovers
-from ..helpers.gain_and_level import to_db
+from ..helpers.gain_and_level import to_db, from_db
 from ..standard.enums import (
     SpectrumMethod,
+    SpectrumType,
     MagnitudeNormalization,
     Window,
     SpectrumScaling,
 )
-from .enums import TransferFunctionType
+from .enums import TransferFunctionType, SmoothingDomain
 
 
 def spectral_deconvolve(
@@ -1008,7 +1010,7 @@ def combine_ir_with_dirac(
     crossover_frequency: float,
     take_lower_band: bool,
     order: int = 8,
-    normalization: str | None = None,
+    normalization: str | float | None = None,
 ) -> ImpulseResponse:
     """Combine an IR with a perfect impulse at a given crossover frequency
     using a linkwitz-riley crossover. Forward-Backward filtering is done so
@@ -1028,12 +1030,14 @@ def combine_ir_with_dirac(
         `False` delivers the opposite result.
     order : int, optional
         Crossover order. Default: 8.
-    normalization : str, optional
+    normalization : str, float, optional
         `'energy'` means that the band of the perfect dirac impulse is
         normalized so that it matches the energy contained in the band of the
         impulse response. `'peak'` means that peak value is matched for both
         bands. `None` avoids any normalization (Impulse response is always
-        normalized prior to computation). Default: `None`.
+        normalized prior to computation). Alternatively, a value in dB can be
+        passed in order to scale the dirac part of the resulting impulse.
+        Default: `None`.
 
     Returns
     -------
@@ -1051,13 +1055,12 @@ def combine_ir_with_dirac(
     assert (
         type(ir) is ImpulseResponse
     ), "This is only valid for an impulse response"
-    if normalization is not None:
+    if normalization is not None and type(normalization) is str:
         normalization = normalization.lower()
-    assert normalization in (
-        "energy",
-        "peak",
-        None,
-    ), "Invalid normalization parameter"
+        assert normalization in (
+            "energy",
+            "peak",
+        ), "Invalid normalization parameter"
     ir = normalize(ir, 0.0)
     latencies_samples = _get_fractional_impulse_peak_index(ir.time_data)
 
@@ -1109,6 +1112,8 @@ def combine_ir_with_dirac(
         ir_peak = np.max(np.abs(td_ir), axis=0)
         imp_peak = np.max(np.abs(td_imp), axis=0)
         td_imp *= ir_peak / imp_peak
+    elif type(normalization) in (float, int, np.floating, np.int_):
+        td_imp *= from_db(normalization, True)
 
     # Combine
     combined_ir = ir.copy_with_new_time_data(
@@ -1525,8 +1530,12 @@ def harmonic_distortion_analysis(
             - "1": spectrum of the fundamental.
             - "2": spectrum of the second harmonic.
             - "3": ...
-            - "thd": Total harmonic distortion.
-            - "thd_n": Total harmonic distortion + noise.
+            - "thd": Total harmonic distortion. The spectrum is shifted to the
+              frequency that caused the distortion.
+            - "thd_percent": Total harmonic distortion normalized by the linear
+              response. It is shifted as `thd` and returned in percent.
+            - "thd_n": Total harmonic distortion + noise. This spectrum is not
+              shifted to the frequency that caused the distortion.
             - "plot": a list with matplotlib's [figure, axes]. This is only
               returned if the plot was generated.
 
@@ -1534,9 +1543,6 @@ def harmonic_distortion_analysis(
     -----
     - The scaling of the spectrum is always done as set with
       `set_spectrum_parameters()` of the original IR.
-    - Distortion in percentage can be computed by dividing `thd` by the
-      spectrum of the fundamental. They have the same frequency resolution
-      but `thd` has a trimmed frequency vector.
     - THD in percent is usually defined in audio by the amplitude ratios
       instead of the power ratios, as is common for other fields. See
       https://de.wikipedia.org/wiki/Total_Harmonic_Distortion.
@@ -1682,6 +1688,15 @@ def harmonic_distortion_analysis(
 
     d["thd_n"] = Spectrum(f_thd_n, sp_thd_n**0.5)
     d["thd"] = Spectrum(freqs_thd, sp_thd**0.5)
+    d["thd_percent"] = Spectrum(
+        d["thd"].frequency_vector_hz,
+        # (Magnitude) ratio of `THD / fundamental`
+        d["thd"].spectral_data
+        / d["1"].get_interpolated_spectrum(
+            d["thd"].frequency_vector_hz, SpectrumType.Magnitude
+        )
+        * 100.0,
+    )
 
     return d
 
@@ -1779,3 +1794,97 @@ def trim_ir(
         start,
         stop,
     )
+
+
+def complex_smoothing(
+    ir: ImpulseResponse,
+    octave_fraction: float,
+    smoothing_domain: SmoothingDomain,
+    window: Window = Window.Hann,
+) -> Spectrum:
+    """Complex smoothing of an impulse response using logarithmic spacing given
+    in octaves. This is done according to [1].
+
+    Parameters
+    ----------
+    ir : ImpulseResponse
+        Impulse response to apply smoothing to.
+    octave_fraction : float
+        Width of smoothing range in fraction of octaves.
+    smoothing_domain : SmoothingDomain
+        Domain to use during the smoothing step.
+    window : Window
+        Type of window to use.
+
+    Returns
+    -------
+    Spectrum
+
+    References
+    ----------
+    - [1]: GENERALIZED FRACTIONAL OCTAVE SMOOTHING OF  AUDIO / ACOUSTIC
+      RESPONSES. PANAGIOTIS D. HATZIANTONIOU AND JOHN N. MOURJOPOULOS.
+
+    """
+    assert octave_fraction > 0.0, "Octave fraction must be greater than 0"
+    f, sp = ir.get_spectrum()
+
+    # Get a window prototype – mapping to logarithmic space is done through
+    # interpolation
+    window_values = window(3000, True)
+    output_sp = np.zeros_like(sp)
+
+    match smoothing_domain:
+        case SmoothingDomain.RealImaginary:
+            output_sp = _complex_smoothing_backend(
+                octave_fraction, sp, output_sp, f, window_values
+            )
+        case SmoothingDomain.MagnitudePhase:
+            sp = np.abs(sp) + 1j * np.unwrap(np.angle(sp), axis=0)
+            output_sp = _complex_smoothing_backend(
+                octave_fraction, sp, output_sp, f, window_values
+            )
+            output_sp = np.real(output_sp) * np.exp(1j * np.imag(output_sp))
+        case SmoothingDomain.PowerPhase:
+            sp = np.abs(sp) ** 2.0 + 1j * np.unwrap(np.angle(sp), axis=0)
+            output_sp = _complex_smoothing_backend(
+                octave_fraction, sp, output_sp, f, window_values
+            )
+            output_sp = np.real(output_sp) ** 0.5 * np.exp(
+                1j * np.imag(output_sp)
+            )
+        case SmoothingDomain.Power:
+            sp_modified = (np.abs(sp) ** 2.0).astype(np.complex128)
+            output_sp = _complex_smoothing_backend(
+                octave_fraction, sp_modified, output_sp, f, window_values
+            )
+            output_sp = np.real(output_sp) ** 0.5 * np.exp(1j * np.angle(sp))
+        case SmoothingDomain.Magnitude:
+            sp_modified = np.abs(sp).astype(np.complex128)
+            output_sp = _complex_smoothing_backend(
+                octave_fraction, sp_modified, output_sp, f, window_values
+            )
+            output_sp = np.real(output_sp) * np.exp(1j * np.angle(sp))
+        case SmoothingDomain.EquivalentComplex:
+            # Apply complex smoothing
+            output_sp = _complex_smoothing_backend(
+                octave_fraction, sp, output_sp, f, window_values
+            )
+
+            # Apply power smoothing
+            output2 = np.zeros_like(output_sp)
+            output2 = _complex_smoothing_backend(
+                octave_fraction,
+                (np.abs(sp) ** 2.0).astype(np.complex128),
+                output2,
+                f,
+                window_values,
+            )
+
+            # Combine power with phase of complex smoothing
+            output_sp = np.real(output2) ** 0.5 * np.exp(
+                1j * np.angle(output_sp)
+            )
+        case _:
+            raise ValueError("Invalid smoothing domain")
+    return Spectrum(f, output_sp)

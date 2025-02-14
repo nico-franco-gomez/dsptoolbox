@@ -175,25 +175,50 @@ def _get_normalized_spectrum(
         mag_spectra / scale_factor, is_amplitude_scaling, 500
     )
 
-    if normalize == MagnitudeNormalization.OneKhz:
-        normalization_db = np.array(
-            [
-                _get_exact_gain_1khz(f, mag_spectra_db[:, i])
-                for i in range(spectra.shape[1])
-            ]
-        )
-    elif normalize == MagnitudeNormalization.Max:
-        normalization_db = np.max(mag_spectra_db, axis=0)
-    elif normalize == MagnitudeNormalization.Energy:
-        normalization_db = to_db(
-            np.mean(
-                mag_spectra**2.0 if is_amplitude_scaling else mag_spectra,
-                axis=0,
-            ),
-            False,
-        )
-    else:
-        normalization_db = np.zeros(mag_spectra_db.shape[1])
+    match normalize:
+        case MagnitudeNormalization.OneKhz:
+            normalization_db = np.array(
+                [
+                    _get_exact_gain_1khz(f, mag_spectra_db[:, i])
+                    for i in range(spectra.shape[1])
+                ]
+            )
+        case MagnitudeNormalization.OneKhzFirstChannel:
+            normalization_db = np.ones(
+                spectra.shape[1]
+            ) * _get_exact_gain_1khz(f, mag_spectra_db[:, 0])
+        case MagnitudeNormalization.Max:
+            normalization_db = np.max(mag_spectra_db, axis=0)
+        case MagnitudeNormalization.MaxFirstChannel:
+            normalization_db = np.max(
+                mag_spectra_db[:, 0], axis=0, keepdims=True
+            )
+        case MagnitudeNormalization.Energy:
+            normalization_db = to_db(
+                np.mean(
+                    mag_spectra**2.0 if is_amplitude_scaling else mag_spectra,
+                    axis=0,
+                ),
+                False,
+            )
+        case MagnitudeNormalization.EnergyFirstChannel:
+            normalization_db = to_db(
+                np.mean(
+                    (
+                        mag_spectra[:, 0] ** 2.0
+                        if is_amplitude_scaling
+                        else mag_spectra
+                    ),
+                    axis=0,
+                    keepdims=True,
+                ),
+                False,
+            )
+        case MagnitudeNormalization.NoNormalization:
+            normalization_db = np.zeros(mag_spectra_db.shape[1])
+        case _:
+            raise ValueError("No valid normalization")
+
     mag_spectra_db -= normalization_db[None, :]
 
     if phase:

@@ -257,6 +257,7 @@ class BiquadEqType(Enum):
     BandpassPeak = auto()
     LowpassFirstOrder = auto()
     HighpassFirstOrder = auto()
+    AllpassFirstOrder = auto()
     Allpass = auto()
     Notch = auto()
     Inverter = auto()
@@ -430,17 +431,23 @@ class Window(Enum):
 class MagnitudeNormalization(Enum):
     """Normalization for magnitude responses:
 
-    - OneKhz: @ 1 kHz.
+    - NoNormalization.
+    - OneKhz: @ 1 kHz for each channel.
     - Max: @ peak.
     - Energy: use average energy (per frequency) as normalization value.
-    - NoNormalization.
+
+    All variants exist for the first channel, thus taking the same
+    normalization value for all channels, or for each channel independently.
 
     """
 
-    OneKhz = auto()
-    Max = auto()
-    Energy = auto()
     NoNormalization = auto()
+    OneKhz = auto()
+    OneKhzFirstChannel = auto()
+    Max = auto()
+    MaxFirstChannel = auto()
+    Energy = auto()
+    EnergyFirstChannel = auto()
 
 
 class SpectrumType(Enum):

@@ -28,6 +28,11 @@ class TestFilterbanksModule:
                 [500, 5000], order=4, sampling_rate_hz=self.fs
             )
 
+        # Plots
+        fb.plot_group_delay()
+        fb.plot_phase()
+        fb.plot_magnitude()
+
         # Test filtering
         s = self.get_noise()
         fb.filter_signal(s, mode=dsp.FilterBankMode.Parallel)

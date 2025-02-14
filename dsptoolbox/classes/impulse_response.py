@@ -246,7 +246,7 @@ class ImpulseResponse(Signal):
         range_rad_s=None,
         smoothing: int = 0,
         remove_ir_latency: str | None | ArrayLike = None,
-    ) -> tuple[Figure, Axes]:
+    ) -> tuple[Figure, list[Axes]]:
         """Create a bode plot where magnitude and phase response are plotted
         together.
 
@@ -288,8 +288,8 @@ class ImpulseResponse(Signal):
         -------
         fig : `matplotlib.figure.Figure`
             Figure.
-        ax : `matplotlib.axes.Axes`
-            Axes.
+        ax : list of `matplotlib.axes.Axes`
+            List containing the two axes of the plot.
 
         """
         prior_smoothing = self.spectrum_smoothing
@@ -298,12 +298,23 @@ class ImpulseResponse(Signal):
         self.spectrum_smoothing = prior_smoothing
         sp_abs = np.abs(sp)
 
-        if normalize == MagnitudeNormalization.OneKhz:
-            sp_abs /= _get_exact_gain_1khz(f, sp_abs)[None, ...]
-        elif normalize == MagnitudeNormalization.Max:
-            sp_abs /= np.max(sp_abs, axis=0, keepdims=True)
-        elif normalize == MagnitudeNormalization.Energy:
-            sp_abs /= np.mean(sp_abs**2.0, axis=0, keepdims=True) ** 0.5
+        match normalize:
+            case MagnitudeNormalization.OneKhz:
+                sp_abs /= _get_exact_gain_1khz(f, sp_abs)[None, ...]
+            case MagnitudeNormalization.OneKhzFirstChannel:
+                sp_abs /= _get_exact_gain_1khz(f, sp_abs[:, 0])
+            case MagnitudeNormalization.Max:
+                sp_abs /= np.max(sp_abs, axis=0, keepdims=True)
+            case MagnitudeNormalization.MaxFirstChannel:
+                sp_abs /= np.max(sp_abs[:, 0], axis=0)
+            case MagnitudeNormalization.Energy:
+                sp_abs /= np.mean(sp_abs**2.0, axis=0, keepdims=True) ** 0.5
+            case MagnitudeNormalization.EnergyFirstChannel:
+                sp_abs /= np.mean(sp_abs[:, 0] ** 2.0, axis=0) ** 0.5
+            case MagnitudeNormalization.NoNormalization:
+                pass
+            case _:
+                raise ValueError("No valid normalization value")
 
         phase = np.angle(sp)
         if remove_ir_latency is None:
@@ -326,7 +337,7 @@ class ImpulseResponse(Signal):
                 f, phase, delays_samples, self.sampling_rate_hz
             )
 
-        return general_plot_two_axes(
+        fig, ax = general_plot_two_axes(
             f,
             to_db(sp_abs, True),
             f,
@@ -345,6 +356,9 @@ class ImpulseResponse(Signal):
             y2_linestyle="dashed",
             y2_alpha=0.6,
         )
+        ax[-1].grid(linestyle="dashed")
+
+        return fig, ax
 
     def copy_with_new_time_data(
         self, new_time_data: ArrayLike

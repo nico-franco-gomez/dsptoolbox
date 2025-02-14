@@ -264,11 +264,6 @@ class Spectrum:
         -------
         self
 
-        Notes
-        -----
-        - If the spectrum is complex, the interpolation domain will be
-          magphase. Otherwise, it will be power.
-
         """
         self.set_interpolator_parameters(
             (
@@ -619,21 +614,40 @@ class Spectrum:
             to avoid it. Default: 100.
 
         """
-        if normalization != MagnitudeNormalization.NoNormalization:
-            if normalization == MagnitudeNormalization.OneKhz:
+        match normalization:
+            case MagnitudeNormalization.OneKhz:
                 norm = self.get_interpolated_spectrum(
                     np.array([1000.0]), output_type=SpectrumType.Magnitude
                 )
-            elif normalization == MagnitudeNormalization.Max:
+            case MagnitudeNormalization.OneKhzFirstChannel:
+                norm_value = self.get_interpolated_spectrum(
+                    np.array([1000.0]), output_type=SpectrumType.Magnitude
+                )[0]
+                norm = np.ones(self.number_of_channels) * norm_value
+            case MagnitudeNormalization.Max:
                 norm = (
                     np.max(np.abs(self.spectral_data), axis=0)
                     if not self.is_magnitude
                     else np.max(self.spectral_data, axis=0)
                 )
-            elif normalization == MagnitudeNormalization.Energy:
+            case MagnitudeNormalization.MaxFirstChannel:
+                norm = (
+                    np.max(
+                        np.abs(self.spectral_data[:, 0]), axis=0, keepdims=True
+                    )
+                    if not self.is_magnitude
+                    else np.max(
+                        self.spectral_data[:, 0], axis=0, keepdims=True
+                    )
+                )
+            case MagnitudeNormalization.Energy:
                 norm = (self.get_energy() / self.number_frequency_bins) ** 0.5
-        else:
-            norm = np.ones(self.number_of_channels)
+            case MagnitudeNormalization.EnergyFirstChannel:
+                norm = (
+                    self.get_energy()[0] / self.number_frequency_bins
+                ) ** 0.5
+            case MagnitudeNormalization.NoNormalization:
+                norm = np.ones(self.number_of_channels)
 
         data = np.abs(self.spectral_data) / norm
         if in_db:

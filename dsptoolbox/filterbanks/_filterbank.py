@@ -36,6 +36,7 @@ from ..standard.enums import (
     FilterBankMode,
     SpectrumMethod,
     SpectrumScaling,
+    MagnitudeNormalization,
 )
 
 
@@ -471,7 +472,8 @@ class LRFilterBank:
                 sp_band,
                 is_amplitude_scaling=b.spectrum_scaling.is_amplitude_scaling(),
                 f_range_hz=range_hz,
-                normalize=None,
+                normalize=MagnitudeNormalization.NoNormalization,
+                smoothing=0,
                 phase=False,
                 calibrated_data=False,
             )
@@ -493,7 +495,8 @@ class LRFilterBank:
             sp_summed,
             is_amplitude_scaling=True,
             f_range_hz=range_hz,
-            normalize=None,
+            normalize=MagnitudeNormalization.NoNormalization,
+            smoothing=0,
             phase=False,
             calibrated_data=False,
         )
@@ -1087,6 +1090,8 @@ class BaseCrossover(FilterBank):
                 ylabel="Magnitude / dB",
                 labels=["Summed"],
             )
+        else:
+            raise ValueError("Invalid filter bank mode")
         return fig, ax
 
 

@@ -556,6 +556,13 @@ class TestFilterClass:
         f.plot_magnitude(normalize=dsp.MagnitudeNormalization.OneKhz)
         f.plot_magnitude(normalize=dsp.MagnitudeNormalization.Max)
         f.plot_magnitude(normalize=dsp.MagnitudeNormalization.Energy)
+        f.plot_magnitude(
+            normalize=dsp.MagnitudeNormalization.OneKhzFirstChannel
+        )
+        f.plot_magnitude(normalize=dsp.MagnitudeNormalization.MaxFirstChannel)
+        f.plot_magnitude(
+            normalize=dsp.MagnitudeNormalization.EnergyFirstChannel
+        )
 
         with pytest.raises(AssertionError):
             f.plot_taps()
@@ -604,6 +611,25 @@ class TestFilterClass:
             sampling_rate_hz=self.fs,
         )
         f.get_transfer_function(freqs)
+
+    def test_all_biquads(self):
+        # Only functionality
+        for t in [
+            dsp.BiquadEqType.Allpass,
+            dsp.BiquadEqType.AllpassFirstOrder,
+            dsp.BiquadEqType.BandpassPeak,
+            dsp.BiquadEqType.BandpassSkirt,
+            dsp.BiquadEqType.Highpass,
+            dsp.BiquadEqType.HighpassFirstOrder,
+            dsp.BiquadEqType.Highshelf,
+            dsp.BiquadEqType.Inverter,
+            dsp.BiquadEqType.Lowpass,
+            dsp.BiquadEqType.LowpassFirstOrder,
+            dsp.BiquadEqType.Lowshelf,
+            dsp.BiquadEqType.Notch,
+            dsp.BiquadEqType.Peaking,
+        ]:
+            dsp.Filter.biquad(t, 100.0, 2.0, 0.7, 2000)
 
     def test_filter_and_resampling_IIR(self):
         f = self.get_iir()
@@ -1926,4 +1952,14 @@ class TestSpectrum:
         )
         sp.plot_magnitude(
             False, dsp.MagnitudeNormalization.NoNormalization, None
+        )
+
+        sp.plot_magnitude(
+            False, dsp.MagnitudeNormalization.OneKhzFirstChannel, None
+        )
+        sp.plot_magnitude(
+            False, dsp.MagnitudeNormalization.MaxFirstChannel, None
+        )
+        sp.plot_magnitude(
+            False, dsp.MagnitudeNormalization.EnergyFirstChannel, None
         )

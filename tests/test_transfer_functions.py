@@ -568,3 +568,34 @@ class TestTransferFunctionsModule:
                 0
             ].time_data[0, 0]
         )
+
+    def test_complex_smoothing(self):
+        # Only functionality
+        ir = dsp.ImpulseResponse(
+            join(os.path.dirname(__file__), "..", "example_data", "rir.wav")
+        )
+        ir = dsp.pad_trim(ir, int(50e-3 * ir.sampling_rate_hz))
+        dsp.transfer_functions.complex_smoothing(
+            ir, 12.0, dsp.transfer_functions.SmoothingDomain.RealImaginary
+        )
+        dsp.transfer_functions.complex_smoothing(
+            ir, 12.0, dsp.transfer_functions.SmoothingDomain.Power
+        )
+        dsp.transfer_functions.complex_smoothing(
+            ir, 12.0, dsp.transfer_functions.SmoothingDomain.PowerPhase
+        )
+        dsp.transfer_functions.complex_smoothing(
+            ir, 12.0, dsp.transfer_functions.SmoothingDomain.Magnitude
+        )
+        dsp.transfer_functions.complex_smoothing(
+            ir, 12.0, dsp.transfer_functions.SmoothingDomain.MagnitudePhase
+        )
+        dsp.transfer_functions.complex_smoothing(
+            ir, 12.0, dsp.transfer_functions.SmoothingDomain.EquivalentComplex
+        )
+        with pytest.raises(AssertionError):
+            dsp.transfer_functions.complex_smoothing(
+                ir,
+                0.0,
+                dsp.transfer_functions.SmoothingDomain.EquivalentComplex,
+            )

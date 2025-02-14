@@ -132,15 +132,19 @@ def _fade(
     else:
         assert s.ndim == 2, "Fade only supports 1D and 2D vectors"
 
-    if mode == FadeType.Exponential:
-        db = np.linspace(-100, 0, l_samples)
-        fade = 10 ** (db / 20)
-    elif mode == FadeType.Linear:
-        fade = np.linspace(0, 1, l_samples)
-    else:  # FadeType.Logarithmic
-        # The constant 50 could be an extra parameter for the user...
-        fade = np.log10(np.linspace(1, 50 * 10**0.5, l_samples))
-        fade /= fade[-1]
+    match mode:
+        case FadeType.Exponential:
+            db = np.linspace(-100, 0, l_samples)
+            fade = 10 ** (db / 20)
+        case FadeType.Linear:
+            fade = np.linspace(0, 1, l_samples)
+        case FadeType.Logarithmic:
+            # The constant 50 could be an extra parameter for the user...
+            fade = np.log10(np.linspace(1, 50 * 10**0.5, l_samples))
+            fade /= fade[-1]
+        case _:
+            raise ValueError("No valid fade")
+
     if not at_start:
         s = np.flip(s, axis=0)
     s[:l_samples, :] *= fade[..., None]

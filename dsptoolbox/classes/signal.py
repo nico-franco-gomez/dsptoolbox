@@ -1042,10 +1042,19 @@ class Signal:
                 y_extra = "" if self.calibrated_signal else "FS"
             case MagnitudeNormalization.OneKhz:
                 y_extra = " (normalized @ 1 kHz)"
+            case MagnitudeNormalization.OneKhzFirstChannel:
+                y_extra = " (normalized @ 1 kHz for first channel)"
             case MagnitudeNormalization.Max:
                 y_extra = " (normalized @ peak)"
+            case MagnitudeNormalization.MaxFirstChannel:
+                y_extra = " (normalized @ peak for first channel)"
             case MagnitudeNormalization.Energy:
                 y_extra = " (normalized with average energy)"
+            case MagnitudeNormalization.EnergyFirstChannel:
+                y_extra = " (normalized with average energy of first channel)"
+            case _:
+                raise ValueError("No valid normalization")
+
         fig, ax = general_plot(
             f,
             mag_db,
