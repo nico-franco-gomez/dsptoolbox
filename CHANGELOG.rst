@@ -14,6 +14,30 @@ adheres to `Semantic Versioning <http://semver.org/spec/v2.0.0.html>`_.
 - Validation for results from tests in every module (so far many tests are
   only regarding functionality)
 
+`0.5.3 <https://pypi.org/project/dsptoolbox/0.5.3>`_ -
+---------------------
+Added
+~~~~~
+- `combine_ir_with_dirac` now can take a gain value for the impulse when
+  merging with the impulse
+- `complex_smoothing` to ``transfer_functions``
+- `MagnitudeNormalization` was extended to normalization of all channels using
+  only the first channel as a reference. This maintains the gain relations
+- `AllpassFirstOrder` was added to biquads
+- thd_percent was added to `harmonic_distortion_analysis`
+
+Bugfix
+~~~~~~
+- return for `two_axes` plot in ``plots`` now has also the second axis
+- plots for the `LRFilterBank` were fixed after some parameters were no longer
+  defaults
+
+Misc
+~~~~
+- caching is now activated for certain parallelized computations
+- most enums are checked exclusively. If a value is not regarded, a ValueError
+  is raised
+
 `0.5.2 <https://pypi.org/project/dsptoolbox/0.5.2>`_ -
 ---------------------
 Added
