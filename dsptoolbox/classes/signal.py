@@ -1100,7 +1100,7 @@ class Signal:
     def plot_spl(
         self,
         normalize_at_peak: bool = False,
-        range_db: float | None = 100.0,
+        dynamic_range_db: float | None = 100.0,
         window_length_s: float = 0.0,
     ) -> tuple[Figure, list[Axes]]:
         """Plots the momentary sound pressure level (dB or dBFS) of each
@@ -1112,10 +1112,10 @@ class Signal:
         normalize_at_peak : bool, optional
             When `True`, each channel gets normalize by its peak value.
             Default: `False`.
-        range_db : float, optional
+        dynamic_range_db : float, optional
             This is the range in dB used for plotting. Each plot will be in the
-            range [peak + 1 - range_db, peak + 1]. Pass `None` to avoid setting
-            any range. Default: 100.
+            range [peak + 1 - dynamic_range_db, peak + 1]. Pass `None` to avoid
+            setting any range. Default: 100.
         window_length_s : float, optional
             When different than 0, a moving average along the time axis is done
             with the given length. Default: 0.
@@ -1154,7 +1154,7 @@ class Signal:
             complex_etc = to_db(
                 td_squared_imaginary,
                 False,
-                500 if range_db is None else range_db,
+                500 if dynamic_range_db is None else dynamic_range_db,
             )
 
         etc = to_db(td_squared, False, 500)
@@ -1196,9 +1196,9 @@ class Signal:
         for n in range(self.number_of_channels):
             if self.is_complex_signal:
                 ax[n].plot(self.time_vector_s, complex_etc[:, n], alpha=0.75)
-            if range_db is not None:
+            if dynamic_range_db is not None:
                 ax[n].set_ylim(
-                    [max_values[n] - np.abs(range_db), max_values[n]]
+                    [max_values[n] - np.abs(dynamic_range_db), max_values[n]]
                 )
         return fig, ax
 
@@ -1288,7 +1288,7 @@ class Signal:
     def plot_spectrogram(
         self,
         channel_number: int = 0,
-        logfreqs: bool = True,
+        log_freqs: bool = True,
         dynamic_range_db: float = 50,
     ) -> tuple[Figure, Axes]:
         """Plots STFT matrix of the given channel.
@@ -1347,7 +1347,7 @@ class Signal:
             ylabel="Frequency / Hz",
             zlabel=zlabel,
             xlog=False,
-            ylog=logfreqs,
+            ylog=log_freqs,
             colorbar=True,
         )
         return fig, ax
@@ -1446,7 +1446,7 @@ class Signal:
         return fig, ax
 
     def plot_csm(
-        self, range_hz=[20, 20e3], logx: bool = True, with_phase: bool = True
+        self, range_hz=[20, 20e3], with_phase: bool = True
     ) -> tuple[Figure, Axes]:
         """Plots the cross spectral matrix of the multichannel signal.
 
@@ -1454,8 +1454,6 @@ class Signal:
         ----------
         range_hz : array-like with length 2, optional
             Range of Hz to be showed. Default: [20, 20e3].
-        logx : bool, optional
-            Logarithmic x axis. Default: `True`.
         with_phase : bool, optional
             When `True`, the unwrapped phase is also plotted. Default: `True`.
 
@@ -1468,7 +1466,7 @@ class Signal:
 
         """
         f, csm = self.get_csm()
-        fig, ax = _csm_plot(f, csm, range_hz, logx, with_phase)
+        fig, ax = _csm_plot(f, csm, range_hz, True, with_phase)
         return fig, ax
 
     # ======== Saving and copy ================================================

@@ -990,7 +990,7 @@ class Compressor(AudioEffect):
         fig, ax = general_plot(
             gains_db,
             gains_db,
-            log=False,
+            log_x=False,
             xlabel="Input Gain / dB",
             ylabel="Output Gain / dB",
         )
@@ -1494,7 +1494,7 @@ class DigitalDelay(AudioEffect):
         fig, ax = general_plot(
             x,
             imp[..., None],
-            log=False,
+            log_x=False,
             xlabel="Time / ms",
             ylabel="Amplitude [dB]",
         )

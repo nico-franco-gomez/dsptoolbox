@@ -490,6 +490,37 @@ try:
             spectrum[i, ...] = window @ input_spectrum[ind_low:ind_high]
         return spectrum
 
+    @nb.jit(
+        nb.types.Array(nb.complex128, 2, "C")(
+            nb.types.Array(nb.complex128, 2, "C"),  # Time data
+            nb.types.Array(nb.complex128, 1, "C"),  # Frequencies (normalized)
+            nb.types.Array(nb.complex128, 2, "C"),  # DFT factor
+            nb.types.Array(nb.complex128, 2, "C"),  # Spectrum
+            nb.types.Array(nb.complex128, 1, "C"),  # Alpha (Gaussian window)
+            nb.types.Array(
+                nb.complex128, 2, "C"
+            ),  # Peak index vector (window)
+        ),
+        parallel=True,
+        cache=True,
+    )
+    def _fdw_backend(
+        time_data: NDArray[np.complex128],
+        freqs_normalized: NDArray[np.complex128],
+        dft_factor: NDArray[np.complex128],
+        spectrum: NDArray[np.complex128],
+        alpha: NDArray[np.complex128],
+        n: NDArray[np.complex128],
+    ):
+        """Parallel backend for frequency-dependent windowing."""
+        for ind in nb.prange(len(freqs_normalized)):
+            spectrum[ind, :] = np.sum(
+                np.exp(dft_factor * freqs_normalized[ind] + alpha[ind] * n)
+                * time_data,
+                axis=0,
+            )
+        return spectrum
+
 except ModuleNotFoundError as e:
     print("Numba is not installed: ", e)
 
@@ -540,3 +571,55 @@ except ModuleNotFoundError as e:
             window /= window.sum()
             spectrum[i, ...] = window @ input_spectrum[ind_low:ind_high]
         return spectrum
+
+    def _fdw_backend(
+        time_data: NDArray[np.complex128],
+        freqs_normalized: NDArray[np.complex128],
+        dft_factor: NDArray[np.complex128],
+        spectrum: NDArray[np.complex128],
+        alpha: NDArray[np.complex128],
+        n: NDArray[np.complex128],
+    ):
+        """Sequential backend for frequency-dependent windowing."""
+        for ind in np.arange(len(freqs_normalized)):
+            spectrum[ind, :] = np.sum(
+                np.exp(dft_factor * freqs_normalized[ind] + alpha[ind] * n)
+                * time_data,
+                axis=0,
+            )
+        return spectrum
+
+
+def _get_frequency_vector_with_frequency_resolution(
+    delta_f_hz: float, sampling_rate_hz: int
+) -> tuple[NDArray[np.float64], float, int]:
+    """Generate a frequency vector based on a given frequency resolution. The
+    returned frequency resolution can differ slightly. Nyquist is always
+    contained, i.e., frequency vector corresponds to an even-length time
+    signal.
+
+    Parameters
+    ----------
+    delta_f_hz : float
+        Desired frequency resolution.
+    sampling_rate_hz : int
+        Sampling rate to regard.
+
+    Returns
+    -------
+    NDArray[np.float64]
+        Frequency vector in Hz.
+    delta_f_hz : float
+        Final frequency resolution in Hz.
+    length_time_data_samples : int
+        Corresponding length of time data to the frequency vector
+
+    """
+    nyquist_hz = sampling_rate_hz / 2.0
+    length_f_vec = int(nyquist_hz / delta_f_hz + 0.5)
+    if length_f_vec % 2 == 0:
+        length_f_vec += 1  # Ensure odd length
+    f_vec = np.linspace(0.0, nyquist_hz, length_f_vec, endpoint=True)
+    delta_f_hz = f_vec[1]
+    length_time_data_samples = (length_f_vec - 1) * 2
+    return f_vec, delta_f_hz, length_time_data_samples

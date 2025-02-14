@@ -259,6 +259,10 @@ class TestTransferFunctionsModule:
         assert np.all(b == s.time_data[:, 0])
         assert f.sampling_rate_hz == s.sampling_rate_hz
 
+        # Functionality in other cases
+        f = dsp.transfer_functions.ir_to_filter(s, channel=0, phase_mode="min")
+        f = dsp.transfer_functions.ir_to_filter(s, channel=0, phase_mode="lin")
+
         # To filter bank
         fb = dsp.transfer_functions.ir_to_filter(
             dsp.ImpulseResponse.from_signal(self.audio_multi), channel=None
@@ -331,17 +335,42 @@ class TestTransferFunctionsModule:
     def test_min_phase_from_mag(self):
         # Only functionality is tested
         self.y_st.set_spectrum_parameters(method=dsp.SpectrumMethod.FFT)
-        f, sp = self.y_st.get_spectrum()
+        spec = dsp.Spectrum.from_signal(self.y_st)
         dsp.transfer_functions.min_phase_from_mag(
-            sp, self.y_st.sampling_rate_hz
+            spec, self.y_st.sampling_rate_hz
+        )
+        dsp.transfer_functions.min_phase_from_mag(
+            spec, self.y_st.sampling_rate_hz, ir_length_samples=self.fs
         )
 
     def test_lin_phase_from_mag(self):
         # Only functionality is tested here
         self.y_st.set_spectrum_parameters(method=dsp.SpectrumMethod.FFT)
-        f, sp = self.y_st.get_spectrum()
+        spec = dsp.Spectrum.from_signal(self.y_st)
         dsp.transfer_functions.lin_phase_from_mag(
-            sp, self.y_st.sampling_rate_hz, group_delay_ms="minimum"
+            spec,
+            self.y_st.sampling_rate_hz,
+            group_delay_ms=None,
+        )
+        dsp.transfer_functions.lin_phase_from_mag(
+            spec,
+            self.y_st.sampling_rate_hz,
+            group_delay_ms=500.0,
+            check_causality=False,
+        )
+
+        with pytest.raises(AssertionError):
+            dsp.transfer_functions.lin_phase_from_mag(
+                spec,
+                self.y_st.sampling_rate_hz,
+                group_delay_ms=1.0,
+                check_causality=True,
+            )
+        dsp.transfer_functions.lin_phase_from_mag(
+            spec,
+            self.y_st.sampling_rate_hz,
+            group_delay_ms=None,
+            minimum_group_delay_factor=10.0,
         )
 
     def test_group_delay(self):
@@ -498,9 +527,7 @@ class TestTransferFunctionsModule:
         s = dsp.ImpulseResponse(
             join(os.path.dirname(__file__), "..", "example_data", "rir.wav")
         )
-        sp = dsp.transfer_functions.window_frequency_dependent(
-            s, 10, 0, [100, 1000]
-        )
+        sp = dsp.transfer_functions.window_frequency_dependent(s, 10)
 
         fig, ax = s.plot_magnitude(
             normalize=dsp.MagnitudeNormalization.NoNormalization

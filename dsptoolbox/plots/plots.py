@@ -29,7 +29,7 @@ def general_plot(
     matrix: NDArray,
     range_x=None,
     range_y=None,
-    log: bool = True,
+    log_x: bool = True,
     labels=None,
     xlabel: str = "Frequency / Hz",
     ylabel: str | None = None,
@@ -48,7 +48,7 @@ def general_plot(
         Range to show for x axis. Default: None.
     range_y : array-like, optional
         Range to show for y axis. Default: None.
-    log : bool, optional
+    log_x : bool, optional
         Show x axis as logarithmic. Default: `True`.
     labels : list or str, optional
         Labels for the drawn lines as list of strings. Default: `None`.
@@ -82,7 +82,7 @@ def general_plot(
         ax.plot(x, matrix, label=labels)
     else:
         ax.plot(x, matrix)
-    if log:
+    if log_x:
         ax.set_xscale("log")
         ticks = array([20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000])
         if range_x is not None:
@@ -270,7 +270,7 @@ def general_subplots_line(
     column: bool = True,
     sharex: bool = True,
     sharey: bool = False,
-    log: bool = False,
+    log_x: bool = False,
     xlabels=None,
     ylabels=None,
     range_x=None,
@@ -293,7 +293,7 @@ def general_subplots_line(
     sharey : bool, optional
         When `True`, all subplots share the same values for the y axis.
         Default: `False`.
-    log : bool, optional
+    log_x : bool, optional
         Show x axis as logarithmic. Default: `False`.
     xlabels : array_like, optional
         Labels for x axis. Default: None.
@@ -336,7 +336,7 @@ def general_subplots_line(
         x = arange(matrix.shape[0])
     for n in range(number_of_channels):
         ax[n].plot(x, matrix[:, n])
-        if log:
+        if log_x:
             ax[n].set_xscale("log")
             ticks = array(
                 [20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000]

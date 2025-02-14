@@ -414,7 +414,7 @@ class LFO:
 
         """
         osc = self.oscillator(2, 1000, 1000, self.random_phase, self.smooth)
-        fig, ax = general_plot(None, osc, log=False, xlabel=None)
+        fig, ax = general_plot(None, osc, log_x=False, xlabel=None)
         ax.set_xticks([])
         ax.set_yticks([])
         ax.set_title("Waveform")

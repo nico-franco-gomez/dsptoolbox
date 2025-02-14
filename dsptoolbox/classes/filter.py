@@ -1090,7 +1090,7 @@ class Filter:
         return general_plot(
             t,
             to_db(self.ba[0], True) if in_db else self.ba[0],
-            log=False,
+            log_x=False,
             xlabel="Time / s",
             ylabel="Taps / 1",
             info_box=txt,
