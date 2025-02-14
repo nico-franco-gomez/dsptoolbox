@@ -14,6 +14,18 @@ adheres to `Semantic Versioning <http://semver.org/spec/v2.0.0.html>`_.
 - Validation for results from tests in every module (so far many tests are
   only regarding functionality)
 
+`0.6 <https://pypi.org/project/dsptoolbox/0.6>`_ -
+---------------------
+Misc
+~~~~
+- renamed some arguments in `general_plot`, `plot_spectrogram` and `plot_spl`
+- `lin_phase_from_mag` and `min_phase_from_mag` now use the spectrum class as
+  an input
+- most enums are checked exclusively. If a value is not regarded, a ValueError
+  is raised
+- refactored `window_frequency_dependent`. The computation is now parallelized
+  and delivers a complex spectrum with a linear frequency vector
+
 `0.5.3 <https://pypi.org/project/dsptoolbox/0.5.3>`_ -
 ---------------------
 Added
