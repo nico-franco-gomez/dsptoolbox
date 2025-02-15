@@ -483,6 +483,11 @@ class TestTransferFunctionsModule:
             join(os.path.dirname(__file__), "..", "example_data", "rir.wav")
         )
         s = dsp.transfer_functions.min_phase_ir(s)
+        with pytest.raises(AssertionError):
+            s = dsp.transfer_functions.min_phase_ir(s, padding_factor=0)
+        with pytest.raises(AssertionError):
+            s = dsp.transfer_functions.min_phase_ir(s, alpha=0.0)
+        s = dsp.transfer_functions.min_phase_ir(s, alpha=1.0 - 1e-6)
 
     def test_combine_ir(self):
         s = dsp.ImpulseResponse(

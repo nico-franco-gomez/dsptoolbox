@@ -728,6 +728,7 @@ def min_phase_ir(
     sig: ImpulseResponse,
     use_real_cepstrum: bool = True,
     padding_factor: int = 8,
+    alpha: float = 1.0,
 ) -> ImpulseResponse:
     """Returns same IR with minimum phase. Two methods are available for
     computing the minimum phase version of the IR: `'real cepstrum'` (using
@@ -745,18 +746,38 @@ def min_phase_ir(
         Zero-padding to a length corresponding to
         `current_length * padding_factor` can be done, in order to avoid time
         aliasing errors. Default: 8.
+    alpha : float, optional
+        This value can be used to premultiply the IR with `alpha**n`, where `n`
+        is the index of the time sample. This is done such that the zeroes
+        of the transfer function are pushed towards the origin of the z-plane,
+        thus ensuring minimum phase outputs. This value should be very close
+        to 1. Useful values are around 1-1e-4 and 1-1e-8. See [1] and [2] for
+        details. Default: 1. (No scaling is used).
 
     Returns
     -------
     `ImpulseResponse`
         Minimum-phase IR as time signal.
 
+    References
+    ----------
+    - [1]: Adrian D. Smith, Robert J. Ferguson. Minimum-phase signal
+      calculation using the real cepstrum.
+    - [2]: Soo-Chang Pei, Huei-Shan Lin. MINIMUM-PHASE FIR FILTER DESIGN USING
+      REAL CEPSTRUM.
+
     """
     assert (
         type(sig) is ImpulseResponse
     ), "This is only valid for an impulse response"
     assert padding_factor > 1, "Padding factor should be at least 1"
-    new_time_data = sig.time_data
+    assert alpha <= 1.0 and alpha > 0.0, "Alpha must be in the range ]0, 1]"
+    new_time_data = sig.time_data.copy()
+
+    if alpha != 1.0:
+        new_time_data *= (alpha ** (np.arange(new_time_data.shape[0])))[
+            :, None
+        ]
 
     if use_real_cepstrum:
         new_time_data = _min_phase_ir_from_real_cepstrum(
@@ -774,6 +795,11 @@ def min_phase_ir(
             new_time_data[:, ch] = min_phase_scipy(
                 sig.time_data[:, ch], method="hilbert", n_fft=length_fft
             )[: new_time_data.shape[0]]
+
+    if alpha != 1.0:
+        new_time_data *= (alpha ** (-np.arange(new_time_data.shape[0])))[
+            :, None
+        ]
 
     return sig.copy_with_new_time_data(new_time_data[: len(sig)])
 
