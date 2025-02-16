@@ -500,6 +500,7 @@ class InterpolationEdgeHandling(Enum):
     """Handling of edges during interpolation:
 
     - ZeroPad: fills with 0 values the frequency bins outside the range.
+    - OnePad: fills with 1 values the frequency bins outside the range.
     - Extend: uses the values at the edges of the spectrum.
     - Error: raises an assertion error if frequency bins outside the saved
       range are requested.
@@ -507,6 +508,7 @@ class InterpolationEdgeHandling(Enum):
     """
 
     ZeroPad = auto()
+    OnePad = auto()
     Extend = auto()
     Error = auto()
 

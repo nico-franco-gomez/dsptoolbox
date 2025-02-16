@@ -1738,6 +1738,13 @@ class TestSpectrum:
         )
         sp_mag.get_interpolated_spectrum(f_outside, dsp.SpectrumType.Magnitude)
         sp_mag.get_interpolated_spectrum(f_outside, dsp.SpectrumType.Db)
+        sp_mag.set_interpolator_parameters(
+            dsp.InterpolationDomain.Magnitude,
+            dsp.InterpolationScheme.Pchip,
+            dsp.InterpolationEdgeHandling.OnePad,
+        )
+        sp_mag.get_interpolated_spectrum(f_outside, dsp.SpectrumType.Magnitude)
+        sp_mag.get_interpolated_spectrum(f_outside, dsp.SpectrumType.Db)
 
     def test_interpolation_complex(self):
         sp_comp = self.get_spectrum_from_filter(None, True)

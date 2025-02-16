@@ -338,6 +338,8 @@ class Spectrum:
         # Get edge values
         if self.__int_edges == InterpolationEdgeHandling.ZeroPad:
             left_val = right_val = 0.0
+        elif self.__int_edges == InterpolationEdgeHandling.OnePad:
+            left_val = right_val = 1.0
         else:  # "extend"
             left_val = interp_data[0, ...]
             right_val = interp_data[-1, ...]
