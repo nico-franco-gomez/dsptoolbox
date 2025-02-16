@@ -538,7 +538,7 @@ class Spectrum:
             np.log2(
                 self.frequency_vector_hz[-1] / self.frequency_vector_hz[-2]
             )
-            if self.frequency_vector_type == FrequencySpacing.Linear
+            if self.frequency_vector_type == FrequencySpacing.Logarithmic
             else None
         )
 
