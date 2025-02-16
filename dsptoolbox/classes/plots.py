@@ -12,7 +12,7 @@ from ..helpers.gain_and_level import to_db
 
 def _zp_plot(z, p):
     fig, ax = plt.subplots(1, 1, figsize=(5, 5))
-    x = np.linspace(-1, 1, 100, endpoint=True)
+    x = np.linspace(-1, 1, 4096, endpoint=True)
     yP = np.sqrt(1 - x**2)
     yM = -np.sqrt(1 - x**2)
     ax.plot(
