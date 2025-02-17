@@ -12,18 +12,16 @@ from ..helpers.gain_and_level import to_db
 
 def _zp_plot(z, p):
     fig, ax = plt.subplots(1, 1, figsize=(5, 5))
-    x = np.linspace(-1, 1, 4096, endpoint=True)
-    yP = np.sqrt(1 - x**2)
-    yM = -np.sqrt(1 - x**2)
-    ax.plot(
-        x,
-        yP,
+    circle = plt.Circle(
+        (0, 0),
+        1,
+        fill=False,
         linestyle="dashed",
         alpha=0.6,
         color="xkcd:grey",
         label="Unit circle",
     )
-    ax.plot(x, yM, linestyle="dashed", alpha=0.6, color="xkcd:grey")
+    ax.add_patch(circle)
     ax.plot(np.real(z), np.imag(z), "o", label="Zeros")
     ax.plot(np.real(p), np.imag(p), "x", label="Poles")
     ax.legend()
