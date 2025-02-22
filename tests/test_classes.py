@@ -1970,3 +1970,23 @@ class TestSpectrum:
         sp.plot_magnitude(
             False, dsp.MagnitudeNormalization.EnergyFirstChannel, None
         )
+
+    def test_to_signal(self):
+        # Only functionality
+        spec = self.get_spectrum_from_rir(True)
+        spec.to_signal(48000)
+        spec.to_signal(96000)
+        spec.to_signal(44100, 2.0)
+
+        # Non-linear frequency
+        spec.resample(
+            dsp.tools.log_frequency_vector([1, 24e3], 512)
+        ).to_signal(44100, 2.0)
+
+        with pytest.raises(AssertionError):
+            spec.to_signal(44100)
+
+        # Non-complex spectrum
+        spec = self.get_spectrum_from_rir(False)
+        with pytest.raises(AssertionError):
+            spec.to_signal(96000)

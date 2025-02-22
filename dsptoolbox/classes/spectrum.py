@@ -14,6 +14,7 @@ from .filter import Filter
 from .filterbank import FilterBank
 from ..helpers.gain_and_level import to_db
 from ..helpers.other import _check_format_in_path
+from ..helpers.other import _pad_trim
 from ..standard.enums import (
     FilterBankMode,
     FrequencySpacing,
@@ -222,6 +223,83 @@ class Spectrum:
 
     def __len__(self):
         return self.number_frequency_bins
+
+    def to_signal(
+        self,
+        sampling_rate_hz: int,
+        length_seconds: float | None = None,
+    ) -> Signal:
+        """Convert the current spectrum to a time signal using an inverse
+        rFFT. Its data must be complex.
+
+        Parameters
+        ----------
+        sampling_rate_hz : int
+            Requested sampling rate of the time signal.
+        length_seconds : float, None, optional
+            Length of time signal in seconds. For linearly-spaced data and
+            None, it will be inferred from the frequency resolution. For other
+            frequency spacings, it is required. Default: None.
+
+        Returns
+        -------
+        Signal
+
+        Notes
+        -----
+        - For linearly-spaced frequency data, it will be checked if an
+          interpolation is necessary considering the current frequency vector.
+          If a length in seconds is requested, the time signal is first
+          computed and then zero-padded or trimmed accordingly in case no
+          interpolation was needed.
+        - Non-linear frequency data will always trigger an interpolation in
+          the magnitude and phase domains with zero-padding outside the known
+          frequency domain.
+
+        """
+        assert not self.is_magnitude, "Spectrum must be complex"
+
+        def __td_from_spec(spec, length_seconds, sampling_rate_hz) -> Signal:
+            time_data = np.fft.irfft(spec, axis=0)
+            if length_seconds is not None:
+                length_samples = int(length_seconds * sampling_rate_hz + 0.5)
+                time_data = _pad_trim(time_data, length_samples)
+            return Signal.from_time_data(time_data, sampling_rate_hz)
+
+        if self.frequency_vector_type == FrequencySpacing.Linear:
+            delta_f = self.frequency_vector_hz[1] - self.frequency_vector_hz[0]
+            condition_sampling_rate = (
+                abs(sampling_rate_hz / 2 - self.frequency_vector_hz[-1])
+                > delta_f
+            )
+            condition_start = not np.isclose(self.frequency_vector_hz[0], 0.0)
+
+            if not (condition_sampling_rate or condition_start):
+                return __td_from_spec(
+                    self.spectral_data, length_seconds, sampling_rate_hz
+                )
+
+            requested_freqs = np.arange(
+                0.0, sampling_rate_hz / 2 + delta_f / 2.0, delta_f
+            )
+        else:
+            assert length_seconds is not None, "A length must be provided"
+
+            requested_freqs = np.fft.rfftfreq(
+                int(length_seconds * sampling_rate_hz + 0.5),
+                1 / sampling_rate_hz,
+            )
+
+        self.set_interpolator_parameters(
+            InterpolationDomain.MagnitudePhase,
+            InterpolationScheme.Pchip,
+            InterpolationEdgeHandling.ZeroPad,
+        )
+        spectrum = self.get_interpolated_spectrum(
+            requested_freqs, SpectrumType.Complex
+        )
+
+        return __td_from_spec(spectrum, length_seconds, sampling_rate_hz)
 
     def trim(
         self,
