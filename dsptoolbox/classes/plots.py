@@ -24,6 +24,8 @@ def _zp_plot(z, p):
     ax.add_patch(circle)
     ax.plot(np.real(z), np.imag(z), "o", label="Zeros")
     ax.plot(np.real(p), np.imag(p), "x", label="Poles")
+    ax.set_xlabel(r"$Re(z)$")
+    ax.set_ylabel(r"$Im(z)$")
     ax.legend()
     fig.tight_layout()
     return fig, ax
