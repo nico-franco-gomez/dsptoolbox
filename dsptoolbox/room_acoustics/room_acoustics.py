@@ -510,7 +510,7 @@ def descriptors(
         desc = np.zeros(rir.number_of_channels)
         for ch in range(rir.number_of_channels):
             desc[ch] = func(
-                rir.time_data[:, ch],
+                rir.time_data[:, ch].copy(),
                 rir.sampling_rate_hz,
                 automatic_trimming_rir,
             )
