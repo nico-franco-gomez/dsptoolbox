@@ -1300,14 +1300,16 @@ def dft(signal: Signal, frequency_vector_hz: NDArray[np.float64]):
       frequency bins.
 
     """
-    time_data = signal.time_data.astype(np.complex128)
+    time_data = signal.time_data.astype(np.complex128, order="C")
     f_normalized = (
         frequency_vector_hz * (time_data.shape[0] / signal.sampling_rate_hz)
-    ).astype(np.complex128)
+    ).astype(np.complex128, order="C")
     dft_factor = (
         -2j * np.pi * np.linspace(0.0, 1.0, time_data.shape[0], endpoint=False)
-    )
+    ).astype(np.complex128, order="C")
     spectrum = np.zeros(
-        (len(frequency_vector_hz), time_data.shape[1]), dtype=np.complex128
-    )
+        (len(frequency_vector_hz), time_data.shape[1]),
+        dtype=np.complex128,
+        order="C",
+    ).astype(np.complex128, order="C")
     return _dft_backend(time_data, f_normalized, dft_factor, spectrum)

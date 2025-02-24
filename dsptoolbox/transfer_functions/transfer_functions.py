@@ -1307,7 +1307,9 @@ def window_frequency_dependent(
     # Avoid 0. frequency
     f = np.fft.rfftfreq(ir.length_samples, 1 / fs)[1:]
     cycles_per_freq_samples = np.round(fs / f * cycles).astype(int)
-    spec = np.zeros((len(f), ir.number_of_channels), dtype=np.complex128)
+    spec = np.zeros(
+        (len(f), ir.number_of_channels), dtype=np.complex128, order="C"
+    )
 
     # Alpha such that window is exactly end_window_value after the number of
     # required samples for each frequency
@@ -1323,20 +1325,22 @@ def window_frequency_dependent(
     # Precompute some window factors
     n = (-0.5 * (n / half) ** 2.0).astype(np.complex128)
     alpha = ((alpha_factor / cycles_per_freq_samples) ** 2.0).astype(
-        np.complex128
+        np.complex128, order="C"
     )
 
-    freqs_normalized = (f * (ir.length_samples / fs)).astype(np.complex128)
+    freqs_normalized = (f * (ir.length_samples / fs)).astype(
+        np.complex128, order="C"
+    )
     dft_factor = np.repeat(
         -2j
         * np.pi
         * np.linspace(0.0, 1.0, ir.length_samples, endpoint=False)[..., None],
         repeats=ir.number_of_channels,
         axis=1,
-    )
+    ).astype(np.complex128, order="C")
 
     spec = _fdw_backend(
-        ir.time_data.astype(np.complex128),
+        ir.time_data.astype(np.complex128, order="C"),
         freqs_normalized,
         dft_factor,
         spec,
@@ -1802,11 +1806,12 @@ def complex_smoothing(
     """
     assert octave_fraction > 0.0, "Octave fraction must be greater than 0"
     f, sp = ir.get_spectrum()
+    sp = sp.astype(sp.dtype, order="C")
 
     # Get a window prototype – mapping to logarithmic space is done through
     # interpolation
-    window_values = window(3000, True)
-    output_sp = np.zeros_like(sp)
+    window_values = window(3000, True).astype(np.float64, order="C")
+    output_sp = np.zeros_like(sp, order="C")
 
     match smoothing_domain:
         case SmoothingDomain.RealImaginary:
@@ -1849,7 +1854,7 @@ def complex_smoothing(
             output2 = np.zeros_like(output_sp)
             output2 = _complex_smoothing_backend(
                 octave_fraction,
-                (np.abs(sp) ** 2.0).astype(np.complex128),
+                (np.abs(sp) ** 2.0).astype(np.complex128, order="C"),
                 output2,
                 f,
                 window_values,
