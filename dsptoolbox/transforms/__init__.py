@@ -4,6 +4,7 @@ Transforms
 This module contains signal transforms.
 
 - `cepstrum()`
+- `from_cepstrum()`
 - `log_mel_spectrogram()` (returns a logarithmic magnitude spectrogram
   with mel frequency axis)
 - `mel_filterbank()` (returns matrix with triangular mel filters used to
@@ -27,6 +28,7 @@ This module contains signal transforms.
 
 from .transforms import (
     cepstrum,
+    from_complex_cepstrum,
     log_mel_spectrogram,
     mel_filterbank,
     plot_waterfall,
@@ -44,10 +46,10 @@ from .transforms import (
     lpc,
     dft,
 )
-from .enums import CepstrumType
 
 __all__ = [
     "cepstrum",
+    "from_complex_cepstrum",
     "log_mel_spectrogram",
     "mel_filterbank",
     "plot_waterfall",
@@ -64,5 +66,4 @@ __all__ = [
     "warp_filter",
     "lpc",
     "dft",
-    "CepstrumType",
 ]
