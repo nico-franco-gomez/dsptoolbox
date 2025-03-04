@@ -14,14 +14,15 @@ class TestTransformsModule:
 
     def test_cepstrum(self):
         # Only functionality
-        dsp.transforms.cepstrum(
-            self.speech, mode=dsp.transforms.CepstrumType.Power
+        cc = dsp.transforms.cepstrum(self.speech, True)
+        dsp.transforms.cepstrum(self.speech, False)
+        ss = dsp.transforms.from_complex_cepstrum(
+            cc, self.speech.sampling_rate_hz
         )
-        dsp.transforms.cepstrum(
-            self.speech, mode=dsp.transforms.CepstrumType.Real
-        )
-        dsp.transforms.cepstrum(
-            self.speech, mode=dsp.transforms.CepstrumType.Complex
+        np.testing.assert_allclose(
+            self.speech.time_data,
+            ss.time_data,
+            atol=dsp.tools.from_db(-100, True),
         )
 
     def test_log_mel_spectrogram(self):
