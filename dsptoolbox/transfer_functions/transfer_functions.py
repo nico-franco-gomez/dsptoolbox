@@ -986,6 +986,7 @@ def excess_group_delay(
     signal: ImpulseResponse,
     smoothing: int = 0,
     remove_ir_latency: bool = False,
+    analytic_computation: bool = False,
 ) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
     """Computes excess group delay of an IR.
 
@@ -997,8 +998,11 @@ def excess_group_delay(
         Octave fraction by which to apply smoothing. `0` avoids any smoothing
         of the group delay. Default: `0`.
     remove_ir_latency : bool, optional
-        If the signal is of type `"ir"` or `"rir"`, the impulse delay can be
-        removed. It uses `padding_factor = 8` by default. Default: `False`.
+        When True, the impulse delay will be removed by checking the peak
+        latency. Default: `False`.
+    analytic_computation : bool, optional
+        When True, the analytic computation of group delay is performed instead
+        of the numerical one. This is significantly slower. Default: False.
 
     Returns
     -------
@@ -1010,18 +1014,17 @@ def excess_group_delay(
     References
     ----------
     - https://www.roomeqwizard.com/help/help_en-GB/html/minimumphase.html
+    - No zero-padding is performed when computing the minimum-phase equivalent
 
     """
     assert (
         type(signal) is ImpulseResponse
     ), "This is only valid for an impulse response"
-    f_min, min_gd = minimum_group_delay(
-        signal, smoothing=0, padding_factor=8 if remove_ir_latency else 1
-    )
+    f_min, min_gd = minimum_group_delay(signal, smoothing=0, padding_factor=1)
     f, gd = group_delay(
         signal,
         smoothing=0,
-        analytic_computation=False,
+        analytic_computation=analytic_computation,
         remove_ir_latency=remove_ir_latency,
     )
 
