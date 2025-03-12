@@ -14,6 +14,28 @@ adheres to `Semantic Versioning <http://semver.org/spec/v2.0.0.html>`_.
 - Validation for results from tests in every module (so far many tests are
   only regarding functionality)
 
+`0.6.1 <https://pypi.org/project/dsptoolbox/0.6.1>`_ -
+---------------------
+Added
+~~~~~
+- `alpha` parameter for minimum phase ir
+- One-padding in spectrum
+- `to_signal` in spectrum
+- analytic computation can be now used for the excess group delay
+
+Bugfix
+~~~~~~
+- fixed smoothing with logarithmic frequency vector
+- room acoustics descriptors now do not modify the input time signal
+- order for numba functions has been fixed so that it does not fail
+  unexpectedly
+
+Misc
+~~~~
+- `convolve_rir` now allows for any length of inputs
+- use circle in `zp_plot` for filters instead of manually generating it
+- clip dynamic range for minimum phase magnitude
+
 `0.6 <https://pypi.org/project/dsptoolbox/0.6>`_ -
 ---------------------
 Misc
