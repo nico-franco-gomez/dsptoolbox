@@ -251,9 +251,6 @@ def convolve_rir_on_signal(
         rir, ImpulseResponse
     ), "This is only valid for an impulse response"
     assert (
-        signal.time_data.shape[0] > rir.time_data.shape[0]
-    ), "The RIR is longer than the signal to convolve it with."
-    assert (
         rir.number_of_channels == 1
     ), "RIR should not contain more than one channel."
     assert (
@@ -513,7 +510,7 @@ def descriptors(
         desc = np.zeros(rir.number_of_channels)
         for ch in range(rir.number_of_channels):
             desc[ch] = func(
-                rir.time_data[:, ch],
+                rir.time_data[:, ch].copy(),
                 rir.sampling_rate_hz,
                 automatic_trimming_rir,
             )

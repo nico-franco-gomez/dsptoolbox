@@ -16,10 +16,10 @@ def _get_minimum_phase_spectrum_from_real_cepstrum(
     time_data : NDArray[np.float64]
         Time series to compute the minimum phase version from. It is assumed
         to have shape (time samples, channels).
-    padding_factor : int, optional
+    padding_factor : int
         Zero-padding to a length corresponding to
         `current_length * padding_factor` can be done, in order to avoid time
-        aliasing errors. Default: 8.
+        aliasing errors.
 
     Returns
     -------

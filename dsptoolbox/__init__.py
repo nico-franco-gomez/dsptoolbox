@@ -134,4 +134,4 @@ __all__ = [
     "FadeType",
 ]
 
-__version__ = "0.6"
+__version__ = "0.6.1"

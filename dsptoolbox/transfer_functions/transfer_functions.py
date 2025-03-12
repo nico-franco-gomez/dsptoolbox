@@ -728,6 +728,7 @@ def min_phase_ir(
     sig: ImpulseResponse,
     use_real_cepstrum: bool = True,
     padding_factor: int = 8,
+    alpha: float = 1.0,
 ) -> ImpulseResponse:
     """Returns same IR with minimum phase. Two methods are available for
     computing the minimum phase version of the IR: `'real cepstrum'` (using
@@ -745,18 +746,38 @@ def min_phase_ir(
         Zero-padding to a length corresponding to
         `current_length * padding_factor` can be done, in order to avoid time
         aliasing errors. Default: 8.
+    alpha : float, optional
+        This value can be used to premultiply the IR with `alpha**n`, where `n`
+        is the index of the time sample. This is done such that the zeroes
+        of the transfer function are pushed towards the origin of the z-plane,
+        thus ensuring minimum phase outputs. This value should be very close
+        to 1. Useful values are around 1-1e-4 and 1-1e-8. See [1] and [2] for
+        details. Default: 1. (No scaling is used).
 
     Returns
     -------
     `ImpulseResponse`
         Minimum-phase IR as time signal.
 
+    References
+    ----------
+    - [1]: Adrian D. Smith, Robert J. Ferguson. Minimum-phase signal
+      calculation using the real cepstrum.
+    - [2]: Soo-Chang Pei, Huei-Shan Lin. MINIMUM-PHASE FIR FILTER DESIGN USING
+      REAL CEPSTRUM.
+
     """
     assert (
         type(sig) is ImpulseResponse
     ), "This is only valid for an impulse response"
     assert padding_factor > 1, "Padding factor should be at least 1"
-    new_time_data = sig.time_data
+    assert alpha <= 1.0 and alpha > 0.0, "Alpha must be in the range ]0, 1]"
+    new_time_data = sig.time_data.copy()
+
+    if alpha != 1.0:
+        new_time_data *= (alpha ** (np.arange(new_time_data.shape[0])))[
+            :, None
+        ]
 
     if use_real_cepstrum:
         new_time_data = _min_phase_ir_from_real_cepstrum(
@@ -774,6 +795,11 @@ def min_phase_ir(
             new_time_data[:, ch] = min_phase_scipy(
                 sig.time_data[:, ch], method="hilbert", n_fft=length_fft
             )[: new_time_data.shape[0]]
+
+    if alpha != 1.0:
+        new_time_data *= (alpha ** (-np.arange(new_time_data.shape[0])))[
+            :, None
+        ]
 
     return sig.copy_with_new_time_data(new_time_data[: len(sig)])
 
@@ -960,6 +986,7 @@ def excess_group_delay(
     signal: ImpulseResponse,
     smoothing: int = 0,
     remove_ir_latency: bool = False,
+    analytic_computation: bool = False,
 ) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
     """Computes excess group delay of an IR.
 
@@ -971,8 +998,11 @@ def excess_group_delay(
         Octave fraction by which to apply smoothing. `0` avoids any smoothing
         of the group delay. Default: `0`.
     remove_ir_latency : bool, optional
-        If the signal is of type `"ir"` or `"rir"`, the impulse delay can be
-        removed. It uses `padding_factor = 8` by default. Default: `False`.
+        When True, the impulse delay will be removed by checking the peak
+        latency. Default: `False`.
+    analytic_computation : bool, optional
+        When True, the analytic computation of group delay is performed instead
+        of the numerical one. This is significantly slower. Default: False.
 
     Returns
     -------
@@ -984,18 +1014,17 @@ def excess_group_delay(
     References
     ----------
     - https://www.roomeqwizard.com/help/help_en-GB/html/minimumphase.html
+    - No zero-padding is performed when computing the minimum-phase equivalent
 
     """
     assert (
         type(signal) is ImpulseResponse
     ), "This is only valid for an impulse response"
-    f_min, min_gd = minimum_group_delay(
-        signal, smoothing=0, padding_factor=8 if remove_ir_latency else 1
-    )
+    f_min, min_gd = minimum_group_delay(signal, smoothing=0, padding_factor=1)
     f, gd = group_delay(
         signal,
         smoothing=0,
-        analytic_computation=False,
+        analytic_computation=analytic_computation,
         remove_ir_latency=remove_ir_latency,
     )
 
@@ -1281,7 +1310,9 @@ def window_frequency_dependent(
     # Avoid 0. frequency
     f = np.fft.rfftfreq(ir.length_samples, 1 / fs)[1:]
     cycles_per_freq_samples = np.round(fs / f * cycles).astype(int)
-    spec = np.zeros((len(f), ir.number_of_channels), dtype=np.complex128)
+    spec = np.zeros(
+        (len(f), ir.number_of_channels), dtype=np.complex128, order="C"
+    )
 
     # Alpha such that window is exactly end_window_value after the number of
     # required samples for each frequency
@@ -1297,20 +1328,22 @@ def window_frequency_dependent(
     # Precompute some window factors
     n = (-0.5 * (n / half) ** 2.0).astype(np.complex128)
     alpha = ((alpha_factor / cycles_per_freq_samples) ** 2.0).astype(
-        np.complex128
+        np.complex128, order="C"
     )
 
-    freqs_normalized = (f * (ir.length_samples / fs)).astype(np.complex128)
+    freqs_normalized = (f * (ir.length_samples / fs)).astype(
+        np.complex128, order="C"
+    )
     dft_factor = np.repeat(
         -2j
         * np.pi
         * np.linspace(0.0, 1.0, ir.length_samples, endpoint=False)[..., None],
         repeats=ir.number_of_channels,
         axis=1,
-    )
+    ).astype(np.complex128, order="C")
 
     spec = _fdw_backend(
-        ir.time_data.astype(np.complex128),
+        ir.time_data.astype(np.complex128, order="C"),
         freqs_normalized,
         dft_factor,
         spec,
@@ -1776,11 +1809,12 @@ def complex_smoothing(
     """
     assert octave_fraction > 0.0, "Octave fraction must be greater than 0"
     f, sp = ir.get_spectrum()
+    sp = sp.astype(sp.dtype, order="C")
 
     # Get a window prototype – mapping to logarithmic space is done through
     # interpolation
-    window_values = window(3000, True)
-    output_sp = np.zeros_like(sp)
+    window_values = window(3000, True).astype(np.float64, order="C")
+    output_sp = np.zeros_like(sp, order="C")
 
     match smoothing_domain:
         case SmoothingDomain.RealImaginary:
@@ -1823,7 +1857,7 @@ def complex_smoothing(
             output2 = np.zeros_like(output_sp)
             output2 = _complex_smoothing_backend(
                 octave_fraction,
-                (np.abs(sp) ** 2.0).astype(np.complex128),
+                (np.abs(sp) ** 2.0).astype(np.complex128, order="C"),
                 output2,
                 f,
                 window_values,

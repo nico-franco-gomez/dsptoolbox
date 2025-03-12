@@ -8,6 +8,7 @@ from scipy.special import iv as bessel_first_mod
 from numpy.typing import NDArray
 
 from ..helpers.spectrum_utilities import _wrap_phase
+from ..helpers.gain_and_level import from_db
 
 
 def _latency(
@@ -96,21 +97,26 @@ def _minimum_phase(
     if np.iscomplexobj(magnitude):
         magnitude = np.abs(magnitude)
 
+    # Limit dynamic range to 500 dB
+    max_value = np.max(magnitude)
+    lowest_clipping_value = from_db(-500.0, True) * max_value
+
+    # Get log magnitude
+    log_magnitude = np.log(np.clip(magnitude, lowest_clipping_value, None))
+
     original_length = magnitude.shape[0]
     if not whole_spectrum:
         if odd_length:
             # Nyquist is not contained in the spectrum
-            magnitude = np.concatenate(
-                [magnitude, magnitude[1:][::-1]], axis=0
+            log_magnitude = np.concatenate(
+                [log_magnitude, log_magnitude[1:][::-1]], axis=0
             )
         else:
-            magnitude = np.concatenate(
-                [magnitude, magnitude[1:-1][::-1]], axis=0
+            log_magnitude = np.concatenate(
+                [log_magnitude, log_magnitude[1:-1][::-1]], axis=0
             )
 
-    minimum_phase = -np.imag(
-        hilbert(np.log(np.clip(magnitude, a_min=1e-40, a_max=None)), axis=0)
-    )[:original_length]
+    minimum_phase = -np.imag(hilbert(log_magnitude, axis=0))[:original_length]
 
     return minimum_phase if unwrapped else _wrap_phase(minimum_phase)
 
