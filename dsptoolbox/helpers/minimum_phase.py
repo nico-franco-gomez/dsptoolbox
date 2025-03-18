@@ -36,15 +36,19 @@ def _get_minimum_phase_spectrum_from_real_cepstrum(
     )
 
     # Window in the cepstral domain, like obtaining hilbert transform
-    w = np.zeros(y.shape[0])
-    w[1 : len(w) // 2 - 1] = 2
-    w[0] = 1
     # If length is even, nyquist is exactly in the middle
-    if len(w) % 2 == 0:
-        w[len(w) // 2] = 1
+    N = y.shape[0]
+    if N % 2 == 0:
+        # 0 is dc, N//2 is nyquist
+        y[1 : N // 2, ...] *= 2.0
+        y[N // 2 + 1 :, ...] = 0.0
+    else:
+        # 0 is dc, N//2 is before nyquist (N+1)//2 is after nyquist
+        y[1 : (N + 1) // 2, ...] *= 2.0
+        y[(N + 1) // 2 :, ...] = 0.0
 
-    # Windowing in cepstral domain and back to spectral domain
-    return np.exp(fft(y * w[..., None], axis=0))
+    # Back to spectral domain
+    return np.exp(fft(y, axis=0))
 
 
 def _min_phase_ir_from_real_cepstrum(
