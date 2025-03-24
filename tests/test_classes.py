@@ -1560,6 +1560,29 @@ class TestFilterTopologies:
             np.testing.assert_allclose(reference.time_data[:, channel], output)
             channel += 1
 
+    def test_fir_filter_overlap_save(self):
+        rir = dsp.ImpulseResponse.from_file(RIR_PATH)
+        noise = dsp.resample(self.get_noise(), rir.sampling_rate_hz)
+        fir = dsp.filterbanks.FIRFilterOverlapSave(
+            dsp.transfer_functions.ir_to_filter(rir)
+        )
+
+        blocksize = 512
+        fir.prepare(blocksize, 1)
+        n_blocks = len(noise) // blocksize + 1
+        noise = dsp.pad_trim(noise, n_blocks * blocksize)
+        accumulator = np.zeros_like(noise.time_data)
+        for n in range(n_blocks):
+            stop = min((n + 1) * blocksize, len(accumulator))
+            sl = slice(n * blocksize, stop)
+            accumulator[sl, 0] = fir.process_block(noise.time_data[sl, 0], 0)
+
+        reference = sig.oaconvolve(
+            noise.time_data[:, 0], rir.time_data[:, 0], mode="full"
+        )
+        diff = accumulator.squeeze() - reference.squeeze()[: len(accumulator)]
+        np.testing.assert_array_almost_equal(diff, 0.0)
+
 
 class TestSpectrum:
     def get_spectrum_from_filter(self, freqs=None, complex=False):

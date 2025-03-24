@@ -66,7 +66,7 @@ from ._filterbank import arma
 from ..classes.lattice_ladder_filter import LatticeLadderFilter
 from ..classes.parallel_filter import ParallelFilter
 from ..classes.iir_filter_realtime import IIRFilter
-from ..classes.fir_filter_realtime import FIRFilter
+from ..classes.fir_filter_realtime import FIRFilter, FIRFilterOverlapSave
 from ..classes.sv_filter import StateVariableFilter
 from ..classes.kautz_filter import KautzFilter
 from ..classes.exponential_average_filter import ExponentialAverageFilter
@@ -92,6 +92,7 @@ __all__ = [
     "FirDesigner",
     "IIRFilter",
     "FIRFilter",
+    "FIRFilterOverlapSave",
     "ParallelFilter",
     "StateSpaceFilter",
     "KautzFilter",
