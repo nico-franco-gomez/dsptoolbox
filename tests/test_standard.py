@@ -513,6 +513,15 @@ class TestStandardModule:
         with pytest.raises(AssertionError):
             dsp.apply_gain(fb, [gain_db] + [0] * (len(fb) + 1))
 
+    def test_crest_factor(self):
+        # Only functionality
+        some_signal = self.audio_multi.copy()
+        dsp.crest_factor(some_signal, False)
+        cf = dsp.crest_factor(some_signal, True)
+        assert np.all(cf > 0.0)
+
+        dsp.crest_factor(self.get_multiband_signal(), False)
+
     def test_resample_filter(self):
         # Functionality
         fs_hz = 48000

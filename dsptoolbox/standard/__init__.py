@@ -18,7 +18,14 @@ from .pad_trim_methods import (
     trim_with_level_threshold,
 )
 from .resampling import resample, resample_filter
-from .gain_and_level import apply_gain, normalize, fade, true_peak_level, rms
+from .gain_and_level import (
+    apply_gain,
+    normalize,
+    fade,
+    true_peak_level,
+    rms,
+    crest_factor,
+)
 from .other import (
     load_pkl_object,
     activity_detector,
@@ -68,6 +75,7 @@ __all__ = [
     "fade",
     "true_peak_level",
     "rms",
+    "crest_factor",
     # Other
     "load_pkl_object",
     "activity_detector",
