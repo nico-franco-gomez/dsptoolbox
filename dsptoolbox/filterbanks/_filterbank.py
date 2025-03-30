@@ -29,6 +29,7 @@ from ..classes import (
 from ..generators import dirac
 from ..plots import general_plot
 from ..helpers.spectrum_utilities import _get_normalized_spectrum
+from ..helpers.other import find_nearest_points_index_in_vector
 from ..helpers.ar_estimation import _burg_ar_estimation, _yw_ar_estimation
 from ..standard._standard_backend import _group_delay_direct
 from ..standard.enums import (
@@ -410,7 +411,7 @@ class LRFilterBank:
     # ======== Prints and plots ===============================================
     def plot_magnitude(
         self,
-        range_hz=[20, 20e3],
+        range_hz: list[float] | None = [20.0, 20e3],
         mode: FilterBankMode = FilterBankMode.Parallel,
         length_samples: int = 2048,
         test_zi: bool = False,
@@ -421,7 +422,7 @@ class LRFilterBank:
 
         Parameters
         ----------
-        range_hz : array_like, optional
+        range_hz : array_like, None, optional
             Range of Hz to plot. Default: [20, 20e3].
         mode : FilterBankMode, optional
             Way to apply filter bank to the signal. Supported modes are:
@@ -512,7 +513,7 @@ class LRFilterBank:
 
     def plot_phase(
         self,
-        range_hz=[20, 20e3],
+        range_hz: list[float] | None = [20.0, 20e3],
         mode: FilterBankMode = FilterBankMode.Parallel,
         length_samples: int = 2048,
         test_zi: bool = False,
@@ -523,7 +524,7 @@ class LRFilterBank:
 
         Parameters
         ----------
-        range_hz : array-like, optional
+        range_hz : array-like, None, optional
             Range of Hz to plot. Default: [20, 20e3].
         mode : FilterBankMode, optional
             Way to apply filter bank to the signal. Supported modes are:
@@ -586,7 +587,7 @@ class LRFilterBank:
 
     def plot_group_delay(
         self,
-        range_hz=[20, 20e3],
+        range_hz: list[float] | None = [20.0, 20e3],
         mode: FilterBankMode = FilterBankMode.Parallel,
         length_samples: int = 2048,
         test_zi: bool = False,
@@ -596,8 +597,9 @@ class LRFilterBank:
 
         Parameters
         ----------
-        range_hz : array-like, optional
-            Range of Hz to plot. Default: [20, 20e3].
+        range_hz : array-like, None, optional
+            Range of Hz to plot. Use None to avoid any range.
+            Default: [20, 20e3].
         mode : FilterBankMode, optional
             Way to apply filter bank to the signal. Supported modes are:
             `'parallel'`, `'summed'`. Default: Parallel.
@@ -645,6 +647,12 @@ class LRFilterBank:
             f, sp = bs.get_spectrum()
             gd = _group_delay_direct(sp.squeeze(), delta_f=f[1] - f[0]) * 1e3
             labels = ["Summed"]
+
+        if range_hz is not None:
+            inds = find_nearest_points_index_in_vector(range_hz, f)
+            f = f[inds[0] : inds[1]]
+            gd = gd[inds[0] : inds[1], ...]
+
         return general_plot(
             f,
             gd,
@@ -996,7 +1004,7 @@ class BaseCrossover(FilterBank):
     def plot_magnitude(
         self,
         mode: FilterBankMode = FilterBankMode.Parallel,
-        range_hz=[20, 20e3],
+        range_hz: list[float] | None = [20.0, 20e3],
         length_samples: int = 2048,
         test_zi: bool = False,
         downsample: bool = True,

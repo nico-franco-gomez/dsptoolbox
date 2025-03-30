@@ -63,7 +63,7 @@ def _get_normalized_spectrum(
     f,
     spectra: NDArray[np.complex128 | np.float64],
     is_amplitude_scaling: bool,
-    f_range_hz,
+    f_range_hz: list[float] | None,
     normalize: MagnitudeNormalization,
     smoothing: int,
     phase: bool,

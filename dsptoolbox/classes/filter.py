@@ -25,7 +25,11 @@ from .filter_helpers import (
 )
 from .plots import _zp_plot
 from ..plots import general_plot
-from ..helpers.other import _pad_trim, _check_format_in_path
+from ..helpers.other import (
+    _pad_trim,
+    _check_format_in_path,
+    find_nearest_points_index_in_vector,
+)
 from ..helpers.gain_and_level import to_db
 from ..standard.enums import (
     FilterCoefficientsType,
@@ -837,7 +841,7 @@ class Filter:
     def plot_magnitude(
         self,
         length_samples: int = 512,
-        range_hz=[20, 20e3],
+        range_hz: list[float] | None = [20.0, 20e3],
         normalize: MagnitudeNormalization = MagnitudeNormalization.NoNormalization,
         show_info_box: bool = True,
         zero_phase: bool = False,
@@ -850,9 +854,9 @@ class Filter:
         length_samples : int, optional
             Length of IR for magnitude plot. See notes for details.
             Default: 512.
-        range_hz : array-like with length 2, optional
-            Range for which to plot the magnitude response.
-            Default: [20, 20000].
+        range_hz : array-like with length 2, None, optional
+            Range for which to plot the magnitude response. Use None to avoid
+            setting any specific range. Default: [20, 20000].
         normalize : MagnitudeNormalization, optional
             Mode for normalization. Default: NoNormalization.
         show_info_box : bool, optional
@@ -899,7 +903,7 @@ class Filter:
     def plot_group_delay(
         self,
         length_samples: int = 512,
-        range_hz=[20, 20e3],
+        range_hz: list[float] | None = [20.0, 20e3],
         show_info_box: bool = False,
     ) -> tuple[Figure, Axes]:
         """Plots group delay of the filter. Different methods are used for
@@ -909,9 +913,9 @@ class Filter:
         ----------
         length_samples : int, optional
             Length of ir for magnitude plot. Default: 512.
-        range_hz : array-like with length 2, optional
-            Range for which to plot the magnitude response.
-            Default: [20, 20000].
+        range_hz : array-like with length 2, None, optional
+            Range for which to plot the magnitude response. Pass None to avoid
+            setting any range. Default: [20, 20000].
         show_info_box : bool, optional
             Shows an information box on the plot. Default: `False`.
 
@@ -941,6 +945,12 @@ class Filter:
         if any(abs(gd) > 50):
             ymin = -2
             ymax = 50
+
+        if range_hz is not None:
+            inds = find_nearest_points_index_in_vector(range_hz, f)
+            f = f[inds[0] : inds[1]]
+            gd = gd[inds[0] : inds[1], ...]
+
         fig, ax = general_plot(
             x=f,
             matrix=gd[..., None],
@@ -963,7 +973,7 @@ class Filter:
     def plot_phase(
         self,
         length_samples: int = 512,
-        range_hz=[20, 20e3],
+        range_hz: list[float] | None = [20.0, 20e3],
         unwrap: bool = False,
         show_info_box: bool = False,
     ) -> tuple[Figure, Axes]:
@@ -973,7 +983,7 @@ class Filter:
         ----------
         length_samples : int, optional
             Length of IR for phase plot. See notes for details. Default: 512.
-        range_hz : array-like with length 2, optional
+        range_hz : array-like with length 2, None, optional
             Range for which to plot the magnitude response.
             Default: [20, 20000].
         unwrap : bool, optional

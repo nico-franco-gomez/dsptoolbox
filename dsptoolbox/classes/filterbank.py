@@ -537,7 +537,7 @@ class FilterBank:
     def plot_magnitude(
         self,
         mode: FilterBankMode,
-        range_hz=[20, 20e3],
+        range_hz: list[float] | None = [20.0, 20e3],
         length_samples: int = 2048,
         test_zi: bool = False,
     ) -> tuple[Figure, Axes] | None:
@@ -550,8 +550,9 @@ class FilterBank:
             `'sequential'` plots the frequency response after having filtered
             one impulse with every filter in the FilterBank. `'summed'`
             sums up every frequency response.
-        range_hz : array-like, optional
-            Range of Hz to plot. Default: [20, 20e3].
+        range_hz : array-like, None, optional
+            Range of Hz to plot. Use None to avoid any specific range.
+            Default: [20., 20e3].
         length_samples : int, optional
             Length (in samples) of the IR to be generated for the plot.
             Default: 2048.
@@ -789,7 +790,7 @@ class FilterBank:
     def plot_group_delay(
         self,
         mode: FilterBankMode,
-        range_hz=[20, 20e3],
+        range_hz: list[float] | None = [20.0, 20e3],
         length_samples: int = 2048,
         test_zi: bool = False,
     ) -> tuple[Figure, Axes] | None:
