@@ -1583,7 +1583,7 @@ class TestFilterTopologies:
         diff = accumulator.squeeze() - reference.squeeze()[: len(accumulator)]
         np.testing.assert_array_almost_equal(diff, 0.0)
 
-    def test_fir_warped_fir_filter(self):
+    def test_warped_fir_filter(self):
         # Only functionality
         rir = dsp.pad_trim(dsp.ImpulseResponse.from_file(RIR_PATH), 300)
         fir = dsp.filterbanks.WarpedFIR(
@@ -1594,6 +1594,34 @@ class TestFilterTopologies:
         # Try out filtering multichannel
         rir.time_data = np.repeat(rir.time_data, 2, axis=1)
         fir.filter_signal(rir)
+
+    def test_warped_iir_filter(self):
+        # Only functionality
+        rir = dsp.pad_trim(dsp.ImpulseResponse.from_file(RIR_PATH), 300)
+        iir_coefficients = dsp.Filter.biquad(
+            dsp.BiquadEqType.Peaking, 200.0, 4, 0.7, rir.sampling_rate_hz
+        )
+
+        iir_w = dsp.filterbanks.WarpedIIR(
+            iir_coefficients.ba[0].copy(),
+            iir_coefficients.ba[1].copy(),
+            -0.6,
+            rir.sampling_rate_hz,
+        )
+        [iir_w.process_sample(x, 0) for x in rir.time_data[:, 0]]
+
+        # Try out filtering multichannel
+        rir.time_data = np.repeat(rir.time_data, 2, axis=1)
+        iir_w.filter_signal(rir)
+
+        # With different orders of a and b coefficients
+        iir_w = dsp.filterbanks.WarpedIIR(
+            np.pad(iir_coefficients.ba[0], ((0, 4))),
+            np.pad(iir_coefficients.ba[1], ((0, 10))),
+            -0.6,
+            rir.sampling_rate_hz,
+        )
+        [iir_w.process_sample(x, 0) for x in rir.time_data[:, 0]]
 
 
 class TestSpectrum:
