@@ -1563,7 +1563,7 @@ class TestFilterTopologies:
     def test_fir_filter_overlap_save(self):
         rir = dsp.ImpulseResponse.from_file(RIR_PATH)
         noise = dsp.resample(self.get_noise(), rir.sampling_rate_hz)
-        fir = dsp.filterbanks.FIRFilterOverlapSave(
+        fir = dsp.filterbanks.FIRFilterOverlapSave.from_filter(
             dsp.transfer_functions.ir_to_filter(rir)
         )
 
