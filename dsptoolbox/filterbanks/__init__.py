@@ -31,6 +31,10 @@ Other:
   transform.
 - `IIRFilter()`: General IIR filter implemented as transposed direct-form 2.
 - `FIRFilter()`: FIR filter implemented in the time domain.
+- `FIRFilterOverlapSave()`: FIR filter implemented in the time domain using
+  RFFT and overlap-save.
+- `WarpedFIR()`: FIR filter implemented in the time domain with efficient
+  warping.
 - `ParallelFilter()`: Find the (least-squares) optimal linear combination of
   parallel SOS to approximate an IR.
 - `KautzFilter()`: Kautz filters with an orthonormal pole basis.
@@ -67,6 +71,7 @@ from ..classes.lattice_ladder_filter import LatticeLadderFilter
 from ..classes.parallel_filter import ParallelFilter
 from ..classes.iir_filter_realtime import IIRFilter
 from ..classes.fir_filter_realtime import FIRFilter, FIRFilterOverlapSave
+from ..classes.warped_filters import WarpedFIR
 from ..classes.sv_filter import StateVariableFilter
 from ..classes.kautz_filter import KautzFilter
 from ..classes.exponential_average_filter import ExponentialAverageFilter
@@ -93,6 +98,7 @@ __all__ = [
     "IIRFilter",
     "FIRFilter",
     "FIRFilterOverlapSave",
+    "WarpedFIR",
     "ParallelFilter",
     "StateSpaceFilter",
     "KautzFilter",

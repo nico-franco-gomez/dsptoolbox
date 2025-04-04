@@ -1583,6 +1583,16 @@ class TestFilterTopologies:
         diff = accumulator.squeeze() - reference.squeeze()[: len(accumulator)]
         np.testing.assert_array_almost_equal(diff, 0.0)
 
+    def test_fir_warped_fir_filter(self):
+        # Only functionality
+        fir = dsp.filterbanks.WarpedFIR(np.hanning(15), -0.6)
+        rir = dsp.pad_trim(dsp.ImpulseResponse.from_file(RIR_PATH), 300)
+        [fir.process_sample(x, 0) for x in rir.time_data[:, 0]]
+
+        # Try out filtering multichannel
+        rir.time_data = np.repeat(rir.time_data, 2, axis=1)
+        fir.filter_signal(rir)
+
 
 class TestSpectrum:
     def get_spectrum_from_filter(self, freqs=None, complex=False):
