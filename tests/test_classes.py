@@ -1585,8 +1585,10 @@ class TestFilterTopologies:
 
     def test_fir_warped_fir_filter(self):
         # Only functionality
-        fir = dsp.filterbanks.WarpedFIR(np.hanning(15), -0.6)
         rir = dsp.pad_trim(dsp.ImpulseResponse.from_file(RIR_PATH), 300)
+        fir = dsp.filterbanks.WarpedFIR(
+            np.hanning(15), -0.6, rir.sampling_rate_hz
+        )
         [fir.process_sample(x, 0) for x in rir.time_data[:, 0]]
 
         # Try out filtering multichannel

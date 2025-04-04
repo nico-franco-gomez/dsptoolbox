@@ -21,7 +21,10 @@ class WarpedFIR(RealtimeFilter):
     """
 
     def __init__(
-        self, b_coefficients: NDArray[np.float64], warping_factor: float
+        self,
+        b_coefficients: NDArray[np.float64],
+        warping_factor: float,
+        sampling_rate_hz: int,
     ):
         """Instantiate a warped FIR filter with its coefficients and a warping
         factor. See [1] for details on use and implementation.
@@ -32,6 +35,9 @@ class WarpedFIR(RealtimeFilter):
             Feedforward filter coefficients.
         warping_factor : float
             Factor to use for warping.
+        sampling_rate_hz : int
+            Sampling rate of the filter. It is only relevant when filtering a
+            whole signal and not in the sample-by-sample processing.
 
         References
         ----------
@@ -43,6 +49,7 @@ class WarpedFIR(RealtimeFilter):
         assert (
             abs(warping_factor) < 1.0
         ), "Warping factor must be in range ]-1;1["
+        self.sampling_rate_hz = sampling_rate_hz
         self.b = b_coefficients
         self.warp = warping_factor
         self.N = len(self.b)
@@ -74,12 +81,14 @@ class WarpedFIR(RealtimeFilter):
             # Accumulate output
             output += new_residue * self.b[nn + 1]
 
+        # Save last residue
+        self.buffer[-1, channel] = residue
+
         return output
 
     def filter_signal(self, signal: Signal) -> Signal:
-        """Filter a whole signal with the warped FIR filter. No checking of the
-        sampling rates is done here and the existing buffers are left
-        unmodified in this operation.
+        """Filter a whole signal with the warped FIR filter. The existing
+        buffers are left unmodified in this operation.
 
         Parameters
         ----------
@@ -87,6 +96,9 @@ class WarpedFIR(RealtimeFilter):
             Signal to be filtered.
 
         """
+        assert (
+            self.sampling_rate_hz == signal.sampling_rate_hz
+        ), "Sampling rates do not match"
         buffer_prior = self.buffer.copy()
         self.set_n_channels(signal.number_of_channels)
         new_signal = signal.copy_with_new_time_data(
