@@ -13,8 +13,8 @@ from .signal import Signal
 from .filter import Filter
 from .filterbank import FilterBank
 from ..helpers.gain_and_level import to_db
-from ..helpers.other import _check_format_in_path
-from ..helpers.other import _pad_trim
+from ..helpers.other import _check_format_in_path, _pad_trim
+from ..helpers.spectrum_utilities import _warp_frequency_vector
 from ..standard.enums import (
     FilterBankMode,
     FrequencySpacing,
@@ -585,6 +585,36 @@ class Spectrum:
             self.frequency_vector_hz[region],
             axis=0,
         )
+
+    def warp(self, warping_factor: float, sampling_rate_hz: int):
+        """Transform (inplace) the spectrum by warping it through
+        interpolation with the stored interpolation parameters.
+
+        Parameters
+        ----------
+        warping_factor : float
+            Warping factor between ]-1;1[. See notes for details.
+        sampling_rate_hz : int
+            Assumed sampling rate while warping. It must be valid for the
+            current frequency vector, i.e., no aliasing is to be expected.
+
+        Returns
+        -------
+        self
+
+        """
+        if not np.isclose(sampling_rate_hz / 2, self.frequency_vector_hz[-1]):
+            assert (
+                sampling_rate_hz / 2 >= self.frequency_vector_hz[-1]
+            ), "Invalid sampling rate for frequency vector"
+
+        freqs_w = _warp_frequency_vector(
+            self.frequency_vector_hz, sampling_rate_hz, warping_factor
+        )
+        self.spectral_data = self.get_interpolated_spectrum(
+            freqs_w, SpectrumType.Magnitude
+        )
+        return self
 
     def apply_octave_smoothing(
         self, octave_fraction: float, window_type: Window = Window.Hann

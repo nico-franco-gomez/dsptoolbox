@@ -468,3 +468,27 @@ def _interpolate_fr(
             interpolated = from_db(interpolated, "amplitude" in mode)
 
     return interpolated
+
+
+def _warp_frequency_vector(
+    freqs_hz: NDArray[np.float64], sampling_rate_hz: int, warping_factor: float
+):
+    """Warp a frequency vector.
+
+    Parameters
+    ----------
+    freqs_hz : NDArray[np.float64]
+        Frequency vector to warp.
+    sampling_rate_hz : int
+        Sampling rate to assume during warping.
+    warping_factor : float
+        Warping factor. It must be between ]-1;1[
+
+    """
+    assert (
+        np.abs(warping_factor) < 1.0
+    ), "Warping factor must be between ]-1;1["
+    omega = 2 * np.pi * freqs_hz / sampling_rate_hz
+    return freqs_hz + sampling_rate_hz / np.pi * np.arctan(
+        warping_factor * np.sin(omega) / (1 - warping_factor * np.cos(omega))
+    )
