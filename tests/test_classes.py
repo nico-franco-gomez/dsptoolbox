@@ -1601,9 +1601,19 @@ class TestSpectrum:
             complex,
         )
 
+    rir_spec_complex = dsp.Spectrum.from_signal(
+        dsp.ImpulseResponse.from_file(RIR_PATH), True
+    )
+    rir = dsp.ImpulseResponse.from_file(RIR_PATH)
+    rir_spec_real = dsp.Spectrum.from_signal(
+        dsp.ImpulseResponse.from_file(RIR_PATH), False
+    )
+
     def get_spectrum_from_rir(self, complex=False):
-        return dsp.Spectrum.from_signal(
-            dsp.ImpulseResponse.from_file(RIR_PATH), complex
+        return (
+            self.rir_spec_complex.copy()
+            if complex
+            else self.rir_spec_real.copy()
         )
 
     def test_properties(self):
@@ -2013,3 +2023,13 @@ class TestSpectrum:
         spec = self.get_spectrum_from_rir(False)
         with pytest.raises(AssertionError):
             spec.to_signal(96000)
+
+    def test_warp(self):
+        # Only functionality
+        spec = self.get_spectrum_from_rir(False)
+        spec.warp(-0.7, self.rir.sampling_rate_hz)
+        spec.warp(0.7, self.rir.sampling_rate_hz)
+        with pytest.raises(AssertionError):
+            spec.warp(1.1, self.rir.sampling_rate_hz)
+        with pytest.raises(AssertionError):
+            spec.warp(0.1, self.rir.sampling_rate_hz - 200)
