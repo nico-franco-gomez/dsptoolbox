@@ -54,7 +54,23 @@ class FIRFilterOverlapSave(RealtimeFilter):
     """Execute a convolution of an FIR filter with the overlap-save scheme.
     This can be used in realtime with block-processing."""
 
-    def __init__(self, fir: Filter):
+    def __init__(self, b: NDArray[np.float64]):
+        """Create a new FIR Filter to be used with the overlap-save scheme.
+        It can only process data in blocks and the `prepare` method has to be
+        called before the processing can start.
+
+        Parameters
+        ----------
+        b : NDArray[np.float64]
+            Feedforward coefficients of the FIR filter.
+
+        """
+        assert b.ndim == 1, "A single dimension should be provided"
+        self.fir = b
+        self.set_n_channels(1)
+
+    @staticmethod
+    def from_filter(fir: Filter):
         """Instantiate FIR filter.
 
         Parameters
@@ -64,8 +80,7 @@ class FIRFilterOverlapSave(RealtimeFilter):
 
         """
         assert fir.is_fir, "Only valid for FIR filters"
-        self.fir = fir.ba[0].copy()
-        self.set_n_channels(1)
+        return FIRFilterOverlapSave(fir.ba[0].copy())
 
     def prepare(self, blocksize_samples: int, n_channels: int):
         """Prepare the filter for block processing.
