@@ -1415,6 +1415,9 @@ class TestFilterTopologies:
 
         np.testing.assert_allclose(td, sig.lfilter(b, a, n.time_data[:, 0]))
 
+        # Check functionality of constructor
+        dsp.filterbanks.IIRFilter.from_filter(iir_original)
+
     def test_fir_filter(self):
         fir_original = dsp.Filter.fir_filter(
             25,
@@ -1433,6 +1436,9 @@ class TestFilterTopologies:
             td[ind] = fir.process_sample(td[ind], 0)
 
         np.testing.assert_allclose(td, sig.lfilter(b, [1], n.time_data[:, 0]))
+
+        # Check functionality of constructor
+        dsp.filterbanks.FIRFilter.from_filter(fir_original)
 
     def test_kautz_filters(self):
         # Only functionality

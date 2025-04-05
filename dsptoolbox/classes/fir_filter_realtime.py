@@ -2,6 +2,7 @@ from numpy.typing import NDArray
 import numpy as np
 import scipy.fft as fft
 
+from ..standard.enums import FilterCoefficientsType
 from .realtime_filter import RealtimeFilter
 from ..classes.filter import Filter
 
@@ -28,6 +29,24 @@ class FIRFilter(RealtimeFilter):
         self.order = len(b) - 1
         self.b = b
         self.set_n_channels(1)
+
+    @staticmethod
+    def from_filter(fir: Filter):
+        """Instantiate FIR filter.
+
+        Parameters
+        ----------
+        fir : Filter
+            FIR filter.
+
+        Returns
+        -------
+        FIRFilter
+
+        """
+        assert fir.is_fir, "Only valid for FIR filters"
+        b, _ = fir.get_coefficients(FilterCoefficientsType.Ba)
+        return FIRFilter(b)
 
     def set_n_channels(self, n_channels: int):
         self.state = np.zeros((self.order, n_channels))
@@ -75,12 +94,17 @@ class FIRFilterOverlapSave(RealtimeFilter):
 
         Parameters
         ----------
-        fir : NDArray[np.float64]
-            FIR filter. It can only have a single dimension.
+        fir : Filter
+            FIR filter.
+
+        Returns
+        -------
+        FIRFilterOverlapSave
 
         """
         assert fir.is_fir, "Only valid for FIR filters"
-        return FIRFilterOverlapSave(fir.ba[0].copy())
+        b, _ = fir.get_coefficients(FilterCoefficientsType.Ba)
+        return FIRFilterOverlapSave(b)
 
     def prepare(self, blocksize_samples: int, n_channels: int):
         """Prepare the filter for block processing.
