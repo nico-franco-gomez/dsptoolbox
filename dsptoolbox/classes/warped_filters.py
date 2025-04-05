@@ -1,6 +1,8 @@
 from numpy.typing import NDArray
 import numpy as np
 
+from ..standard.enums import FilterCoefficientsType
+from .filter import Filter
 from .signal import Signal
 from .realtime_filter import RealtimeFilter
 
@@ -55,6 +57,26 @@ class WarpedFIR(RealtimeFilter):
         self.N = len(self.b)
         self.order = len(self.b) - 1
         self.set_n_channels(1)
+
+    @staticmethod
+    def from_filter(filt: Filter, warping_factor: float):
+        """Instantiate with the coefficients of a filter. It must be FIR
+
+        Parameters
+        ----------
+        filt : Filter
+            Filter with coefficients.
+        warping_factor : float
+            Factor to use for warping.
+
+        Returns
+        -------
+        WarpedFIR
+
+        """
+        assert filt.is_fir, "This is only valid for a FIR filter"
+        b, _ = filt.get_coefficients(FilterCoefficientsType.Ba)
+        return WarpedFIR(b, warping_factor, filt.sampling_rate_hz)
 
     def set_n_channels(self, n_channels: int):
         assert n_channels > 0
@@ -175,6 +197,26 @@ class WarpedIIR(WarpedFIR):
         self.sampling_rate_hz = sampling_rate_hz
         self.set_n_channels(1)
         self.__compute_sigmas()
+
+    @staticmethod
+    def from_filter(filt: Filter, warping_factor: float):
+        """Instantiate with the coefficients of a filter. It must be IIR
+
+        Parameters
+        ----------
+        filt : Filter
+            Filter with coefficients.
+        warping_factor : float
+            Factor to use for warping.
+
+        Returns
+        -------
+        WarpedFIR
+
+        """
+        assert filt.is_iir, "This is only valid for a IIR filter"
+        b, a = filt.get_coefficients(FilterCoefficientsType.Ba)
+        return WarpedIIR(b, a, warping_factor, filt.sampling_rate_hz)
 
     def __compute_sigmas(self):
         """Computation from Karjalainen, M. & Härmä, Aki & Laine, Unto &
