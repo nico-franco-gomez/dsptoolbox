@@ -1560,6 +1560,15 @@ class TestFilterTopologies:
             np.testing.assert_allclose(reference.time_data[:, channel], output)
             channel += 1
 
+        # Constructors
+        # TODO: check output
+        iir = dsp.Filter.iir_filter(
+            12, 500.0, dsp.FilterPassType.Lowpass, self.fs_hz
+        )
+        dsp.filterbanks.StateSpaceFilter.from_filter(iir)
+        out = dsp.filterbanks.StateSpaceFilter.from_filter_as_sos_list(iir)
+        assert len(out) == 6
+
     def test_fir_filter_overlap_save(self):
         rir = dsp.ImpulseResponse.from_file(RIR_PATH)
         noise = dsp.resample(self.get_noise(), rir.sampling_rate_hz)
@@ -1595,6 +1604,11 @@ class TestFilterTopologies:
         rir.time_data = np.repeat(rir.time_data, 2, axis=1)
         fir.filter_signal(rir)
 
+        # Constructor
+        dsp.filterbanks.WarpedFIR.from_filter(
+            dsp.Filter.from_ba(np.hanning(20), [1], rir.sampling_rate_hz), 0.1
+        )
+
     def test_warped_iir_filter(self):
         # Only functionality
         rir = dsp.pad_trim(dsp.ImpulseResponse.from_file(RIR_PATH), 300)
@@ -1622,6 +1636,9 @@ class TestFilterTopologies:
             rir.sampling_rate_hz,
         )
         [iir_w.process_sample(x, 0) for x in rir.time_data[:, 0]]
+
+        # Constructor
+        dsp.filterbanks.WarpedIIR.from_filter(iir_coefficients, 0.1)
 
 
 class TestSpectrum:
