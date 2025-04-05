@@ -1374,7 +1374,7 @@ class TestFilterTopologies:
         # FIR ba (this filter does not work due to the reflection coefficients,
         # maybe use another one ?)
         # fir = dsp.transfer_functions.ir_to_filter(iir.get_ir(1024))
-        # llf = dsp.filterbanks.convert_into_lattice_filter(fir)
+        # llf = dsp.filterbanks.LatticeLadderFilter.from_filter(fir)
 
         # td = n.time_data.squeeze()
         # for ind in np.arange(len(td)):
