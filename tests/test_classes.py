@@ -1332,7 +1332,7 @@ class TestFilterTopologies:
             filter_design_method=dsp.IirDesignMethod.Butterworth,
             sampling_rate_hz=self.fs_hz,
         )
-        llf = dsp.filterbanks.convert_into_lattice_filter(iir)
+        llf = dsp.filterbanks.LatticeLadderFilter.from_filter(iir)
 
         td = n.time_data.copy().squeeze()
         for ind in np.arange(len(td)):
@@ -1354,7 +1354,7 @@ class TestFilterTopologies:
             *iir.get_coefficients(dsp.FilterCoefficientsType.Ba),
             sampling_rate_hz=self.fs_hz,
         )
-        llf = dsp.filterbanks.convert_into_lattice_filter(iir)
+        llf = dsp.filterbanks.LatticeLadderFilter.from_filter(iir)
 
         td = n.time_data.copy().squeeze()
         for ind in np.arange(len(td)):

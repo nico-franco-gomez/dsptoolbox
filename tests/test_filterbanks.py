@@ -350,7 +350,7 @@ class TestLatticeLadderFilter:
             frequency_hz=1000,
             sampling_rate_hz=fs,
         )
-        new_f = dsp.filterbanks.convert_into_lattice_filter(f)
+        new_f = dsp.filterbanks.LatticeLadderFilter.from_filter(f)
         n1 = f.filter_signal(n).time_data.squeeze()
         n2 = new_f.filter_signal(n).time_data.squeeze()
         assert np.all(np.isclose(n1, n2))
@@ -361,7 +361,7 @@ class TestLatticeLadderFilter:
             {dsp.FilterCoefficientsType.Ba: [b, a]},
             f.sampling_rate_hz,
         )
-        new_f = dsp.filterbanks.convert_into_lattice_filter(f2)
+        new_f = dsp.filterbanks.LatticeLadderFilter.from_filter(f2)
         n1 = f2.filter_signal(n).time_data.squeeze()
         n2 = new_f.filter_signal(n).time_data.squeeze()
         assert np.all(np.isclose(n1, n2))
@@ -372,7 +372,7 @@ class TestLatticeLadderFilter:
             {dsp.FilterCoefficientsType.Ba: [[1, 13 / 24, 5 / 8, 1 / 3], [1]]},
             sampling_rate_hz=fs,
         )
-        new_f = dsp.filterbanks.convert_into_lattice_filter(f)
+        new_f = dsp.filterbanks.LatticeLadderFilter.from_filter(f)
         n1 = f.filter_signal(n).time_data.squeeze()
         n2 = new_f.filter_signal(n).time_data.squeeze()
         assert np.all(np.isclose(n1, n2))

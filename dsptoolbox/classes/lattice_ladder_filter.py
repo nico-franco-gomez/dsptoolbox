@@ -6,6 +6,8 @@ from warnings import warn
 import numpy as np
 from numpy.typing import NDArray
 
+from .filter import Filter
+from ..standard.enums import FilterCoefficientsType
 from .signal import Signal
 from .realtime_filter import RealtimeFilter
 
@@ -101,6 +103,50 @@ class LatticeLadderFilter(RealtimeFilter):
         self.state: NDArray[np.float64] | None = None
         self.sampling_rate_hz = sampling_rate_hz
         self.set_n_channels(1)
+
+    @staticmethod
+    def from_filter(filt: Filter) -> "LatticeLadderFilter":
+        """Convert an IIR or FIR filter into its lattice-ladder filter
+        representation. Filtering is then done using the lattice coefficients.
+        If the filter uses second-order sections, the lattice-ladder
+        coefficients are also computed and used in second-order sections.
+
+        Parameters
+        ----------
+        filt: `Filter`
+            Filter to convert into its lattice filter representation.
+
+        Returns
+        -------
+        new_filt : `LatticeLadderFilter`
+            New filter representation.
+
+        Notes
+        -----
+        - Linear phase FIR filters produce unstable reflection coefficients and
+          can therefore not be converted into lattice filters. When trying to
+          do this, an assertion error is raised.
+
+        """
+        if filt.is_iir:
+            if filt.has_sos:
+                sos = filt.get_coefficients(FilterCoefficientsType.Sos)
+                k, c = _get_lattice_ladder_coefficients_iir_sos(sos)
+                return LatticeLadderFilter(k, c, filt.sampling_rate_hz)
+
+            b, a = filt.get_coefficients(FilterCoefficientsType.Ba)
+            k, c = _get_lattice_ladder_coefficients_iir(b, a)
+            return LatticeLadderFilter(k, c, filt.sampling_rate_hz)
+
+        # FIR
+        b, a = filt.get_coefficients(FilterCoefficientsType.Ba)
+        b /= b[0]
+        k = _get_lattice_coefficients_fir(b)
+        assert np.all(np.abs(k) < 1), (
+            "Some reflection coefficient was "
+            + "equal or larger than zero, this is not supported"
+        )
+        return LatticeLadderFilter(k, None, filt.sampling_rate_hz)
 
     def set_n_channels(self, n_channels: int):
         assert n_channels > 0, "At least one channel must be initialized"
