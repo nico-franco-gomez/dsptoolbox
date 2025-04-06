@@ -86,7 +86,6 @@ class FIRFilterOverlapSave(RealtimeFilter):
         """
         assert b.ndim == 1, "A single dimension should be provided"
         self.fir = b
-        self.set_n_channels(1)
 
     @staticmethod
     def from_filter(fir: Filter):
@@ -96,10 +95,6 @@ class FIRFilterOverlapSave(RealtimeFilter):
         ----------
         fir : Filter
             FIR filter.
-
-        Returns
-        -------
-        FIRFilterOverlapSave
 
         """
         assert fir.is_fir, "Only valid for FIR filters"
@@ -117,13 +112,12 @@ class FIRFilterOverlapSave(RealtimeFilter):
             Number of channels to prepare the buffers.
 
         """
-        self.set_n_channels(n_channels)
         self.blocksize = blocksize_samples
         self.total_length = fft.next_fast_len(
             len(self.fir) + blocksize_samples, True
         )
         self.fir_spectrum = fft.rfft(self.fir, n=self.total_length, axis=0)
-        self.buffer = np.zeros((self.total_length, self.n_channels))
+        self.buffer = np.zeros((self.total_length, n_channels))
 
     def process_block(
         self, block: NDArray[np.float64], channel: int
@@ -147,9 +141,9 @@ class FIRFilterOverlapSave(RealtimeFilter):
         )[-self.blocksize :]
 
         # Roll buffer
-        self.buffer[:, channel] = np.roll(
-            self.buffer[:, channel], shift=-self.blocksize
-        )
+        self.buffer[: -self.blocksize, channel] = self.buffer[
+            self.blocksize :, channel
+        ]
         return output_data
 
     def process_sample(self, x: float, channel: int):
@@ -162,5 +156,4 @@ class FIRFilterOverlapSave(RealtimeFilter):
         self.buffer.fill(0.0)
 
     def set_n_channels(self, n_channels: int):
-        """Set the number of channels to be filtered."""
-        self.n_channels = n_channels
+        raise NotImplementedError("Use prepare method for setting the filter")
