@@ -588,7 +588,8 @@ class Spectrum:
 
     def warp(self, warping_factor: float, sampling_rate_hz: int):
         """Transform (inplace) the spectrum by warping it through
-        interpolation with the stored interpolation parameters.
+        interpolation with the stored interpolation parameters. This is done
+        according to the formula shown in [1].
 
         Parameters
         ----------
@@ -601,6 +602,14 @@ class Spectrum:
         Returns
         -------
         self
+
+        References
+        ----------
+        - [1]: Germán Ramos, José J. López, Basilio Pueo. Cascaded warped-FIR
+          and FIR filter structure for loudspeaker equalization with low
+          computational cost requirements. Digital Signal Processing, Volume
+          19, Issue 3, 2009, Pages 393-409, ISSN 1051-2004,
+          https://doi.org/10.1016/j.dsp.2008.01.003.
 
         """
         if not np.isclose(sampling_rate_hz / 2, self.frequency_vector_hz[-1]):
