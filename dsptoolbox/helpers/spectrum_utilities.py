@@ -63,7 +63,7 @@ def _get_normalized_spectrum(
     f,
     spectra: NDArray[np.complex128 | np.float64],
     is_amplitude_scaling: bool,
-    f_range_hz,
+    f_range_hz: list[float] | None,
     normalize: MagnitudeNormalization,
     smoothing: int,
     phase: bool,
@@ -468,3 +468,34 @@ def _interpolate_fr(
             interpolated = from_db(interpolated, "amplitude" in mode)
 
     return interpolated
+
+
+def _warp_frequency_vector(
+    freqs_hz: NDArray[np.float64], sampling_rate_hz: int, warping_factor: float
+):
+    """Warp a frequency vector as shown in [1].
+
+    Parameters
+    ----------
+    freqs_hz : NDArray[np.float64]
+        Frequency vector to warp.
+    sampling_rate_hz : int
+        Sampling rate to assume during warping.
+    warping_factor : float
+        Warping factor. It must be between ]-1;1[
+
+    References
+    ----------
+    - [1]: Germán Ramos, José J. López, Basilio Pueo. Cascaded warped-FIR and
+      FIR filter structure for loudspeaker equalization with low computational
+      cost requirements. Digital Signal Processing, Volume 19, Issue 3, 2009,
+      Pages 393-409, ISSN 1051-2004, https://doi.org/10.1016/j.dsp.2008.01.003.
+
+    """
+    assert (
+        np.abs(warping_factor) < 1.0
+    ), "Warping factor must be between ]-1;1["
+    omega = 2 * np.pi * freqs_hz / sampling_rate_hz
+    return freqs_hz + sampling_rate_hz / np.pi * np.arctan(
+        warping_factor * np.sin(omega) / (1 - warping_factor * np.cos(omega))
+    )

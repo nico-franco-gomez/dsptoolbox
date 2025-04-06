@@ -965,7 +965,7 @@ class Signal:
     # ======== Plots ==========================================================
     def plot_magnitude(
         self,
-        range_hz=[20, 20e3],
+        range_hz: list[float] | None = [20.0, 20e3],
         normalize: MagnitudeNormalization = MagnitudeNormalization.NoNormalization,
         range_db=None,
         smoothing: int = 0,
@@ -976,9 +976,9 @@ class Signal:
 
         Parameters
         ----------
-        range_hz : array-like with length 2, optional
-            Range for which to plot the magnitude response.
-            Default: [20, 20000].
+        range_hz : array-like with length 2, None, optional
+            Range for which to plot the magnitude response. Use None to avoid
+            setting any specific range. Default: [20, 20000].
         normalize : MagnitudeNormalization, optional
             Mode for normalization. Default: NoNormalization.
         range_db : array-like with length 2, optional
@@ -1031,7 +1031,8 @@ class Signal:
         if show_info_box:
             txt = "Info"
             txt += f"""\nMode: {self._spectrum_parameters['method']}"""
-            txt += f"\nRange: [{range_hz[0]}, {range_hz[1]}]"
+            if range_hz is not None:
+                txt += f"\nRange: [{range_hz[0]}, {range_hz[1]}]"
             txt += f"\nNormalized: {normalize}"
             txt += f"""\nSmoothing: {smoothing}"""
         else:
@@ -1204,7 +1205,7 @@ class Signal:
 
     def plot_group_delay(
         self,
-        range_hz=[20, 20000],
+        range_hz: list[float] | None = [20.0, 20e3],
         smoothing: int = 0,
         remove_ir_latency: str | ArrayLike | None = None,
     ) -> tuple[Figure, Axes]:
@@ -1212,9 +1213,9 @@ class Signal:
 
         Parameters
         ----------
-        range_hz : array-like with length 2, optional
-            Range of frequencies for which to show group delay.
-            Default: [20, 20e3].
+        range_hz : array-like with length 2, None, optional
+            Range of frequencies for which to show group delay. Pass None to
+            avoid any specific range. Default: [20, 20e3].
         smoothing : int, optional
             When different than 0, smoothing is applied to the group delay
             along the (1/smoothing) octave band. This only affects the values
@@ -1276,6 +1277,11 @@ class Signal:
         if smoothing != 0:
             gd = _fractional_octave_smoothing(gd, None, smoothing)
 
+        if range_hz is not None:
+            inds = find_nearest_points_index_in_vector(range_hz, f)
+            f = f[inds[0] : inds[1]]
+            gd = gd[inds[0] : inds[1], ...]
+
         fig, ax = general_plot(
             f,
             gd * 1e3,
@@ -1321,11 +1327,11 @@ class Signal:
         # Select channel
         stft = stft[:, :, channel_number]
 
-        ids = find_nearest_points_index_in_vector([20, 20000], f)
-        if ids[0] == 0:
-            ids[0] += 1
-        f = f[ids[0] : ids[1]]
-        stft = stft[ids[0] : ids[1], :]
+        ids = find_nearest_points_index_in_vector(20.0, f)
+        if ids == 0:
+            ids += 1
+        f = f[ids[0] :]
+        stft = stft[ids[0] :, :]
 
         zlabel = "dBFS"
         stft_db = to_db(
@@ -1354,7 +1360,7 @@ class Signal:
 
     def plot_phase(
         self,
-        range_hz=[20, 20e3],
+        range_hz: list[float] | None = [20.0, 20e3],
         unwrap: bool = False,
         smoothing: int = 0,
         remove_ir_latency: str | None | ArrayLike = None,
@@ -1364,7 +1370,7 @@ class Signal:
 
         Parameters
         ----------
-        range_hz : array-like with length 2, optional
+        range_hz : array-like with length 2, None, optional
             Range of frequencies for which to show group delay.
             Default: [20, 20e3].
         unwrap : bool, optional
@@ -1435,6 +1441,11 @@ class Signal:
 
         if unwrap:
             ph = np.unwrap(ph, axis=0)
+
+        if range_hz is not None:
+            inds = find_nearest_points_index_in_vector(range_hz, f)
+            f = f[inds[0] : inds[1]]
+            ph = ph[inds[0] : inds[1], ...]
 
         fig, ax = general_plot(
             x=f,

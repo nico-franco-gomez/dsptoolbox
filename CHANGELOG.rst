@@ -14,6 +14,23 @@ adheres to `Semantic Versioning <http://semver.org/spec/v2.0.0.html>`_.
 - Validation for results from tests in every module (so far many tests are
   only regarding functionality)
 
+`0.6.2 <https://pypi.org/project/dsptoolbox/0.6.2>`_ -
+---------------------
+Added
+~~~~~
+- new implementation for FIR filters in realtime: `FIROverlapSave` and
+  `FIRUniformPartitioned`
+- `crest_factor` in ``standard``
+- `warp` in ``Spectrum`` class for warping using analytical function
+- Warped filters in ``filterbanks`` both realtime and offline processing:
+  `WarpedIIR` and `WarpedFIR`
+- alternative constructors for realtime filters where it is sensible
+
+Misc
+~~~~
+- made minimum phase computation more efficient
+- added some type annotations
+
 `0.6.1 <https://pypi.org/project/dsptoolbox/0.6.1>`_ -
 ---------------------
 Added

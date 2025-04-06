@@ -1,6 +1,8 @@
 from numpy.typing import NDArray
 import numpy as np
 
+from .filter import Filter
+from ..standard.enums import FilterCoefficientsType
 from .realtime_filter import RealtimeFilter
 
 
@@ -29,6 +31,24 @@ class IIRFilter(RealtimeFilter):
         self.a = np.pad(a, ((0, self.order + 1 - len(a))))
 
         self.set_n_channels(1)
+
+    @staticmethod
+    def from_filter(iir: Filter):
+        """Instantiate IIR filter.
+
+        Parameters
+        ----------
+        iir : Filter
+            IIR filter.
+
+        Returns
+        -------
+        IIRFilter
+
+        """
+        assert iir.is_iir, "Only valid for IIR filters"
+        b, a = iir.get_coefficients(FilterCoefficientsType.Ba)
+        return IIRFilter(b, a)
 
     def set_n_channels(self, n_channels: int):
         self.state = np.zeros((self.order, n_channels))

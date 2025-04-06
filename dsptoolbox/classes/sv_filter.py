@@ -211,7 +211,7 @@ class StateVariableFilter(RealtimeFilter):
     def plot_group_delay(
         self,
         length_samples: int = 1024,
-        range_hz: list | None = [20, 20e3],
+        range_hz: list[float] | None = [20.0, 20e3],
     ) -> tuple[Figure, Axes]:
         """Plot the group delay of each band output of the filter.
 

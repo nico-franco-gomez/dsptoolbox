@@ -1332,7 +1332,7 @@ class TestFilterTopologies:
             filter_design_method=dsp.IirDesignMethod.Butterworth,
             sampling_rate_hz=self.fs_hz,
         )
-        llf = dsp.filterbanks.convert_into_lattice_filter(iir)
+        llf = dsp.filterbanks.LatticeLadderFilter.from_filter(iir)
 
         td = n.time_data.copy().squeeze()
         for ind in np.arange(len(td)):
@@ -1354,7 +1354,7 @@ class TestFilterTopologies:
             *iir.get_coefficients(dsp.FilterCoefficientsType.Ba),
             sampling_rate_hz=self.fs_hz,
         )
-        llf = dsp.filterbanks.convert_into_lattice_filter(iir)
+        llf = dsp.filterbanks.LatticeLadderFilter.from_filter(iir)
 
         td = n.time_data.copy().squeeze()
         for ind in np.arange(len(td)):
@@ -1415,6 +1415,9 @@ class TestFilterTopologies:
 
         np.testing.assert_allclose(td, sig.lfilter(b, a, n.time_data[:, 0]))
 
+        # Check functionality of constructor
+        dsp.filterbanks.IIRFilter.from_filter(iir_original)
+
     def test_fir_filter(self):
         fir_original = dsp.Filter.fir_filter(
             25,
@@ -1433,6 +1436,9 @@ class TestFilterTopologies:
             td[ind] = fir.process_sample(td[ind], 0)
 
         np.testing.assert_allclose(td, sig.lfilter(b, [1], n.time_data[:, 0]))
+
+        # Check functionality of constructor
+        dsp.filterbanks.FIRFilter.from_filter(fir_original)
 
     def test_kautz_filters(self):
         # Only functionality
@@ -1560,6 +1566,95 @@ class TestFilterTopologies:
             np.testing.assert_allclose(reference.time_data[:, channel], output)
             channel += 1
 
+        # Constructors
+        # TODO: check output
+        iir = dsp.Filter.iir_filter(
+            12, 500.0, dsp.FilterPassType.Lowpass, self.fs_hz
+        )
+        dsp.filterbanks.StateSpaceFilter.from_filter(iir)
+        out = dsp.filterbanks.StateSpaceFilter.from_filter_as_sos_list(iir)
+        assert len(out) == 6
+
+    @pytest.mark.parametrize(
+        "implementation",
+        [
+            dsp.filterbanks.FIRFilterOverlapSave,
+            dsp.filterbanks.FIRUniformPartitioned,
+        ],
+    )
+    def test_fir_filter_other_implementations(
+        self, implementation: dsp.filterbanks.FIRFilterOverlapSave
+    ):
+        rir = dsp.ImpulseResponse.from_file(RIR_PATH)
+        noise = dsp.resample(self.get_noise(), rir.sampling_rate_hz)
+        fir = implementation.from_filter(
+            dsp.transfer_functions.ir_to_filter(rir)
+        )
+
+        blocksize = 512
+        fir.prepare(blocksize, 1)
+        n_blocks = len(noise) // blocksize + 1
+        noise = dsp.pad_trim(noise, n_blocks * blocksize)
+        accumulator = np.zeros_like(noise.time_data)
+        for n in range(n_blocks):
+            stop = min((n + 1) * blocksize, len(accumulator))
+            sl = slice(n * blocksize, stop)
+            accumulator[sl, 0] = fir.process_block(noise.time_data[sl, 0], 0)
+
+        reference = sig.oaconvolve(
+            noise.time_data[:, 0], rir.time_data[:, 0], mode="full"
+        )
+        diff = accumulator.squeeze() - reference.squeeze()[: len(accumulator)]
+        np.testing.assert_array_almost_equal(diff, 0.0)
+
+    def test_warped_fir_filter(self):
+        # Only functionality
+        rir = dsp.pad_trim(dsp.ImpulseResponse.from_file(RIR_PATH), 300)
+        fir = dsp.filterbanks.WarpedFIR(
+            np.hanning(15), -0.6, rir.sampling_rate_hz
+        )
+        [fir.process_sample(x, 0) for x in rir.time_data[:, 0]]
+
+        # Try out filtering multichannel
+        rir.time_data = np.repeat(rir.time_data, 2, axis=1)
+        fir.filter_signal(rir)
+
+        # Constructor
+        dsp.filterbanks.WarpedFIR.from_filter(
+            dsp.Filter.from_ba(np.hanning(20), [1], rir.sampling_rate_hz), 0.1
+        )
+
+    def test_warped_iir_filter(self):
+        # Only functionality
+        rir = dsp.pad_trim(dsp.ImpulseResponse.from_file(RIR_PATH), 300)
+        iir_coefficients = dsp.Filter.biquad(
+            dsp.BiquadEqType.Peaking, 200.0, 4, 0.7, rir.sampling_rate_hz
+        )
+
+        iir_w = dsp.filterbanks.WarpedIIR(
+            iir_coefficients.ba[0].copy(),
+            iir_coefficients.ba[1].copy(),
+            -0.6,
+            rir.sampling_rate_hz,
+        )
+        [iir_w.process_sample(x, 0) for x in rir.time_data[:, 0]]
+
+        # Try out filtering multichannel
+        rir.time_data = np.repeat(rir.time_data, 2, axis=1)
+        iir_w.filter_signal(rir)
+
+        # With different orders of a and b coefficients
+        iir_w = dsp.filterbanks.WarpedIIR(
+            np.pad(iir_coefficients.ba[0], ((0, 4))),
+            np.pad(iir_coefficients.ba[1], ((0, 10))),
+            -0.6,
+            rir.sampling_rate_hz,
+        )
+        [iir_w.process_sample(x, 0) for x in rir.time_data[:, 0]]
+
+        # Constructor
+        dsp.filterbanks.WarpedIIR.from_filter(iir_coefficients, 0.1)
+
 
 class TestSpectrum:
     def get_spectrum_from_filter(self, freqs=None, complex=False):
@@ -1578,9 +1673,19 @@ class TestSpectrum:
             complex,
         )
 
+    rir_spec_complex = dsp.Spectrum.from_signal(
+        dsp.ImpulseResponse.from_file(RIR_PATH), True
+    )
+    rir = dsp.ImpulseResponse.from_file(RIR_PATH)
+    rir_spec_real = dsp.Spectrum.from_signal(
+        dsp.ImpulseResponse.from_file(RIR_PATH), False
+    )
+
     def get_spectrum_from_rir(self, complex=False):
-        return dsp.Spectrum.from_signal(
-            dsp.ImpulseResponse.from_file(RIR_PATH), complex
+        return (
+            self.rir_spec_complex.copy()
+            if complex
+            else self.rir_spec_real.copy()
         )
 
     def test_properties(self):
@@ -1990,3 +2095,13 @@ class TestSpectrum:
         spec = self.get_spectrum_from_rir(False)
         with pytest.raises(AssertionError):
             spec.to_signal(96000)
+
+    def test_warp(self):
+        # Only functionality
+        spec = self.get_spectrum_from_rir(False)
+        spec.warp(-0.7, self.rir.sampling_rate_hz)
+        spec.warp(0.7, self.rir.sampling_rate_hz)
+        with pytest.raises(AssertionError):
+            spec.warp(1.1, self.rir.sampling_rate_hz)
+        with pytest.raises(AssertionError):
+            spec.warp(0.1, self.rir.sampling_rate_hz - 200)

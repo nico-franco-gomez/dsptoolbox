@@ -289,3 +289,40 @@ def apply_gain(
         return new_fb
     else:
         raise TypeError("No valid type was passed")
+
+
+def crest_factor(sig: Signal | MultiBandSignal, in_db: bool = True):
+    """Compute the crest factor of a signal, which is defined as the level
+    difference between its peak and RMS value.
+
+    Parameters
+    ----------
+    sig : Signal, MultiBandSignal
+        Input signal.
+    in_db : bool, optional
+        When True, the output is given in dB. Otherwise, it is given in the
+        amplitude form. Default: True.
+
+    Returns
+    -------
+    NDArray[np.float64]
+        Crest factors for each channel. If it the input is a MultiBandSignal,
+        the shape is (band, channel).
+
+    """
+    if isinstance(sig, Signal):
+        crest = np.max(np.abs(sig.time_data), axis=0) / _rms(sig.time_data)
+    elif isinstance(sig, MultiBandSignal):
+        crest = np.zeros((sig.number_of_bands, sig.number_of_channels))
+        for ind, b in enumerate(sig):
+            crest[ind, :] = np.max(np.abs(b.time_data), axis=0) / _rms(
+                b.time_data
+            )
+    else:
+        raise TypeError(
+            "Passed signal should be either a Signal or "
+            + "MultiBandSignal type"
+        )
+    if in_db:
+        crest = 20.0 * np.log10(crest)
+    return np.atleast_1d(crest)

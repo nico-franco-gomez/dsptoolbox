@@ -31,6 +31,13 @@ Other:
   transform.
 - `IIRFilter()`: General IIR filter implemented as transposed direct-form 2.
 - `FIRFilter()`: FIR filter implemented in the time domain.
+- `FIRFilterOverlapSave()`: FIR filter implemented for real-time processing
+  using RFFT and overlap-save.
+- `FIRUniformPartitioned()`: FIR filter implemented for real-time processing
+  using RFFT and overlap-save and a partitioned filter.
+- `WarpedFIR()`: FIR filter implemented in the time domain with efficient
+  warping.
+- `WarpedIIR()`: IIR filter implemented in the time domain with warping.
 - `ParallelFilter()`: Find the (least-squares) optimal linear combination of
   parallel SOS to approximate an IR.
 - `KautzFilter()`: Kautz filters with an orthonormal pole basis.
@@ -66,7 +73,12 @@ from ._filterbank import arma
 from ..classes.lattice_ladder_filter import LatticeLadderFilter
 from ..classes.parallel_filter import ParallelFilter
 from ..classes.iir_filter_realtime import IIRFilter
-from ..classes.fir_filter_realtime import FIRFilter
+from ..classes.fir_filter_realtime import (
+    FIRFilter,
+    FIRFilterOverlapSave,
+    FIRUniformPartitioned,
+)
+from ..classes.warped_filters import WarpedFIR, WarpedIIR
 from ..classes.sv_filter import StateVariableFilter
 from ..classes.kautz_filter import KautzFilter
 from ..classes.exponential_average_filter import ExponentialAverageFilter
@@ -92,6 +104,10 @@ __all__ = [
     "FirDesigner",
     "IIRFilter",
     "FIRFilter",
+    "FIRFilterOverlapSave",
+    "FIRUniformPartitioned",
+    "WarpedFIR",
+    "WarpedIIR",
     "ParallelFilter",
     "StateSpaceFilter",
     "KautzFilter",

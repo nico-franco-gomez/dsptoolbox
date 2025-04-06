@@ -1,5 +1,9 @@
 import numpy as np
 from numpy.typing import NDArray
+from scipy.signal import tf2ss
+
+from .filter import Filter
+from ..standard.enums import FilterCoefficientsType
 from .realtime_filter import RealtimeFilter
 
 
@@ -49,6 +53,47 @@ class StateSpaceFilter(RealtimeFilter):
         self.C = C.squeeze()
         self.D = D.squeeze()
         self.set_n_channels(1)
+
+    @staticmethod
+    def from_filter(filt: Filter):
+        """Get a state-space filter from a common IIR representation. This
+        function converts always to b and a coefficients before going into
+        A, B, C, D matrices. For better numerical stability in high order
+        filters, refer to `from_filter_as_sos_list`.
+
+        Parameters
+        ----------
+        filt : Filter
+
+        Returns
+        -------
+        StateSpaceFilter
+
+        """
+        b, a = filt.get_coefficients(FilterCoefficientsType.Ba)
+        return StateSpaceFilter(*tf2ss(b, a))
+
+    @staticmethod
+    def from_filter_as_sos_list(filt: Filter):
+        """Get a state-space filter from a common IIR representation. This
+        function converts each SOS of the original filter into A, B, C, D
+        matrices and returns a list of second-order StateSpaceFilter.
+
+        Parameters
+        ----------
+        filt : Filter
+
+        Returns
+        -------
+        list[StateSpaceFilter]
+
+        """
+        sos = filt.get_coefficients(FilterCoefficientsType.Sos)
+        n_sections = sos.shape[0]
+        return [
+            StateSpaceFilter(*tf2ss(sos[n, :3], sos[n, 3:]))
+            for n in range(n_sections)
+        ]
 
     def reset_state(self):
         self.x.fill(0.0)
