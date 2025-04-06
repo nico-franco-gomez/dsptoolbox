@@ -1575,10 +1575,19 @@ class TestFilterTopologies:
         out = dsp.filterbanks.StateSpaceFilter.from_filter_as_sos_list(iir)
         assert len(out) == 6
 
-    def test_fir_filter_overlap_save(self):
+    @pytest.mark.parametrize(
+        "implementation",
+        [
+            dsp.filterbanks.FIRFilterOverlapSave,
+            dsp.filterbanks.FIRUniformPartitioned,
+        ],
+    )
+    def test_fir_filter_other_implementations(
+        self, implementation: dsp.filterbanks.FIRFilterOverlapSave
+    ):
         rir = dsp.ImpulseResponse.from_file(RIR_PATH)
         noise = dsp.resample(self.get_noise(), rir.sampling_rate_hz)
-        fir = dsp.filterbanks.FIRFilterOverlapSave.from_filter(
+        fir = implementation.from_filter(
             dsp.transfer_functions.ir_to_filter(rir)
         )
 

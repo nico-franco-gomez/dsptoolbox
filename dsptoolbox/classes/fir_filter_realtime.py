@@ -157,3 +157,92 @@ class FIRFilterOverlapSave(RealtimeFilter):
 
     def set_n_channels(self, n_channels: int):
         raise NotImplementedError("Use prepare method for setting the filter")
+
+
+class FIRUniformPartitioned(FIRFilterOverlapSave):
+    """FIR filter implemented with overlap-save scheme and uniform filter
+    partitions. This type of filter can be used when the FIR filter is
+    considerably long.
+
+    """
+
+    def __init__(self, fir: NDArray[np.float64]):
+        """Instantiate a new FIR filter.
+
+        Parameters
+        ----------
+        fir : NDArray[np.float64]
+            Filter coefficients.
+
+        """
+        assert fir.ndim == 1
+        self.fir = fir
+
+    @staticmethod
+    def from_filter(fir: Filter):
+        assert fir.is_fir, "Only valid for FIR filters"
+        b, _ = fir.get_coefficients(FilterCoefficientsType.Ba)
+        return FIRUniformPartitioned(b)
+
+    def prepare(self, blocksize_samples: int, n_channels: int):
+        self.blocksize = blocksize_samples
+        self.fft_size = blocksize_samples * 2
+        self.__prepare_partitions(n_channels)
+
+    def reset_state(self):
+        self.buffer_spectra.fill(0.0 * 1j)
+        self.input_buffer.fill(0.0)
+
+    def __prepare_partitions(self, n_channels: int):
+        self.n_partitions = len(self.fir) // self.blocksize + 1
+
+        # Partitions
+        partitioned = np.zeros((self.blocksize, self.n_partitions))
+        for n in range(self.n_partitions):
+            partition = self.fir[n * self.blocksize : (n + 1) * self.blocksize]
+            partitioned[: len(partition), n] = partition
+        self.partitioned_spectrum = fft.rfft(
+            partitioned, axis=0, n=self.fft_size
+        )
+
+        # Buffer index for filter
+        self.buffer_ind = 0
+
+        # Helper for avoiding allocations in process
+        self.accumulator_output = np.zeros(
+            self.partitioned_spectrum.shape[0], dtype=np.complex128
+        )
+
+        # Channel buffers
+        self.buffer_spectra = np.zeros(
+            (self.fft_size // 2 + 1, self.n_partitions, n_channels),
+            dtype=np.complex128,
+        )
+        self.input_buffer = np.zeros((self.fft_size, n_channels))
+
+    def process_block(self, block: NDArray[np.float64], channel: int):
+        # Store new block in input buffer
+        self.input_buffer[: self.blocksize, channel] = self.input_buffer[
+            -self.blocksize :, channel
+        ]
+        self.input_buffer[-self.blocksize :, channel] = block
+
+        # Transform input
+        self.buffer_spectra[:, self.buffer_ind, channel] = fft.rfft(
+            self.input_buffer[:, channel]
+        )
+
+        # Accumulate output of all filters
+        self.accumulator_output.fill(0.0 * 1j)
+        for n in range(self.n_partitions):
+            self.accumulator_output += (
+                self.partitioned_spectrum[:, n]
+                * self.buffer_spectra[:, self.buffer_ind - n, channel]
+            )
+
+        # Advance filter buffer
+        self.buffer_ind += 1
+        self.buffer_ind %= self.n_partitions
+
+        # Get output
+        return fft.irfft(self.accumulator_output)[-self.blocksize :]
