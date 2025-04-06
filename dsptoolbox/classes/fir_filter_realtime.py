@@ -209,9 +209,7 @@ class FIRUniformPartitioned(FIRFilterOverlapSave):
         self.buffer_ind = 0
 
         # Helper for avoiding allocations in process
-        self.accumulator_output = np.zeros(
-            self.partitioned_spectrum.shape[0], dtype=np.complex128
-        )
+        self.buffer_index_helper = np.arange(self.n_partitions)
 
         # Channel buffers
         self.buffer_spectra = np.zeros(
@@ -232,17 +230,18 @@ class FIRUniformPartitioned(FIRFilterOverlapSave):
             self.input_buffer[:, channel]
         )
 
-        # Accumulate output of all filters
-        self.accumulator_output.fill(0.0 * 1j)
-        for n in range(self.n_partitions):
-            self.accumulator_output += (
-                self.partitioned_spectrum[:, n]
-                * self.buffer_spectra[:, self.buffer_ind - n, channel]
-            )
+        # Accumulate output of all filters with buffers
+        output = np.sum(
+            self.partitioned_spectrum
+            * self.buffer_spectra[
+                :, self.buffer_ind - self.buffer_index_helper, channel
+            ],
+            axis=1,
+        )
 
         # Advance filter buffer
         self.buffer_ind += 1
         self.buffer_ind %= self.n_partitions
 
         # Get output
-        return fft.irfft(self.accumulator_output)[-self.blocksize :]
+        return fft.irfft(output)[-self.blocksize :]
