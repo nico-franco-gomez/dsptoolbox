@@ -821,3 +821,22 @@ class TestStandardModule:
                 False,
                 False,
             )
+
+    def test_select_time_window(self):
+        s = self.audio_multi
+        s2 = dsp.trim_with_time_selection(s, 0.1, 0.3, True)
+        assert abs(s2.length_seconds - 0.2) <= 1 / s.sampling_rate_hz
+        dsp.trim_with_time_selection(s, 0.1, 0.3, False)
+        dsp.trim_with_time_selection(s, None, 0.3, False)
+        dsp.trim_with_time_selection(s, 0.1, None, False)
+
+        mbs = self.get_multiband_signal()
+        dsp.trim_with_time_selection(mbs, 0.1, 0.3, False)
+        dsp.trim_with_time_selection(mbs, 0.1, 0.3, True)
+
+        with pytest.raises(AssertionError):
+            dsp.trim_with_time_selection(s, 0.3, 0.1, False)
+        with pytest.raises(AssertionError):
+            dsp.trim_with_time_selection(s, 0.1, s.length_seconds + 1.0, False)
+        with pytest.raises(AssertionError):
+            dsp.trim_with_time_selection(s, None, None, False)

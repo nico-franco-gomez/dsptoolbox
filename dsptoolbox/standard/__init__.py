@@ -16,6 +16,7 @@ from .pad_trim_methods import (
     pad_trim,
     modify_signal_length,
     trim_with_level_threshold,
+    trim_with_time_selection,
 )
 from .resampling import resample, resample_filter
 from .gain_and_level import (
@@ -66,6 +67,7 @@ __all__ = [
     "pad_trim",
     "modify_signal_length",
     "trim_with_level_threshold",
+    "trim_with_time_selection",
     # Resampling
     "resample",
     "resample_filter",

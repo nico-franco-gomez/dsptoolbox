@@ -34,6 +34,7 @@ from .standard import (
     spectral_difference,
     append_spectra,
     trim_with_level_threshold,
+    trim_with_time_selection,
     # Enums
     SpectrumScaling,
     SpectrumMethod,
@@ -106,6 +107,7 @@ __all__ = [
     "merge_filters",
     "spectral_difference",
     "append_spectra",
+    "trim_with_time_selection",
     # Modules
     "transfer_functions",
     "distances",
