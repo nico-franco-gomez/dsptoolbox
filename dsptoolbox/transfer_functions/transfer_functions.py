@@ -56,8 +56,8 @@ from .enums import TransferFunctionType, SmoothingDomain
 
 
 def spectral_deconvolve(
-    num: Signal,
-    denum: Signal,
+    output: Signal,
+    input: Signal,
     apply_regularization: bool = True,
     start_stop_hz=None,
     threshold_db: float = -30.0,
@@ -70,22 +70,25 @@ def spectral_deconvolve(
 
     Parameters
     ----------
-    num : `Signal`
-        Signal to deconvolve from.
-    denum : `Signal`
-        Signal to deconvolve.
+    output : `Signal`
+        Numerator during deconvolution. It corresponds to the output in the
+        measurement of a linear system.
+    input : `Signal`
+        Denominator during deconvolution. This corresponds to the input in a
+        linear system measurement.
     apply_regularization : bool, optional
         When True, a regularization window is applied for avoiding noise
         outside the excitation frequency region. Default: True.
     start_stop_hz : array-like or `None`, optional
         This is a vector of length 2 or 4 with frequency values that define the
-        area of the denominator that has some energy during the regularization.
+        frequency region of the input (denominator) that has some energy during
+        the deconvolution, i.e., this is the regularization range. If length
+        is 2, the outer bounds are computed with half an octave distance.
         Pass `None` to use an automatic mode that recognizes the start and stop
-        of the denominator (it assumes a chirp). If regularization is
-        deactivated, `start_stop_hz` has to be set to `None`. Default: `None`.
+        of the denominator (it assumes a pink-like spectrum). Default: `None`.
     threshold_db : float, optional
-        Threshold in dBFS for the automatic creation of the window.
-        Default: -30.
+        Threshold in dBFS for the automatic creation of the frequency window
+        for the regularization during deconvolution. Default: -30.
     padding : bool, optional
         Pads the time data with 2 length. Done for separating distortion
         in negative time bins when deconvolving sweep measurements.
@@ -101,40 +104,40 @@ def spectral_deconvolve(
 
     """
     assert (
-        num.time_data.shape[0] == denum.time_data.shape[0]
+        output.time_data.shape[0] == input.time_data.shape[0]
     ), "Lengths do not match for spectral deconvolution"
-    if denum.number_of_channels != 1:
+    if input.number_of_channels != 1:
         assert (
-            num.number_of_channels == denum.number_of_channels
+            output.number_of_channels == input.number_of_channels
         ), "The number of channels do not match."
         multichannel = False
     else:
         multichannel = True
     assert (
-        num.sampling_rate_hz == denum.sampling_rate_hz
+        output.sampling_rate_hz == input.sampling_rate_hz
     ), "Sampling rates do not match"
     if not apply_regularization:
         assert (
             start_stop_hz is None
         ), "No start_stop_hz vector can be passed when using standard mode"
 
-    num = num.copy()
-    denum = denum.copy()
-    original_length = num.time_data.shape[0]
+    output = output.copy()
+    input = input.copy()
+    original_length = output.time_data.shape[0]
 
     if padding:
-        num.time_data = _pad_trim(num.time_data, original_length * 2)
-        denum.time_data = _pad_trim(denum.time_data, original_length * 2)
+        output.time_data = _pad_trim(output.time_data, original_length * 2)
+        input.time_data = _pad_trim(input.time_data, original_length * 2)
 
-    denum.spectrum_method = SpectrumMethod.FFT
-    num.spectrum_method = SpectrumMethod.FFT
-    _, denum_fft = denum.get_spectrum()
-    freqs_hz, num_fft = num.get_spectrum()
-    fs_hz = num.sampling_rate_hz
+    input.spectrum_method = SpectrumMethod.FFT
+    output.spectrum_method = SpectrumMethod.FFT
+    _, denum_fft = input.get_spectrum()
+    freqs_hz, num_fft = output.get_spectrum()
+    fs_hz = output.sampling_rate_hz
 
-    new_time_data = np.zeros_like(num.time_data)
+    new_time_data = np.zeros_like(output.time_data)
 
-    for n in range(num.number_of_channels):
+    for n in range(output.number_of_channels):
         n_denum = 0 if multichannel else n
         if apply_regularization:
             if start_stop_hz is None:
@@ -150,12 +153,13 @@ def spectral_deconvolve(
                         np.min([start_stop_hz[1] * np.sqrt(2), fs_hz / 2]),
                     ]
                 )
-            elif len(start_stop_hz) == 4:
-                pass
-            else:
+            elif len(start_stop_hz) != 4:
                 raise ValueError(
                     "start_stop_hz vector should have 2 or 4 values"
                 )
+        else:
+            start_stop_hz = None
+
         new_time_data[:, n] = _spectral_deconvolve(
             num_fft[:, n],
             denum_fft[:, n_denum],
@@ -164,10 +168,9 @@ def spectral_deconvolve(
             start_stop_hz=start_stop_hz,
             regularized=apply_regularization,
         )
-    new_sig = ImpulseResponse(None, new_time_data, num.sampling_rate_hz)
-    if padding:
-        if keep_original_length:
-            new_sig.time_data = _pad_trim(new_sig.time_data, original_length)
+    new_sig = ImpulseResponse(None, new_time_data, output.sampling_rate_hz)
+    if padding and keep_original_length:
+        new_sig.time_data = _pad_trim(new_sig.time_data, original_length)
     return new_sig
 
 
