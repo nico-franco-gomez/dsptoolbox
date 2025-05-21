@@ -522,7 +522,7 @@ try:
         return spectrum
 
 except ModuleNotFoundError as e:
-    print("Numba is not installed: ", e)
+    str(e)
 
     def _complex_smoothing_backend(
         octave_fraction: np.float64,

@@ -14,10 +14,8 @@ requires-python = ">=3.11"
 dependencies = [
   # Python==3.13
   "numpy~=2.1;python_version>='3.13'",
-  "numba~=0.61;python_version~='3.13'",
   # Python<=3.12
   "numpy~=2.0;python_version<='3.12'",
-  "numba~=0.60;python_version<='3.12'",
   # Independent
   "scipy~=1.15",
   "soundfile~=0.13",
@@ -50,6 +48,12 @@ dependencies = [
 
 [tool.hatch.envs.dev]
 dependencies = ["flake8", "twine", "hatch", "wheel"]
+
+[project.optional-dependencies]
+use-numba = [
+  "numba~=0.61;python_version~='3.13'",
+  "numba~=0.60;python_version<='3.12'",
+]
 
 [tool.hatch.version]
 path = "dsptoolbox/__init__.py"
