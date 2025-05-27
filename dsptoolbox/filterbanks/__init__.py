@@ -35,6 +35,9 @@ Other:
   using RFFT and overlap-save.
 - `FIRUniformPartitioned()`: FIR filter implemented for real-time processing
   using RFFT and overlap-save and a partitioned filter.
+- `FIRUniformPartitioned()`: FIR filter implemented for real-time processing
+  using RFFT and overlap-save and a partitioned filter. Capable of vectorized
+  multichannel processing.
 - `WarpedFIR()`: FIR filter implemented in the time domain with efficient
   warping.
 - `WarpedIIR()`: IIR filter implemented in the time domain with warping.
