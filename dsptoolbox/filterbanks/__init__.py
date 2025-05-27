@@ -77,6 +77,7 @@ from ..classes.fir_filter_realtime import (
     FIRFilter,
     FIRFilterOverlapSave,
     FIRUniformPartitioned,
+    FIRUniformPartitionedMultichannel,
 )
 from ..classes.warped_filters import WarpedFIR, WarpedIIR
 from ..classes.sv_filter import StateVariableFilter
@@ -106,6 +107,7 @@ __all__ = [
     "FIRFilter",
     "FIRFilterOverlapSave",
     "FIRUniformPartitioned",
+    "FIRUniformPartitionedMultichannel",
     "WarpedFIR",
     "WarpedIIR",
     "ParallelFilter",

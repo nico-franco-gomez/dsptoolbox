@@ -1607,6 +1607,31 @@ class TestFilterTopologies:
         diff = accumulator.squeeze() - reference.squeeze()[: len(accumulator)]
         np.testing.assert_array_almost_equal(diff, 0.0)
 
+    def test_fir_filter_multichannel_uniform_partitioned(self):
+        rir = dsp.ImpulseResponse.from_file(RIR_PATH)
+        noise = dsp.resample(self.get_noise(), rir.sampling_rate_hz)
+        rir = dsp.append_signals([rir, rir.copy()])
+        noise = dsp.append_signals([noise, noise.copy()])
+        fir = dsp.filterbanks.FIRUniformPartitionedMultichannel(rir.time_data)
+
+        blocksize = 512
+        fir.prepare(blocksize)
+        n_blocks = len(noise) // blocksize + 1
+        noise = dsp.pad_trim(noise, n_blocks * blocksize)
+        accumulator = np.zeros_like(noise.time_data)
+        for n in range(n_blocks):
+            stop = min((n + 1) * blocksize, len(accumulator))
+            sl = slice(n * blocksize, stop)
+            accumulator[sl, :] = fir.process_block(noise.time_data[sl, :])
+
+        reference = sig.oaconvolve(
+            noise.time_data[:, 0], rir.time_data[:, 0], mode="full"
+        )
+        diff = accumulator[:, 0] - reference.squeeze()[: len(accumulator)]
+        np.testing.assert_array_almost_equal(diff, 0.0)
+        diff = accumulator[:, 1] - reference.squeeze()[: len(accumulator)]
+        np.testing.assert_array_almost_equal(diff, 0.0)
+
     def test_warped_fir_filter(self):
         # Only functionality
         rir = dsp.pad_trim(dsp.ImpulseResponse.from_file(RIR_PATH), 300)
