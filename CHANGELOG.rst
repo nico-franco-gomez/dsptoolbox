@@ -14,6 +14,20 @@ adheres to `Semantic Versioning <http://semver.org/spec/v2.0.0.html>`_.
 - Validation for results from tests in every module (so far many tests are
   only regarding functionality)
 
+`0.7 <https://pypi.org/project/dsptoolbox/0.7>`_ -
+---------------------
+Added
+~~~~~
+- `trim_with_time_selection` in ``standard``
+- `FIRUniformPartitionedMultichannel` in ``filterbanks``
+
+Misc
+~~~~
+- made installation with numba optional
+- renamed arguments of `spectral_deconvolve` for more clarity
+- simplified and corrected the cepstrum computations
+- removal of deprecated functions
+
 `0.6.2 <https://pypi.org/project/dsptoolbox/0.6.2>`_ -
 ---------------------
 Added
