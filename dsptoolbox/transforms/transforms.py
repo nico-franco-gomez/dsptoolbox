@@ -28,8 +28,7 @@ from ..transforms._transforms import (
     _dft_backend,
 )
 from ..helpers.gain_and_level import to_db
-from ..standard.enums import FilterCoefficientsType, SpectrumMethod
-from .enums import CepstrumType
+from ..standard.enums import FilterCoefficientsType
 
 import numpy as np
 from numpy.typing import NDArray
@@ -50,7 +49,8 @@ except ModuleNotFoundError as e:
 
 
 def cepstrum(
-    signal: Signal, mode: CepstrumType = CepstrumType.Power
+    signal: Signal,
+    complex: bool = True,
 ) -> NDArray[np.float64] | NDArray[np.complex128]:
     """Returns the cepstrum of a given signal in the Quefrency domain.
 
@@ -58,8 +58,9 @@ def cepstrum(
     ----------
     signal : Signal
         Signal to compute the cepstrum from.
-    mode : CepstrumType, optional
-        Type of cepstrum. Default: Power.
+    complex : bool, optional
+        When True, the complex cepstrum is returned, otherwise, the real
+        cepstrum is computed. Default: True.
 
     Returns
     -------
@@ -68,20 +69,37 @@ def cepstrum(
 
     References
     ----------
-    https://de.wikipedia.org/wiki/Cepstrum
+    - https://de.wikipedia.org/wiki/Cepstrum
 
     """
-    signal.spectrum_method = SpectrumMethod.FFT
-    _, sp = signal.get_spectrum()
+    sp = np.fft.fft(signal.time_data, axis=0)
+    if complex:
+        return np.fft.ifft(np.log(sp), axis=0)
+    return np.fft.ifft(np.log(np.abs(sp)), axis=0)
 
-    if mode in (CepstrumType.Power, CepstrumType.Real):
-        ceps = np.abs(np.fft.irfft((2 * np.log(np.abs(sp))), axis=0)) ** 2.0
-    else:
-        phase = np.unwrap(np.angle(sp), axis=0)
-        ceps = np.fft.irfft(np.log(np.abs(sp)) + 1j * phase, axis=0).real
-    if mode == CepstrumType.Real:
-        ceps = (ceps**0.5) / 2.0
-    return ceps
+
+def from_complex_cepstrum(
+    cepstrum: NDArray[np.complex128], sampling_rate_hz: int
+) -> Signal:
+    """Compute the real signal from the complex cepstrum.
+
+    Parameters
+    ----------
+    cepstrum : NDArray[np.complex128]
+        Complex cepstrum to convert into a signal. The expected shape is
+        (quefrency, channel).
+    sampling_rate_hz : int
+        Sampling rate of cepstrum and output signal.
+
+    Returns
+    -------
+    Signal
+
+    """
+    return Signal.from_time_data(
+        np.fft.ifft(np.exp(np.fft.fft(cepstrum, axis=0)), axis=0).real,
+        sampling_rate_hz,
+    )
 
 
 def log_mel_spectrogram(

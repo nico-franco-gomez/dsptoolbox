@@ -496,8 +496,8 @@ try:
             )
         return spectrum
 
-except ModuleNotFoundError as _:
-    print("Numba is not installed: ", _)
+except ModuleNotFoundError as e:
+    str(e)
 
     def _dft_backend(
         time_data: NDArray[np.complex128],

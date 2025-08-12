@@ -188,3 +188,71 @@ def trim_with_level_threshold(
         start,
         stop,
     )
+
+
+def trim_with_time_selection(
+    signal: Signal | MultiBandSignal,
+    start_time_s: float | None,
+    end_time_s: float | None,
+    inclusive: bool = True,
+):
+    """Return a trimmed version of the input signal with a selected time
+    window.
+
+    Parameters
+    ----------
+    signal : Signal
+        Input signal.
+    start_time_s : float, None
+        Start time for the window. Pass None to start the time window
+        at the beginning of the signal.
+    end_time_s : float, None
+        End time for the window. Pass None to place the end of the time window
+        at the end of the signal.
+    inclusive : bool, optional
+        When True, the bounds are inclusive. Default: True.
+
+    Returns
+    -------
+    Signal
+        Trimmed copy.
+
+    """
+    if isinstance(signal, Signal):
+        assert (
+            start_time_s is not None or end_time_s is not None
+        ), "At least one bound must be other than None"
+        if start_time_s:
+            assert start_time_s >= 0.0, "Start time must be at least zero"
+            assert (
+                start_time_s < signal.length_seconds
+            ), "Start time must be less than signal's length"
+            start_sample = int(start_time_s * signal.sampling_rate_hz)
+            if not inclusive:
+                start_sample += 1
+        else:
+            start_sample = 0
+
+        if end_time_s:
+            assert end_time_s > 0.0, "End time must be greater than 0"
+            assert (
+                end_time_s <= signal.length_seconds
+            ), "End time must be less than signal length"
+            end_sample = int(end_time_s * signal.sampling_rate_hz)
+            if inclusive:
+                end_sample += 1
+        else:
+            end_sample = signal.length_samples
+
+        assert end_sample > start_sample, "Invalid time window"
+        selection = slice(start_sample, end_sample)
+        return signal.copy_with_new_time_data(signal.time_data[selection, ...])
+    elif isinstance(signal, MultiBandSignal):
+        output = signal.copy()
+        for ind in range(signal.number_of_bands):
+            output.bands[ind] = trim_with_time_selection(
+                signal.bands[ind], start_time_s, end_time_s, inclusive
+            )
+        return output
+
+    raise TypeError("No valid type was passed")

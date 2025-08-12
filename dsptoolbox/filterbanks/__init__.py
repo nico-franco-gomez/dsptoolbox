@@ -35,6 +35,9 @@ Other:
   using RFFT and overlap-save.
 - `FIRUniformPartitioned()`: FIR filter implemented for real-time processing
   using RFFT and overlap-save and a partitioned filter.
+- `FIRUniformPartitioned()`: FIR filter implemented for real-time processing
+  using RFFT and overlap-save and a partitioned filter. Capable of vectorized
+  multichannel processing.
 - `WarpedFIR()`: FIR filter implemented in the time domain with efficient
   warping.
 - `WarpedIIR()`: IIR filter implemented in the time domain with warping.
@@ -45,8 +48,6 @@ Other:
 - `StateSpaceFilter()`: Filter with state space representation.
 - `FilterChain()`: Filter structure for applying all other filters
   sequentially.
-- `convert_into_lattice_filter()`: Turns a conventional filter into its
-  lattice/ladder representation.
 - `pinking_filter()`: Get a -3 dB/octave filter.
 - `matched_biquad()`: Analog-matched biquad filters.
 - `gaussian_kernel()`: IIR first-order approximation of a gaussian window.
@@ -62,7 +63,6 @@ from .filterbanks import (
     qmf_crossover,
     weighting_filter,
     complementary_fir_filter,
-    convert_into_lattice_filter,
     pinking_filter,
     matched_biquad,
     gaussian_kernel,
@@ -77,6 +77,7 @@ from ..classes.fir_filter_realtime import (
     FIRFilter,
     FIRFilterOverlapSave,
     FIRUniformPartitioned,
+    FIRUniformPartitionedMultichannel,
 )
 from ..classes.warped_filters import WarpedFIR, WarpedIIR
 from ..classes.sv_filter import StateVariableFilter
@@ -98,7 +99,6 @@ __all__ = [
     "qmf_crossover",
     "weighting_filter",
     "complementary_fir_filter",
-    "convert_into_lattice_filter",
     "LatticeLadderFilter",
     "PhaseLinearizer",
     "FirDesigner",
@@ -106,6 +106,7 @@ __all__ = [
     "FIRFilter",
     "FIRFilterOverlapSave",
     "FIRUniformPartitioned",
+    "FIRUniformPartitionedMultichannel",
     "WarpedFIR",
     "WarpedIIR",
     "ParallelFilter",
