@@ -173,7 +173,7 @@ def _burg_ar_estimation(
         ar_coeffs = np.zeros((order + 1, 1))
     else:
         shape = list(time_data.shape)
-        shape[0] + 1
+        shape[0] += 1
         ar_coeffs = np.zeros(tuple(shape))
 
     ar_coeffs[0] = 1.0
@@ -190,9 +190,9 @@ def _burg_ar_estimation(
     den[0] = np.sum(fwd_pred_error**2 + bwd_pred_error**2, axis=0)
 
     for i in range(order):
-        reflect_coeff[0] = np.sum(bwd_pred_error * fwd_pred_error, axis=0)
-        reflect_coeff[0] *= -2
-        reflect_coeff[0] /= den[0] + epsilon
+        reflect_coeff[0] = (
+            -2.0 * np.sum(bwd_pred_error * fwd_pred_error, axis=0)
+        ) / (den[0] + epsilon)
         ar_coeffs_prev, ar_coeffs = ar_coeffs, ar_coeffs_prev
         for j in range(1, i + 2):
             ar_coeffs[j] = (
