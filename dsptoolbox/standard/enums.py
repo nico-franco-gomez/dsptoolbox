@@ -248,6 +248,23 @@ class FilterCoefficientsType(Enum):
 
 
 class BiquadEqType(Enum):
+    """Available types:
+
+    - Lowpass
+    - Highpass
+    - Peaking
+    - Lowshelf
+    - Highshelf
+    - BandpassSkirt
+    - BandpassPeak
+    - LowpassFirstOrder
+    - HighpassFirstOrder
+    - AllpassFirstOrder
+    - Allpass
+    - Notch
+    - Inverter
+    """
+
     Lowpass = auto()
     Highpass = auto()
     Peaking = auto()
@@ -436,7 +453,7 @@ class MagnitudeNormalization(Enum):
     - Max: @ peak.
     - Energy: use average energy (per frequency) as normalization value.
 
-    All variants exist for the first channel, thus taking the same
+    All variants exist either for the first channel, thus taking the same
     normalization value for all channels, or for each channel independently.
 
     """
