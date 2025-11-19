@@ -51,6 +51,7 @@ Other:
 - `pinking_filter()`: Get a -3 dB/octave filter.
 - `matched_biquad()`: Analog-matched biquad filters.
 - `gaussian_kernel()`: IIR first-order approximation of a gaussian window.
+- `fractional_delay()`: IIR filter with tunable, fractional delay.
 - `arma()`: IIR filter approximation of an impulse response.
 
 """
@@ -66,6 +67,7 @@ from .filterbanks import (
     pinking_filter,
     matched_biquad,
     gaussian_kernel,
+    fractional_delay,
 )
 
 from ._filterbank import arma
@@ -120,4 +122,5 @@ __all__ = [
     "matched_biquad",
     "gaussian_kernel",
     "arma",
+    "fractional_delay",
 ]
