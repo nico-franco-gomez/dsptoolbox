@@ -594,7 +594,7 @@ class Spectrum:
         Parameters
         ----------
         warping_factor : float
-            Warping factor between ]-1;1[. See notes for details.
+            Warping factor between ]-1;1[.
         sampling_rate_hz : int
             Assumed sampling rate while warping. It must be valid for the
             current frequency vector, i.e., no aliasing is to be expected.
