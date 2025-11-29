@@ -12,12 +12,10 @@ readme = "README.rst"
 keywords = ["Digital Signal Processing", "dsp", "Research", "Prototyping"]
 requires-python = ">=3.11"
 dependencies = [
-  # Python==3.13
-  "numpy~=2.1;python_version>='3.13'",
-  # Python<=3.12
-  "numpy~=2.0;python_version<='3.12'",
+  # See in combination with numba
+  "numpy~=2.3",
   # Independent
-  "scipy~=1.15",
+  "scipy~=1.16",
   "soundfile~=0.13",
   "sounddevice~=0.5",
   "matplotlib~=3.10",
@@ -28,6 +26,7 @@ classifiers = [
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
   "License :: OSI Approved :: MIT License",
   "Operating System :: OS Independent",
 ]
@@ -51,8 +50,7 @@ dependencies = ["flake8", "twine", "hatch", "wheel"]
 
 [project.optional-dependencies]
 use-numba = [
-  "numba~=0.61;python_version~='3.13'",
-  "numba~=0.60;python_version<='3.12'",
+  "numba~=0.62"
 ]
 
 [tool.hatch.version]

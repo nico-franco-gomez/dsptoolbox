@@ -17,6 +17,7 @@ from .helpers.spectrum_utilities import (
     _interpolate_fr as interpolate_fr,
     _scale_spectrum as scale_spectrum,
     _wrap_phase as wrap_phase,
+    _warp_frequency_vector as warp_frequency,
 )
 from .helpers.smoothing import (
     _fractional_octave_smoothing as fractional_octave_smoothing,
@@ -514,4 +515,5 @@ __all__ = [
     "reconstruct_from_framed_signal",
     "convert_sample_representation",
     "next_power_2",
+    "warp_frequency",
 ]

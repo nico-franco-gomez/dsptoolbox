@@ -1750,6 +1750,72 @@ class TestSpectrum:
             np.array([200.0]), spec2.frequency_vector_hz
         )
 
+    def test_normalize(self):
+        freqs = np.array([100.0, 200.0, 300.0, 500.0])
+        spec = self.get_spectrum_from_filter(freqs, complex=False)
+
+        spec = dsp.append_spectra([spec, spec.copy().apply_gain(-6.0)])
+        np.testing.assert_allclose(
+            spec.copy()
+            .normalize(200.0, None)
+            .get_interpolated_spectrum(
+                np.array([200.0]), dsp.SpectrumType.Magnitude
+            ),
+            1.0,
+        )
+        np.testing.assert_allclose(
+            spec.copy()
+            .normalize(200.0, 0)
+            .get_interpolated_spectrum(
+                np.array([200.0]), dsp.SpectrumType.Magnitude
+            )
+            .squeeze(),
+            dsp.tools.from_db(np.array([0.0, -6.0]), True),
+        )
+
+    def test_apply_gain(self):
+        freqs = np.array([100.0, 200.0, 300.0, 500.0])
+        spec = self.get_spectrum_from_filter(freqs, complex=False)
+        np.testing.assert_allclose(
+            spec.get_interpolated_spectrum(
+                np.array([150.0]), dsp.SpectrumType.Magnitude
+            )
+            / spec.copy()
+            .apply_gain(10.0)
+            .get_interpolated_spectrum(
+                np.array([150.0]), dsp.SpectrumType.Magnitude
+            ),
+            dsp.tools.from_db(-10, True),
+        )
+
+        spec = dsp.append_spectra([spec, spec.copy().apply_gain(-6.0)])
+        np.testing.assert_allclose(
+            spec.get_interpolated_spectrum(
+                np.array([150.0]), dsp.SpectrumType.Magnitude
+            )
+            / spec.copy()
+            .apply_gain(10.0)
+            .get_interpolated_spectrum(
+                np.array([150.0]), dsp.SpectrumType.Magnitude
+            ),
+            dsp.tools.from_db(-10, True),
+        )
+        np.testing.assert_allclose(
+            (
+                spec.get_interpolated_spectrum(
+                    np.array([150.0]), dsp.SpectrumType.Magnitude
+                )
+                / spec.copy()
+                .apply_gain(np.array([0.0, 10.0]))
+                .get_interpolated_spectrum(
+                    np.array([150.0]), dsp.SpectrumType.Magnitude
+                )
+            ).squeeze(),
+            dsp.tools.from_db(np.array([0.0, -10]), True),
+        )
+        with pytest.raises(AssertionError):
+            spec.apply_gain(np.array([1.0, 3.0, 5.0]))
+
     def test_resample(self):
         # Only functionaltiy
         freqs = np.array([100.0, 200.0, 300.0])

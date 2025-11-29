@@ -1,4 +1,6 @@
 -e .
+# -e .[use-numba]
+
 # dev:
 hatch # build
 wheel # build

@@ -9,6 +9,7 @@ from scipy.signal import (
     freqz_zpk,
     tf2sos,
 )
+from scipy.special import comb
 import warnings
 
 from .. import Filter, FilterBank
@@ -706,3 +707,45 @@ def gaussian_kernel(
     sos = np.repeat(sos, K, axis=0)
 
     return Filter.from_sos(sos, sampling_rate_hz)
+
+
+def fractional_delay(
+    fractional_delay_samples: float, order: int, sampling_rate_hz: int
+) -> Filter:
+    """Returns a Thiran allpass filter that has an almost constant group delay. The
+    coefficients are computed according to the closed-form formula presented in
+    [1]. The total delay of the filter in samples is always
+    `order + fractional_delay_samples`.
+
+    Parameters
+    ----------
+    fractional_delay_samples : float
+        Non-integer delay of the filter. The value must be in range ]0, 1[.
+    order : int
+        Order of the IIR filter.
+    sampling_rate_hz : int
+        Sampling rate of the filter.
+
+    Returns
+    -------
+    Filter
+
+    References
+    ----------
+    - [1]: T. I. Laakso, V. Valimaki, M. Karjalainen and U. K. Laine, "Splitting the
+      unit delay [FIR/all pass filters design]," in IEEE Signal Processing Magazine,
+      vol. 13, no. 1, pp. 30-60, Jan. 1996, doi: 10.1109/79.482137.
+
+    """
+    assert order > 0, "Order must be positive"
+    assert (
+        fractional_delay_samples > 0.0 and fractional_delay_samples < 1.0
+    ), "Delay is outside valid range"
+    N = order
+    D = N + fractional_delay_samples
+    a = np.ones(N + 1)
+    for ind in range(len(a)):
+        a[ind] = comb(N, ind) * (-1.0 if ind % 2 == 1 else 1.0)
+        for ind2 in range(len(a)):
+            a[ind] *= (D - N + ind2) / (D - N + ind + ind2)
+    return Filter.from_ba(a[::-1], a, sampling_rate_hz)

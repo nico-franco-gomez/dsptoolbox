@@ -12,7 +12,7 @@ from .. import plots
 from .signal import Signal
 from .filter import Filter
 from .filterbank import FilterBank
-from ..helpers.gain_and_level import to_db
+from ..helpers.gain_and_level import to_db, from_db
 from ..helpers.other import _check_format_in_path, _pad_trim
 from ..helpers.spectrum_utilities import _warp_frequency_vector
 from ..standard.enums import (
@@ -364,6 +364,58 @@ class Spectrum:
         self.spectral_data = new_sp
         return self
 
+    def normalize(
+        self,
+        reference_frequency_hz: float,
+        reference_channel: int | None = None,
+    ):
+        """Normalize spectrum to be 0 dB at the specified frequency.
+
+        Parameters
+        ----------
+        reference_frequency_hz : float
+            Frequency at which to normalize.
+        reference_channel : int, None, optional
+            Reference channel to normalize to. If None, each channel is normalized
+            by itself at the reference frequency. Default: None.
+
+        Returns
+        -------
+        self
+
+        """
+        values = self.get_interpolated_spectrum(
+            np.array([reference_frequency_hz]), SpectrumType.Magnitude
+        )
+        normalization_value = (
+            values
+            if reference_channel is None
+            else values[0, reference_channel]
+        )
+        self.spectral_data /= normalization_value
+        return self
+
+    def apply_gain(self, gain_db: float | NDArray[np.float64]):
+        """Add gain to spectrum.
+
+        Parameters
+        ----------
+        gain_db : float, NDArray[np.float64]
+            Gain to apply. It should be either a single value for all channels or
+            a vector with a gain for each channel.
+
+        Returns
+        -------
+        self
+
+        """
+        gains = np.atleast_1d(gain_db)
+        assert (
+            len(gains) == 1 or len(gains) == self.number_of_channels
+        ), "Number of gains is not compatible"
+        self.spectral_data *= from_db(gains, True)
+        return self
+
     def get_interpolated_spectrum(
         self,
         requested_frequency: NDArray[np.float64],
@@ -594,7 +646,7 @@ class Spectrum:
         Parameters
         ----------
         warping_factor : float
-            Warping factor between ]-1;1[. See notes for details.
+            Warping factor between ]-1;1[.
         sampling_rate_hz : int
             Assumed sampling rate while warping. It must be valid for the
             current frequency vector, i.e., no aliasing is to be expected.

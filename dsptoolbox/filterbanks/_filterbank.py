@@ -1511,6 +1511,7 @@ def __ma_parameters(
     time_data: NDArray[np.float64],
     order: int,
     ar_coefficients: NDArray[np.float64],
+    cutoff_singular_values_percent: float = 0.0,
 ):
     """Estimate the MA parameters with through a least-squares approximation
     using known AR parameters. This is done in the frequency domain.
@@ -1523,9 +1524,17 @@ def __ma_parameters(
         Order of the MA parameters approximation.
     ar_coefficients : NDArray[np.float64]
         Autoregressive coefficients.
+    cutoff_singular_values_percent : float, optional
+        Leave out singular values below a given percentage relative to the largest one.
+        This speeds up the computation on the expense of deteriorating the results.
+        Default: 0 (no cutoff).
 
     """
     assert time_data.ndim == 1
+    assert (
+        cutoff_singular_values_percent >= 0.0
+        and cutoff_singular_values_percent < 1.0
+    )
     spec = np.fft.rfft(time_data)
     N = len(time_data)
 
@@ -1533,18 +1542,24 @@ def __ma_parameters(
     A = np.zeros((N // 2 + 1, num_coefficients), dtype=np.complex128)
     target_sp = np.hstack([np.real(spec), np.imag(spec)])
 
+    length = N // 2 + 1
+    include_nyquist = N % 2 == 0
     for n in range(num_coefficients):
         A[:, n] = freqz(
             np.array([0.0] * n + [1.0]),
             ar_coefficients,
-            N // 2 + 1,
-            include_nyquist=N % 2 == 0,
+            worN=length,
+            include_nyquist=include_nyquist,
         )[1]
 
-    A = np.vstack([np.real(A), np.imag(A)])
     return lstsq(
-        A,
+        np.vstack([np.real(A), np.imag(A)]),
         target_sp,
+        cond=(
+            None
+            if cutoff_singular_values_percent == 0.0
+            else cutoff_singular_values_percent
+        ),
         overwrite_a=True,
         overwrite_b=True,
     )[0]
@@ -1555,6 +1570,7 @@ def arma(
     order_a: int,
     order_b: int = 0,
     method_ar: str = "yule-walker",
+    cutoff_b_percentage: float = 0.0,
 ) -> Filter:
     """Create an IIR filter approximation to an impulse response with an
     autoregressive (AR), moving-average (MA) process model estimation. See
@@ -1575,6 +1591,11 @@ def arma(
         Method to use for obtaining the AR parameters. Burg's method is
         explained in [1] and the implementation was taken from [2].
         Default: "yule-walker".
+    cutoff_b_percentage : float, optional
+        Leave out singular values below a given percentage relative to the largest one
+        during the computation of the MA parameters. This speeds up the computation on
+        the expense of deteriorating the results. The valid range is [0, 1[.
+        Default: 0 (no cutoff).
 
     Returns
     -------
@@ -1622,7 +1643,7 @@ def arma(
             raise ValueError(f"{method_ar}: Method is not supported")
 
     b = (
-        __ma_parameters(ir.time_data[:, 0], order_b, a)
+        __ma_parameters(ir.time_data[:, 0], order_b, a, cutoff_b_percentage)
         if order_b > 0
         else np.array([1.0])
     )

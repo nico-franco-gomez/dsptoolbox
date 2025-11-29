@@ -3,6 +3,18 @@ Here are wrappers for streams with sounddevice. This is useful for
 measurements and testing audio streams
 """
 
+import sys
+
+if sys.platform == "win32":
+    # This enforces the use of the ASIO-enabled PortAudio dll in sounddevice
+    # but only if this is the first import of sounddevice...
+
+    import os
+
+    env_variable = "SD_ENABLE_ASIO"
+    if env_variable not in os.environ:
+        os.environ[env_variable] = "1"
+
 import sounddevice as sd
 from .. import Signal
 from ..helpers.gain_and_level import _normalize

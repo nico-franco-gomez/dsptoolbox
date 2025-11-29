@@ -49,7 +49,7 @@ Use pip to install dsptoolbox
     $ pip install dsptoolbox
 
     # Or this for activating numba parallelization
-    $ pip install dsptoolbox[use-numba]
+    $ pip install "dsptoolbox[use-numba]"
 
 (Requires Python 3.11 or higher)
 

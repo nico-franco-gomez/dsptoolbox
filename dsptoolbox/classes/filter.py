@@ -114,9 +114,9 @@ class Filter:
         filter_design_method : IirDesignMethod, optional
             Design method for the IIR filter. Default: Butterworth.
         passband_ripple_db : float, None, optional
-            Passband ripple in dB for "cheby1" and "ellip". Default: None.
+            Passband ripple in dB for Chebyshev1 and Elliptic. Default: None.
         stopband_attenuation_db : float, None, optional
-            Minimum stopband attenutation in dB for "cheby2" and "ellip".
+            Minimum stopband attenutation in dB for Chebyshev2 and Elliptic.
             Default: None.
 
         Returns
@@ -143,7 +143,7 @@ class Filter:
     @staticmethod
     def biquad(
         eq_type: BiquadEqType,
-        frequency_hz: float | ArrayLike,
+        frequency_hz: float,
         gain_db: float,
         q: float,
         sampling_rate_hz: int,

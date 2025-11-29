@@ -14,6 +14,24 @@ adheres to `Semantic Versioning <http://semver.org/spec/v2.0.0.html>`_.
 - Validation for results from tests in every module (so far many tests are
   only regarding functionality)
 
+`0.7.1 <https://pypi.org/project/dsptoolbox/0.7.1>`_ -
+---------------------
+Added
+~~~~~
+- `warp_frequency` in ``tools``
+- Spectrum class now has `normalize` and `add_gain` methods
+- fractional delay via thiran's allpass filter in ``filterbanks``
+
+Bugfix
+~~~~~
+- `arma` now has the correct order for burg's method
+
+Misc
+~~~~
+- update dependencies and add support for python 3.14 (without numba)
+- corrections to documentation
+- default to ASIO usage with sounddevice
+
 `0.7 <https://pypi.org/project/dsptoolbox/0.7>`_ -
 ---------------------
 Added

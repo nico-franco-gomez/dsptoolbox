@@ -303,6 +303,20 @@ class TestFilterbanksModule:
         dsp.filterbanks.arma(rir, 10, 1, method_ar="burg")
         dsp.filterbanks.arma(rir, 10, 11, method_ar="burg")
 
+    def test_fractional_delay(self):
+        noise = dsp.Filter.iir_filter(
+            8, self.fs / 4, dsp.FilterPassType.Lowpass, self.fs
+        ).filter_signal(
+            dsp.generators.noise(0.5, self.fs, padding_end_seconds=0.5)
+        )
+
+        fractional = 0.5
+        order = 30
+        delay = dsp.filterbanks.fractional_delay(fractional, order, self.fs)
+        noise_delayed = delay.filter_signal(noise)
+        latency = dsp.latency(noise_delayed, noise, polynomial_points=3)[0][0]
+        assert abs(latency - (fractional + order)) < 1e-3
+
 
 class TestLatticeLadderFilter:
     b = np.array([1, 3, 3, 1])
