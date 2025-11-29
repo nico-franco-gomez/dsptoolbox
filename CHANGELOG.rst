@@ -14,7 +14,7 @@ adheres to `Semantic Versioning <http://semver.org/spec/v2.0.0.html>`_.
 - Validation for results from tests in every module (so far many tests are
   only regarding functionality)
 
-`0.7.1 <https://pypi.org/project/dsptoolbox/0.7.1>`_ -
+`0.7.2 <https://pypi.org/project/dsptoolbox/0.7.2>`_ -
 ---------------------
 Added
 ~~~~~
@@ -25,6 +25,8 @@ Added
 Bugfix
 ~~~~~
 - `arma` now has the correct order for burg's method
+- avoid delivering unnecessary files in package distribution. 0.7.1 was yanked
+  because of this
 
 Misc
 ~~~~

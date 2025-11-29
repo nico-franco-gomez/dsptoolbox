@@ -21,6 +21,7 @@ dependencies = [
   "matplotlib~=3.10",
   "seaborn~=0.13",
 ]
+
 classifiers = [
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3.11",
@@ -29,6 +30,11 @@ classifiers = [
   "Programming Language :: Python :: 3.14",
   "License :: OSI Approved :: MIT License",
   "Operating System :: OS Independent",
+]
+
+[project.optional-dependencies]
+use-numba = [
+  "numba~=0.62"
 ]
 
 [project.urls]
@@ -48,10 +54,16 @@ dependencies = [
 [tool.hatch.envs.dev]
 dependencies = ["flake8", "twine", "hatch", "wheel"]
 
-[project.optional-dependencies]
-use-numba = [
-  "numba~=0.62"
-]
-
 [tool.hatch.version]
 path = "dsptoolbox/__init__.py"
+
+[tool.hatch.build]
+include = [
+  "dsptoolbox/**",
+]
+
+exclude = [
+  "__pycache__/**",
+  "*.wav",
+  "*.flac"
+]
