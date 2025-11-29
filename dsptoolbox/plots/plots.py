@@ -18,6 +18,10 @@ except ModuleNotFoundError as e:
     print("Seaborn will not be used for plotting: ", e)
     pass
 
+FREQUENCY_TICKS = array(
+    [2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000]
+)
+
 
 def show():
     """Show created plots by using this wrapper around matplotlib's show."""
@@ -84,7 +88,7 @@ def general_plot(
         ax.plot(x, matrix)
     if log_x:
         ax.set_xscale("log")
-        ticks = array([20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000])
+        ticks = FREQUENCY_TICKS
         if range_x is not None:
             ticks = ticks[(ticks > range_x[0]) & (ticks < range_x[-1])]
         ax.set_xticks(ticks)
@@ -228,7 +232,7 @@ def general_plot_two_axes(
     # ======
     if log_x:
         ax.set_xscale("log")
-        ticks = array([20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000])
+        ticks = FREQUENCY_TICKS
         if range_x is not None:
             ticks = ticks[(ticks > range_x[0]) & (ticks < range_x[-1])]
         ax.set_xticks(ticks)
@@ -471,7 +475,7 @@ def general_matrix_plot(
         ax.set_xscale("log")
     if ylog:
         ax.set_yscale("log")
-        ticks = array([20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000])
+        ticks = FREQUENCY_TICKS
         if range_y is not None:
             ticks = ticks[(ticks > range_y[0]) & (ticks < range_y[-1])]
         ax.set_yticks(ticks)
