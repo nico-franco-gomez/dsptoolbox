@@ -1072,15 +1072,17 @@ def warp(
       lowering that of higher frequencies. See [1] and [3] for the frequency
       mapping of warping.
     - `warping_factor` will have a frequency-warping where a single frequency
-      point remains unwarped. The formula for this is [1]:
+      point has the same group delay as the unwarped version. The formula for this
+      is [1]:
 
         .. math::
             \frac{f_s}{2\pi}\arccos(\lambda)
 
       where lambda is the `warping_factor` and f_s the sampling rate.
     - Warping poles and zeros in the rational transfer function can be done
-      by replacing the z^-1 with (z^-1 - lambda)/(1 - lambda*z^-1). This leads,
-      for instance, to transforming a pole p0 to a new pole p with
+      by replacing the :math:`z^-1` with :math:`(z^-1 - lambda)/(1 - lambda*z^-1)`.
+      This leads, for instance, to transforming a pole :math:`p_0` to a new pole
+      :math:`p` with:
 
         .. math::
             p = \frac{\lambda + p_0}{1 + p_0 \lambda}
