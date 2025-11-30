@@ -14,6 +14,16 @@ adheres to `Semantic Versioning <http://semver.org/spec/v2.0.0.html>`_.
 - Validation for results from tests in every module (so far many tests are
   only regarding functionality)
 
+`0.7.2 <https://pypi.org/project/dsptoolbox/0.7.3>`_ -
+---------------------
+Bugfix
+~~~~~
+- correct minus sign in `warp_frequency` to match the rest of the toolbox
+
+Misc
+~~~~
+- corrections and additions to documentation
+
 `0.7.2 <https://pypi.org/project/dsptoolbox/0.7.2>`_ -
 ---------------------
 Added
