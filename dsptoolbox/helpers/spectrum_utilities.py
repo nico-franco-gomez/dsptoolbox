@@ -482,7 +482,7 @@ def _warp_frequency_vector(
     sampling_rate_hz : int
         Sampling rate to assume during warping.
     warping_factor : float
-        Warping factor. It must be between ]-1;1[
+        Warping factor. It must be between ]-1;1[.
 
     References
     ----------
@@ -491,11 +491,18 @@ def _warp_frequency_vector(
       cost requirements. Digital Signal Processing, Volume 19, Issue 3, 2009,
       Pages 393-409, ISSN 1051-2004, https://doi.org/10.1016/j.dsp.2008.01.003.
 
+    Notes
+    -----
+    - The formula presented in [1] has been modified with a negative sign for
+      lambda in order to match the warping formulation used in this python package.
+    - Negative lambda values increase the resolution for lower frequencies, while
+      positive values expand higher frequencies.
+
     """
     assert (
         np.abs(warping_factor) < 1.0
     ), "Warping factor must be between ]-1;1["
     omega = 2 * np.pi * freqs_hz / sampling_rate_hz
     return freqs_hz + sampling_rate_hz / np.pi * np.arctan(
-        warping_factor * np.sin(omega) / (1 - warping_factor * np.cos(omega))
+        -warping_factor * np.sin(omega) / (1 + warping_factor * np.cos(omega))
     )

@@ -663,17 +663,21 @@ class Spectrum:
           19, Issue 3, 2009, Pages 393-409, ISSN 1051-2004,
           https://doi.org/10.1016/j.dsp.2008.01.003.
 
+        Notes
+        -----
+        - The formula presented in [1] has been modified with a negative sign for
+          lambda in order to match the warping formulation used in this python package.
+        - Negative lambda values increase the resolution for lower frequencies, while
+          positive values expand higher frequencies.
+
         """
         if not np.isclose(sampling_rate_hz / 2, self.frequency_vector_hz[-1]):
             assert (
                 sampling_rate_hz / 2 >= self.frequency_vector_hz[-1]
             ), "Invalid sampling rate for frequency vector"
 
-        freqs_w = _warp_frequency_vector(
+        self.frequency_vector_hz = _warp_frequency_vector(
             self.frequency_vector_hz, sampling_rate_hz, warping_factor
-        )
-        self.spectral_data = self.get_interpolated_spectrum(
-            freqs_w, SpectrumType.Magnitude
         )
         return self
 
