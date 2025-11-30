@@ -1080,9 +1080,9 @@ def warp(
 
       where lambda is the `warping_factor` and f_s the sampling rate.
     - Warping poles and zeros in the rational transfer function can be done
-      by replacing the :math:`z^-1` with :math:`(z^-1 - lambda)/(1 - lambda*z^-1)`.
-      This leads, for instance, to transforming a pole :math:`p_0` to a new pole
-      :math:`p` with:
+      by replacing the :math:`z^{-1}` with
+      :math:`(z^{-1} - \lambda)/(1 - \lambda z^{-1})`. This leads, for instance, to
+      transforming a pole :math:`p_0` to a new pole :math:`p` with:
 
         .. math::
             p = \frac{\lambda + p_0}{1 + p_0 \lambda}
@@ -1156,8 +1156,9 @@ def warp_filter(filter: Filter, warping_factor: float) -> Filter:
     -----
     - The overall filter gain of the filter is not modified by this function.
     - Warping poles and zeros in the rational transfer function can be done
-      by replacing the z^-1 with (z^-1 - lambda)/(1 - lambda*z^-1). This leads,
-      for instance, to transforming a pole p0 to a new pole p with
+      by replacing the :math:`z^{-1}` with
+      :math:`(z^{-1} - \lambda)/(1 - \lambda z^{-1})`. This leads, for instance, to
+      transforming a pole :math:`p_0` to a new pole :math:`p` with:
 
         .. math::
             p = \frac{\lambda + p_0}{1 + p_0 \lambda}
