@@ -161,6 +161,10 @@ class Spectrum:
         return len(self.frequency_vector_hz)
 
     @property
+    def length_frequency_bins(self) -> int:
+        return self.number_frequency_bins
+
+    @property
     def spectral_data(self) -> NDArray[np.float64 | np.complex128]:
         return self.__spectral_data
 
@@ -189,6 +193,12 @@ class Spectrum:
     @property
     def is_magnitude(self) -> bool:
         return np.isrealobj(self.__spectral_data)
+
+    @property
+    def is_complex(self) -> bool:
+        """When True, the spectral data is complex. Counterpart to is_magnitude
+        for consistency with Signal class which has is_complex_signal."""
+        return not self.is_magnitude
 
     @property
     def spectrum_type(self) -> SpectrumType:
