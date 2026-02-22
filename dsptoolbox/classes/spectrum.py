@@ -7,6 +7,7 @@ from matplotlib.figure import Figure
 from matplotlib.axes import Axes
 from pickle import dump, HIGHEST_PROTOCOL
 
+from ._multichannel_data import MultichannelData
 from ..tools import fractional_octave_smoothing
 from .. import plots
 from .signal import Signal
@@ -27,7 +28,7 @@ from ..standard.enums import (
 )
 
 
-class Spectrum:
+class Spectrum(MultichannelData):
     def __init__(
         self,
         frequency_vector_hz: NDArray[np.float64],
@@ -887,6 +888,35 @@ class Spectrum:
 
         """
         return deepcopy(self)
+
+    # ======== Multichannel Data Base Class Implementation ====================
+    def _get_data(self) -> NDArray[np.float64 | np.complex128]:
+        """Get the spectral data for multichannel operations."""
+        return self.spectral_data
+
+    def _set_data(self, data: NDArray[np.float64 | np.complex128]) -> None:
+        """Set the spectral data for multichannel operations."""
+        self.spectral_data = data
+
+    def _create_copy_with_new_data(
+        self, data: NDArray[np.float64 | np.complex128]
+    ) -> "Spectrum":
+        """Create a copy with new spectral data."""
+        new_spectrum = Spectrum(self.frequency_vector_hz, data)
+        # Copy interpolator parameters
+        new_spectrum.set_interpolator_parameters(
+            self.__int_domain,
+            self.__int_scheme,
+            self.__int_edges,
+        )
+        # Copy coherence if it exists
+        if self.has_coherence:
+            new_spectrum.set_coherence(self.coherence)
+        return new_spectrum
+
+    def _update_state(self) -> None:
+        """No state tracking needed for Spectrum."""
+        pass
 
     def __freqs_to_slice(
         self,
