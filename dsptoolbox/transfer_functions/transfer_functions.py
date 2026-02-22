@@ -4,7 +4,10 @@ Methods used for acquiring and windowing transfer functions
 
 import numpy as np
 from numpy.typing import NDArray
-from scipy.signal import minimum_phase as min_phase_scipy
+from scipy.signal import (
+    minimum_phase as min_phase_scipy,
+    get_window as get_window_scipy,
+)
 from scipy.fft import rfft as rfft_scipy, next_fast_len as next_fast_length_fft
 from scipy.interpolate import interp1d
 
@@ -189,6 +192,9 @@ def window_ir(
     any type. The peak of the impulse response is aligned to correspond to
     the first value with amplitude 1 of the window.
 
+    BEWARE: This function moves the starting point for each channel, thus losing
+    timing information between channels.
+
     Parameters
     ----------
     signal : `ImpulseResponse`
@@ -279,6 +285,84 @@ def window_ir(
     new_sig = signal.copy_with_new_time_data(new_time_data)
     new_sig.set_window(window)
     return new_sig, start_positions_samples
+
+
+def window_ir_tukey(
+    ir: ImpulseResponse,
+    left_flank_s: float | None,
+    right_flank_s: float | None,
+    window_flank_type: Window = Window.Hann,
+) -> ImpulseResponse:
+    """This function applies a Tukey-like window to all channels of an
+    `ImpulseResponse`. This preserves timing information across channels in contrast
+    to `window_ir`.
+
+    Parameters
+    ----------
+    ir : `ImpulseResponse`
+        Impulse response to apply window to.
+    left_flank_s : float, None
+        Duration of the left flank of the windw in seconds. Pass `None` to avoid
+        applying a window to the left flank altogether.
+    right_flank_s : float, None
+        Duration of the right flank of the windw in seconds. Pass `None` to avoid
+        applying a window to the right flank altogether.
+    window_flank_type : Window, optional
+        Window type to compute the flanks from. See `Notes` for details. Default: Hann.
+
+    Returns
+    -------
+    `ImpulseResponse`
+        New impulse response with applied window.
+
+    Notes
+    -----
+    - The usual Tukey window applies flanks that correspond to a Hann window. This
+      function offers the possibility of applying any type of from the supported
+      Window types.
+
+    """
+    assert (
+        type(ir) is ImpulseResponse
+    ), "This is only valid for an impulse response"
+    assert (
+        left_flank_s is not None or right_flank_s is not None
+    ), "At least one flank length should be passed"
+    assert window_flank_type != Window.Tukey, (
+        "Tukey window type is not supported here. "
+        + "For computing a standard Tukey window, pass `Hann` as window type"
+    )
+
+    left_flank_duration_samples = (
+        int(left_flank_s * ir.sampling_rate_hz + 0.5)
+        if left_flank_s is not None
+        else 0
+    )
+    right_flank_duration_samples = (
+        int(right_flank_s * ir.sampling_rate_hz + 0.5)
+        if right_flank_s is not None
+        else 0
+    )
+    assert (
+        left_flank_duration_samples + right_flank_duration_samples
+        <= ir.length_samples
+    ), "Flanks overlap given the current IR length"
+
+    window = np.ones((ir.length_samples, 1))
+
+    if left_flank_duration_samples > 0:
+        window[:left_flank_duration_samples, 0] = get_window_scipy(
+            window_flank_type.to_scipy_format(),
+            left_flank_duration_samples * 2,
+        )[:left_flank_duration_samples]
+    if right_flank_duration_samples > 0:
+        window[-right_flank_duration_samples:, 0] = get_window_scipy(
+            window_flank_type.to_scipy_format(),
+            right_flank_duration_samples * 2,
+        )[right_flank_duration_samples:]
+    new_ir = ir.copy_with_new_time_data(ir.time_data * window)
+    new_ir.set_window(np.repeat(window, ir.number_of_channels, 1))
+    return new_ir
 
 
 def window_centered_ir(

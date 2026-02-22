@@ -13,6 +13,7 @@ Acquire TF/IR from signals:
 Modify TF/IR:
 
 - `window_ir()` (Windows a TF in time domain)
+- `apply_tukey_like_window()` (Windows a TF in time domain)
 - `min_phase_ir()` (returns a minimum-phase version of the IR)
 - `combine_ir_with_dirac()` (combines an IR with a time-aligned dirac impulse)
 - `average_irs()` (averages all channels into a single IR)
@@ -46,6 +47,7 @@ from .transfer_functions import (
     window_ir,
     window_frequency_dependent,
     window_centered_ir,
+    window_ir_tukey,
     compute_transfer_function,
     average_irs,
     min_phase_from_mag,
@@ -69,6 +71,7 @@ from .enums import TransferFunctionType, SmoothingDomain
 __all__ = [
     "spectral_deconvolve",
     "window_ir",
+    "window_ir_tukey",
     "compute_transfer_function",
     "average_irs",
     "min_phase_from_mag",
