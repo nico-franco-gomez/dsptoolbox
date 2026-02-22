@@ -23,6 +23,7 @@ This module contains signal transforms.
 - `warp_filter()` (Warp a filter transforming its poles and zeros)
 - `lpc()` (linear-predictive coding)
 - `dft()` (discrete fourier transform for arbitrary frequency resolution)
+- `spectrum_via_filterbank()` (magnitude spectrum via filterbank)
 
 """
 
@@ -45,6 +46,7 @@ from .transforms import (
     warp_filter,
     lpc,
     dft,
+    spectrum_via_filterbank,
 )
 
 __all__ = [
@@ -66,4 +68,5 @@ __all__ = [
     "warp_filter",
     "lpc",
     "dft",
+    "spectrum_via_filterbank",
 ]
