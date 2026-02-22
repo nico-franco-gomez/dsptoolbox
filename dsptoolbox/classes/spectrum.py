@@ -184,10 +184,6 @@ class Spectrum(MultichannelData):
             ), "No negative values are allowed for the magnitude spectrum"
 
     @property
-    def number_of_channels(self) -> int:
-        return self.__spectral_data.shape[1]
-
-    @property
     def is_magnitude(self) -> bool:
         return np.isrealobj(self.__spectral_data)
 
@@ -221,9 +217,6 @@ class Spectrum(MultichannelData):
             print(e)
 
         return FrequencySpacing.Other
-
-    def __len__(self):
-        return self.number_frequency_bins
 
     def to_signal(
         self,

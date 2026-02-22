@@ -227,13 +227,13 @@ class Signal(MultichannelData):
     @property
     def time_data(self) -> NDArray[np.float64]:
         """Array with time samples. Its shape is always (time samples,
-        channels) and data type np.float64.
+        channels) and data type `np.float64`.
 
         """
         return self.__time_data
 
     @time_data.setter
-    def time_data(self, new_time_data):
+    def time_data(self, new_time_data: ArrayLike):
         # Shape of Time Data array
         new_time_data = np.atleast_2d(new_time_data).squeeze()
         assert new_time_data.ndim <= 2, (
@@ -1448,7 +1448,11 @@ class Signal(MultichannelData):
     # ======== Multichannel Data Base Class Implementation ====================
     def _get_data(self) -> NDArray[np.float64 | np.complex128]:
         """Get the time data for multichannel operations."""
-        return self.time_data
+        return (
+            self.time_data + 1j * self.time_data_imaginary
+            if self.is_complex_signal
+            else self.time_data
+        )
 
     def _set_data(self, data: NDArray[np.float64 | np.complex128]) -> None:
         """Set the time data for multichannel operations."""
