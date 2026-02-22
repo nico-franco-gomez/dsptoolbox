@@ -79,6 +79,42 @@ class TestTransferFunctionsModule:
             keep_original_length=True,
         )
 
+    def test_window_ir_tukey(self):
+        # Mostly functionality
+        h = dsp.transfer_functions.spectral_deconvolve(self.y_m, self.x)
+        h.time_data = np.roll(
+            h.time_data, 256 - np.argmax(np.abs(h.time_data)), axis=0
+        )
+        h.time_data = np.repeat(h.time_data, 2, axis=1)
+
+        delay_second_channel = 10
+        h = dsp.delay(h, delay_second_channel, [1], True)
+        hh = dsp.transfer_functions.window_ir_tukey(
+            h, 210 / h.sampling_rate_hz, 10 / h.sampling_rate_hz
+        )
+        assert (
+            np.ediff1d(np.argmax(np.abs(hh.time_data), axis=0))[0]
+            == delay_second_channel
+        )
+        assert hasattr(hh, "window")
+
+        dsp.transfer_functions.window_ir_tukey(
+            h, 210 / h.sampling_rate_hz, None
+        )
+        dsp.transfer_functions.window_ir_tukey(
+            h, None, 10 / h.sampling_rate_hz
+        )
+        with pytest.raises(AssertionError):
+            dsp.transfer_functions.window_ir_tukey(h, None, None)
+        with pytest.raises(AssertionError):
+            dsp.transfer_functions.window_ir_tukey(
+                h, h.length_seconds / 2, h.length_seconds * 3 / 2
+            )
+        with pytest.raises(AssertionError):
+            dsp.transfer_functions.window_ir_tukey(
+                h, h.length_seconds / 10, None, dsp.Window.Tukey
+            )
+
     def test_window_ir(self):
         # Only functionality
         h = dsp.transfer_functions.spectral_deconvolve(self.y_m, self.x)

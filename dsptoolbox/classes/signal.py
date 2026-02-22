@@ -13,6 +13,7 @@ from scipy.signal import oaconvolve
 from numpy.typing import NDArray, ArrayLike
 from scipy.fft import rfft, next_fast_len
 
+from ._multichannel_data import MultichannelData
 from ..helpers.spectrum_utilities import (
     _get_normalized_spectrum,
     _scale_spectrum,
@@ -43,7 +44,7 @@ from ..standard.enums import (
 )
 
 
-class Signal:
+class Signal(MultichannelData):
     """Class for general signals (time series). Most of the methods and
     supported computations are focused on audio signals, but some features
     might be generalizable to all kinds of time series. It is assumed that
@@ -226,13 +227,13 @@ class Signal:
     @property
     def time_data(self) -> NDArray[np.float64]:
         """Array with time samples. Its shape is always (time samples,
-        channels) and data type np.float64.
+        channels) and data type `np.float64`.
 
         """
         return self.__time_data
 
     @time_data.setter
-    def time_data(self, new_time_data):
+    def time_data(self, new_time_data: ArrayLike):
         # Shape of Time Data array
         new_time_data = np.atleast_2d(new_time_data).squeeze()
         assert new_time_data.ndim <= 2, (
@@ -313,10 +314,6 @@ class Signal:
     @property
     def length_samples(self) -> int:
         return len(self)
-
-    @property
-    def number_of_channels(self) -> int:
-        return self.__time_data.shape[1]
 
     @property
     def time_vector_s(self) -> NDArray[np.float64]:
@@ -670,95 +667,6 @@ class Signal:
         )
         self.__update_state()
         return self
-
-    def remove_channel(self, channel_number: int = -1) -> "Signal":
-        """Removes a channel.
-
-        Parameters
-        ----------
-        channel_number : int, optional
-            Channel number to be removed. Default: -1 (last).
-
-        Returns
-        -------
-        self
-
-        """
-        if channel_number == -1:
-            channel_number = self.time_data.shape[1] - 1
-        assert self.time_data.shape[1] > 1, "Cannot not erase only channel"
-        assert self.time_data.shape[1] - 1 >= channel_number, (
-            f"Channel number {channel_number} does not exist. Signal only "
-            + f"has {self.number_of_channels - 1} channels (zero included)."
-        )
-        self.time_data = np.delete(self.time_data, channel_number, axis=-1)
-        self.__update_state()
-        return self
-
-    def swap_channels(self, new_order) -> "Signal":
-        """Rearranges the channels (inplace) in the new given order.
-
-        Parameters
-        ----------
-        new_order : array-like
-            New rearrangement of channels.
-
-        Returns
-        -------
-        self
-
-        """
-        new_order = np.atleast_1d(np.asarray(new_order).squeeze())
-        assert new_order.ndim == 1, (
-            "Too many or too few dimensions are given in the new "
-            + "arrangement vector"
-        )
-        assert self.number_of_channels == len(
-            new_order
-        ), "The number of channels does not match"
-        assert all(new_order < self.number_of_channels) and all(
-            new_order >= 0
-        ), (
-            "Indexes of new channels have to be in "
-            + f"[0, {self.number_of_channels - 1}]"
-        )
-        assert len(np.unique(new_order)) == len(
-            new_order
-        ), "There are repeated indexes in the new order vector"
-        self.time_data = self.time_data[:, new_order]
-        self.__update_state()
-        return self
-
-    def get_channels(self, channels) -> "Signal":
-        """Returns a signal object with the selected channels. Beware that
-        first channel index is 0!
-
-        Parameters
-        ----------
-        channels : array-like or int
-            Channels to be returned as a new Signal object.
-
-        Returns
-        -------
-        new_sig : `Signal`
-            New signal object with selected channels.
-
-        """
-        channels = np.atleast_1d(np.asarray(channels).squeeze())
-        return self.copy_with_new_time_data(self.time_data[:, channels])
-
-    def sum_channels(self) -> "Signal":
-        """Return a copy of the signal where all channels are summed into one.
-
-        Returns
-        -------
-        Signal
-            New signal with a single channel.
-
-        """
-        return self.copy_with_new_time_data(
-            np.sum(self.time_data, axis=1, keepdims=True)
-        )
 
     def clear_time_window(self) -> "Signal":
         """Deletes the time window of the signal in case there is any."""
@@ -1536,6 +1444,29 @@ class Signal:
 
         """
         return deepcopy(self)
+
+    # ======== Multichannel Data Base Class Implementation ====================
+    def _get_data(self) -> NDArray[np.float64 | np.complex128]:
+        """Get the time data for multichannel operations."""
+        return (
+            self.time_data + 1j * self.time_data_imaginary
+            if self.is_complex_signal
+            else self.time_data
+        )
+
+    def _set_data(self, data: NDArray[np.float64 | np.complex128]) -> None:
+        """Set the time data for multichannel operations."""
+        self.time_data = data
+
+    def _create_copy_with_new_data(
+        self, data: NDArray[np.float64 | np.complex128]
+    ) -> "Signal":
+        """Create a copy with new time data."""
+        return self.copy_with_new_time_data(data)
+
+    def _update_state(self) -> None:
+        """Update internal state after data modification."""
+        self.__update_state()
 
     def copy_with_new_time_data(self, new_time_data: ArrayLike) -> "Signal":
         """Copy all attributes of the signal but with new time data.

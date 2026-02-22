@@ -5,7 +5,9 @@ Here are methods considered as somewhat special or less common.
 from ..helpers.frequency_conversion import _hz2mel, _mel2hz
 from ..helpers.ar_estimation import _burg_ar_estimation, _yw_ar_estimation
 from ..classes.signal import Signal
+from ..classes.spectrum import Spectrum
 from ..classes.filter import Filter
+from ..classes.filterbank import FilterBank
 from ..classes.impulse_response import ImpulseResponse
 from ..classes.multibandsignal import MultiBandSignal
 from ..plots import general_matrix_plot
@@ -28,7 +30,12 @@ from ..transforms._transforms import (
     _dft_backend,
 )
 from ..helpers.gain_and_level import to_db
-from ..standard.enums import FilterCoefficientsType
+from ..standard.enums import (
+    FilterCoefficientsType,
+    FilterPassType,
+    FilterBankMode,
+)
+from ..standard.gain_and_level import rms
 
 import numpy as np
 from numpy.typing import NDArray
@@ -1334,3 +1341,52 @@ def dft(signal: Signal, frequency_vector_hz: NDArray[np.float64]):
         order="C",
     ).astype(np.complex128, order="C")
     return _dft_backend(time_data, f_normalized, dft_factor, spectrum)
+
+
+def spectrum_via_filterbank(
+    signal: Signal,
+    frequency_vector_hz: NDArray[np.float64],
+    bandwidth_hz: float,
+    order: int = 8,
+    zero_phase: bool = False,
+) -> Spectrum:
+    """Obtain a magnitude spectrum of the signal via a butterworth filter bank and
+    posterior computation of the RMS value for each resulting band. This is useful when
+    the needed frequency resolution from the spectrum is difficult to obtain via an FFT
+    or periodogram.
+
+    Parameters
+    ----------
+    signal : Signal
+        Signal from which to extract the spectrum.
+    frequency_vector_hz : NDArray[np.float64]
+        Frequencies to use for the spectrum.
+    bandwidth_hz : float
+        The width of each band in Hz.
+    order : int, optional
+        Order for the bandpass filters. Default: 8.
+    zero_phase : bool, optional
+        When `True`, zero-phase filtering is applied. Default: `False`.
+
+    Returns
+    -------
+    Spectrum
+        Magnitude spectrum
+
+    """
+    half_bandwidth = bandwidth_hz / 2.0
+    fb = FilterBank(
+        [
+            Filter.iir_filter(
+                order,
+                [freq - half_bandwidth, freq + half_bandwidth],
+                FilterPassType.Bandpass,
+                signal.sampling_rate_hz,
+            )
+            for freq in frequency_vector_hz
+        ]
+    )
+    mir = fb.filter_signal(
+        signal, FilterBankMode.Parallel, zero_phase=zero_phase
+    )
+    return Spectrum(frequency_vector_hz, rms(mir, False))

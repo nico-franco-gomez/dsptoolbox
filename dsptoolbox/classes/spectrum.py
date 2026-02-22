@@ -7,6 +7,7 @@ from matplotlib.figure import Figure
 from matplotlib.axes import Axes
 from pickle import dump, HIGHEST_PROTOCOL
 
+from ._multichannel_data import MultichannelData
 from ..tools import fractional_octave_smoothing
 from .. import plots
 from .signal import Signal
@@ -27,7 +28,7 @@ from ..standard.enums import (
 )
 
 
-class Spectrum:
+class Spectrum(MultichannelData):
     def __init__(
         self,
         frequency_vector_hz: NDArray[np.float64],
@@ -161,6 +162,10 @@ class Spectrum:
         return len(self.frequency_vector_hz)
 
     @property
+    def length_frequency_bins(self) -> int:
+        return self.number_frequency_bins
+
+    @property
     def spectral_data(self) -> NDArray[np.float64 | np.complex128]:
         return self.__spectral_data
 
@@ -183,12 +188,14 @@ class Spectrum:
             ), "No negative values are allowed for the magnitude spectrum"
 
     @property
-    def number_of_channels(self) -> int:
-        return self.__spectral_data.shape[1]
-
-    @property
     def is_magnitude(self) -> bool:
         return np.isrealobj(self.__spectral_data)
+
+    @property
+    def is_complex(self) -> bool:
+        """When True, the spectral data is complex. Counterpart to is_magnitude
+        for consistency with Signal class which has is_complex_signal."""
+        return not self.is_magnitude
 
     @property
     def spectrum_type(self) -> SpectrumType:
@@ -220,9 +227,6 @@ class Spectrum:
             print(e)
 
         return FrequencySpacing.Other
-
-    def __len__(self):
-        return self.number_frequency_bins
 
     def to_signal(
         self,
@@ -328,6 +332,34 @@ class Spectrum:
         self.frequency_vector_hz = self.frequency_vector_hz[s]
         self.spectral_data = self.spectral_data[s, ...]
         return self
+
+    def sum_channels(self, power_sum: bool = True) -> "Spectrum":
+        """Sum all channels of the spectrum and return new spectrum with single channel.
+
+        Parameters
+        ----------
+        power_sum : bool, optional
+            When `True`, all channels are summed in their power representation.
+            Otherwise, they are summed in either magnitude or complex representation,
+            depending on the type of spectral data. Default: True.
+
+        Returns
+        -------
+        self
+
+        """
+        if power_sum:
+            return self._create_copy_with_new_data(
+                (
+                    np.sum(
+                        np.abs(self.spectral_data) ** 2.0,
+                        axis=1,
+                        keepdims=True,
+                    )
+                    ** 0.5
+                )
+            )
+        return super().sum_channels()
 
     def resample(self, new_freqs_hz: NDArray[np.float64]):
         """Resample current spectrum (inplace) to new frequency vector. The
@@ -887,6 +919,35 @@ class Spectrum:
 
         """
         return deepcopy(self)
+
+    # ======== Multichannel Data Base Class Implementation ====================
+    def _get_data(self) -> NDArray[np.float64 | np.complex128]:
+        """Get the spectral data for multichannel operations."""
+        return self.spectral_data
+
+    def _set_data(self, data: NDArray[np.float64 | np.complex128]) -> None:
+        """Set the spectral data for multichannel operations."""
+        self.spectral_data = data
+
+    def _create_copy_with_new_data(
+        self, data: NDArray[np.float64 | np.complex128]
+    ) -> "Spectrum":
+        """Create a copy with new spectral data."""
+        new_spectrum = Spectrum(self.frequency_vector_hz, data)
+        # Copy interpolator parameters
+        new_spectrum.set_interpolator_parameters(
+            self.__int_domain,
+            self.__int_scheme,
+            self.__int_edges,
+        )
+        # Copy coherence if it exists
+        if self.has_coherence:
+            new_spectrum.set_coherence(self.coherence)
+        return new_spectrum
+
+    def _update_state(self) -> None:
+        """No state tracking needed for Spectrum."""
+        pass
 
     def __freqs_to_slice(
         self,

@@ -236,3 +236,22 @@ class TestTransformsModule:
         select = slice(20, 40)
         dft = dsp.transforms.dft(s, f[select])
         np.testing.assert_allclose(dft, spectrum[select, ...])
+
+    def test_spectrum_via_filterbank(self):
+        s = dsp.pad_trim(self.speech, 20_000)
+        freqs = np.asarray([500, 550, 1000])
+        spec1 = dsp.transforms.spectrum_via_filterbank(
+            s, freqs, 20.0, 8, False
+        )
+        dsp.transforms.spectrum_via_filterbank(s, freqs, 20.0, 8, True)
+
+        s_multi = dsp.append_signals([s, s.copy()])
+        spec2 = dsp.transforms.spectrum_via_filterbank(
+            s_multi, freqs, 20.0, 8, False
+        )
+        np.testing.assert_allclose(
+            spec1.spectral_data[:, 0], spec2.spectral_data[:, 0]
+        )
+        np.testing.assert_allclose(
+            spec1.spectral_data[:, 0], spec2.spectral_data[:, 1]
+        )
