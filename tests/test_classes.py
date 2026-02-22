@@ -1750,6 +1750,22 @@ class TestSpectrum:
             np.array([200.0]), spec2.frequency_vector_hz
         )
 
+    def test_sum_channels(self):
+        freqs = np.array([100.0, 200.0, 300.0, 500.0])
+        spec = self.get_spectrum_from_filter(freqs, complex=False)
+        energy_sum_1 = spec.sum_channels(True)
+        magnitude_sum = spec.sum_channels(False)
+        assert magnitude_sum.is_magnitude
+
+        spec = self.get_spectrum_from_filter(freqs, complex=True)
+        energy_sum_2 = spec.copy().sum_channels(True)
+        complex_sum = spec.sum_channels(False)
+        assert not complex_sum.is_magnitude
+
+        np.testing.assert_allclose(
+            energy_sum_1.spectral_data, energy_sum_2.spectral_data
+        )
+
     def test_normalize(self):
         freqs = np.array([100.0, 200.0, 300.0, 500.0])
         spec = self.get_spectrum_from_filter(freqs, complex=False)

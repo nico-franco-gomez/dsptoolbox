@@ -323,6 +323,34 @@ class Spectrum(MultichannelData):
         self.spectral_data = self.spectral_data[s, ...]
         return self
 
+    def sum_channels(self, power_sum: bool = True) -> "Spectrum":
+        """Sum all channels of the spectrum and return new spectrum with single channel.
+
+        Parameters
+        ----------
+        power_sum : bool, optional
+            When `True`, all channels are summed in their power representation.
+            Otherwise, they are summed in either magnitude or complex representation,
+            depending on the type of spectral data. Default: True.
+
+        Returns
+        -------
+        self
+
+        """
+        if power_sum:
+            return self._create_copy_with_new_data(
+                (
+                    np.sum(
+                        np.abs(self.spectral_data) ** 2.0,
+                        axis=1,
+                        keepdims=True,
+                    )
+                    ** 0.5
+                )
+            )
+        return super().sum_channels()
+
     def resample(self, new_freqs_hz: NDArray[np.float64]):
         """Resample current spectrum (inplace) to new frequency vector. The
         stored interpolation parameters will be used.
