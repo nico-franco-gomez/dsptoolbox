@@ -1346,7 +1346,8 @@ def dft(signal: Signal, frequency_vector_hz: NDArray[np.float64]):
 def spectrum_via_filterbank(
     signal: Signal,
     frequency_vector_hz: NDArray[np.float64],
-    bandwidth_hz: float,
+    bandwidth_octaves: float | None = None,
+    bandwidth_hz: float | None = None,
     order: int = 8,
     zero_phase: bool = False,
 ) -> Spectrum:
@@ -1361,6 +1362,8 @@ def spectrum_via_filterbank(
         Signal from which to extract the spectrum.
     frequency_vector_hz : NDArray[np.float64]
         Frequencies to use for the spectrum.
+    bandwidth_octaves : float, optional
+        The width of each band in octaves. .
     bandwidth_hz : float
         The width of each band in Hz.
     order : int, optional
@@ -1374,16 +1377,32 @@ def spectrum_via_filterbank(
         Magnitude spectrum
 
     """
-    half_bandwidth = bandwidth_hz / 2.0
+    assert (
+        bandwidth_octaves is not None or bandwidth_hz is not None
+    ), "At least one bandwidth parameter must be provided"
+    bands = []
+    if bandwidth_hz is not None:
+        assert bandwidth_hz > 0, "Bandwidth must be positive"
+        assert bandwidth_octaves is None, "Both bandwidths cannot be given"
+        half_bandwidth = bandwidth_hz / 2.0
+        for freq in frequency_vector_hz:
+            bands.append([freq - half_bandwidth, freq + half_bandwidth])
+    if bandwidth_octaves is not None:
+        assert bandwidth_octaves > 0, "Bandwidth must be positive"
+        assert bandwidth_hz is None, "Both bandwidths cannot be given"
+        half_bandwidth = bandwidth_octaves / 2.0
+        for freq in frequency_vector_hz:
+            factor = 2**half_bandwidth
+            bands.append([freq / factor, freq * factor])
     fb = FilterBank(
         [
             Filter.iir_filter(
                 order,
-                [freq - half_bandwidth, freq + half_bandwidth],
+                band,
                 FilterPassType.Bandpass,
                 signal.sampling_rate_hz,
             )
-            for freq in frequency_vector_hz
+            for band in bands
         ]
     )
     mir = fb.filter_signal(

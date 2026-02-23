@@ -240,14 +240,15 @@ class TestTransformsModule:
     def test_spectrum_via_filterbank(self):
         s = dsp.pad_trim(self.speech, 20_000)
         freqs = np.asarray([500, 550, 1000])
+        # Linear
         spec1 = dsp.transforms.spectrum_via_filterbank(
-            s, freqs, 20.0, 8, False
+            s, freqs, None, 20.0, 8, False
         )
-        dsp.transforms.spectrum_via_filterbank(s, freqs, 20.0, 8, True)
+        dsp.transforms.spectrum_via_filterbank(s, freqs, None, 20.0, 8, True)
 
         s_multi = dsp.append_signals([s, s.copy()])
         spec2 = dsp.transforms.spectrum_via_filterbank(
-            s_multi, freqs, 20.0, 8, False
+            s_multi, freqs, None, 20.0, 8, False
         )
         np.testing.assert_allclose(
             spec1.spectral_data[:, 0], spec2.spectral_data[:, 0]
@@ -255,3 +256,20 @@ class TestTransformsModule:
         np.testing.assert_allclose(
             spec1.spectral_data[:, 0], spec2.spectral_data[:, 1]
         )
+
+        # Log
+        spec2 = dsp.transforms.spectrum_via_filterbank(
+            s_multi, freqs, 0.5, None, 8, False
+        )
+        with pytest.raises(AssertionError):
+            spec2 = dsp.transforms.spectrum_via_filterbank(
+                s_multi, freqs, 0.5, 10, 8, False
+            )
+        with pytest.raises(AssertionError):
+            spec2 = dsp.transforms.spectrum_via_filterbank(
+                s_multi, freqs, -0.5, None, 8, False
+            )
+        with pytest.raises(AssertionError):
+            spec2 = dsp.transforms.spectrum_via_filterbank(
+                s_multi, freqs, None, -10, 8, False
+            )
