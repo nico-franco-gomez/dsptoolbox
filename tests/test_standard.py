@@ -340,6 +340,18 @@ class TestStandardModule:
         rms_vals = dsp.rms(self.audio_multi, in_dbfs=False)
         assert np.isclose(np.sqrt(np.mean(td**2)), rms_vals[0])
 
+    def test_lufs_integrated(self):
+        # Only functionality
+        dsp.lufs_integrated(self.audio_multi)
+        n = dsp.generators.oscillator(
+            997,
+            48000,
+            length_seconds=2.0,
+            peak_level_dbfs=0.0,
+            number_of_channels=1,
+        )
+        np.testing.assert_allclose(dsp.lufs_integrated(n), -3.01, atol=0.07)
+
     def test_calibration_data(self):
         # Calibration for one channel
         sine = dsp.generators.oscillator(

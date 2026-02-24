@@ -25,6 +25,7 @@ from .gain_and_level import (
     fade,
     true_peak_level,
     rms,
+    lufs_integrated,
     crest_factor,
 )
 from .other import (
@@ -78,6 +79,7 @@ __all__ = [
     "true_peak_level",
     "rms",
     "crest_factor",
+    "lufs_integrated",
     # Other
     "load_pkl_object",
     "activity_detector",

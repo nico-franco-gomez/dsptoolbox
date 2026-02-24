@@ -3,8 +3,10 @@ from numpy.typing import NDArray
 
 from ..classes import Signal, MultiBandSignal, FilterBank, Filter
 from ..helpers.gain_and_level import _fade, from_db, _normalize, _rms, to_db
+from ._framed_signal_representation import _get_framed_signal
 from .resampling import resample
-from .enums import FadeType
+from .enums import FadeType, BiquadEqType
+from .other import merge_filters
 
 
 def normalize(
@@ -209,6 +211,95 @@ def rms(
     if in_dbfs:
         rms = 20.0 * np.log10(rms)
     return np.atleast_1d(rms)
+
+
+def lufs_integrated(s: Signal) -> float:
+    """Compute integrated loudness using Loudness Units relative to Full Scale (LUFS or
+    LKFS) of the signal. The computation is done according to [1].
+
+    Parameters
+    ----------
+    s : dsp.Signal
+        Signal from which to compute the loudness. The signal can have up to 5 channels
+        where the following order is always assumed: (Left, Right, Center, Left
+        Surround, Right Surround). This is relevant for the channel-specific gain
+        compensation.
+
+    Returns
+    -------
+    float
+        Loudness in LUFS-i
+
+    Notes
+    -----
+    - [1] provides exact filter coefficients for a sampling rate of 48 kHz. In this
+      implementation, the corresponding biquad filter parameters were extracted and
+      can be used for any sampling rate provided it is not too low (frequency warping).
+
+    References
+    ----------
+    - [1]: Recommendation ITU-R BS.1770-5 (11/2023). Algorithms to measure audio
+      programme loudness and true-peak audio level
+
+    """
+    assert (
+        s.number_of_channels <= 5
+    ), "Not implemented for more channels than 5"
+    fs_hz = s.sampling_rate_hz
+
+    # Constants in algorithm
+    k_filter = merge_filters(
+        [
+            # Acoustic shadowing of the head: Highshelf
+            Filter.biquad(
+                eq_type=BiquadEqType.Highshelf,
+                frequency_hz=1500,
+                gain_db=4.0,
+                q=2**0.5 / 2.0,
+                sampling_rate_hz=fs_hz,
+            ),
+            # RLB Weightning: Highpass
+            Filter.biquad(
+                eq_type=BiquadEqType.Highpass,
+                frequency_hz=38.1,
+                gain_db=0.0,
+                q=0.5,
+                sampling_rate_hz=fs_hz,
+            ),
+        ]
+    )
+    Tg = 400e-3
+    G = np.array([1.0, 1.0, 1.0, 1.41, 1.41])[: s.number_of_channels]
+    Tg_samples = int(Tg * fs_hz + 0.5)
+    overlap = 0.75
+    step = int((1.0 - overlap) * Tg_samples + 0.5)
+    GAMMA_A = -70
+    DIFF_GAMMA_R = 10
+
+    # Filter handling amplitude
+    constrained = s.constrain_amplitude
+    s.constrain_amplitude = False
+    s_prefiltered = k_filter.filter_signal(s)
+    s.constrain_amplitude = constrained
+
+    # Compute blocks
+    z_ji = np.mean(
+        _get_framed_signal(
+            s_prefiltered.time_data**2.0, Tg_samples, step, False
+        ),
+        axis=0,
+    )
+
+    def gated_loudness(x):
+        return -0.691 + 10.0 * np.log10(x @ G)
+
+    l_j = gated_loudness(z_ji)
+    gamma_r = (
+        gated_loudness(np.mean(z_ji[l_j > GAMMA_A, :], axis=0)) - DIFF_GAMMA_R
+    )
+    return gated_loudness(
+        np.mean(z_ji[l_j > max(gamma_r, GAMMA_A), :], axis=0)
+    )
 
 
 def apply_gain(
