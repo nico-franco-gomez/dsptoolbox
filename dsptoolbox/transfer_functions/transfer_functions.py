@@ -105,6 +105,13 @@ def spectral_deconvolve(
     new_sig : `Signal`
         Deconvolved signal.
 
+    Notes
+    -----
+    - The deconvolution delivers an impulse response for the linear system that is not
+      constrained in amplitude since some linear systems might amplify an input
+      significantly and the true peak value should be preserved. This is also highly
+      dependent on the phase response.
+
     """
     assert (
         output.time_data.shape[0] == input.time_data.shape[0]
@@ -171,7 +178,9 @@ def spectral_deconvolve(
             start_stop_hz=start_stop_hz,
             regularized=apply_regularization,
         )
-    new_sig = ImpulseResponse(None, new_time_data, output.sampling_rate_hz)
+    new_sig = ImpulseResponse(
+        None, new_time_data, output.sampling_rate_hz, constrain_amplitude=False
+    )
     if padding and keep_original_length:
         new_sig.time_data = _pad_trim(new_sig.time_data, original_length)
     return new_sig
