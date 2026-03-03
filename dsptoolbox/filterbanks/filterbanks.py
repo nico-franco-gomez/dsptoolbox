@@ -3,6 +3,7 @@ General use filters and filter banks.
 """
 
 import numpy as np
+from numpy.typing import NDArray
 from scipy.signal import (
     windows,
     bilinear_zpk,
@@ -337,7 +338,9 @@ def fractional_octave_bands(
     octave_fraction: int = 1,
     filter_order: int = 6,
     sampling_rate_hz: int | None = None,
-):
+) -> tuple[
+    FilterBank, NDArray[np.float64], tuple[NDArray[np.float64], NDArray[np.float64]]
+]:
     """Create and return a filter bank containing a set of of fractional
     octave filters that are compliant with the specifications presented in [1].
     These are butterworth filters with at least order 3. For offline
@@ -362,6 +365,10 @@ def fractional_octave_bands(
     -------
     octave_filter_bank : `FilterBank`
         Filter bank containing fractional octave band filters.
+    center_freqs_hz : NDArray[np.float64]
+        Center frequencies of each band in Hz.
+    (lower_hz, upper_hz) : tuple[NDArray[np.float64], NDArray[np.float64]]
+        Lower and upper bounds of each band in Hz.
 
     References
     ----------
@@ -381,18 +388,18 @@ def fractional_octave_bands(
     )
 
     # fractional octave frequencies
-    lower, upper = fractional_octave_frequencies(
+    _, center_freqs_hz, (lower_hz, upper_hz) = fractional_octave_frequencies(
         octave_fraction, frequency_range_hz, return_cutoff=True
-    )[2]
+    )
 
     octave_filter_bank = FilterBank()
 
-    for ind in range(len(lower)):
+    for ind in range(len(lower_hz)):
         top = FilterPassType.Bandpass
-        freqs = [lower[ind], upper[ind]]
-        if upper[ind] > sampling_rate_hz // 2:
+        freqs = [lower_hz[ind], upper_hz[ind]]
+        if upper_hz[ind] > sampling_rate_hz // 2:
             top = FilterPassType.Highpass
-            freqs = lower[ind]
+            freqs = lower_hz[ind]
 
         f = Filter.iir_filter(
             order=filter_order,
@@ -403,7 +410,7 @@ def fractional_octave_bands(
         )
         octave_filter_bank.add_filter(f)
 
-    return octave_filter_bank
+    return octave_filter_bank, center_freqs_hz, (lower_hz, upper_hz)
 
 
 def weighting_filter(a_weighting: bool = True, sampling_rate_hz: int | None = None):

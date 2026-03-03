@@ -531,7 +531,7 @@ def _bass_ratio(rir: ImpulseResponse) -> NDArray[np.float64]:
     """
     fb = fractional_octave_bands(
         [125, 1000], filter_order=10, sampling_rate_hz=rir.sampling_rate_hz
-    )
+    )[0]
     rir_multi = fb.filter_signal(rir, FilterBankMode.Parallel, zero_phase=True)
     rt, _ = reverb_time(rir_multi)
     br = np.zeros(rir.number_of_channels)

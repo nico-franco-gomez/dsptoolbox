@@ -234,7 +234,7 @@ class TestRoomAcousticsModule:
         # MultiBand
         fb = dsp.filterbanks.fractional_octave_bands(
             [125, 1000], sampling_rate_hz=self.rir.sampling_rate_hz
-        )
+        )[0]
         rir_filt = fb.filter_signal(
             self.rir, dsp.FilterBankMode.Parallel, zero_phase=True
         )

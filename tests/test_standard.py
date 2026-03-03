@@ -379,7 +379,7 @@ class TestStandardModule:
         # Multiband
         fb = dsp.filterbanks.fractional_octave_bands(
             [125, 1000], sampling_rate_hz=self.audio_multi.sampling_rate_hz
-        )
+        )[0]
         new_sig = fb.filter_signal(self.audio_multi, dsp.FilterBankMode.Parallel)
         calib.calibrate_signal(new_sig)
 

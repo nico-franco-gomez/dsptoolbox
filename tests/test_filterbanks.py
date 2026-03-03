@@ -120,12 +120,14 @@ class TestFilterbanksModule:
             filter_order=6,
             sampling_rate_hz=fs_hz,
         )
-        dsp.filterbanks.fractional_octave_bands(
+        _, center, (low, up) = dsp.filterbanks.fractional_octave_bands(
             frequency_range_hz=[31, 4500],
             octave_fraction=12,
             filter_order=6,
             sampling_rate_hz=fs_hz,
         )
+        assert len(center) == len(low) and len(low) == len(up)
+        assert np.all(np.ediff1d(center) > 0)
 
         with pytest.raises(AssertionError):
             dsp.filterbanks.fractional_octave_bands(
