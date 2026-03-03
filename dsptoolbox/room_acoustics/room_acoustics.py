@@ -123,13 +123,11 @@ def reverb_time(
         )
         for ind in range(signal.number_of_bands):
             band_ir_start = None if ir_start is None else ir_start[ind, :]
-            reverberation_times[ind, :], correlation_coefficients[ind, :] = (
-                reverb_time(
-                    signal.bands[ind],
-                    mode,
-                    ir_start=band_ir_start,
-                    automatic_trimming=automatic_trimming,
-                )
+            reverberation_times[ind, :], correlation_coefficients[ind, :] = reverb_time(
+                signal.bands[ind],
+                mode,
+                ir_start=band_ir_start,
+                automatic_trimming=automatic_trimming,
             )
     else:
         raise TypeError(
@@ -181,9 +179,7 @@ def find_modes(
     assert len(f_range_hz) == 2, (
         "Range of frequencies must have a " + "minimum and a maximum value"
     )
-    assert (
-        type(signal) is ImpulseResponse
-    ), "This is only valid for an impulse response"
+    assert type(signal) is ImpulseResponse, "This is only valid for an impulse response"
     signal.spectrum_method = SpectrumMethod.FFT
 
     # Pad signal to have a resolution of around 1 Hz
@@ -250,16 +246,12 @@ def convolve_rir_on_signal(
     assert isinstance(
         rir, ImpulseResponse
     ), "This is only valid for an impulse response"
-    assert (
-        rir.number_of_channels == 1
-    ), "RIR should not contain more than one channel."
+    assert rir.number_of_channels == 1, "RIR should not contain more than one channel."
     assert (
         rir.sampling_rate_hz == signal.sampling_rate_hz
     ), "The sampling rates do not match"
 
-    new_time_data = oaconvolve(
-        signal.time_data, rir.time_data, axes=0, mode="full"
-    )
+    new_time_data = oaconvolve(signal.time_data, rir.time_data, axes=0, mode="full")
 
     if keep_length:
         new_time_data = new_time_data[: len(signal), ...]
@@ -402,9 +394,7 @@ def generate_synthetic_rir(
             room, "detailed_absorption"
         ), "Given room has no detailed absorption dictionary"
         # Create filter bank
-        freqs = room.detailed_absorption["center_frequencies"][:-1] * np.sqrt(
-            2
-        )
+        freqs = room.detailed_absorption["center_frequencies"][:-1] * np.sqrt(2)
         fb = linkwitz_riley_crossovers(
             crossover_frequencies_hz=freqs,
             order=12,
@@ -416,9 +406,7 @@ def generate_synthetic_rir(
 
         print("\nRIR Generator\n")
         for ind in range(fb.number_of_bands):
-            print(
-                f"Band {ind + 1} of {fb.number_of_bands} is being computed..."
-            )
+            print(f"Band {ind + 1} of {fb.number_of_bands} is being computed...")
             alphas = room.detailed_absorption["absorption_matrix"][:, ind]
             rir_band = _generate_rir(
                 room_dim=room.dimensions_m,
@@ -570,15 +558,12 @@ def _check_ir_start_reverb(
         if type(ir_start) in (list, tuple, NDArray[np.float64]):
             ir_start = np.atleast_1d(ir_start).astype(np.int_)
         assert (
-            np.issubdtype(type(ir_start), np.integer)
-            or type(ir_start) is np.ndarray
+            np.issubdtype(type(ir_start), np.integer) or type(ir_start) is np.ndarray
         ), "Unsupported type for ir_start"
 
     if isinstance(sig, ImpulseResponse):
         if np.issubdtype(type(ir_start), np.integer):
-            ir_start = (
-                np.ones(sig.number_of_channels, dtype=np.int_) * ir_start
-            )
+            ir_start = np.ones(sig.number_of_channels, dtype=np.int_) * ir_start
         elif ir_start is None:
             return [None] * sig.number_of_channels
         assert (
@@ -596,9 +581,7 @@ def _check_ir_start_reverb(
         if ir_start is None:
             return None
         if ir_start.ndim == 1:
-            ir_start = np.repeat(
-                ir_start[None, ...], sig.number_of_bands, axis=0
-            )
+            ir_start = np.repeat(ir_start[None, ...], sig.number_of_bands, axis=0)
         else:
             assert ir_start.shape == (
                 sig.number_of_bands,

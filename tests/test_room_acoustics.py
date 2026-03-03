@@ -63,9 +63,7 @@ class TestRoomAcousticsModule:
         fb = dsp.filterbanks.auditory_filters_gammatone(
             [500, 800], sampling_rate_hz=self.rir.sampling_rate_hz
         )
-        mb = fb.filter_signal(
-            self.rir, dsp.FilterBankMode.Parallel, zero_phase=True
-        )
+        mb = fb.filter_signal(self.rir, dsp.FilterBankMode.Parallel, zero_phase=True)
         dsp.room_acoustics.reverb_time(
             mb, dsp.room_acoustics.ReverbTime.T20, ir_start=None
         )
@@ -73,9 +71,7 @@ class TestRoomAcousticsModule:
             mb, dsp.room_acoustics.ReverbTime.T20, ir_start=ind
         )
 
-        mb = fb.filter_signal(
-            combined, dsp.FilterBankMode.Parallel, zero_phase=True
-        )
+        mb = fb.filter_signal(combined, dsp.FilterBankMode.Parallel, zero_phase=True)
         dsp.room_acoustics.reverb_time(
             mb, dsp.room_acoustics.ReverbTime.T20, ir_start=[ind, ind - 1]
         )
@@ -111,9 +107,7 @@ class TestRoomAcousticsModule:
 
     def test_convolve_rir_on_signal(self):
         speech = dsp.Signal(
-            join(
-                os.path.dirname(__file__), "..", "example_data", "speech.flac"
-            )
+            join(os.path.dirname(__file__), "..", "example_data", "speech.flac")
         )
         speech_2 = dsp.append_signals([speech, speech])
         result = dsp.room_acoustics.convolve_rir_on_signal(

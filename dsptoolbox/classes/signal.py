@@ -112,8 +112,7 @@ class Signal(MultichannelData):
         # Import data
         if path is not None:
             assert time_data is None, (
-                "Constructor cannot take a path and "
-                + "a vector at the same time"
+                "Constructor cannot take a path and " + "a vector at the same time"
             )
             assert sampling_rate_hz is None, (
                 "Constructor cannot take a path and a sampling rate at the"
@@ -122,12 +121,9 @@ class Signal(MultichannelData):
             time_data, sampling_rate_hz = sf.read(path)
         else:
             assert time_data is not None, (
-                "Either a path to an audio file or a time vector has to be "
-                + "passed"
+                "Either a path to an audio file or a time vector has to be " + "passed"
             )
-            assert (
-                sampling_rate_hz is not None
-            ), "A sampling rate should be passed!"
+            assert sampling_rate_hz is not None, "A sampling rate should be passed!"
         self.sampling_rate_hz = sampling_rate_hz
         self.time_data = time_data
         self.set_spectrum_parameters()
@@ -259,9 +255,7 @@ class Signal(MultichannelData):
         if self.constrain_amplitude:
             time_data_max = np.max(np.abs(new_time_data))
             if new_time_data_imag is not None:
-                time_data_max = max(
-                    time_data_max, np.max(np.abs(new_time_data_imag))
-                )
+                time_data_max = max(time_data_max, np.max(np.abs(new_time_data_imag)))
             if time_data_max > 1.0:
                 new_time_data /= time_data_max
                 warn(
@@ -302,9 +296,7 @@ class Signal(MultichannelData):
 
     @sampling_rate_hz.setter
     def sampling_rate_hz(self, new_sampling_rate_hz):
-        assert (
-            type(new_sampling_rate_hz) is int
-        ), "Sampling rate can only be an integer"
+        assert type(new_sampling_rate_hz) is int, "Sampling rate can only be an integer"
         self.__sampling_rate_hz = new_sampling_rate_hz
 
     @property
@@ -386,9 +378,7 @@ class Signal(MultichannelData):
     def __iter__(self):
         """Iterate over the channels of the signal. Modifications to the
         samples can be done through these slices."""
-        return iter(
-            [self.time_data[:, x] for x in range(self.number_of_channels)]
-        )
+        return iter([self.time_data[:, x] for x in range(self.number_of_channels)])
 
     def set_spectrum_parameters(
         self,
@@ -578,8 +568,7 @@ class Signal(MultichannelData):
         else:
             if not all(
                 [
-                    self._spectrogram_parameters[k]
-                    == _new_spectrogram_parameters[k]
+                    self._spectrogram_parameters[k] == _new_spectrogram_parameters[k]
                     for k in self._spectrogram_parameters
                 ]
             ):
@@ -662,9 +651,7 @@ class Signal(MultichannelData):
                     + f"{self.time_data.shape[0]}. Activate padding_trimming "
                     + "for allowing this channel to be added"
                 )
-        self.time_data = np.concatenate(
-            [self.time_data, new_time_data], axis=1
-        )
+        self.time_data = np.concatenate([self.time_data, new_time_data], axis=1)
         self.__update_state()
         return self
 
@@ -782,9 +769,7 @@ class Signal(MultichannelData):
             + "channels are available"
         )
         condition = (
-            not hasattr(self, "csm")
-            or force_computation
-            or self.__csm_state_update
+            not hasattr(self, "csm") or force_computation or self.__csm_state_update
         )
 
         if condition:
@@ -821,9 +806,7 @@ class Signal(MultichannelData):
 
     def get_spectrogram(
         self, force_computation: bool = False
-    ) -> tuple[
-        NDArray[np.float64], NDArray[np.float64], NDArray[np.complex128]
-    ]:
+    ) -> tuple[NDArray[np.float64], NDArray[np.float64], NDArray[np.complex128]]:
         """Returns a matrix containing the STFT of a specific channel.
 
         Parameters
@@ -1048,9 +1031,7 @@ class Signal(MultichannelData):
         td_squared = self.time_data**2
 
         if window_length_s > 0:
-            window = np.ones(
-                (int(window_length_s * self.sampling_rate_hz + 0.5), 1)
-            )
+            window = np.ones((int(window_length_s * self.sampling_rate_hz + 0.5), 1))
             window /= len(window)
             td_squared = oaconvolve(td_squared, window, mode="same", axes=0)
 
@@ -1089,8 +1070,7 @@ class Signal(MultichannelData):
             etc,
             sharex=True,
             ylabels=[
-                f"Channel {n} / {db_type}"
-                for n in range(self.number_of_channels)
+                f"Channel {n} / {db_type}" for n in range(self.number_of_channels)
             ],
             xlabels="Time / s",
         )
@@ -1342,9 +1322,7 @@ class Signal(MultichannelData):
 
         if smoothing != 0:
             ph = _wrap_phase(
-                _fractional_octave_smoothing(
-                    np.unwrap(ph, axis=0), None, smoothing
-                )
+                _fractional_octave_smoothing(np.unwrap(ph, axis=0), None, smoothing)
             )
 
         if unwrap:
@@ -1418,19 +1396,15 @@ class Signal(MultichannelData):
                 subtype = "PCM_16"
             else:
                 raise ValueError(
-                    "Selected bit depth is not valid. "
-                    + "Use either 16, 24, 32 or 64"
+                    "Selected bit depth is not valid. " + "Use either 16, 24, 32 or 64"
                 )
-            sf.write(
-                path, self.time_data, self.sampling_rate_hz, subtype=subtype
-            )
+            sf.write(path, self.time_data, self.sampling_rate_hz, subtype=subtype)
         elif mode == "pkl":
             with open(path, "wb") as data_file:
                 dump(self, data_file, HIGHEST_PROTOCOL)
         else:
             raise ValueError(
-                f"{mode} is not a supported saving mode. Use "
-                + "wav, flac or pkl"
+                f"{mode} is not a supported saving mode. Use " + "wav, flac or pkl"
             )
         return self
 
@@ -1491,9 +1465,7 @@ class Signal(MultichannelData):
         # Copy if the underlying memory belongs to another array
         if isinstance(new_time_data, np.ndarray):
             new_time_data = (
-                new_time_data
-                if new_time_data.base is None
-                else new_time_data.copy()
+                new_time_data if new_time_data.base is None else new_time_data.copy()
             )
         #
         new_signal = Signal.from_time_data(
@@ -1502,9 +1474,7 @@ class Signal(MultichannelData):
         new_signal.calibrated_signal = self.calibrated_signal
         new_signal.activate_cache = self.activate_cache
         new_signal._spectrum_parameters = deepcopy(self._spectrum_parameters)
-        new_signal._spectrogram_parameters = deepcopy(
-            self._spectrogram_parameters
-        )
+        new_signal._spectrogram_parameters = deepcopy(self._spectrogram_parameters)
         return new_signal
 
     def show_info(self):

@@ -47,9 +47,7 @@ class AudioEffect:
         """
         self.description = description
 
-    def apply(
-        self, signal: Signal | MultiBandSignal
-    ) -> Signal | MultiBandSignal:
+    def apply(self, signal: Signal | MultiBandSignal) -> Signal | MultiBandSignal:
         """Apply audio effect on a given signal.
 
         Parameters
@@ -72,8 +70,7 @@ class AudioEffect:
             return new_mbs
         else:
             raise TypeError(
-                "Audio effect can only be applied to Signal "
-                + "or MultiBandSignal"
+                "Audio effect can only be applied to Signal " + "or MultiBandSignal"
             )
 
     def _apply_this_effect(self, signal: Signal) -> Signal:
@@ -109,9 +106,7 @@ class AudioEffect:
         """Save the peak values of an input."""
         self._peak_values = np.max(np.abs(inp), axis=0)
 
-    def _restore_peak_values(
-        self, inp: NDArray[np.float64]
-    ) -> NDArray[np.float64]:
+    def _restore_peak_values(self, inp: NDArray[np.float64]) -> NDArray[np.float64]:
         """Restore saved peak values of a signal."""
         if not hasattr(self, "_peak_values"):
             return inp
@@ -127,9 +122,7 @@ class AudioEffect:
         """Save the RMS values of a signal."""
         self._rms_values = _rms(inp)
 
-    def _restore_rms_values(
-        self, inp: NDArray[np.float64]
-    ) -> NDArray[np.float64]:
+    def _restore_rms_values(self, inp: NDArray[np.float64]) -> NDArray[np.float64]:
         """Restore the RMS values of a signal."""
         if not hasattr(self, "_rms_values"):
             return inp
@@ -216,9 +209,7 @@ class SpectralSubtractor(AudioEffect):
 
         """
         if adaptive_mode is not None:
-            assert (
-                type(adaptive_mode) is bool
-            ), "Adaptive mode must be of boolean type"
+            assert type(adaptive_mode) is bool, "Adaptive mode must be of boolean type"
             self.adaptive_mode = adaptive_mode
 
         if threshold_rms_dbfs is not None:
@@ -244,8 +235,7 @@ class SpectralSubtractor(AudioEffect):
                 ), "Spectrum to subtract must be of type numpy.ndarray"
                 spectrum_to_subtract = np.squeeze(spectrum_to_subtract)
                 assert spectrum_to_subtract.ndim == 1, (
-                    "Spectrum to subtract could not be broadcasted to "
-                    + "a 1D-Array"
+                    "Spectrum to subtract could not be broadcasted to " + "a 1D-Array"
                 )
                 if self.adaptive_mode:
                     warn(
@@ -341,14 +331,10 @@ class SpectralSubtractor(AudioEffect):
         ), "Noise forgetting factor must be in ]0, 1]"
         self.noise_forgetting_factor = noise_forgetting_factor
 
-        assert (
-            subtraction_factor > 0
-        ), "The subtraction factor must be positive"
+        assert subtraction_factor > 0, "The subtraction factor must be positive"
         self.subtraction_factor = subtraction_factor
 
-        assert (
-            subtraction_exponent > 0
-        ), "Subtraction exponent should be above zero"
+        assert subtraction_exponent > 0, "Subtraction exponent should be above zero"
         self.subtraction_exponent = subtraction_exponent
 
         # === Static Mode
@@ -409,9 +395,7 @@ class SpectralSubtractor(AudioEffect):
         assert self.adaptive_mode is not None, "None is not a valid value"
         assert self.threshold_rms_dbfs is not None, "None is not a valid value"
         assert self.block_length_s is not None, "None is not a valid value"
-        assert (
-            self.spectrum_to_subtract is not None
-        ), "None is not a valid value"
+        assert self.spectrum_to_subtract is not None, "None is not a valid value"
 
     def _compute_window(self, sampling_rate_hz):
         """Internal method to compute the window and step size in samples."""
@@ -421,9 +405,7 @@ class SpectralSubtractor(AudioEffect):
             )
         else:
             self.window_length = (len(self.spectrum_to_subtract) - 1) * 2
-        self.window = get_window(
-            self.window_type.to_scipy_format(), self.window_length
-        )
+        self.window = get_window(self.window_type.to_scipy_format(), self.window_length)
         self.window = np.clip(
             get_window(self.window_type.to_scipy_format(), self.window_length),
             a_min=1e-6,
@@ -484,13 +466,10 @@ class SpectralSubtractor(AudioEffect):
             else:
                 noise_psd = self.spectrum_to_subtract.copy()
             # It is already raised to the power of 2!
-            noise_psd = np.abs(noise_psd).squeeze() ** (
-                self.subtraction_exponent / 2
-            )
+            noise_psd = np.abs(noise_psd).squeeze() ** (self.subtraction_exponent / 2)
             for i in range(td_spec.shape[1]):
                 temp = np.clip(
-                    td_spec_power[:, i, n]
-                    - self.subtraction_factor * noise_psd,
+                    td_spec_power[:, i, n] - self.subtraction_factor * noise_psd,
                     a_min=0,
                     a_max=None,
                 )
@@ -505,12 +484,8 @@ class SpectralSubtractor(AudioEffect):
         )
 
         # Trim back to original length
-        new_td = _pad_trim(
-            new_td, new_td.shape[0] - len(self.window), in_the_end=True
-        )
-        new_td = _pad_trim(
-            new_td, new_td.shape[0] - len(self.window), in_the_end=False
-        )
+        new_td = _pad_trim(new_td, new_td.shape[0] - len(self.window), in_the_end=True)
+        new_td = _pad_trim(new_td, new_td.shape[0] - len(self.window), in_the_end=False)
 
         return signal.copy_with_new_time_data(new_td)
 
@@ -549,14 +524,12 @@ class SpectralSubtractor(AudioEffect):
             print(f"Denoising channel {n + 1} of {signal.number_of_channels}")
             for i in range(td_spec.shape[1]):
                 if td_rms_db[i, n] < self.threshold_rms_dbfs:
-                    noise_psd = (
-                        noise_psd * self.noise_forgetting_factor
-                        + td_spec[:, i, n] * (1 - self.noise_forgetting_factor)
-                    )
+                    noise_psd = noise_psd * self.noise_forgetting_factor + td_spec[
+                        :, i, n
+                    ] * (1 - self.noise_forgetting_factor)
                 temp = np.clip(
                     td_spec_power[:, i, n]
-                    - self.subtraction_factor
-                    * noise_psd**self.subtraction_exponent,
+                    - self.subtraction_factor * noise_psd**self.subtraction_exponent,
                     a_min=0,
                     a_max=None,
                 )
@@ -571,12 +544,8 @@ class SpectralSubtractor(AudioEffect):
         )
 
         # Trim back to original length
-        new_td = _pad_trim(
-            new_td, new_td.shape[0] - len(self.window), in_the_end=True
-        )
-        new_td = _pad_trim(
-            new_td, new_td.shape[0] - len(self.window), in_the_end=False
-        )
+        new_td = _pad_trim(new_td, new_td.shape[0] - len(self.window), in_the_end=True)
+        new_td = _pad_trim(new_td, new_td.shape[0] - len(self.window), in_the_end=False)
 
         return signal.copy_with_new_time_data(new_td)
 
@@ -715,12 +684,8 @@ class Distortion(AudioEffect):
             n += 1
 
         # Check that all parameters have right lengths
-        assert n == len(
-            self.mix
-        ), "Length of mix_percent does not match distortions"
-        assert np.isclose(
-            np.sum(self.mix), 1
-        ), "mix_percent does not sum up to 100"
+        assert n == len(self.mix), "Length of mix_percent does not match distortions"
+        assert np.isclose(np.sum(self.mix), 1), "mix_percent does not sum up to 100"
         assert n == len(
             self.distortion_levels
         ), "Length of distortion_levels does not match distortions"
@@ -750,9 +715,7 @@ class Distortion(AudioEffect):
                 case DistortionType.NoDistortion:
                     self.__distortion_funcs.append(_clean_signal)
                 case _:
-                    raise ValueError(
-                        "The type of distortion is not implemented."
-                    )
+                    raise ValueError("The type of distortion is not implemented.")
 
     def _apply_this_effect(self, signal: Signal) -> Signal:
         """Internal method which applies distortion to the passed signal.
@@ -904,9 +867,7 @@ class Compressor(AudioEffect):
         assert self.attack_time_ms is not None, "None is not a valid value"
         assert self.release_time_ms is not None, "None is not a valid value"
         assert self.ratio is not None, "None is not a valid value"
-        assert (
-            self.relative_to_peak_level is not None
-        ), "None is not a valid value"
+        assert self.relative_to_peak_level is not None, "None is not a valid value"
 
     def set_advanced_parameters(
         self,
@@ -952,9 +913,7 @@ class Compressor(AudioEffect):
         assert knee_factor_db >= 0, "Knee factor must be 0 or above"
         self.knee_factor_db = knee_factor_db
 
-        assert (
-            mix_percent > 0 and mix_percent <= 100
-        ), "Mix percent must be in ]0, 100]"
+        assert mix_percent > 0 and mix_percent <= 100, "Mix percent must be in ]0, 100]"
         self.mix = mix_percent / 100
 
         self.pre_gain_db = pre_gain_db
@@ -982,9 +941,9 @@ class Compressor(AudioEffect):
             self.downward_compression,
         )
         gains_db_after = func(gains_db)
-        gains_mixed = 10 ** (gains_db_after / 20) * self.mix + 10 ** (
-            gains_db / 20
-        ) * (1 - self.mix)
+        gains_mixed = 10 ** (gains_db_after / 20) * self.mix + 10 ** (gains_db / 20) * (
+            1 - self.mix
+        )
         gains_mixed = 20 * np.log10(gains_mixed)
 
         fig, ax = general_plot(
@@ -1087,9 +1046,7 @@ class Tremolo(AudioEffect):
             modulator = LFO(1, "harmonic")
         self.__set_parameters(depth, modulator)
 
-    def __set_parameters(
-        self, depth: float, modulator: LFO | NDArray[np.float64]
-    ):
+    def __set_parameters(self, depth: float, modulator: LFO | NDArray[np.float64]):
         """Internal method to change parameters."""
         if modulator is not None:
             assert type(modulator) in (
@@ -1098,9 +1055,7 @@ class Tremolo(AudioEffect):
             ), "Unsupported modulator type. Use LFO or numpy.ndarray"
             if type(modulator) is NDArray[np.float64]:
                 modulator = modulator.squeeze()
-                assert (
-                    modulator.ndim == 1
-                ), "Modulator signal can have only one channel"
+                assert modulator.ndim == 1, "Modulator signal can have only one channel"
             self.modulator = modulator
 
         if depth is not None:
@@ -1197,9 +1152,7 @@ class Chorus(AudioEffect):
         super().__init__("Modulation effect: Chorus/Flanger")
         if modulators is None:
             modulators = LFO(2, "harmonic", random_phase=True)
-        self.__set_parameters(
-            depths_ms, base_delays_ms, modulators, mix_percent
-        )
+        self.__set_parameters(depths_ms, base_delays_ms, modulators, mix_percent)
 
     def __set_parameters(
         self,
@@ -1278,9 +1231,7 @@ class Chorus(AudioEffect):
                 ), "All modulators signals have to be of type LFO"
                 self.modulators = modulators
                 if len(self.modulators) == 1:
-                    self.modulators = [
-                        self.modulators[0]
-                    ] * self.number_of_voices
+                    self.modulators = [self.modulators[0]] * self.number_of_voices
 
         if depths_ms is not None:
             if type(self.modulators) is LFO:
@@ -1291,9 +1242,7 @@ class Chorus(AudioEffect):
                 + f"voices {self.number_of_voices}"
             )
             if len(self.depths_ms) == 1:
-                self.depths_ms = np.repeat(
-                    self.depths_ms, self.number_of_voices
-                )
+                self.depths_ms = np.repeat(self.depths_ms, self.number_of_voices)
 
         if mix_percent is not None:
             mix_percent /= 100
@@ -1329,9 +1278,7 @@ class Chorus(AudioEffect):
             Number of voices to use in the chorus effect. Default: `None`.
 
         """
-        self.__set_parameters(
-            depths_ms, base_delays_ms, modulators, mix_percent
-        )
+        self.__set_parameters(depths_ms, base_delays_ms, modulators, mix_percent)
         assert self.depths_ms is not None
         assert self.modulators is not None
         assert self.number_of_voices is not None
@@ -1505,9 +1452,9 @@ class DigitalDelay(AudioEffect):
 
     def _apply_this_effect(self, signal: Signal) -> Signal:
         """Apply delay effect."""
-        delay_samples = np.round(
-            self.delay_ms * 1e-3 * signal.sampling_rate_hz
-        ).astype(int)
+        delay_samples = np.round(self.delay_ms * 1e-3 * signal.sampling_rate_hz).astype(
+            int
+        )
 
         td = signal.time_data
         self._save_peak_values(td)

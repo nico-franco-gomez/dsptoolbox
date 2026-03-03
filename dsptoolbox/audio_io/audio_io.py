@@ -149,14 +149,10 @@ def set_device(
             print(f"{d} will be used for output!")
             sd.default.device = device
         elif type(device[0]) is str and type(device[1]) is str:
-            d_id_in, d_name_in = get_interface_number_by_name(
-                device[0], device_list
-            )
+            d_id_in, d_name_in = get_interface_number_by_name(device[0], device_list)
             print(f"{d_name_in} will be used for input!")
 
-            d_id_out, d_name_out = get_interface_number_by_name(
-                device[1], device_list
-            )
+            d_id_out, d_name_out = get_interface_number_by_name(device[1], device_list)
             print(f"{d_name_out} will be used for output!")
             sd.default.device = [d_id_in, d_id_out]
         else:
@@ -255,9 +251,7 @@ def play_and_record(
         "The number of channels in signal does not match the number of "
         + "channels in play_channels"
     )
-    assert not any(
-        [p < 1 for p in play_channels]
-    ), "Play channel has to be 1 or more"
+    assert not any([p < 1 for p in play_channels]), "Play channel has to be 1 or more"
     assert not any(
         [r < 1 for r in rec_channels]
     ), "Recording channel has to be 1 or more"
@@ -283,10 +277,7 @@ def play_and_record(
     if device is not None:
         sd.default.device = device
 
-    print(
-        "Playback and recording have started "
-        + f"({duration_seconds:.1f} s)..."
-    )
+    print("Playback and recording have started " + f"({duration_seconds:.1f} s)...")
     rec_time_data = sd.playrec(
         data=play_data,
         samplerate=signal.sampling_rate_hz,
@@ -387,9 +378,7 @@ def play(
     if type(play_channels) is int:
         play_channels = [play_channels]
     play_channels = sorted(play_channels)
-    assert not any(
-        [r < 1 for r in play_channels]
-    ), "Play channel has to be 1 or more"
+    assert not any([r < 1 for r in play_channels]), "Play channel has to be 1 or more"
     if duration_seconds is not None:
         assert duration_seconds > 0, "Duration must be positive"
         duration_samples = int(duration_seconds * signal.sampling_rate_hz)

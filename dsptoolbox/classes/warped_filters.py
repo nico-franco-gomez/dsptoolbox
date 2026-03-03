@@ -48,9 +48,7 @@ class WarpedFIR(RealtimeFilter):
           10.1109/ASPAA.1997.625615.
 
         """
-        assert (
-            abs(warping_factor) < 1.0
-        ), "Warping factor must be in range ]-1;1["
+        assert abs(warping_factor) < 1.0, "Warping factor must be in range ]-1;1["
         self.sampling_rate_hz = sampling_rate_hz
         self.b = b
         self.warp = warping_factor
@@ -135,9 +133,7 @@ class WarpedFIR(RealtimeFilter):
         n_channels = time_data.shape[1]
         for channel in range(n_channels):
             for n in range(len(time_data)):
-                output[n, channel] = self.process_sample(
-                    time_data[n, channel], channel
-                )
+                output[n, channel] = self.process_sample(time_data[n, channel], channel)
         return output
 
 

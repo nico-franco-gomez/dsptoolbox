@@ -47,9 +47,7 @@ class CalibrationData:
             calibration_data = Signal(calibration_data, None, None)
         elif isinstance(calibration_data, tuple):
             assert len(calibration_data) == 2, "Tuple must have length 2"
-            calibration_data = Signal(
-                None, calibration_data[0], calibration_data[1]
-            )
+            calibration_data = Signal(None, calibration_data[0], calibration_data[1])
         elif isinstance(calibration_data, Signal):
             pass
         else:
@@ -63,9 +61,7 @@ class CalibrationData:
         # State tracker
         self.__update = True
 
-    def add_calibration_channel(
-        self, new_channel, allow_pad_trimming: bool = False
-    ):
+    def add_calibration_channel(self, new_channel, allow_pad_trimming: bool = False):
         """Adds a new calibration channel to the calibration signal.
 
         Parameters
@@ -172,7 +168,6 @@ class CalibrationData:
                 b.calibrated_signal = True
         else:
             raise TypeError(
-                "signal has not a valid type. Use Signal or "
-                + "MultiBandSignal"
+                "signal has not a valid type. Use Signal or " + "MultiBandSignal"
             )
         return calibrated_signal

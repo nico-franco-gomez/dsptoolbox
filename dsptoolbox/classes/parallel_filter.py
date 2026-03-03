@@ -67,9 +67,7 @@ class ParallelFilter(RealtimeFilter):
         assert np.all(
             poles.imag >= 0.0
         ), "Only poles with positive imaginary part are accepted"
-        assert np.all(
-            np.abs(poles) > 0.0
-        ), "No poles at the origin should be used"
+        assert np.all(np.abs(poles) > 0.0), "No poles at the origin should be used"
         assert all(
             [np.sum(np.isclose(poles, p)) == 1 for p in poles]
         ), "Pole multiplicity cannot be more than 1"
@@ -156,9 +154,7 @@ class ParallelFilter(RealtimeFilter):
         A Review. Journal of the Audio Engineering Society.
 
         """
-        assert (
-            ir.number_of_channels == 1
-        ), "This is only valid for a single-channel IR"
+        assert ir.number_of_channels == 1, "This is only valid for a single-channel IR"
         freqs, spectrum_channels = ir.get_spectrum()
         freqs = freqs[1:]
         spectrum_channels = spectrum_channels[1:]
@@ -176,26 +172,22 @@ class ParallelFilter(RealtimeFilter):
         M = np.zeros((L, n_parameters), dtype=np.complex128)
 
         for ind in range(0, n_sos * 3, 3):
-            M[:, ind] = sig.sosfreqz(
-                self.__sos[ind // 3, :][None, :], freqs, fs=fs_hz
-            )[1]
+            M[:, ind] = sig.sosfreqz(self.__sos[ind // 3, :][None, :], freqs, fs=fs_hz)[
+                1
+            ]
 
             # Delayed by one sample
             sos_delayed = self.__sos[ind // 3, :].copy()
             sos_delayed[0] = 0.0
             sos_delayed[1] = 1.0
-            M[:, ind + 1] = sig.sosfreqz(
-                sos_delayed[None, :], freqs, fs=fs_hz
-            )[1]
+            M[:, ind + 1] = sig.sosfreqz(sos_delayed[None, :], freqs, fs=fs_hz)[1]
 
             # Delayed by two samples
             sos_delayed = self.__sos[ind // 3, :].copy()
             sos_delayed[0] = 0.0
             sos_delayed[1] = 0.0
             sos_delayed[2] = 1.0
-            M[:, ind + 2] = sig.sosfreqz(
-                sos_delayed[None, :], freqs, fs=fs_hz
-            )[1]
+            M[:, ind + 2] = sig.sosfreqz(sos_delayed[None, :], freqs, fs=fs_hz)[1]
 
         # Apply IIR delay to SOS sections
         if self.delay_iir_samples > 0:
@@ -232,11 +224,7 @@ class ParallelFilter(RealtimeFilter):
         # Put delays in between the fir coefficients
         if self.fir_offset_samples > 1 and self.n_fir > 1:
             ff = np.zeros(
-                (
-                    (self.fir_offset_samples)
-                    * (len(self.__fir_coefficients) - 1)
-                    + 1
-                )
+                ((self.fir_offset_samples) * (len(self.__fir_coefficients) - 1) + 1)
             )
             ff[:: self.fir_offset_samples + 1] = self.__fir_coefficients[:-1]
             ff[-1] = self.__fir_coefficients[-1]
@@ -248,17 +236,13 @@ class ParallelFilter(RealtimeFilter):
     def __compute_filter_bank(self):
         fb = FilterBank(
             [
-                Filter.from_sos(
-                    self.__sos[n, :][None, ...], self.sampling_rate_hz
-                )
+                Filter.from_sos(self.__sos[n, :][None, ...], self.sampling_rate_hz)
                 for n in range(self.__sos.shape[0])
             ]
         )
         if len(self.__fir_coefficients) > 0:
             fb.add_filter(
-                Filter.from_ba(
-                    self.__fir_coefficients, [1.0], self.sampling_rate_hz
-                )
+                Filter.from_ba(self.__fir_coefficients, [1.0], self.sampling_rate_hz)
             )
         self.filter_bank = fb
         self.__compute_real_time_filters()
@@ -268,17 +252,13 @@ class ParallelFilter(RealtimeFilter):
         self.iir: list[IIRFilter] = []
         for f in self.filter_bank:
             if not f.is_iir:
-                self.fir = FIRFilter(
-                    f.get_coefficients(FilterCoefficientsType.Ba)[0]
-                )
+                self.fir = FIRFilter(f.get_coefficients(FilterCoefficientsType.Ba)[0])
             else:
                 self.iir.append(
                     IIRFilter(*f.get_coefficients(FilterCoefficientsType.Ba))
                 )
         if self.delay_iir_samples > 0:
-            self.iir_delay = FIRFilter(
-                np.array(self.delay_iir_samples * [0.0] + [1.0])
-            )
+            self.iir_delay = FIRFilter(np.array(self.delay_iir_samples * [0.0] + [1.0]))
 
     def filter_signal(self, signal: Signal) -> Signal:
         """Filter a signal using the parallel filter bank.
@@ -300,16 +280,14 @@ class ParallelFilter(RealtimeFilter):
         td = signal.time_data
 
         if self.n_fir > 0:
-            output = sig.oaconvolve(
-                td, self.__fir_coefficients[:, None], axes=0
-            )[: td.shape[0], ...]
+            output = sig.oaconvolve(td, self.__fir_coefficients[:, None], axes=0)[
+                : td.shape[0], ...
+            ]
         else:
             output = np.zeros_like(td)
 
         if self.delay_iir_samples > 0:
-            td = np.pad(td, ((self.delay_iir_samples, 0), (0, 0)))[
-                : td.shape[0]
-            ]
+            td = np.pad(td, ((self.delay_iir_samples, 0), (0, 0)))[: td.shape[0]]
 
         for n_sos in range(self.__sos.shape[0]):
             output += sig.sosfilt(self.__sos[n_sos, :][None, :], td, axis=0)

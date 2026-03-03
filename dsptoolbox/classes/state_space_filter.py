@@ -91,8 +91,7 @@ class StateSpaceFilter(RealtimeFilter):
         sos = filt.get_coefficients(FilterCoefficientsType.Sos)
         n_sections = sos.shape[0]
         return [
-            StateSpaceFilter(*tf2ss(sos[n, :3], sos[n, 3:]))
-            for n in range(n_sections)
+            StateSpaceFilter(*tf2ss(sos[n, :3], sos[n, 3:])) for n in range(n_sections)
         ]
 
     def reset_state(self):

@@ -205,13 +205,8 @@ class KautzFilter(RealtimeFilter):
     def process_sample(self, x: float, channel: int):
         y = 0.0
         for ind, f in enumerate(self.__filters_real):
-            y += (
-                f.process_sample(x, channel)
-                * self.coefficients_real_poles[ind]
-            )
-            x = self.__filters_real_advance_sample[ind].process_sample(
-                x, channel
-            )
+            y += f.process_sample(x, channel) * self.coefficients_real_poles[ind]
+            x = self.__filters_real_advance_sample[ind].process_sample(x, channel)
 
         for ind in range(0, len(self.__filters_complex), 2):
             x1 = self.__filters_complex[ind].process_sample(x, channel)
@@ -244,15 +239,11 @@ class KautzFilter(RealtimeFilter):
           http://legacy.spa.aalto.fi/software/kautz/kautz.htm
 
         """
-        assert (
-            ir.number_of_channels == 1
-        ), "Only a single-channel IR is supported"
+        assert ir.number_of_channels == 1, "Only a single-channel IR is supported"
         self.set_filter_coefficients(
             np.ones(self.n_real_poles), np.ones(self.n_complex_poles)
         )
-        coefficients = self.__process_time_data_vector(
-            ir.time_data[::-1], True
-        )
+        coefficients = self.__process_time_data_vector(ir.time_data[::-1], True)
         # Last samples of the single channel for each pole are the optimal LS
         # filter coefficients
         coefficients = coefficients[-1, :, 0]
@@ -340,9 +331,7 @@ class KautzFilter(RealtimeFilter):
                 output += output_tapout
 
             ind_tapout += 1
-            time_data = lfilter(
-                [r[ii], q[ii], 1], [1, q[ii], r[ii]], time_data, axis=0
-            )
+            time_data = lfilter([r[ii], q[ii], 1], [1, q[ii], r[ii]], time_data, axis=0)
         return output
 
     def fit_poles_and_coefficients_to_ir(
@@ -360,9 +349,7 @@ class KautzFilter(RealtimeFilter):
           no. 1, pp. 21 - 30, 1998.
 
         """
-        assert (
-            ir.number_of_channels == 1
-        ), "Only a single-channel IR is supported"
+        assert ir.number_of_channels == 1, "Only a single-channel IR is supported"
         poles = KautzFilter.__find_optimal_poles_for_ir(
             order, iterations, ir.time_data.squeeze().copy()
         )
@@ -385,9 +372,7 @@ class KautzFilter(RealtimeFilter):
           no. 1, pp. 21 - 30, 1998.
 
         """
-        assert (
-            target_response.ndim == 1
-        ), "This is only valid for 1D time series"
+        assert target_response.ndim == 1, "This is only valid for 1D time series"
 
         response_length = len(target_response)
 
@@ -401,12 +386,8 @@ class KautzFilter(RealtimeFilter):
         error_array = np.zeros(iterations)
 
         for i in range(iterations):
-            filtered_response = lfilter(
-                [1.0], polynomial_coefficients, target_response
-            )
-            vector_b = np.hstack(
-                [np.zeros(order), -filtered_response[:-order]]
-            )
+            filtered_response = lfilter([1.0], polynomial_coefficients, target_response)
+            vector_b = np.hstack([np.zeros(order), -filtered_response[:-order]])
 
             # Make A matrix
             matrix_a.fill(0.0)
@@ -417,9 +398,7 @@ class KautzFilter(RealtimeFilter):
             least_squares_solution = lstsq(matrix_a, vector_b)[0]
 
             # Form from LS solution: p[0] * x**n + p[1] * x**(n-1) + ...
-            polynomial_coefficients = np.hstack(
-                [[1.0], least_squares_solution[::-1]]
-            )
+            polynomial_coefficients = np.hstack([[1.0], least_squares_solution[::-1]])
 
             # Numerator z^-order * polynomial_coefficients(z^-1) coefficients
             inverse_polynomial = polynomial_coefficients[::-1]

@@ -114,9 +114,7 @@ class FIRFilterOverlapSave(RealtimeFilter):
 
         """
         self.blocksize = blocksize_samples
-        self.total_length = fft.next_fast_len(
-            len(self.fir) + blocksize_samples, True
-        )
+        self.total_length = fft.next_fast_len(len(self.fir) + blocksize_samples, True)
         self.fir_spectrum = fft.rfft(self.fir, n=self.total_length, axis=0)
         self.buffer = np.zeros((self.total_length, n_channels))
 
@@ -137,20 +135,16 @@ class FIRFilterOverlapSave(RealtimeFilter):
 
         """
         self.buffer[-self.blocksize :, channel] = block
-        output_data = fft.irfft(
-            fft.rfft(self.buffer[:, channel]) * self.fir_spectrum
-        )[-self.blocksize :]
+        output_data = fft.irfft(fft.rfft(self.buffer[:, channel]) * self.fir_spectrum)[
+            -self.blocksize :
+        ]
 
         # Roll buffer
-        self.buffer[: -self.blocksize, channel] = self.buffer[
-            self.blocksize :, channel
-        ]
+        self.buffer[: -self.blocksize, channel] = self.buffer[self.blocksize :, channel]
         return output_data
 
     def process_sample(self, x: float, channel: int):
-        raise NotImplementedError(
-            "The convolution can only done via block-processing"
-        )
+        raise NotImplementedError("The convolution can only done via block-processing")
 
     def reset_state(self):
         """Reset all filter states to 0."""
@@ -202,9 +196,7 @@ class FIRUniformPartitioned(FIRFilterOverlapSave):
         for n in range(self.n_partitions):
             partition = self.fir[n * self.blocksize : (n + 1) * self.blocksize]
             partitioned[: len(partition), n] = partition
-        self.partitioned_spectrum = fft.rfft(
-            partitioned, axis=0, n=self.fft_size
-        )
+        self.partitioned_spectrum = fft.rfft(partitioned, axis=0, n=self.fft_size)
 
         # Buffer index for filter
         self.buffer_ind = 0
@@ -287,17 +279,11 @@ class FIRUniformPartitionedMultichannel(FIRUniformPartitioned):
         self.n_channels = self.fir.shape[1]
 
         # Partitions
-        partitioned = np.zeros(
-            (self.blocksize, self.n_partitions, self.n_channels)
-        )
+        partitioned = np.zeros((self.blocksize, self.n_partitions, self.n_channels))
         for n in range(self.n_partitions):
-            partition = self.fir[
-                n * self.blocksize : (n + 1) * self.blocksize, ...
-            ]
+            partition = self.fir[n * self.blocksize : (n + 1) * self.blocksize, ...]
             partitioned[: len(partition), n, :] = partition
-        self.partitioned_spectrum = fft.rfft(
-            partitioned, axis=0, n=self.fft_size
-        )
+        self.partitioned_spectrum = fft.rfft(partitioned, axis=0, n=self.fft_size)
 
         # Buffer index for filter
         self.buffer_ind = 0
@@ -328,22 +314,16 @@ class FIRUniformPartitionedMultichannel(FIRUniformPartitioned):
 
         """
         # Store new block in input buffer
-        self.input_buffer[: self.blocksize] = self.input_buffer[
-            -self.blocksize :
-        ]
+        self.input_buffer[: self.blocksize] = self.input_buffer[-self.blocksize :]
         self.input_buffer[-self.blocksize :] = block
 
         # Transform input
-        self.buffer_spectra[:, self.buffer_ind] = fft.rfft(
-            self.input_buffer, axis=0
-        )
+        self.buffer_spectra[:, self.buffer_ind] = fft.rfft(self.input_buffer, axis=0)
 
         # Accumulate output of all filters with buffers
         output = np.sum(
             self.partitioned_spectrum
-            * self.buffer_spectra[
-                :, self.buffer_ind - self.buffer_index_helper, ...
-            ],
+            * self.buffer_spectra[:, self.buffer_ind - self.buffer_index_helper, ...],
             axis=1,
         )
 

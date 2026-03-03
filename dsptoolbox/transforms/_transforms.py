@@ -217,9 +217,9 @@ class MorletWavelet(Wavelet):
         accumulator = np.zeros(len(trunc), dtype=np.complex128)
 
         for i in range(len(trunc) - 1):
-            accumulator[i] = base[trunc[i]] + (
-                base[trunc[i] + 1] - base[trunc[i]]
-            ) * (inds[i] - trunc[i])
+            accumulator[i] = base[trunc[i]] + (base[trunc[i] + 1] - base[trunc[i]]) * (
+                inds[i] - trunc[i]
+            )
         accumulator[-1] = base[trunc[-1]]
         return accumulator
 
@@ -357,13 +357,9 @@ def _get_kernels_vqt(
         lower frequency.
 
     """
-    freqs = highest_f * 2 ** (
-        -1 / bins_per_octave * np.arange(bins_per_octave)
-    )
+    freqs = highest_f * 2 ** (-1 / bins_per_octave * np.arange(bins_per_octave))
     factor = 2 ** (1 / bins_per_octave) - 1
-    lengths = np.round(
-        q * sampling_rate_hz / ((freqs * factor) + gamma)
-    ).astype(int)
+    lengths = np.round(q * sampling_rate_hz / ((freqs * factor) + gamma)).astype(int)
 
     kernels = []
 
@@ -444,23 +440,19 @@ def _get_warping_factor(warping_factor: float | str, fs_hz: int) -> float:
 
     """
     if type(warping_factor) is float:
-        assert (
-            np.abs(warping_factor) < 1.0
-        ), "Warping factor has to be in ]-1; 1["
+        assert np.abs(warping_factor) < 1.0, "Warping factor has to be in ]-1; 1["
     elif type(warping_factor) is str:
         warping_factor = warping_factor.lower()
         invert = warping_factor[-1] not in ("k", "b")
         if "bark" in warping_factor:
             # Eq. (26)
             warping_factor = -1.0 * (
-                1.0674 * (2.0 / np.pi * np.arctan(0.06583 * fs_hz)) ** 0.5
-                - 0.1916
+                1.0674 * (2.0 / np.pi * np.arctan(0.06583 * fs_hz)) ** 0.5 - 0.1916
             )
         elif "erb" in warping_factor:
             # Eq. (30)
             warping_factor = -1.0 * (
-                0.7446 * (2.0 / np.pi * np.arctan(0.1418 * fs_hz)) ** 0.5
-                + 0.03237
+                0.7446 * (2.0 / np.pi * np.arctan(0.1418 * fs_hz)) ** 0.5 + 0.03237
             )
         else:
             raise ValueError("Warping factor approximation is not supported")
@@ -491,9 +483,7 @@ try:
         spectrum: NDArray[np.complex128],
     ):
         for ind in nb.prange(len(freqs_normalized)):
-            spectrum[ind, :] = (
-                np.exp(dft_factor * freqs_normalized[ind]) @ time_data
-            )
+            spectrum[ind, :] = np.exp(dft_factor * freqs_normalized[ind]) @ time_data
         return spectrum
 
 except ModuleNotFoundError as e:
@@ -506,7 +496,5 @@ except ModuleNotFoundError as e:
         spectrum: NDArray[np.complex128],
     ):
         for ind in range(len(freqs_normalized)):
-            spectrum[ind, :] = (
-                np.exp(dft_factor * freqs_normalized[ind]) @ time_data
-            )
+            spectrum[ind, :] = np.exp(dft_factor * freqs_normalized[ind]) @ time_data
         return spectrum

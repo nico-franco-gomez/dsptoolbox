@@ -283,17 +283,13 @@ class LRFilterBank:
         elif zero_phase:
             for cn in range(self.number_of_cross):
                 # Select SOS
-                factor = (
-                    1 if self.order[cn] % 2 == 1 or self.order[cn] == 2 else 2
-                )
+                factor = 1 if self.order[cn] % 2 == 1 or self.order[cn] == 2 else 2
                 valid_dim = self.sos[cn][0].shape[0] // factor
                 # Filter
                 new_time_data[:, :, cn] = sosfiltfilt(
                     self.sos[cn][0][:valid_dim, ...], in_sig, axis=0
                 )
-                in_sig = sosfiltfilt(
-                    self.sos[cn][1][:valid_dim, ...], in_sig, axis=0
-                )
+                in_sig = sosfiltfilt(self.sos[cn][1][:valid_dim, ...], in_sig, axis=0)
             # Last high frequency component
             new_time_data[:, :, cn + 1] = in_sig
 
@@ -680,9 +676,7 @@ class LRFilterBank:
 
         """
         if "." in path.split(sep)[-1]:
-            raise ValueError(
-                "Please introduce the saving path without " + "format"
-            )
+            raise ValueError("Please introduce the saving path without " + "format")
         path += ".pkl"
         with open(path, "wb") as data_file:
             dump(self, data_file, HIGHEST_PROTOCOL)
@@ -770,10 +764,7 @@ class GammaToneFilterBank(FilterBank):
 
         # calculate the phase factor from the slopes
         slopes = np.array(
-            [
-                ir[bb, idx + 1] - ir[bb, idx - 1]
-                for bb, idx in enumerate(idx_max)
-            ]
+            [ir[bb, idx + 1] - ir[bb, idx - 1] for bb, idx in enumerate(idx_max)]
         )
 
         phase_factors = 1j / (slopes / np.abs(slopes))
@@ -795,9 +786,9 @@ class GammaToneFilterBank(FilterBank):
 
         # calculate transfer function at all center frequencies for all bands
         # (matrixes contain center frequencies along first dimension and
-        h_pos = (1 - np.atleast_2d(self._coefficients) / z) ** (
-            -4
-        ) * np.atleast_2d(self._normalizations)
+        h_pos = (1 - np.atleast_2d(self._coefficients) / z) ** (-4) * np.atleast_2d(
+            self._normalizations
+        )
         h_neg = (1 - np.atleast_2d(self._coefficients) / z_conj) ** (
             -4
         ) * np.atleast_2d(self._normalizations)
@@ -847,8 +838,7 @@ class GammaToneFilterBank(FilterBank):
             ]
         )
         assert condition, (
-            "Not all bands have imaginary time data. Reconstruction cannot "
-            + "be done"
+            "Not all bands have imaginary time data. Reconstruction cannot " + "be done"
         )
         shape = (
             signal.number_of_bands,
@@ -873,10 +863,7 @@ class GammaToneFilterBank(FilterBank):
         for bb, (phase_factor, delay, gain) in enumerate(
             zip(self._phase_factors, self._delays, self._gains)
         ):
-            time[bb] = (
-                np.real(np.roll(time[bb], delay, axis=-1) * phase_factor)
-                * gain
-            )
+            time[bb] = np.real(np.roll(time[bb], delay, axis=-1) * phase_factor) * gain
 
         # sum and squeeze first axis (the signal is already real, but the data
         # type is still complex)
@@ -922,9 +909,7 @@ class BaseCrossover(FilterBank):
             len(analysis_filters) == 2
         ), "Exactly two filters are needed for a valid crossover"
         self.filters_synthesis = synthesis_filters
-        super().__init__(
-            filters=analysis_filters, same_sampling_rate=True, info=info
-        )
+        super().__init__(filters=analysis_filters, same_sampling_rate=True, info=info)
 
     # ======== Extra properties ===============================================
     @property
@@ -933,9 +918,7 @@ class BaseCrossover(FilterBank):
 
     @filters_synthesis.setter
     def filters_synthesis(self, new_filters):
-        assert (
-            len(new_filters) == 2
-        ), "Two synthesis filters are needed in a crossover"
+        assert len(new_filters) == 2, "Two synthesis filters are needed in a crossover"
         assert all(
             [type(n) is Filter for n in new_filters]
         ), "Filters have to be of type Filter"
@@ -950,9 +933,7 @@ class BaseCrossover(FilterBank):
         downsample: bool = False,
     ) -> Signal | MultiBandSignal:
         if not downsample:
-            return super().filter_signal(
-                signal, mode, activate_zi, zero_phase=False
-            )
+            return super().filter_signal(signal, mode, activate_zi, zero_phase=False)
         # ========== In case of downsampling while filtering ==================
         assert (
             signal.sampling_rate_hz == self.sampling_rate_hz
@@ -960,15 +941,11 @@ class BaseCrossover(FilterBank):
         if activate_zi:
             if len(self.filters[0].zi) != signal.number_of_channels:
                 self.initialize_zi(signal.number_of_channels)
-        new_sig = _crossover_downsample(
-            signal, self.filters, mode=mode, down_factor=2
-        )
+        new_sig = _crossover_downsample(signal, self.filters, mode=mode, down_factor=2)
         return new_sig
 
     # ======== Reconstructing =================================================
-    def reconstruct_signal(
-        self, signal: MultiBandSignal, upsample: bool = False
-    ):
+    def reconstruct_signal(self, signal: MultiBandSignal, upsample: bool = False):
         """Reconstructs a two band signal using the synthesis filters of the
         crossover.
 
@@ -1010,9 +987,7 @@ class BaseCrossover(FilterBank):
         downsample: bool = True,
     ):
         if not downsample:
-            return super().plot_magnitude(
-                mode, range_hz, length_samples, test_zi
-            )
+            return super().plot_magnitude(mode, range_hz, length_samples, test_zi)
 
         # If downsampling is activated
         max_order = 0
@@ -1035,9 +1010,7 @@ class BaseCrossover(FilterBank):
 
         # Filtering and plot
         if mode == FilterBankMode.Parallel:
-            bs = self.filter_signal(
-                d, mode=mode, activate_zi=test_zi, downsample=True
-            )
+            bs = self.filter_signal(d, mode=mode, activate_zi=test_zi, downsample=True)
             specs = []
             f = bs.bands[0].get_spectrum()[0]
             for b in bs.bands:
@@ -1064,9 +1037,7 @@ class BaseCrossover(FilterBank):
                 tight_layout=False,
             )
         elif mode == FilterBankMode.Sequential:
-            bs = self.filter_signal(
-                d, mode=mode, activate_zi=test_zi, downsample=True
-            )
+            bs = self.filter_signal(d, mode=mode, activate_zi=test_zi, downsample=True)
             bs.spectrum_method = SpectrumMethod.FFT
             f, sp = bs.get_spectrum()
             f, sp = _get_normalized_spectrum(
@@ -1078,14 +1049,11 @@ class BaseCrossover(FilterBank):
                 range_hz,
                 ylabel="Magnitude / dB",
                 labels=[
-                    f"Sequential - Channel {n}"
-                    for n in range(bs.number_of_channels)
+                    f"Sequential - Channel {n}" for n in range(bs.number_of_channels)
                 ],
             )
         elif mode == FilterBankMode.Summed:
-            bs = self.filter_signal(
-                d, mode=mode, activate_zi=test_zi, downsample=True
-            )
+            bs = self.filter_signal(d, mode=mode, activate_zi=test_zi, downsample=True)
             bs.spectrum_method = SpectrumMethod.FFT
             f, sp = bs.get_spectrum()
             f, sp = _get_normalized_spectrum(
@@ -1197,9 +1165,7 @@ class QMFCrossover(BaseCrossover):
         - https://tinyurl.com/2a3frbyv
 
         """
-        b, a = lowpass.get_coefficients(
-            coefficients_mode=FilterCoefficientsType.Ba
-        )
+        b, a = lowpass.get_coefficients(coefficients_mode=FilterCoefficientsType.Ba)
         hp_filter = Filter(
             {FilterCoefficientsType.Ba: [-b, a]},
             sampling_rate_hz=lowpass.sampling_rate_hz,
@@ -1238,8 +1204,7 @@ def _crossover_downsample(
             ss.append(
                 filters[n].filter_and_resample_signal(
                     signal,
-                    new_sampling_rate_hz=signal.sampling_rate_hz
-                    // down_factor,
+                    new_sampling_rate_hz=signal.sampling_rate_hz // down_factor,
                 )
             )
         out_sig = MultiBandSignal(ss, same_sampling_rate=True)
@@ -1264,9 +1229,7 @@ def _crossover_downsample(
                 new_sampling_rate_hz=signal.sampling_rate_hz // down_factor,
             )
             new_time_data[:, :, n] = s.time_data
-        out_sig = signal.copy_with_new_time_data(
-            np.sum(new_time_data, axis=-1)
-        )
+        out_sig = signal.copy_with_new_time_data(np.sum(new_time_data, axis=-1))
         out_sig.sampling_rate_hz = signal.sampling_rate_hz // down_factor
     return out_sig
 
@@ -1476,9 +1439,7 @@ def _get_matched_shelving_eq(f, g_db, fs, lowshelf):
     b0 = 0.5 * (W + (W**2 + B2) ** 0.5)
     b1 = 1 - W
     b2 = -0.25 * B2 / b0
-    return np.array([b0, b1, b2]) / (G if lowshelf else 1.0), np.array(
-        [a0, a1, a2]
-    )
+    return np.array([b0, b1, b2]) / (G if lowshelf else 1.0), np.array([a0, a1, a2])
 
 
 def __get_matched_eq_helpers(omega0, q):
@@ -1532,8 +1493,7 @@ def __ma_parameters(
     """
     assert time_data.ndim == 1
     assert (
-        cutoff_singular_values_percent >= 0.0
-        and cutoff_singular_values_percent < 1.0
+        cutoff_singular_values_percent >= 0.0 and cutoff_singular_values_percent < 1.0
     )
     spec = np.fft.rfft(time_data)
     N = len(time_data)
@@ -1626,9 +1586,7 @@ def arma(
       conference, pp. 18-25. 2015.
 
     """
-    assert (
-        ir.number_of_channels == 1
-    ), "This is only valid for single-channel IR"
+    assert ir.number_of_channels == 1, "This is only valid for single-channel IR"
     assert order_a >= 1, "Order of a must be at least 1"
     assert order_b >= 0, "Order of b should be at least 0"
     assert len(ir) > order_a, "The order should be lower than the IR length"

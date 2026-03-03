@@ -10,13 +10,9 @@ class TestTransferFunctionsModule:
         join(os.path.dirname(__file__), "..", "example_data", "chirp_mono.wav")
     )
     y_st = dsp.Signal(
-        join(
-            os.path.dirname(__file__), "..", "example_data", "chirp_stereo.wav"
-        )
+        join(os.path.dirname(__file__), "..", "example_data", "chirp_stereo.wav")
     )
-    x = dsp.Signal(
-        join(os.path.dirname(__file__), "..", "example_data", "chirp.wav")
-    )
+    x = dsp.Signal(join(os.path.dirname(__file__), "..", "example_data", "chirp.wav"))
     fs = 5_000
     audio_multi = dsp.generators.noise(2.0, 5_000, number_of_channels=3)
 
@@ -82,9 +78,7 @@ class TestTransferFunctionsModule:
     def test_window_ir_tukey(self):
         # Mostly functionality
         h = dsp.transfer_functions.spectral_deconvolve(self.y_m, self.x)
-        h.time_data = np.roll(
-            h.time_data, 256 - np.argmax(np.abs(h.time_data)), axis=0
-        )
+        h.time_data = np.roll(h.time_data, 256 - np.argmax(np.abs(h.time_data)), axis=0)
         h.time_data = np.repeat(h.time_data, 2, axis=1)
 
         delay_second_channel = 10
@@ -98,12 +92,8 @@ class TestTransferFunctionsModule:
         )
         assert hasattr(hh, "window")
 
-        dsp.transfer_functions.window_ir_tukey(
-            h, 210 / h.sampling_rate_hz, None
-        )
-        dsp.transfer_functions.window_ir_tukey(
-            h, None, 10 / h.sampling_rate_hz
-        )
+        dsp.transfer_functions.window_ir_tukey(h, 210 / h.sampling_rate_hz, None)
+        dsp.transfer_functions.window_ir_tukey(h, None, 10 / h.sampling_rate_hz)
         with pytest.raises(AssertionError):
             dsp.transfer_functions.window_ir_tukey(h, None, None)
         with pytest.raises(AssertionError):
@@ -118,9 +108,7 @@ class TestTransferFunctionsModule:
     def test_window_ir(self):
         # Only functionality
         h = dsp.transfer_functions.spectral_deconvolve(self.y_m, self.x)
-        h.time_data = np.roll(
-            h.time_data, 256 - np.argmax(np.abs(h.time_data)), axis=0
-        )
+        h.time_data = np.roll(h.time_data, 256 - np.argmax(np.abs(h.time_data)), axis=0)
         h = dsp.pad_trim(h, 2**13)
 
         dsp.transfer_functions.window_ir(h, 2**11, at_start=True)
@@ -372,9 +360,7 @@ class TestTransferFunctionsModule:
         # Only functionality is tested
         self.y_st.set_spectrum_parameters(method=dsp.SpectrumMethod.FFT)
         spec = dsp.Spectrum.from_signal(self.y_st)
-        dsp.transfer_functions.min_phase_from_mag(
-            spec, self.y_st.sampling_rate_hz
-        )
+        dsp.transfer_functions.min_phase_from_mag(spec, self.y_st.sampling_rate_hz)
         dsp.transfer_functions.min_phase_from_mag(
             spec, self.y_st.sampling_rate_hz, ir_length_samples=self.fs
         )
@@ -427,9 +413,7 @@ class TestTransferFunctionsModule:
         dsp.transfer_functions.group_delay(ir, analytic_computation=True)
         dsp.transfer_functions.group_delay(ir, analytic_computation=False)
 
-        dsp.transfer_functions.group_delay(
-            ir, analytic_computation=True, smoothing=4
-        )
+        dsp.transfer_functions.group_delay(ir, analytic_computation=True, smoothing=4)
         dsp.transfer_functions.group_delay(
             ir,
             analytic_computation=False,
@@ -529,12 +513,8 @@ class TestTransferFunctionsModule:
         s = dsp.ImpulseResponse(
             join(os.path.dirname(__file__), "..", "example_data", "rir.wav")
         )
-        dsp.transfer_functions.combine_ir_with_dirac(
-            s, 1000, True, normalization=None
-        )
-        dsp.transfer_functions.combine_ir_with_dirac(
-            s, 1000, False, normalization=None
-        )
+        dsp.transfer_functions.combine_ir_with_dirac(s, 1000, True, normalization=None)
+        dsp.transfer_functions.combine_ir_with_dirac(s, 1000, False, normalization=None)
         dsp.transfer_functions.combine_ir_with_dirac(
             s, 1000, False, normalization="energy"
         )
@@ -552,12 +532,8 @@ class TestTransferFunctionsModule:
 
         # Invert phase, should still deliver the same result
         ir.time_data = ir.time_data * -1.0
-        assert np.isclose(
-            peak, dsp.transfer_functions.find_ir_latency(ir, False)
-        )
-        assert np.isclose(
-            peak_min_phase, dsp.transfer_functions.find_ir_latency(ir)
-        )
+        assert np.isclose(peak, dsp.transfer_functions.find_ir_latency(ir, False))
+        assert np.isclose(peak_min_phase, dsp.transfer_functions.find_ir_latency(ir))
 
         ir = dsp.ImpulseResponse(
             join(os.path.dirname(__file__), "..", "example_data", "rir.wav")
@@ -570,12 +546,8 @@ class TestTransferFunctionsModule:
         )
         sp = dsp.transfer_functions.window_frequency_dependent(s, 10)
 
-        fig, ax = s.plot_magnitude(
-            normalize=dsp.MagnitudeNormalization.NoNormalization
-        )
-        ax.plot(
-            sp.frequency_vector_hz, 20 * np.log10(np.abs(sp.spectral_data))
-        )
+        fig, ax = s.plot_magnitude(normalize=dsp.MagnitudeNormalization.NoNormalization)
+        ax.plot(sp.frequency_vector_hz, 20 * np.log10(np.abs(sp.spectral_data)))
         print()
 
     def test_harmonics_from_chirp_ir(self):
@@ -626,15 +598,13 @@ class TestTransferFunctionsModule:
         # Start offset way longer than rir (should be clipped to 0)
         assert (
             ir.time_data[0, 0]
-            == dsp.transfer_functions.trim_ir(ir, start_offset_s=3)[
-                0
-            ].time_data[0, 0]
+            == dsp.transfer_functions.trim_ir(ir, start_offset_s=3)[0].time_data[0, 0]
         )
         assert (
             ir.time_data[0, 0]
-            == dsp.transfer_functions.trim_ir(ir, start_offset_s=None)[
-                0
-            ].time_data[0, 0]
+            == dsp.transfer_functions.trim_ir(ir, start_offset_s=None)[0].time_data[
+                0, 0
+            ]
         )
 
     def test_complex_smoothing(self):

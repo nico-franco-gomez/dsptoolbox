@@ -357,13 +357,9 @@ def _filter_on_signal_ba(
         )
     else:
         if zero_phase:
-            y = sig.filtfilt(
-                b=ba[0], a=ba[1], x=signal.time_data[:, channels], axis=0
-            )
+            y = sig.filtfilt(b=ba[0], a=ba[1], x=signal.time_data[:, channels], axis=0)
         else:
-            y = lfilter(
-                ba[0], a=ba[1], x=signal.time_data[:, channels], axis=0
-            )
+            y = lfilter(ba[0], a=ba[1], x=signal.time_data[:, channels], axis=0)
 
     # Check for complex output
     if np.iscomplexobj(y):
@@ -431,9 +427,7 @@ def _filterbank_on_signal(
                         signal, activate_zi=activate_zi, zero_phase=zero_phase
                     )
                 )
-            out_sig = MultiBandSignal(
-                ss, same_sampling_rate=same_sampling_rate
-            )
+            out_sig = MultiBandSignal(ss, same_sampling_rate=same_sampling_rate)
             return out_sig
         case FilterBankMode.Sequential:
             out_sig = signal.copy()
@@ -541,9 +535,7 @@ def _filter_and_downsample(
     """
     if time_data.ndim == 1:
         time_data = time_data[..., None]
-    assert (
-        time_data.ndim == 2
-    ), "Shape for time data should be (time samples, channels)"
+    assert time_data.ndim == 2, "Shape for time data should be (time samples, channels)"
 
     if polyphase:
         poly, _ = _polyphase_decomposition(time_data, down_factor, flip=False)
@@ -552,9 +544,7 @@ def _filter_and_downsample(
         b = ba_coefficients[0]
         half_length = (len(b) - 1) // 2
         b_poly, _ = _polyphase_decomposition(b, down_factor, flip=True)
-        new_time_data = np.zeros(
-            (poly.shape[0] + b_poly.shape[0] - 1, poly.shape[2])
-        )
+        new_time_data = np.zeros((poly.shape[0] + b_poly.shape[0] - 1, poly.shape[2]))
         # Accumulator for each channel – it would be better to find a way
         # to do it without loops, but using scipy.signal.convolve since it
         # is advantageous compared to numpy.convolve
@@ -614,9 +604,7 @@ def _filter_and_upsample(
     """
     if time_data.ndim == 1:
         time_data = time_data[..., None]
-    assert (
-        time_data.ndim == 2
-    ), "Shape for time data should be (time samples, channels)"
+    assert time_data.ndim == 2, "Shape for time data should be (time samples, channels)"
 
     if polyphase:
         b = ba_coefficients[0]
@@ -650,9 +638,7 @@ def _filter_and_upsample(
                 half_length + padding : -half_length + padding, :
             ]
     else:
-        new_time_data = np.zeros(
-            (time_data.shape[0] * up_factor, time_data.shape[1])
-        )
+        new_time_data = np.zeros((time_data.shape[0] * up_factor, time_data.shape[1]))
         new_time_data[::up_factor] = time_data
         new_time_data = sig.lfilter(
             ba_coefficients[0], ba_coefficients[1], x=new_time_data, axis=0

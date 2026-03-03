@@ -305,9 +305,7 @@ class Filter:
         Filter
 
         """
-        return Filter(
-            {FilterCoefficientsType.Zpk: [z, p, k]}, sampling_rate_hz
-        )
+        return Filter({FilterCoefficientsType.Zpk: [z, p, k]}, sampling_rate_hz)
 
     @staticmethod
     def fir_from_file(path: str, channel: int = 0) -> "Filter":
@@ -327,9 +325,7 @@ class Filter:
 
         """
         ir = ImpulseResponse.from_file(path)
-        return Filter.from_ba(
-            ir.time_data[:, channel], [1.0], ir.sampling_rate_hz
-        )
+        return Filter.from_ba(ir.time_data[:, channel], [1.0], ir.sampling_rate_hz)
 
     # ================
     def initialize_zi(self, number_of_channels: int = 1):
@@ -389,12 +385,8 @@ class Filter:
 
     @sampling_rate_hz.setter
     def sampling_rate_hz(self, new_sampling_rate_hz):
-        assert (
-            new_sampling_rate_hz is not None
-        ), "Sampling rate can not be None"
-        assert (
-            type(new_sampling_rate_hz) is int
-        ), "Sampling rate can only be an integer"
+        assert new_sampling_rate_hz is not None, "Sampling rate can not be None"
+        assert type(new_sampling_rate_hz) is int, "Sampling rate can only be an integer"
         self.__sampling_rate_hz = new_sampling_rate_hz
 
     @property
@@ -403,9 +395,7 @@ class Filter:
 
     @warning_if_complex.setter
     def warning_if_complex(self, new_warning):
-        assert (
-            type(new_warning) is bool
-        ), "This attribute must be of boolean type"
+        assert type(new_warning) is bool, "This attribute must be of boolean type"
         self.__warning_if_complex = new_warning
 
     @property
@@ -542,9 +532,7 @@ class Filter:
         else:
             channels = np.squeeze(channels)
             channels = np.atleast_1d(channels)
-            assert (
-                channels.ndim == 1
-            ), "channels can be only a 1D-array or an int"
+            assert channels.ndim == 1, "channels can be only a 1D-array or an int"
             assert all(channels < signal.number_of_channels), (
                 f"Selected channels ({channels}) are not valid for the "
                 + f"signal with {signal.number_of_channels} channels"
@@ -568,10 +556,7 @@ class Filter:
 
         # Check filter length compared to signal
         if self.order > signal.time_data.shape[0]:
-            warn(
-                "Filter is longer than signal, results might be "
-                + "meaningless!"
-            )
+            warn("Filter is longer than signal, results might be " + "meaningless!")
 
         # Filter with SOS when possible
         if hasattr(self, "sos"):
@@ -655,9 +640,7 @@ class Filter:
                 polyphase=polyphase,
             )
         elif fraction[1] == 1:
-            assert (
-                signal.sampling_rate_hz * fraction[0] == self.sampling_rate_hz
-            ), (
+            assert signal.sampling_rate_hz * fraction[0] == self.sampling_rate_hz, (
                 "Sampling rates do not match. For the upsampler, the "
                 + """sampling rate of the filter should match the output's"""
             )
@@ -779,9 +762,7 @@ class Filter:
 
         """
         ba = self.get_coefficients(FilterCoefficientsType.Ba)
-        gd = sig.group_delay(
-            ba, w=frequency_vector_hz, fs=self.sampling_rate_hz
-        )[1]
+        gd = sig.group_delay(ba, w=frequency_vector_hz, fs=self.sampling_rate_hz)[1]
         return gd / self.sampling_rate_hz if in_seconds else gd
 
     def get_coefficients(self, coefficients_mode: FilterCoefficientsType):
@@ -806,10 +787,7 @@ class Filter:
             if self.has_sos:
                 return self.sos.copy()
             if self.order > 500:
-                warn(
-                    "Order is above 500. Computing SOS might take a "
-                    + "long time"
-                )
+                warn("Order is above 500. Computing SOS might take a " + "long time")
             return sig.tf2sos(self.ba[0], self.ba[1])
         elif coefficients_mode == FilterCoefficientsType.Ba:
             if self.has_sos:
@@ -823,15 +801,10 @@ class Filter:
 
             # Check if filter is too long
             if self.order > 500:
-                warn(
-                    "Order is above 500. Computing zpk might take a "
-                    + "long time"
-                )
+                warn("Order is above 500. Computing zpk might take a " + "long time")
             return sig.tf2zpk(self.ba[0], self.ba[1])
         else:
-            raise ValueError(
-                f"{coefficients_mode} is not valid. Use sos, ba or zpk"
-            )
+            raise ValueError(f"{coefficients_mode} is not valid. Use sos, ba or zpk")
 
     # ======== Plots and prints ===============================================
     def show_info(self):

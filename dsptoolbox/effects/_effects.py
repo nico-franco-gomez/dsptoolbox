@@ -19,9 +19,7 @@ def _arctan_distortion(
     distortion_level_linear = 10 ** (distortion_level_db / 20)
     peak_level = np.max(np.abs(inp), axis=0)
     normalized = inp / peak_level
-    return np.arctan(normalized * distortion_level_linear + offset_linear) * (
-        2 / np.pi
-    )
+    return np.arctan(normalized * distortion_level_linear + offset_linear) * (2 / np.pi)
 
 
 def _hard_clip_distortion(
@@ -282,9 +280,7 @@ def _find_attack_hold_release(
         if temp_attack[i]:
             attack[i : i + attack_samples] = True
     hold = (
-        global_activation.astype(int)
-        - attack.astype(int)
-        - release.astype(int)
+        global_activation.astype(int) - attack.astype(int) - release.astype(int)
     ).astype(bool)
     return attack, hold, release
 
@@ -338,9 +334,7 @@ class LFO:
         """
         self.__set_parameters(frequency_hz, waveform, random_phase, smooth)
 
-    def __set_parameters(
-        self, frequency_hz, waveform: str, random_phase, smooth
-    ):
+    def __set_parameters(self, frequency_hz, waveform: str, random_phase, smooth):
         """Internal method to set parameters."""
         if frequency_hz is not None:
             if type(frequency_hz) in (float, int):
@@ -384,9 +378,7 @@ class LFO:
         """Set the parameters of the LFO."""
         self.__set_parameters(frequency_hz, waveform, random_phase, smooth)
 
-    def get_waveform(
-        self, sampling_rate_hz: int, length_samples: int | None = None
-    ):
+    def get_waveform(self, sampling_rate_hz: int, length_samples: int | None = None):
         """Get the waveform of the oscillator for a sampling frequency and a
         specified duration. If `length_samples` is `None`, only one oscillation
         is returned.

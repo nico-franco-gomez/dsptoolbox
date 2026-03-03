@@ -248,13 +248,10 @@ def _time_smoothing(
     for n in np.arange(1, x.shape[0]):
         for ch in range(x.shape[1]):
             smoothing_factor = (
-                ascending_factor
-                if x[n, ch] > y[n - 1, ch]
-                else descending_factor
+                ascending_factor if x[n, ch] > y[n - 1, ch] else descending_factor
             )
             y[n, ch] = (
-                smoothing_factor * x[n, ch]
-                + (1.0 - smoothing_factor) * y[n - 1, ch]
+                smoothing_factor * x[n, ch] + (1.0 - smoothing_factor) * y[n - 1, ch]
             )
 
     if reverse_axis:

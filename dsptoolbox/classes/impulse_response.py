@@ -133,9 +133,7 @@ class ImpulseResponse(Signal):
         ImpulseResponse
 
         """
-        s = Signal.from_time_data(
-            time_data, sampling_rate_hz, constrain_amplitude
-        )
+        s = Signal.from_time_data(time_data, sampling_rate_hz, constrain_amplitude)
         return ImpulseResponse.from_signal(s)
 
     def set_window(self, window: NDArray[np.float64]):
@@ -215,9 +213,7 @@ class ImpulseResponse(Signal):
           be present due to zero-padding.
 
         """
-        fig, ax = super().plot_spl(
-            normalize_at_peak, dynamic_range_db, window_length_s
-        )
+        fig, ax = super().plot_spl(normalize_at_peak, dynamic_range_db, window_length_s)
 
         peak_values = to_db(np.max(np.abs(self.time_data), axis=0), True)
 
@@ -341,11 +337,7 @@ class ImpulseResponse(Signal):
             f,
             to_db(sp_abs, True),
             f,
-            (
-                _group_delay_direct(phase, f[1] - f[0])
-                if show_group_delay
-                else phase
-            ),
+            (_group_delay_direct(phase, f[1] - f[0]) if show_group_delay else phase),
             range_x=range_hz,
             range_y1=range_db,
             range_y2=range_rad_s,
@@ -360,15 +352,11 @@ class ImpulseResponse(Signal):
 
         return fig, ax
 
-    def copy_with_new_time_data(
-        self, new_time_data: ArrayLike
-    ) -> "ImpulseResponse":
+    def copy_with_new_time_data(self, new_time_data: ArrayLike) -> "ImpulseResponse":
         # Copy if the underlying memory belongs to another array
         if isinstance(new_time_data, np.ndarray):
             new_time_data = (
-                new_time_data
-                if new_time_data.base is None
-                else new_time_data.copy()
+                new_time_data if new_time_data.base is None else new_time_data.copy()
             )
         #
         new_signal = ImpulseResponse.from_time_data(
@@ -377,9 +365,7 @@ class ImpulseResponse(Signal):
         new_signal.calibrated_signal = self.calibrated_signal
         new_signal.activate_cache = self.activate_cache
         new_signal._spectrum_parameters = deepcopy(self._spectrum_parameters)
-        new_signal._spectrogram_parameters = deepcopy(
-            self._spectrogram_parameters
-        )
+        new_signal._spectrogram_parameters = deepcopy(self._spectrogram_parameters)
         if self.spectrum_method != SpectrumMethod.FFT:
             new_signal.spectrum_method = SpectrumMethod.FFT
         return new_signal

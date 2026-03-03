@@ -565,18 +565,14 @@ def istft(
     step = int((1 - parameters["overlap_percent"] / 100) * len(window))
 
     if parameters["padding"]:
-        td = _reconstruct_framed_signal(
-            td_framed, step_size=step, window=window
-        )
+        td = _reconstruct_framed_signal(td_framed, step_size=step, window=window)
         overlap = int(parameters["overlap_percent"] / 100 * len(window))
         td = td[overlap:-overlap, :]
     else:
         extra_window = np.zeros_like(td_framed[:, 0, :])[:, np.newaxis, :]
         td_framed = np.append(extra_window, td_framed, axis=1)
         td_framed = np.append(td_framed, extra_window, axis=1)
-        td = _reconstruct_framed_signal(
-            td_framed, step_size=step, window=window
-        )
+        td = _reconstruct_framed_signal(td_framed, step_size=step, window=window)
         td = td[step:-step, :]
 
     if original_signal is not None:
@@ -670,9 +666,7 @@ def chroma_stft(
 
     if plot_channel != -1:
         fig, ax = plt.subplots(1, 1)
-        image = ax.imshow(
-            chroma_stft[..., plot_channel], aspect="auto", origin="lower"
-        )
+        image = ax.imshow(chroma_stft[..., plot_channel], aspect="auto", origin="lower")
         ax.set_yticks(
             np.arange(12),
             ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"],
@@ -752,9 +746,7 @@ def cwt(
         wv = np.array(wavelet.get_wavelet(f, signal.sampling_rate_hz))
         wv /= np.abs(wv).sum()
 
-        scalogram[ind_f, ...] = oaconvolve(
-            td, wv[..., None], axes=0, mode="same"
-        )
+        scalogram[ind_f, ...] = oaconvolve(td, wv[..., None], axes=0, mode="same")
 
     if synchrosqueezed:
         scalogram = _squeeze_scalogram(
@@ -892,9 +884,7 @@ def vqt(
     # Gamma adaptation
     gamma = gamma / signal.sampling_rate_hz * mid_fs
 
-    kernels = _get_kernels_vqt(
-        q, highest_f, bins_per_octave, mid_fs, window, gamma
-    )
+    kernels = _get_kernels_vqt(q, highest_f, bins_per_octave, mid_fs, window, gamma)
 
     octs = octaves[1] - octaves[0] + 1
     cqt = np.zeros(
@@ -952,9 +942,7 @@ def stereo_mid_side(signal: Signal, forward: bool) -> Signal:
         Converted signal. Left (or mid) are always the first channel.
 
     """
-    assert (
-        signal.number_of_channels == 2
-    ), "Signal must have exactly two channels"
+    assert signal.number_of_channels == 2, "Signal must have exactly two channels"
     td = signal.time_data.copy()
     td[:, 0] = signal.time_data[:, 0] + signal.time_data[:, 1]
     td[:, 1] = signal.time_data[:, 0] - signal.time_data[:, 1]
@@ -1006,9 +994,7 @@ def laguerre(signal: Signal, warping_factor: float) -> Signal:
       Review. Journal of the Audio Engineering Society.
 
     """
-    assert (
-        np.abs(warping_factor) < 1.0
-    ), "Warping factor cannot be larger than 1."
+    assert np.abs(warping_factor) < 1.0, "Warping factor cannot be larger than 1."
 
     xx = signal.time_data[::-1, ...]  # Time reversal
     output = np.zeros_like(xx)
@@ -1285,9 +1271,7 @@ def lpc(
     synthesized_signal = np.zeros_like(td)
     for channel in range(td.shape[2]):
         for n_window in range(td.shape[1]):
-            source = np.random.normal(
-                0.0, var[n_window, channel] ** 0.5, td.shape[0]
-            )
+            source = np.random.normal(0.0, var[n_window, channel] ** 0.5, td.shape[0])
             synthesized_signal[:, n_window, channel] = lfilter(
                 [1.0],
                 a[:, n_window, channel],
@@ -1405,7 +1389,5 @@ def spectrum_via_filterbank(
             for band in bands
         ]
     )
-    mir = fb.filter_signal(
-        signal, FilterBankMode.Parallel, zero_phase=zero_phase
-    )
+    mir = fb.filter_signal(signal, FilterBankMode.Parallel, zero_phase=zero_phase)
     return Spectrum(frequency_vector_hz, rms(mir, False))

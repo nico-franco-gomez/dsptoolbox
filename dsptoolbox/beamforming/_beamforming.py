@@ -88,9 +88,7 @@ class BasePoints:
         return extent
 
     # ======== distances ======================================================
-    def get_distances_to_point(
-        self, point: NDArray[np.float64]
-    ) -> NDArray[np.float64]:
+    def get_distances_to_point(self, point: NDArray[np.float64]) -> NDArray[np.float64]:
         """Compute distances (euclidean) from given point to all points of the
         object efficiently.
 
@@ -185,12 +183,8 @@ class BasePoints:
 
         """
         point = np.asarray(point).squeeze()
-        assert (
-            point.ndim == 1
-        ), "Passed vector is not broadcastable to a 1D-array"
-        assert (
-            len(point) == 3
-        ), "Point must have exactly 3 dimensions (x, y, z)"
+        assert point.ndim == 1, "Passed vector is not broadcastable to a 1D-array"
+        assert len(point) == 3, "Point must have exactly 3 dimensions (x, y, z)"
         dist = self.get_distances_to_point(point)
         index = int(np.argmin(dist))
         coord = self.coordinates[index, :]
@@ -262,9 +256,7 @@ def _clean_sc_deconvolve(
         second_map[maximum_power_ind] += maximum_power * safety_factor
 
         # Stopping criterion
-        if np.linalg.norm(D[1, :, :], ord=1) >= np.linalg.norm(
-            D[0, :, :], ord=1
-        ):
+        if np.linalg.norm(D[1, :, :], ord=1) >= np.linalg.norm(D[0, :, :], ord=1):
             break
 
         # Alternatively...
@@ -294,8 +286,7 @@ def _clean_sc_deconvolve(
         for gind in range(len(map)):
             # Clean map
             map[gind] -= (
-                np.linalg.multi_dot([h_H[gind, :], G, h[:, gind]]).real
-                * safety_factor
+                np.linalg.multi_dot([h_H[gind, :], G, h[:, gind]]).real * safety_factor
             )
 
         # Swap degraded CSM

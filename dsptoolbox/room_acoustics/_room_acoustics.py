@@ -85,9 +85,7 @@ def _reverb(
     return factor / np.abs(p[0]), corr
 
 
-def _find_ir_start(
-    ir: NDArray[np.float64], threshold_dbfs: float = -20
-) -> int:
+def _find_ir_start(ir: NDArray[np.float64], threshold_dbfs: float = -20) -> int:
     """Find start of an IR using a threshold. Done for 1D-arrays.
 
     Parameters
@@ -161,9 +159,7 @@ def _complex_mode_identification(
     return cmif
 
 
-def _generate_rir(
-    room_dim, alpha, s_pos, r_pos, rt, mo, sr
-) -> NDArray[np.float64]:
+def _generate_rir(room_dim, alpha, s_pos, r_pos, rt, mo, sr) -> NDArray[np.float64]:
     """Generate RIR using image source model according to Brinkmann, et al.
 
     Parameters
@@ -202,12 +198,8 @@ def _generate_rir(
         beta_1 = np.ones(3) * beta
         beta_2 = np.ones(3) * beta
     elif len(beta) == 6:
-        beta_1 = np.array(
-            [beta[1], beta[3], beta[4]]
-        )  # South  # West  # Floor
-        beta_2 = np.array(
-            [beta[0], beta[2], beta[5]]
-        )  # North  # East  # Ceiling
+        beta_1 = np.array([beta[1], beta[3], beta[4]])  # South  # West  # Floor
+        beta_2 = np.array([beta[0], beta[2], beta[5]])  # North  # East  # Ceiling
     else:
         raise ValueError("Wrong length for absorption coefficients")
 
@@ -273,9 +265,7 @@ def _generate_rir(
                 # Distances
                 ds = get_distance(l0)
                 # Write into RIR
-                rir_vec[seconds2samples(ds / c)] += get_damping(l0) / (
-                    4 * np.pi * ds
-                )
+                rir_vec[seconds2samples(ds / c)] += get_damping(l0) / (4 * np.pi * ds)
     return rir_vec
 
 
@@ -325,15 +315,11 @@ class Room:
                 absorption_coefficient > 0 and absorption_coefficient <= 1
             ), "Absorption coefficient should be ]0, 1]"
             self.absorption_coefficient = absorption_coefficient
-            self.t60_s = (
-                0.161 * self.volume / self.area / self.absorption_coefficient
-            )
+            self.t60_s = 0.161 * self.volume / self.area / self.absorption_coefficient
         if absorption_coefficient is None:
             assert t60_s is not None, "T60 should not be None"
             absorption_coefficient = 0.161 * self.volume / self.area / t60_s
-            assert (
-                absorption_coefficient > 0 and absorption_coefficient <= 1
-            ), (
+            assert absorption_coefficient > 0 and absorption_coefficient <= 1, (
                 "Given reverberation time is not valid. Absorption "
                 + "coefficient should be ]0, 1] and not "
                 + f"{absorption_coefficient}"
@@ -513,9 +499,7 @@ class ShoeboxRoom(Room):
             mixing_time_s = (np.sqrt(self.volume) * 0.58 + 21.2) * 1e-3
         else:
             assert n_reflections > 0, "n_reflections must be positive"
-            mixing_time_s = np.sqrt(
-                n_reflections * self.volume / (4 * np.pi * c**3)
-            )
+            mixing_time_s = np.sqrt(n_reflections * self.volume / (4 * np.pi * c**3))
         self.mixing_time_s = mixing_time_s
         return self.mixing_time_s
 
@@ -623,9 +607,7 @@ class ShoeboxRoom(Room):
 
         if hasattr(self, "detailed_absorption"):
             # Absorption for each mode taken from the respective octave band
-            mode_damping = (
-                np.log(1e3) / self.detailed_absorption["t60_s_per_frequency"]
-            )
+            mode_damping = np.log(1e3) / self.detailed_absorption["t60_s_per_frequency"]
             alpha_freq_dep = True
             octave_bands = self.detailed_absorption["center_frequencies"]
         else:
@@ -696,9 +678,7 @@ class ShoeboxRoom(Room):
         if generate_plot:
             p_db = to_db(p, True)
             p_db -= np.max(p_db)
-            plot = general_plot(
-                f, p_db, range_x=[f[0], f[-1]], tight_layout=True
-            )
+            plot = general_plot(f, p_db, range_x=[f[0], f[-1]], tight_layout=True)
             plot[1].set_ylabel("Magnitude / dBFS (norm @ Peak)")
         else:
             plot = None
@@ -779,9 +759,7 @@ class ShoeboxRoom(Room):
         # Trim or pad for every wall
         for i in detailed_absorption:
             if len(detailed_absorption[i]) >= number_of_bands:
-                detailed_absorption[i] = detailed_absorption[i][
-                    :number_of_bands
-                ]
+                detailed_absorption[i] = detailed_absorption[i][:number_of_bands]
             else:
                 detailed_absorption[i] = np.pad(
                     detailed_absorption[i],
@@ -825,9 +803,9 @@ class ShoeboxRoom(Room):
         self.detailed_absorption = detailed_absorption
         self.detailed_absorption["absorption_matrix"] = absorption_matrix
         self.detailed_absorption["absorption_area"] = absorption_area
-        self.detailed_absorption[
-            "mean_absorption_coefficients_per_frequency"
-        ] = acpf = (absorption_area / self.area)
+        self.detailed_absorption["mean_absorption_coefficients_per_frequency"] = (
+            acpf
+        ) = (absorption_area / self.area)
         self.detailed_absorption["center_frequencies"] = 125 * 2 ** np.arange(
             number_of_bands
         )
@@ -856,9 +834,7 @@ index_wall_dictionary.
         weights /= np.sum(weights)
         self.absorption_coefficient = np.sum(acpf * weights)
         # Get new T60
-        self.t60_s = (
-            0.161 * self.volume / (self.absorption_coefficient * self.area)
-        )
+        self.t60_s = 0.161 * self.volume / (self.absorption_coefficient * self.area)
 
 
 def _add_reverberant_tail_noise(
@@ -910,9 +886,7 @@ def _add_reverberant_tail_noise(
     return rir
 
 
-def _d50_from_rir(
-    td: NDArray[np.float64], fs: int, automatic_trimming: bool
-) -> float:
+def _d50_from_rir(td: NDArray[np.float64], fs: int, automatic_trimming: bool) -> float:
     """Compute definition D50 from a given RIR (1D-Array).
 
     Parameters
@@ -947,9 +921,7 @@ def _d50_from_rir(
     return np.sum(td[:window]) / np.sum(td[:stop])
 
 
-def _c80_from_rir(
-    td: NDArray[np.float64], fs: int, automatic_trimming: bool
-) -> float:
+def _c80_from_rir(td: NDArray[np.float64], fs: int, automatic_trimming: bool) -> float:
     """Compute clarity C80 from a given RIR (1D-Array).
 
     Parameters
@@ -986,9 +958,7 @@ def _c80_from_rir(
     return to_db(np.sum(td[:window]) / np.sum(td[window:stop]), False)
 
 
-def _ts_from_rir(
-    td: NDArray[np.float64], fs: int, automatic_trimming: bool
-) -> float:
+def _ts_from_rir(td: NDArray[np.float64], fs: int, automatic_trimming: bool) -> float:
     """Compute center time from a given RIR (1D-Array).
 
     Parameters
@@ -1065,9 +1035,7 @@ def _obtain_optimal_reverb_time(
     very_short_edt = (-6 * 10 / coeff_edt[0]) * 10 < -60 / coeff_t30[0]
 
     if very_short_edt:
-        x_intersection = (coeff_edt[1] - coeff_t30[1]) / (
-            coeff_t30[0] - coeff_edt[0]
-        )
+        x_intersection = (coeff_edt[1] - coeff_t30[1]) / (coeff_t30[0] - coeff_edt[0])
         start: float = float(np.polyval(coeff_edt, [x_intersection]).squeeze())
     else:
         start = -5.0
@@ -1080,9 +1048,7 @@ def _obtain_optimal_reverb_time(
             + "(larger than -0.95). Computation might be invalid. "
             + "-1 is the ideal value."
         )
-    coefficients = _get_polynomial_coeffs_from_edc(
-        time_vector, edc, start, end
-    )[0]
+    coefficients = _get_polynomial_coeffs_from_edc(time_vector, edc, start, end)[0]
     return 60 / np.abs(coefficients[0]), r
 
 
@@ -1219,13 +1185,9 @@ def _compute_energy_decay_curve(
 
     # Find compensation energy according to [2]
     signal_db = to_db(time_smoothing(signal_power, fs_hz, 20e-3), False)
-    start_index_int = np.where(
-        dynamic_range_db + np.min(signal_db) > signal_db
-    )[0][0]
+    start_index_int = np.where(dynamic_range_db + np.min(signal_db) > signal_db)[0][0]
     time_vector = np.linspace(0, len(signal_power) / fs_hz, len(signal_power))
-    p = np.polyfit(
-        time_vector[start_index_int:], signal_db[start_index_int:], 1
-    )
+    p = np.polyfit(time_vector[start_index_int:], signal_db[start_index_int:], 1)
     avoid_corrections = p[1] >= 0.0  # Check if slope makes sense
 
     # Lundeby's compensation energy

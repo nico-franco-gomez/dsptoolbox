@@ -93,8 +93,7 @@ class MultiBandSignal:
             complex_data = new_bands[0].time_data_imaginary is not None
             for s in new_bands:
                 assert isinstance(s, Signal), (
-                    f"{type(s)} is not a valid "
-                    + "band type. Use Signal objects"
+                    f"{type(s)} is not a valid " + "band type. Use Signal objects"
                 )
                 assert s.number_of_channels == self.number_of_channels, (
                     "Signals have different number of channels. This "
@@ -131,9 +130,7 @@ class MultiBandSignal:
 
     @same_sampling_rate.setter
     def same_sampling_rate(self, new_same):
-        assert (
-            type(new_same) is bool
-        ), "Same sampling rate attribute must be a boolean"
+        assert type(new_same) is bool, "Same sampling rate attribute must be a boolean"
         self.__same_sampling_rate = new_same
 
     @property
@@ -256,8 +253,7 @@ class MultiBandSignal:
             new_order
         ), "The number of bands does not match"
         assert all(new_order < self.number_of_bands) and all(new_order >= 0), (
-            "Indexes of new bands have to be in "
-            + f"[0, {self.number_of_bands - 1}]"
+            "Indexes of new bands have to be in " + f"[0, {self.number_of_bands - 1}]"
         )
         assert len(unique(new_order)) == len(
             new_order
@@ -343,9 +339,7 @@ class MultiBandSignal:
                     (self.bands[0].time_data.shape[0], len(self.bands))
                 )
                 for n in range(len(self.bands)):
-                    new_time_data[:, n] = (
-                        self.bands[n].time_data[:, channel].copy()
-                    )
+                    new_time_data[:, n] = self.bands[n].time_data[:, channel].copy()
             else:
                 new_time_data = zeros(
                     (self.bands[0].time_data.shape[0], len(self.bands)),
@@ -378,9 +372,7 @@ class MultiBandSignal:
 
     def get_all_time_data(
         self,
-    ) -> (
-        tuple[NDArray[np.float64], int] | list[tuple[NDArray[np.float64], int]]
-    ):
+    ) -> tuple[NDArray[np.float64], int] | list[tuple[NDArray[np.float64], int]]:
         """
         Get all time data saved in the MultiBandSignal. If it has consistent
         sampling rate, a single array with shape (time samples, band, channel)
@@ -424,9 +416,7 @@ class MultiBandSignal:
                 td.append(
                     (
                         b.time_data
-                        + (
-                            b.time_data_imaginary * 1j if complex_data else 0.0
-                        ),
+                        + (b.time_data_imaginary * 1j if complex_data else 0.0),
                         b.sampling_rate_hz,
                     )
                 )

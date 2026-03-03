@@ -62,9 +62,7 @@ def log_frequency_vector(
     assert frequency_range_hz[0] > 0, "The first frequency bin should not be 0"
 
     n_octave = np.log2(frequency_range_hz[1] / frequency_range_hz[0])
-    return frequency_range_hz[0] * 2 ** (
-        np.arange(0, n_octave, 1 / n_bins_per_octave)
-    )
+    return frequency_range_hz[0] * 2 ** (np.arange(0, n_octave, 1 / n_bins_per_octave))
 
 
 def get_exact_value_at_frequency(
@@ -234,13 +232,9 @@ def fractional_octave_frequencies(
 
     f_lims = np.asarray(frequency_range)
     if f_lims.size != 2:
-        raise ValueError(
-            "You need to specify a lower and upper limit frequency."
-        )
+        raise ValueError("You need to specify a lower and upper limit frequency.")
     if f_lims[0] > f_lims[1]:
-        raise ValueError(
-            "The second frequency needs to be higher than the first."
-        )
+        raise ValueError("The second frequency needs to be higher than the first.")
 
     if num_fractions in [1, 3]:
         nominal, exact = _center_frequencies_fractional_octaves_iec(
@@ -252,9 +246,7 @@ def fractional_octave_frequencies(
         exact = exact[mask]
 
     else:
-        exact = _exact_center_frequencies_fractional_octaves(
-            num_fractions, f_lims
-        )
+        exact = _exact_center_frequencies_fractional_octaves(num_fractions, f_lims)
 
     if return_cutoff:
         octave_ratio = 10 ** (3 / 10)
@@ -321,9 +313,7 @@ def erb_frequencies(
     # convert the frequency range and reference to ERB scale
     # (Hohmann 2002, Eq. 16)
     erb_range = (
-        9.2645
-        * np.sign(freq_range_hz)
-        * np.log(1 + np.abs(freq_range_hz) * 0.00437)
+        9.2645 * np.sign(freq_range_hz) * np.log(1 + np.abs(freq_range_hz) * 0.00437)
     )
     erb_ref = (
         9.2645
@@ -336,16 +326,11 @@ def erb_frequencies(
 
     # construct the frequencies on the ERB scale
     n_points = np.floor(erb_ref_range / resolution).astype(int)
-    erb_points = (
-        np.arange(-n_points[0], n_points[1] + 1) * resolution + erb_ref
-    )
+    erb_points = np.arange(-n_points[0], n_points[1] + 1) * resolution + erb_ref
 
     # convert to frequencies in Hz
     frequencies = (
-        1
-        / 0.00437
-        * np.sign(erb_points)
-        * (np.exp(np.abs(erb_points) / 9.2645) - 1)
+        1 / 0.00437 * np.sign(erb_points) * (np.exp(np.abs(erb_points) / 9.2645) - 1)
     )
 
     return frequencies
@@ -473,8 +458,7 @@ def convert_sample_representation(
     if cast_output:
         if output_format in ("i24", "u24"):
             assert output_in_bytes, (
-                "This format is only valid for casting when "
-                + "the output is in bytes"
+                "This format is only valid for casting when " + "the output is in bytes"
             )
             bits_output = 32
         prefix = "int" if signed_output else "uint"

@@ -77,12 +77,9 @@ def log_spectral(
         )
         f_range_hz = np.sort(f_range_hz)
         assert f_range_hz[1] <= fs_hz // 2, (
-            "Upper bound for "
-            + "frequency must be smaller than the nyquist frequency"
+            "Upper bound for " + "frequency must be smaller than the nyquist frequency"
         )
-        assert not any(f_range_hz < 0), (
-            "Frequencies in range must be " + "positive"
-        )
+        assert not any(f_range_hz < 0), "Frequencies in range must be " + "positive"
     insig1.set_spectrum_parameters(method=method, **spectrum_parameters)
     insig2.set_spectrum_parameters(method=method, **spectrum_parameters)
     f, spec1 = insig1.get_spectrum()
@@ -166,12 +163,9 @@ def itakura_saito(
         )
         f_range_hz = np.sort(f_range_hz)
         assert f_range_hz[1] <= fs_hz // 2, (
-            "Upper bound for "
-            + "frequency must be smaller than the nyquist frequency"
+            "Upper bound for " + "frequency must be smaller than the nyquist frequency"
         )
-        assert not any(f_range_hz < 0), (
-            "Frequencies in range must be " + "positive"
-        )
+        assert not any(f_range_hz < 0), "Frequencies in range must be " + "positive"
     insig1.set_spectrum_parameters(method=method, **spectrum_parameters)
     insig2.set_spectrum_parameters(method=method, **spectrum_parameters)
     f, spec1 = insig1.get_spectrum()
@@ -228,9 +222,7 @@ def snr(signal: Signal, noise: Signal) -> NDArray[np.float64]:
     return np.atleast_1d(_snr(signal.time_data, noise.time_data))
 
 
-def si_sdr(
-    target_signal: Signal, modified_signal: Signal
-) -> NDArray[np.float64]:
+def si_sdr(target_signal: Signal, modified_signal: Signal) -> NDArray[np.float64]:
     """Computes scale-invariant signal to distortion ratio from a target
     and a modified signal. If target signal only has one channel, it is
     assumed to be the target for all the channels in the modified signal.
@@ -259,8 +251,7 @@ def si_sdr(
     ), "Sampling rates do not match"
     if target_signal.number_of_channels != 1:
         assert (
-            modified_signal.number_of_channels
-            == target_signal.number_of_channels
+            modified_signal.number_of_channels == target_signal.number_of_channels
         ), "Signals have different channel numbers"
         multichannel = False
     else:
@@ -334,9 +325,7 @@ def fw_snr_seg(
 
     """
     # Sampling rates
-    assert (
-        x.sampling_rate_hz == xhat.sampling_rate_hz
-    ), "Sampling rates do not match"
+    assert x.sampling_rate_hz == xhat.sampling_rate_hz, "Sampling rates do not match"
     fs_hz = x.sampling_rate_hz
     # Lengths
     assert (
@@ -350,9 +339,7 @@ def fw_snr_seg(
         ), "Invalid number of channels for this measurement"
         multichannel = True
     # Frequency range
-    assert (
-        len(f_range_hz) == 2
-    ), "Frequency range must have lower and upper bounds"
+    assert len(f_range_hz) == 2, "Frequency range must have lower and upper bounds"
     f_range = np.asarray(f_range_hz)
     f_range.sort()
     assert f_range[1] < fs_hz // 2, (

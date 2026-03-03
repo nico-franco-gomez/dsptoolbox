@@ -15,9 +15,7 @@ class MultichannelData(ABC):
         pass
 
     @abstractmethod
-    def _create_copy_with_new_data(
-        self, data: NDArray[np.float64 | np.complex128]
-    ):
+    def _create_copy_with_new_data(self, data: NDArray[np.float64 | np.complex128]):
         pass
 
     @abstractmethod
@@ -77,9 +75,7 @@ class MultichannelData(ABC):
         assert self.number_of_channels == len(
             new_order
         ), "The number of channels does not match"
-        assert all(new_order < self.number_of_channels) and all(
-            new_order >= 0
-        ), (
+        assert all(new_order < self.number_of_channels) and all(new_order >= 0), (
             "Indexes of new channels have to be in "
             + f"[0, {self.number_of_channels - 1}]"
         )

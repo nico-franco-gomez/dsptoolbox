@@ -26,9 +26,7 @@ def _wrap_phase(phase_vector: NDArray[np.float64]) -> NDArray[np.float64]:
     return (phase_vector + np.pi) % (2 * np.pi) - np.pi
 
 
-def _get_exact_gain_1khz(
-    f: NDArray[np.float64], sp_db: NDArray[np.float64]
-) -> float:
+def _get_exact_gain_1khz(f: NDArray[np.float64], sp_db: NDArray[np.float64]) -> float:
     """Uses linear interpolation to get the exact gain value at 1 kHz.
 
     Parameters
@@ -122,22 +120,19 @@ def _get_normalized_spectrum(
     # Check for complex spectrum if phase is required
     if phase:
         assert np.iscomplexobj(spectra), (
-            "Phase computation is not "
-            + "possible since the spectra are not complex"
+            "Phase computation is not " + "possible since the spectra are not complex"
         )
     # Factor
     if is_amplitude_scaling:
         scale_factor = (
             20e-6
-            if calibrated_data
-            and normalize == MagnitudeNormalization.NoNormalization
+            if calibrated_data and normalize == MagnitudeNormalization.NoNormalization
             else 1
         )
     else:
         scale_factor = (
             4e-10
-            if calibrated_data
-            and normalize == MagnitudeNormalization.NoNormalization
+            if calibrated_data and normalize == MagnitudeNormalization.NoNormalization
             else 1
         )
 
@@ -164,16 +159,12 @@ def _get_normalized_spectrum(
                 if is_amplitude_scaling
                 else (
                     # Smoothing always in amplitude representation
-                    _fractional_octave_smoothing(
-                        mag_spectra**0.5, None, smoothing
-                    )
+                    _fractional_octave_smoothing(mag_spectra**0.5, None, smoothing)
                     ** 2
                 )
             )
 
-    mag_spectra_db = to_db(
-        mag_spectra / scale_factor, is_amplitude_scaling, 500
-    )
+    mag_spectra_db = to_db(mag_spectra / scale_factor, is_amplitude_scaling, 500)
 
     match normalize:
         case MagnitudeNormalization.OneKhz:
@@ -184,15 +175,13 @@ def _get_normalized_spectrum(
                 ]
             )
         case MagnitudeNormalization.OneKhzFirstChannel:
-            normalization_db = np.ones(
-                spectra.shape[1]
-            ) * _get_exact_gain_1khz(f, mag_spectra_db[:, 0])
+            normalization_db = np.ones(spectra.shape[1]) * _get_exact_gain_1khz(
+                f, mag_spectra_db[:, 0]
+            )
         case MagnitudeNormalization.Max:
             normalization_db = np.max(mag_spectra_db, axis=0)
         case MagnitudeNormalization.MaxFirstChannel:
-            normalization_db = np.max(
-                mag_spectra_db[:, 0], axis=0, keepdims=True
-            )
+            normalization_db = np.max(mag_spectra_db[:, 0], axis=0, keepdims=True)
         case MagnitudeNormalization.Energy:
             normalization_db = to_db(
                 np.mean(
@@ -204,11 +193,7 @@ def _get_normalized_spectrum(
         case MagnitudeNormalization.EnergyFirstChannel:
             normalization_db = to_db(
                 np.mean(
-                    (
-                        mag_spectra[:, 0] ** 2.0
-                        if is_amplitude_scaling
-                        else mag_spectra
-                    ),
+                    (mag_spectra[:, 0] ** 2.0 if is_amplitude_scaling else mag_spectra),
                     axis=0,
                     keepdims=True,
                 ),
@@ -327,9 +312,7 @@ def _scale_spectrum(
         spectrum.shape[0] * 2 - 1,
     ), "Time length does not match"
 
-    factor = scaling.get_scaling_factor(
-        time_length_samples, sampling_rate_hz, window
-    )
+    factor = scaling.get_scaling_factor(time_length_samples, sampling_rate_hz, window)
 
     # One-sided fix for DC and Nyquist (assuming input was linear)
     spectrum[0] /= 2**0.5
@@ -499,9 +482,7 @@ def _warp_frequency_vector(
       positive values expand higher frequencies.
 
     """
-    assert (
-        np.abs(warping_factor) < 1.0
-    ), "Warping factor must be between ]-1;1["
+    assert np.abs(warping_factor) < 1.0, "Warping factor must be between ]-1;1["
     omega = 2 * np.pi * freqs_hz / sampling_rate_hz
     return freqs_hz + sampling_rate_hz / np.pi * np.arctan(
         -warping_factor * np.sin(omega) / (1 + warping_factor * np.cos(omega))

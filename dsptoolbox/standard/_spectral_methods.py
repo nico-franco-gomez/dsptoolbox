@@ -83,8 +83,7 @@ def _welch(
         multi_channel = False
 
     assert len(x.shape) <= 2, (
-        f"{x.shape} are too many dimensions. Use flat"
-        + " arrays or 2D-Arrays instead"
+        f"{x.shape} are too many dimensions. Use flat" + " arrays or 2D-Arrays instead"
     )
 
     valid_window_sizes = np.array([int(2**x) for x in range(3, 19)])
@@ -145,17 +144,14 @@ def _welch(
         ).conjugate() * np.fft.rfft(y_frames, axis=0, norm=scaling.fft_norm())
     else:
         sp_frames = (
-            np.abs(np.fft.rfft(x_frames, axis=0, norm=scaling.fft_norm()))
-            ** 2.0
+            np.abs(np.fft.rfft(x_frames, axis=0, norm=scaling.fft_norm())) ** 2.0
         )
 
     # Direct averaging (much faster than averaging magnitude and phase)
     if average == "mean":
         csd = np.mean(sp_frames, axis=1)
     else:
-        csd = np.median(sp_frames.real, axis=1) + 1j * np.median(
-            sp_frames.imag, axis=1
-        )
+        csd = np.median(sp_frames.real, axis=1) + 1j * np.median(sp_frames.imag, axis=1)
         # Bias according to reference
         n = (
             sp_frames.shape[1]
@@ -167,9 +163,7 @@ def _welch(
 
     # Weightning (with 2 because one-sided)
     if scaling.has_physical_units():
-        factor = scaling.get_scaling_factor(
-            window_length_samples, fs_hz, window
-        )
+        factor = scaling.get_scaling_factor(window_length_samples, fs_hz, window)
         csd *= factor
         csd[np.array([0, -1]), ...] /= 2
 
@@ -237,8 +231,7 @@ def _stft(
     """
     valid_window_sizes = np.array([int(2**x) for x in range(4, 17)])
     assert window_length_samples in valid_window_sizes, (
-        "Window length should be a power of 2 between [16, 65536] or "
-        + "[2**4, 2**16]"
+        "Window length should be a power of 2 between [16, 65536] or " + "[2**4, 2**16]"
     )
     assert overlap_percent >= 0 and overlap_percent < 100, (
         "overlap_percent" + " should be between 0 and 100"
@@ -272,9 +265,7 @@ def _stft(
     if detrend:
         time_x -= np.mean(time_x, axis=0)
     # Spectra
-    stft = np.fft.rfft(
-        time_x, axis=0, n=fft_length_samples, norm=scaling.fft_norm()
-    )
+    stft = np.fft.rfft(time_x, axis=0, n=fft_length_samples, norm=scaling.fft_norm())
 
     # Scaling
     if scaling.has_physical_units():
@@ -413,9 +404,7 @@ def _csm_fft(
 
     """
     if window is not None:
-        assert (
-            window.shape[1] == spectrum.shape[1]
-        ), "Number of channels does not match"
+        assert window.shape[1] == spectrum.shape[1], "Number of channels does not match"
 
     number_of_channels = spectrum.shape[1]
     csm = np.zeros(
@@ -430,9 +419,7 @@ def _csm_fft(
         for ind2 in range(ind1, number_of_channels):
             # Complex conjugate second signal and not first (like transposing
             # the matrix)
-            csm[:, ind2, ind1] = (
-                spectrum[:, ind1].conjugate() * spectrum[:, ind2]
-            )
+            csm[:, ind2, ind1] = spectrum[:, ind1].conjugate() * spectrum[:, ind2]
             # Half for summing the csm
             if ind1 == ind2:
                 csm[:, ind1, ind2] *= 0.5

@@ -94,9 +94,7 @@ def _gaussian_window_sigma(window_length: int, alpha: float = 2.5) -> float:
     return (window_length - 1) / (2 * alpha)
 
 
-def gaussian_window(
-    length: int, alpha: float, symmetric: bool, offset: int = 0
-):
+def gaussian_window(length: int, alpha: float, symmetric: bool, offset: int = 0):
     """Produces a gaussian window as defined in [1] and [2].
 
     Parameters

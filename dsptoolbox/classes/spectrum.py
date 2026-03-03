@@ -141,15 +141,11 @@ class Spectrum(MultichannelData):
 
     @frequency_vector_hz.setter
     def frequency_vector_hz(self, new_freqs: NDArray[np.float64]):
-        assert not np.iscomplexobj(
-            new_freqs
-        ), "Complex frequencies are invalid"
+        assert not np.iscomplexobj(new_freqs), "Complex frequencies are invalid"
         f = np.atleast_1d(new_freqs).astype(np.float64)
         assert f.ndim == 1, "Frequency vector can only have a single dimension"
         assert np.all(f >= 0.0), "Negative frequencies are not supported"
-        assert np.all(
-            np.ediff1d(f) > 0.0
-        ), "Frequency vector is not strictly ascending"
+        assert np.all(np.ediff1d(f) > 0.0), "Frequency vector is not strictly ascending"
         self.__frequency_vector_type = self.__check_frequency_vector_type(f)
         self.__frequency_vector_hz = f
 
@@ -212,15 +208,11 @@ class Spectrum(MultichannelData):
         f_vec_hz: NDArray[np.float64],
     ) -> FrequencySpacing:
         try:
-            if np.all(
-                np.isclose(np.ediff1d(f_vec_hz), f_vec_hz[-1] - f_vec_hz[-2])
-            ):
+            if np.all(np.isclose(np.ediff1d(f_vec_hz), f_vec_hz[-1] - f_vec_hz[-2])):
                 return FrequencySpacing.Linear
 
             if np.all(
-                np.isclose(
-                    f_vec_hz[2:] / f_vec_hz[1:-1], f_vec_hz[-1] / f_vec_hz[-2]
-                )
+                np.isclose(f_vec_hz[2:] / f_vec_hz[1:-1], f_vec_hz[-1] / f_vec_hz[-2])
             ):
                 return FrequencySpacing.Logarithmic
         except Exception as e:
@@ -273,8 +265,7 @@ class Spectrum(MultichannelData):
         if self.frequency_vector_type == FrequencySpacing.Linear:
             delta_f = self.frequency_vector_hz[1] - self.frequency_vector_hz[0]
             condition_sampling_rate = (
-                abs(sampling_rate_hz / 2 - self.frequency_vector_hz[-1])
-                > delta_f
+                abs(sampling_rate_hz / 2 - self.frequency_vector_hz[-1]) > delta_f
             )
             condition_start = not np.isclose(self.frequency_vector_hz[0], 0.0)
 
@@ -299,9 +290,7 @@ class Spectrum(MultichannelData):
             InterpolationScheme.Pchip,
             InterpolationEdgeHandling.ZeroPad,
         )
-        spectrum = self.get_interpolated_spectrum(
-            requested_freqs, SpectrumType.Complex
-        )
+        spectrum = self.get_interpolated_spectrum(requested_freqs, SpectrumType.Complex)
 
         return __td_from_spec(spectrum, length_seconds, sampling_rate_hz)
 
@@ -386,11 +375,7 @@ class Spectrum(MultichannelData):
         )
         new_sp = self.get_interpolated_spectrum(
             new_freqs_hz,
-            (
-                SpectrumType.Magnitude
-                if self.is_magnitude
-                else SpectrumType.Complex
-            ),
+            (SpectrumType.Magnitude if self.is_magnitude else SpectrumType.Complex),
         )
         self.frequency_vector_hz = new_freqs_hz
         self.spectral_data = new_sp
@@ -420,9 +405,7 @@ class Spectrum(MultichannelData):
             np.array([reference_frequency_hz]), SpectrumType.Magnitude
         )
         normalization_value = (
-            values
-            if reference_channel is None
-            else values[0, reference_channel]
+            values if reference_channel is None else values[0, reference_channel]
         )
         self.spectral_data /= normalization_value
         return self
@@ -535,11 +518,7 @@ class Spectrum(MultichannelData):
         else:
             output = np.zeros(
                 (len(requested_frequency), self.number_of_channels),
-                dtype=(
-                    np.complex128
-                    if self.__int_domain.is_complex()
-                    else np.float64
-                ),
+                dtype=(np.complex128 if self.__int_domain.is_complex() else np.float64),
             )
             for ch in range(output.shape[1]):
                 output[:, ch] = np.interp(
@@ -740,9 +719,7 @@ class Spectrum(MultichannelData):
 
         """
         beta = (
-            np.log2(
-                self.frequency_vector_hz[-1] / self.frequency_vector_hz[-2]
-            )
+            np.log2(self.frequency_vector_hz[-1] / self.frequency_vector_hz[-2])
             if self.frequency_vector_type == FrequencySpacing.Logarithmic
             else None
         )
@@ -760,11 +737,7 @@ class Spectrum(MultichannelData):
                     self.frequency_vector_hz[-1] - self.frequency_vector_hz[0],
                     endpoint=True,
                 ),
-                (
-                    SpectrumType.Magnitude
-                    if self.is_magnitude
-                    else SpectrumType.Complex
-                ),
+                (SpectrumType.Magnitude if self.is_magnitude else SpectrumType.Complex),
             )
 
         if self.is_magnitude:
@@ -839,20 +812,14 @@ class Spectrum(MultichannelData):
                 )
             case MagnitudeNormalization.MaxFirstChannel:
                 norm = (
-                    np.max(
-                        np.abs(self.spectral_data[:, 0]), axis=0, keepdims=True
-                    )
+                    np.max(np.abs(self.spectral_data[:, 0]), axis=0, keepdims=True)
                     if not self.is_magnitude
-                    else np.max(
-                        self.spectral_data[:, 0], axis=0, keepdims=True
-                    )
+                    else np.max(self.spectral_data[:, 0], axis=0, keepdims=True)
                 )
             case MagnitudeNormalization.Energy:
                 norm = (self.get_energy() / self.number_frequency_bins) ** 0.5
             case MagnitudeNormalization.EnergyFirstChannel:
-                norm = (
-                    self.get_energy()[0] / self.number_frequency_bins
-                ) ** 0.5
+                norm = (self.get_energy()[0] / self.number_frequency_bins) ** 0.5
             case MagnitudeNormalization.NoNormalization:
                 norm = np.ones(self.number_of_channels)
 
@@ -886,8 +853,7 @@ class Spectrum(MultichannelData):
             sharey=True,
             log_x=True,
             ylabels=[
-                rf"$\gamma^2$ Coherence {n}"
-                for n in range(self.number_of_channels)
+                rf"$\gamma^2$ Coherence {n}" for n in range(self.number_of_channels)
             ],
             range_x=None,
             xlabels="Frequency / Hz",

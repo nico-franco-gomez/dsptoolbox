@@ -275,9 +275,7 @@ class FilterBank:
         assert self.number_of_filters == len(
             new_order
         ), "The number of filters does not match"
-        assert all(new_order < self.number_of_filters) and all(
-            new_order >= 0
-        ), (
+        assert all(new_order < self.number_of_filters) and all(new_order >= 0), (
             "Indexes of new filters have to be in "
             + f"[0, {self.number_of_filters - 1}]"
         )
@@ -335,8 +333,7 @@ class FilterBank:
         ), "Sampling rates do not match"
         if zero_phase:
             assert not activate_zi, (
-                "Zero-phase filtering and zi cannot be used at "
-                + "the same time"
+                "Zero-phase filtering and zi cannot be used at " + "the same time"
             )
         if activate_zi:
             if not hasattr(self.filters[0], "zi"):
@@ -388,8 +385,7 @@ class FilterBank:
         ), "Sampling rates do not match"
         if zero_phase:
             assert not activate_zi, (
-                "Zero-phase filtering and zi cannot be used at "
-                + "the same time"
+                "Zero-phase filtering and zi cannot be used at " + "the same time"
             )
         if activate_zi:
             if not hasattr(self.filters[0], "zi"):
@@ -452,9 +448,7 @@ class FilterBank:
                     number_of_channels=1,
                 )
                 mb.add_band(
-                    f.filter_signal(
-                        d, activate_zi=test_zi, zero_phase=zero_phase
-                    )
+                    f.filter_signal(d, activate_zi=test_zi, zero_phase=zero_phase)
                 )
             return mb
 
@@ -481,9 +475,7 @@ class FilterBank:
         )
 
         # Filtering
-        ir = self.filter_signal(
-            d, mode, activate_zi=test_zi, zero_phase=zero_phase
-        )
+        ir = self.filter_signal(d, mode, activate_zi=test_zi, zero_phase=zero_phase)
         return ir
 
     def get_transfer_function(
@@ -644,8 +636,7 @@ class FilterBank:
                 range_hz,
                 ylabel="Magnitude / dB",
                 labels=[
-                    f"Sequential - Channel {n}"
-                    for n in range(bs.number_of_channels)
+                    f"Sequential - Channel {n}" for n in range(bs.number_of_channels)
                 ],
             )
         elif mode == FilterBankMode.Summed:
@@ -766,8 +757,7 @@ class FilterBank:
                 range_hz,
                 ylabel="Phase / rad",
                 labels=[
-                    f"Sequential - Channel {n}"
-                    for n in range(bs.number_of_channels)
+                    f"Sequential - Channel {n}" for n in range(bs.number_of_channels)
                 ],
             )
         elif mode == FilterBankMode.Summed:
@@ -876,8 +866,7 @@ class FilterBank:
                 range_hz,
                 ylabel="Group delay / ms",
                 labels=[
-                    f"Sequential - Channel {n}"
-                    for n in range(bs.number_of_channels)
+                    f"Sequential - Channel {n}" for n in range(bs.number_of_channels)
                 ],
             )
         elif mode == FilterBankMode.Summed:

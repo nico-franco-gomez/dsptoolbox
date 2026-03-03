@@ -212,14 +212,10 @@ class SpectrumScaling(Enum):
 
         if self.is_spectral_density():
             if window is None:
-                factor = (
-                    2 / length_time_data_samples / sampling_rate_hz
-                ) ** 0.5
+                factor = (2 / length_time_data_samples / sampling_rate_hz) ** 0.5
             else:
                 factor = (
-                    2
-                    / np.sum(window**2, axis=0, keepdims=True)
-                    / sampling_rate_hz
+                    2 / np.sum(window**2, axis=0, keepdims=True) / sampling_rate_hz
                 ) ** 0.5
         else:  # Spectrum
             if window is None:
@@ -378,9 +374,7 @@ class Window(Enum):
     def extra_parameter(self):
         return self.__extra_parameter
 
-    def with_extra_parameter(
-        self, extra_parameter: float | tuple[float, float]
-    ):
+    def with_extra_parameter(self, extra_parameter: float | tuple[float, float]):
         """Add the extra parameter parameter to the window. Windows that
         require an extra parameter are:
         - Kaiser
@@ -440,9 +434,7 @@ class Window(Enum):
 
     def __call__(self, n_values: int, symmetric: bool):
         """Get window values from `scipy.signal.windows.get_window()`."""
-        return get_window_scipy(
-            self.to_scipy_format(), n_values, not symmetric
-        )
+        return get_window_scipy(self.to_scipy_format(), n_values, not symmetric)
 
 
 class MagnitudeNormalization(Enum):

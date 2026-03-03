@@ -10,9 +10,7 @@ class TestFilterbanksModule:
     fs = 5000
 
     def get_noise(self):
-        return dsp.generators.noise(
-            length_seconds=1.0, sampling_rate_hz=self.fs
-        )
+        return dsp.generators.noise(length_seconds=1.0, sampling_rate_hz=self.fs)
 
     def test_linkwitz(self):
         # Only functionality
@@ -146,8 +144,7 @@ class TestFilterbanksModule:
         assert np.all(
             np.isclose(
                 h,
-                f2.get_coefficients(dsp.FilterCoefficientsType.Ba)[0]
-                + coefficients,
+                f2.get_coefficients(dsp.FilterCoefficientsType.Ba)[0] + coefficients,
             )
         )
 
@@ -172,14 +169,10 @@ class TestFilterbanksModule:
 
         # Initialize with wrong length
         with pytest.raises(AssertionError):
-            dsp.filterbanks.PhaseLinearizer(
-                np.angle(sp[:, 0]), len(ir) // 2, fs_hz
-            )
+            dsp.filterbanks.PhaseLinearizer(np.angle(sp[:, 0]), len(ir) // 2, fs_hz)
 
         # Phase linearizer - Without interpolating
-        pl = dsp.filterbanks.PhaseLinearizer(
-            np.angle(sp[:, 0]), len(ir), fs_hz
-        )
+        pl = dsp.filterbanks.PhaseLinearizer(np.angle(sp[:, 0]), len(ir), fs_hz)
         with pytest.raises(AssertionError):
             pl.set_parameters(-10)
         pl.get_filter_as_ir()
@@ -190,9 +183,7 @@ class TestFilterbanksModule:
         ir = fb.get_ir(length_samples=2**9).collapse()
         ir.spectrum_method = dsp.SpectrumMethod.FFT
         _, sp = ir.get_spectrum()
-        pl = dsp.filterbanks.PhaseLinearizer(
-            np.angle(sp[:, 0]), len(ir), fs_hz
-        )
+        pl = dsp.filterbanks.PhaseLinearizer(np.angle(sp[:, 0]), len(ir), fs_hz)
         pl.get_filter_as_ir()
         pl.get_filter()
 
@@ -290,9 +281,7 @@ class TestFilterbanksModule:
     def test_arma(self):
         # Only functionality
         rir = dsp.ImpulseResponse(
-            os.path.join(
-                os.path.dirname(__file__), "..", "example_data", "rir.wav"
-            )
+            os.path.join(os.path.dirname(__file__), "..", "example_data", "rir.wav")
         )
         dsp.filterbanks.arma(rir, 10, 0)
         dsp.filterbanks.arma(rir, 10, 1)
@@ -306,9 +295,7 @@ class TestFilterbanksModule:
     def test_fractional_delay(self):
         noise = dsp.Filter.iir_filter(
             8, self.fs / 4, dsp.FilterPassType.Lowpass, self.fs
-        ).filter_signal(
-            dsp.generators.noise(0.5, self.fs, padding_end_seconds=0.5)
-        )
+        ).filter_signal(dsp.generators.noise(0.5, self.fs, padding_end_seconds=0.5))
 
         fractional = 0.5
         order = 30

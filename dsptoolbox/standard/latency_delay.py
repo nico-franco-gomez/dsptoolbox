@@ -89,9 +89,7 @@ def latency(
             assert (
                 in1.number_of_channels == in2.number_of_channels
             ), "Number of channels between the two signals must match"
-            assert isinstance(
-                in2, Signal
-            ), "Both signals must be of type Signal"
+            assert isinstance(in2, Signal), "Both signals must be of type Signal"
             td2 = in2.time_data
         else:
             assert (
@@ -155,9 +153,7 @@ def latency(
                 )
         return lags, correlations
     else:
-        raise TypeError(
-            "Signals must either be type Signal or MultiBandSignal"
-        )
+        raise TypeError("Signals must either be type Signal or MultiBandSignal")
 
 
 def fractional_delay(
@@ -240,9 +236,7 @@ def fractional_delay(
         )
 
         # Handle delayed and undelayed channels
-        channels_not = np.setdiff1d(
-            channels, np.arange(new_time_data.shape[1])
-        )
+        channels_not = np.setdiff1d(channels, np.arange(new_time_data.shape[1]))
         not_delayed = new_time_data[:, channels_not]
         delayed = new_time_data[:, channels]
 
@@ -287,8 +281,7 @@ def fractional_delay(
         return out_sig
     else:
         raise TypeError(
-            "Passed signal should be either type Signal or "
-            + "MultiBandSignal"
+            "Passed signal should be either type Signal or " + "MultiBandSignal"
         )
 
 
@@ -340,9 +333,7 @@ def delay(
         new_time_data = sig.time_data
 
         # Handle delayed and undelayed channels
-        channels_not = np.setdiff1d(
-            channels, np.arange(new_time_data.shape[1])
-        )
+        channels_not = np.setdiff1d(channels, np.arange(new_time_data.shape[1]))
         not_delayed = new_time_data[:, channels_not]
         delayed = new_time_data[:, channels]
 
@@ -375,6 +366,5 @@ def delay(
         return out_sig
     else:
         raise TypeError(
-            "Passed signal should be either type Signal or "
-            + "MultiBandSignal"
+            "Passed signal should be either type Signal or " + "MultiBandSignal"
         )

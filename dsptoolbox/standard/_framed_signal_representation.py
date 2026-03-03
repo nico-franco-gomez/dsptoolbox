@@ -61,9 +61,7 @@ def _get_framed_signal(
     # Create time frames
     start = 0
     for n in range(n_frames):
-        td_framed[:, n, :] = td[
-            start : start + window_length_samples, :
-        ].copy()
+        td_framed[:, n, :] = td[start : start + window_length_samples, :].copy()
         start += step_size
 
     return td_framed
@@ -103,9 +101,7 @@ def _reconstruct_framed_signal(
         Reconstructed signal with shape (time samples, channels).
 
     """
-    assert (
-        td_framed.ndim == 3
-    ), "Framed signal must contain exactly three dimensions"
+    assert td_framed.ndim == 3, "Framed signal must contain exactly three dimensions"
     if window is not None:
         if type(window) is str:
             window = windows.get_window(window, td_framed.shape[0])

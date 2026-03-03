@@ -205,9 +205,7 @@ def general_plot_two_axes(
             assert type(labels1) is str, "labels should be a list or a string"
             labels1 = [labels1]
     if labels1 is not None:
-        ax.plot(
-            x1, matrix1, label=labels1, linestyle=y1_linestyle, alpha=y1_alpha
-        )
+        ax.plot(x1, matrix1, label=labels1, linestyle=y1_linestyle, alpha=y1_alpha)
     else:
         ax.plot(x1, matrix1, linestyle=y1_linestyle, alpha=y1_alpha)
     # ======
@@ -224,9 +222,7 @@ def general_plot_two_axes(
             assert type(labels2) is str, "labels should be a list or a string"
             labels2 = [labels2]
     if labels2 is not None:
-        ax2.plot(
-            x2, matrix2, label=labels2, linestyle=y2_linestyle, alpha=y2_alpha
-        )
+        ax2.plot(x2, matrix2, label=labels2, linestyle=y2_linestyle, alpha=y2_alpha)
     else:
         ax2.plot(x2, matrix2, linestyle=y2_linestyle, alpha=y2_alpha)
     # ======
@@ -342,9 +338,7 @@ def general_subplots_line(
         ax[n].plot(x, matrix[:, n])
         if log_x:
             ax[n].set_xscale("log")
-            ticks = array(
-                [20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000]
-            )
+            ticks = array([20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000])
             if range_x is not None:
                 ticks = ticks[(ticks > range_x[0]) & (ticks < range_x[-1])]
             ax[n].set_xticks(ticks)

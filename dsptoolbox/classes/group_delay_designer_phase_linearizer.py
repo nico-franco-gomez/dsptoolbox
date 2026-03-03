@@ -78,9 +78,7 @@ class FirDesigner:
             forcing nyquist frequency to be exclusively real. Default: False.
 
         """
-        assert (
-            delay_increase_ms >= 0
-        ), "Delay increase must be larger than zero"
+        assert delay_increase_ms >= 0, "Delay increase must be larger than zero"
         if additional_length_samples is not None:
             assert (
                 additional_length_samples >= 0
@@ -107,9 +105,7 @@ class FirDesigner:
         assert (
             target_group_delay_s.ndim == 1
         ), "Target group delay can only have 1 dimension"
-        assert self.time_data_length_samples // 2 + 1 == len(
-            target_group_delay_s
-        ), (
+        assert self.time_data_length_samples // 2 + 1 == len(target_group_delay_s), (
             f"Target group delay with length {len(target_group_delay_s)} and "
             + f"length {self.time_data_length_samples} do not match."
         )
@@ -131,9 +127,7 @@ class FirDesigner:
 
     def _get_group_delay_factor_in_seconds(self) -> float:
         """This is the conversion factor from unscaled to delay in seconds."""
-        return (
-            self.time_data_length_samples / 2 / np.pi / self.sampling_rate_hz
-        )
+        return self.time_data_length_samples / 2 / np.pi / self.sampling_rate_hz
 
     def get_filter(self) -> Filter:
         """Get FIR filter."""
@@ -164,9 +158,7 @@ class FirDesigner:
                 + "spectrum with finer resolution!"
             )
             # Define new time length for the group delay
-            new_gd_time_length_samples = (
-                int(max_delay_samples_synthesized * 10) + 1
-            )
+            new_gd_time_length_samples = int(max_delay_samples_synthesized * 10) + 1
             # Ensure even length
             new_gd_time_length_samples += new_gd_time_length_samples % 2
             # Interpolate
@@ -178,9 +170,7 @@ class FirDesigner:
             )
             target_gd = PchipInterpolator(
                 frequency_vector_hz, target_gd, extrapolate=True
-            )(new_freqs) * (
-                gd_time_length_samples / new_gd_time_length_samples
-            )
+            )(new_freqs) * (gd_time_length_samples / new_gd_time_length_samples)
             gd_time_length_samples = new_gd_time_length_samples
 
             # Interpolate in power spectrum
@@ -291,12 +281,8 @@ class PhaseLinearizer(GroupDelayDesigner):
         self.set_parameters()
         self.time_data_length_samples = time_data_length_samples
         self.sampling_rate_hz = sampling_rate_hz
-        target_group_delay_s = (
-            self._get_target_group_delay_in_seconds_from_phase()
-        )
-        self._set_targets(
-            np.ones_like(target_group_delay_s), target_group_delay_s
-        )
+        target_group_delay_s = self._get_target_group_delay_in_seconds_from_phase()
+        self._set_targets(np.ones_like(target_group_delay_s), target_group_delay_s)
 
     def set_parameters(
         self,
@@ -332,9 +318,7 @@ class PhaseLinearizer(GroupDelayDesigner):
             forcing nyquist frequency to be exclusively real. Default: False.
 
         """
-        assert (
-            delay_increase_percent >= 0
-        ), "Delay increase must be larger than zero"
+        assert delay_increase_percent >= 0, "Delay increase must be larger than zero"
         self.group_delay_increase_factor = 1 + delay_increase_percent / 100
         return super().set_parameters(
             0.0,

@@ -123,9 +123,7 @@ def reconstructing_fractional_octave_bands(
     """
     assert sampling_rate_hz is not None, "Sampling rate should not be None"
     valid_lengths = 2 ** (np.arange(5, 18))
-    assert (
-        n_samples in valid_lengths
-    ), "Only lengths between 2**5 and 2**17 are allowed"
+    assert n_samples in valid_lengths, "Only lengths between 2**5 and 2**17 are allowed"
 
     if overlap < 0 or overlap > 1:
         raise ValueError("overlap must be between 0 and 1")
@@ -149,13 +147,9 @@ def reconstructing_fractional_octave_bands(
 
     # DFT lines of the lower cut-off and center frequency as in
     # Antoni, Eq. (14)
-    k_1 = np.round(n_samples * f_cut_off[0][f_id] / sampling_rate_hz).astype(
-        int
-    )
+    k_1 = np.round(n_samples * f_cut_off[0][f_id] / sampling_rate_hz).astype(int)
     k_m = np.round(n_samples * f_m[f_id] / sampling_rate_hz).astype(int)
-    k_2 = np.round(n_samples * f_cut_off[1][f_id] / sampling_rate_hz).astype(
-        int
-    )
+    k_2 = np.round(n_samples * f_cut_off[1][f_id] / sampling_rate_hz).astype(int)
 
     # overlap in samples (symmetrical around the cut-off frequencies)
     P = np.round(overlap / 2 * (k_2 - k_m)).astype(int)
@@ -180,12 +174,12 @@ def reconstructing_fractional_octave_bands(
             phi = 0.5 * (phi + 1)
 
             # apply fade out to current channel
-            g[b_idx - 1, k_1[b_idx] - P[b_idx] : k_1[b_idx] + P[b_idx] + 1] = (
-                np.cos(np.pi / 2 * phi)
+            g[b_idx - 1, k_1[b_idx] - P[b_idx] : k_1[b_idx] + P[b_idx] + 1] = np.cos(
+                np.pi / 2 * phi
             )
             # apply fade in in to next channel
-            g[b_idx, k_1[b_idx] - P[b_idx] : k_1[b_idx] + P[b_idx] + 1] = (
-                np.sin(np.pi / 2 * phi)
+            g[b_idx, k_1[b_idx] - P[b_idx] : k_1[b_idx] + P[b_idx] + 1] = np.sin(
+                np.pi / 2 * phi
             )
 
         # set current and next channel to zero outside their range
@@ -292,9 +286,7 @@ def auditory_filters_gammatone(
 
     filters = []
     for bb in range(n_bands):
-        sos_section = np.tile(
-            np.atleast_2d([1, 0, 0, 1, -coefficients[bb], 0]), (4, 1)
-        )
+        sos_section = np.tile(np.atleast_2d([1, 0, 0, 1, -coefficients[bb], 0]), (4, 1))
         sos_section[3, 0] = normalizations[bb]
         f = Filter({FilterCoefficientsType.Sos: sos_section}, sampling_rate_hz)
         f.warning_if_complex = False
@@ -378,8 +370,7 @@ def fractional_octave_bands(
         len(frequency_range_hz) == 2
     ), "Frequency range must contain exactly two entries"
     assert frequency_range_hz[-1] < sampling_rate_hz // 2, (
-        "The highest frequency in the range is higher than the nyquist "
-        + "frequency"
+        "The highest frequency in the range is higher than the nyquist " + "frequency"
     )
 
     # fractional octave frequencies
@@ -408,9 +399,7 @@ def fractional_octave_bands(
     return octave_filter_bank
 
 
-def weighting_filter(
-    a_weighting: bool = True, sampling_rate_hz: int | None = None
-):
+def weighting_filter(a_weighting: bool = True, sampling_rate_hz: int | None = None):
     """Returns a digital IIR weighting filter according to [1]. The
     approximation is based on the coefficients given in [2].
 
@@ -615,25 +604,15 @@ def matched_biquad(
         case BiquadEqType.Lowpass:
             ba = _get_matched_lowpass_eq(freq_hz, gain_db, q, sampling_rate_hz)
         case BiquadEqType.Highpass:
-            ba = _get_matched_highpass_eq(
-                freq_hz, gain_db, q, sampling_rate_hz
-            )
+            ba = _get_matched_highpass_eq(freq_hz, gain_db, q, sampling_rate_hz)
         case BiquadEqType.BandpassPeak:
-            ba = _get_matched_bandpass_eq(
-                freq_hz, gain_db, q, sampling_rate_hz
-            )
+            ba = _get_matched_bandpass_eq(freq_hz, gain_db, q, sampling_rate_hz)
         case BiquadEqType.BandpassSkirt:
-            ba = _get_matched_bandpass_eq(
-                freq_hz, gain_db, q, sampling_rate_hz
-            )
+            ba = _get_matched_bandpass_eq(freq_hz, gain_db, q, sampling_rate_hz)
         case BiquadEqType.Lowshelf:
-            ba = _get_matched_shelving_eq(
-                freq_hz, gain_db, sampling_rate_hz, True
-            )
+            ba = _get_matched_shelving_eq(freq_hz, gain_db, sampling_rate_hz, True)
         case BiquadEqType.Highshelf:
-            ba = _get_matched_shelving_eq(
-                freq_hz, gain_db, sampling_rate_hz, False
-            )
+            ba = _get_matched_shelving_eq(freq_hz, gain_db, sampling_rate_hz, False)
         case _:
             raise ValueError("Unsupported Eq type")
 
@@ -688,10 +667,7 @@ def gaussian_kernel(
 
     # Obtain sigma from kernel width definition in regards to time
     kernel_length_samples = kernel_length_seconds * sampling_rate_hz
-    sigma = (
-        kernel_length_samples
-        / (2.0 * np.log(1 / kernel_boundary_value)) ** 0.5
-    )
+    sigma = kernel_length_samples / (2.0 * np.log(1 / kernel_boundary_value)) ** 0.5
 
     # Before eq. (6)
     lambdaa = sigma**2.0 / (2.0 * K)

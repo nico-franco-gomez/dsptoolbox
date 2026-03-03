@@ -31,9 +31,7 @@ def _get_minimum_phase_spectrum_from_real_cepstrum(
         max(time_data.shape[0] * padding_factor, time_data.shape[0])
     )
     # Real cepstrum
-    y = np.real(
-        ifft(np.log(np.abs(fft(time_data, n=fft_length, axis=0))), axis=0)
-    )
+    y = np.real(ifft(np.log(np.abs(fft(time_data, n=fft_length, axis=0))), axis=0))
 
     # Window in the cepstral domain, like obtaining hilbert transform
     # If length is even, nyquist is exactly in the middle
@@ -75,9 +73,7 @@ def _min_phase_ir_from_real_cepstrum(
     """
     return np.real(
         np.fft.ifft(
-            _get_minimum_phase_spectrum_from_real_cepstrum(
-                time_data, padding_factor
-            ),
+            _get_minimum_phase_spectrum_from_real_cepstrum(time_data, padding_factor),
             axis=0,
         )
     )

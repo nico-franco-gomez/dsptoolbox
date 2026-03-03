@@ -19,9 +19,7 @@ class StateVariableFilter(RealtimeFilter):
     """This is a state variable filter discretized using the
     topology-preserving transform (trapezoidal integrator)."""
 
-    def __init__(
-        self, frequency_hz: float, resonance: float, sampling_rate_hz: int
-    ):
+    def __init__(self, frequency_hz: float, resonance: float, sampling_rate_hz: int):
         """Construct a state variable, 2-pole multimode filter. The
         implementation is based on [1], but the resonance parameter is here
         equal to 2R.
@@ -48,9 +46,7 @@ class StateVariableFilter(RealtimeFilter):
         self.sampling_rate_hz = sampling_rate_hz
         self.set_parameters(frequency_hz, resonance, 1)
 
-    def set_parameters(
-        self, frequency_hz: float, resonance: float, n_channels: int
-    ):
+    def set_parameters(self, frequency_hz: float, resonance: float, n_channels: int):
         """Set filter parameters.
 
         Parameters
@@ -99,9 +95,7 @@ class StateVariableFilter(RealtimeFilter):
 
         return yl, yh, yb, yl - self.resonance * yb + yh
 
-    def __process_vector(
-        self, input: NDArray[np.float64]
-    ) -> NDArray[np.float64]:
+    def __process_vector(self, input: NDArray[np.float64]) -> NDArray[np.float64]:
         """Process a whole multichannel array. The outputs are a 3d-array with
         shape (time sample, band, channel). There are 4 bands: lowpass,
         highpass, bandpass and allpass. They are returned in this order.
@@ -115,9 +109,7 @@ class StateVariableFilter(RealtimeFilter):
 
         for ch in range(input.shape[1]):
             for i in np.arange(len(input)):
-                outputs[i, :, ch] = self.process_sample(
-                    input[i, ch], channel=ch
-                )
+                outputs[i, :, ch] = self.process_sample(input[i, ch], channel=ch)
         return outputs
 
     def filter_signal(self, signal: Signal) -> MultiBandSignal:
@@ -147,9 +139,7 @@ class StateVariableFilter(RealtimeFilter):
         td = self.__process_vector(signal.time_data)
         return MultiBandSignal(
             [
-                type(signal)(
-                    None, td[:, i, :], sampling_rate_hz=self.sampling_rate_hz
-                )
+                type(signal)(None, td[:, i, :], sampling_rate_hz=self.sampling_rate_hz)
                 for i in range(4)
             ]
         )

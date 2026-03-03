@@ -53,8 +53,7 @@ def append_signals(
             ), "Sampling rates do not match"
             if not padding_trimming:
                 assert len(s) == len(signals[0]), (
-                    "Lengths do not match and padding or trimming "
-                    + "is not activated"
+                    "Lengths do not match and padding or trimming " + "is not activated"
                 )
             complex_data |= s.is_complex_signal
 
@@ -71,8 +70,7 @@ def append_signals(
                 if s.is_complex_signal:
                     td[
                         :,
-                        current_channel : current_channel
-                        + s.number_of_channels,
+                        current_channel : current_channel + s.number_of_channels,
                     ] = _pad_trim(
                         s.time_data + 1j * s.time_data_imaginary,
                         total_length,
@@ -81,17 +79,16 @@ def append_signals(
                 else:
                     td[
                         :,
-                        current_channel : current_channel
-                        + s.number_of_channels,
+                        current_channel : current_channel + s.number_of_channels,
                     ] = _pad_trim(
                         s.time_data.astype(np.complex128),
                         total_length,
                         in_the_end=at_end,
                     )
             else:
-                td[
-                    :, current_channel : current_channel + s.number_of_channels
-                ] = _pad_trim(s.time_data, total_length, in_the_end=at_end)
+                td[:, current_channel : current_channel + s.number_of_channels] = (
+                    _pad_trim(s.time_data, total_length, in_the_end=at_end)
+                )
             current_channel += s.number_of_channels
         new_sig = signals[0].copy()
         new_sig.time_data = td
@@ -109,8 +106,7 @@ def append_signals(
             ), "Sampling rates do not match"
             if not padding_trimming:
                 assert s.length_samples == signals[0].length_samples, (
-                    "Lengths do not match and padding or trimming "
-                    + "is not activated"
+                    "Lengths do not match and padding or trimming " + "is not activated"
                 )
             assert (
                 s.number_of_bands == signals[0].number_of_bands
@@ -129,9 +125,7 @@ def append_signals(
             new_bands, same_sampling_rate=signals[0].same_sampling_rate
         )
     else:
-        raise ValueError(
-            "Signals have to be type of type Signal or MultiBandSignal"
-        )
+        raise ValueError("Signals have to be type of type Signal or MultiBandSignal")
 
 
 def append_filterbanks(fbs: list[FilterBank]) -> FilterBank:
@@ -201,15 +195,9 @@ def append_spectra(
 
     ch_ind = 0
     for s in spectra:
-        spec[:, ch_ind : ch_ind + s.number_of_channels] = (
-            s.get_interpolated_spectrum(
-                freqs,
-                (
-                    SpectrumType.Complex
-                    if complex_append
-                    else SpectrumType.Magnitude
-                ),
-            )
+        spec[:, ch_ind : ch_ind + s.number_of_channels] = s.get_interpolated_spectrum(
+            freqs,
+            (SpectrumType.Complex if complex_append else SpectrumType.Magnitude),
         )
         ch_ind += s.number_of_channels
 

@@ -30,9 +30,7 @@ def pad_trim(
 
     """
     if isinstance(signal, Signal):
-        new_time_data = np.zeros(
-            (desired_length_samples, signal.number_of_channels)
-        )
+        new_time_data = np.zeros((desired_length_samples, signal.number_of_channels))
         for n in range(signal.number_of_channels):
             new_time_data[:, n] = _pad_trim(
                 signal.time_data[:, n],
@@ -46,9 +44,7 @@ def pad_trim(
         ), "Padding or trimming is not supported for multirate signals"
         new_sig = signal.copy()
         for ind, b in enumerate(signal.bands):
-            new_sig.bands[ind] = pad_trim(
-                b, desired_length_samples, in_the_end
-            )
+            new_sig.bands[ind] = pad_trim(b, desired_length_samples, in_the_end)
         return new_sig
     else:
         raise TypeError("Signal must be of type Signal or MultiBandSignal")
@@ -102,9 +98,7 @@ def modify_signal_length(
         if end_samples < 0:
             assert len(signal) > -end_samples, "Trimming is too much"
         if start_samples < 0 and end_samples < 0:
-            assert len(signal) > -(
-                start_samples + end_samples
-            ), "Trimming is too much"
+            assert len(signal) > -(start_samples + end_samples), "Trimming is too much"
 
         new_sig = signal.copy()
         td = new_sig.time_data
@@ -166,20 +160,14 @@ def trim_with_level_threshold(
     threshold_linear = from_db(threshold_db, True)
     above_threshold = np.where(np.abs(signal.time_data) >= threshold_linear)
     if at_start:
-        indices_along_first_axis = above_threshold[0][
-            : signal.number_of_channels
-        ]
+        indices_along_first_axis = above_threshold[0][: signal.number_of_channels]
         start = int(np.min(indices_along_first_axis))
     else:
         start = 0
 
     if at_end:
-        indices_along_first_axis = above_threshold[0][
-            -signal.number_of_channels :
-        ]
-        stop = min(
-            signal.length_samples, int(np.max(indices_along_first_axis)) + 1
-        )
+        indices_along_first_axis = above_threshold[0][-signal.number_of_channels :]
+        stop = min(signal.length_samples, int(np.max(indices_along_first_axis)) + 1)
     else:
         stop = signal.length_samples
 

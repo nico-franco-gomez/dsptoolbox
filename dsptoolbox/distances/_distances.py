@@ -61,9 +61,7 @@ def _itakura_saito_measure(
     return ism
 
 
-def _snr(
-    s: NDArray[np.float64], n: NDArray[np.float64]
-) -> float | NDArray[np.float64]:
+def _snr(s: NDArray[np.float64], n: NDArray[np.float64]) -> float | NDArray[np.float64]:
     """Computes SNR from the passed numpy arrays.
 
     Parameters
@@ -99,9 +97,7 @@ def _sisdr(s: NDArray[np.float64], shat: NDArray[np.float64]) -> float:
 
     """
     alpha = (s @ shat) / (s @ s)
-    sisdr = 10 * np.log10(
-        np.sum((alpha * s) ** 2) / np.sum((alpha * s - shat) ** 2)
-    )
+    sisdr = 10 * np.log10(np.sum((alpha * s) ** 2) / np.sum((alpha * s - shat) ** 2))
     return sisdr
 
 
