@@ -531,6 +531,8 @@ class TestStandardModule:
         dsp.crest_factor(some_signal, False)
         cf = dsp.crest_factor(some_signal, True)
         assert np.all(cf > 0.0)
+        cf2 = dsp.crest_factor(some_signal, True, True)
+        assert np.all(cf > 0.0) and np.all(cf2 >= cf)
 
         dsp.crest_factor(self.get_multiband_signal(), False)
 

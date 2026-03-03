@@ -402,18 +402,18 @@ def crest_factor(sig: Signal | MultiBandSignal, in_db: bool = True):
 
     """
     if isinstance(sig, Signal):
-        crest = np.max(np.abs(sig.time_data), axis=0) / _rms(sig.time_data)
+        peak = (
+            from_db(true_peak_level(sig)[0], True)
+            if use_true_peak
+            else np.max(np.abs(sig.time_data), axis=0)
+        )
+        crest = peak / _rms(sig.time_data)
     elif isinstance(sig, MultiBandSignal):
         crest = np.zeros((sig.number_of_bands, sig.number_of_channels))
         for ind, b in enumerate(sig):
-            crest[ind, :] = np.max(np.abs(b.time_data), axis=0) / _rms(
-                b.time_data
-            )
+            crest[ind, :] = crest_factor(b, in_db, use_true_peak)
     else:
         raise TypeError(
-            "Passed signal should be either a Signal or "
-            + "MultiBandSignal type"
+            "Passed signal should be either a Signal or " + "MultiBandSignal type"
         )
-    if in_db:
-        crest = 20.0 * np.log10(crest)
-    return np.atleast_1d(crest)
+    return np.atleast_1d(to_db(crest, True) if in_db else crest)
