@@ -992,7 +992,7 @@ class BaseCrossover(FilterBank):
         # If downsampling is activated
         max_order = 0
         for b in self.filters:
-            max_order = max(max_order, b.info["order"])
+            max_order = max(max_order, b.order)
         if max_order > length_samples:
             warn(
                 f"Filter order {max_order} is longer than {length_samples}."
@@ -1016,10 +1016,14 @@ class BaseCrossover(FilterBank):
             for b in bs.bands:
                 b.spectrum_method = SpectrumMethod.FFT
                 f, sp = _get_normalized_spectrum(
-                    f,
-                    np.squeeze(b.get_spectrum()[1]),
+                    f=f,
+                    spectra=np.squeeze(b.get_spectrum()[1]),
+                    is_amplitude_scaling=b.spectrum_scaling.is_amplitude_scaling(),
                     f_range_hz=range_hz,
-                    normalize=None,
+                    normalize=MagnitudeNormalization.NoNormalization,
+                    smoothing=0,
+                    phase=False,
+                    calibrated_data=False,
                 )
                 specs.append(np.squeeze(sp))
             specs = np.array(specs).T
@@ -1041,7 +1045,14 @@ class BaseCrossover(FilterBank):
             bs.spectrum_method = SpectrumMethod.FFT
             f, sp = bs.get_spectrum()
             f, sp = _get_normalized_spectrum(
-                f, np.squeeze(sp), f_range_hz=range_hz, normalize=None
+                f=f,
+                spectra=np.squeeze(sp),
+                is_amplitude_scaling=bs.spectrum_scaling.is_amplitude_scaling(),
+                f_range_hz=range_hz,
+                normalize=MagnitudeNormalization.NoNormalization,
+                smoothing=0,
+                phase=False,
+                calibrated_data=False,
             )
             fig, ax = general_plot(
                 f,
@@ -1149,6 +1160,10 @@ class QMFCrossover(BaseCrossover):
     def _get_synthesis_filters(self, lowpass: Filter):
         """Create and return synthesis filters based on a lowpass prototype.
 
+        For QMF perfect reconstruction:
+        - G0(z) = H0(z) (synthesis lowpass = analysis lowpass)
+        - G1(z) = -H1(z) where H1(z) = H0(-z) is the analysis highpass
+
         Parameters
         ----------
         lowpass : `Filter`
@@ -1158,23 +1173,52 @@ class QMFCrossover(BaseCrossover):
         -------
         synthesis_filters : list
             List containing exactly two synthesis filters. The first one is
-            the passed lowpass prototype.
+            the passed lowpass prototype (synthesis lowpass).
+            The second is the synthesis highpass: G1(z) = -H1(z).
 
         References
         ----------
         - https://tinyurl.com/2a3frbyv
 
         """
-        b, a = lowpass.get_coefficients(coefficients_mode=FilterCoefficientsType.Ba)
-        hp_filter = Filter(
-            {FilterCoefficientsType.Ba: [-b, a]},
-            sampling_rate_hz=lowpass.sampling_rate_hz,
-        )
+        if not lowpass.is_iir:
+            # FIR case: construct synthesis highpass from lowpass prototype
+            b_low, _ = lowpass.get_coefficients(
+                coefficients_mode=FilterCoefficientsType.Ba
+            )
+            # Create analysis highpass: H1(z) = H0(-z)
+            # (odd-indexed coefficients are negated)
+            b_high = b_low.copy()
+            b_high[1::2] *= -1
+
+            # Create synthesis highpass: G1(z) = -H1(z)
+            # (negate all coefficients of the analysis highpass)
+            b_high_synthesis = -b_high
+
+            hp_filter = Filter(
+                {FilterCoefficientsType.Ba: [b_high_synthesis, [1.0]]},
+                sampling_rate_hz=lowpass.sampling_rate_hz,
+            )
+        else:
+            # IIR case: construct synthesis highpass using zpk representation
+            z_low, p_low, k_low = lowpass.get_coefficients(
+                coefficients_mode=FilterCoefficientsType.Zpk
+            )
+            # Create synthesis highpass: G1(z) = -H1(z) where H1(z) = H0(-z)
+            # H1(z) = H0(-z) has zpk: (-z_low, -p_low, k_low)
+            # G1(z) = -H1(z) has zpk: (-z_low, -p_low, -k_low)
+            zpk_new = [z_low * -1, p_low * -1, -k_low]
+
+            hp_filter = Filter(
+                {FilterCoefficientsType.Zpk: zpk_new},
+                sampling_rate_hz=lowpass.sampling_rate_hz,
+            )
+
         return [lowpass, hp_filter]
 
 
 def _crossover_downsample(
-    signal: Signal, filters: list, mode: FilterBankMode, down_factor: int = 2
+    signal: Signal, filters: list[Filter], mode: FilterBankMode, down_factor: int = 2
 ) -> Signal | MultiBandSignal:
     """Apply crossover and downsample on signal.
 
@@ -1182,7 +1226,7 @@ def _crossover_downsample(
     ----------
     signal : `Signal`
         Signal to which to apply the crossover.
-    filters : list
+    filters : list[Filter]
         List containing filters to use. Since it is a crossover, it should
         have 2 filters.
     mode : FilterBankMode
@@ -1207,35 +1251,35 @@ def _crossover_downsample(
                     new_sampling_rate_hz=signal.sampling_rate_hz // down_factor,
                 )
             )
-        out_sig = MultiBandSignal(ss, same_sampling_rate=True)
+        return MultiBandSignal(ss, same_sampling_rate=True)
     elif mode == FilterBankMode.Sequential:
         out_sig = signal.copy()
         for n in range(n_filt):
             out_sig = filters[n].filter_and_resample_signal(
-                signal,
+                out_sig,
                 new_sampling_rate_hz=signal.sampling_rate_hz // down_factor,
             )
-    else:
-        new_time_data = np.zeros(
-            (
-                signal.time_data.shape[0] // down_factor,
-                signal.number_of_channels,
-                n_filt,
-            )
+        return out_sig
+    new_time_data = np.zeros(
+        (
+            signal.time_data.shape[0] // down_factor,
+            signal.number_of_channels,
+            n_filt,
         )
-        for n in range(n_filt):
-            s = filters[n].filter_and_resample_signal(
-                signal,
-                new_sampling_rate_hz=signal.sampling_rate_hz // down_factor,
-            )
-            new_time_data[:, :, n] = s.time_data
-        out_sig = signal.copy_with_new_time_data(np.sum(new_time_data, axis=-1))
-        out_sig.sampling_rate_hz = signal.sampling_rate_hz // down_factor
+    )
+    for n in range(n_filt):
+        s = filters[n].filter_and_resample_signal(
+            signal,
+            new_sampling_rate_hz=signal.sampling_rate_hz // down_factor,
+        )
+        new_time_data[:, :, n] = s.time_data
+    out_sig = signal.copy_with_new_time_data(np.sum(new_time_data, axis=-1))
+    out_sig.sampling_rate_hz = signal.sampling_rate_hz // down_factor
     return out_sig
 
 
 def _reconstruct_from_crossover_upsample(
-    sig_low: Signal, sig_high: Signal, filters: list, up_factor: int = 2
+    sig_low: Signal, sig_high: Signal, filters: list[Filter], up_factor: int = 2
 ) -> Signal:
     """Reconstructs signal from crossover.
 
@@ -1245,7 +1289,7 @@ def _reconstruct_from_crossover_upsample(
         Low-frequency band.
     sig_high : `Signal`
         High-frequency band.
-    filters : list
+    filters : list[Filter]
         List containing the two synthesis filters.
     up_factor : int, optional
         Factor by which to upsample. Default: 2.

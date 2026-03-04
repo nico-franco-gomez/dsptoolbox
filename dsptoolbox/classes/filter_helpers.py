@@ -639,7 +639,7 @@ def _filter_and_upsample(
             ]
     else:
         new_time_data = np.zeros((time_data.shape[0] * up_factor, time_data.shape[1]))
-        new_time_data[::up_factor] = time_data
+        new_time_data[::up_factor] = time_data * up_factor
         new_time_data = sig.lfilter(
             ba_coefficients[0], ba_coefficients[1], x=new_time_data, axis=0
         )

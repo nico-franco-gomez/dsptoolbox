@@ -317,6 +317,13 @@ def qmf_crossover(lowpass: Filter) -> QMFCrossover:
     fb : `QMFCrossover`
         Quadrature mirror filters crossover.
 
+    Notes
+    -----
+    - The best results for avoiding imperfections in the reconstructed magnitude when
+      using FIR filters are obtained by using a lowpass whose corresponding highpass's
+      power sums to be approximately 1, i.e., `1 = |H0(z)| ** 2 + |H1(z)| ** 2`, where
+      `H0` is the lowpass and `H1` is the highpass response.
+
     References
     ----------
     - https://ccrma.stanford.edu/~jos/sasp/Quadrature_Mirror_Filters_QMF.html

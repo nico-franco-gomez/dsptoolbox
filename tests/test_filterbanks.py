@@ -65,37 +65,52 @@ class TestFilterbanksModule:
         fb.reconstruct(mb)
 
     def test_qmf_crossover(self):
-        # Only functionality
-        ny_hz = self.fs // 2
-        lp = dsp.Filter.fir_filter(
-            order=10,
-            frequency_hz=ny_hz // 2,
+        # Factors around half band frequency were manually extracted for satisfactory
+        # reconstruction precision
+        lp_iir = dsp.Filter.iir_filter(
+            12, (self.fs / 2) * 0.5095, dsp.FilterPassType.Lowpass, self.fs
+        )
+        lp_fir = dsp.Filter.fir_filter(
+            order=11,
+            frequency_hz=(self.fs / 2) * 0.572,
             type_of_pass=dsp.FilterPassType.Lowpass,
             sampling_rate_hz=self.fs,
         )
-        fb = dsp.filterbanks.qmf_crossover(lp)
         s = self.get_noise()
-        fb.filter_signal(
-            s,
-            mode=dsp.FilterBankMode.Parallel,
-            activate_zi=False,
-            downsample=False,
-        )
-        fb.filter_signal(
-            s,
-            mode=dsp.FilterBankMode.Parallel,
-            activate_zi=True,
-            downsample=False,
-        )
-        mb_ = fb.filter_signal(
-            s,
-            mode=dsp.FilterBankMode.Parallel,
-            activate_zi=False,
-            downsample=True,
-        )
 
-        # Reconstruction
-        fb.reconstruct_signal(mb_, upsample=True)
+        for lp in [lp_fir, lp_iir]:
+            fb = dsp.filterbanks.qmf_crossover(lp)
+            fb.filter_signal(
+                s,
+                mode=dsp.FilterBankMode.Parallel,
+                activate_zi=False,
+                downsample=False,
+            )
+            fb.filter_signal(
+                s,
+                mode=dsp.FilterBankMode.Parallel,
+                activate_zi=True,
+                downsample=False,
+            )
+            mb_ = fb.filter_signal(
+                s,
+                mode=dsp.FilterBankMode.Parallel,
+                activate_zi=False,
+                downsample=True,
+            )
+
+            # Reconstruction
+            round_trip = fb.reconstruct_signal(mb_, upsample=True)
+            spec = dsp.spectral_difference(s, round_trip, energy_normalization=False)
+            np.testing.assert_allclose(
+                dsp.tools.to_db(spec.spectral_data[1:], True), 0.0, atol=1
+            )
+
+        # Run other functions
+        fb.plot_magnitude(mode=dsp.FilterBankMode.Parallel, downsample=True)
+        fb.plot_magnitude(mode=dsp.FilterBankMode.Parallel, downsample=False)
+        fb.plot_group_delay(mode=dsp.FilterBankMode.Parallel)
+        fb.plot_phase(mode=dsp.FilterBankMode.Parallel)
 
     def test_octave_filter_bank(self):
         fs_hz = 10_000
