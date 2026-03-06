@@ -165,7 +165,7 @@ class StateVariableFilter(RealtimeFilter):
 
     def plot_magnitude(
         self,
-        length_samples: int = 1024,
+        length_samples: int,
         range_hz: list | None = [20, 20e3],
         range_db: list | None = None,
     ) -> tuple[Figure, Axes]:
@@ -173,13 +173,12 @@ class StateVariableFilter(RealtimeFilter):
 
         Parameters
         ----------
-        length_samples : int, optional
-            Length of the IR. Default: 1024.
+        length_samples : int
+            Length of the IR.
         range_hz : list, None, optional
             Range of Hz to plot. Default: [20, 20e3].
         range_db : list, None, optional
-            Range of dB to plot. Pass `None` to plot automatically.
-            Default: `None`.
+            Range of dB to plot. Pass `None` to plot automatically. Default: `None`.
 
         Returns
         -------
@@ -200,15 +199,15 @@ class StateVariableFilter(RealtimeFilter):
 
     def plot_group_delay(
         self,
-        length_samples: int = 1024,
+        length_samples: int,
         range_hz: list[float] | None = [20.0, 20e3],
     ) -> tuple[Figure, Axes]:
         """Plot the group delay of each band output of the filter.
 
         Parameters
         ----------
-        length_samples : int, optional
-            Length of the IR. Default: 1024.
+        length_samples : int
+            Length of the IR.
         range_hz : list, None, optional
             Range of Hz to plot. Default: [20, 20e3].
 
@@ -226,7 +225,7 @@ class StateVariableFilter(RealtimeFilter):
 
     def plot_phase(
         self,
-        length_samples: int = 1024,
+        length_samples: int,
         range_hz: list | None = [20, 20e3],
         unwrap: bool = False,
     ) -> tuple[Figure, Axes]:
@@ -234,8 +233,8 @@ class StateVariableFilter(RealtimeFilter):
 
         Parameters
         ----------
-        length_samples : int, optional
-            Length of the IR. Default: 1024.
+        length_samples : int
+            Length of the IR.
         range_hz : list, None, optional
             Range of Hz to plot. Default: [20, 20e3].
         unwrap : bool, optional

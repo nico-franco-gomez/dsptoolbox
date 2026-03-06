@@ -407,30 +407,23 @@ class LRFilterBank:
     # ======== Prints and plots ===============================================
     def plot_magnitude(
         self,
-        range_hz: list[float] | None = [20.0, 20e3],
+        length_samples: int,
         mode: FilterBankMode = FilterBankMode.Parallel,
-        length_samples: int = 2048,
-        test_zi: bool = False,
+        range_hz: list[float] | None = [20.0, 20e3],
         zero_phase: bool = False,
     ):
-        """Plots the magnitude response of each filter. Only `'parallel'`
-        mode is supported, thus no mode parameter can be set.
+        """Plots the magnitude response of each filter.
 
         Parameters
         ----------
+        length_samples : int
+            Impulse length in samples. This defines the resolution of the plot.
+        mode : FilterBankMode, optional
+            Way to apply filter bank to the signal. Default: Parallel.
         range_hz : array_like, None, optional
             Range of Hz to plot. Default: [20, 20e3].
-        mode : FilterBankMode, optional
-            Way to apply filter bank to the signal. Supported modes are:
-            `'parallel'`. Default: Parallel.
-        length_samples : int, optional
-            Impulse length in samples. This defines the resolution of the
-            plot. Default: 2048.
         zero_phase : bool, optional
             Activates zero phase filtering. Default: `False`.
-        test_zi : bool, optional
-            Uses the zi's of each filter to test the FilterBank's output.
-            Default: `False`.
 
         Returns
         -------
@@ -453,7 +446,6 @@ class LRFilterBank:
         bs = self.filter_signal(
             d,
             mode=FilterBankMode.Parallel,
-            activate_zi=test_zi,
             zero_phase=zero_phase,
         )
         specs = []
@@ -509,30 +501,22 @@ class LRFilterBank:
 
     def plot_phase(
         self,
-        range_hz: list[float] | None = [20.0, 20e3],
+        length_samples: int,
         mode: FilterBankMode = FilterBankMode.Parallel,
-        length_samples: int = 2048,
-        test_zi: bool = False,
-        zero_phase: bool = True,
+        range_hz: list[float] | None = [20.0, 20e3],
         unwrap: bool = False,
     ):
         """Plots the phase response of each filter.
 
         Parameters
         ----------
+        length_samples : int
+            Impulse length in samples. This defines the resolution of the
+            plot.
+        mode : FilterBankMode, optional
+            Way to apply filter bank to the signal. Default: Parallel.
         range_hz : array-like, None, optional
             Range of Hz to plot. Default: [20, 20e3].
-        mode : FilterBankMode, optional
-            Way to apply filter bank to the signal. Supported modes are:
-            `'parallel'`, `'summed'`. Default: Parallel.
-        length_samples : int, optional
-            Impulse length in samples. This defines the resolution of the
-            plot. Default: 2048.
-        test_zi : bool, optional
-            Uses the zi's of each filter to test the FilterBank's output.
-            Default: `False`.
-        zero_phase : bool, optional
-            Activates zero phase filtering. Default: `False`.
         unwrap : bool, optional
             When `True`, unwrapped phase is plotted. Default: `False`.
 
@@ -553,9 +537,7 @@ class LRFilterBank:
         )
 
         if mode == FilterBankMode.Parallel:
-            bs = self.filter_signal(
-                d, mode=mode, activate_zi=test_zi, zero_phase=zero_phase
-            )
+            bs = self.filter_signal(d, mode=mode)
             phase = []
             f = bs.bands[0].get_spectrum()[0]
             for b in bs.bands:
@@ -563,9 +545,7 @@ class LRFilterBank:
             phase = np.squeeze(np.array(phase).T)
             labels = [f"Filter {h}" for h in range(bs.number_of_bands)]
         elif mode == FilterBankMode.Summed:
-            bs = self.filter_signal(
-                d, mode=mode, activate_zi=test_zi, zero_phase=zero_phase
-            )
+            bs = self.filter_signal(d, mode=mode)
             f, phase = bs.get_spectrum()
             phase = np.angle(phase)
             labels = ["Summed"]
@@ -583,30 +563,22 @@ class LRFilterBank:
 
     def plot_group_delay(
         self,
-        range_hz: list[float] | None = [20.0, 20e3],
+        length_samples: int,
         mode: FilterBankMode = FilterBankMode.Parallel,
-        length_samples: int = 2048,
-        test_zi: bool = False,
-        zero_phase: bool = False,
+        range_hz: list[float] | None = [20.0, 20e3],
     ):
         """Plots the phase response of each filter.
 
         Parameters
         ----------
+        length_samples : int
+            Impulse length in samples. This defines the resolution of the
+            plot.
+        mode : FilterBankMode, optional
+            Way to apply filter bank to the signal. Default: Parallel.
         range_hz : array-like, None, optional
             Range of Hz to plot. Use None to avoid any range.
             Default: [20, 20e3].
-        mode : FilterBankMode, optional
-            Way to apply filter bank to the signal. Supported modes are:
-            `'parallel'`, `'summed'`. Default: Parallel.
-        length_samples : int, optional
-            Impulse length in samples. This defines the resolution of the
-            plot. Default: 2048.
-        test_zi : bool, optional
-            Uses the zi's of each filter to test the FilterBank's output.
-            Default: `False`.
-        zero_phase : bool, optional
-            Activates zero phase filtering. Default: `False`.
 
         Returns
         -------
@@ -623,9 +595,7 @@ class LRFilterBank:
             sampling_rate_hz=self.sampling_rate_hz,
         )
         if mode == FilterBankMode.Parallel:
-            bs = self.filter_signal(
-                d, mode=mode, activate_zi=test_zi, zero_phase=zero_phase
-            )
+            bs = self.filter_signal(d, mode=mode)
             gd = []
             f = bs.bands[0].get_spectrum()[0]
             for b in bs.bands:
@@ -637,9 +607,7 @@ class LRFilterBank:
             gd = np.squeeze(np.array(gd).T) * 1e3
             labels = [f"Filter {h}" for h in range(bs.number_of_bands)]
         elif mode == FilterBankMode.Summed:
-            bs = self.filter_signal(
-                d, mode=mode, activate_zi=test_zi, zero_phase=zero_phase
-            )
+            bs = self.filter_signal(d, mode=mode)
             f, sp = bs.get_spectrum()
             gd = _group_delay_direct(sp.squeeze(), delta_f=f[1] - f[0]) * 1e3
             labels = ["Summed"]
@@ -929,12 +897,17 @@ class BaseCrossover(FilterBank):
         self,
         signal: Signal,
         mode: FilterBankMode,
-        activate_zi: bool = False,
         downsample: bool = False,
+        zero_phase: bool = False,
+        activate_zi: bool = False,
     ) -> Signal | MultiBandSignal:
         if not downsample:
-            return super().filter_signal(signal, mode, activate_zi, zero_phase=False)
+            return super().filter_signal(
+                signal, mode, activate_zi, zero_phase=zero_phase
+            )
         # ========== In case of downsampling while filtering ==================
+        if zero_phase:
+            raise NotImplementedError("No zero-phase implementation with downsampling")
         assert (
             signal.sampling_rate_hz == self.sampling_rate_hz
         ), "Sampling rates do not match"
@@ -980,14 +953,33 @@ class BaseCrossover(FilterBank):
     # ======== Plotting =======================================================
     def plot_magnitude(
         self,
+        length_samples: int,
         mode: FilterBankMode = FilterBankMode.Parallel,
         range_hz: list[float] | None = [20.0, 20e3],
-        length_samples: int = 2048,
-        test_zi: bool = False,
         downsample: bool = True,
     ):
+        """Plots the magnitude response of each filter.
+
+        Parameters
+        ----------
+        length_samples : int
+            Impulse length in samples. This defines the resolution of the plot.
+        mode : FilterBankMode, optional
+            Way to apply filter bank to the signal. Default: Parallel.
+        range_hz : array_like, None, optional
+            Range of Hz to plot. Default: [20, 20e3].
+        downsample : bool, optional
+            When `True`, downsampling during filtering will be automatically activated.
+            Default: `False`.
+
+        Returns
+        -------
+        fig, ax
+            Figure and axes of the plot
+
+        """
         if not downsample:
-            return super().plot_magnitude(mode, range_hz, length_samples, test_zi)
+            return super().plot_magnitude(length_samples, mode, range_hz)
 
         # If downsampling is activated
         max_order = 0
@@ -1010,7 +1002,7 @@ class BaseCrossover(FilterBank):
 
         # Filtering and plot
         if mode == FilterBankMode.Parallel:
-            bs = self.filter_signal(d, mode=mode, activate_zi=test_zi, downsample=True)
+            bs = self.filter_signal(d, mode=mode, downsample=True)
             specs = []
             f = bs.bands[0].get_spectrum()[0]
             for b in bs.bands:
@@ -1041,7 +1033,7 @@ class BaseCrossover(FilterBank):
                 tight_layout=False,
             )
         elif mode == FilterBankMode.Sequential:
-            bs = self.filter_signal(d, mode=mode, activate_zi=test_zi, downsample=True)
+            bs = self.filter_signal(d, mode=mode, downsample=True)
             bs.spectrum_method = SpectrumMethod.FFT
             f, sp = bs.get_spectrum()
             f, sp = _get_normalized_spectrum(
@@ -1064,7 +1056,7 @@ class BaseCrossover(FilterBank):
                 ],
             )
         elif mode == FilterBankMode.Summed:
-            bs = self.filter_signal(d, mode=mode, activate_zi=test_zi, downsample=True)
+            bs = self.filter_signal(d, mode=mode, downsample=True)
             bs.spectrum_method = SpectrumMethod.FFT
             f, sp = bs.get_spectrum()
             f, sp = _get_normalized_spectrum(

@@ -27,9 +27,9 @@ class TestFilterbanksModule:
             )
 
         # Plots
-        fb.plot_group_delay()
-        fb.plot_phase()
-        fb.plot_magnitude()
+        fb.plot_group_delay(length_samples=512)
+        fb.plot_phase(length_samples=512)
+        fb.plot_magnitude(length_samples=512)
 
         # Test filtering
         s = self.get_noise()
@@ -102,15 +102,20 @@ class TestFilterbanksModule:
             # Reconstruction
             round_trip = fb.reconstruct_signal(mb_, upsample=True)
             spec = dsp.spectral_difference(s, round_trip, energy_normalization=False)
+            spec.spectral_data[:2] = 1.0  # Remove DC
             np.testing.assert_allclose(
-                dsp.tools.to_db(spec.spectral_data[1:], True), 0.0, atol=1
+                dsp.tools.to_db(spec.spectral_data, True), 0.0, atol=1
             )
 
         # Run other functions
-        fb.plot_magnitude(mode=dsp.FilterBankMode.Parallel, downsample=True)
-        fb.plot_magnitude(mode=dsp.FilterBankMode.Parallel, downsample=False)
-        fb.plot_group_delay(mode=dsp.FilterBankMode.Parallel)
-        fb.plot_phase(mode=dsp.FilterBankMode.Parallel)
+        fb.plot_magnitude(
+            length_samples=512, mode=dsp.FilterBankMode.Parallel, downsample=True
+        )
+        fb.plot_magnitude(
+            length_samples=512, mode=dsp.FilterBankMode.Parallel, downsample=False
+        )
+        fb.plot_group_delay(length_samples=512, mode=dsp.FilterBankMode.Parallel)
+        fb.plot_phase(length_samples=512, mode=dsp.FilterBankMode.Parallel)
 
     def test_octave_filter_bank(self):
         fs_hz = 10_000

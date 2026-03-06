@@ -532,23 +532,33 @@ class TestFilterClass:
     def test_plots(self):
         f = self.get_iir()
         # Standard config
-        f.plot_magnitude()
-        f.plot_phase()
-        f.plot_group_delay()
+        f.plot_magnitude(length_samples=512)
+        f.plot_phase(length_samples=512)
+        f.plot_group_delay(length_samples=512)
         f.plot_zp()
 
         # More config
-        f.plot_magnitude(show_info_box=True)
-        f.plot_phase(show_info_box=True)
-        f.plot_group_delay(show_info_box=True)
+        f.plot_magnitude(length_samples=512, show_info_box=True)
+        f.plot_phase(length_samples=512, show_info_box=True)
+        f.plot_group_delay(length_samples=512, show_info_box=True)
         f.plot_zp(show_info_box=True)
 
-        f.plot_magnitude(normalize=dsp.MagnitudeNormalization.OneKhz)
-        f.plot_magnitude(normalize=dsp.MagnitudeNormalization.Max)
-        f.plot_magnitude(normalize=dsp.MagnitudeNormalization.Energy)
-        f.plot_magnitude(normalize=dsp.MagnitudeNormalization.OneKhzFirstChannel)
-        f.plot_magnitude(normalize=dsp.MagnitudeNormalization.MaxFirstChannel)
-        f.plot_magnitude(normalize=dsp.MagnitudeNormalization.EnergyFirstChannel)
+        f.plot_magnitude(
+            length_samples=512, normalize=dsp.MagnitudeNormalization.OneKhz
+        )
+        f.plot_magnitude(length_samples=512, normalize=dsp.MagnitudeNormalization.Max)
+        f.plot_magnitude(
+            length_samples=512, normalize=dsp.MagnitudeNormalization.Energy
+        )
+        f.plot_magnitude(
+            length_samples=512, normalize=dsp.MagnitudeNormalization.OneKhzFirstChannel
+        )
+        f.plot_magnitude(
+            length_samples=512, normalize=dsp.MagnitudeNormalization.MaxFirstChannel
+        )
+        f.plot_magnitude(
+            length_samples=512, normalize=dsp.MagnitudeNormalization.EnergyFirstChannel
+        )
 
         with pytest.raises(AssertionError):
             f.plot_taps()
@@ -766,20 +776,20 @@ class TestFilterBankClass:
         fb.add_filter(self.get_fir_filter())
 
         # Get plots
-        fb.plot_magnitude(mode=dsp.FilterBankMode.Parallel)
-        fb.plot_magnitude(mode=dsp.FilterBankMode.Sequential)
-        fb.plot_magnitude(mode=dsp.FilterBankMode.Summed)
-        fb.plot_magnitude(mode=dsp.FilterBankMode.Parallel, test_zi=True)
+        fb.plot_magnitude(length_samples=512, mode=dsp.FilterBankMode.Parallel)
+        fb.plot_magnitude(length_samples=512, mode=dsp.FilterBankMode.Sequential)
+        fb.plot_magnitude(length_samples=512, mode=dsp.FilterBankMode.Summed)
+        fb.plot_magnitude(length_samples=512, mode=dsp.FilterBankMode.Parallel)
 
-        fb.plot_phase(mode=dsp.FilterBankMode.Parallel)
-        fb.plot_phase(mode=dsp.FilterBankMode.Sequential)
-        fb.plot_phase(mode=dsp.FilterBankMode.Summed)
-        fb.plot_phase(mode=dsp.FilterBankMode.Parallel, test_zi=True)
+        fb.plot_phase(length_samples=512, mode=dsp.FilterBankMode.Parallel)
+        fb.plot_phase(length_samples=512, mode=dsp.FilterBankMode.Sequential)
+        fb.plot_phase(length_samples=512, mode=dsp.FilterBankMode.Summed)
+        fb.plot_phase(length_samples=512, mode=dsp.FilterBankMode.Parallel)
 
-        fb.plot_group_delay(mode=dsp.FilterBankMode.Parallel)
-        fb.plot_group_delay(mode=dsp.FilterBankMode.Sequential)
-        fb.plot_group_delay(mode=dsp.FilterBankMode.Summed)
-        fb.plot_group_delay(mode=dsp.FilterBankMode.Parallel, test_zi=True)
+        fb.plot_group_delay(length_samples=512, mode=dsp.FilterBankMode.Parallel)
+        fb.plot_group_delay(length_samples=512, mode=dsp.FilterBankMode.Sequential)
+        fb.plot_group_delay(length_samples=512, mode=dsp.FilterBankMode.Summed)
+        fb.plot_group_delay(length_samples=512, mode=dsp.FilterBankMode.Parallel)
 
     def test_filterbank_functionalities(self):
         fb = dsp.FilterBank()
@@ -941,9 +951,9 @@ class TestFilterBankClass:
         fb.add_filter(self.get_iir_filter())
         fb.add_filter(self.get_fir_filter(True))
 
-        fb.plot_magnitude(dsp.FilterBankMode.Parallel)
-        fb.plot_phase(dsp.FilterBankMode.Parallel)
-        fb.plot_group_delay(dsp.FilterBankMode.Parallel)
+        fb.plot_magnitude(length_samples=512, mode=dsp.FilterBankMode.Parallel)
+        fb.plot_phase(length_samples=512, mode=dsp.FilterBankMode.Parallel)
+        fb.plot_group_delay(length_samples=512, mode=dsp.FilterBankMode.Parallel)
         fb.get_ir(dsp.FilterBankMode.Parallel)
         with pytest.raises(AssertionError):
             fb.get_ir(mode=dsp.FilterBankMode.Summed)

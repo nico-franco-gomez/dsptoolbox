@@ -813,29 +813,28 @@ class Filter:
 
     def plot_magnitude(
         self,
-        length_samples: int = 512,
+        length_samples: int,
         range_hz: list[float] | None = [20.0, 20e3],
         normalize: MagnitudeNormalization = MagnitudeNormalization.NoNormalization,
-        show_info_box: bool = True,
         zero_phase: bool = False,
+        show_info_box: bool = True,
     ) -> tuple[Figure, Axes]:
         """Plots magnitude spectrum.
         Change parameters of spectrum with set_spectrum_parameters.
 
         Parameters
         ----------
-        length_samples : int, optional
+        length_samples : int
             Length of IR for magnitude plot. See notes for details.
-            Default: 512.
         range_hz : array-like with length 2, None, optional
             Range for which to plot the magnitude response. Use None to avoid
             setting any specific range. Default: [20, 20000].
         normalize : MagnitudeNormalization, optional
             Mode for normalization. Default: NoNormalization.
-        show_info_box : bool, optional
-            Shows an information box on the plot. Default: `True`.
         zero_phase : bool, optional
             Plots magnitude for zero phase filtering. Default: `False`.
+        show_info_box : bool, optional
+            Shows an information box on the plot. Default: `True`.
 
         Returns
         -------
@@ -875,7 +874,7 @@ class Filter:
 
     def plot_group_delay(
         self,
-        length_samples: int = 512,
+        length_samples: int,
         range_hz: list[float] | None = [20.0, 20e3],
         show_info_box: bool = False,
     ) -> tuple[Figure, Axes]:
@@ -884,8 +883,8 @@ class Filter:
 
         Parameters
         ----------
-        length_samples : int, optional
-            Length of ir for magnitude plot. Default: 512.
+        length_samples : int
+            Length of ir for magnitude plot.
         range_hz : array-like with length 2, None, optional
             Range for which to plot the magnitude response. Pass None to avoid
             setting any range. Default: [20, 20000].
@@ -945,7 +944,7 @@ class Filter:
 
     def plot_phase(
         self,
-        length_samples: int = 512,
+        length_samples: int,
         range_hz: list[float] | None = [20.0, 20e3],
         unwrap: bool = False,
         show_info_box: bool = False,
@@ -955,7 +954,7 @@ class Filter:
         Parameters
         ----------
         length_samples : int, optional
-            Length of IR for phase plot. See notes for details. Default: 512.
+            Length of IR for phase plot. See notes for details.
         range_hz : array-like with length 2, None, optional
             Range for which to plot the magnitude response.
             Default: [20, 20000].
