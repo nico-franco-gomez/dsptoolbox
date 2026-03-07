@@ -819,7 +819,7 @@ class Spectrum(MultichannelData):
         self,
         in_db: bool = True,
         normalization: MagnitudeNormalization = MagnitudeNormalization.NoNormalization,
-        dynamic_range_db: float | None = 100.0,
+        dynamic_range_db: float | None = None,
     ):
         """Plot the magnitude spectrum.
 
@@ -832,7 +832,7 @@ class Spectrum(MultichannelData):
             NoNormalization.
         dynamic_range_db : float, None, optional
             Pass a dynamic range in order to constrain the plot. Use None
-            to avoid it. Default: 100.
+            to avoid it. Default: `None`.
 
         """
         match normalization:
