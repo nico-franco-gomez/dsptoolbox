@@ -656,15 +656,15 @@ class Filter:
         return new_sig
 
     # ======== Getters ========================================================
-    def get_ir(
-        self, length_samples: int = 512, zero_phase: bool = False
-    ) -> ImpulseResponse:
+    def get_ir(self, length_samples: int, zero_phase: bool = False) -> ImpulseResponse:
         """Gets an impulse response of the filter with given length.
 
         Parameters
         ----------
-        length_samples : int, optional
-            Length for the impulse response in samples. Default: 512.
+        length_samples : int
+            Length for the impulse response in samples.
+        zero_phase : bool, optional
+            When `True`, zero-phase filtering is applied to the IR. Default: `False`.
 
         Returns
         -------

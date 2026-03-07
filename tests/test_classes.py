@@ -575,7 +575,7 @@ class TestFilterClass:
 
     def test_get_ir(self):
         f = self.get_iir()
-        f.get_ir()
+        f.get_ir(128)
 
     def test_other_functionalities(self):
         #
@@ -821,7 +821,7 @@ class TestFilterBankClass:
             fb.swap_filters([1, 2])
 
         # Others
-        fb.get_ir(dsp.FilterBankMode.Parallel)
+        fb.get_ir(128, dsp.FilterBankMode.Parallel)
         fb.copy()
         fb.show_info()
         print(fb)
@@ -954,9 +954,9 @@ class TestFilterBankClass:
         fb.plot_magnitude(length_samples=512, mode=dsp.FilterBankMode.Parallel)
         fb.plot_phase(length_samples=512, mode=dsp.FilterBankMode.Parallel)
         fb.plot_group_delay(length_samples=512, mode=dsp.FilterBankMode.Parallel)
-        fb.get_ir(dsp.FilterBankMode.Parallel)
+        fb.get_ir(128, dsp.FilterBankMode.Parallel)
         with pytest.raises(AssertionError):
-            fb.get_ir(mode=dsp.FilterBankMode.Summed)
+            fb.get_ir(128, mode=dsp.FilterBankMode.Summed)
 
     def test_filtering_multirate_multiband(self):
         fb = dsp.FilterBank(same_sampling_rate=False)

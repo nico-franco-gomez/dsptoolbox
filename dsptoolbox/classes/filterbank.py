@@ -442,24 +442,19 @@ class FilterBank:
     # ======== Get impulse ====================================================
     def get_ir(
         self,
+        length_samples: int,
         mode: FilterBankMode,
-        length_samples: int = 2048,
-        test_zi: bool = False,
         zero_phase: bool = False,
     ) -> Signal | MultiBandSignal:
         """Returns impulse response from the filter bank.
 
         Parameters
         ----------
-        mode : FilterBankMode
-            Filtering mode.
-        length_samples : int, optional
+        length_samples : int
             Length of the impulse response to be generated. If some filter
             is longer than the given length, then the length is adapted.
-            Default: 2048.
-        test_zi : bool, optional
-            When `True`, filtering is done while updating filters' initial
-            values. Default: `False`.
+        mode : FilterBankMode
+            Filtering mode.
         zero_phase : bool, optional
             When `True`, zero phase filtering is activated. Default: `False`.
 
@@ -482,9 +477,7 @@ class FilterBank:
                     sampling_rate_hz=sr[ind],
                     number_of_channels=1,
                 )
-                mb.add_band(
-                    f.filter_signal(d, activate_zi=test_zi, zero_phase=zero_phase)
-                )
+                mb.add_band(f.filter_signal(d, zero_phase=zero_phase))
             return mb
 
         # Obtain biggest filter order from FilterBank
@@ -510,7 +503,7 @@ class FilterBank:
         )
 
         # Filtering
-        ir = self.filter_signal(d, mode, activate_zi=test_zi, zero_phase=zero_phase)
+        ir = self.filter_signal(d, mode, zero_phase=zero_phase)
         return ir
 
     def get_transfer_function(

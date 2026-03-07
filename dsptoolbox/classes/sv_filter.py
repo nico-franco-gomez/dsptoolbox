@@ -144,13 +144,13 @@ class StateVariableFilter(RealtimeFilter):
             ]
         )
 
-    def get_ir(self, length_samples: int = 1024) -> MultiBandSignal:
+    def get_ir(self, length_samples: int) -> MultiBandSignal:
         """Get an IR from the VS-Filter.
 
         Parameters
         ----------
-        length_samples : int, optional
-            Length of the IR in samples. Default: 1024.
+        length_samples : int
+            Length of the IR in samples.
 
         Returns
         -------
