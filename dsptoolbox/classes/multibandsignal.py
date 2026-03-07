@@ -437,7 +437,7 @@ class MultiBandSignal:
             dump(self, data_file, HIGHEST_PROTOCOL)
         return self
 
-    def copy(self):
+    def copy(self) -> "MultiBandSignal":
         """Returns a copy of the object.
 
         Returns

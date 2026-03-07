@@ -930,7 +930,7 @@ class FilterBank:
             dump(self, data_file, HIGHEST_PROTOCOL)
         return self
 
-    def copy(self):
+    def copy(self) -> "FilterBank":
         """Returns a copy of the object.
 
         Returns

@@ -1094,7 +1094,7 @@ class Filter:
             dump(self, data_file, HIGHEST_PROTOCOL)
         return self
 
-    def copy(self):
+    def copy(self) -> "Filter":
         """Returns a copy of the object.
 
         Returns

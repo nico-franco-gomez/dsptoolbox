@@ -1409,7 +1409,7 @@ class Signal(MultichannelData):
             )
         return self
 
-    def copy(self):
+    def copy(self) -> "Signal":
         """Returns a copy of the object.
 
         Returns

@@ -649,7 +649,7 @@ class LRFilterBank:
         with open(path, "wb") as data_file:
             dump(self, data_file, HIGHEST_PROTOCOL)
 
-    def copy(self):
+    def copy(self) -> "FilterBank":
         """Returns a copy of the object.
 
         Returns
