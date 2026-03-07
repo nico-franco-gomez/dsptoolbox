@@ -248,7 +248,8 @@ def convolve_rir_on_signal(
         rir.sampling_rate_hz == signal.sampling_rate_hz
     ), "The sampling rates do not match"
 
-    if signal.length_samples / rir.length_samples < 15.0 or 1.0 / 15.0:
+    length_ratio = signal.length_samples / rir.length_samples
+    if length_ratio < 15.0 or length_ratio < 1.0 / 15.0:
         new_time_data = oaconvolve(signal.time_data, rir.time_data, axes=0, mode="full")
     else:
         new_time_data = convolve(signal.time_data, rir.time_data, mode="full")
