@@ -2,6 +2,15 @@
 Here are methods considered as somewhat special or less common.
 """
 
+import numpy as np
+from numpy.typing import NDArray
+from scipy.signal.windows import get_window
+from scipy.fft import dct
+from scipy.signal import oaconvolve, resample_poly, lfilter
+import matplotlib.pyplot as plt
+from matplotlib.figure import Figure
+from matplotlib.axes import Axes
+
 from ..helpers.frequency_conversion import _hz2mel, _mel2hz
 from ..helpers.ar_estimation import _burg_ar_estimation, _yw_ar_estimation
 from ..classes.signal import Signal
@@ -34,17 +43,9 @@ from ..standard.enums import (
     FilterCoefficientsType,
     FilterPassType,
     FilterBankMode,
+    Window,
 )
 from ..standard.gain_and_level import rms
-
-import numpy as np
-from numpy.typing import NDArray
-from scipy.signal.windows import get_window
-from scipy.fft import dct
-from scipy.signal import oaconvolve, resample_poly, lfilter
-import matplotlib.pyplot as plt
-from matplotlib.figure import Figure
-from matplotlib.axes import Axes
 
 try:
     from seaborn import set_style
@@ -1200,9 +1201,9 @@ def lpc(
     order: int,
     window_length_samples: int,
     synthesize_encoded_signal: bool = False,
-    method_ar: str = "burg",
+    use_burg_method: bool = False,
     hop_size_samples: int | None = None,
-    window_type: str = "hann",
+    window_type: Window = Window.Hann,
 ):
     """Encode an input signal into its linear-predictive coding coefficients.
     This transforms the signal into source-filter representation and works
@@ -1220,15 +1221,15 @@ def lpc(
         When True, the encoded signal is synthesized and returned. To this end,
         white noise is always used as source. Pass False to avoid this
         computation. Default: False.
-    method_ar : str, {"yw", "burg"}, optional
-        Method to use for obtaining the LP coefficients. Choose from "yw"
-        (Yule-Walker) or "burg". Default: "burg".
+    use_burg_method : bool, optional
+        Method to use for obtaining the LP coefficients. When `True`, Burg's method is
+        used. Otherwise, Yule-Walker will be used. Default: `False`.
     hop_size_samples : int, None, optional
         Hop size to use from window to window. If None is passed, a hop size
         corresponding to 50% of the window length will be used. Default: None.
-    window_type : str, optional
+    window_type : Window, optional
         Window type to use. It is recommended that a window type that satifies
-        the COLA-condition with length and hop size is chosen. Default: "hann".
+        the COLA-condition with length and hop size is chosen. Default: Hann.
 
     Returns
     -------
@@ -1247,21 +1248,20 @@ def lpc(
     - https://ccrma.stanford.edu/~hskim08/lpc/
 
     """
-    method_ar = method_ar.lower()
-    assert method_ar in ("burg", "yw"), "AR method is not supported"
-
     # Get windowed signal
     if hop_size_samples is None:
         hop_size_samples = window_length_samples // 2
     td = _get_framed_signal(
         signal.time_data, window_length_samples, hop_size_samples, True
     )
-    window = get_window(window_type, window_length_samples, fftbins=True)
+    window = get_window(
+        window_type.to_scipy_format(), window_length_samples, fftbins=True
+    )
     td *= window[:, None, None]
 
     a, var = (
         _burg_ar_estimation(td, order)
-        if method_ar == "burg"
+        if use_burg_method
         else _yw_ar_estimation(td, order)
     )
 

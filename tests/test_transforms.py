@@ -212,11 +212,11 @@ class TestTransformsModule:
     def test_lpc(self):
         # Only functionality
         speech = dsp.resample(self.speech, 8000)
-        dsp.transforms.lpc(speech, 10, 1024, False, "burg", 512)
-        dsp.transforms.lpc(speech, 10, 1024, True, "burg", 512)
+        dsp.transforms.lpc(speech, 10, 1024, False, True, 512)
+        dsp.transforms.lpc(speech, 10, 1024, True, True, 512)
 
-        dsp.transforms.lpc(speech, 10, 1024, False, "yw", 512)
-        dsp.transforms.lpc(speech, 10, 1024, True, "yw", 512)
+        dsp.transforms.lpc(speech, 10, 1024, False, False, 512)
+        dsp.transforms.lpc(speech, 10, 1024, True, False, 512)
 
     def test_dft(self):
         s = dsp.pad_trim(self.speech, 20_000)
