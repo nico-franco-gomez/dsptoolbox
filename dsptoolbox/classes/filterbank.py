@@ -204,7 +204,7 @@ class FilterBank:
         self.__same_sampling_rate = new_same
 
     # ======== Add and remove =================================================
-    def add_filter(self, filt: Filter, index: int = -1):
+    def add_filter(self, filt: Filter, index: int = -1) -> Self:
         """Adds a new filter at the end of the filters dictionary.
 
         Parameters
@@ -213,6 +213,10 @@ class FilterBank:
             Filter to be added to the FilterBank.
         index : int, optional
             Index at which to insert the new Filter. Default: -1.
+
+        Returns
+        -------
+        self
 
         """
         if not self.filters:
@@ -231,7 +235,9 @@ class FilterBank:
             self.filters = fs
         return self
 
-    def remove_filter(self, index: int = -1, return_filter: bool = False):
+    def remove_filter(
+        self, index: int = -1, return_filter: bool = False
+    ) -> Filter | Self:
         """Removes a filter from the filter bank.
 
         Parameters
@@ -243,6 +249,10 @@ class FilterBank:
         return_filter : bool, optional
             When `True`, the erased filter is returned. Otherwise, the
             filterbank instance is returned. Default: `False`.
+
+        Returns
+        -------
+        Filter | self
 
         """
         assert self.filters, "There are no filters to remove"
@@ -258,13 +268,17 @@ class FilterBank:
             return f
         return self
 
-    def swap_filters(self, new_order):
+    def swap_filters(self, new_order) -> Self:
         """Rearranges the filters in the new given order.
 
         Parameters
         ----------
         new_order : array-like
             New rearrangement of filters.
+
+        Returns
+        -------
+        self
 
         """
         new_order = np.array(new_order).squeeze()

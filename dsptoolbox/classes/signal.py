@@ -12,6 +12,7 @@ from matplotlib.axes import Axes
 from scipy.signal import oaconvolve
 from numpy.typing import NDArray, ArrayLike
 from scipy.fft import rfft, next_fast_len
+from typing import Self
 
 from ._multichannel_data import MultichannelData
 from ..helpers.spectrum_utilities import (
@@ -391,7 +392,7 @@ class Signal(MultichannelData):
         detrend: bool = True,
         average: str = "mean",
         scaling: SpectrumScaling = SpectrumScaling.FFTBackward,
-    ) -> "Signal":
+    ) -> Self:
         """Sets all necessary parameters for the computation of the spectrum.
 
         Parameters
@@ -516,7 +517,7 @@ class Signal(MultichannelData):
         detrend: bool = False,
         padding: bool = True,
         scaling: SpectrumScaling = SpectrumScaling.FFTBackward,
-    ):
+    ) -> Self:
         """Sets all necessary parameters for the computation of the
         spectrogram.
 
@@ -583,7 +584,7 @@ class Signal(MultichannelData):
         new_time_data: NDArray[np.float64] | None = None,
         sampling_rate_hz: int | None = None,
         padding_trimming: bool = True,
-    ) -> "Signal":
+    ) -> Self:
         """Adds new channels to this signal object.
 
         Parameters
@@ -655,7 +656,7 @@ class Signal(MultichannelData):
         self.__update_state()
         return self
 
-    def clear_time_window(self) -> "Signal":
+    def clear_time_window(self) -> Self:
         """Deletes the time window of the signal in case there is any."""
         if hasattr(self, "window"):
             del self.window
