@@ -87,22 +87,6 @@ class Signal(MultichannelData):
             be computed again if no parameters have changed. Set to False to
             avoid caching altogether. Default: False.
 
-        Methods
-        -------
-        Time data:
-            add_channel, remove_channel, swap_channels, get_channels.
-        Spectrum:
-            set_spectrum_parameters, get_spectrum.
-        Cross spectral matrix:
-            set_csm_parameters, get_csm.
-        Spectrogram:
-            set_spectrogram_parameters, get_spectrogram.
-        Plots:
-            plot_magnitude, plot_time, plot_spl, plot_spectrogram, plot_phase,
-            plot_csm.
-        General:
-            save_signal, get_stream_samples.
-
         """
         # Handling amplitude
         self.constrain_amplitude = constrain_amplitude
@@ -156,11 +140,11 @@ class Signal(MultichannelData):
 
         Parameters
         ----------
-        time_data : array-like, NDArray[np.float64], optional
+        time_data : array-like, NDArray[np.float64]
             Time data of the signal. It is saved as a matrix with the form
-            (time samples, channel number). Default: `None`.
-        sampling_rate_hz : int, optional
-            Sampling rate of the signal in Hz. Default: `None`.
+            (time samples, channel number).
+        sampling_rate_hz : int
+            Sampling rate of the signal in Hz.
         constrain_amplitude : bool, optional
             When `True`, audio is normalized to 0 dBFS peak level in case that
             there are amplitude values greater than 1. Otherwise, there is no
@@ -231,6 +215,37 @@ class Signal(MultichannelData):
 
     @time_data.setter
     def time_data(self, new_time_data: ArrayLike):
+        """Set the time data for the signal.
+
+        Parameters
+        ----------
+        new_time_data : ArrayLike
+            Time data as a 1D or 2D array with shape (time_samples, channels).
+            If 1D, it is treated as a single-channel signal. If 2D, the array
+            is automatically transposed if needed to ensure the dimension with
+            more samples is interpreted as time. Complex-valued data is supported
+            and will be stored with real and imaginary parts separated.
+
+        Raises
+        ------
+        AssertionError
+            If the array has more than 2 dimensions.
+
+        Notes
+        -----
+        - Complex-valued input is automatically separated into real and imaginary
+          parts and stored internally.
+        - If `constrain_amplitude` is True, the signal is automatically normalized
+          to 0 dBFS peak level if any amplitude exceeds 1.0. A warning is issued
+          when this occurs.
+        - When complex data is present, amplitude constraining uses the maximum
+          of the peaks from both real and imaginary parts as the normalization
+          factor.
+        - Setting new time data triggers internal state updates for spectrum,
+          cross-spectral matrix, and spectrogram computations.
+        - Any existing time window is cleared when new time data is set.
+
+        """
         # Shape of Time Data array
         new_time_data = np.atleast_2d(new_time_data).squeeze()
         assert new_time_data.ndim <= 2, (
@@ -883,6 +898,12 @@ class Signal(MultichannelData):
         """Get Cross spectral matrix for all channels with the shape
         (frequencies, channels, channels). It uses the parameters stored in
         `set_spectrum_parameters`.
+
+        Parameters
+        ----------
+        force_computation : bool, optional
+            When `True`, computation is forced even if there is cached data.
+            Default: `False`.
 
         Returns
         -------

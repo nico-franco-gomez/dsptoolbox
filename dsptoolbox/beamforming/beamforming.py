@@ -53,20 +53,6 @@ class Grid(BasePoints):
             meters. Use `'x'`, `'y'` and `'z'` as keys to pass array-like
             objects with the positions.
 
-        Attributes and Methods
-        ----------------------
-        - `coordinates`: Coordinates of the grid points as numpy.ndarray with
-          shape (point, coordinate xyz).
-        - `number_of_points`: Number of points contained in the array.
-        - `ndim`: Number of dimensions of grid.
-        - `dimensions`: Dimensions in which the points are extended.
-        - `extent`: Dictionary with the extent of points in each coordinate.
-          As an example for the x direction `'x': [min(x), max(x)]`.
-        - `get_distances_to_point()`: Gets all point distances to a
-          given point.
-        - `find_nearest_point()`: Finds the index and coordinates of
-          the nearest point to a given one.
-
         """
         super().__init__(positions)
 

@@ -160,7 +160,7 @@ def chirp(
     Parameters
     ----------
     sampling_rate_hz : int
-        Sampling rate in Hz. Default: `None`.
+        Sampling rate in Hz.
     type_of_chirp : ChirpType, optional
         Type of chirp. Default: Logarithmic.
     range_hz : array-like with length 2
