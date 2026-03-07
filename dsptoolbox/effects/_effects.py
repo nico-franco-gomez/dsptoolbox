@@ -2,12 +2,12 @@
 Backend for the effects module
 """
 
-from ..helpers.smoothing import _get_smoothing_factor_ema
-from ..plots import general_plot
 import numpy as np
 from numpy.typing import NDArray
 
-# import matplotlib.pyplot as plt
+from ..helpers.smoothing import _get_smoothing_factor_ema
+from ..plots import general_plot
+from ..tools import from_db
 
 
 # ========= Distortion ========================================================
@@ -113,13 +113,15 @@ def _compressor(
     attack_coeff = _get_smoothing_factor_ema(attack_samples, 1)
     release_coeff = _get_smoothing_factor_ema(release_samples, 1)
 
+    min_value_power = from_db(-300.0, False)
+
     # Iterate process over channels
     for n in range(x_.shape[1]):
         momentary_rms = 0
         momentary_gain = 1
         for i in np.arange(len(x)):
             # RMS Detection – if peaks, directly take rms
-            samp = x[i] ** 2
+            samp = x[i, n] ** 2
             if samp > momentary_rms:
                 coeff = 1.0
             else:
@@ -127,10 +129,8 @@ def _compressor(
             momentary_rms = coeff * samp + (1 - coeff) * momentary_rms
 
             # Amount of required compression
-            samp_db = 10 * np.log10(samp)
+            samp_db = 10 * np.log10(max(samp, min_value_power))
             samp_db_comp = compression_func(samp_db)
-            np.nan_to_num(samp_db, False, 0)
-            np.nan_to_num(samp_db_comp, False, 0)
             gain_factor = 10 ** ((samp_db_comp - samp_db) / 20)
 
             # Gain depending on attack and release

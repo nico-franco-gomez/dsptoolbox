@@ -1453,7 +1453,7 @@ class TestFilterTopologies:
         fb.get_ir(256)
         fb.set_n_channels(3)
 
-        for i in rir.time_data:
+        for i in rir.time_data[:, 0]:
             fb.process_sample(i, 1)
         fb.reset_state()
         iir_coeffs = np.random.normal(0, 0.1, (len(poles), 2))
