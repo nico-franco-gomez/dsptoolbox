@@ -1,9 +1,10 @@
 # use:
-scipy~=1.16
+scipy~=1.17
 soundfile~=0.13
 sounddevice~=0.5
 # Python ==3.14
-numpy~=2.3;python_version>='3.14'
+numpy~=2.4;python_version>='3.14'
+numba~=0.64;python_version>='3.14'
 # Python ==3.13
 numpy~=2.3;python_version=='3.13'
 numba~=0.62;python_version=='3.13'
