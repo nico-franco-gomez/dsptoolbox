@@ -3,7 +3,7 @@ High-level methods for room acoustics functions
 """
 
 import numpy as np
-from scipy.signal import find_peaks, oaconvolve
+from scipy.signal import find_peaks, oaconvolve, convolve
 from numpy.typing import NDArray
 
 from ..classes import Signal, MultiBandSignal, Filter, ImpulseResponse
@@ -215,7 +215,7 @@ def find_modes(
 
 def convolve_rir_on_signal(
     signal: Signal,
-    rir: ImpulseResponse,
+    rir: Signal,
     keep_peak_level: bool = True,
     keep_length: bool = True,
 ) -> Signal:
@@ -226,9 +226,9 @@ def convolve_rir_on_signal(
 
     Parameters
     ----------
-    signal : Signal
+    signal : `Signal`
         Signal to which the RIR is applied. All channels are affected.
-    rir : ImpulseResponse
+    rir : `Signal`
         Single-channel impulse response containing the RIR.
     keep_peak_level : bool, optional
         When `True`, output signal is normalized to the peak level of
@@ -243,15 +243,15 @@ def convolve_rir_on_signal(
         Convolved signal with RIR.
 
     """
-    assert isinstance(
-        rir, ImpulseResponse
-    ), "This is only valid for an impulse response"
     assert rir.number_of_channels == 1, "RIR should not contain more than one channel."
     assert (
         rir.sampling_rate_hz == signal.sampling_rate_hz
     ), "The sampling rates do not match"
 
-    new_time_data = oaconvolve(signal.time_data, rir.time_data, axes=0, mode="full")
+    if signal.length_samples / rir.length_samples < 15.0 or 1.0 / 15.0:
+        new_time_data = oaconvolve(signal.time_data, rir.time_data, axes=0, mode="full")
+    else:
+        new_time_data = convolve(signal.time_data, rir.time_data, mode="full")
 
     if keep_length:
         new_time_data = new_time_data[: len(signal), ...]
