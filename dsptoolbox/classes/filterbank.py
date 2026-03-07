@@ -5,6 +5,7 @@ from warnings import warn
 from matplotlib.figure import Figure
 from matplotlib.axes import Axes
 from numpy.typing import NDArray
+from typing import overload, Literal, Self
 
 
 from .signal import Signal
@@ -301,13 +302,33 @@ class FilterBank:
         return self
 
     # ======== Filtering ======================================================
+    @overload
+    def filter_signal(
+        self,
+        signal: Signal,
+        mode: Literal[FilterBankMode.Sequential, FilterBankMode.Summed],
+        activate_zi: bool = False,
+        zero_phase: bool = False,
+    ) -> Signal:
+        pass
+
+    @overload
+    def filter_signal(
+        self,
+        signal: Signal,
+        mode: Literal[FilterBankMode.Parallel],
+        activate_zi: bool = False,
+        zero_phase: bool = False,
+    ) -> MultiBandSignal:
+        pass
+
     def filter_signal(
         self,
         signal: Signal,
         mode: FilterBankMode,
         activate_zi: bool = False,
         zero_phase: bool = False,
-    ) -> Signal | MultiBandSignal:
+    ):
         """Applies the filter bank to a signal and returns a multiband signal
         or a `Signal` object.
 
