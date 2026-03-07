@@ -60,6 +60,23 @@ class MultiBandSignal:
 
     @sampling_rate_hz.setter
     def sampling_rate_hz(self, new_sampling_rate_hz):
+        """Set the sampling rate(s) in Hz.
+
+        Parameters
+        ----------
+        new_sampling_rate_hz : int or array-like
+            Sampling rate(s) in Hz. If `same_sampling_rate` is True, must be
+            a single integer. If False, can be a sequence of integers with
+            length matching the number of bands.
+
+        Raises
+        ------
+        AssertionError
+            If the number of sampling rates does not match the number of bands
+            when `same_sampling_rate` is False, or if a scalar is not provided
+            when `same_sampling_rate` is True.
+
+        """
         new_sampling_rate_hz = array(new_sampling_rate_hz)
         if self.same_sampling_rate:
             new_sampling_rate_hz = new_sampling_rate_hz.squeeze()
@@ -81,6 +98,30 @@ class MultiBandSignal:
 
     @bands.setter
     def bands(self, new_bands: list[Signal]):
+        """Set the list of signal bands.
+
+        Parameters
+        ----------
+        new_bands : list of Signal or None
+            List of Signal objects representing the bands. If None or empty,
+            the bands list is cleared. All signals must have:
+            - The same number of channels
+            - Consistent complex/real type
+            - If `same_sampling_rate` is True: same sampling rate and duration
+
+        Raises
+        ------
+        AssertionError
+            If bands are not a list, contain non-Signal objects, have
+            inconsistent channel counts, mixed complex/real types, or if
+            sampling rates/durations don't match when required.
+
+        Notes
+        -----
+        Setting bands automatically updates the sampling_rate property and
+        validates consistency constraints based on the `same_sampling_rate` setting.
+
+        """
         if new_bands is None:
             new_bands = []
         if type(new_bands) is tuple:
@@ -130,6 +171,26 @@ class MultiBandSignal:
 
     @same_sampling_rate.setter
     def same_sampling_rate(self, new_same):
+        """Set whether all bands share the same sampling rate.
+
+        Parameters
+        ----------
+        new_same : bool
+            When True, all bands in this MultiBandSignal must have the same
+            sampling rate. When False, allows bands with different sampling
+            rates (multirate system).
+
+        Raises
+        ------
+        AssertionError
+            If new_same is not a boolean.
+
+        Notes
+        -----
+        When `same_sampling_rate` is True, all bands must also have the same
+        duration in samples.
+
+        """
         assert type(new_same) is bool, "Same sampling rate attribute must be a boolean"
         self.__same_sampling_rate = new_same
 

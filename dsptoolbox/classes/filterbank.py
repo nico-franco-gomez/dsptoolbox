@@ -143,6 +143,26 @@ class FilterBank:
 
     @sampling_rate_hz.setter
     def sampling_rate_hz(self, new_sampling_rate_hz):
+        """Set the sampling rate(s) in Hz.
+
+        Parameters
+        ----------
+        new_sampling_rate_hz : int or array-like
+            Sampling rate(s) in Hz. If `same_sampling_rate` is True, must be
+            a single integer. If False, can be a sequence of integers with
+            length matching the number of filters.
+
+        Raises
+        ------
+        AssertionError
+            If a scalar is not provided when `same_sampling_rate` is True.
+
+        Notes
+        -----
+        When `same_sampling_rate` is False, allows each filter to have a
+        different sampling rate.
+
+        """
         new_sampling_rate_hz = np.asarray(new_sampling_rate_hz).squeeze()
         if self.same_sampling_rate:
             assert (
@@ -159,6 +179,27 @@ class FilterBank:
 
     @filters.setter
     def filters(self, new_filters):
+        """Set the list of filters in the FilterBank.
+
+        Parameters
+        ----------
+        new_filters : list of Filter or None
+            List of Filter objects. If None or empty, the filters list is
+            cleared. When filters are set, their sampling rates are extracted
+            and must be consistent with the `same_sampling_rate` setting.
+
+        Raises
+        ------
+        AssertionError
+            If filters are not passed as a list, contain non-Filter objects,
+            or if sampling rates don't match when `same_sampling_rate` is True.
+
+        Notes
+        -----
+        When filters are set, the FilterBank's sampling_rate property is
+        automatically updated from the filter(s).
+
+        """
         if new_filters is None:
             new_filters = []
         if type(new_filters) is tuple:
@@ -201,6 +242,21 @@ class FilterBank:
 
     @same_sampling_rate.setter
     def same_sampling_rate(self, new_same):
+        """Set whether all filters share the same sampling rate.
+
+        Parameters
+        ----------
+        new_same : bool
+            When True, all filters in this FilterBank must have the same
+            sampling rate. When False, allows filters with different sampling
+            rates (multirate system).
+
+        Raises
+        ------
+        AssertionError
+            If new_same is not a boolean.
+
+        """
         assert type(new_same) is bool, "same_sampling_rate must be a boolean"
         self.__same_sampling_rate = new_same
 

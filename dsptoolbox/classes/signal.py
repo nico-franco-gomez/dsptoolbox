@@ -297,6 +297,23 @@ class Signal(MultichannelData):
 
     @sampling_rate_hz.setter
     def sampling_rate_hz(self, new_sampling_rate_hz):
+        """Set the sampling rate in Hz.
+
+        Parameters
+        ----------
+        new_sampling_rate_hz : int
+            New sampling rate in Hz. Must be a positive integer.
+
+        Raises
+        ------
+        AssertionError
+            If new_sampling_rate_hz is not an integer.
+
+        Notes
+        -----
+        Setting a new sampling rate triggers an internal state update.
+
+        """
         assert type(new_sampling_rate_hz) is int, "Sampling rate can only be an integer"
         self.__sampling_rate_hz = new_sampling_rate_hz
         self.__update_state()
@@ -326,6 +343,20 @@ class Signal(MultichannelData):
 
     @time_data_imaginary.setter
     def time_data_imaginary(self, new_imag: NDArray[np.float64]):
+        """Set the imaginary part of the time data.
+
+        Parameters
+        ----------
+        new_imag : NDArray[np.float64] or None
+            Imaginary part of the time data. If provided, must have the same
+            shape as the real part. Can be None to remove imaginary data.
+
+        Raises
+        ------
+        AssertionError
+            If the shape of new_imag does not match the shape of the real part.
+
+        """
         if new_imag is not None:
             assert (
                 new_imag.shape == self.__time_data.shape
@@ -351,6 +382,27 @@ class Signal(MultichannelData):
 
     @constrain_amplitude.setter
     def constrain_amplitude(self, nca):
+        """Set whether to constrain the signal amplitude to [-1., 1.].
+
+        Parameters
+        ----------
+        nca : bool
+            When True, the signal's amplitude is constrained to the [-1., 1.]
+            range with automatic scaling if needed. When False, no amplitude
+            scaling is applied.
+
+        Raises
+        ------
+        AssertionError
+            If nca is not a boolean.
+
+        Notes
+        -----
+        When enabling amplitude constraining, the signal is automatically
+        rescaled to fit within the [-1., 1.] range if needed, and the
+        scaling factor is saved in the signal.
+
+        """
         assert type(nca) is bool, "constrain_amplitude must be of type boolean"
         self.__constrain_amplitude = nca
         # Restart time data setter for triggering normalization if needed
@@ -366,6 +418,21 @@ class Signal(MultichannelData):
 
     @calibrated_signal.setter
     def calibrated_signal(self, ncs):
+        """Set whether the signal is (amplitude) calibrated.
+
+        Parameters
+        ----------
+        ncs : bool
+            When True, indicates that this signal has been amplitude calibrated
+            and represents sound pressure in Pa. When False, the signal is
+            not calibrated.
+
+        Raises
+        ------
+        AssertionError
+            If ncs is not a boolean.
+
+        """
         assert type(ncs) is bool, "calibrated_signal must be of type boolean"
         self.__calibrated_signal = ncs
 
@@ -482,6 +549,25 @@ class Signal(MultichannelData):
 
     @spectrum_scaling.setter
     def spectrum_scaling(self, new_scaling: SpectrumScaling):
+        """Set the spectrum scaling method.
+
+        Parameters
+        ----------
+        new_scaling : SpectrumScaling
+            The scaling method to use for spectrum computation.
+            See `SpectrumScaling` enum for available options.
+
+        Raises
+        ------
+        AssertionError
+            If new_scaling is not a SpectrumScaling instance.
+
+        Notes
+        -----
+        Changing the spectrum scaling triggers a state update for both
+        the spectrum and the cross-spectral matrix.
+
+        """
         assert isinstance(new_scaling, SpectrumScaling)
         self._spectrum_parameters["scaling"] = new_scaling
         self.__spectrum_state_update = True
@@ -494,6 +580,26 @@ class Signal(MultichannelData):
 
     @spectrum_method.setter
     def spectrum_method(self, new_method: SpectrumMethod):
+        """Set the spectrum computation method.
+
+        Parameters
+        ----------
+        new_method : SpectrumMethod
+            The method to use for spectrum computation.
+            See `SpectrumMethod` enum for available options
+            (e.g., FFT, WelchPeriodogram).
+
+        Raises
+        ------
+        AssertionError
+            If new_method is not a SpectrumMethod instance.
+
+        Notes
+        -----
+        Changing the spectrum method triggers a state update for both
+        the spectrum and the cross-spectral matrix.
+
+        """
         assert isinstance(new_method, SpectrumMethod)
         self._spectrum_parameters["method"] = new_method
         self.__spectrum_state_update = True
@@ -506,6 +612,26 @@ class Signal(MultichannelData):
 
     @spectrum_smoothing.setter
     def spectrum_smoothing(self, new_smoothing):
+        """Set the spectrum smoothing parameter.
+
+        Parameters
+        ----------
+        new_smoothing : float or int
+            Smoothing parameter in fraction of octaves. Determines the width
+            of the smoothing window applied to the spectrum. Must be zero or
+            positive. Zero (default) means no smoothing.
+
+        Raises
+        ------
+        AssertionError
+            If new_smoothing is negative.
+
+        Notes
+        -----
+        The smoothing is applied across 1/smoothing octave bands.
+        This smoothes both magnitude and phase of the spectrum.
+
+        """
         assert new_smoothing >= 0.0, "Smoothing must be positive or zero"
         self._spectrum_parameters["smoothing"] = float(new_smoothing)
 

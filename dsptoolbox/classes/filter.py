@@ -385,6 +385,19 @@ class Filter:
 
     @sampling_rate_hz.setter
     def sampling_rate_hz(self, new_sampling_rate_hz):
+        """Set the sampling rate in Hz.
+
+        Parameters
+        ----------
+        new_sampling_rate_hz : int
+            New sampling rate in Hz. Must be a positive integer and cannot be None.
+
+        Raises
+        ------
+        AssertionError
+            If new_sampling_rate_hz is None or not an integer.
+
+        """
         assert new_sampling_rate_hz is not None, "Sampling rate can not be None"
         assert type(new_sampling_rate_hz) is int, "Sampling rate can only be an integer"
         self.__sampling_rate_hz = new_sampling_rate_hz
@@ -395,6 +408,20 @@ class Filter:
 
     @warning_if_complex.setter
     def warning_if_complex(self, new_warning):
+        """Set the warning flag for complex-valued filters.
+
+        Parameters
+        ----------
+        new_warning : bool
+            When True, a warning is issued if a complex-valued filter is used.
+            When False, no warning is issued.
+
+        Raises
+        ------
+        AssertionError
+            If new_warning is not a boolean.
+
+        """
         assert type(new_warning) is bool, "This attribute must be of boolean type"
         self.__warning_if_complex = new_warning
 
@@ -416,6 +443,27 @@ class Filter:
 
     @ba.setter
     def ba(self, new_ba: tuple | list):
+        """Set the ba (b, a) filter coefficients.
+
+        Parameters
+        ----------
+        new_ba : tuple or list
+            Filter coefficients as [b, a] where b are numerator coefficients
+            and a are denominator coefficients. Each element is converted to
+            either np.float64 or np.complex128 depending on the input type.
+
+        Raises
+        ------
+        AssertionError
+            If coefficients are not a list/tuple of length 2, or if array
+            dimensions are incorrect.
+
+        Notes
+        -----
+        The a coefficients are trimmed of trailing zeros. If only one a
+        coefficient remains, the filter is converted to FIR form.
+
+        """
         ba: list[NDArray] = list(new_ba)
         assert len(ba) == 2, "ba coefficients must be a list of length two"
         for ind in range(len(ba)):
@@ -445,6 +493,20 @@ class Filter:
 
     @sos.setter
     def sos(self, sos):
+        """Set the second-order sections (SOS) filter coefficients.
+
+        Parameters
+        ----------
+        sos : NDArray
+            Second-order sections array with shape (n_sections, 6).
+            Each row contains [b0, b1, b2, a0, a1, a2] for one section.
+
+        Raises
+        ------
+        AssertionError
+            If sos is not a 2D numpy array or if the number of columns is not 6.
+
+        """
         assert isinstance(sos, np.ndarray)
         assert sos.ndim == 2
         assert sos.shape[1] == 6
@@ -464,6 +526,20 @@ class Filter:
 
     @zpk.setter
     def zpk(self, new_zpk):
+        """Set the zero-pole-gain (zpk) representation of the filter.
+
+        Parameters
+        ----------
+        new_zpk : list or tuple
+            Zero-pole-gain representation as [zeros, poles, gain] where
+            zeros and poles are array-like sequences and gain is a scalar.
+
+        Raises
+        ------
+        AssertionError
+            If new_zpk cannot be converted to a list.
+
+        """
         self.__zpk = list(new_zpk)
 
     @property

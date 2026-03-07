@@ -141,6 +141,26 @@ class Spectrum(MultichannelData):
 
     @frequency_vector_hz.setter
     def frequency_vector_hz(self, new_freqs: NDArray[np.float64]):
+        """Set the frequency vector.
+
+        Parameters
+        ----------
+        new_freqs : NDArray[np.float64]
+            Frequency vector in Hz. Must be 1D, contain only non-negative values,
+            and be strictly ascending (no repeated values).
+
+        Raises
+        ------
+        AssertionError
+            If frequency vector is complex, not 1D, contains negative values,
+            or is not strictly ascending.
+
+        Notes
+        -----
+        The frequency vector type (e.g., linear, logarithmic) is automatically
+        determined based on the spacing.
+
+        """
         assert not np.iscomplexobj(new_freqs), "Complex frequencies are invalid"
         f = np.atleast_1d(new_freqs).astype(np.float64)
         assert f.ndim == 1, "Frequency vector can only have a single dimension"
@@ -167,6 +187,27 @@ class Spectrum(MultichannelData):
 
     @spectral_data.setter
     def spectral_data(self, new_data: ArrayLike):
+        """Set the spectral data.
+
+        Parameters
+        ----------
+        new_data : ArrayLike
+            Spectral data as a 2D array with shape (number_of_frequency_bins,
+            number_of_channels). Data is automatically transposed if needed
+            to match the expected shape.
+
+        Raises
+        ------
+        AssertionError
+            If spectral data is not 2D or the number of frequency bins does not
+            match the current frequency vector.
+
+        Notes
+        -----
+        Data must have the same number of frequency bins as the current
+        frequency vector.
+
+        """
         data = np.atleast_2d(new_data)
         assert data.ndim == 2, "Spectral data must have two dimensions"
         if data.shape[0] < data.shape[1]:
