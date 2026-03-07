@@ -1,5 +1,5 @@
 import numpy as np
-from numpy.typing import NDArray
+from numpy.typing import NDArray, ArrayLike
 from abc import ABC, abstractmethod
 
 
@@ -86,13 +86,13 @@ class MultichannelData(ABC):
         self._update_state()
         return self
 
-    def get_channels(self, channels):
+    def get_channels(self, channels: int | ArrayLike):
         """Returns a signal object with the selected channels. Beware that
         first channel index is 0!
 
         Parameters
         ----------
-        channels : array-like or int
+        channels : ArrayLike or int
             Channels to be returned as a new Signal object.
 
         Returns

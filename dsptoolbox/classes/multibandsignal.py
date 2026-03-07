@@ -177,7 +177,14 @@ class MultiBandSignal:
 
     @property
     def metadata(self) -> dict:
-        """Get a dictionary with metadata about the multibandsignal."""
+        """Get a dictionary with metadata about the multibandsignal.
+
+        Return
+        ------
+        dict
+            Metadata
+
+        """
         info = {}
         info["number_of_bands"] = self.number_of_bands
         if self.bands:

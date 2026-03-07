@@ -398,7 +398,7 @@ class Signal(MultichannelData):
 
         Parameters
         ----------
-        method : SpectrumComputation, optional
+        method : SpectrumMethod, optional
             Method to use in order to acquire the spectrum. See notes for
             details. Default: WelchPeriodogram.
         smoothing : int, optional
@@ -584,7 +584,7 @@ class Signal(MultichannelData):
         path: str | None = None,
         new_time_data: NDArray[np.float64] | None = None,
         sampling_rate_hz: int | None = None,
-        padding_trimming: bool = True,
+        allow_padding_trimming: bool = True,
     ) -> Self:
         """Adds new channels to this signal object.
 
@@ -596,7 +596,7 @@ class Signal(MultichannelData):
             np.array with new channel data.
         sampling_rate_hz : int, optional
             Sampling rate for the new data
-        padding_trimming : bool, optional
+        allow_padding_trimming : bool, optional
             Activates padding or trimming at the end of signal in case the
             new data does not match previous data. Default: `True`.
 
@@ -636,7 +636,7 @@ class Signal(MultichannelData):
         diff = new_time_data.shape[0] - self.time_data.shape[0]
         if diff != 0:
             txt = "Padding" if diff < 0 else "Trimming"
-            if padding_trimming:
+            if allow_padding_trimming:
                 new_time_data = _pad_trim(
                     new_time_data,
                     self.time_data.shape[0],
@@ -650,7 +650,7 @@ class Signal(MultichannelData):
             else:
                 raise AttributeError(
                     f"{new_time_data.shape[0]} does not match "
-                    + f"{self.time_data.shape[0]}. Activate padding_trimming "
+                    + f"{self.time_data.shape[0]}. Activate allow_padding_trimming "
                     + "for allowing this channel to be added"
                 )
         self.time_data = np.concatenate([self.time_data, new_time_data], axis=1)

@@ -1465,7 +1465,7 @@ class MonopoleSource:
             ns.time_data /= 1.0 + distances[i]
             # Append to final signal
             multi_channel_signal = append_signals(
-                [multi_channel_signal, ns], padding_trimming=True
+                [multi_channel_signal, ns], allow_padding_trimming=True
             )
         # Remove original signal
         multi_channel_signal.remove_channel(0)

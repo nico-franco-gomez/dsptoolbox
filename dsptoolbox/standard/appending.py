@@ -13,7 +13,7 @@ from .enums import SpectrumType
 
 def append_signals(
     signals: list[Signal] | list[MultiBandSignal],
-    padding_trimming: bool = True,
+    allow_padding_trimming: bool = True,
     at_end: bool = True,
 ) -> Signal | MultiBandSignal:
     """Append all channels of the signals in the list. If their lengths are not
@@ -24,13 +24,13 @@ def append_signals(
     ----------
     signals : list[Signal] or list[MultiBandSignal]
         First signal.
-    padding_trimming : bool, optional
+    allow_padding_trimming : bool, optional
         If the signals do not have the same length, all are trimmed or
         zero-padded to match the first signal's length, when this is True.
         Otherwise, an error will be raised if the lengths do not match.
         Default: `True`.
     at_end : bool, optional
-        When `True` and `padding_trimming=True`, padding or trimming is done
+        When `True` and `allow_padding_trimming=True`, padding or trimming is done
         at the end of the signals. Otherwise, it is done in the beginning.
         Default: `True`.
 
@@ -51,7 +51,7 @@ def append_signals(
             assert (
                 s.sampling_rate_hz == signals[0].sampling_rate_hz
             ), "Sampling rates do not match"
-            if not padding_trimming:
+            if not allow_padding_trimming:
                 assert len(s) == len(signals[0]), (
                     "Lengths do not match and padding or trimming " + "is not activated"
                 )
@@ -104,7 +104,7 @@ def append_signals(
             assert (
                 s.sampling_rate_hz == signals[0].sampling_rate_hz
             ), "Sampling rates do not match"
-            if not padding_trimming:
+            if not allow_padding_trimming:
                 assert s.length_samples == signals[0].length_samples, (
                     "Lengths do not match and padding or trimming " + "is not activated"
                 )
@@ -118,7 +118,7 @@ def append_signals(
             new_band = signals[0].bands[0].copy()
             for s in signals_without_first:
                 new_band = append_signals(
-                    [new_band, s.bands[n]], padding_trimming, at_end
+                    [new_band, s.bands[n]], allow_padding_trimming, at_end
                 )
             new_bands.append(new_band)
         return MultiBandSignal(

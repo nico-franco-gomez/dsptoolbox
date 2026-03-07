@@ -97,10 +97,10 @@ class StateSpaceFilter(RealtimeFilter):
     def reset_state(self):
         self.x.fill(0.0)
 
-    def set_n_channels(self, n_channels):
+    def set_n_channels(self, n_channels: int):
         self.x = np.zeros((self.A.shape[0], n_channels))
 
-    def process_sample(self, x, channel):
+    def process_sample(self, x: float, channel: int):
         y = self.C @ self.x[:, channel] + self.D * x
         self.x[:, channel] = self.A @ self.x[:, channel] + self.B * x
         return y
