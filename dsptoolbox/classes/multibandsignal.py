@@ -122,7 +122,7 @@ class MultiBandSignal:
                         + "This behaviour is not supported if there is a "
                         + "constant sampling rate"
                     )
-        self.__bands = new_bands
+        self.__bands: list[Signal] = new_bands
 
     @property
     def same_sampling_rate(self) -> bool:
@@ -353,22 +353,22 @@ class MultiBandSignal:
             return self.__get_type_of_signal_bands()(
                 None, new_time_data, self.sampling_rate_hz
             )
+
+        new_time_data = []
+        sr = []
+        if self.bands[0].time_data_imaginary is None:
+            for n in range(len(self.bands)):
+                new_time_data.append(self.bands[n].time_data[:, channel])
+                sr.append(self.bands[n].sampling_rate_hz)
         else:
-            new_time_data = []
-            sr = []
-            if self.bands[0].time_data_imaginary is None:
-                for n in range(len(self.bands)):
-                    new_time_data.append(self.bands[n].time_data[:, channel])
-                    sr.append(self.bands[n].sampling_rate_hz)
-            else:
-                for n in range(len(self.bands)):
-                    new_time_data.append(
-                        self.bands[n].time_data[:, channel]
-                        + self.bands[n].time_data_imaginary[:, channel] * 1j
-                    )
-                    sr.append(self.bands[n].sampling_rate_hz)
-                warn("Output is complex since signal data had imaginary part")
-            return new_time_data, sr
+            for n in range(len(self.bands)):
+                new_time_data.append(
+                    self.bands[n].time_data[:, channel]
+                    + self.bands[n].time_data_imaginary[:, channel] * 1j
+                )
+                sr.append(self.bands[n].sampling_rate_hz)
+            warn("Output is complex since signal data had imaginary part")
+        return new_time_data, sr
 
     def get_all_time_data(
         self,

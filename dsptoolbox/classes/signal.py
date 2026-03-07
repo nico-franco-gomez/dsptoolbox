@@ -299,6 +299,7 @@ class Signal(MultichannelData):
     def sampling_rate_hz(self, new_sampling_rate_hz):
         assert type(new_sampling_rate_hz) is int, "Sampling rate can only be an integer"
         self.__sampling_rate_hz = new_sampling_rate_hz
+        self.__update_state()
 
     @property
     def length_seconds(self) -> float:
@@ -329,7 +330,7 @@ class Signal(MultichannelData):
             assert (
                 new_imag.shape == self.__time_data.shape
             ), "Shape of imaginary part time data does not match"
-        self.__time_data_imaginary = new_imag
+        self.__time_data_imaginary: NDArray[np.float64] | None = new_imag
 
     @property
     def is_complex_signal(self) -> bool:
