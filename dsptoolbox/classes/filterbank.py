@@ -440,11 +440,26 @@ class FilterBank:
         return new_sig
 
     # ======== Get impulse ====================================================
+    @overload
     def get_ir(
         self,
         length_samples: int,
-        mode: FilterBankMode,
+        mode: Literal[FilterBankMode.Parallel],
         zero_phase: bool = False,
+    ) -> MultiBandSignal:
+        pass
+
+    @overload
+    def get_ir(
+        self,
+        length_samples: int,
+        mode: Literal[FilterBankMode.Sequential, FilterBankMode.Summed],
+        zero_phase: bool = False,
+    ) -> Signal:
+        pass
+
+    def get_ir(
+        self, length_samples: int, mode: FilterBankMode, zero_phase: bool = False
     ) -> Signal | MultiBandSignal:
         """Returns impulse response from the filter bank.
 
