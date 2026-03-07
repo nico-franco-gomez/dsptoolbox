@@ -386,7 +386,7 @@ def _filterbank_on_signal(
     signal: Signal,
     filters,
     activate_zi: bool,
-    mode: str,
+    mode: FilterBankMode,
     zero_phase: bool,
     same_sampling_rate: bool,
 ):
