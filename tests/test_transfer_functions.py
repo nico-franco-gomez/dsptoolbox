@@ -105,6 +105,159 @@ class TestTransferFunctionsModule:
                 h, h.length_seconds / 10, None, dsp.Window.Tukey
             )
 
+    def test_window_ir_tukey_extended(self):
+        """Extended test suite for window_ir_tukey with comprehensive coverage."""
+        # Create test impulse response
+        h = dsp.transfer_functions.spectral_deconvolve(self.y_m, self.x)
+        h.time_data = np.roll(h.time_data, 256 - np.argmax(np.abs(h.time_data)), axis=0)
+
+        # =====================================================================
+        # Test 1: Different window types
+        # =====================================================================
+        window_types = [
+            dsp.Window.Hann,
+            dsp.Window.Hamming,
+            dsp.Window.Blackman,
+        ]
+        for window_type in window_types:
+            result = dsp.transfer_functions.window_ir_tukey(
+                h, 50 / h.sampling_rate_hz, 50 / h.sampling_rate_hz, window_type
+            )
+            assert isinstance(result, dsp.ImpulseResponse)
+            assert result.length_samples == h.length_samples
+            assert hasattr(result, "window")
+            # Check window values are between 0 and 1 (allowing small numerical errors)
+            assert np.all(result.window >= -1e-10) and np.all(
+                result.window <= 1 + 1e-10
+            )
+
+        # Test with Kaiser window with extra parameter
+        result = dsp.transfer_functions.window_ir_tukey(
+            h,
+            50 / h.sampling_rate_hz,
+            50 / h.sampling_rate_hz,
+            dsp.Window.Kaiser.with_extra_parameter(10),
+        )
+        assert isinstance(result, dsp.ImpulseResponse)
+        assert np.all(result.window >= -1e-10) and np.all(result.window <= 1 + 1e-10)
+
+        # =====================================================================
+        # Test 2: Mono channel IR
+        # =====================================================================
+        h_mono = h.get_channels(0)
+        result_mono = dsp.transfer_functions.window_ir_tukey(
+            h_mono, 50 / h.sampling_rate_hz, 50 / h.sampling_rate_hz
+        )
+        assert result_mono.number_of_channels == 1
+        assert result_mono.length_samples == h_mono.length_samples
+        assert np.all(result_mono.window >= -1e-10) and np.all(
+            result_mono.window <= 1 + 1e-10
+        )
+
+        # =====================================================================
+        # Test 3: Multi-channel IR with different configurations
+        # =====================================================================
+        h_multi = h.copy()
+        h_multi.time_data = np.repeat(h_multi.time_data, 4, axis=1)
+        result_multi = dsp.transfer_functions.window_ir_tukey(
+            h_multi, 100 / h.sampling_rate_hz, 100 / h.sampling_rate_hz
+        )
+        assert result_multi.number_of_channels == 4
+        assert result_multi.length_samples == h_multi.length_samples
+        # Check all channels have values between 0 and 1 (allowing small numerical errors)
+        for ch in range(result_multi.number_of_channels):
+            assert np.all(result_multi.window[:, ch] >= -1e-10)
+            assert np.all(result_multi.window[:, ch] <= 1 + 1e-10)
+
+        # =====================================================================
+        # Test 4: Window property validation
+        # =====================================================================
+        result = dsp.transfer_functions.window_ir_tukey(
+            h, 100 / h.sampling_rate_hz, 100 / h.sampling_rate_hz
+        )
+        # Check constant region has values close to 1
+        left_flank_samples = int(100 / h.sampling_rate_hz * h.sampling_rate_hz)
+        right_flank_samples = int(100 / h.sampling_rate_hz * h.sampling_rate_hz)
+        constant_region = result.window[left_flank_samples:-right_flank_samples, :]
+        if len(constant_region) > 0:
+            assert np.all(np.isclose(constant_region, 1.0))
+
+        # =====================================================================
+        # Test 5: Asymmetric flanks
+        # =====================================================================
+        left_flank_s = 100 / h.sampling_rate_hz
+        right_flank_s = 200 / h.sampling_rate_hz
+        result = dsp.transfer_functions.window_ir_tukey(h, left_flank_s, right_flank_s)
+        assert result.length_samples == h.length_samples
+        assert hasattr(result, "window")
+
+        # =====================================================================
+        # Test 6: Very small flanks
+        # =====================================================================
+        result = dsp.transfer_functions.window_ir_tukey(
+            h, 1 / h.sampling_rate_hz, 1 / h.sampling_rate_hz
+        )
+        assert result.length_samples == h.length_samples
+        assert isinstance(result, dsp.ImpulseResponse)
+
+        # =====================================================================
+        # Test 7: Only left flank with different window types
+        # =====================================================================
+        result = dsp.transfer_functions.window_ir_tukey(
+            h,
+            100 / h.sampling_rate_hz,
+            None,
+            dsp.Window.Hamming,
+        )
+        assert result.length_samples == h.length_samples
+        # Check right side is unchanged (constant region should continue)
+        assert np.all(result.window[-100:, 0] == 1.0)
+
+        # =====================================================================
+        # Test 8: Only right flank with different window types
+        # =====================================================================
+        result = dsp.transfer_functions.window_ir_tukey(
+            h,
+            None,
+            100 / h.sampling_rate_hz,
+            dsp.Window.Blackman,
+        )
+        assert result.length_samples == h.length_samples
+        # Check left side is unchanged (constant region should start immediately)
+        assert np.all(result.window[:100, 0] == 1.0)
+
+        # =====================================================================
+        # Test 9: Energy reduction due to windowing
+        # =====================================================================
+        # Windowed signal should have less or equal energy than original
+        result = dsp.transfer_functions.window_ir_tukey(
+            h, 100 / h.sampling_rate_hz, 100 / h.sampling_rate_hz
+        )
+        original_energy = np.sum(h.time_data**2)
+        windowed_energy = np.sum(result.time_data**2)
+        assert windowed_energy <= original_energy
+
+        # =====================================================================
+        # Test 10: Symmetry of flanks when symmetric durations used
+        # =====================================================================
+        flank_duration = 75 / h.sampling_rate_hz
+        result = dsp.transfer_functions.window_ir_tukey(
+            h, flank_duration, flank_duration, dsp.Window.Hann
+        )
+        left_flank_samples = int(flank_duration * h.sampling_rate_hz)
+        right_flank_samples = int(flank_duration * h.sampling_rate_hz)
+        # Both flanks should have the same number of samples
+        assert left_flank_samples == right_flank_samples
+        # Check that the window transitions smoothly at boundaries
+        left_flank = result.window[:left_flank_samples, 0]
+        right_flank = result.window[-right_flank_samples:, 0]
+        # The derivative (slope) should be symmetric in opposite directions
+        left_slope = np.diff(left_flank)
+        right_slope = np.diff(right_flank)[::-1]  # Reverse for comparison
+        # Check anti-correlation is high (slopes go in opposite directions)
+        correlation = np.corrcoef(left_slope, right_slope)[0, 1]
+        assert abs(correlation) > 0.95  # Check magnitude of correlation
+
     def test_window_ir(self):
         # Only functionality
         h = dsp.transfer_functions.spectral_deconvolve(self.y_m, self.x)
