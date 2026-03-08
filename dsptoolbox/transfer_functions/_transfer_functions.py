@@ -66,7 +66,7 @@ def _window_this_ir_tukey(
     # Expected flank length
     flank_length_total = int((1 - constant_percentage) * total_length)
     left_flank_length = int(flank_length_total * 0.5 * left_to_right_flank_ratio)
-    right_flank_length = flank_length_total - left_flank_length
+    right_flank_length = max(flank_length_total - left_flank_length, 0)
 
     # Maximum
     impulse_index = int(np.argmax(np.abs(vec)))
@@ -75,7 +75,7 @@ def _window_this_ir_tukey(
         # If offset and impulse index are outside or inside
         padding_left = 0
         if impulse_index - offset_samples < 0:
-            pad_length = int(-(impulse_index - offset_samples))
+            pad_length = -int(impulse_index - offset_samples)
             vec = np.pad(vec, ((pad_length, 0)))
             impulse_index += pad_length  # Update to reflect new position after padding
             start_sample += pad_length
@@ -92,9 +92,8 @@ def _window_this_ir_tukey(
         else:
             vec = vec[impulse_index - left_flank_length :]
             start_sample = impulse_index - left_flank_length
-            impulse_index = (
-                left_flank_length  # Update to new position in trimmed vector
-            )
+            # Update to new position in trimmed vector
+            impulse_index = left_flank_length
 
         # If total length is larger than actual length
         padding_right = 0
@@ -130,6 +129,9 @@ def _window_this_ir_tukey(
         total_length - right_flank_length,
         total_length,
     ]
+    assert not np.any(
+        np.ediff1d(points) < 0
+    ), "A valid window could not be constructed with given parameters."
     window = _calculate_window(
         points, total_length, window_type, at_start=at_start, inverse=False
     )
