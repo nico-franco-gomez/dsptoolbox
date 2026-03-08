@@ -139,6 +139,15 @@ class FilterBank:
 
     @property
     def sampling_rate_hz(self) -> int | list[int]:
+        """Get the sampling rate(s) in Hz.
+
+        Returns
+        -------
+        int | list[int]
+            Sampling rate in Hz. Returns a single integer if
+            `same_sampling_rate` is True, otherwise a list of integers.
+
+        """
         return self.__sampling_rate_hz
 
     @sampling_rate_hz.setter
@@ -175,6 +184,14 @@ class FilterBank:
 
     @property
     def filters(self) -> list[Filter]:
+        """Get the list of filters in the FilterBank.
+
+        Returns
+        -------
+        list[Filter]
+            List of Filter objects contained in this FilterBank.
+
+        """
         return self.__filters
 
     @filters.setter
@@ -225,6 +242,14 @@ class FilterBank:
 
     @property
     def number_of_filters(self) -> int:
+        """Get the number of filters in the FilterBank.
+
+        Returns
+        -------
+        int
+            Number of Filter objects contained.
+
+        """
         return len(self.__filters)
 
     def __len__(self):
@@ -238,6 +263,15 @@ class FilterBank:
 
     @property
     def same_sampling_rate(self) -> bool:
+        """Get whether all filters share the same sampling rate.
+
+        Returns
+        -------
+        bool
+            True if all filters have the same sampling rate, False otherwise
+            (multirate system).
+
+        """
         return self.__same_sampling_rate
 
     @same_sampling_rate.setter

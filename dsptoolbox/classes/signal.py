@@ -207,8 +207,14 @@ class Signal(MultichannelData):
     # ======== Properties and setters =========================================
     @property
     def time_data(self) -> NDArray[np.float64]:
-        """Array with time samples. Its shape is always (time samples,
-        channels) and data type `np.float64`.
+        """Get the time domain signal data.
+
+        Returns
+        -------
+        NDArray[np.float64]
+            Time data as a 2D array with shape (time_samples, number_of_channels).
+            Real part of the signal. Use `time_data_imaginary` for the imaginary
+            part if it exists.
 
         """
         return self.__time_data
@@ -308,6 +314,14 @@ class Signal(MultichannelData):
 
     @property
     def sampling_rate_hz(self) -> int:
+        """Get the sampling rate in Hz.
+
+        Returns
+        -------
+        int
+            Sampling rate in Hz.
+
+        """
         return self.__sampling_rate_hz
 
     @sampling_rate_hz.setter
@@ -335,10 +349,26 @@ class Signal(MultichannelData):
 
     @property
     def length_seconds(self) -> float:
+        """Get the duration of the signal in seconds.
+
+        Returns
+        -------
+        float
+            Signal duration in seconds.
+
+        """
         return len(self) / self.sampling_rate_hz
 
     @property
     def length_samples(self) -> int:
+        """Get the number of samples in the signal.
+
+        Returns
+        -------
+        int
+            Number of time samples.
+
+        """
         return len(self)
 
     @property
@@ -559,6 +589,14 @@ class Signal(MultichannelData):
 
     @property
     def spectrum_scaling(self) -> SpectrumScaling:
+        """Get the spectrum scaling method.
+
+        Returns
+        -------
+        SpectrumScaling
+            The scaling method used for spectrum computation.
+
+        """
         """Selected scaling for the spectrum."""
         return self._spectrum_parameters["scaling"]
 
@@ -590,7 +628,14 @@ class Signal(MultichannelData):
 
     @property
     def spectrum_method(self) -> SpectrumMethod:
-        """Spectrum computation method."""
+        """Get the spectrum computation method.
+
+        Returns
+        -------
+        SpectrumMethod
+            The method used for spectrum computation (e.g., FFT, WelchPeriodogram).
+
+        """
         return self._spectrum_parameters["method"]
 
     @spectrum_method.setter
@@ -622,7 +667,15 @@ class Signal(MultichannelData):
 
     @property
     def spectrum_smoothing(self) -> float:
-        """Smoothing of spectrum in fraction of octaves."""
+        """Get the spectrum smoothing parameter in fraction of octaves.
+
+        Returns
+        -------
+        float
+            Smoothing parameter. 0 means no smoothing. Positive values indicate
+            smoothing in fractions of octaves.
+
+        """
         return self._spectrum_parameters["smoothing"]
 
     @spectrum_smoothing.setter

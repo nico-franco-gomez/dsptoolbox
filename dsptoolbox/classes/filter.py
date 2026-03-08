@@ -381,6 +381,14 @@ class Filter:
 
     @property
     def sampling_rate_hz(self):
+        """Get the sampling rate in Hz.
+
+        Returns
+        -------
+        int
+            Sampling rate in Hz.
+
+        """
         return self.__sampling_rate_hz
 
     @sampling_rate_hz.setter
@@ -404,6 +412,14 @@ class Filter:
 
     @property
     def warning_if_complex(self):
+        """Get the warning flag for complex-valued filters.
+
+        Returns
+        -------
+        bool
+            When True, a warning is issued if a complex-valued filter is used.
+
+        """
         return self.__warning_if_complex
 
     @warning_if_complex.setter
@@ -427,6 +443,14 @@ class Filter:
 
     @property
     def is_iir(self) -> bool:
+        """Check if the filter is an infinite impulse response (IIR) filter.
+
+        Returns
+        -------
+        bool
+            True if this is an IIR filter, False if it is FIR.
+
+        """
         if self.has_sos:
             return True
 
@@ -435,10 +459,27 @@ class Filter:
 
     @property
     def is_fir(self) -> bool:
+        """Check if the filter is a finite impulse response (FIR) filter.
+
+        Returns
+        -------
+        bool
+            True if this is an FIR filter, False if it is IIR.
+
+        """
         return not self.is_iir
 
     @property
     def ba(self) -> list[NDArray[np.float64 | np.complex128]]:
+        """Get the filter coefficients in ba (b, a) form.
+
+        Returns
+        -------
+        list[NDArray]
+            List containing [b, a] where b are numerator coefficients and
+            a are denominator coefficients.
+
+        """
         return self.__ba
 
     @ba.setter
@@ -489,6 +530,15 @@ class Filter:
 
     @property
     def sos(self) -> NDArray[np.float64 | np.complex128]:
+        """Get the filter coefficients in second-order sections (SOS) form.
+
+        Returns
+        -------
+        NDArray[np.float64 | np.complex128]
+            Second-order sections array with shape (n_sections, 6).
+            Each row contains [b0, b1, b2, a0, a1, a2] for one section.
+
+        """
         return self.__sos
 
     @sos.setter
@@ -514,14 +564,39 @@ class Filter:
 
     @property
     def has_sos(self) -> bool:
+        """Check if the filter has second-order sections (SOS) representation.
+
+        Returns
+        -------
+        bool
+            True if SOS representation is available, False otherwise.
+
+        """
         return hasattr(self, "sos")
 
     @property
     def has_zpk(self) -> bool:
+        """Check if the filter has zero-pole-gain (zpk) representation.
+
+        Returns
+        -------
+        bool
+            True if ZPK representation is available, False otherwise.
+
+        """
         return hasattr(self, "zpk")
 
     @property
     def zpk(self) -> list:
+        """Get the filter coefficients in zero-pole-gain (zpk) form.
+
+        Returns
+        -------
+        list
+            List containing [zeros, poles, gain] where zeros and poles are
+            array-like and gain is a scalar.
+
+        """
         return self.__zpk
 
     @zpk.setter
@@ -544,6 +619,14 @@ class Filter:
 
     @property
     def order(self):
+        """Get the order of the filter.
+
+        Returns
+        -------
+        int
+            Filter order (highest power of the transfer function).
+
+        """
         if hasattr(self, "zpk"):
             return max(len(self.zpk[0]), len(self.zpk[1]))
         if hasattr(self, "sos"):

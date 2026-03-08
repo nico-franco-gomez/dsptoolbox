@@ -137,6 +137,15 @@ class Spectrum(MultichannelData):
 
     @property
     def frequency_vector_hz(self):
+        """Get the frequency vector in Hz.
+
+        Returns
+        -------
+        NDArray[np.float64]
+            Frequency vector in Hz. Must be 1D, non-negative, and strictly
+            ascending.
+
+        """
         return self.__frequency_vector_hz
 
     @frequency_vector_hz.setter
@@ -171,18 +180,53 @@ class Spectrum(MultichannelData):
 
     @property
     def frequency_vector_type(self) -> FrequencySpacing:
+        """Get the type of frequency spacing in the frequency vector.
+
+        Returns
+        -------
+        FrequencySpacing
+            Frequency spacing type (Linear, Logarithmic, or Other).
+
+        """
         return self.__frequency_vector_type
 
     @property
     def number_frequency_bins(self) -> int:
+        """Get the number of frequency bins in the spectrum.
+
+        Returns
+        -------
+        int
+            Number of frequency bins (length of the frequency vector).
+
+        """
         return len(self.frequency_vector_hz)
 
     @property
     def length_frequency_bins(self) -> int:
+        """Get the number of frequency bins in the spectrum.
+
+        Returns
+        -------
+        int
+            Alias for `number_frequency_bins`. Number of frequency bins
+            (length of the frequency vector).
+
+        """
         return self.number_frequency_bins
 
     @property
     def spectral_data(self) -> NDArray[np.float64 | np.complex128]:
+        """Get the spectral data.
+
+        Returns
+        -------
+        NDArray[np.float64 | np.complex128]
+            Spectral data as a 2D array with shape (number_of_frequency_bins,
+            number_of_channels). Real values represent magnitude spectrum,
+            complex values represent complex spectrum.
+
+        """
         return self.__spectral_data
 
     @spectral_data.setter
@@ -226,6 +270,15 @@ class Spectrum(MultichannelData):
 
     @property
     def is_magnitude(self) -> bool:
+        """Check if the spectral data is in magnitude form.
+
+        Returns
+        -------
+        bool
+            True if the spectral data contains only real (magnitude) values,
+            False if it contains complex values.
+
+        """
         return np.isrealobj(self.__spectral_data)
 
     @property
@@ -236,12 +289,28 @@ class Spectrum(MultichannelData):
 
     @property
     def spectrum_type(self) -> SpectrumType:
+        """Get the spectrum type (Magnitude or Complex).
+
+        Returns
+        -------
+        SpectrumType
+            Spectrum type indicating whether the data is magnitude or complex.
+
+        """
         if self.is_magnitude:
             return SpectrumType.Magnitude
         return SpectrumType.Complex
 
     @property
     def has_coherence(self) -> bool:
+        """Check if coherence data has been set for this spectrum.
+
+        Returns
+        -------
+        bool
+            True if coherence attribute exists, False otherwise.
+
+        """
         return hasattr(self, "coherence")
 
     @staticmethod

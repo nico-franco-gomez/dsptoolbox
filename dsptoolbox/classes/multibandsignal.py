@@ -56,6 +56,15 @@ class MultiBandSignal:
     # ======== Properties and setters =========================================
     @property
     def sampling_rate_hz(self) -> int:
+        """Get the sampling rate(s) in Hz.
+
+        Returns
+        -------
+        int | list[int]
+            Sampling rate(s) in Hz. Returns a single integer if
+            `same_sampling_rate` is True, otherwise a list of integers.
+
+        """
         return self.__sampling_rate_hz
 
     @sampling_rate_hz.setter
@@ -94,6 +103,14 @@ class MultiBandSignal:
 
     @property
     def bands(self) -> list[Signal]:
+        """Get the list of signal bands.
+
+        Returns
+        -------
+        list[Signal]
+            List of Signal objects representing the bands.
+
+        """
         return self.__bands
 
     @bands.setter
@@ -167,6 +184,15 @@ class MultiBandSignal:
 
     @property
     def same_sampling_rate(self) -> bool:
+        """Get whether all bands share the same sampling rate.
+
+        Returns
+        -------
+        bool
+            True if all bands have the same sampling rate, False otherwise
+            (multirate system).
+
+        """
         return self.__same_sampling_rate
 
     @same_sampling_rate.setter
@@ -196,24 +222,70 @@ class MultiBandSignal:
 
     @property
     def number_of_bands(self) -> int:
+        """Get the number of bands in the MultiBandSignal.
+
+        Returns
+        -------
+        int
+            Number of Signal objects (bands) contained.
+
+        """
         return len(self.bands)
 
     @property
     def number_of_channels(self) -> int:
+        """Get the number of channels in each band.
+
+        Returns
+        -------
+        int
+            Number of channels. All bands must have the same number
+            of channels.
+
+        """
         return self.__number_of_channels
 
     @property
     def length_seconds(self) -> float:
+        """Get the duration of the signal in seconds.
+
+        Returns
+        -------
+        float
+            Duration in seconds. Returns 0.0 if there are no bands.
+            Only valid when `same_sampling_rate` is True.
+
+        """
         return self.bands[0].length_seconds if self.bands else 0.0
 
     @property
     def is_complex_signal(self) -> bool:
+        """Check if the signal has complex (imaginary) time data.
+
+        Returns
+        -------
+        bool
+            True if the bands contain complex time data, False otherwise.
+            Returns False if there are no bands.
+
+        """
         if not self.bands:
             return False
         return self.bands[0].is_complex_signal
 
     @property
     def length_samples(self) -> list[int] | int:
+        """Get the number of samples in each band.
+
+        Returns
+        -------
+        int | list[int]
+            If `same_sampling_rate` is True, returns a single integer
+            representing the number of samples in each band. If False,
+            returns a list of integers with the number of samples for
+            each band respectively. Returns 0 if there are no bands.
+
+        """
         if not self.bands:
             return 0
 
@@ -361,6 +433,15 @@ class MultiBandSignal:
 
     @property
     def metadata_str(self) -> str:
+        """Get a formatted string representation of the metadata.
+
+        Returns
+        -------
+        str
+            Formatted metadata string containing information about the
+            MultiBandSignal and all its bands.
+
+        """
         txt = ""
         md = self.metadata | self.info
         for k in md:
