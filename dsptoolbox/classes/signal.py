@@ -59,7 +59,7 @@ class Signal(MultichannelData):
         path: str | None = None,
         time_data=None,
         sampling_rate_hz: int | None = None,
-        constrain_amplitude: bool = True,
+        constrain_amplitude: bool = False,
         activate_cache: bool = False,
     ):
         """Signal class that saves time data, channel and sampling rate
@@ -81,7 +81,7 @@ class Signal(MultichannelData):
             normalization and the audio data is not constrained to [-1, 1].
             A warning is always shown when audio gets normalized and the used
             normalization factor is saved as `amplitude_scale_factor`.
-            Default: `True`.
+            Default: `False`.
         activate_cache : bool, optional
             When True, spectra, CSM and STFT will be cached. They will not
             be computed again if no parameters have changed. Set to False to
