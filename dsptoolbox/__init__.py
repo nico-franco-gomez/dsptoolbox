@@ -20,6 +20,7 @@ from .standard import (
     fade,
     normalize,
     true_peak_level,
+    lufs_integrated,
     crest_factor,
     resample,
     load_pkl_object,
@@ -91,6 +92,7 @@ __all__ = [
     "append_filterbanks",
     "resample",
     "crest_factor",
+    "lufs_integrated",
     "activity_detector",
     "normalize",
     "fractional_delay",
@@ -138,4 +140,4 @@ __all__ = [
     "FadeType",
 ]
 
-__version__ = "0.7.4"
+__version__ = "0.8"

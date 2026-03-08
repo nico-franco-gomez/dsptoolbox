@@ -2,6 +2,15 @@
 Here are methods considered as somewhat special or less common.
 """
 
+import numpy as np
+from numpy.typing import NDArray
+from scipy.signal.windows import get_window
+from scipy.fft import dct
+from scipy.signal import oaconvolve, resample_poly, lfilter
+import matplotlib.pyplot as plt
+from matplotlib.figure import Figure
+from matplotlib.axes import Axes
+
 from ..helpers.frequency_conversion import _hz2mel, _mel2hz
 from ..helpers.ar_estimation import _burg_ar_estimation, _yw_ar_estimation
 from ..classes.signal import Signal
@@ -34,17 +43,9 @@ from ..standard.enums import (
     FilterCoefficientsType,
     FilterPassType,
     FilterBankMode,
+    Window,
 )
 from ..standard.gain_and_level import rms
-
-import numpy as np
-from numpy.typing import NDArray
-from scipy.signal.windows import get_window
-from scipy.fft import dct
-from scipy.signal import oaconvolve, resample_poly, lfilter
-import matplotlib.pyplot as plt
-from matplotlib.figure import Figure
-from matplotlib.axes import Axes
 
 try:
     from seaborn import set_style
@@ -565,18 +566,14 @@ def istft(
     step = int((1 - parameters["overlap_percent"] / 100) * len(window))
 
     if parameters["padding"]:
-        td = _reconstruct_framed_signal(
-            td_framed, step_size=step, window=window
-        )
+        td = _reconstruct_framed_signal(td_framed, step_size=step, window=window)
         overlap = int(parameters["overlap_percent"] / 100 * len(window))
         td = td[overlap:-overlap, :]
     else:
         extra_window = np.zeros_like(td_framed[:, 0, :])[:, np.newaxis, :]
         td_framed = np.append(extra_window, td_framed, axis=1)
         td_framed = np.append(td_framed, extra_window, axis=1)
-        td = _reconstruct_framed_signal(
-            td_framed, step_size=step, window=window
-        )
+        td = _reconstruct_framed_signal(td_framed, step_size=step, window=window)
         td = td[step:-step, :]
 
     if original_signal is not None:
@@ -670,9 +667,7 @@ def chroma_stft(
 
     if plot_channel != -1:
         fig, ax = plt.subplots(1, 1)
-        image = ax.imshow(
-            chroma_stft[..., plot_channel], aspect="auto", origin="lower"
-        )
+        image = ax.imshow(chroma_stft[..., plot_channel], aspect="auto", origin="lower")
         ax.set_yticks(
             np.arange(12),
             ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"],
@@ -752,9 +747,7 @@ def cwt(
         wv = np.array(wavelet.get_wavelet(f, signal.sampling_rate_hz))
         wv /= np.abs(wv).sum()
 
-        scalogram[ind_f, ...] = oaconvolve(
-            td, wv[..., None], axes=0, mode="same"
-        )
+        scalogram[ind_f, ...] = oaconvolve(td, wv[..., None], axes=0, mode="same")
 
     if synchrosqueezed:
         scalogram = _squeeze_scalogram(
@@ -892,9 +885,7 @@ def vqt(
     # Gamma adaptation
     gamma = gamma / signal.sampling_rate_hz * mid_fs
 
-    kernels = _get_kernels_vqt(
-        q, highest_f, bins_per_octave, mid_fs, window, gamma
-    )
+    kernels = _get_kernels_vqt(q, highest_f, bins_per_octave, mid_fs, window, gamma)
 
     octs = octaves[1] - octaves[0] + 1
     cqt = np.zeros(
@@ -952,9 +943,7 @@ def stereo_mid_side(signal: Signal, forward: bool) -> Signal:
         Converted signal. Left (or mid) are always the first channel.
 
     """
-    assert (
-        signal.number_of_channels == 2
-    ), "Signal must have exactly two channels"
+    assert signal.number_of_channels == 2, "Signal must have exactly two channels"
     td = signal.time_data.copy()
     td[:, 0] = signal.time_data[:, 0] + signal.time_data[:, 1]
     td[:, 1] = signal.time_data[:, 0] - signal.time_data[:, 1]
@@ -1006,9 +995,7 @@ def laguerre(signal: Signal, warping_factor: float) -> Signal:
       Review. Journal of the Audio Engineering Society.
 
     """
-    assert (
-        np.abs(warping_factor) < 1.0
-    ), "Warping factor cannot be larger than 1."
+    assert np.abs(warping_factor) < 1.0, "Warping factor cannot be larger than 1."
 
     xx = signal.time_data[::-1, ...]  # Time reversal
     output = np.zeros_like(xx)
@@ -1214,9 +1201,9 @@ def lpc(
     order: int,
     window_length_samples: int,
     synthesize_encoded_signal: bool = False,
-    method_ar: str = "burg",
+    use_burg_method: bool = False,
     hop_size_samples: int | None = None,
-    window_type: str = "hann",
+    window_type: Window = Window.Hann,
 ):
     """Encode an input signal into its linear-predictive coding coefficients.
     This transforms the signal into source-filter representation and works
@@ -1234,15 +1221,15 @@ def lpc(
         When True, the encoded signal is synthesized and returned. To this end,
         white noise is always used as source. Pass False to avoid this
         computation. Default: False.
-    method_ar : str, {"yw", "burg"}, optional
-        Method to use for obtaining the LP coefficients. Choose from "yw"
-        (Yule-Walker) or "burg". Default: "burg".
+    use_burg_method : bool, optional
+        Method to use for obtaining the LP coefficients. When `True`, Burg's method is
+        used. Otherwise, Yule-Walker will be used. Default: `False`.
     hop_size_samples : int, None, optional
         Hop size to use from window to window. If None is passed, a hop size
         corresponding to 50% of the window length will be used. Default: None.
-    window_type : str, optional
+    window_type : Window, optional
         Window type to use. It is recommended that a window type that satifies
-        the COLA-condition with length and hop size is chosen. Default: "hann".
+        the COLA-condition with length and hop size is chosen. Default: Hann.
 
     Returns
     -------
@@ -1261,21 +1248,20 @@ def lpc(
     - https://ccrma.stanford.edu/~hskim08/lpc/
 
     """
-    method_ar = method_ar.lower()
-    assert method_ar in ("burg", "yw"), "AR method is not supported"
-
     # Get windowed signal
     if hop_size_samples is None:
         hop_size_samples = window_length_samples // 2
     td = _get_framed_signal(
         signal.time_data, window_length_samples, hop_size_samples, True
     )
-    window = get_window(window_type, window_length_samples, fftbins=True)
+    window = get_window(
+        window_type.to_scipy_format(), window_length_samples, fftbins=True
+    )
     td *= window[:, None, None]
 
     a, var = (
         _burg_ar_estimation(td, order)
-        if method_ar == "burg"
+        if use_burg_method
         else _yw_ar_estimation(td, order)
     )
 
@@ -1285,9 +1271,7 @@ def lpc(
     synthesized_signal = np.zeros_like(td)
     for channel in range(td.shape[2]):
         for n_window in range(td.shape[1]):
-            source = np.random.normal(
-                0.0, var[n_window, channel] ** 0.5, td.shape[0]
-            )
+            source = np.random.normal(0.0, var[n_window, channel] ** 0.5, td.shape[0])
             synthesized_signal[:, n_window, channel] = lfilter(
                 [1.0],
                 a[:, n_window, channel],
@@ -1346,7 +1330,8 @@ def dft(signal: Signal, frequency_vector_hz: NDArray[np.float64]):
 def spectrum_via_filterbank(
     signal: Signal,
     frequency_vector_hz: NDArray[np.float64],
-    bandwidth_hz: float,
+    bandwidth_octaves: float | None = None,
+    bandwidth_hz: float | None = None,
     order: int = 8,
     zero_phase: bool = False,
 ) -> Spectrum:
@@ -1361,6 +1346,8 @@ def spectrum_via_filterbank(
         Signal from which to extract the spectrum.
     frequency_vector_hz : NDArray[np.float64]
         Frequencies to use for the spectrum.
+    bandwidth_octaves : float, optional
+        The width of each band in octaves. .
     bandwidth_hz : float
         The width of each band in Hz.
     order : int, optional
@@ -1374,19 +1361,33 @@ def spectrum_via_filterbank(
         Magnitude spectrum
 
     """
-    half_bandwidth = bandwidth_hz / 2.0
+    assert (
+        bandwidth_octaves is not None or bandwidth_hz is not None
+    ), "At least one bandwidth parameter must be provided"
+    bands = []
+    if bandwidth_hz is not None:
+        assert bandwidth_hz > 0, "Bandwidth must be positive"
+        assert bandwidth_octaves is None, "Both bandwidths cannot be given"
+        half_bandwidth = bandwidth_hz / 2.0
+        for freq in frequency_vector_hz:
+            bands.append([freq - half_bandwidth, freq + half_bandwidth])
+    if bandwidth_octaves is not None:
+        assert bandwidth_octaves > 0, "Bandwidth must be positive"
+        assert bandwidth_hz is None, "Both bandwidths cannot be given"
+        half_bandwidth = bandwidth_octaves / 2.0
+        for freq in frequency_vector_hz:
+            factor = 2**half_bandwidth
+            bands.append([freq / factor, freq * factor])
     fb = FilterBank(
         [
             Filter.iir_filter(
                 order,
-                [freq - half_bandwidth, freq + half_bandwidth],
+                band,
                 FilterPassType.Bandpass,
                 signal.sampling_rate_hz,
             )
-            for freq in frequency_vector_hz
+            for band in bands
         ]
     )
-    mir = fb.filter_signal(
-        signal, FilterBankMode.Parallel, zero_phase=zero_phase
-    )
+    mir = fb.filter_signal(signal, FilterBankMode.Parallel, zero_phase=zero_phase)
     return Spectrum(frequency_vector_hz, rms(mir, False))

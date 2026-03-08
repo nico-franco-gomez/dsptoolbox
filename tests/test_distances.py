@@ -91,9 +91,7 @@ class TestDistancesModule:
     def test_snr(self):
         # Only functionality
         speech = dsp.Signal(
-            join(
-                os.path.dirname(__file__), "..", "example_data", "speech.flac"
-            )
+            join(os.path.dirname(__file__), "..", "example_data", "speech.flac")
         )
         noise = dsp.generators.noise(
             length_seconds=1.0,

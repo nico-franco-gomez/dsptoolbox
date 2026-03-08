@@ -105,6 +105,13 @@ def spectral_deconvolve(
     new_sig : `Signal`
         Deconvolved signal.
 
+    Notes
+    -----
+    - The deconvolution delivers an impulse response for the linear system that is not
+      constrained in amplitude since some linear systems might amplify an input
+      significantly and the true peak value should be preserved. This is also highly
+      dependent on the phase response.
+
     """
     assert (
         output.time_data.shape[0] == input.time_data.shape[0]
@@ -157,9 +164,7 @@ def spectral_deconvolve(
                     ]
                 )
             elif len(start_stop_hz) != 4:
-                raise ValueError(
-                    "start_stop_hz vector should have 2 or 4 values"
-                )
+                raise ValueError("start_stop_hz vector should have 2 or 4 values")
         else:
             start_stop_hz = None
 
@@ -171,7 +176,9 @@ def spectral_deconvolve(
             start_stop_hz=start_stop_hz,
             regularized=apply_regularization,
         )
-    new_sig = ImpulseResponse(None, new_time_data, output.sampling_rate_hz)
+    new_sig = ImpulseResponse(
+        None, new_time_data, output.sampling_rate_hz, constrain_amplitude=False
+    )
     if padding and keep_original_length:
         new_sig.time_data = _pad_trim(new_sig.time_data, original_length)
     return new_sig
@@ -247,9 +254,7 @@ def window_ir(
       parts of the window are set to 0 in order to make them visible.
 
     """
-    assert (
-        type(signal) is ImpulseResponse
-    ), "This is only valid for an impulse response"
+    assert type(signal) is ImpulseResponse, "This is only valid for an impulse response"
     assert (
         constant_percentage < 1 and constant_percentage >= 0
     ), "Constant percentage can not be larger than 1 or smaller than 0"
@@ -322,9 +327,7 @@ def window_ir_tukey(
       Window types.
 
     """
-    assert (
-        type(ir) is ImpulseResponse
-    ), "This is only valid for an impulse response"
+    assert type(ir) is ImpulseResponse, "This is only valid for an impulse response"
     assert (
         left_flank_s is not None or right_flank_s is not None
     ), "At least one flank length should be passed"
@@ -334,9 +337,7 @@ def window_ir_tukey(
     )
 
     left_flank_duration_samples = (
-        int(left_flank_s * ir.sampling_rate_hz + 0.5)
-        if left_flank_s is not None
-        else 0
+        int(left_flank_s * ir.sampling_rate_hz + 0.5) if left_flank_s is not None else 0
     )
     right_flank_duration_samples = (
         int(right_flank_s * ir.sampling_rate_hz + 0.5)
@@ -344,8 +345,7 @@ def window_ir_tukey(
         else 0
     )
     assert (
-        left_flank_duration_samples + right_flank_duration_samples
-        <= ir.length_samples
+        left_flank_duration_samples + right_flank_duration_samples <= ir.length_samples
     ), "Flanks overlap given the current IR length"
 
     window = np.ones((ir.length_samples, 1))
@@ -398,9 +398,7 @@ def window_centered_ir(
       given length.
 
     """
-    assert (
-        type(signal) is ImpulseResponse
-    ), "This is only valid for an impulse response"
+    assert type(signal) is ImpulseResponse, "This is only valid for an impulse response"
 
     new_time_data = np.zeros((total_length_samples, signal.number_of_channels))
     start_positions_samples = np.zeros(signal.number_of_channels, dtype=int)
@@ -411,9 +409,7 @@ def window_centered_ir(
             new_time_data[:, n],
             window[:, n],
             start_positions_samples[n],
-        ) = _window_this_ir(
-            signal.time_data[:, n], total_length_samples, window_type
-        )
+        ) = _window_this_ir(signal.time_data[:, n], total_length_samples, window_type)
 
     new_sig = signal.copy_with_new_time_data(new_time_data)
     new_sig.set_window(window)
@@ -478,9 +474,7 @@ def compute_transfer_function(
     spectrum_parameters.pop("smoothing")
     spectrum_parameters.pop("pad_to_fast_length")
 
-    coherence = np.zeros(
-        (window_length_samples // 2 + 1, output.number_of_channels)
-    )
+    coherence = np.zeros((window_length_samples // 2 + 1, output.number_of_channels))
     tf = np.zeros(
         (window_length_samples // 2 + 1, output.number_of_channels),
         dtype=np.complex128,
@@ -574,9 +568,7 @@ def average_irs(
         Averaged impulse response.
 
     """
-    assert (
-        type(signal) is ImpulseResponse
-    ), "This is only valid for an impulse response"
+    assert type(signal) is ImpulseResponse, "This is only valid for an impulse response"
     assert (
         signal.number_of_channels > 1
     ), "Signal has only one channel so no meaningful averaging can be done"
@@ -600,9 +592,7 @@ def average_irs(
         new_sp = new_mag * np.exp(1j * new_pha)
 
         # New time data and signal object
-        new_time_data = np.fft.irfft(
-            new_sp[..., None], n=signal.length_samples, axis=0
-        )
+        new_time_data = np.fft.irfft(new_sp[..., None], n=signal.length_samples, axis=0)
     else:
         latencies = find_ir_latency(signal)
         channel_to_follow = np.argmax(latencies)
@@ -653,22 +643,16 @@ def min_phase_from_mag(
     """
     # Use very conservative estimate for most cases
     delta_f_hz = (
-        0.5
-        if ir_length_samples is None
-        else sampling_rate_hz / ir_length_samples
+        0.5 if ir_length_samples is None else sampling_rate_hz / ir_length_samples
     )
 
     # Frequency vector
     f_vec, delta_f_hz, original_length_time_data = (
-        _get_frequency_vector_with_frequency_resolution(
-            delta_f_hz, sampling_rate_hz
-        )
+        _get_frequency_vector_with_frequency_resolution(delta_f_hz, sampling_rate_hz)
     )
 
     # Get interpolated magnitude spectrum
-    mag_spectrum = spectrum.get_interpolated_spectrum(
-        f_vec, SpectrumType.Magnitude
-    )
+    mag_spectrum = spectrum.get_interpolated_spectrum(f_vec, SpectrumType.Magnitude)
 
     phase = _minimum_phase(
         mag_spectrum, False, True, original_length_time_data % 2 == 1
@@ -739,15 +723,11 @@ def lin_phase_from_mag(
 
     # Frequency vector
     f_vec, delta_f_hz, original_length_time_data = (
-        _get_frequency_vector_with_frequency_resolution(
-            delta_f_hz, sampling_rate_hz
-        )
+        _get_frequency_vector_with_frequency_resolution(delta_f_hz, sampling_rate_hz)
     )
 
     # Get interpolated magnitude spectrum
-    mag_spectrum = spectrum.get_interpolated_spectrum(
-        f_vec, SpectrumType.Magnitude
-    )
+    mag_spectrum = spectrum.get_interpolated_spectrum(f_vec, SpectrumType.Magnitude)
 
     if check_causality or minimum_group_delay:
         assert (
@@ -770,13 +750,10 @@ def lin_phase_from_mag(
                     + f"{group_delay_to_use_s * 1000} ms for "
                     + f"channel {n}"
                 )
-            group_delay_to_use_s = (
-                np.ones(spectrum.number_of_channels) * group_delay_s
-            )
+            group_delay_to_use_s = np.ones(spectrum.number_of_channels) * group_delay_s
 
         if np.any(
-            group_delay_to_use_s * 2
-            > original_length_time_data / sampling_rate_hz
+            group_delay_to_use_s * 2 > original_length_time_data / sampling_rate_hz
         ):
             # New resolution
             delta_f_hz = 1.0 / (max(group_delay_to_use_s) * 2) * 0.9
@@ -789,9 +766,7 @@ def lin_phase_from_mag(
                 f_vec, SpectrumType.Magnitude
             )
     else:
-        group_delay_to_use_s = (
-            np.ones(spectrum.number_of_channels) * group_delay_s
-        )
+        group_delay_to_use_s = np.ones(spectrum.number_of_channels) * group_delay_s
 
     # New spectrum
     time_data = np.fft.irfft(
@@ -854,22 +829,16 @@ def min_phase_ir(
       REAL CEPSTRUM.
 
     """
-    assert (
-        type(sig) is ImpulseResponse
-    ), "This is only valid for an impulse response"
+    assert type(sig) is ImpulseResponse, "This is only valid for an impulse response"
     assert padding_factor > 1, "Padding factor should be at least 1"
     assert alpha <= 1.0 and alpha > 0.0, "Alpha must be in the range ]0, 1]"
     new_time_data = sig.time_data.copy()
 
     if alpha != 1.0:
-        new_time_data *= (alpha ** (np.arange(new_time_data.shape[0])))[
-            :, None
-        ]
+        new_time_data *= (alpha ** (np.arange(new_time_data.shape[0])))[:, None]
 
     if use_real_cepstrum:
-        new_time_data = _min_phase_ir_from_real_cepstrum(
-            new_time_data, padding_factor
-        )
+        new_time_data = _min_phase_ir_from_real_cepstrum(new_time_data, padding_factor)
     else:
         length_fft = next_fast_length_fft(
             max(
@@ -884,9 +853,7 @@ def min_phase_ir(
             )[: new_time_data.shape[0]]
 
     if alpha != 1.0:
-        new_time_data *= (alpha ** (-np.arange(new_time_data.shape[0])))[
-            :, None
-        ]
+        new_time_data *= (alpha ** (-np.arange(new_time_data.shape[0])))[:, None]
 
     return sig.copy_with_new_time_data(new_time_data[: len(sig)])
 
@@ -958,9 +925,7 @@ def group_delay(
             )
 
     if smoothing != 0:
-        group_delays = _fractional_octave_smoothing(
-            group_delays, None, smoothing
-        )
+        group_delays = _fractional_octave_smoothing(group_delays, None, smoothing)
 
     return f, group_delays
 
@@ -995,17 +960,11 @@ def minimum_phase(
         Minimum phases as matrix with shape (phase, channel).
 
     """
-    assert (
-        type(signal) is ImpulseResponse
-    ), "This is only valid for an impulse response"
+    assert type(signal) is ImpulseResponse, "This is only valid for an impulse response"
 
     if not use_real_cepstrum:
-        f = np.fft.rfftfreq(
-            signal.time_data.shape[0], d=1 / signal.sampling_rate_hz
-        )
-        min_phases = np.zeros(
-            (len(f), signal.number_of_channels), dtype="float"
-        )
+        f = np.fft.rfftfreq(signal.time_data.shape[0], d=1 / signal.sampling_rate_hz)
+        min_phases = np.zeros((len(f), signal.number_of_channels), dtype="float")
         for n in range(signal.number_of_channels):
             temp = min_phase_scipy(
                 signal.time_data[:, n],
@@ -1059,9 +1018,7 @@ def minimum_group_delay(
     - https://www.roomeqwizard.com/help/help_en-GB/html/minimumphase.html
 
     """
-    assert (
-        type(signal) is ImpulseResponse
-    ), "This is only valid for an impulse response"
+    assert type(signal) is ImpulseResponse, "This is only valid for an impulse response"
     f, min_phases = minimum_phase(signal, padding_factor=padding_factor)
     min_gd = _group_delay_direct(min_phases, f[1] - f[0])
     if smoothing != 0:
@@ -1104,9 +1061,7 @@ def excess_group_delay(
     - No zero-padding is performed when computing the minimum-phase equivalent
 
     """
-    assert (
-        type(signal) is ImpulseResponse
-    ), "This is only valid for an impulse response"
+    assert type(signal) is ImpulseResponse, "This is only valid for an impulse response"
     f_min, min_gd = minimum_group_delay(signal, smoothing=0, padding_factor=1)
     f, gd = group_delay(
         signal,
@@ -1175,9 +1130,7 @@ def combine_ir_with_dirac(
       added dirac impulse has time to grow smoothly.
 
     """
-    assert (
-        type(ir) is ImpulseResponse
-    ), "This is only valid for an impulse response"
+    assert type(ir) is ImpulseResponse, "This is only valid for an impulse response"
     if normalization is not None and type(normalization) is str:
         normalization = normalization.lower()
         assert normalization in (
@@ -1201,21 +1154,15 @@ def combine_ir_with_dirac(
     for ch in range(ir.number_of_channels):
         delay_seconds = latencies_samples[ch] / ir.sampling_rate_hz
         imp_ch = imp.get_channels(ch)
-        imp_ch = fractional_delay(
-            imp_ch, delay_seconds=delay_seconds, keep_length=True
-        )
+        imp_ch = fractional_delay(imp_ch, delay_seconds=delay_seconds, keep_length=True)
         imp = append_signals([imp, imp_ch])
 
         # Save polarity for each channel using sample prior to peak
-        polarity[ch] *= np.sign(
-            ir.time_data[int(latencies_samples[ch] + 0.5), ch]
-        )
+        polarity[ch] *= np.sign(ir.time_data[int(latencies_samples[ch] + 0.5), ch])
     imp.remove_channel(0)
 
     # Filter crossover for both
-    fb = linkwitz_riley_crossovers(
-        [crossover_frequency], order, ir.sampling_rate_hz
-    )
+    fb = linkwitz_riley_crossovers([crossover_frequency], order, ir.sampling_rate_hz)
     ir_multi = fb.filter_signal(ir, zero_phase=True)
     imp_multi = fb.filter_signal(imp, zero_phase=True)
     if take_lower_band:
@@ -1239,9 +1186,7 @@ def combine_ir_with_dirac(
         td_imp *= from_db(normalization, True)
 
     # Combine
-    combined_ir = ir.copy_with_new_time_data(
-        td_ir + td_imp * polarity[None, ...]
-    )
+    combined_ir = ir.copy_with_new_time_data(td_ir + td_imp * polarity[None, ...])
     return normalize(combined_ir, 0.0)
 
 
@@ -1274,9 +1219,7 @@ def ir_to_filter(
         each channel.
 
     """
-    assert (
-        type(signal) is ImpulseResponse
-    ), "This is only valid for an impulse response"
+    assert type(signal) is ImpulseResponse, "This is only valid for an impulse response"
     phase_mode = phase_mode.lower()
     assert phase_mode in (
         "direct",
@@ -1386,9 +1329,7 @@ def window_frequency_dependent(
       approach, but its frequency resolution will not be linear.
 
     """
-    assert (
-        type(ir) is ImpulseResponse
-    ), "This is only valid for an impulse response"
+    assert type(ir) is ImpulseResponse, "This is only valid for an impulse response"
     assert end_window_value_db < 0.0, "Window ends must be less than 0 dB"
 
     end_window_value = from_db(end_window_value_db, True)
@@ -1397,9 +1338,7 @@ def window_frequency_dependent(
     # Avoid 0. frequency
     f = np.fft.rfftfreq(ir.length_samples, 1 / fs)[1:]
     cycles_per_freq_samples = np.round(fs / f * cycles).astype(int)
-    spec = np.zeros(
-        (len(f), ir.number_of_channels), dtype=np.complex128, order="C"
-    )
+    spec = np.zeros((len(f), ir.number_of_channels), dtype=np.complex128, order="C")
 
     # Alpha such that window is exactly end_window_value after the number of
     # required samples for each frequency
@@ -1418,9 +1357,7 @@ def window_frequency_dependent(
         np.complex128, order="C"
     )
 
-    freqs_normalized = (f * (ir.length_samples / fs)).astype(
-        np.complex128, order="C"
-    )
+    freqs_normalized = (f * (ir.length_samples / fs)).astype(np.complex128, order="C")
     dft_factor = np.repeat(
         -2j
         * np.pi
@@ -1461,9 +1398,7 @@ def find_ir_latency(
         Array with the position of each channel's latency in samples.
 
     """
-    assert (
-        type(ir) is ImpulseResponse
-    ), "This is only valid for an impulse response"
+    assert type(ir) is ImpulseResponse, "This is only valid for an impulse response"
     if compare_to_min_phase_ir:
         min_ir = min_phase_ir(ir)
         return latency(ir, min_ir, 1)[0]
@@ -1512,15 +1447,11 @@ def harmonics_from_chirp_ir(
       not be checked in this function.
 
     """
-    assert (
-        type(ir) is ImpulseResponse
-    ), "This is only valid for an impulse response"
+    assert type(ir) is ImpulseResponse, "This is only valid for an impulse response"
     assert (
         offset_percentage < 1 and offset_percentage >= 0
     ), "Offset must be smaller than one"
-    assert (
-        ir.number_of_channels == 1
-    ), "Only an IR with a single channel is supported"
+    assert ir.number_of_channels == 1, "Only an IR with a single channel is supported"
 
     # Get offsets
     td = ir.time_data
@@ -1529,9 +1460,7 @@ def harmonics_from_chirp_ir(
 
     # Get times of each harmonic
     ts = _get_harmonic_times(chirp_range_hz, chirp_length_s, n_harmonics + 1)
-    time_harmonics_samples = len(td) + (ts * ir.sampling_rate_hz + 0.5).astype(
-        int
-    )
+    time_harmonics_samples = len(td) + (ts * ir.sampling_rate_hz + 0.5).astype(int)
 
     time_harmonics_samples = np.insert(time_harmonics_samples, 0, len(td))
 
@@ -1648,9 +1577,7 @@ def harmonic_distortion_analysis(
 
         # Trim and window IR
         ir2 = ir.copy()
-        start, stop, _ = _trim_ir(
-            ir2.time_data[:, 0], ir.sampling_rate_hz, 10e-3
-        )
+        start, stop, _ = _trim_ir(ir2.time_data[:, 0], ir.sampling_rate_hz, 10e-3)
         ir2.time_data = ir2.time_data[start:stop]
         ir2 = window_ir(ir2, len(ir2), constant_percentage=0.9)[0]
         ir2._spectrum_parameters["smoothing"] = smoothing
@@ -1686,9 +1613,7 @@ def harmonic_distortion_analysis(
 
     for i in range(len(harm)):
         if not passed_harmonics:
-            harm[i] = window_ir(
-                harm[i], len(harm[i]), constant_percentage=0.9
-            )[0]
+            harm[i] = window_ir(harm[i], len(harm[i]), constant_percentage=0.9)[0]
         harm[i].set_spectrum_parameters(**ir2._spectrum_parameters)
         f, sp = harm[i].get_spectrum()
 
@@ -1700,9 +1625,7 @@ def harmonic_distortion_analysis(
         f /= i + 2
 
         # Get power
-        sp_power = (
-            sp.squeeze() if quadratic_spectrum else np.abs(sp.squeeze()) ** 2
-        )
+        sp_power = sp.squeeze() if quadratic_spectrum else np.abs(sp.squeeze()) ** 2
 
         # Save in dictionary
         d[f"{i + 2}"] = Spectrum(f, sp**0.5 if quadratic_spectrum else sp)
@@ -1827,9 +1750,7 @@ def trim_ir(
     """
     # Pass a large offset that won't trim the start
     start_offset_s = (
-        len(ir) / ir.sampling_rate_hz
-        if start_offset_s is None
-        else start_offset_s
+        len(ir) / ir.sampling_rate_hz if start_offset_s is None else start_offset_s
     )
     assert start_offset_s >= 0, "Offset must be at least 0"
 
@@ -1919,9 +1840,7 @@ def complex_smoothing(
             output_sp = _complex_smoothing_backend(
                 octave_fraction, sp, output_sp, f, window_values
             )
-            output_sp = np.real(output_sp) ** 0.5 * np.exp(
-                1j * np.imag(output_sp)
-            )
+            output_sp = np.real(output_sp) ** 0.5 * np.exp(1j * np.imag(output_sp))
         case SmoothingDomain.Power:
             sp_modified = (np.abs(sp) ** 2.0).astype(np.complex128)
             output_sp = _complex_smoothing_backend(
@@ -1951,9 +1870,7 @@ def complex_smoothing(
             )
 
             # Combine power with phase of complex smoothing
-            output_sp = np.real(output2) ** 0.5 * np.exp(
-                1j * np.angle(output_sp)
-            )
+            output_sp = np.real(output2) ** 0.5 * np.exp(1j * np.angle(output_sp))
         case _:
             raise ValueError("Invalid smoothing domain")
     return Spectrum(f, output_sp)

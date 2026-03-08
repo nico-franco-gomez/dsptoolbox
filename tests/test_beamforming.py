@@ -116,9 +116,7 @@ class TestBeamformingModule:
 
         # Multiple sources
         sp = dsp.Signal(
-            join(
-                os.path.dirname(__file__), "..", "example_data", "speech.flac"
-            )
+            join(os.path.dirname(__file__), "..", "example_data", "speech.flac")
         )
         sp = dsp.pad_trim(sp, 20_000)
         ns = dsp.generators.noise(
@@ -200,9 +198,7 @@ class TestBeamformingModule:
         ma = dsp.beamforming.MicArray(ma)
         # Signal (simulated)
         sp = dsp.Signal(
-            join(
-                os.path.dirname(__file__), "..", "example_data", "speech.flac"
-            )
+            join(os.path.dirname(__file__), "..", "example_data", "speech.flac")
         )
         sp = dsp.pad_trim(sp, 20_000)
         ns = dsp.generators.noise(

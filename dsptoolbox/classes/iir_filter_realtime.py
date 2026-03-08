@@ -60,9 +60,7 @@ class IIRFilter(RealtimeFilter):
         y = self.b[0] * x + self.state[0, channel]
         for i in range(self.order - 1):
             self.state[i, channel] = (
-                x * self.b[i + 1]
-                - y * self.a[i + 1]
-                + self.state[i + 1, channel]
+                x * self.b[i + 1] - y * self.a[i + 1] + self.state[i + 1, channel]
             )
         self.state[-1, channel] = x * self.b[-1] - y * self.a[-1]
         return y

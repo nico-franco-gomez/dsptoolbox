@@ -160,7 +160,7 @@ def chirp(
     Parameters
     ----------
     sampling_rate_hz : int
-        Sampling rate in Hz. Default: `None`.
+        Sampling rate in Hz.
     type_of_chirp : ChirpType, optional
         Type of chirp. Default: Logarithmic.
     range_hz : array-like with length 2
@@ -202,9 +202,7 @@ def chirp(
 
     """
     if range_hz is not None:
-        assert (
-            len(range_hz) == 2
-        ), "range_hz has to contain exactly two frequencies"
+        assert len(range_hz) == 2, "range_hz has to contain exactly two frequencies"
         range_hz = sorted(range_hz)
         assert (
             range_hz[0] > 0
@@ -231,16 +229,12 @@ def chirp(
             freqs = (range_hz[0] + k / 2 * t) * 2 * np.pi
             chirp_td = np.sin(freqs * t + phase_offset)
         case ChirpType.Logarithmic:
-            k = np.exp(
-                (np.log(range_hz[1]) - np.log(range_hz[0])) / length_seconds
-            )
+            k = np.exp((np.log(range_hz[1]) - np.log(range_hz[0])) / length_seconds)
             chirp_td = np.sin(
                 2 * np.pi * range_hz[0] / np.log(k) * (k**t - 1) + phase_offset
             )
         case ChirpType.SyncLog:
-            chirp_td, T = _sync_log_chirp(
-                range_hz, length_seconds, sampling_rate_hz
-            )
+            chirp_td, T = _sync_log_chirp(range_hz, length_seconds, sampling_rate_hz)
         case _:
             raise ValueError("Unsupported chirp type")
 
@@ -315,9 +309,7 @@ def dirac(
     assert sampling_rate_hz > 0, "Sampling rate can only be positive"
     td = np.zeros((length_samples, number_of_channels))
     for n in range(number_of_channels):
-        td[:, n] = _impulse(
-            length_samples=length_samples, delay_samples=delay_samples
-        )
+        td[:, n] = _impulse(length_samples=length_samples, delay_samples=delay_samples)
     imp = ImpulseResponse(None, td, sampling_rate_hz)
     return imp
 
@@ -391,9 +383,7 @@ def oscillator(
     ), "Cutoff frequency must be between 0 and the nyquist frequency!"
 
     if uncorrelated:
-        phase_shift = np.random.uniform(-np.pi, np.pi, (number_of_channels))[
-            None, ...
-        ]
+        phase_shift = np.random.uniform(-np.pi, np.pi, (number_of_channels))[None, ...]
     else:
         phase_shift = np.zeros((number_of_channels))[None, ...]
 
@@ -402,18 +392,11 @@ def oscillator(
     k = 1
     match mode:
         case WaveForm.Harmonic:
-            td = np.sin(
-                2 * np.pi * frequency_hz / sampling_rate_hz * n + phase_shift
-            )
+            td = np.sin(2 * np.pi * frequency_hz / sampling_rate_hz * n + phase_shift)
         case WaveForm.Square:
             while (2 * k - 1) * frequency_hz < harmonic_cutoff_hz:
                 td += np.sin(
-                    np.pi
-                    * 2
-                    * (2 * k - 1)
-                    * frequency_hz
-                    / sampling_rate_hz
-                    * n
+                    np.pi * 2 * (2 * k - 1) * frequency_hz / sampling_rate_hz * n
                     + phase_shift
                 ) / (2 * k - 1)
                 k += 1
@@ -434,12 +417,7 @@ def oscillator(
             while (2 * k - 1) * frequency_hz < harmonic_cutoff_hz:
                 td += (
                     np.sin(
-                        np.pi
-                        * 2
-                        * (2 * k - 1)
-                        * frequency_hz
-                        / sampling_rate_hz
-                        * n
+                        np.pi * 2 * (2 * k - 1) * frequency_hz / sampling_rate_hz * n
                         + phase_shift
                     )
                     / (2 * k - 1) ** 2
@@ -450,9 +428,7 @@ def oscillator(
         case _:
             raise ValueError("Unsupported wave form")
 
-    td = _normalize(
-        td, peak_level_dbfs, peak_normalization=True, per_channel=True
-    )
+    td = _normalize(td, peak_level_dbfs, peak_normalization=True, per_channel=True)
 
     if fade is not None:
         fade_length = 0.05 * length_seconds

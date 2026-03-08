@@ -31,9 +31,7 @@ def find_nearest_points_index_in_vector(points, vector) -> NDArray[np.int_]:
     return indexes
 
 
-def find_frequencies_above_threshold(
-    spec, f, threshold_db, normalize=True
-) -> list:
+def find_frequencies_above_threshold(spec, f, threshold_db, normalize=True) -> list:
     """Finds frequencies above a certain threshold in a given (amplitude)
     spectrum."""
     denum_db = to_db(spec, True)
@@ -43,9 +41,7 @@ def find_frequencies_above_threshold(
     return [freqs[0], freqs[-1]]
 
 
-def _toeplitz(
-    h: NDArray[np.float64], length_of_input: int
-) -> NDArray[np.float64]:
+def _toeplitz(h: NDArray[np.float64], length_of_input: int) -> NDArray[np.float64]:
     """Creates a toeplitz matrix from a system response given an input length.
 
     Parameters
@@ -90,9 +86,7 @@ def _check_format_in_path(path: str, desired_format: str) -> str:
     """
     format = path.split(sep)[-1].split(".")
     if len(format) != 1:
-        assert (
-            format[-1] == desired_format
-        ), f"{format[-1]} is not the desired format"
+        assert format[-1] == desired_format, f"{format[-1]} is not the desired format"
     else:
         path += f".{desired_format}"
     return path
@@ -150,9 +144,7 @@ def _euclidean_distance_matrix(x: NDArray[np.float64], y: NDArray[np.float64]):
         Euclidean distance matrix with shape (Point x, Point y).
 
     """
-    assert (
-        x.ndim == 2 and y.ndim == 2
-    ), "Inputs must have exactly two dimensions"
+    assert x.ndim == 2 and y.ndim == 2, "Inputs must have exactly two dimensions"
     assert x.shape[1] == y.shape[1], "Dimensions do not match"
     return np.sqrt(
         np.sum(x**2, axis=1, keepdims=True)
@@ -183,9 +175,7 @@ def _get_fractional_octave_bandwidth(
     """
     if fraction == 0:
         return np.array([f_c, f_c])
-    return np.array(
-        [f_c * 2 ** (-1 / fraction / 2), f_c * 2 ** (1 / fraction / 2)]
-    )
+    return np.array([f_c * 2 ** (-1 / fraction / 2), f_c * 2 ** (1 / fraction / 2)])
 
 
 def _compute_number_frames(
@@ -241,9 +231,7 @@ def _pad_trim(
     elif vector.ndim > 2:
         vector = vector.squeeze()
         if vector.ndim > 2:
-            raise ValueError(
-                "This function is only implemented for 1D and 2D arrays"
-            )
+            raise ValueError("This function is only implemented for 1D and 2D arrays")
     type_of_data = vector.dtype
     diff = desired_length - vector.shape[axis]
     if axis == 1:

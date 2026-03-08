@@ -13,7 +13,7 @@ from .enums import SpectrumType
 
 def append_signals(
     signals: list[Signal] | list[MultiBandSignal],
-    padding_trimming: bool = True,
+    allow_padding_trimming: bool = True,
     at_end: bool = True,
 ) -> Signal | MultiBandSignal:
     """Append all channels of the signals in the list. If their lengths are not
@@ -24,13 +24,13 @@ def append_signals(
     ----------
     signals : list[Signal] or list[MultiBandSignal]
         First signal.
-    padding_trimming : bool, optional
+    allow_padding_trimming : bool, optional
         If the signals do not have the same length, all are trimmed or
         zero-padded to match the first signal's length, when this is True.
         Otherwise, an error will be raised if the lengths do not match.
         Default: `True`.
     at_end : bool, optional
-        When `True` and `padding_trimming=True`, padding or trimming is done
+        When `True` and `allow_padding_trimming=True`, padding or trimming is done
         at the end of the signals. Otherwise, it is done in the beginning.
         Default: `True`.
 
@@ -51,10 +51,9 @@ def append_signals(
             assert (
                 s.sampling_rate_hz == signals[0].sampling_rate_hz
             ), "Sampling rates do not match"
-            if not padding_trimming:
+            if not allow_padding_trimming:
                 assert len(s) == len(signals[0]), (
-                    "Lengths do not match and padding or trimming "
-                    + "is not activated"
+                    "Lengths do not match and padding or trimming " + "is not activated"
                 )
             complex_data |= s.is_complex_signal
 
@@ -71,8 +70,7 @@ def append_signals(
                 if s.is_complex_signal:
                     td[
                         :,
-                        current_channel : current_channel
-                        + s.number_of_channels,
+                        current_channel : current_channel + s.number_of_channels,
                     ] = _pad_trim(
                         s.time_data + 1j * s.time_data_imaginary,
                         total_length,
@@ -81,17 +79,16 @@ def append_signals(
                 else:
                     td[
                         :,
-                        current_channel : current_channel
-                        + s.number_of_channels,
+                        current_channel : current_channel + s.number_of_channels,
                     ] = _pad_trim(
                         s.time_data.astype(np.complex128),
                         total_length,
                         in_the_end=at_end,
                     )
             else:
-                td[
-                    :, current_channel : current_channel + s.number_of_channels
-                ] = _pad_trim(s.time_data, total_length, in_the_end=at_end)
+                td[:, current_channel : current_channel + s.number_of_channels] = (
+                    _pad_trim(s.time_data, total_length, in_the_end=at_end)
+                )
             current_channel += s.number_of_channels
         new_sig = signals[0].copy()
         new_sig.time_data = td
@@ -107,10 +104,9 @@ def append_signals(
             assert (
                 s.sampling_rate_hz == signals[0].sampling_rate_hz
             ), "Sampling rates do not match"
-            if not padding_trimming:
+            if not allow_padding_trimming:
                 assert s.length_samples == signals[0].length_samples, (
-                    "Lengths do not match and padding or trimming "
-                    + "is not activated"
+                    "Lengths do not match and padding or trimming " + "is not activated"
                 )
             assert (
                 s.number_of_bands == signals[0].number_of_bands
@@ -122,16 +118,14 @@ def append_signals(
             new_band = signals[0].bands[0].copy()
             for s in signals_without_first:
                 new_band = append_signals(
-                    [new_band, s.bands[n]], padding_trimming, at_end
+                    [new_band, s.bands[n]], allow_padding_trimming, at_end
                 )
             new_bands.append(new_band)
         return MultiBandSignal(
             new_bands, same_sampling_rate=signals[0].same_sampling_rate
         )
     else:
-        raise ValueError(
-            "Signals have to be type of type Signal or MultiBandSignal"
-        )
+        raise ValueError("Signals have to be type of type Signal or MultiBandSignal")
 
 
 def append_filterbanks(fbs: list[FilterBank]) -> FilterBank:
@@ -201,15 +195,9 @@ def append_spectra(
 
     ch_ind = 0
     for s in spectra:
-        spec[:, ch_ind : ch_ind + s.number_of_channels] = (
-            s.get_interpolated_spectrum(
-                freqs,
-                (
-                    SpectrumType.Complex
-                    if complex_append
-                    else SpectrumType.Magnitude
-                ),
-            )
+        spec[:, ch_ind : ch_ind + s.number_of_channels] = s.get_interpolated_spectrum(
+            freqs,
+            (SpectrumType.Complex if complex_append else SpectrumType.Magnitude),
         )
         ch_ind += s.number_of_channels
 

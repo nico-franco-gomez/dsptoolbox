@@ -92,8 +92,7 @@ class LatticeLadderFilter(RealtimeFilter):
             self.sos_filtering = False
             if c_coefficients is not None and k_coefficients.ndim == 1:
                 assert len(c_coefficients) == len(k_coefficients) + 1, (
-                    "c_coefficients must have the length "
-                    + "len(k_coefficients) + 1"
+                    "c_coefficients must have the length " + "len(k_coefficients) + 1"
                 )
                 self.iir_filter = True
             else:
@@ -206,9 +205,7 @@ class LatticeLadderFilter(RealtimeFilter):
         elif not self.iir_filter:
             td, self.state = _lattice_filtering_fir(self.k, td, self.state)
         elif self.iir_filter and self.c is None:
-            raise NotImplementedError(
-                "No implementation for all-pole IIR filtering"
-            )
+            raise NotImplementedError("No implementation for all-pole IIR filtering")
 
         return signal.copy_with_new_time_data(td)
 
@@ -242,9 +239,7 @@ class LatticeLadderFilter(RealtimeFilter):
         else:
             return self.__lattice_filtering_fir_sample(x, channel)
 
-    def __lattice_ladder_filtering_sos_sample(
-        self, x: float, channel: int
-    ) -> float:
+    def __lattice_ladder_filtering_sos_sample(self, x: float, channel: int) -> float:
         for section in range(self.k.shape[0]):
             x_low = 0
 
@@ -302,8 +297,7 @@ def _lattice_ladder_filtering_sos(
     assert c.shape[1] == 3, "Invalid second-order sections"
 
     assert state.shape[0] == k.shape[0], (
-        "State first dimension must "
-        + "match the number of second-order sections"
+        "State first dimension must " + "match the number of second-order sections"
     )
 
     for ch in range(td.shape[1]):

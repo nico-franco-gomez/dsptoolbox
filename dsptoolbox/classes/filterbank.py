@@ -5,6 +5,7 @@ from warnings import warn
 from matplotlib.figure import Figure
 from matplotlib.axes import Axes
 from numpy.typing import NDArray
+from typing import overload, Literal, Self
 
 
 from .signal import Signal
@@ -138,10 +139,39 @@ class FilterBank:
 
     @property
     def sampling_rate_hz(self) -> int | list[int]:
+        """Get the sampling rate(s) in Hz.
+
+        Returns
+        -------
+        int | list[int]
+            Sampling rate in Hz. Returns a single integer if
+            `same_sampling_rate` is True, otherwise a list of integers.
+
+        """
         return self.__sampling_rate_hz
 
     @sampling_rate_hz.setter
     def sampling_rate_hz(self, new_sampling_rate_hz):
+        """Set the sampling rate(s) in Hz.
+
+        Parameters
+        ----------
+        new_sampling_rate_hz : int or array-like
+            Sampling rate(s) in Hz. If `same_sampling_rate` is True, must be
+            a single integer. If False, can be a sequence of integers with
+            length matching the number of filters.
+
+        Raises
+        ------
+        AssertionError
+            If a scalar is not provided when `same_sampling_rate` is True.
+
+        Notes
+        -----
+        When `same_sampling_rate` is False, allows each filter to have a
+        different sampling rate.
+
+        """
         new_sampling_rate_hz = np.asarray(new_sampling_rate_hz).squeeze()
         if self.same_sampling_rate:
             assert (
@@ -154,10 +184,39 @@ class FilterBank:
 
     @property
     def filters(self) -> list[Filter]:
+        """Get the list of filters in the FilterBank.
+
+        Returns
+        -------
+        list[Filter]
+            List of Filter objects contained in this FilterBank.
+
+        """
         return self.__filters
 
     @filters.setter
     def filters(self, new_filters):
+        """Set the list of filters in the FilterBank.
+
+        Parameters
+        ----------
+        new_filters : list of Filter or None
+            List of Filter objects. If None or empty, the filters list is
+            cleared. When filters are set, their sampling rates are extracted
+            and must be consistent with the `same_sampling_rate` setting.
+
+        Raises
+        ------
+        AssertionError
+            If filters are not passed as a list, contain non-Filter objects,
+            or if sampling rates don't match when `same_sampling_rate` is True.
+
+        Notes
+        -----
+        When filters are set, the FilterBank's sampling_rate property is
+        automatically updated from the filter(s).
+
+        """
         if new_filters is None:
             new_filters = []
         if type(new_filters) is tuple:
@@ -183,6 +242,14 @@ class FilterBank:
 
     @property
     def number_of_filters(self) -> int:
+        """Get the number of filters in the FilterBank.
+
+        Returns
+        -------
+        int
+            Number of Filter objects contained.
+
+        """
         return len(self.__filters)
 
     def __len__(self):
@@ -196,15 +263,39 @@ class FilterBank:
 
     @property
     def same_sampling_rate(self) -> bool:
+        """Get whether all filters share the same sampling rate.
+
+        Returns
+        -------
+        bool
+            True if all filters have the same sampling rate, False otherwise
+            (multirate system).
+
+        """
         return self.__same_sampling_rate
 
     @same_sampling_rate.setter
     def same_sampling_rate(self, new_same):
+        """Set whether all filters share the same sampling rate.
+
+        Parameters
+        ----------
+        new_same : bool
+            When True, all filters in this FilterBank must have the same
+            sampling rate. When False, allows filters with different sampling
+            rates (multirate system).
+
+        Raises
+        ------
+        AssertionError
+            If new_same is not a boolean.
+
+        """
         assert type(new_same) is bool, "same_sampling_rate must be a boolean"
         self.__same_sampling_rate = new_same
 
     # ======== Add and remove =================================================
-    def add_filter(self, filt: Filter, index: int = -1):
+    def add_filter(self, filt: Filter, index: int = -1) -> Self:
         """Adds a new filter at the end of the filters dictionary.
 
         Parameters
@@ -213,6 +304,10 @@ class FilterBank:
             Filter to be added to the FilterBank.
         index : int, optional
             Index at which to insert the new Filter. Default: -1.
+
+        Returns
+        -------
+        self
 
         """
         if not self.filters:
@@ -231,7 +326,9 @@ class FilterBank:
             self.filters = fs
         return self
 
-    def remove_filter(self, index: int = -1, return_filter: bool = False):
+    def remove_filter(
+        self, index: int = -1, return_filter: bool = False
+    ) -> Filter | Self:
         """Removes a filter from the filter bank.
 
         Parameters
@@ -243,6 +340,10 @@ class FilterBank:
         return_filter : bool, optional
             When `True`, the erased filter is returned. Otherwise, the
             filterbank instance is returned. Default: `False`.
+
+        Returns
+        -------
+        Filter | self
 
         """
         assert self.filters, "There are no filters to remove"
@@ -258,13 +359,17 @@ class FilterBank:
             return f
         return self
 
-    def swap_filters(self, new_order):
+    def swap_filters(self, new_order) -> Self:
         """Rearranges the filters in the new given order.
 
         Parameters
         ----------
         new_order : array-like
             New rearrangement of filters.
+
+        Returns
+        -------
+        self
 
         """
         new_order = np.array(new_order).squeeze()
@@ -275,9 +380,7 @@ class FilterBank:
         assert self.number_of_filters == len(
             new_order
         ), "The number of filters does not match"
-        assert all(new_order < self.number_of_filters) and all(
-            new_order >= 0
-        ), (
+        assert all(new_order < self.number_of_filters) and all(new_order >= 0), (
             "Indexes of new filters have to be in "
             + f"[0, {self.number_of_filters - 1}]"
         )
@@ -289,13 +392,33 @@ class FilterBank:
         return self
 
     # ======== Filtering ======================================================
+    @overload
+    def filter_signal(
+        self,
+        signal: Signal,
+        mode: Literal[FilterBankMode.Sequential, FilterBankMode.Summed],
+        activate_zi: bool = False,
+        zero_phase: bool = False,
+    ) -> Signal:
+        pass
+
+    @overload
+    def filter_signal(
+        self,
+        signal: Signal,
+        mode: Literal[FilterBankMode.Parallel],
+        activate_zi: bool = False,
+        zero_phase: bool = False,
+    ) -> MultiBandSignal:
+        pass
+
     def filter_signal(
         self,
         signal: Signal,
         mode: FilterBankMode,
         activate_zi: bool = False,
         zero_phase: bool = False,
-    ) -> Signal | MultiBandSignal:
+    ):
         """Applies the filter bank to a signal and returns a multiband signal
         or a `Signal` object.
 
@@ -335,8 +458,7 @@ class FilterBank:
         ), "Sampling rates do not match"
         if zero_phase:
             assert not activate_zi, (
-                "Zero-phase filtering and zi cannot be used at "
-                + "the same time"
+                "Zero-phase filtering and zi cannot be used at " + "the same time"
             )
         if activate_zi:
             if not hasattr(self.filters[0], "zi"):
@@ -388,8 +510,7 @@ class FilterBank:
         ), "Sampling rates do not match"
         if zero_phase:
             assert not activate_zi, (
-                "Zero-phase filtering and zi cannot be used at "
-                + "the same time"
+                "Zero-phase filtering and zi cannot be used at " + "the same time"
             )
         if activate_zi:
             if not hasattr(self.filters[0], "zi"):
@@ -409,26 +530,36 @@ class FilterBank:
         return new_sig
 
     # ======== Get impulse ====================================================
+    @overload
     def get_ir(
         self,
-        mode: FilterBankMode,
-        length_samples: int = 2048,
-        test_zi: bool = False,
+        length_samples: int,
+        mode: Literal[FilterBankMode.Parallel],
         zero_phase: bool = False,
+    ) -> MultiBandSignal:
+        pass
+
+    @overload
+    def get_ir(
+        self,
+        length_samples: int,
+        mode: Literal[FilterBankMode.Sequential, FilterBankMode.Summed],
+        zero_phase: bool = False,
+    ) -> Signal:
+        pass
+
+    def get_ir(
+        self, length_samples: int, mode: FilterBankMode, zero_phase: bool = False
     ) -> Signal | MultiBandSignal:
         """Returns impulse response from the filter bank.
 
         Parameters
         ----------
-        mode : FilterBankMode
-            Filtering mode.
-        length_samples : int, optional
+        length_samples : int
             Length of the impulse response to be generated. If some filter
             is longer than the given length, then the length is adapted.
-            Default: 2048.
-        test_zi : bool, optional
-            When `True`, filtering is done while updating filters' initial
-            values. Default: `False`.
+        mode : FilterBankMode
+            Filtering mode.
         zero_phase : bool, optional
             When `True`, zero phase filtering is activated. Default: `False`.
 
@@ -451,11 +582,7 @@ class FilterBank:
                     sampling_rate_hz=sr[ind],
                     number_of_channels=1,
                 )
-                mb.add_band(
-                    f.filter_signal(
-                        d, activate_zi=test_zi, zero_phase=zero_phase
-                    )
-                )
+                mb.add_band(f.filter_signal(d, zero_phase=zero_phase))
             return mb
 
         # Obtain biggest filter order from FilterBank
@@ -481,9 +608,7 @@ class FilterBank:
         )
 
         # Filtering
-        ir = self.filter_signal(
-            d, mode, activate_zi=test_zi, zero_phase=zero_phase
-        )
+        ir = self.filter_signal(d, mode, zero_phase=zero_phase)
         return ir
 
     def get_transfer_function(
@@ -536,15 +661,17 @@ class FilterBank:
 
     def plot_magnitude(
         self,
+        length_samples: int,
         mode: FilterBankMode,
         range_hz: list[float] | None = [20.0, 20e3],
-        length_samples: int = 2048,
-        test_zi: bool = False,
+        zero_phase: bool = False,
     ) -> tuple[Figure, Axes] | None:
         """Plots the magnitude response of each filter.
 
         Parameters
         ----------
+        length_samples : int
+            Length (in samples) of the IR to be generated for the plot.
         mode : FilterBankMode
             Type of plot. `'parallel'` plots every filter's frequency response,
             `'sequential'` plots the frequency response after having filtered
@@ -553,12 +680,8 @@ class FilterBank:
         range_hz : array-like, None, optional
             Range of Hz to plot. Use None to avoid any specific range.
             Default: [20., 20e3].
-        length_samples : int, optional
-            Length (in samples) of the IR to be generated for the plot.
-            Default: 2048.
-        test_zi : bool, optional
-            Uses the zi's of each filter to test the FilterBank's output.
-            Default: `False`.
+        zero_phase : bool, optional
+            When `True`, zero-phase filtering is used. Default: `False`.
 
         Returns
         -------
@@ -596,7 +719,7 @@ class FilterBank:
 
         # Filtering and plot
         if mode == FilterBankMode.Parallel:
-            bs = self.filter_signal(d, mode=mode, activate_zi=test_zi)
+            bs = self.filter_signal(d, mode=mode, zero_phase=zero_phase)
             specs = []
             for b in bs.bands:
                 b.spectrum_method = SpectrumMethod.FFT
@@ -626,7 +749,7 @@ class FilterBank:
                 tight_layout=False,
             )
         elif mode == FilterBankMode.Sequential:
-            bs = self.filter_signal(d, mode=mode, activate_zi=test_zi)
+            bs = self.filter_signal(d, mode=mode, zero_phase=zero_phase)
             bs.spectrum_method = SpectrumMethod.FFT
             bs.spectrum_scaling = SpectrumScaling.FFTBackward
             f, sp = _get_normalized_spectrum(
@@ -644,12 +767,11 @@ class FilterBank:
                 range_hz,
                 ylabel="Magnitude / dB",
                 labels=[
-                    f"Sequential - Channel {n}"
-                    for n in range(bs.number_of_channels)
+                    f"Sequential - Channel {n}" for n in range(bs.number_of_channels)
                 ],
             )
         elif mode == FilterBankMode.Summed:
-            bs = self.filter_signal(d, mode=mode, activate_zi=test_zi)
+            bs = self.filter_signal(d, mode=mode, zero_phase=zero_phase)
             bs.spectrum_method = SpectrumMethod.FFT
             bs.spectrum_scaling = SpectrumScaling.FFTBackward
             f, sp = bs.get_spectrum()
@@ -676,16 +798,17 @@ class FilterBank:
 
     def plot_phase(
         self,
+        length_samples: int,
         mode: FilterBankMode,
         range_hz=[20, 20e3],
         unwrap: bool = False,
-        length_samples: int = 2048,
-        test_zi: bool = False,
     ) -> tuple[Figure, Axes] | None:
         """Plots the phase response of each filter.
 
         Parameters
         ----------
+        length_samples : int
+            Length (in samples) of the IR to be generated for the plot.
         mode : FilterBankMode
             Type of plot. `'parallel'` plots every filter's frequency response,
             `'sequential'` plots the frequency response after having filtered
@@ -695,12 +818,6 @@ class FilterBank:
             Range of Hz to plot. Default: [20, 20e3].
         unwrap : bool, optional
             When `True`, unwrapped phase is plotted. Default: `False`.
-        length_samples : int, optional
-            Length (in samples) of the IR to be generated for the plot.
-            Default: 2048.
-        test_zi : bool, optional
-            Uses the zi's of each filter to test the FilterBank's output.
-            Default: `False`.
 
         Returns
         -------
@@ -738,7 +855,7 @@ class FilterBank:
 
         # Plot
         if mode == FilterBankMode.Parallel:
-            bs = self.filter_signal(d, mode=mode, activate_zi=test_zi)
+            bs = self.filter_signal(d, mode=mode)
             phase = []
             f = bs.bands[0].get_spectrum()[0]
             for b in bs.bands:
@@ -755,7 +872,7 @@ class FilterBank:
                 tight_layout=False,
             )
         elif mode == FilterBankMode.Sequential:
-            bs = self.filter_signal(d, mode=mode, activate_zi=test_zi)
+            bs = self.filter_signal(d, mode=mode)
             f, sp = bs.get_spectrum()
             ph = np.angle(sp)
             if unwrap:
@@ -766,12 +883,11 @@ class FilterBank:
                 range_hz,
                 ylabel="Phase / rad",
                 labels=[
-                    f"Sequential - Channel {n}"
-                    for n in range(bs.number_of_channels)
+                    f"Sequential - Channel {n}" for n in range(bs.number_of_channels)
                 ],
             )
         elif mode == FilterBankMode.Summed:
-            bs = self.filter_signal(d, mode=mode, activate_zi=test_zi)
+            bs = self.filter_signal(d, mode=mode)
             f, sp = bs.get_spectrum()
             ph = np.angle(sp)
             if unwrap:
@@ -789,15 +905,16 @@ class FilterBank:
 
     def plot_group_delay(
         self,
+        length_samples: int,
         mode: FilterBankMode,
         range_hz: list[float] | None = [20.0, 20e3],
-        length_samples: int = 2048,
-        test_zi: bool = False,
     ) -> tuple[Figure, Axes] | None:
         """Plots the phase response of each filter.
 
         Parameters
         ----------
+        length_samples : int
+            Length (in samples) of the IR to be generated for the plot.
         mode : FilterBankMode
             Type of plot. `'parallel'` plots every filter's frequency response,
             `'sequential'` plots the frequency response after having filtered
@@ -805,12 +922,6 @@ class FilterBank:
             sums up every filter output.
         range_hz : array-like, optional
             Range of Hz to plot. Default: [20, 20e3].
-        length_samples : int, optional
-            Length (in samples) of the IR to be generated for the plot.
-            Default: 2048.
-        test_zi : bool, optional
-            Uses the zi's of each filter to test the FilterBank's output.
-            Default: `False`.
 
         Returns
         -------
@@ -848,7 +959,7 @@ class FilterBank:
 
         # Plot
         if mode == FilterBankMode.Parallel:
-            bs = self.filter_signal(d, mode=mode, activate_zi=test_zi)
+            bs = self.filter_signal(d, mode=mode)
             gd = []
             f = bs.bands[0].get_spectrum()[0]
             for b in bs.bands:
@@ -867,7 +978,7 @@ class FilterBank:
                 tight_layout=False,
             )
         elif mode == FilterBankMode.Sequential:
-            bs = self.filter_signal(d, mode=mode, activate_zi=test_zi)
+            bs = self.filter_signal(d, mode=mode)
             f, sp = bs.get_spectrum()
             gd = _group_delay_direct(sp.squeeze(), f[1] - f[0]) * 1e3
             fig, ax = general_plot(
@@ -876,12 +987,11 @@ class FilterBank:
                 range_hz,
                 ylabel="Group delay / ms",
                 labels=[
-                    f"Sequential - Channel {n}"
-                    for n in range(bs.number_of_channels)
+                    f"Sequential - Channel {n}" for n in range(bs.number_of_channels)
                 ],
             )
         elif mode == FilterBankMode.Summed:
-            bs = self.filter_signal(d, mode=mode, activate_zi=test_zi)
+            bs = self.filter_signal(d, mode=mode)
             f, sp = bs.get_spectrum()
             gd = _group_delay_direct(sp.squeeze(), f[1] - f[0]) * 1e3
             fig, ax = general_plot(
@@ -910,7 +1020,7 @@ class FilterBank:
             dump(self, data_file, HIGHEST_PROTOCOL)
         return self
 
-    def copy(self):
+    def copy(self) -> "FilterBank":
         """Returns a copy of the object.
 
         Returns

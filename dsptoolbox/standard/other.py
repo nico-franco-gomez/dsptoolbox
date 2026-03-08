@@ -124,9 +124,7 @@ def activity_detector(
 
     # Pre-filtering
     if pre_filter is not None:
-        assert isinstance(
-            pre_filter, Filter
-        ), "pre_filter must be of type Filter"
+        assert isinstance(pre_filter, Filter), "pre_filter must be of type Filter"
         signal_filtered = pre_filter.filter_signal(signal, zero_phase=True)
     else:
         signal_filtered = signal
@@ -252,12 +250,8 @@ def envelope(
             env = np.abs(hilbert(env, axis=0))
             return env
 
-        assert (
-            window_length_samples is not None
-        ), "Some window length must be passed"
-        assert (
-            window_length_samples > 0
-        ), "Window length must be more than 1 sample"
+        assert window_length_samples is not None, "Some window length must be passed"
+        assert window_length_samples > 0, "Window length must be more than 1 sample"
         rms_vec = signal.time_data
         rms_vec = oaconvolve(
             rms_vec**2,
@@ -473,9 +467,7 @@ def spectral_difference(
         inp2.apply_octave_smoothing(octave_fraction_smoothing)
 
     inp2.set_interpolator_parameters(
-        InterpolationDomain.MagnitudePhase
-        if complex
-        else InterpolationDomain.Power
+        InterpolationDomain.MagnitudePhase if complex else InterpolationDomain.Power
     )
     mag2 = inp2.get_interpolated_spectrum(
         inp1.frequency_vector_hz,

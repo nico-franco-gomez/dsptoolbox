@@ -305,9 +305,7 @@ class Filter:
         Filter
 
         """
-        return Filter(
-            {FilterCoefficientsType.Zpk: [z, p, k]}, sampling_rate_hz
-        )
+        return Filter({FilterCoefficientsType.Zpk: [z, p, k]}, sampling_rate_hz)
 
     @staticmethod
     def fir_from_file(path: str, channel: int = 0) -> "Filter":
@@ -327,9 +325,7 @@ class Filter:
 
         """
         ir = ImpulseResponse.from_file(path)
-        return Filter.from_ba(
-            ir.time_data[:, channel], [1.0], ir.sampling_rate_hz
-        )
+        return Filter.from_ba(ir.time_data[:, channel], [1.0], ir.sampling_rate_hz)
 
     # ================
     def initialize_zi(self, number_of_channels: int = 1):
@@ -385,31 +381,76 @@ class Filter:
 
     @property
     def sampling_rate_hz(self):
+        """Get the sampling rate in Hz.
+
+        Returns
+        -------
+        int
+            Sampling rate in Hz.
+
+        """
         return self.__sampling_rate_hz
 
     @sampling_rate_hz.setter
     def sampling_rate_hz(self, new_sampling_rate_hz):
-        assert (
-            new_sampling_rate_hz is not None
-        ), "Sampling rate can not be None"
-        assert (
-            type(new_sampling_rate_hz) is int
-        ), "Sampling rate can only be an integer"
+        """Set the sampling rate in Hz.
+
+        Parameters
+        ----------
+        new_sampling_rate_hz : int
+            New sampling rate in Hz. Must be a positive integer and cannot be None.
+
+        Raises
+        ------
+        AssertionError
+            If new_sampling_rate_hz is None or not an integer.
+
+        """
+        assert new_sampling_rate_hz is not None, "Sampling rate can not be None"
+        assert type(new_sampling_rate_hz) is int, "Sampling rate can only be an integer"
         self.__sampling_rate_hz = new_sampling_rate_hz
 
     @property
     def warning_if_complex(self):
+        """Get the warning flag for complex-valued filters.
+
+        Returns
+        -------
+        bool
+            When True, a warning is issued if a complex-valued filter is used.
+
+        """
         return self.__warning_if_complex
 
     @warning_if_complex.setter
     def warning_if_complex(self, new_warning):
-        assert (
-            type(new_warning) is bool
-        ), "This attribute must be of boolean type"
+        """Set the warning flag for complex-valued filters.
+
+        Parameters
+        ----------
+        new_warning : bool
+            When True, a warning is issued if a complex-valued filter is used.
+            When False, no warning is issued.
+
+        Raises
+        ------
+        AssertionError
+            If new_warning is not a boolean.
+
+        """
+        assert type(new_warning) is bool, "This attribute must be of boolean type"
         self.__warning_if_complex = new_warning
 
     @property
     def is_iir(self) -> bool:
+        """Check if the filter is an infinite impulse response (IIR) filter.
+
+        Returns
+        -------
+        bool
+            True if this is an IIR filter, False if it is FIR.
+
+        """
         if self.has_sos:
             return True
 
@@ -418,14 +459,52 @@ class Filter:
 
     @property
     def is_fir(self) -> bool:
+        """Check if the filter is a finite impulse response (FIR) filter.
+
+        Returns
+        -------
+        bool
+            True if this is an FIR filter, False if it is IIR.
+
+        """
         return not self.is_iir
 
     @property
     def ba(self) -> list[NDArray[np.float64 | np.complex128]]:
+        """Get the filter coefficients in ba (b, a) form.
+
+        Returns
+        -------
+        list[NDArray]
+            List containing [b, a] where b are numerator coefficients and
+            a are denominator coefficients.
+
+        """
         return self.__ba
 
     @ba.setter
     def ba(self, new_ba: tuple | list):
+        """Set the ba (b, a) filter coefficients.
+
+        Parameters
+        ----------
+        new_ba : tuple or list
+            Filter coefficients as [b, a] where b are numerator coefficients
+            and a are denominator coefficients. Each element is converted to
+            either np.float64 or np.complex128 depending on the input type.
+
+        Raises
+        ------
+        AssertionError
+            If coefficients are not a list/tuple of length 2, or if array
+            dimensions are incorrect.
+
+        Notes
+        -----
+        The a coefficients are trimmed of trailing zeros. If only one a
+        coefficient remains, the filter is converted to FIR form.
+
+        """
         ba: list[NDArray] = list(new_ba)
         assert len(ba) == 2, "ba coefficients must be a list of length two"
         for ind in range(len(ba)):
@@ -451,10 +530,33 @@ class Filter:
 
     @property
     def sos(self) -> NDArray[np.float64 | np.complex128]:
+        """Get the filter coefficients in second-order sections (SOS) form.
+
+        Returns
+        -------
+        NDArray[np.float64 | np.complex128]
+            Second-order sections array with shape (n_sections, 6).
+            Each row contains [b0, b1, b2, a0, a1, a2] for one section.
+
+        """
         return self.__sos
 
     @sos.setter
     def sos(self, sos):
+        """Set the second-order sections (SOS) filter coefficients.
+
+        Parameters
+        ----------
+        sos : NDArray
+            Second-order sections array with shape (n_sections, 6).
+            Each row contains [b0, b1, b2, a0, a1, a2] for one section.
+
+        Raises
+        ------
+        AssertionError
+            If sos is not a 2D numpy array or if the number of columns is not 6.
+
+        """
         assert isinstance(sos, np.ndarray)
         assert sos.ndim == 2
         assert sos.shape[1] == 6
@@ -462,22 +564,69 @@ class Filter:
 
     @property
     def has_sos(self) -> bool:
+        """Check if the filter has second-order sections (SOS) representation.
+
+        Returns
+        -------
+        bool
+            True if SOS representation is available, False otherwise.
+
+        """
         return hasattr(self, "sos")
 
     @property
     def has_zpk(self) -> bool:
+        """Check if the filter has zero-pole-gain (zpk) representation.
+
+        Returns
+        -------
+        bool
+            True if ZPK representation is available, False otherwise.
+
+        """
         return hasattr(self, "zpk")
 
     @property
     def zpk(self) -> list:
+        """Get the filter coefficients in zero-pole-gain (zpk) form.
+
+        Returns
+        -------
+        list
+            List containing [zeros, poles, gain] where zeros and poles are
+            array-like and gain is a scalar.
+
+        """
         return self.__zpk
 
     @zpk.setter
     def zpk(self, new_zpk):
+        """Set the zero-pole-gain (zpk) representation of the filter.
+
+        Parameters
+        ----------
+        new_zpk : list or tuple
+            Zero-pole-gain representation as [zeros, poles, gain] where
+            zeros and poles are array-like sequences and gain is a scalar.
+
+        Raises
+        ------
+        AssertionError
+            If new_zpk cannot be converted to a list.
+
+        """
         self.__zpk = list(new_zpk)
 
     @property
     def order(self):
+        """Get the order of the filter.
+
+        Returns
+        -------
+        int
+            Filter order (highest power of the transfer function).
+
+        """
         if hasattr(self, "zpk"):
             return max(len(self.zpk[0]), len(self.zpk[1]))
         if hasattr(self, "sos"):
@@ -542,9 +691,7 @@ class Filter:
         else:
             channels = np.squeeze(channels)
             channels = np.atleast_1d(channels)
-            assert (
-                channels.ndim == 1
-            ), "channels can be only a 1D-array or an int"
+            assert channels.ndim == 1, "channels can be only a 1D-array or an int"
             assert all(channels < signal.number_of_channels), (
                 f"Selected channels ({channels}) are not valid for the "
                 + f"signal with {signal.number_of_channels} channels"
@@ -568,10 +715,7 @@ class Filter:
 
         # Check filter length compared to signal
         if self.order > signal.time_data.shape[0]:
-            warn(
-                "Filter is longer than signal, results might be "
-                + "meaningless!"
-            )
+            warn("Filter is longer than signal, results might be " + "meaningless!")
 
         # Filter with SOS when possible
         if hasattr(self, "sos"):
@@ -655,9 +799,7 @@ class Filter:
                 polyphase=polyphase,
             )
         elif fraction[1] == 1:
-            assert (
-                signal.sampling_rate_hz * fraction[0] == self.sampling_rate_hz
-            ), (
+            assert signal.sampling_rate_hz * fraction[0] == self.sampling_rate_hz, (
                 "Sampling rates do not match. For the upsampler, the "
                 + """sampling rate of the filter should match the output's"""
             )
@@ -673,15 +815,15 @@ class Filter:
         return new_sig
 
     # ======== Getters ========================================================
-    def get_ir(
-        self, length_samples: int = 512, zero_phase: bool = False
-    ) -> ImpulseResponse:
+    def get_ir(self, length_samples: int, zero_phase: bool = False) -> ImpulseResponse:
         """Gets an impulse response of the filter with given length.
 
         Parameters
         ----------
-        length_samples : int, optional
-            Length for the impulse response in samples. Default: 512.
+        length_samples : int
+            Length for the impulse response in samples.
+        zero_phase : bool, optional
+            When `True`, zero-phase filtering is applied to the IR. Default: `False`.
 
         Returns
         -------
@@ -779,9 +921,7 @@ class Filter:
 
         """
         ba = self.get_coefficients(FilterCoefficientsType.Ba)
-        gd = sig.group_delay(
-            ba, w=frequency_vector_hz, fs=self.sampling_rate_hz
-        )[1]
+        gd = sig.group_delay(ba, w=frequency_vector_hz, fs=self.sampling_rate_hz)[1]
         return gd / self.sampling_rate_hz if in_seconds else gd
 
     def get_coefficients(self, coefficients_mode: FilterCoefficientsType):
@@ -806,10 +946,7 @@ class Filter:
             if self.has_sos:
                 return self.sos.copy()
             if self.order > 500:
-                warn(
-                    "Order is above 500. Computing SOS might take a "
-                    + "long time"
-                )
+                warn("Order is above 500. Computing SOS might take a " + "long time")
             return sig.tf2sos(self.ba[0], self.ba[1])
         elif coefficients_mode == FilterCoefficientsType.Ba:
             if self.has_sos:
@@ -823,15 +960,10 @@ class Filter:
 
             # Check if filter is too long
             if self.order > 500:
-                warn(
-                    "Order is above 500. Computing zpk might take a "
-                    + "long time"
-                )
+                warn("Order is above 500. Computing zpk might take a " + "long time")
             return sig.tf2zpk(self.ba[0], self.ba[1])
         else:
-            raise ValueError(
-                f"{coefficients_mode} is not valid. Use sos, ba or zpk"
-            )
+            raise ValueError(f"{coefficients_mode} is not valid. Use sos, ba or zpk")
 
     # ======== Plots and prints ===============================================
     def show_info(self):
@@ -840,29 +972,28 @@ class Filter:
 
     def plot_magnitude(
         self,
-        length_samples: int = 512,
+        length_samples: int,
         range_hz: list[float] | None = [20.0, 20e3],
         normalize: MagnitudeNormalization = MagnitudeNormalization.NoNormalization,
-        show_info_box: bool = True,
         zero_phase: bool = False,
+        show_info_box: bool = True,
     ) -> tuple[Figure, Axes]:
         """Plots magnitude spectrum.
         Change parameters of spectrum with set_spectrum_parameters.
 
         Parameters
         ----------
-        length_samples : int, optional
+        length_samples : int
             Length of IR for magnitude plot. See notes for details.
-            Default: 512.
         range_hz : array-like with length 2, None, optional
             Range for which to plot the magnitude response. Use None to avoid
             setting any specific range. Default: [20, 20000].
         normalize : MagnitudeNormalization, optional
             Mode for normalization. Default: NoNormalization.
-        show_info_box : bool, optional
-            Shows an information box on the plot. Default: `True`.
         zero_phase : bool, optional
             Plots magnitude for zero phase filtering. Default: `False`.
+        show_info_box : bool, optional
+            Shows an information box on the plot. Default: `True`.
 
         Returns
         -------
@@ -902,7 +1033,7 @@ class Filter:
 
     def plot_group_delay(
         self,
-        length_samples: int = 512,
+        length_samples: int,
         range_hz: list[float] | None = [20.0, 20e3],
         show_info_box: bool = False,
     ) -> tuple[Figure, Axes]:
@@ -911,8 +1042,8 @@ class Filter:
 
         Parameters
         ----------
-        length_samples : int, optional
-            Length of ir for magnitude plot. Default: 512.
+        length_samples : int
+            Length of ir for magnitude plot.
         range_hz : array-like with length 2, None, optional
             Range for which to plot the magnitude response. Pass None to avoid
             setting any range. Default: [20, 20000].
@@ -972,7 +1103,7 @@ class Filter:
 
     def plot_phase(
         self,
-        length_samples: int = 512,
+        length_samples: int,
         range_hz: list[float] | None = [20.0, 20e3],
         unwrap: bool = False,
         show_info_box: bool = False,
@@ -982,7 +1113,7 @@ class Filter:
         Parameters
         ----------
         length_samples : int, optional
-            Length of IR for phase plot. See notes for details. Default: 512.
+            Length of IR for phase plot. See notes for details.
         range_hz : array-like with length 2, None, optional
             Range for which to plot the magnitude response.
             Default: [20, 20000].
@@ -1122,7 +1253,7 @@ class Filter:
             dump(self, data_file, HIGHEST_PROTOCOL)
         return self
 
-    def copy(self):
+    def copy(self) -> "Filter":
         """Returns a copy of the object.
 
         Returns

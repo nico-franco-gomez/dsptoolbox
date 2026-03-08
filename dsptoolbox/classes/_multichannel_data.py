@@ -1,5 +1,5 @@
 import numpy as np
-from numpy.typing import NDArray
+from numpy.typing import NDArray, ArrayLike
 from abc import ABC, abstractmethod
 
 
@@ -15,9 +15,7 @@ class MultichannelData(ABC):
         pass
 
     @abstractmethod
-    def _create_copy_with_new_data(
-        self, data: NDArray[np.float64 | np.complex128]
-    ):
+    def _create_copy_with_new_data(self, data: NDArray[np.float64 | np.complex128]):
         pass
 
     @abstractmethod
@@ -77,9 +75,7 @@ class MultichannelData(ABC):
         assert self.number_of_channels == len(
             new_order
         ), "The number of channels does not match"
-        assert all(new_order < self.number_of_channels) and all(
-            new_order >= 0
-        ), (
+        assert all(new_order < self.number_of_channels) and all(new_order >= 0), (
             "Indexes of new channels have to be in "
             + f"[0, {self.number_of_channels - 1}]"
         )
@@ -90,13 +86,13 @@ class MultichannelData(ABC):
         self._update_state()
         return self
 
-    def get_channels(self, channels):
+    def get_channels(self, channels: int | ArrayLike):
         """Returns a signal object with the selected channels. Beware that
         first channel index is 0!
 
         Parameters
         ----------
-        channels : array-like or int
+        channels : ArrayLike or int
             Channels to be returned as a new Signal object.
 
         Returns

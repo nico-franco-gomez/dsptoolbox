@@ -51,11 +51,12 @@ def print_device_info(device_number: int | None = None):
 
 
 def set_latency(input_low: bool, output_low: bool):
-    """
-    Set the desired latency (Default is high). This can vary for each device
+    """Set the desired latency (Default is high). This can vary for each device
     and host. Sounddevice only allows for setting a low or a high latency.
     High latency is more robust, but it might be too large for some
     applications.
+
+    This method modifies the global default value.
 
     Parameters
     ----------
@@ -74,9 +75,10 @@ def set_latency(input_low: bool, output_low: bool):
 
 
 def set_blocksize(blocksize: int):
-    """
-    Set a default blocksize for any stream. This can lead to a stable latency
+    """Set a default blocksize for any stream. This can lead to a stable latency
     for most interfaces. Not setting it will lead to a default value.
+
+    This method modifies the global default value.
 
     Parameters
     ----------
@@ -98,7 +100,7 @@ def set_device(
 
     Parameters
     ----------
-    device : list[int | str] with length 2, str, int, optional
+    device : list[int | str] with length 2, str, int, None, optional
         Sets the input and output devices from two integers, e.g. [1, 2].
         Alternatively, two strings contained in the interface's name (or the
         name itself) can be passed. The first interface to match will be taken.
@@ -106,7 +108,7 @@ def set_device(
         both input and output. Use `None` to be prompted with the options and
         pass only two values separated by a comma, e.g., `1, 2`.
         Default: `None`.
-    sampling_rate_hz : int, optional
+    sampling_rate_hz : int, None, optional
         Pass a default sampling rate to the devices. Pass `None` to ignore.
         Default: `None`.
 
@@ -149,14 +151,10 @@ def set_device(
             print(f"{d} will be used for output!")
             sd.default.device = device
         elif type(device[0]) is str and type(device[1]) is str:
-            d_id_in, d_name_in = get_interface_number_by_name(
-                device[0], device_list
-            )
+            d_id_in, d_name_in = get_interface_number_by_name(device[0], device_list)
             print(f"{d_name_in} will be used for input!")
 
-            d_id_out, d_name_out = get_interface_number_by_name(
-                device[1], device_list
-            )
+            d_id_out, d_name_out = get_interface_number_by_name(device[1], device_list)
             print(f"{d_name_out} will be used for output!")
             sd.default.device = [d_id_in, d_id_out]
         else:
@@ -179,8 +177,7 @@ def set_device(
 def get_interface_number_by_name(
     name: str, device_list: sd.DeviceList
 ) -> tuple[int, str]:
-    """
-    Return the interface ID (number) by looking at its name.
+    """Return the interface ID (number) by looking at its name.
 
     Parameters
     ----------
@@ -255,9 +252,7 @@ def play_and_record(
         "The number of channels in signal does not match the number of "
         + "channels in play_channels"
     )
-    assert not any(
-        [p < 1 for p in play_channels]
-    ), "Play channel has to be 1 or more"
+    assert not any([p < 1 for p in play_channels]), "Play channel has to be 1 or more"
     assert not any(
         [r < 1 for r in rec_channels]
     ), "Recording channel has to be 1 or more"
@@ -283,10 +278,7 @@ def play_and_record(
     if device is not None:
         sd.default.device = device
 
-    print(
-        "Playback and recording have started "
-        + f"({duration_seconds:.1f} s)..."
-    )
+    print("Playback and recording have started " + f"({duration_seconds:.1f} s)...")
     rec_time_data = sd.playrec(
         data=play_data,
         samplerate=signal.sampling_rate_hz,
@@ -387,9 +379,7 @@ def play(
     if type(play_channels) is int:
         play_channels = [play_channels]
     play_channels = sorted(play_channels)
-    assert not any(
-        [r < 1 for r in play_channels]
-    ), "Play channel has to be 1 or more"
+    assert not any([r < 1 for r in play_channels]), "Play channel has to be 1 or more"
     if duration_seconds is not None:
         assert duration_seconds > 0, "Duration must be positive"
         duration_samples = int(duration_seconds * signal.sampling_rate_hz)

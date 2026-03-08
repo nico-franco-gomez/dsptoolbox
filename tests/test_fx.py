@@ -11,9 +11,7 @@ import os
 class TestEffectsModule:
     speech = dsp.resample(
         dsp.Signal(
-            join(
-                os.path.dirname(__file__), "..", "example_data", "speech.flac"
-            )
+            join(os.path.dirname(__file__), "..", "example_data", "speech.flac")
         ),
         8_000,
     )
@@ -168,15 +166,11 @@ class TestEffectsModule:
         delay.apply(self.speech)
 
     def testOther(self):
-        assert 1 == dsp.effects.get_frequency_from_musical_rhythm(
-            "quarter", 60
-        )
+        assert 1 == dsp.effects.get_frequency_from_musical_rhythm("quarter", 60)
 
         assert 2 == dsp.effects.get_frequency_from_musical_rhythm("eighth", 60)
 
-        assert 3 == dsp.effects.get_frequency_from_musical_rhythm(
-            "eighth 3", 60
-        )
+        assert 3 == dsp.effects.get_frequency_from_musical_rhythm("eighth 3", 60)
 
         assert 2 / 3 == dsp.effects.get_frequency_from_musical_rhythm(
             "dotted quarter", 60

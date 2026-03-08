@@ -12,6 +12,7 @@ from matplotlib.axes import Axes
 from scipy.signal import oaconvolve
 from numpy.typing import NDArray, ArrayLike
 from scipy.fft import rfft, next_fast_len
+from typing import Self
 
 from ._multichannel_data import MultichannelData
 from ..helpers.spectrum_utilities import (
@@ -58,7 +59,7 @@ class Signal(MultichannelData):
         path: str | None = None,
         time_data=None,
         sampling_rate_hz: int | None = None,
-        constrain_amplitude: bool = True,
+        constrain_amplitude: bool = False,
         activate_cache: bool = False,
     ):
         """Signal class that saves time data, channel and sampling rate
@@ -80,27 +81,11 @@ class Signal(MultichannelData):
             normalization and the audio data is not constrained to [-1, 1].
             A warning is always shown when audio gets normalized and the used
             normalization factor is saved as `amplitude_scale_factor`.
-            Default: `True`.
+            Default: `False`.
         activate_cache : bool, optional
             When True, spectra, CSM and STFT will be cached. They will not
             be computed again if no parameters have changed. Set to False to
             avoid caching altogether. Default: False.
-
-        Methods
-        -------
-        Time data:
-            add_channel, remove_channel, swap_channels, get_channels.
-        Spectrum:
-            set_spectrum_parameters, get_spectrum.
-        Cross spectral matrix:
-            set_csm_parameters, get_csm.
-        Spectrogram:
-            set_spectrogram_parameters, get_spectrogram.
-        Plots:
-            plot_magnitude, plot_time, plot_spl, plot_spectrogram, plot_phase,
-            plot_csm.
-        General:
-            save_signal, get_stream_samples.
 
         """
         # Handling amplitude
@@ -112,8 +97,7 @@ class Signal(MultichannelData):
         # Import data
         if path is not None:
             assert time_data is None, (
-                "Constructor cannot take a path and "
-                + "a vector at the same time"
+                "Constructor cannot take a path and " + "a vector at the same time"
             )
             assert sampling_rate_hz is None, (
                 "Constructor cannot take a path and a sampling rate at the"
@@ -122,12 +106,9 @@ class Signal(MultichannelData):
             time_data, sampling_rate_hz = sf.read(path)
         else:
             assert time_data is not None, (
-                "Either a path to an audio file or a time vector has to be "
-                + "passed"
+                "Either a path to an audio file or a time vector has to be " + "passed"
             )
-            assert (
-                sampling_rate_hz is not None
-            ), "A sampling rate should be passed!"
+            assert sampling_rate_hz is not None, "A sampling rate should be passed!"
         self.sampling_rate_hz = sampling_rate_hz
         self.time_data = time_data
         self.set_spectrum_parameters()
@@ -159,11 +140,11 @@ class Signal(MultichannelData):
 
         Parameters
         ----------
-        time_data : array-like, NDArray[np.float64], optional
+        time_data : array-like, NDArray[np.float64]
             Time data of the signal. It is saved as a matrix with the form
-            (time samples, channel number). Default: `None`.
-        sampling_rate_hz : int, optional
-            Sampling rate of the signal in Hz. Default: `None`.
+            (time samples, channel number).
+        sampling_rate_hz : int
+            Sampling rate of the signal in Hz.
         constrain_amplitude : bool, optional
             When `True`, audio is normalized to 0 dBFS peak level in case that
             there are amplitude values greater than 1. Otherwise, there is no
@@ -226,14 +207,51 @@ class Signal(MultichannelData):
     # ======== Properties and setters =========================================
     @property
     def time_data(self) -> NDArray[np.float64]:
-        """Array with time samples. Its shape is always (time samples,
-        channels) and data type `np.float64`.
+        """Get the time domain signal data.
+
+        Returns
+        -------
+        NDArray[np.float64]
+            Time data as a 2D array with shape (time_samples, number_of_channels).
+            Real part of the signal. Use `time_data_imaginary` for the imaginary
+            part if it exists.
 
         """
         return self.__time_data
 
     @time_data.setter
     def time_data(self, new_time_data: ArrayLike):
+        """Set the time data for the signal.
+
+        Parameters
+        ----------
+        new_time_data : ArrayLike
+            Time data as a 1D or 2D array with shape (time_samples, channels).
+            If 1D, it is treated as a single-channel signal. If 2D, the array
+            is automatically transposed if needed to ensure the dimension with
+            more samples is interpreted as time. Complex-valued data is supported
+            and will be stored with real and imaginary parts separated.
+
+        Raises
+        ------
+        AssertionError
+            If the array has more than 2 dimensions.
+
+        Notes
+        -----
+        - Complex-valued input is automatically separated into real and imaginary
+          parts and stored internally.
+        - If `constrain_amplitude` is True, the signal is automatically normalized
+          to 0 dBFS peak level if any amplitude exceeds 1.0. A warning is issued
+          when this occurs.
+        - When complex data is present, amplitude constraining uses the maximum
+          of the peaks from both real and imaginary parts as the normalization
+          factor.
+        - Setting new time data triggers internal state updates for spectrum,
+          cross-spectral matrix, and spectrogram computations.
+        - Any existing time window is cleared when new time data is set.
+
+        """
         # Shape of Time Data array
         new_time_data = np.atleast_2d(new_time_data).squeeze()
         assert new_time_data.ndim <= 2, (
@@ -259,9 +277,7 @@ class Signal(MultichannelData):
         if self.constrain_amplitude:
             time_data_max = np.max(np.abs(new_time_data))
             if new_time_data_imag is not None:
-                time_data_max = max(
-                    time_data_max, np.max(np.abs(new_time_data_imag))
-                )
+                time_data_max = max(time_data_max, np.max(np.abs(new_time_data_imag)))
             if time_data_max > 1.0:
                 new_time_data /= time_data_max
                 warn(
@@ -298,21 +314,61 @@ class Signal(MultichannelData):
 
     @property
     def sampling_rate_hz(self) -> int:
+        """Get the sampling rate in Hz.
+
+        Returns
+        -------
+        int
+            Sampling rate in Hz.
+
+        """
         return self.__sampling_rate_hz
 
     @sampling_rate_hz.setter
     def sampling_rate_hz(self, new_sampling_rate_hz):
-        assert (
-            type(new_sampling_rate_hz) is int
-        ), "Sampling rate can only be an integer"
+        """Set the sampling rate in Hz.
+
+        Parameters
+        ----------
+        new_sampling_rate_hz : int
+            New sampling rate in Hz. Must be a positive integer.
+
+        Raises
+        ------
+        AssertionError
+            If new_sampling_rate_hz is not an integer.
+
+        Notes
+        -----
+        Setting a new sampling rate triggers an internal state update.
+
+        """
+        assert type(new_sampling_rate_hz) is int, "Sampling rate can only be an integer"
         self.__sampling_rate_hz = new_sampling_rate_hz
+        self.__update_state()
 
     @property
     def length_seconds(self) -> float:
+        """Get the duration of the signal in seconds.
+
+        Returns
+        -------
+        float
+            Signal duration in seconds.
+
+        """
         return len(self) / self.sampling_rate_hz
 
     @property
     def length_samples(self) -> int:
+        """Get the number of samples in the signal.
+
+        Returns
+        -------
+        int
+            Number of time samples.
+
+        """
         return len(self)
 
     @property
@@ -332,11 +388,25 @@ class Signal(MultichannelData):
 
     @time_data_imaginary.setter
     def time_data_imaginary(self, new_imag: NDArray[np.float64]):
+        """Set the imaginary part of the time data.
+
+        Parameters
+        ----------
+        new_imag : NDArray[np.float64] or None
+            Imaginary part of the time data. If provided, must have the same
+            shape as the real part. Can be None to remove imaginary data.
+
+        Raises
+        ------
+        AssertionError
+            If the shape of new_imag does not match the shape of the real part.
+
+        """
         if new_imag is not None:
             assert (
                 new_imag.shape == self.__time_data.shape
             ), "Shape of imaginary part time data does not match"
-        self.__time_data_imaginary = new_imag
+        self.__time_data_imaginary: NDArray[np.float64] | None = new_imag
 
     @property
     def is_complex_signal(self) -> bool:
@@ -357,6 +427,27 @@ class Signal(MultichannelData):
 
     @constrain_amplitude.setter
     def constrain_amplitude(self, nca):
+        """Set whether to constrain the signal amplitude to [-1., 1.].
+
+        Parameters
+        ----------
+        nca : bool
+            When True, the signal's amplitude is constrained to the [-1., 1.]
+            range with automatic scaling if needed. When False, no amplitude
+            scaling is applied.
+
+        Raises
+        ------
+        AssertionError
+            If nca is not a boolean.
+
+        Notes
+        -----
+        When enabling amplitude constraining, the signal is automatically
+        rescaled to fit within the [-1., 1.] range if needed, and the
+        scaling factor is saved in the signal.
+
+        """
         assert type(nca) is bool, "constrain_amplitude must be of type boolean"
         self.__constrain_amplitude = nca
         # Restart time data setter for triggering normalization if needed
@@ -372,6 +463,21 @@ class Signal(MultichannelData):
 
     @calibrated_signal.setter
     def calibrated_signal(self, ncs):
+        """Set whether the signal is (amplitude) calibrated.
+
+        Parameters
+        ----------
+        ncs : bool
+            When True, indicates that this signal has been amplitude calibrated
+            and represents sound pressure in Pa. When False, the signal is
+            not calibrated.
+
+        Raises
+        ------
+        AssertionError
+            If ncs is not a boolean.
+
+        """
         assert type(ncs) is bool, "calibrated_signal must be of type boolean"
         self.__calibrated_signal = ncs
 
@@ -386,9 +492,7 @@ class Signal(MultichannelData):
     def __iter__(self):
         """Iterate over the channels of the signal. Modifications to the
         samples can be done through these slices."""
-        return iter(
-            [self.time_data[:, x] for x in range(self.number_of_channels)]
-        )
+        return iter([self.time_data[:, x] for x in range(self.number_of_channels)])
 
     def set_spectrum_parameters(
         self,
@@ -401,12 +505,12 @@ class Signal(MultichannelData):
         detrend: bool = True,
         average: str = "mean",
         scaling: SpectrumScaling = SpectrumScaling.FFTBackward,
-    ) -> "Signal":
+    ) -> Self:
         """Sets all necessary parameters for the computation of the spectrum.
 
         Parameters
         ----------
-        method : SpectrumComputation, optional
+        method : SpectrumMethod, optional
             Method to use in order to acquire the spectrum. See notes for
             details. Default: WelchPeriodogram.
         smoothing : int, optional
@@ -485,11 +589,38 @@ class Signal(MultichannelData):
 
     @property
     def spectrum_scaling(self) -> SpectrumScaling:
+        """Get the spectrum scaling method.
+
+        Returns
+        -------
+        SpectrumScaling
+            The scaling method used for spectrum computation.
+
+        """
         """Selected scaling for the spectrum."""
         return self._spectrum_parameters["scaling"]
 
     @spectrum_scaling.setter
     def spectrum_scaling(self, new_scaling: SpectrumScaling):
+        """Set the spectrum scaling method.
+
+        Parameters
+        ----------
+        new_scaling : SpectrumScaling
+            The scaling method to use for spectrum computation.
+            See `SpectrumScaling` enum for available options.
+
+        Raises
+        ------
+        AssertionError
+            If new_scaling is not a SpectrumScaling instance.
+
+        Notes
+        -----
+        Changing the spectrum scaling triggers a state update for both
+        the spectrum and the cross-spectral matrix.
+
+        """
         assert isinstance(new_scaling, SpectrumScaling)
         self._spectrum_parameters["scaling"] = new_scaling
         self.__spectrum_state_update = True
@@ -497,11 +628,38 @@ class Signal(MultichannelData):
 
     @property
     def spectrum_method(self) -> SpectrumMethod:
-        """Spectrum computation method."""
+        """Get the spectrum computation method.
+
+        Returns
+        -------
+        SpectrumMethod
+            The method used for spectrum computation (e.g., FFT, WelchPeriodogram).
+
+        """
         return self._spectrum_parameters["method"]
 
     @spectrum_method.setter
     def spectrum_method(self, new_method: SpectrumMethod):
+        """Set the spectrum computation method.
+
+        Parameters
+        ----------
+        new_method : SpectrumMethod
+            The method to use for spectrum computation.
+            See `SpectrumMethod` enum for available options
+            (e.g., FFT, WelchPeriodogram).
+
+        Raises
+        ------
+        AssertionError
+            If new_method is not a SpectrumMethod instance.
+
+        Notes
+        -----
+        Changing the spectrum method triggers a state update for both
+        the spectrum and the cross-spectral matrix.
+
+        """
         assert isinstance(new_method, SpectrumMethod)
         self._spectrum_parameters["method"] = new_method
         self.__spectrum_state_update = True
@@ -509,11 +667,39 @@ class Signal(MultichannelData):
 
     @property
     def spectrum_smoothing(self) -> float:
-        """Smoothing of spectrum in fraction of octaves."""
+        """Get the spectrum smoothing parameter in fraction of octaves.
+
+        Returns
+        -------
+        float
+            Smoothing parameter. 0 means no smoothing. Positive values indicate
+            smoothing in fractions of octaves.
+
+        """
         return self._spectrum_parameters["smoothing"]
 
     @spectrum_smoothing.setter
     def spectrum_smoothing(self, new_smoothing):
+        """Set the spectrum smoothing parameter.
+
+        Parameters
+        ----------
+        new_smoothing : float or int
+            Smoothing parameter in fraction of octaves. Determines the width
+            of the smoothing window applied to the spectrum. Must be zero or
+            positive. Zero (default) means no smoothing.
+
+        Raises
+        ------
+        AssertionError
+            If new_smoothing is negative.
+
+        Notes
+        -----
+        The smoothing is applied across 1/smoothing octave bands.
+        This smoothes both magnitude and phase of the spectrum.
+
+        """
         assert new_smoothing >= 0.0, "Smoothing must be positive or zero"
         self._spectrum_parameters["smoothing"] = float(new_smoothing)
 
@@ -526,7 +712,7 @@ class Signal(MultichannelData):
         detrend: bool = False,
         padding: bool = True,
         scaling: SpectrumScaling = SpectrumScaling.FFTBackward,
-    ):
+    ) -> Self:
         """Sets all necessary parameters for the computation of the
         spectrogram.
 
@@ -578,8 +764,7 @@ class Signal(MultichannelData):
         else:
             if not all(
                 [
-                    self._spectrogram_parameters[k]
-                    == _new_spectrogram_parameters[k]
+                    self._spectrogram_parameters[k] == _new_spectrogram_parameters[k]
                     for k in self._spectrogram_parameters
                 ]
             ):
@@ -593,8 +778,8 @@ class Signal(MultichannelData):
         path: str | None = None,
         new_time_data: NDArray[np.float64] | None = None,
         sampling_rate_hz: int | None = None,
-        padding_trimming: bool = True,
-    ) -> "Signal":
+        allow_padding_trimming: bool = True,
+    ) -> Self:
         """Adds new channels to this signal object.
 
         Parameters
@@ -605,7 +790,7 @@ class Signal(MultichannelData):
             np.array with new channel data.
         sampling_rate_hz : int, optional
             Sampling rate for the new data
-        padding_trimming : bool, optional
+        allow_padding_trimming : bool, optional
             Activates padding or trimming at the end of signal in case the
             new data does not match previous data. Default: `True`.
 
@@ -645,7 +830,7 @@ class Signal(MultichannelData):
         diff = new_time_data.shape[0] - self.time_data.shape[0]
         if diff != 0:
             txt = "Padding" if diff < 0 else "Trimming"
-            if padding_trimming:
+            if allow_padding_trimming:
                 new_time_data = _pad_trim(
                     new_time_data,
                     self.time_data.shape[0],
@@ -659,16 +844,14 @@ class Signal(MultichannelData):
             else:
                 raise AttributeError(
                     f"{new_time_data.shape[0]} does not match "
-                    + f"{self.time_data.shape[0]}. Activate padding_trimming "
+                    + f"{self.time_data.shape[0]}. Activate allow_padding_trimming "
                     + "for allowing this channel to be added"
                 )
-        self.time_data = np.concatenate(
-            [self.time_data, new_time_data], axis=1
-        )
+        self.time_data = np.concatenate([self.time_data, new_time_data], axis=1)
         self.__update_state()
         return self
 
-    def clear_time_window(self) -> "Signal":
+    def clear_time_window(self) -> Self:
         """Deletes the time window of the signal in case there is any."""
         if hasattr(self, "window"):
             del self.window
@@ -769,6 +952,12 @@ class Signal(MultichannelData):
         (frequencies, channels, channels). It uses the parameters stored in
         `set_spectrum_parameters`.
 
+        Parameters
+        ----------
+        force_computation : bool, optional
+            When `True`, computation is forced even if there is cached data.
+            Default: `False`.
+
         Returns
         -------
         f_csm : NDArray[np.float64]
@@ -782,9 +971,7 @@ class Signal(MultichannelData):
             + "channels are available"
         )
         condition = (
-            not hasattr(self, "csm")
-            or force_computation
-            or self.__csm_state_update
+            not hasattr(self, "csm") or force_computation or self.__csm_state_update
         )
 
         if condition:
@@ -821,9 +1008,7 @@ class Signal(MultichannelData):
 
     def get_spectrogram(
         self, force_computation: bool = False
-    ) -> tuple[
-        NDArray[np.float64], NDArray[np.float64], NDArray[np.complex128]
-    ]:
+    ) -> tuple[NDArray[np.float64], NDArray[np.float64], NDArray[np.complex128]]:
         """Returns a matrix containing the STFT of a specific channel.
 
         Parameters
@@ -1048,9 +1233,7 @@ class Signal(MultichannelData):
         td_squared = self.time_data**2
 
         if window_length_s > 0:
-            window = np.ones(
-                (int(window_length_s * self.sampling_rate_hz + 0.5), 1)
-            )
+            window = np.ones((int(window_length_s * self.sampling_rate_hz + 0.5), 1))
             window /= len(window)
             td_squared = oaconvolve(td_squared, window, mode="same", axes=0)
 
@@ -1089,8 +1272,7 @@ class Signal(MultichannelData):
             etc,
             sharex=True,
             ylabels=[
-                f"Channel {n} / {db_type}"
-                for n in range(self.number_of_channels)
+                f"Channel {n} / {db_type}" for n in range(self.number_of_channels)
             ],
             xlabels="Time / s",
         )
@@ -1342,9 +1524,7 @@ class Signal(MultichannelData):
 
         if smoothing != 0:
             ph = _wrap_phase(
-                _fractional_octave_smoothing(
-                    np.unwrap(ph, axis=0), None, smoothing
-                )
+                _fractional_octave_smoothing(np.unwrap(ph, axis=0), None, smoothing)
             )
 
         if unwrap:
@@ -1418,23 +1598,19 @@ class Signal(MultichannelData):
                 subtype = "PCM_16"
             else:
                 raise ValueError(
-                    "Selected bit depth is not valid. "
-                    + "Use either 16, 24, 32 or 64"
+                    "Selected bit depth is not valid. " + "Use either 16, 24, 32 or 64"
                 )
-            sf.write(
-                path, self.time_data, self.sampling_rate_hz, subtype=subtype
-            )
+            sf.write(path, self.time_data, self.sampling_rate_hz, subtype=subtype)
         elif mode == "pkl":
             with open(path, "wb") as data_file:
                 dump(self, data_file, HIGHEST_PROTOCOL)
         else:
             raise ValueError(
-                f"{mode} is not a supported saving mode. Use "
-                + "wav, flac or pkl"
+                f"{mode} is not a supported saving mode. Use " + "wav, flac or pkl"
             )
         return self
 
-    def copy(self):
+    def copy(self) -> "Signal":
         """Returns a copy of the object.
 
         Returns
@@ -1491,9 +1667,7 @@ class Signal(MultichannelData):
         # Copy if the underlying memory belongs to another array
         if isinstance(new_time_data, np.ndarray):
             new_time_data = (
-                new_time_data
-                if new_time_data.base is None
-                else new_time_data.copy()
+                new_time_data if new_time_data.base is None else new_time_data.copy()
             )
         #
         new_signal = Signal.from_time_data(
@@ -1502,9 +1676,7 @@ class Signal(MultichannelData):
         new_signal.calibrated_signal = self.calibrated_signal
         new_signal.activate_cache = self.activate_cache
         new_signal._spectrum_parameters = deepcopy(self._spectrum_parameters)
-        new_signal._spectrogram_parameters = deepcopy(
-            self._spectrogram_parameters
-        )
+        new_signal._spectrogram_parameters = deepcopy(self._spectrogram_parameters)
         return new_signal
 
     def show_info(self):

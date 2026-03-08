@@ -137,40 +137,121 @@ class Spectrum(MultichannelData):
 
     @property
     def frequency_vector_hz(self):
+        """Get the frequency vector in Hz.
+
+        Returns
+        -------
+        NDArray[np.float64]
+            Frequency vector in Hz. Must be 1D, non-negative, and strictly
+            ascending.
+
+        """
         return self.__frequency_vector_hz
 
     @frequency_vector_hz.setter
     def frequency_vector_hz(self, new_freqs: NDArray[np.float64]):
-        assert not np.iscomplexobj(
-            new_freqs
-        ), "Complex frequencies are invalid"
+        """Set the frequency vector.
+
+        Parameters
+        ----------
+        new_freqs : NDArray[np.float64]
+            Frequency vector in Hz. Must be 1D, contain only non-negative values,
+            and be strictly ascending (no repeated values).
+
+        Raises
+        ------
+        AssertionError
+            If frequency vector is complex, not 1D, contains negative values,
+            or is not strictly ascending.
+
+        Notes
+        -----
+        The frequency vector type (e.g., linear, logarithmic) is automatically
+        determined based on the spacing.
+
+        """
+        assert not np.iscomplexobj(new_freqs), "Complex frequencies are invalid"
         f = np.atleast_1d(new_freqs).astype(np.float64)
         assert f.ndim == 1, "Frequency vector can only have a single dimension"
         assert np.all(f >= 0.0), "Negative frequencies are not supported"
-        assert np.all(
-            np.ediff1d(f) > 0.0
-        ), "Frequency vector is not strictly ascending"
+        assert np.all(np.ediff1d(f) > 0.0), "Frequency vector is not strictly ascending"
         self.__frequency_vector_type = self.__check_frequency_vector_type(f)
         self.__frequency_vector_hz = f
 
     @property
     def frequency_vector_type(self) -> FrequencySpacing:
+        """Get the type of frequency spacing in the frequency vector.
+
+        Returns
+        -------
+        FrequencySpacing
+            Frequency spacing type (Linear, Logarithmic, or Other).
+
+        """
         return self.__frequency_vector_type
 
     @property
     def number_frequency_bins(self) -> int:
+        """Get the number of frequency bins in the spectrum.
+
+        Returns
+        -------
+        int
+            Number of frequency bins (length of the frequency vector).
+
+        """
         return len(self.frequency_vector_hz)
 
     @property
     def length_frequency_bins(self) -> int:
+        """Get the number of frequency bins in the spectrum.
+
+        Returns
+        -------
+        int
+            Alias for `number_frequency_bins`. Number of frequency bins
+            (length of the frequency vector).
+
+        """
         return self.number_frequency_bins
 
     @property
     def spectral_data(self) -> NDArray[np.float64 | np.complex128]:
+        """Get the spectral data.
+
+        Returns
+        -------
+        NDArray[np.float64 | np.complex128]
+            Spectral data as a 2D array with shape (number_of_frequency_bins,
+            number_of_channels). Real values represent magnitude spectrum,
+            complex values represent complex spectrum.
+
+        """
         return self.__spectral_data
 
     @spectral_data.setter
     def spectral_data(self, new_data: ArrayLike):
+        """Set the spectral data.
+
+        Parameters
+        ----------
+        new_data : ArrayLike
+            Spectral data as a 2D array with shape (number_of_frequency_bins,
+            number_of_channels). Data is automatically transposed if needed
+            to match the expected shape.
+
+        Raises
+        ------
+        AssertionError
+            If spectral data is not 2D or the number of frequency bins does not
+            match the current frequency vector.
+
+        Notes
+        -----
+        Data must have the same number of frequency bins as the current
+        frequency vector.
+
+        """
         data = np.atleast_2d(new_data)
         assert data.ndim == 2, "Spectral data must have two dimensions"
         if data.shape[0] < data.shape[1]:
@@ -189,6 +270,15 @@ class Spectrum(MultichannelData):
 
     @property
     def is_magnitude(self) -> bool:
+        """Check if the spectral data is in magnitude form.
+
+        Returns
+        -------
+        bool
+            True if the spectral data contains only real (magnitude) values,
+            False if it contains complex values.
+
+        """
         return np.isrealobj(self.__spectral_data)
 
     @property
@@ -199,12 +289,28 @@ class Spectrum(MultichannelData):
 
     @property
     def spectrum_type(self) -> SpectrumType:
+        """Get the spectrum type (Magnitude or Complex).
+
+        Returns
+        -------
+        SpectrumType
+            Spectrum type indicating whether the data is magnitude or complex.
+
+        """
         if self.is_magnitude:
             return SpectrumType.Magnitude
         return SpectrumType.Complex
 
     @property
     def has_coherence(self) -> bool:
+        """Check if coherence data has been set for this spectrum.
+
+        Returns
+        -------
+        bool
+            True if coherence attribute exists, False otherwise.
+
+        """
         return hasattr(self, "coherence")
 
     @staticmethod
@@ -212,15 +318,11 @@ class Spectrum(MultichannelData):
         f_vec_hz: NDArray[np.float64],
     ) -> FrequencySpacing:
         try:
-            if np.all(
-                np.isclose(np.ediff1d(f_vec_hz), f_vec_hz[-1] - f_vec_hz[-2])
-            ):
+            if np.all(np.isclose(np.ediff1d(f_vec_hz), f_vec_hz[-1] - f_vec_hz[-2])):
                 return FrequencySpacing.Linear
 
             if np.all(
-                np.isclose(
-                    f_vec_hz[2:] / f_vec_hz[1:-1], f_vec_hz[-1] / f_vec_hz[-2]
-                )
+                np.isclose(f_vec_hz[2:] / f_vec_hz[1:-1], f_vec_hz[-1] / f_vec_hz[-2])
             ):
                 return FrequencySpacing.Logarithmic
         except Exception as e:
@@ -273,8 +375,7 @@ class Spectrum(MultichannelData):
         if self.frequency_vector_type == FrequencySpacing.Linear:
             delta_f = self.frequency_vector_hz[1] - self.frequency_vector_hz[0]
             condition_sampling_rate = (
-                abs(sampling_rate_hz / 2 - self.frequency_vector_hz[-1])
-                > delta_f
+                abs(sampling_rate_hz / 2 - self.frequency_vector_hz[-1]) > delta_f
             )
             condition_start = not np.isclose(self.frequency_vector_hz[0], 0.0)
 
@@ -299,9 +400,7 @@ class Spectrum(MultichannelData):
             InterpolationScheme.Pchip,
             InterpolationEdgeHandling.ZeroPad,
         )
-        spectrum = self.get_interpolated_spectrum(
-            requested_freqs, SpectrumType.Complex
-        )
+        spectrum = self.get_interpolated_spectrum(requested_freqs, SpectrumType.Complex)
 
         return __td_from_spec(spectrum, length_seconds, sampling_rate_hz)
 
@@ -386,11 +485,7 @@ class Spectrum(MultichannelData):
         )
         new_sp = self.get_interpolated_spectrum(
             new_freqs_hz,
-            (
-                SpectrumType.Magnitude
-                if self.is_magnitude
-                else SpectrumType.Complex
-            ),
+            (SpectrumType.Magnitude if self.is_magnitude else SpectrumType.Complex),
         )
         self.frequency_vector_hz = new_freqs_hz
         self.spectral_data = new_sp
@@ -420,9 +515,7 @@ class Spectrum(MultichannelData):
             np.array([reference_frequency_hz]), SpectrumType.Magnitude
         )
         normalization_value = (
-            values
-            if reference_channel is None
-            else values[0, reference_channel]
+            values if reference_channel is None else values[0, reference_channel]
         )
         self.spectral_data /= normalization_value
         return self
@@ -535,11 +628,7 @@ class Spectrum(MultichannelData):
         else:
             output = np.zeros(
                 (len(requested_frequency), self.number_of_channels),
-                dtype=(
-                    np.complex128
-                    if self.__int_domain.is_complex()
-                    else np.float64
-                ),
+                dtype=(np.complex128 if self.__int_domain.is_complex() else np.float64),
             )
             for ch in range(output.shape[1]):
                 output[:, ch] = np.interp(
@@ -740,9 +829,7 @@ class Spectrum(MultichannelData):
 
         """
         beta = (
-            np.log2(
-                self.frequency_vector_hz[-1] / self.frequency_vector_hz[-2]
-            )
+            np.log2(self.frequency_vector_hz[-1] / self.frequency_vector_hz[-2])
             if self.frequency_vector_type == FrequencySpacing.Logarithmic
             else None
         )
@@ -760,11 +847,7 @@ class Spectrum(MultichannelData):
                     self.frequency_vector_hz[-1] - self.frequency_vector_hz[0],
                     endpoint=True,
                 ),
-                (
-                    SpectrumType.Magnitude
-                    if self.is_magnitude
-                    else SpectrumType.Complex
-                ),
+                (SpectrumType.Magnitude if self.is_magnitude else SpectrumType.Complex),
             )
 
         if self.is_magnitude:
@@ -805,7 +888,7 @@ class Spectrum(MultichannelData):
         self,
         in_db: bool = True,
         normalization: MagnitudeNormalization = MagnitudeNormalization.NoNormalization,
-        dynamic_range_db: float | None = 100.0,
+        dynamic_range_db: float | None = None,
     ):
         """Plot the magnitude spectrum.
 
@@ -818,7 +901,7 @@ class Spectrum(MultichannelData):
             NoNormalization.
         dynamic_range_db : float, None, optional
             Pass a dynamic range in order to constrain the plot. Use None
-            to avoid it. Default: 100.
+            to avoid it. Default: `None`.
 
         """
         match normalization:
@@ -839,20 +922,14 @@ class Spectrum(MultichannelData):
                 )
             case MagnitudeNormalization.MaxFirstChannel:
                 norm = (
-                    np.max(
-                        np.abs(self.spectral_data[:, 0]), axis=0, keepdims=True
-                    )
+                    np.max(np.abs(self.spectral_data[:, 0]), axis=0, keepdims=True)
                     if not self.is_magnitude
-                    else np.max(
-                        self.spectral_data[:, 0], axis=0, keepdims=True
-                    )
+                    else np.max(self.spectral_data[:, 0], axis=0, keepdims=True)
                 )
             case MagnitudeNormalization.Energy:
                 norm = (self.get_energy() / self.number_frequency_bins) ** 0.5
             case MagnitudeNormalization.EnergyFirstChannel:
-                norm = (
-                    self.get_energy()[0] / self.number_frequency_bins
-                ) ** 0.5
+                norm = (self.get_energy()[0] / self.number_frequency_bins) ** 0.5
             case MagnitudeNormalization.NoNormalization:
                 norm = np.ones(self.number_of_channels)
 
@@ -886,8 +963,7 @@ class Spectrum(MultichannelData):
             sharey=True,
             log_x=True,
             ylabels=[
-                rf"$\gamma^2$ Coherence {n}"
-                for n in range(self.number_of_channels)
+                rf"$\gamma^2$ Coherence {n}" for n in range(self.number_of_channels)
             ],
             range_x=None,
             xlabels="Frequency / Hz",

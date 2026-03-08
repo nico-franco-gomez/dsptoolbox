@@ -57,9 +57,7 @@ def _group_delay_direct(
     if np.iscomplexobj(phase):
         phase = np.angle(phase)
     if delta_f != 1:
-        gd = (
-            -np.gradient(np.unwrap(phase, axis=0), delta_f, axis=0) / np.pi / 2
-        )
+        gd = -np.gradient(np.unwrap(phase, axis=0), delta_f, axis=0) / np.pi / 2
     else:
         gd = -np.gradient(np.unwrap(phase, axis=0), axis=0)
     return gd
@@ -203,9 +201,7 @@ def _center_frequencies_fractional_octaves_iec(
     iseven = np.mod(num_fractions, 2) == 0
     if ~iseven:
         indices = np.around(
-            num_fractions
-            * np.log(nominal / reference_freq)
-            / np.log(octave_ratio)
+            num_fractions * np.log(nominal / reference_freq) / np.log(octave_ratio)
         )
         exponent = indices / num_fractions
     else:
@@ -321,9 +317,7 @@ def _kaiser_window_fractional(
     else:
         if fractional_delay > 0.5:
             L += 1
-    Z = beta * np.sqrt(
-        np.array(1 - ((L - alpha) / alpha) ** 2, dtype="complex")
-    )
+    Z = beta * np.sqrt(np.array(1 - ((L - alpha) / alpha) ** 2, dtype="complex"))
     return np.real(bessel_first_mod(0, Z)) / bessel_first_mod(0, beta)
 
 
@@ -377,9 +371,7 @@ def _indices_above_threshold_dbfs(
             coeff = release_smoothing_coeff
         else:
             coeff = 0
-        momentary_gain[i] = (
-            coeff * time_power[i] + (1 - coeff) * momentary_gain[i - 1]
-        )
+        momentary_gain[i] = coeff * time_power[i] + (1 - coeff) * momentary_gain[i - 1]
     momentary_gain = 10.0 * np.log10(momentary_gain)
 
     # Get Indices above threshold

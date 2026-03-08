@@ -16,9 +16,7 @@ class TestTransformsModule:
         # Only functionality
         cc = dsp.transforms.cepstrum(self.speech, True)
         dsp.transforms.cepstrum(self.speech, False)
-        ss = dsp.transforms.from_complex_cepstrum(
-            cc, self.speech.sampling_rate_hz
-        )
+        ss = dsp.transforms.from_complex_cepstrum(cc, self.speech.sampling_rate_hz)
         np.testing.assert_allclose(
             self.speech.time_data,
             ss.time_data,
@@ -79,9 +77,7 @@ class TestTransformsModule:
         dsp.transforms.mel_filterbank(
             f_hz=f, range_hz=[1e3, 5e3], n_bands=10, normalize=False
         )
-        dsp.transforms.mel_filterbank(
-            f_hz=f, range_hz=None, n_bands=30, normalize=True
-        )
+        dsp.transforms.mel_filterbank(f_hz=f, range_hz=None, n_bands=30, normalize=True)
 
     def test_plot_waterfall(self):
         # Only functionality
@@ -100,9 +96,7 @@ class TestTransformsModule:
         t, f, s = self.speech.get_spectrogram()
 
         mels, _ = dsp.transforms.mel_filterbank(f, [20, 10e3], n_bands=4)
-        t, mel, mf, fig, ax = dsp.transforms.mfcc(
-            self.speech, mel_filters=mels
-        )
+        t, mel, mf, fig, ax = dsp.transforms.mfcc(self.speech, mel_filters=mels)
         t, mel, mf = dsp.transforms.mfcc(self.speech, generate_plot=False)
 
     def test_istft(self):
@@ -118,9 +112,7 @@ class TestTransformsModule:
             sampling_rate_hz=self.speech.sampling_rate_hz,
         )
         assert np.all(
-            np.isclose(
-                self.speech.time_data, speech_rec.time_data[: len(self.speech)]
-            )
+            np.isclose(self.speech.time_data, speech_rec.time_data[: len(self.speech)])
         )
 
         # With longer fft length than window
@@ -138,9 +130,7 @@ class TestTransformsModule:
             sampling_rate_hz=self.speech.sampling_rate_hz,
         )
         assert np.all(
-            np.isclose(
-                self.speech.time_data, speech_rec.time_data[: len(self.speech)]
-            )
+            np.isclose(self.speech.time_data, speech_rec.time_data[: len(self.speech)])
         )
 
     def test_chroma(self):
@@ -222,11 +212,11 @@ class TestTransformsModule:
     def test_lpc(self):
         # Only functionality
         speech = dsp.resample(self.speech, 8000)
-        dsp.transforms.lpc(speech, 10, 1024, False, "burg", 512)
-        dsp.transforms.lpc(speech, 10, 1024, True, "burg", 512)
+        dsp.transforms.lpc(speech, 10, 1024, False, True, 512)
+        dsp.transforms.lpc(speech, 10, 1024, True, True, 512)
 
-        dsp.transforms.lpc(speech, 10, 1024, False, "yw", 512)
-        dsp.transforms.lpc(speech, 10, 1024, True, "yw", 512)
+        dsp.transforms.lpc(speech, 10, 1024, False, False, 512)
+        dsp.transforms.lpc(speech, 10, 1024, True, False, 512)
 
     def test_dft(self):
         s = dsp.pad_trim(self.speech, 20_000)
@@ -240,18 +230,30 @@ class TestTransformsModule:
     def test_spectrum_via_filterbank(self):
         s = dsp.pad_trim(self.speech, 20_000)
         freqs = np.asarray([500, 550, 1000])
-        spec1 = dsp.transforms.spectrum_via_filterbank(
-            s, freqs, 20.0, 8, False
-        )
-        dsp.transforms.spectrum_via_filterbank(s, freqs, 20.0, 8, True)
+        # Linear
+        spec1 = dsp.transforms.spectrum_via_filterbank(s, freqs, None, 20.0, 8, False)
+        dsp.transforms.spectrum_via_filterbank(s, freqs, None, 20.0, 8, True)
 
         s_multi = dsp.append_signals([s, s.copy()])
         spec2 = dsp.transforms.spectrum_via_filterbank(
-            s_multi, freqs, 20.0, 8, False
+            s_multi, freqs, None, 20.0, 8, False
         )
-        np.testing.assert_allclose(
-            spec1.spectral_data[:, 0], spec2.spectral_data[:, 0]
+        np.testing.assert_allclose(spec1.spectral_data[:, 0], spec2.spectral_data[:, 0])
+        np.testing.assert_allclose(spec1.spectral_data[:, 0], spec2.spectral_data[:, 1])
+
+        # Log
+        spec2 = dsp.transforms.spectrum_via_filterbank(
+            s_multi, freqs, 0.5, None, 8, False
         )
-        np.testing.assert_allclose(
-            spec1.spectral_data[:, 0], spec2.spectral_data[:, 1]
-        )
+        with pytest.raises(AssertionError):
+            spec2 = dsp.transforms.spectrum_via_filterbank(
+                s_multi, freqs, 0.5, 10, 8, False
+            )
+        with pytest.raises(AssertionError):
+            spec2 = dsp.transforms.spectrum_via_filterbank(
+                s_multi, freqs, -0.5, None, 8, False
+            )
+        with pytest.raises(AssertionError):
+            spec2 = dsp.transforms.spectrum_via_filterbank(
+                s_multi, freqs, None, -10, 8, False
+            )

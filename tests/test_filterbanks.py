@@ -10,9 +10,7 @@ class TestFilterbanksModule:
     fs = 5000
 
     def get_noise(self):
-        return dsp.generators.noise(
-            length_seconds=1.0, sampling_rate_hz=self.fs
-        )
+        return dsp.generators.noise(length_seconds=1.0, sampling_rate_hz=self.fs)
 
     def test_linkwitz(self):
         # Only functionality
@@ -29,9 +27,9 @@ class TestFilterbanksModule:
             )
 
         # Plots
-        fb.plot_group_delay()
-        fb.plot_phase()
-        fb.plot_magnitude()
+        fb.plot_group_delay(length_samples=512)
+        fb.plot_phase(length_samples=512)
+        fb.plot_magnitude(length_samples=512)
 
         # Test filtering
         s = self.get_noise()
@@ -67,37 +65,57 @@ class TestFilterbanksModule:
         fb.reconstruct(mb)
 
     def test_qmf_crossover(self):
-        # Only functionality
-        ny_hz = self.fs // 2
-        lp = dsp.Filter.fir_filter(
-            order=10,
-            frequency_hz=ny_hz // 2,
+        # Factors around half band frequency were manually extracted for satisfactory
+        # reconstruction precision
+        lp_iir = dsp.Filter.iir_filter(
+            12, (self.fs / 2) * 0.5095, dsp.FilterPassType.Lowpass, self.fs
+        )
+        lp_fir = dsp.Filter.fir_filter(
+            order=11,
+            frequency_hz=(self.fs / 2) * 0.572,
             type_of_pass=dsp.FilterPassType.Lowpass,
             sampling_rate_hz=self.fs,
         )
-        fb = dsp.filterbanks.qmf_crossover(lp)
         s = self.get_noise()
-        fb.filter_signal(
-            s,
-            mode=dsp.FilterBankMode.Parallel,
-            activate_zi=False,
-            downsample=False,
-        )
-        fb.filter_signal(
-            s,
-            mode=dsp.FilterBankMode.Parallel,
-            activate_zi=True,
-            downsample=False,
-        )
-        mb_ = fb.filter_signal(
-            s,
-            mode=dsp.FilterBankMode.Parallel,
-            activate_zi=False,
-            downsample=True,
-        )
 
-        # Reconstruction
-        fb.reconstruct_signal(mb_, upsample=True)
+        for lp in [lp_fir, lp_iir]:
+            fb = dsp.filterbanks.qmf_crossover(lp)
+            fb.filter_signal(
+                s,
+                mode=dsp.FilterBankMode.Parallel,
+                activate_zi=False,
+                downsample=False,
+            )
+            fb.filter_signal(
+                s,
+                mode=dsp.FilterBankMode.Parallel,
+                activate_zi=True,
+                downsample=False,
+            )
+            mb_ = fb.filter_signal(
+                s,
+                mode=dsp.FilterBankMode.Parallel,
+                activate_zi=False,
+                downsample=True,
+            )
+
+            # Reconstruction
+            round_trip = fb.reconstruct_signal(mb_, upsample=True)
+            spec = dsp.spectral_difference(s, round_trip, energy_normalization=False)
+            spec.spectral_data[:2] = 1.0  # Remove DC
+            np.testing.assert_allclose(
+                dsp.tools.to_db(spec.spectral_data, True), 0.0, atol=1
+            )
+
+        # Run other functions
+        fb.plot_magnitude(
+            length_samples=512, mode=dsp.FilterBankMode.Parallel, downsample=True
+        )
+        fb.plot_magnitude(
+            length_samples=512, mode=dsp.FilterBankMode.Parallel, downsample=False
+        )
+        fb.plot_group_delay(length_samples=512, mode=dsp.FilterBankMode.Parallel)
+        fb.plot_phase(length_samples=512, mode=dsp.FilterBankMode.Parallel)
 
     def test_octave_filter_bank(self):
         fs_hz = 10_000
@@ -107,12 +125,14 @@ class TestFilterbanksModule:
             filter_order=6,
             sampling_rate_hz=fs_hz,
         )
-        dsp.filterbanks.fractional_octave_bands(
+        _, center, (low, up) = dsp.filterbanks.fractional_octave_bands(
             frequency_range_hz=[31, 4500],
             octave_fraction=12,
             filter_order=6,
             sampling_rate_hz=fs_hz,
         )
+        assert len(center) == len(low) and len(low) == len(up)
+        assert np.all(np.ediff1d(center) > 0)
 
         with pytest.raises(AssertionError):
             dsp.filterbanks.fractional_octave_bands(
@@ -146,8 +166,7 @@ class TestFilterbanksModule:
         assert np.all(
             np.isclose(
                 h,
-                f2.get_coefficients(dsp.FilterCoefficientsType.Ba)[0]
-                + coefficients,
+                f2.get_coefficients(dsp.FilterCoefficientsType.Ba)[0] + coefficients,
             )
         )
 
@@ -172,14 +191,10 @@ class TestFilterbanksModule:
 
         # Initialize with wrong length
         with pytest.raises(AssertionError):
-            dsp.filterbanks.PhaseLinearizer(
-                np.angle(sp[:, 0]), len(ir) // 2, fs_hz
-            )
+            dsp.filterbanks.PhaseLinearizer(np.angle(sp[:, 0]), len(ir) // 2, fs_hz)
 
         # Phase linearizer - Without interpolating
-        pl = dsp.filterbanks.PhaseLinearizer(
-            np.angle(sp[:, 0]), len(ir), fs_hz
-        )
+        pl = dsp.filterbanks.PhaseLinearizer(np.angle(sp[:, 0]), len(ir), fs_hz)
         with pytest.raises(AssertionError):
             pl.set_parameters(-10)
         pl.get_filter_as_ir()
@@ -190,9 +205,7 @@ class TestFilterbanksModule:
         ir = fb.get_ir(length_samples=2**9).collapse()
         ir.spectrum_method = dsp.SpectrumMethod.FFT
         _, sp = ir.get_spectrum()
-        pl = dsp.filterbanks.PhaseLinearizer(
-            np.angle(sp[:, 0]), len(ir), fs_hz
-        )
+        pl = dsp.filterbanks.PhaseLinearizer(np.angle(sp[:, 0]), len(ir), fs_hz)
         pl.get_filter_as_ir()
         pl.get_filter()
 
@@ -290,9 +303,7 @@ class TestFilterbanksModule:
     def test_arma(self):
         # Only functionality
         rir = dsp.ImpulseResponse(
-            os.path.join(
-                os.path.dirname(__file__), "..", "example_data", "rir.wav"
-            )
+            os.path.join(os.path.dirname(__file__), "..", "example_data", "rir.wav")
         )
         dsp.filterbanks.arma(rir, 10, 0)
         dsp.filterbanks.arma(rir, 10, 1)
@@ -306,9 +317,7 @@ class TestFilterbanksModule:
     def test_fractional_delay(self):
         noise = dsp.Filter.iir_filter(
             8, self.fs / 4, dsp.FilterPassType.Lowpass, self.fs
-        ).filter_signal(
-            dsp.generators.noise(0.5, self.fs, padding_end_seconds=0.5)
-        )
+        ).filter_signal(dsp.generators.noise(0.5, self.fs, padding_end_seconds=0.5))
 
         fractional = 0.5
         order = 30

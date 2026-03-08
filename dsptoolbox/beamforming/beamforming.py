@@ -53,26 +53,10 @@ class Grid(BasePoints):
             meters. Use `'x'`, `'y'` and `'z'` as keys to pass array-like
             objects with the positions.
 
-        Attributes and Methods
-        ----------------------
-        - `coordinates`: Coordinates of the grid points as numpy.ndarray with
-          shape (point, coordinate xyz).
-        - `number_of_points`: Number of points contained in the array.
-        - `ndim`: Number of dimensions of grid.
-        - `dimensions`: Dimensions in which the points are extended.
-        - `extent`: Dictionary with the extent of points in each coordinate.
-          As an example for the x direction `'x': [min(x), max(x)]`.
-        - `get_distances_to_point()`: Gets all point distances to a
-          given point.
-        - `find_nearest_point()`: Finds the index and coordinates of
-          the nearest point to a given one.
-
         """
         super().__init__(positions)
 
-    def reconstruct_map_shape(
-        self, map: NDArray[np.float64]
-    ) -> NDArray[np.float64]:
+    def reconstruct_map_shape(self, map: NDArray[np.float64]) -> NDArray[np.float64]:
         """Placeholder for a user-defined map reconstruction. Here, it returns
         same given map. Use inheritance from the `Grid` class to overwrite this
         with an own implementation.
@@ -153,9 +137,7 @@ class Regular2DGrid(Grid):
         dim1 = dim1.flatten()
         dim2 = dim2.flatten()
         positions = np.append(dim1[..., None], dim2[..., None], axis=1)
-        positions = np.append(
-            positions, np.ones((len(dim1), 1)) * value3, axis=1
-        )
+        positions = np.append(positions, np.ones((len(dim1), 1)) * value3, axis=1)
 
         # Convert to the positions dictionary
         base_dimensions = ["x", "y", "z"]
@@ -184,9 +166,7 @@ class Regular2DGrid(Grid):
             Reshaped map.
 
         """
-        assert (
-            map_vector.ndim == 1
-        ), "The passed map should be a vector (flattened)"
+        assert map_vector.ndim == 1, "The passed map should be a vector (flattened)"
         assert (
             len(map_vector) == self.number_of_points
         ), "Length of passed vector does not match the number of points"
@@ -215,9 +195,7 @@ class Regular2DGrid(Grid):
         # If map has not been reshaped by now...
         if len(map) == self.number_of_points:
             map = self.reconstruct_map_shape(map)
-        assert (
-            map.shape == self.original_lengths
-        ), "Map shape does not match grid shape"
+        assert map.shape == self.original_lengths, "Map shape does not match grid shape"
         # Get right extent
         ex = self.extent
         map = to_db(map, False, dynamic_range_db=500)
@@ -274,9 +252,7 @@ class Regular3DGrid(Grid):
         line_y = np.asarray(line_y).squeeze()
         line_z = np.asarray(line_z).squeeze()
         self.lines = (line_x, line_y, line_z)
-        assert all(
-            [n.ndim == 1 for n in self.lines]
-        ), "Shape of lines is invalid"
+        assert all([n.ndim == 1 for n in self.lines]), "Shape of lines is invalid"
 
         # For reconstructing the matrix later
         self.original_lengths = (len(line_x), len(line_y), len(line_z))
@@ -312,9 +288,7 @@ class Regular3DGrid(Grid):
             Reshaped map.
 
         """
-        assert (
-            map_vector.ndim == 1
-        ), "The passed map should be a vector (flattened)"
+        assert map_vector.ndim == 1, "The passed map should be a vector (flattened)"
         assert (
             len(map_vector) == self.number_of_points
         ), "Length of passed vector does not match the number of points"
@@ -353,27 +327,19 @@ class Regular3DGrid(Grid):
         # If map has not been reshaped by now...
         if len(map) == self.number_of_points:
             map = self.reconstruct_map_shape(map)
-        assert (
-            map.shape == self.original_lengths
-        ), "Map shape does not match grid shape"
+        assert map.shape == self.original_lengths, "Map shape does not match grid shape"
 
         # Normal dimension to plane
         if third_dimension == "x":
-            ind_plane = np.argmin(
-                np.abs(value_third_dimension - self.lines[0])
-            )
+            ind_plane = np.argmin(np.abs(value_third_dimension - self.lines[0]))
             map = map[ind_plane, :, :]
             extent_dimensions = ["y", "z"]
         elif third_dimension == "y":
-            ind_plane = np.argmin(
-                np.abs(value_third_dimension - self.lines[1])
-            )
+            ind_plane = np.argmin(np.abs(value_third_dimension - self.lines[1]))
             map = map[:, ind_plane, :]
             extent_dimensions = ["x", "z"]
         elif third_dimension == "z":
-            ind_plane = np.argmin(
-                np.abs(value_third_dimension - self.lines[2])
-            )
+            ind_plane = np.argmin(np.abs(value_third_dimension - self.lines[2]))
             map = map[:, :, ind_plane]
             extent_dimensions = ["x", "y"]
         else:
@@ -614,9 +580,7 @@ class MicArray(BasePoints):
         return f_hz * self.aperture / c
 
     # ======== Maximum frequency range ========================================
-    def get_maximum_frequency_range(
-        self, lowest_he: float = 4, c: float = 343
-    ) -> list:
+    def get_maximum_frequency_range(self, lowest_he: float = 4, c: float = 343) -> list:
         """Computes maximum recommended frequency range in Hz for this
         microphone array based on lowest Helmholtz number and the criterion
         `min_distance = wavelength/2` (to avoid spatial aliasing).
@@ -705,13 +669,10 @@ class BaseBeamformer:
         assert isinstance(
             multi_channel_signal, Signal
         ), "Multi-channel signal must be of type Signal"
-        assert (
-            type(mic_array) is MicArray
-        ), "mic_array should be of type MicArray"
+        assert type(mic_array) is MicArray, "mic_array should be of type MicArray"
         assert c > 0, "Speed of sound should be bigger than 0"
         assert (
-            multi_channel_signal.number_of_channels
-            == mic_array.number_of_points
+            multi_channel_signal.number_of_channels == mic_array.number_of_points
         ), "Number of channels in signal and microphone array do not match"
         self.signal = multi_channel_signal
         self.mics = mic_array
@@ -730,9 +691,7 @@ class BaseBeamformer:
             Axes.
 
         """
-        fig, ax = plt.subplots(
-            1, 1, figsize=(8, 5), subplot_kw={"projection": "3d"}
-        )
+        fig, ax = plt.subplots(1, 1, figsize=(8, 5), subplot_kw={"projection": "3d"})
         ax.scatter(
             self.mics.coordinates[:, 0],
             self.mics.coordinates[:, 1],
@@ -881,9 +840,7 @@ class BeamformerDASFrequency(BeamformerGridded):
         f, csm = self.signal.get_csm()
         if remove_csm_diagonal:
             # Account for energy loss
-            csm *= self.signal.number_of_channels / (
-                self.signal.number_of_channels - 1
-            )
+            csm *= self.signal.number_of_channels / (self.signal.number_of_channels - 1)
             for i in range(len(f)):
                 np.fill_diagonal(csm[i, :, :], 0)
 
@@ -983,9 +940,7 @@ class BeamformerCleanSC(BeamformerGridded):
             # Set maximum iterations to twice the number of channels
             maximum_iterations = self.signal.number_of_channels * 2
         else:
-            assert (
-                maximum_iterations > 0
-            ), "Number of iterations must be positive"
+            assert maximum_iterations > 0, "Number of iterations must be positive"
         assert safety_factor > 0 and safety_factor <= 1, (
             f"{safety_factor} is not valid. The safety factor (loop gain) "
             + "should be in ]0, 1]"
@@ -1111,8 +1066,7 @@ class BeamformerOrthogonal(BeamformerGridded):
             number_eigenvalues = self.signal.number_of_channels // 2
         else:
             assert number_eigenvalues <= self.signal.number_of_channels, (
-                "Number of eigenvalues cannot be more than number of "
-                + "microphones"
+                "Number of eigenvalues cannot be more than number of " + "microphones"
             )
             assert (
                 number_eigenvalues > 0
@@ -1155,15 +1109,11 @@ class BeamformerOrthogonal(BeamformerGridded):
                 for gind in range(self.grid.number_of_points):
                     # Generate whole map
                     product = h[find, :, gind].conjugate() @ v[:, -eig - 1]
-                    eig_map[eig, gind, find] = (
-                        product * product.conjugate()
-                    ).real
+                    eig_map[eig, gind, find] = (product * product.conjugate()).real
                 # Find largest value
                 source_ind = np.argmax(eig_map[eig, :, find])
                 # Scale by eigenvalue and pass to final map
-                map[source_ind, find] = (
-                    eig_map[eig, source_ind, find] * w[-eig - 1]
-                )
+                map[source_ind, find] = eig_map[eig, source_ind, find] * w[-eig - 1]
 
         # Integrate over all frequencies
         if number_frequency_bins > 1:
@@ -1256,9 +1206,7 @@ class BeamformerFunctional(BeamformerGridded):
                 map[gind, find] = np.linalg.multi_dot(
                     [h_H[find, gind, :], csm_, h[find, :, gind]]
                 ).real
-                steering_normalization = (
-                    h_H[find, gind, :] @ h[find, :, gind]
-                ).real
+                steering_normalization = (h_H[find, gind, :] @ h[find, :, gind]).real
                 map[gind, find] = (
                     map[gind, find] / steering_normalization
                 ) ** gamma * steering_normalization
@@ -1423,9 +1371,7 @@ class BeamformerDASTime(BaseBeamformer):
             (r0 - min_distance) / self.c * self.signal.sampling_rate_hz
         )
         longest_delay_samples = int(longest_delay_samples + 2)
-        total_length_samples = (
-            out_sig.time_data.shape[0] + longest_delay_samples
-        )
+        total_length_samples = out_sig.time_data.shape[0] + longest_delay_samples
         out_sig = pad_trim(out_sig, total_length_samples)
 
         # Start computation for each grid point
@@ -1438,9 +1384,7 @@ class BeamformerDASTime(BaseBeamformer):
             new_time_data = np.zeros((total_length_samples, 1))
             for im in range(self.mics.number_of_points):
                 ntd = (
-                    fractional_delay(
-                        self.signal.get_channels(im), delays[im]
-                    ).time_data
+                    fractional_delay(self.signal.get_channels(im), delays[im]).time_data
                     * ds[im, ig]
                 )
                 new_time_data += _pad_trim(ntd, total_length_samples)
@@ -1502,14 +1446,12 @@ class MonopoleSource:
         multi_channel_signal = self.emitted_signal.copy()
         for i in range(len(distances)):
             # Delay
-            ns = fractional_delay(
-                self.emitted_signal, delays[i], keep_length=True
-            )
+            ns = fractional_delay(self.emitted_signal, delays[i], keep_length=True)
             # Amplitude scaling – 1 on point and decays with distance
             ns.time_data /= 1.0 + distances[i]
             # Append to final signal
             multi_channel_signal = append_signals(
-                [multi_channel_signal, ns], padding_trimming=True
+                [multi_channel_signal, ns], allow_padding_trimming=True
             )
         # Remove original signal
         multi_channel_signal.remove_channel(0)
@@ -1541,9 +1483,7 @@ def mix_sources_on_array(
     # Convert to list if only Monopole source is passed
     if type(sources) is MonopoleSource:
         sources = [sources]
-    assert (
-        len(sources) > 0
-    ), "There must be at least one source to project on array"
+    assert len(sources) > 0, "There must be at least one source to project on array"
     assert all(
         [type(i) is MonopoleSource for i in sources]
     ), "All sources in list should be of type Source"
@@ -1563,9 +1503,7 @@ def mix_sources_on_array(
             total_length_samples = min(
                 total_length_samples, s.emitted_signal.time_data.shape[0]
             )
-            multi_channel_sig = pad_trim(
-                multi_channel_sig, total_length_samples
-            )
+            multi_channel_sig = pad_trim(multi_channel_sig, total_length_samples)
             s.emitted_signal = pad_trim(s.emitted_signal, total_length_samples)
         # Add to multi-channel data
         ns = s.get_signals_on_array(mics, c)
@@ -1616,11 +1554,7 @@ def classic_steering(
     return (
         1
         / N
-        * np.exp(
-            -1j
-            * wave_number[:, nxs, nxs]
-            * (rti[nxs, :, :] - rt0[nxs, nxs, :])
-        )
+        * np.exp(-1j * wave_number[:, nxs, nxs] * (rti[nxs, :, :] - rt0[nxs, nxs, :]))
     )
 
 
@@ -1667,11 +1601,7 @@ def inverse_steering(
         rti[nxs, :, :]
         / N
         / rt0[nxs, nxs, :]
-        * np.exp(
-            -1j
-            * wave_number[:, nxs, nxs]
-            * (rti[nxs, :, :] - rt0[nxs, nxs, :])
-        )
+        * np.exp(-1j * wave_number[:, nxs, nxs] * (rti[nxs, :, :] - rt0[nxs, nxs, :]))
     )
 
 
@@ -1720,11 +1650,7 @@ def true_power_steering(
         / rt0[nxs, nxs, :]
         / rti[nxs, :, :]
         / rtj[nxs, nxs, :]
-        * np.exp(
-            -1j
-            * wave_number[:, nxs, nxs]
-            * (rti[nxs, :, :] - rt0[nxs, nxs, :])
-        )
+        * np.exp(-1j * wave_number[:, nxs, nxs] * (rti[nxs, :, :] - rt0[nxs, nxs, :]))
     )
 
 
@@ -1767,17 +1693,11 @@ def true_location_steering(
     rti = grid.get_distances_to_point(mic.coordinates).T
 
     # rtj vector with shape (ngrid)
-    rtj = N * np.sum(
-        1 / mic.get_distances_to_point(grid.coordinates) ** 2, axis=0
-    )
+    rtj = N * np.sum(1 / mic.get_distances_to_point(grid.coordinates) ** 2, axis=0)
 
     return (
         1
         / rti[nxs, :, :]
         / np.sqrt(rtj[nxs, nxs, :])
-        * np.exp(
-            -1j
-            * wave_number[:, nxs, nxs]
-            * (rti[nxs, :, :] - rt0[nxs, nxs, :])
-        )
+        * np.exp(-1j * wave_number[:, nxs, nxs] * (rti[nxs, :, :] - rt0[nxs, nxs, :]))
     )

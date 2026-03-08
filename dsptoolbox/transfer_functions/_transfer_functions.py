@@ -65,10 +65,8 @@ def _window_this_ir_tukey(
 
     # Expected flank length
     flank_length_total = int((1 - constant_percentage) * total_length)
-    left_flank_length = int(
-        flank_length_total * 0.5 * left_to_right_flank_ratio
-    )
-    right_flank_length = flank_length_total - left_flank_length
+    left_flank_length = int(flank_length_total * 0.5 * left_to_right_flank_ratio)
+    right_flank_length = max(flank_length_total - left_flank_length, 0)
 
     # Maximum
     impulse_index = int(np.argmax(np.abs(vec)))
@@ -77,8 +75,9 @@ def _window_this_ir_tukey(
         # If offset and impulse index are outside or inside
         padding_left = 0
         if impulse_index - offset_samples < 0:
-            pad_length = int(-(impulse_index - offset_samples))
+            pad_length = -int(impulse_index - offset_samples)
             vec = np.pad(vec, ((pad_length, 0)))
+            impulse_index += pad_length  # Update to reflect new position after padding
             start_sample += pad_length
             padding_left += pad_length
         else:
@@ -93,6 +92,8 @@ def _window_this_ir_tukey(
         else:
             vec = vec[impulse_index - left_flank_length :]
             start_sample = impulse_index - left_flank_length
+            # Update to new position in trimmed vector
+            impulse_index = left_flank_length
 
         # If total length is larger than actual length
         padding_right = 0
@@ -119,13 +120,8 @@ def _window_this_ir_tukey(
             padding_after_adaptation = total_length - len(vec)
             total_length = len(vec)
 
-        if (
-            left_flank_length + offset_samples
-            > total_length - right_flank_length
-        ):
-            right_flank_length = (
-                total_length - left_flank_length - offset_samples - 1
-            )
+        if left_flank_length + offset_samples > total_length - right_flank_length:
+            right_flank_length = total_length - left_flank_length - offset_samples - 1
 
     points = [
         0,
@@ -133,6 +129,9 @@ def _window_this_ir_tukey(
         total_length - right_flank_length,
         total_length,
     ]
+    assert not np.any(
+        np.ediff1d(points) < 0
+    ), "A valid window could not be constructed with given parameters."
     window = _calculate_window(
         points, total_length, window_type, at_start=at_start, inverse=False
     )
@@ -167,9 +166,7 @@ def _window_this_ir(
     """
     peak_ind = int(np.argmax(np.abs(vec)))
     half_length = total_length // 2
-    centered_impulse_and_even = (
-        peak_ind + half_length == len(vec) and len(vec) % 2 == 0
-    )
+    centered_impulse_and_even = peak_ind + half_length == len(vec) and len(vec) % 2 == 0
 
     # If Peak is in the second half
     flipping = peak_ind > half_length
@@ -234,9 +231,7 @@ def _get_chirp_rate(range_hz: list, length_seconds: float) -> float:
 
     """
     range_hz_array = np.atleast_1d(range_hz)
-    assert range_hz_array.shape == (
-        2,
-    ), "Range must contain exactly two elements."
+    assert range_hz_array.shape == (2,), "Range must contain exactly two elements."
     range_hz_array = np.sort(range_hz_array)
     return np.log2(range_hz_array[1] / range_hz_array[0]) / length_seconds
 
@@ -311,9 +306,7 @@ def _trim_ir(
     etc = to_db(
         hilbert(
             time_data[start_index + impulse_index :],
-            N=next_fast_len(
-                len(time_data) - start_index - impulse_index, False
-            ),
+            N=next_fast_len(len(time_data) - start_index - impulse_index, False),
         ),
         True,
     )
@@ -331,9 +324,7 @@ def _trim_ir(
     # with the highest weight. If all are above -0.7, method failed -> no
     # trimming
 
-    window_lengths = (
-        np.array([10, 30, 50, 70, 90]) * 1e-3 * fs_hz + 0.5
-    ).astype(int)
+    window_lengths = (np.array([10, 30, 50, 70, 90]) * 1e-3 * fs_hz + 0.5).astype(int)
     end = np.zeros(len(window_lengths))
     x = np.arange(len(envelope))
     corr_coeff = np.zeros(len(window_lengths))
@@ -344,8 +335,7 @@ def _trim_ir(
         for _ in range(len(envelope) // window_length):
             new_window_mean_db = np.mean(
                 envelope[
-                    current_start_position : current_start_position
-                    + window_length
+                    current_start_position : current_start_position + window_length
                 ]
             )
             if current_window_mean_db <= new_window_mean_db:
@@ -371,9 +361,7 @@ def _trim_ir(
         end_point = int(np.mean(end[inds]))
     elif np.any(corr_coeff <= -0.7):
         inds = corr_coeff <= -0.7
-        end_point = int(
-            np.mean(np.hstack([np.ones(9) * end[select], end[inds]]))
-        )
+        end_point = int(np.mean(np.hstack([np.ones(9) * end[select], end[inds]])))
     else:
         warn("No satisfactory estimation for trimming the rir could be made")
         end_point = int(np.mean(np.hstack([np.ones(5) * len(envelope), end])))
@@ -411,8 +399,7 @@ def __find_index_above_noise_floor(
         return len(envelope)
 
     new_stop_index = int(
-        ((noise_floor_db + distance_to_noise_floor_db) - polynomial[0])
-        / polynomial[1]
+        ((noise_floor_db + distance_to_noise_floor_db) - polynomial[0]) / polynomial[1]
         + 0.5
     )
 
@@ -449,9 +436,7 @@ try:
     ):
         """Parallel backend of complex smoothing. This function expects a
         linearly-spaced frequency vector."""
-        window_x = np.linspace(
-            np.float64(-1.0), np.float64(1.0), len(window_y)
-        )
+        window_x = np.linspace(np.float64(-1.0), np.float64(1.0), len(window_y))
         delta_f = frequency_vector[1] - frequency_vector[0]
         factor = 2.0 ** (1.0 / octave_fraction / 2.0)
         max_index = len(frequency_vector)
@@ -497,9 +482,7 @@ try:
             nb.types.Array(nb.complex128, 2, "C"),  # DFT factor
             nb.types.Array(nb.complex128, 2, "C"),  # Spectrum
             nb.types.Array(nb.complex128, 1, "C"),  # Alpha (Gaussian window)
-            nb.types.Array(
-                nb.complex128, 2, "C"
-            ),  # Peak index vector (window)
+            nb.types.Array(nb.complex128, 2, "C"),  # Peak index vector (window)
         ),
         parallel=True,
         cache=True,
@@ -515,8 +498,7 @@ try:
         """Parallel backend for frequency-dependent windowing."""
         for ind in nb.prange(len(freqs_normalized)):
             spectrum[ind, :] = np.sum(
-                np.exp(dft_factor * freqs_normalized[ind] + alpha[ind] * n)
-                * time_data,
+                np.exp(dft_factor * freqs_normalized[ind] + alpha[ind] * n) * time_data,
                 axis=0,
             )
         return spectrum
@@ -583,8 +565,7 @@ except ModuleNotFoundError as e:
         """Sequential backend for frequency-dependent windowing."""
         for ind in np.arange(len(freqs_normalized)):
             spectrum[ind, :] = np.sum(
-                np.exp(dft_factor * freqs_normalized[ind] + alpha[ind] * n)
-                * time_data,
+                np.exp(dft_factor * freqs_normalized[ind] + alpha[ind] * n) * time_data,
                 axis=0,
             )
         return spectrum

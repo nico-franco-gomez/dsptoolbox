@@ -44,9 +44,9 @@ class TestStandardModule:
         # Single channel
         td = s.time_data[:, :2]
         td[:, 1] = 0
-        td[: len(self.audio_multi.time_data[:, 0]), 1] = (
-            self.audio_multi.time_data[:, 0]
-        )
+        td[: len(self.audio_multi.time_data[:, 0]), 1] = self.audio_multi.time_data[
+            :, 0
+        ]
         s = dsp.Signal(None, td, self.fs)
         value, corr = dsp.latency(s)
         assert np.allclose(corr, 1.0)
@@ -63,9 +63,7 @@ class TestStandardModule:
         noi_del = dsp.fractional_delay(noi, delay)
         td_previous_noi_del = noi_del.time_data.copy()  # Data does not change
         lat, corr = dsp.latency(noi_del, noi, 2)
-        np.testing.assert_array_equal(
-            td_previous_noi_del, noi_del.time_data
-        )  #
+        np.testing.assert_array_equal(td_previous_noi_del, noi_del.time_data)  #
         assert np.allclose(corr, 1.0, atol=1e-2)
         assert np.abs(lat[0] - delay * noi.sampling_rate_hz) < 0.9
 
@@ -84,8 +82,7 @@ class TestStandardModule:
         td = self.audio_multi.time_data[:trim_length]
         s = dsp.Signal(None, td, self.fs)
         assert np.all(
-            s.time_data
-            == dsp.pad_trim(self.audio_multi, trim_length).time_data
+            s.time_data == dsp.pad_trim(self.audio_multi, trim_length).time_data
         )
 
         # Check for signal: pad at the end
@@ -104,9 +101,7 @@ class TestStandardModule:
         s = dsp.Signal(None, td, self.fs)
         assert np.all(
             s.time_data
-            == dsp.pad_trim(
-                self.audio_multi, trim_length, in_the_end=False
-            ).time_data
+            == dsp.pad_trim(self.audio_multi, trim_length, in_the_end=False).time_data
         )
 
         # Check for signal: pad at the end
@@ -115,9 +110,7 @@ class TestStandardModule:
             [np.zeros((pad_length, self.audio_multi.number_of_channels)), td],
             axis=0,
         )
-        s = dsp.pad_trim(
-            s, s.time_data.shape[0] + pad_length, in_the_end=False
-        )
+        s = dsp.pad_trim(s, s.time_data.shape[0] + pad_length, in_the_end=False)
         s1 = dsp.Signal(None, td, self.fs)
         assert np.all(s.time_data == s1.time_data)
 
@@ -340,6 +333,18 @@ class TestStandardModule:
         rms_vals = dsp.rms(self.audio_multi, in_dbfs=False)
         assert np.isclose(np.sqrt(np.mean(td**2)), rms_vals[0])
 
+    def test_lufs_integrated(self):
+        # Only functionality
+        dsp.lufs_integrated(self.audio_multi)
+        n = dsp.generators.oscillator(
+            997,
+            48000,
+            length_seconds=2.0,
+            peak_level_dbfs=0.0,
+            number_of_channels=1,
+        )
+        np.testing.assert_allclose(dsp.lufs_integrated(n), -3.01, atol=0.07)
+
     def test_calibration_data(self):
         # Calibration for one channel
         sine = dsp.generators.oscillator(
@@ -374,10 +379,8 @@ class TestStandardModule:
         # Multiband
         fb = dsp.filterbanks.fractional_octave_bands(
             [125, 1000], sampling_rate_hz=self.audio_multi.sampling_rate_hz
-        )
-        new_sig = fb.filter_signal(
-            self.audio_multi, dsp.FilterBankMode.Parallel
-        )
+        )[0]
+        new_sig = fb.filter_signal(self.audio_multi, dsp.FilterBankMode.Parallel)
         calib.calibrate_signal(new_sig)
 
     def test_envelope(self):
@@ -469,32 +472,24 @@ class TestStandardModule:
         )
 
         # Filter
-        iir = dsp.Filter.biquad(
-            dsp.BiquadEqType.Peaking, 500.0, 0.0, 0.7, self.fs
-        )
+        iir = dsp.Filter.biquad(dsp.BiquadEqType.Peaking, 500.0, 0.0, 0.7, self.fs)
         output_level1 = dsp.rms(iir.filter_signal(self.audio_multi))
         gain_db = -5.0
         output_level2 = dsp.rms(
             dsp.apply_gain(iir, gain_db).filter_signal(self.audio_multi)
         )
-        np.testing.assert_array_almost_equal(
-            output_level1 + gain_db, output_level2
-        )
+        np.testing.assert_array_almost_equal(output_level1 + gain_db, output_level2)
         with pytest.raises(ValueError):
             dsp.apply_gain(iir, [gain_db, 0])
 
         # FilterBank
         fb = dsp.FilterBank([iir, iir])
         base_level = dsp.rms(
-            fb.filter_signal(
-                self.audio_multi, mode=dsp.FilterBankMode.Sequential
-            )
+            fb.filter_signal(self.audio_multi, mode=dsp.FilterBankMode.Sequential)
         )
         fb2 = dsp.apply_gain(fb, gain_db)
         output_level = dsp.rms(
-            fb2.filter_signal(
-                self.audio_multi, mode=dsp.FilterBankMode.Sequential
-            )
+            fb2.filter_signal(self.audio_multi, mode=dsp.FilterBankMode.Sequential)
         )
         np.testing.assert_array_almost_equal(
             base_level + gain_db * len(fb), output_level
@@ -503,13 +498,9 @@ class TestStandardModule:
         # multiple gains for a filter bank
         fb2 = dsp.apply_gain(fb, [gain_db] + [0] * (len(fb) - 1))
         output_level = dsp.rms(
-            fb2.filter_signal(
-                self.audio_multi, mode=dsp.FilterBankMode.Sequential
-            )
+            fb2.filter_signal(self.audio_multi, mode=dsp.FilterBankMode.Sequential)
         )
-        np.testing.assert_array_almost_equal(
-            base_level + gain_db, output_level
-        )
+        np.testing.assert_array_almost_equal(base_level + gain_db, output_level)
         with pytest.raises(AssertionError):
             dsp.apply_gain(fb, [gain_db] + [0] * (len(fb) + 1))
 
@@ -519,6 +510,8 @@ class TestStandardModule:
         dsp.crest_factor(some_signal, False)
         cf = dsp.crest_factor(some_signal, True)
         assert np.all(cf > 0.0)
+        cf2 = dsp.crest_factor(some_signal, True, True)
+        assert np.all(cf > 0.0) and np.all(cf2 >= cf)
 
         dsp.crest_factor(self.get_multiband_signal(), False)
 
@@ -590,17 +583,13 @@ class TestStandardModule:
         new = dsp.modify_signal_length(self.audio_multi, 1.0, None)
         assert new.length_seconds == self.audio_multi.length_seconds + 1.0
         assert len(self.audio_multi) == original_length
-        np.testing.assert_array_equal(
-            new.time_data[: new.sampling_rate_hz], 0.0
-        )
+        np.testing.assert_array_equal(new.time_data[: new.sampling_rate_hz], 0.0)
 
         # Add only end
         new = dsp.modify_signal_length(self.audio_multi, None, 1.0)
         assert new.length_seconds == self.audio_multi.length_seconds + 1.0
         assert len(self.audio_multi) == original_length
-        np.testing.assert_array_equal(
-            new.time_data[-new.sampling_rate_hz :], 0.0
-        )
+        np.testing.assert_array_equal(new.time_data[-new.sampling_rate_hz :], 0.0)
 
         # Remove both
         new = dsp.modify_signal_length(self.audio_multi, -0.5, -0.5)
@@ -696,25 +685,17 @@ class TestStandardModule:
         assert f3.sos.shape[0] == 2
 
     def test_spectral_difference(self):
-        filt = dsp.Filter.biquad(
-            dsp.BiquadEqType.Peaking, 500.0, 10.0, 1.0, 48000
-        )
+        filt = dsp.Filter.biquad(dsp.BiquadEqType.Peaking, 500.0, 10.0, 1.0, 48000)
         spec = dsp.Spectrum.from_filter(
             dsp.tools.log_frequency_vector([20, 20e3], 128), filt, False
         )
         spec_flat = dsp.Spectrum.from_filter(
             dsp.tools.log_frequency_vector([20, 20e3], 128),
-            dsp.Filter.biquad(
-                dsp.BiquadEqType.Peaking, 500.0, 0.0, 1.0, 48000
-            ),
+            dsp.Filter.biquad(dsp.BiquadEqType.Peaking, 500.0, 0.0, 1.0, 48000),
             False,
         )
-        sp_out = dsp.spectral_difference(
-            spec, spec_flat, energy_normalization=False
-        )
-        np.testing.assert_almost_equal(
-            spec.spectral_data, sp_out.spectral_data
-        )
+        sp_out = dsp.spectral_difference(spec, spec_flat, energy_normalization=False)
+        np.testing.assert_almost_equal(spec.spectral_data, sp_out.spectral_data)
 
         with pytest.raises(AssertionError):
             sp_out = dsp.spectral_difference(

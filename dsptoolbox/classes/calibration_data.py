@@ -1,4 +1,5 @@
 import numpy as np
+from numpy.typing import NDArray
 
 from ..standard import append_signals, rms
 from .signal import Signal
@@ -47,9 +48,7 @@ class CalibrationData:
             calibration_data = Signal(calibration_data, None, None)
         elif isinstance(calibration_data, tuple):
             assert len(calibration_data) == 2, "Tuple must have length 2"
-            calibration_data = Signal(
-                None, calibration_data[0], calibration_data[1]
-            )
+            calibration_data = Signal(None, calibration_data[0], calibration_data[1])
         elif isinstance(calibration_data, Signal):
             pass
         else:
@@ -64,7 +63,9 @@ class CalibrationData:
         self.__update = True
 
     def add_calibration_channel(
-        self, new_channel, allow_pad_trimming: bool = False
+        self,
+        new_channel: str | tuple[NDArray[np.float64], int] | Signal,
+        allow_padding_trimming: bool = False,
     ):
         """Adds a new calibration channel to the calibration signal.
 
@@ -77,7 +78,7 @@ class CalibrationData:
             at the end of the new channel. This is supported, but not
             recommended since zero-padding might distort the real RMS value
             of the recorded signal.
-        allow_pad_trimming : bool, optional
+        allow_padding_trimming : bool, optional
             When True, padding or trimming is activated for the new channel.
             Otherwise, an error will be thrown if the new channel's length
             does not match the current one. Default: False.
@@ -97,7 +98,7 @@ class CalibrationData:
             )
         self.calibration_signal = append_signals(
             [self.calibration_signal, new_channel],
-            padding_trimming=allow_pad_trimming,
+            allow_padding_trimming=allow_padding_trimming,
         )
         self.__update = True
         return self
@@ -172,7 +173,6 @@ class CalibrationData:
                 b.calibrated_signal = True
         else:
             raise TypeError(
-                "signal has not a valid type. Use Signal or "
-                + "MultiBandSignal"
+                "signal has not a valid type. Use Signal or " + "MultiBandSignal"
             )
         return calibrated_signal

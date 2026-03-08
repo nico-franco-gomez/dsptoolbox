@@ -54,13 +54,10 @@ def _levison_durbin_recursion(
             reverse_lag = order - lag - 1
             save_value = ar_parameters[lag].copy()
             ar_parameters[lag] = (
-                save_value
-                + reflection_coefficient * ar_parameters[reverse_lag]
+                save_value + reflection_coefficient * ar_parameters[reverse_lag]
             )
             if lag != reverse_lag:
-                ar_parameters[reverse_lag] += (
-                    reflection_coefficient * save_value
-                )
+                ar_parameters[reverse_lag] += reflection_coefficient * save_value
 
     # Add first coefficient a0
     ndim = ar_parameters.ndim
@@ -101,9 +98,7 @@ def _yw_ar_estimation(
     length_td = time_data.shape[0]
     if time_data.ndim == 1:
         autocorrelation = (
-            correlate(time_data, time_data, "full")[
-                length_td - 1 : length_td + order
-            ]
+            correlate(time_data, time_data, "full")[length_td - 1 : length_td + order]
             / length_td
         )
     elif time_data.ndim == 2:
@@ -117,16 +112,14 @@ def _yw_ar_estimation(
                 / length_td
             )
     else:
-        autocorrelation = np.zeros(
-            (order + 1, time_data.shape[1], time_data.shape[2])
-        )
+        autocorrelation = np.zeros((order + 1, time_data.shape[1], time_data.shape[2]))
         for ii in range(time_data.shape[2]):
             for i in range(time_data.shape[1]):
                 # Biased autocorrelation (only positive lags)
                 autocorrelation[:, i, ii] = (
-                    correlate(
-                        time_data[:, i, ii], time_data[:, i, ii], "full"
-                    )[length_td - 1 : length_td + order]
+                    correlate(time_data[:, i, ii], time_data[:, i, ii], "full")[
+                        length_td - 1 : length_td + order
+                    ]
                     / length_td
                 )
 
@@ -190,14 +183,13 @@ def _burg_ar_estimation(
     den[0] = np.sum(fwd_pred_error**2 + bwd_pred_error**2, axis=0)
 
     for i in range(order):
-        reflect_coeff[0] = (
-            -2.0 * np.sum(bwd_pred_error * fwd_pred_error, axis=0)
-        ) / (den[0] + epsilon)
+        reflect_coeff[0] = (-2.0 * np.sum(bwd_pred_error * fwd_pred_error, axis=0)) / (
+            den[0] + epsilon
+        )
         ar_coeffs_prev, ar_coeffs = ar_coeffs, ar_coeffs_prev
         for j in range(1, i + 2):
             ar_coeffs[j] = (
-                ar_coeffs_prev[j]
-                + reflect_coeff[0] * ar_coeffs_prev[i - j + 1]
+                ar_coeffs_prev[j] + reflect_coeff[0] * ar_coeffs_prev[i - j + 1]
             )
 
         fwd_pred_error_tmp = fwd_pred_error

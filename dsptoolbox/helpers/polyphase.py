@@ -46,9 +46,7 @@ def _polyphase_decomposition(
     remainder = in_sig.shape[0] % n
     padding = n - remainder
     if remainder != 0:
-        in_sig = _pad_trim(
-            in_sig, in_sig.shape[0] + padding, axis=0, in_the_end=False
-        )
+        in_sig = _pad_trim(in_sig, in_sig.shape[0] + padding, axis=0, in_the_end=False)
     # Here (time samples, polyphase, channels)
     poly = np.zeros((in_sig.shape[0] // n, n, in_sig.shape[1]))
     for ind in range(n):

@@ -98,30 +98,20 @@ class TestTools:
         # Bytes with 24-bits representations
         inp = np.array([0.0, 1.0, -1.0, 0.5])
         for t in ["i24", "u24", "i32", "f32"]:
-            b = dsp.tools.convert_sample_representation(
-                inp, "f64", t, True, True
-            )[0]
-            outp = dsp.tools.convert_sample_representation(
-                b, t, "f64", True, True
-            )[0]
+            b = dsp.tools.convert_sample_representation(inp, "f64", t, True, True)[0]
+            outp = dsp.tools.convert_sample_representation(b, t, "f64", True, True)[0]
             np.testing.assert_allclose(inp, outp, atol=1e-4)
 
     def test_fractional_octave_smoothing(self):
         fs_hz = 48000
         lin_freqs = np.fft.rfftfreq(10000, 1 / fs_hz)[:-1]
-        filt = dsp.Filter.biquad(
-            dsp.BiquadEqType.Peaking, 200.0, 1.0, 0.8, fs_hz
-        )
+        filt = dsp.Filter.biquad(dsp.BiquadEqType.Peaking, 200.0, 1.0, 0.8, fs_hz)
         transfer_lin = np.abs(filt.get_transfer_function(lin_freqs))
-        smoothed_lin = dsp.tools.fractional_octave_smoothing(
-            transfer_lin, None, 8.0
-        )
+        smoothed_lin = dsp.tools.fractional_octave_smoothing(transfer_lin, None, 8.0)
 
         log_freqs = dsp.tools.log_frequency_vector([10, 10e3], 128)
         transfer_log = np.abs(filt.get_transfer_function(log_freqs))
-        smoothed_log = dsp.tools.fractional_octave_smoothing(
-            transfer_log, None, 8.0
-        )
+        smoothed_log = dsp.tools.fractional_octave_smoothing(transfer_log, None, 8.0)
 
         smoothed_lin_log = dsp.tools.interpolate_fr(
             lin_freqs, smoothed_lin, log_freqs, mode="amplitude2power"

@@ -50,7 +50,7 @@ def calculate_tukey_like_window(
 
     len_low_flank = idx_start_stop_f[1] - idx_start_stop_f[0]
 
-    if at_start:
+    if at_start and len_low_flank > 0:
         low_flank = windows.get_window(
             left_window_type, len_low_flank * 2, fftbins=True
         )[:len_low_flank]
@@ -58,9 +58,12 @@ def calculate_tukey_like_window(
         low_flank = np.ones(len_low_flank)
 
     len_high_flank = idx_start_stop_f[3] - idx_start_stop_f[2]
-    high_flank = windows.get_window(
-        right_window_type, len_high_flank * 2, fftbins=True
-    )[len_high_flank:]
+    if len_high_flank > 1:
+        high_flank = windows.get_window(
+            right_window_type, len_high_flank * 2, fftbins=True
+        )[len_high_flank:]
+    else:
+        high_flank = np.ones(len_high_flank)
 
     zeros_low = np.zeros(idx_start_stop_f[0])
     ones_mid = np.ones(idx_start_stop_f[2] - idx_start_stop_f[1])
@@ -94,9 +97,7 @@ def _gaussian_window_sigma(window_length: int, alpha: float = 2.5) -> float:
     return (window_length - 1) / (2 * alpha)
 
 
-def gaussian_window(
-    length: int, alpha: float, symmetric: bool, offset: int = 0
-):
+def gaussian_window(length: int, alpha: float, symmetric: bool, offset: int = 0):
     """Produces a gaussian window as defined in [1] and [2].
 
     Parameters

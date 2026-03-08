@@ -13,9 +13,9 @@ keywords = ["Digital Signal Processing", "dsp", "Research", "Prototyping"]
 requires-python = ">=3.11"
 dependencies = [
   # See in combination with numba
-  "numpy~=2.3",
+  "numpy~=2.4",
   # Independent
-  "scipy~=1.16",
+  "scipy~=1.17",
   "soundfile~=0.13",
   "sounddevice~=0.5",
   "matplotlib~=3.10",
@@ -33,9 +33,7 @@ classifiers = [
 ]
 
 [project.optional-dependencies]
-use-numba = [
-  "numba~=0.62"
-]
+use-numba = ["numba~=0.64"]
 
 [project.urls]
 Homepage = "https://github.com/nico-franco-gomez/dsptoolbox"
