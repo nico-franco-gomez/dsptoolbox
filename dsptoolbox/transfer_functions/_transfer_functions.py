@@ -77,6 +77,7 @@ def _window_this_ir_tukey(
         if impulse_index - offset_samples < 0:
             pad_length = int(-(impulse_index - offset_samples))
             vec = np.pad(vec, ((pad_length, 0)))
+            impulse_index += pad_length  # Update to reflect new position after padding
             start_sample += pad_length
             padding_left += pad_length
         else:
@@ -91,6 +92,9 @@ def _window_this_ir_tukey(
         else:
             vec = vec[impulse_index - left_flank_length :]
             start_sample = impulse_index - left_flank_length
+            impulse_index = (
+                left_flank_length  # Update to new position in trimmed vector
+            )
 
         # If total length is larger than actual length
         padding_right = 0

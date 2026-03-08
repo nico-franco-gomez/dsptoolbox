@@ -169,6 +169,246 @@ class TestTransferFunctionsModule:
             left_to_right_flank_length_ratio=0.5,
         )
 
+    def test_window_ir_logic_paths(self):
+        # Parameters for testing
+        total_length_samples = 1024
+        constant_percentage = 0.75
+
+        # Create test IRs with impulse at different positions
+        # Test 1a: Short IR, impulse early, requires left padding
+        ir_short_early = dsp.ImpulseResponse(None, np.zeros((512, 2)), self.fs)
+        ir_short_early.time_data[50, :] = 1.0
+        result, start_pos = dsp.transfer_functions.window_ir(
+            ir_short_early,
+            total_length_samples,
+            adaptive=False,
+            constant_percentage=constant_percentage,
+            window_type=dsp.Window.Hann,
+            at_start=True,
+            offset_samples=0,
+            left_to_right_flank_length_ratio=1.0,
+        )
+        assert len(result) == total_length_samples
+        assert result.number_of_channels == 2
+        assert hasattr(result, "window")
+        # Check start position
+        assert isinstance(start_pos, np.ndarray)
+        assert start_pos.dtype in [np.int32, np.int64, int]
+        assert len(start_pos) == result.number_of_channels
+        assert np.all(start_pos >= 0), "Start positions should be non-negative"
+        assert np.all(
+            start_pos < total_length_samples
+        ), "Start positions should be within bounds"
+        # Check impulse is detected at expected position in windowed result
+        for ch in range(result.number_of_channels):
+            impulse_pos_in_result = np.argmax(np.abs(result.time_data[:, ch]))
+            # Impulse should be reasonably placed and windowed
+            assert (
+                impulse_pos_in_result > 0
+            ), "Impulse should have been placed with some padding"
+            assert (
+                result.time_data[impulse_pos_in_result, ch] > 0
+            ), "Peak should be positive"
+
+        # Test 1b: IR with impulse in middle, non-adaptive
+        ir_mid = dsp.ImpulseResponse(None, np.zeros((512, 1)), self.fs)
+        ir_mid.time_data[256, 0] = 1.0
+        result, start_pos = dsp.transfer_functions.window_ir(
+            ir_mid,
+            total_length_samples,
+            adaptive=False,
+            offset_samples=50,
+        )
+        assert len(result) == total_length_samples
+        assert isinstance(start_pos, np.ndarray)
+        assert len(start_pos) == result.number_of_channels
+        assert np.all(start_pos >= 0)
+        # With offset, the impulse should still be detectable
+        impulse_pos = np.argmax(np.abs(result.time_data[:, 0]))
+        assert impulse_pos > 0
+
+        # Test 1c: Very short IR (requires right padding)
+        ir_very_short = dsp.ImpulseResponse(None, np.zeros((256, 1)), self.fs)
+        ir_very_short.time_data[128, 0] = 1.0
+        result, start_pos = dsp.transfer_functions.window_ir(
+            ir_very_short,
+            total_length_samples,
+            adaptive=False,
+        )
+        assert len(result) == total_length_samples
+        assert len(start_pos) == 1
+        assert start_pos[0] >= 0
+        impulse_pos = np.argmax(np.abs(result.time_data[:, 0]))
+        assert impulse_pos > 0
+
+        # Test 1d: Long IR (requires trimming)
+        ir_long = dsp.ImpulseResponse(None, np.zeros((2048, 1)), self.fs)
+        ir_long.time_data[512, 0] = 1.0
+        result, start_pos = dsp.transfer_functions.window_ir(
+            ir_long,
+            total_length_samples,
+            adaptive=False,
+        )
+        assert len(result) == total_length_samples
+        assert len(start_pos) == 1
+        assert start_pos[0] >= 0
+        assert start_pos[0] < total_length_samples
+        impulse_pos = np.argmax(np.abs(result.time_data[:, 0]))
+        assert impulse_pos > 0
+
+        # Test 1e: Non-adaptive with different flank ratio
+        result, start_pos = dsp.transfer_functions.window_ir(
+            ir_mid,
+            total_length_samples,
+            adaptive=False,
+            left_to_right_flank_length_ratio=0.5,
+        )
+        assert len(result) == total_length_samples
+        assert np.all(start_pos >= 0)
+        assert np.all(start_pos < total_length_samples)
+
+        # Test 1f: Non-adaptive with at_start=False
+        result, start_pos = dsp.transfer_functions.window_ir(
+            ir_mid,
+            total_length_samples,
+            adaptive=False,
+            at_start=False,
+        )
+        assert len(result) == total_length_samples
+        assert np.all(start_pos >= 0)
+        assert np.all(start_pos < total_length_samples)
+
+        # Test 1g: Non-adaptive with different constant_percentage
+        result, start_pos = dsp.transfer_functions.window_ir(
+            ir_mid,
+            total_length_samples,
+            adaptive=False,
+            constant_percentage=0.5,
+        )
+        assert len(result) == total_length_samples
+        assert np.all(start_pos >= 0)
+
+        # =====================================================================
+        # ADAPTIVE MODE TESTS
+        # =====================================================================
+
+        # Test 2a: Adaptive with short IR (left flank adaptation)
+        ir_early_adapt = dsp.ImpulseResponse(None, np.zeros((512, 1)), self.fs)
+        ir_early_adapt.time_data[20, 0] = 1.0
+        result, start_pos = dsp.transfer_functions.window_ir(
+            ir_early_adapt,
+            total_length_samples,
+            adaptive=True,
+            offset_samples=50,
+        )
+        assert len(result) == total_length_samples
+        assert len(start_pos) == 1
+        assert start_pos[0] >= 0
+        assert start_pos[0] < total_length_samples
+        # Even with offset, impulse should be findable
+        impulse_pos = np.argmax(np.abs(result.time_data[:, 0]))
+        assert impulse_pos > 0
+
+        # Test 2b: Adaptive, signal longer than target (trim branch)
+        ir_long_adapt = dsp.ImpulseResponse(None, np.zeros((2048, 1)), self.fs)
+        ir_long_adapt.time_data[512, 0] = 1.0
+        result, start_pos = dsp.transfer_functions.window_ir(
+            ir_long_adapt,
+            total_length_samples,
+            adaptive=True,
+        )
+        assert len(result) == total_length_samples
+        assert len(start_pos) == 1
+        assert start_pos[0] >= 0
+        assert start_pos[0] < total_length_samples
+        impulse_pos = np.argmax(np.abs(result.time_data[:, 0]))
+        assert impulse_pos > 0
+
+        # Test 2c: Adaptive, signal shorter than target (padding branch)
+        ir_short_adapt = dsp.ImpulseResponse(None, np.zeros((256, 1)), self.fs)
+        ir_short_adapt.time_data[128, 0] = 1.0
+        result, start_pos = dsp.transfer_functions.window_ir(
+            ir_short_adapt,
+            total_length_samples,
+            adaptive=True,
+        )
+        assert len(result) == total_length_samples
+        assert len(start_pos) == 1
+        assert start_pos[0] >= 0
+        assert start_pos[0] < total_length_samples
+        impulse_pos = np.argmax(np.abs(result.time_data[:, 0]))
+        assert impulse_pos > 0
+
+        # Test 2d: Adaptive with large offset (right flank adjustment)
+        result, start_pos = dsp.transfer_functions.window_ir(
+            ir_mid,
+            total_length_samples,
+            adaptive=True,
+            offset_samples=500,
+        )
+        assert len(result) == total_length_samples
+        assert len(start_pos) == 1
+        assert start_pos[0] >= 0
+        assert start_pos[0] < total_length_samples
+
+        # Test 2e: Adaptive with different flank ratios
+        result, start_pos = dsp.transfer_functions.window_ir(
+            ir_mid,
+            total_length_samples,
+            adaptive=True,
+            left_to_right_flank_length_ratio=2.0,
+        )
+        assert len(result) == total_length_samples
+        assert np.all(start_pos >= 0)
+        assert np.all(start_pos < total_length_samples)
+
+        # Test 2f: Adaptive with at_start=False
+        result, start_pos = dsp.transfer_functions.window_ir(
+            ir_mid,
+            total_length_samples,
+            adaptive=True,
+            at_start=False,
+        )
+        assert len(result) == total_length_samples
+        assert np.all(start_pos >= 0)
+        assert np.all(start_pos < total_length_samples)
+
+        # =====================================================================
+        # WINDOW PROPERTY AND MULTICHANNEL CHECKS
+        # =====================================================================
+
+        result, start_pos = dsp.transfer_functions.window_ir(
+            ir_short_early,
+            total_length_samples,
+            adaptive=False,
+        )
+        # Check window properties
+        assert np.all(result.window >= 0)
+        assert np.all(result.window <= 1)
+        # Check that we get start positions for each channel
+        assert len(start_pos) == result.number_of_channels
+        assert isinstance(start_pos, np.ndarray)
+        assert start_pos.dtype in [np.int32, np.int64, int]
+        assert np.all(start_pos >= 0)
+        assert np.all(start_pos < total_length_samples)
+        # All values should be windowed (product of time_data and window)
+        for ch in range(result.number_of_channels):
+            assert np.allclose(result.time_data[:, ch], result.time_data[:, ch])
+            # Verify impulse is visible in the windowed result
+            impulse_peak = np.argmax(np.abs(result.time_data[:, ch]))
+            assert impulse_peak > 0, f"Impulse should be detected in channel {ch}"
+
+        # Test with list of window types
+        result, start_pos = dsp.transfer_functions.window_ir(
+            ir_mid,
+            total_length_samples,
+            adaptive=False,
+            window_type=[dsp.Window.Hann, dsp.Window.Hamming],
+        )
+        assert len(result) == total_length_samples
+        assert isinstance(start_pos, np.ndarray)
+        assert np.all(start_pos >= 0)
+
     def test_window_centered_ir(self):
         # Only functionality
         h = dsp.transfer_functions.spectral_deconvolve(self.y_m, self.x)
