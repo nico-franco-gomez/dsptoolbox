@@ -14,6 +14,29 @@ adheres to `Semantic Versioning <http://semver.org/spec/v2.0.0.html>`_.
 - Validation for results from tests in every module (so far many tests are
   only regarding functionality)
 
+`0.8 <https://pypi.org/project/dsptoolbox/0.8>`_ -
+---------------------
+Added
+~~~~~
+- New parameter to `spectrum_via_filterbank` in ``transforms``
+- `lufs_integrated` in standard module
+- Possibility of using true peak value in `crest_factor`
+- `fractional_octave_bands` now returns frequencies as well
+
+Bugfix
+~~~~~~
+- correction of synthesis filters in `qmf` filterbank
+- robustness checks while generating some windows in backend functions
+
+Misc
+~~~~
+- Updated dependencies and numba support for Python 3.14
+- Extended test coverage for some functions
+- Added length check for convolutions with similar length signals in `convolve_rir`
+- Unified plotting parameters across all whole package and remove unnecessary parameters
+- Improved some type annotations with overloads
+- Corrected and extended docstrings
+
 `0.7.4 <https://pypi.org/project/dsptoolbox/0.7.4>`_ -
 ---------------------
 Added
