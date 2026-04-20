@@ -70,7 +70,7 @@ from .filterbanks import (
     fractional_delay,
 )
 
-from ._filterbank import arma
+from ._filterbank import arma, ArmaMethod
 
 from ..classes.lattice_ladder_filter import LatticeLadderFilter
 from ..classes.parallel_filter import ParallelFilter
@@ -123,4 +123,5 @@ __all__ = [
     "gaussian_kernel",
     "arma",
     "fractional_delay",
+    "ArmaMethod",
 ]

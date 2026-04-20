@@ -30,7 +30,6 @@ from ..generators import dirac
 from ..plots import general_plot
 from ..helpers.spectrum_utilities import _get_normalized_spectrum
 from ..helpers.other import find_nearest_points_index_in_vector
-from ..helpers.ar_estimation import _burg_ar_estimation, _yw_ar_estimation
 from ..standard._standard_backend import _group_delay_direct
 from ..standard.enums import (
     FilterCoefficientsType,
@@ -38,6 +37,13 @@ from ..standard.enums import (
     SpectrumMethod,
     SpectrumScaling,
     MagnitudeNormalization,
+)
+from ..helpers.ar_estimation import (
+    _burg_ar_estimation,
+    _yw_ar_estimation,
+    ArmaMethod,
+    _prony,
+    _steiglitz_mcbride,
 )
 
 
@@ -1565,8 +1571,9 @@ def arma(
     ir: ImpulseResponse,
     order_a: int,
     order_b: int = 0,
-    method_ar: str = "yule-walker",
+    method: ArmaMethod = ArmaMethod.YuleWalker,
     cutoff_b_percentage: float = 0.0,
+    n_iterations_steiglitz_mcbride: int = 5,
 ) -> Filter:
     """Create an IIR filter approximation to an impulse response with an
     autoregressive (AR), moving-average (MA) process model estimation. See
@@ -1583,15 +1590,19 @@ def arma(
     order_b : int, optional
         Order of the numerator coefficients. These are the moving-average
         coefficients. Pass 0 to obtain a pure AR estimation.
-    method_ar : str, {"yule-walker", "burg"}, optional
-        Method to use for obtaining the AR parameters. Burg's method is
-        explained in [1] and the implementation was taken from [2].
-        Default: "yule-walker".
+    method : ArmaMethod, optional
+        Method to use for obtaining the AR or ARMA parameters. Burg's method is
+        explained in [1] and the implementation was taken from [2]. Default:
+        `YuleWalker`.
     cutoff_b_percentage : float, optional
         Leave out singular values below a given percentage relative to the largest one
-        during the computation of the MA parameters. This speeds up the computation on
-        the expense of deteriorating the results. The valid range is [0, 1[.
-        Default: 0 (no cutoff).
+        during the computation of the MA parameters for `YuleWalker` and `Burg`. If
+        another method is used, this parameter is ignored. This value speeds up the
+        computation at the expense of deteriorating the results. The valid
+        range is [0, 1[. Default: 0 (no cutoff).
+    n_iterations_steiglitz_mcbride : int, optional
+        Define the number of iterations to compute when using the `SteiglitzMcBride`
+        method. If another method is selected, this parameter is ignored. Default: 5.
 
     Returns
     -------
@@ -1601,11 +1612,15 @@ def arma(
 
     Notes
     -----
-    - This function finds the autoregressive (AR) parameters first by solving
-      the Yule-Walker equations through the Levinson-Durbin recursion or using
-      Burg's method. Afterwards, the moving-average (MA) parameters are
-      obtained through a least-squares approximation.
-    - Due to the AR parameter estimation in the time domain, the phase response
+    - For `YuleWalker` and `Burg`: This function finds the autoregressive (AR)
+      parameters first by solving the Yule-Walker equations through the Levinson-Durbin
+      recursion or using Burg's method. Afterwards, the moving-average (MA) parameters
+      are obtained through a least-squares approximation.
+    - `Prony` and `SteiglitzMcBride` approximate both AR and MA parameters directly,
+      whereas the initial estimate used by `SteiglitzMcBride` for the AR parameters
+      is the output of `Prony`.
+    - A number of iterations must be passed for `Steiglitz-McBride`.
+    - Due to the AR(MA) parameter estimation in the time domain, the phase response
       is also approximated.
     - Minimum-phase impulse responses deliver the best approximations.
     - AR or MA orders above 120 are not recommended for warping due to greater
@@ -1626,19 +1641,24 @@ def arma(
     assert order_a >= 1, "Order of a must be at least 1"
     assert order_b >= 0, "Order of b should be at least 0"
     assert len(ir) > order_a, "The order should be lower than the IR length"
-    method_ar = method_ar.lower()
 
-    match method_ar:
-        case "yule-walker":
-            a = _yw_ar_estimation(ir.time_data[:, 0], order_a)[0]
-        case "burg":
-            a = _burg_ar_estimation(ir.time_data[:, 0], order_a)[0]
-        case _:
-            raise ValueError(f"{method_ar}: Method is not supported")
+    match method:
+        case ArmaMethod.YuleWalker | ArmaMethod.Burg:
+            a = (
+                _yw_ar_estimation(ir.time_data[:, 0], order_a)[0]
+                if method == ArmaMethod.YuleWalker
+                else _burg_ar_estimation(ir.time_data[:, 0], order_a)[0]
+            )
+            b = (
+                __ma_parameters(ir.time_data[:, 0], order_b, a, cutoff_b_percentage)
+                if order_b > 0
+                else np.array([1.0])
+            )
+        case ArmaMethod.Prony:
+            b, a = _prony(ir.time_data[:, 0], order_b, order_a)
+        case ArmaMethod.SteiglitzMcBride:
+            b, a = _steiglitz_mcbride(
+                ir.time_data[:, 0], order_b, order_a, n_iterations_steiglitz_mcbride
+            )
 
-    b = (
-        __ma_parameters(ir.time_data[:, 0], order_b, a, cutoff_b_percentage)
-        if order_b > 0
-        else np.array([1.0])
-    )
     return Filter.from_ba(b, a, ir.sampling_rate_hz)
