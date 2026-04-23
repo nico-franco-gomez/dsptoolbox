@@ -274,7 +274,7 @@ def _prony(
     H_bottom = H[order_b:n_samples, :order_a]
 
     # Solve overdetermined system for AR coefficients (skip leading 1)
-    a = np.concatenate(([1.0], lstsq(-H_bottom, h_rhs, cond=None)[0]))
+    a = np.concatenate(([1.0], lstsq(-H_bottom, h_rhs)[0]))
 
     # Recover MA coefficients from the top block
     b = scale * (a @ H_top.T)
@@ -333,10 +333,7 @@ def _steiglitz_mcbride(
         rhs = C1[:, 0]
 
         # Use direct solve for square systems, least-squares otherwise
-        if T.shape[0] == T.shape[1]:
-            c = solve(T, rhs)
-        else:
-            c = lstsq(T, rhs)[0]
+        c = solve(T, rhs) if T.shape[0] == T.shape[1] else lstsq(T, rhs)[0]
 
         # Extract updated AR and MA coefficients from solution vector
         a = np.concatenate(([1.0], c[:order_a]))

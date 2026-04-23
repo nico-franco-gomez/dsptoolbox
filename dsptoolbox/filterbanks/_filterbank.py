@@ -1619,7 +1619,7 @@ def arma(
     - `Prony` and `SteiglitzMcBride` approximate both AR and MA parameters directly,
       whereas the initial estimate used by `SteiglitzMcBride` for the AR parameters
       is the output of `Prony`.
-    - A number of iterations must be passed for `Steiglitz-McBride`.
+    - A number of iterations must be passed for `SteiglitzMcBride`.
     - Due to the AR(MA) parameter estimation in the time domain, the phase response
       is also approximated.
     - Minimum-phase impulse responses deliver the best approximations.
