@@ -1576,8 +1576,8 @@ def arma(
     n_iterations_steiglitz_mcbride: int = 5,
 ) -> Filter:
     """Create an IIR filter approximation to an impulse response with an
-    autoregressive (AR), moving-average (MA) process model estimation. See
-    notes for details.
+    autoregressive (AR), moving-average (MA) process model estimation. Not all methods
+    deliver stable filters consistently. See notes for details.
 
     Parameters
     ----------
@@ -1619,6 +1619,9 @@ def arma(
     - `Prony` and `SteiglitzMcBride` approximate both AR and MA parameters directly,
       whereas the initial estimate used by `SteiglitzMcBride` for the AR parameters
       is the output of `Prony`.
+    - `YuleWalker` and `Burg` are ensured to deliver stable filters. `Prony` and
+      `SteiglitzMcBride` could potentially give unstable filters in some cases. This
+      should always be assessed.
     - A number of iterations must be passed for `SteiglitzMcBride`.
     - Due to the AR(MA) parameter estimation in the time domain, the phase response
       is also approximated.
