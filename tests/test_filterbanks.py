@@ -310,9 +310,14 @@ class TestFilterbanksModule:
         dsp.filterbanks.arma(rir, 10, 11)
         dsp.filterbanks.arma(dsp.pad_trim(rir, len(rir) - 1), 10, 11)
 
-        dsp.filterbanks.arma(rir, 10, 0, method=dsp.filterbanks.ArmaMethod.Burg)
-        dsp.filterbanks.arma(rir, 10, 1, method=dsp.filterbanks.ArmaMethod.Burg)
-        dsp.filterbanks.arma(rir, 10, 11, method=dsp.filterbanks.ArmaMethod.Burg)
+        for m in [
+            dsp.filterbanks.ArmaMethod.SteiglitzMcBride,
+            dsp.filterbanks.ArmaMethod.Prony,
+            dsp.filterbanks.ArmaMethod.Burg,
+        ]:
+            dsp.filterbanks.arma(rir, 10, 0, method=m)
+            dsp.filterbanks.arma(rir, 10, 1, method=m)
+            dsp.filterbanks.arma(rir, 10, 11, method=m)
 
     def test_fractional_delay(self):
         noise = dsp.Filter.iir_filter(
