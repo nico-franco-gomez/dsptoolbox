@@ -12,7 +12,7 @@ class ArmaMethod(Enum):
     subsequently fitted using a least-squares approximation.
 
     `Prony` and `SteiglitzMcBride` deliver directly both AR and MA parameters.
-    `SteiglitzMcBride` utilizes `Prony` as initial estimate for the AR parameters.
+    `SteiglitzMcBride` utilizes `YuleWalker` as initial estimate for the AR parameters.
 
     """
 
@@ -311,8 +311,8 @@ def _steiglitz_mcbride(
     """
     N = len(h)
 
-    # Initialize denominator coefficients via Prony
-    _, a = _prony(h, 0, order_a)
+    # Initialize denominator coefficients via Yule-Walker
+    a = _yw_ar_estimation(h, order_a)[0]
 
     # Unit impulse used as the input signal for the all-pole inverse filter
     impulse: NDArray[np.float64] = np.zeros(N)

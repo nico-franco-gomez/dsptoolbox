@@ -1611,7 +1611,7 @@ def arma(
       are obtained through a least-squares approximation.
     - `Prony` and `SteiglitzMcBride` approximate both AR and MA parameters directly,
       whereas the initial estimate used by `SteiglitzMcBride` for the AR parameters
-      is the output of `Prony`.
+      is the output of `YuleWalker`.
     - `YuleWalker` and `Burg` are ensured to deliver stable filters. `Prony` and
       `SteiglitzMcBride` could potentially give unstable filters in some cases. This
       should always be assessed.
