@@ -1572,7 +1572,6 @@ def arma(
     order_a: int,
     order_b: int = 0,
     method: ArmaMethod = ArmaMethod.YuleWalker,
-    cutoff_b_percentage: float = 0.0,
     n_iterations_steiglitz_mcbride: int = 5,
 ) -> Filter:
     """Create an IIR filter approximation to an impulse response with an
@@ -1594,12 +1593,6 @@ def arma(
         Method to use for obtaining the AR or ARMA parameters. Burg's method is
         explained in [1] and the implementation was taken from [2]. Default:
         `YuleWalker`.
-    cutoff_b_percentage : float, optional
-        Leave out singular values below a given percentage relative to the largest one
-        during the computation of the MA parameters for `YuleWalker` and `Burg`. If
-        another method is used, this parameter is ignored. This value speeds up the
-        computation at the expense of deteriorating the results. The valid
-        range is [0, 1[. Default: 0 (no cutoff).
     n_iterations_steiglitz_mcbride : int, optional
         Define the number of iterations to compute when using the `SteiglitzMcBride`
         method. If another method is selected, this parameter is ignored. Default: 5.
@@ -1653,7 +1646,7 @@ def arma(
                 else _burg_ar_estimation(ir.time_data[:, 0], order_a)[0]
             )
             b = (
-                __ma_parameters(ir.time_data[:, 0], order_b, a, cutoff_b_percentage)
+                __ma_parameters(ir.time_data[:, 0], order_b, a)
                 if order_b > 0
                 else np.array([1.0])
             )
