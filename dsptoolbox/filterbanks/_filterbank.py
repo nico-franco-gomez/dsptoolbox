@@ -1591,8 +1591,8 @@ def arma(
         coefficients. Pass 0 to obtain a pure AR estimation.
     method : ArmaMethod, optional
         Method to use for obtaining the AR or ARMA parameters. Burg's method is
-        explained in [1] and the implementation was taken from [2]. Default:
-        `YuleWalker`.
+        explained in [1] and the implementation was taken from [2]. See [3] and [4] for
+        for Steiglitz-McBride and Prony methods respectively. Default: `YuleWalker`.
     n_iterations_steiglitz_mcbride : int, optional
         Define the number of iterations to compute when using the `SteiglitzMcBride`
         method. If another method is selected, this parameter is ignored. Default: 5.
@@ -1631,6 +1631,12 @@ def arma(
       McVicar, Eric Battenberg, and Oriol Nieto. “librosa: Audio and music
       signal analysis in python.” In Proceedings of the 14th python in science
       conference, pp. 18-25. 2015.
+    - [3]: K. Steiglitz and L. McBride, "A technique for the identification of linear
+      systems," in IEEE Transactions on Automatic Control, vol. 10, no. 4, pp. 461-464,
+      October 1965, doi: 10.1109/TAC.1965.1098181.
+    - [4]: S. Hu, S.M. Wu, Prony estimation of AR parameters of an ARMA time series,
+      Mechanical Systems and Signal Processing, Volume 3, Issue 2, 1989, Pages 207-211,
+      ISSN 0888-3270, https://doi.org/10.1016/0888-3270(89)90017-4.
 
     """
     assert ir.number_of_channels == 1, "This is only valid for single-channel IR"

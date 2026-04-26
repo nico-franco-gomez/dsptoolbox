@@ -8,11 +8,27 @@ from enum import Enum, auto
 class ArmaMethod(Enum):
     """Method to use for computing estimating the ARMA parameters.
 
-    `YuleWalker` and `Burg` deliver AR parameters, while the MA parameters are
-    subsequently fitted using a least-squares approximation.
+    `YuleWalker` and `Burg` (see [1]) deliver AR parameters, while the MA parameters
+    are subsequently fitted using a least-squares approximation.
 
-    `Prony` and `SteiglitzMcBride` deliver directly both AR and MA parameters.
+    `SteiglitzMcBride` [3] and `Prony` [4] deliver directly both AR and MA parameters.
     `SteiglitzMcBride` utilizes `YuleWalker` as initial estimate for the AR parameters.
+
+    References
+    ----------
+    - [1]: Larry Marple. A New Autoregressive Spectrum Analysis Algorithm. IEEE
+      Transactions on Acoustics, Speech, and Signal Processing vol 28, no. 4,
+      1980.
+    - [2]: McFee, Brian, Colin Raffel, Dawen Liang, Daniel PW Ellis, Matt
+      McVicar, Eric Battenberg, and Oriol Nieto. “librosa: Audio and music
+      signal analysis in python.” In Proceedings of the 14th python in science
+      conference, pp. 18-25. 2015.
+    - [3]: K. Steiglitz and L. McBride, "A technique for the identification of linear
+      systems," in IEEE Transactions on Automatic Control, vol. 10, no. 4, pp. 461-464,
+      October 1965, doi: 10.1109/TAC.1965.1098181.
+    - [4]: S. Hu, S.M. Wu, Prony estimation of AR parameters of an ARMA time series,
+      Mechanical Systems and Signal Processing, Volume 3, Issue 2, 1989, Pages 207-211,
+      ISSN 0888-3270, https://doi.org/10.1016/0888-3270(89)90017-4.
 
     """
 
