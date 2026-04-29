@@ -513,6 +513,9 @@ def pinking_filter(frequency_0_db: float, sampling_rate_hz: int) -> Filter:
 
     Notes
     -----
+    - In order to make white noise pink without changing its overall RMS value, the
+      `frequency_0_db` parameter can be set to around 2.7 kHz for a sampling rate of 48
+      kHz. This corresponds to approximately 0.05625 normalized frequency.
     - This filter approximates a -3 dB/octave roll-off, though its frequency
       response might be slightly distorted for very low or high frequencies.
     - The zeros and poles were taken from
