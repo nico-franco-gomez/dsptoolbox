@@ -278,7 +278,7 @@ def _stft(
         stft *= factor
 
     time_s = np.linspace(0, len(x) / fs_hz, stft.shape[1])
-    freqs_hz = np.fft.rfftfreq(len(window), 1 / fs_hz)
+    freqs_hz = np.fft.rfftfreq(fft_length_samples, 1 / fs_hz)
     return time_s, freqs_hz, stft
 
 
