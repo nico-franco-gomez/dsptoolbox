@@ -217,6 +217,10 @@ class MorletWavelet(Wavelet):
         accumulator = np.zeros(len(trunc), dtype=np.complex128)
 
         for i in range(len(trunc) - 1):
+            if trunc[i] + 1 >= len(base):
+                accumulator[i] = 0.0
+                continue
+
             accumulator[i] = base[trunc[i]] + (base[trunc[i] + 1] - base[trunc[i]]) * (
                 inds[i] - trunc[i]
             )
