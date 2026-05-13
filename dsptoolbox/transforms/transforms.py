@@ -889,36 +889,33 @@ def vqt(
 
     octs = octaves[1] - octaves[0] + 1
     cqt = np.zeros(
-        (0, signal.time_data.shape[0], signal.number_of_channels),
+        (octs * len(kernels), signal.time_data.shape[0], td.shape[1]),
         dtype=np.complex128,
     )
 
     for oc in np.arange(octs):
         # Accumulator for octave
-        acc = np.zeros((0, td.shape[0], td.shape[1]), dtype=np.complex128)
+        acc = np.zeros((len(kernels), td.shape[0], td.shape[1]), dtype=np.complex128)
 
-        for k in kernels:
-            out = oaconvolve(td, k[..., None], mode="same", axes=0)
-            acc = np.append(acc, out[None, ...], axis=0)
+        for ind, k in enumerate(kernels):
+            acc[ind, ...] = oaconvolve(td, k[..., None], mode="same", axes=0)
 
         # Resample back to original sampling rate and save
-        if oc != 0:
-            acc = resample_poly(acc, up=2**oc, down=1, axis=1)
-        acc = resample_poly(acc, up=decimation, down=1, axis=1)
+        acc = resample_poly(acc, up=decimation * 2**oc, down=1, axis=1)
 
         length_diff = acc.shape[1] - cqt.shape[1]
         if length_diff > 0:
             acc = acc[:, : cqt.shape[1], :]
         elif length_diff < 0:
             acc = np.pad(acc, ((0, 0), (0, -length_diff), (0, 0)))
-        cqt = np.append(cqt, acc, axis=0)
+        cqt[oc * len(kernels) : (oc + 1) * len(kernels), ...] = acc
         # Decimate for further computation
         td = resample_poly(td, up=1, down=2, axis=0)
 
     # Invert frequency axis
     cqt = np.flip(cqt, axis=0)
     f = a4_tuning * 2 ** (
-        np.arange(octaves[0] - 4 - 9 / 12, octaves[1] - 4 + 2 / 12, 1 / 12)
+        np.arange(octaves[0] - 4 - 9 / 12, octaves[1] - 4 + 2 / 12, 1 / bins_per_octave)
     )
     return f, cqt
 
