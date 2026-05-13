@@ -169,6 +169,9 @@ def _group_delay_filter(ba, length_samples: int = 512, fs_hz: int = 48000):
     https://www.dsprelated.com/freebooks/filters/Phase_Group_Delay.html.
     The implementation is mostly taken from `scipy.signal.group_delay` !
 
+    For only b coefficients, an efficient implementation for the time series is
+    computed.
+
     Parameters
     ----------
     ba : array-like
@@ -188,19 +191,27 @@ def _group_delay_filter(ba, length_samples: int = 512, fs_hz: int = 48000):
     """
     # Frequency vector at which to evaluate
     omega = np.linspace(0, np.pi, length_samples)
-    # Turn always to FIR
-    c = np.convolve(ba[0], np.conjugate(ba[1][::-1]))
-    cr = c * np.arange(len(c))  # Ramped coefficients
-    # Evaluation
-    num = np.polyval(cr, np.exp(1j * omega))
-    denum = np.polyval(c, np.exp(1j * omega))
+    f = omega / np.pi * (fs_hz / 2)
+    if len(ba[1]) > 1:
+        # Turn always to FIR
+        c = np.convolve(ba[0], np.conjugate(ba[1][::-1]))
+        cr = c * np.arange(len(c))  # Ramped coefficients
+        # Evaluation
+        num = np.polyval(cr, np.exp(1j * omega))
+        denum = np.polyval(c, np.exp(1j * omega))
 
-    # Group delay
-    gd = np.real(num / denum) - len(ba[1]) + 1
+        # Group delay (in samples)
+        gd = np.real(num / denum) - len(ba[1]) + 1
+    else:
+        time_data = np.squeeze(ba[0])
+        freq_k = np.fft.rfft(time_data * np.arange(len(time_data)))
+        spectrum = np.fft.rfft(time_data)
+        gd = np.real(freq_k / spectrum)
+        gd[np.abs(spectrum) < 1e-15] = 0.0
 
     # Look for infinite values
     gd[~np.isfinite(gd)] = 0
-    f = omega / np.pi * (fs_hz / 2)
+    # Convert to time units
     gd /= fs_hz
     return f, gd
 
