@@ -427,7 +427,7 @@ def _warp_time_series(td: NDArray[np.float64], warping_factor: float):
     for n in np.arange(1, td.shape[0]):
         dirac = lfilter(b, a, dirac)
         warped_td += dirac[..., None] * td[n, :]
-        if n in ns:
+        if n in ns and len(ns) > 0:
             print(f"Warped: {(ns.pop(0) / td.shape[0] * 100):.0f}% of signal")
     return warped_td
 

@@ -878,7 +878,7 @@ def vqt(
 
     # Find necessary sampling rate, i.e., one with nyquist just above
     # highest frequency. This delivers the necessary decimation factor.
-    decimation = int((signal.sampling_rate_hz // 2) / (highest_f * 1.1))
+    decimation = max(1, int((signal.sampling_rate_hz // 2) / (highest_f * 1.1)))
     mid_fs = signal.sampling_rate_hz // decimation
     td = resample_poly(td, up=1, down=decimation, axis=0)
 
@@ -901,7 +901,11 @@ def vqt(
             acc[ind, ...] = oaconvolve(td, k[..., None], mode="same", axes=0)
 
         # Resample back to original sampling rate and save
-        acc = resample_poly(acc, up=decimation * 2**oc, down=1, axis=1)
+        if oc != 0:
+            acc = resample_poly(acc, up=2**oc, down=1, axis=1)
+
+        if decimation != 1:
+            acc = resample_poly(acc, up=decimation, down=1, axis=1)
 
         length_diff = acc.shape[1] - cqt.shape[1]
         if length_diff > 0:
@@ -914,8 +918,11 @@ def vqt(
 
     # Invert frequency axis
     cqt = np.flip(cqt, axis=0)
+    n_bins = octs * bins_per_octave
     f = a4_tuning * 2 ** (
-        np.arange(octaves[0] - 4 - 9 / 12, octaves[1] - 4 + 2 / 12, 1 / bins_per_octave)
+        np.linspace(
+            octaves[0] - 4 - 9 / 12, octaves[1] - 4 + 2 / 12, n_bins, endpoint=False
+        )
     )
     return f, cqt
 
@@ -1277,7 +1284,7 @@ def lpc(
     synthesized_signal = _reconstruct_framed_signal(
         synthesized_signal, hop_size_samples, window, len(signal)
     )
-    return Signal.from_time_data(synthesized_signal, signal.sampling_rate_hz)
+    return a, var, Signal.from_time_data(synthesized_signal, signal.sampling_rate_hz)
 
 
 def dft(signal: Signal, frequency_vector_hz: NDArray[np.float64]):
