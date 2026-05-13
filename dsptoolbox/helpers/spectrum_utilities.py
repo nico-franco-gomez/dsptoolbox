@@ -193,7 +193,11 @@ def _get_normalized_spectrum(
         case MagnitudeNormalization.EnergyFirstChannel:
             normalization_db = to_db(
                 np.mean(
-                    (mag_spectra[:, 0] ** 2.0 if is_amplitude_scaling else mag_spectra),
+                    (
+                        mag_spectra[:, 0] ** 2.0
+                        if is_amplitude_scaling
+                        else mag_spectra[:, 0]
+                    ),
                     axis=0,
                     keepdims=True,
                 ),

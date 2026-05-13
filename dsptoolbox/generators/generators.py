@@ -94,7 +94,7 @@ def noise(
     # frequencies
     id_low = np.argmin(np.abs(f - 15))
     mag[0] = 0
-    if type_of_noise != NoiseType.White or type_of_noise != 0.0:
+    if type_of_noise != NoiseType.White and type_of_noise != 0.0:
         mag[:id_low] *= 1e-20
 
     ph = np.random.uniform(-np.pi, np.pi, (len(f), number_of_channels))

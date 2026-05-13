@@ -408,7 +408,7 @@ def convert_sample_representation(
         "u24",
         "u32",
     ]
-    input_format.lower()
+    input_format = input_format.lower()
     output_format = output_format.lower()
     assert (
         output_format in valid_formats and input_format in valid_formats

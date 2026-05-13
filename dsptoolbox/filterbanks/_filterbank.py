@@ -207,7 +207,7 @@ class LRFilterBank:
                     allp_zi_l = sosfilt_zi(self.sos[i2][0])  # Low band
                     allp_zi_h = sosfilt_zi(self.sos[i2][1])  # High band
                     al.append([allp_zi_l, allp_zi_h])
-                    allpass_zi.append(al)
+                allpass_zi.append(al)
             self.channels_zi.append([cross_zi, allpass_zi])
 
     # ======== Filtering ======================================================
