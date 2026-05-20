@@ -100,7 +100,7 @@ def fade(
     for n in range(sig.number_of_channels):
         vec = sig.time_data[:, n].copy()
         if at_start:
-            new_time_data[:, n] = _fade(
+            vec = _fade(
                 vec,
                 length_fade_seconds,
                 mode=fade_type,
@@ -108,13 +108,14 @@ def fade(
                 at_start=True,
             )
         if at_end:
-            new_time_data[:, n] = _fade(
+            vec = _fade(
                 vec,
                 length_fade_seconds,
                 mode=fade_type,
                 sampling_rate_hz=sig.sampling_rate_hz,
                 at_start=False,
             )
+        new_time_data[:, n] = vec
     return sig.copy_with_new_time_data(new_time_data)
 
 

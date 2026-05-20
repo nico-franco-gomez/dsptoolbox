@@ -85,7 +85,7 @@ def _get_fractional_impulse_peak_index(
         try:
             fractional_delay_samples = roots[0]
         except IndexError as e:
-            print(e)
+            str(e)
             warn(
                 f"Fractional latency detection failed for channel {ch}. "
                 + "Integer latency is"

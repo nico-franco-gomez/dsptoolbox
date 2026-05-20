@@ -1,6 +1,41 @@
 import numpy as np
 from numpy.typing import NDArray
-from scipy.signal import correlate
+from scipy.signal import correlate, lfilter
+from scipy.linalg import convolution_matrix, lstsq, solve, toeplitz
+from enum import Enum, auto
+
+
+class ArmaMethod(Enum):
+    """Method to use for computing estimating the ARMA parameters.
+
+    `YuleWalker` and `Burg` (see [1]) deliver AR parameters, while the MA parameters
+    are subsequently fitted using a least-squares approximation.
+
+    `SteiglitzMcBride` [3] and `Prony` [4] deliver directly both AR and MA parameters.
+    `SteiglitzMcBride` utilizes `YuleWalker` as initial estimate for the AR parameters.
+
+    References
+    ----------
+    - [1]: Larry Marple. A New Autoregressive Spectrum Analysis Algorithm. IEEE
+      Transactions on Acoustics, Speech, and Signal Processing vol 28, no. 4,
+      1980.
+    - [2]: McFee, Brian, Colin Raffel, Dawen Liang, Daniel PW Ellis, Matt
+      McVicar, Eric Battenberg, and Oriol Nieto. “librosa: Audio and music
+      signal analysis in python.” In Proceedings of the 14th python in science
+      conference, pp. 18-25. 2015.
+    - [3]: K. Steiglitz and L. McBride, "A technique for the identification of linear
+      systems," in IEEE Transactions on Automatic Control, vol. 10, no. 4, pp. 461-464,
+      October 1965, doi: 10.1109/TAC.1965.1098181.
+    - [4]: S. Hu, S.M. Wu, Prony estimation of AR parameters of an ARMA time series,
+      Mechanical Systems and Signal Processing, Volume 3, Issue 2, 1989, Pages 207-211,
+      ISSN 0888-3270, https://doi.org/10.1016/0888-3270(89)90017-4.
+
+    """
+
+    YuleWalker = auto()
+    Burg = auto()
+    Prony = auto()
+    SteiglitzMcBride = auto()
 
 
 def _levison_durbin_recursion(
@@ -203,3 +238,121 @@ def _burg_ar_estimation(
         bwd_pred_error = bwd_pred_error[:-1]
 
     return ar_coeffs.squeeze() if onedim else ar_coeffs, den[0]
+
+
+def _prony(
+    h: NDArray[np.float64], order_b: int, order_a: int
+) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
+    """Estimate ARMA model coefficients using Prony's method.
+
+    Fits a system B(z)/A(z) to match the first samples of the impulse response `h`,
+    with `order_b` zeros and `order_a` poles.
+
+    Parameters
+    ----------
+    h : NDArray[np.float64]
+        Impulse response to be modelled.
+    order_b : int
+        Number of zeros (numerator order).
+    order_a : int
+        Number of poles (denominator order).
+
+    Returns
+    -------
+    b : NDArray[np.float64]
+        Numerator (MA) coefficients of length `order_b + 1`.
+    a : NDArray[np.float64]
+        Denominator (AR) coefficients of length `order_a + 1`, with leading 1.
+
+    """
+    h = np.array(h, dtype=np.float64)
+    n_samples = len(h) - 1
+
+    # Ensure we have enough samples for the requested model order
+    if n_samples <= max(order_b, order_a):
+        n_samples = max(order_b, order_a) + 1
+        h = np.concatenate([h, np.zeros(n_samples + 1 - len(h))])
+
+    # Normalize impulse response by the first sample
+    scale = h[0] if h[0] != 0.0 else 1.0
+
+    # Build Toeplitz matrix of the normalized impulse response
+    H = toeplitz(h / scale, np.hstack((1.0, np.zeros(n_samples))))
+
+    # Trim columns to denominator order + 1
+    if n_samples > order_a:
+        H = H[:, : order_a + 1]
+
+    # Split into the top block (for MA recovery) and the bottom block
+    # (for AR estimation via least squares)
+    H_top = H[: order_b + 1, :]
+    h_rhs = H[order_b + 1 : n_samples + 1, 0]
+    H_bottom = H[order_b:n_samples, :order_a]
+
+    # Solve overdetermined system for AR coefficients (skip leading 1)
+    a = np.concatenate(([1.0], lstsq(-H_bottom, h_rhs)[0]))
+
+    # Recover MA coefficients from the top block
+    b = scale * (a @ H_top.T)
+
+    return b, a
+
+
+def _steiglitz_mcbride(
+    h: NDArray[np.float64], order_b: int, order_a: int, n_iterations: int
+) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
+    """Compute linear model via Steiglitz-McBride iteration.
+
+    Finds coefficients of the system B(z)/A(z) with approximate impulse response `h`,
+    `order_a` poles and `order_b` zeros.
+
+    Parameters
+    ----------
+    h : NDArray[np.float64]
+        Impulse response.
+    order_b : int
+        Number of zeros (numerator order).
+    order_a : int
+        Number of poles (denominator order).
+    n_iterations : int
+        Number of iterations.
+
+    Returns
+    -------
+    b : NDArray[np.float64]
+        Numerator coefficients (length `order_b + 1`).
+    a : NDArray[np.float64]
+        Denominator coefficients (length `order_a + 1`, with leading 1).
+
+    """
+    N = len(h)
+
+    # Initialize denominator coefficients via Yule-Walker
+    a = _yw_ar_estimation(h, order_a)[0]
+
+    # Unit impulse used as the input signal for the all-pole inverse filter
+    impulse: NDArray[np.float64] = np.zeros(N)
+    impulse[0] = 1.0
+
+    for _ in range(n_iterations):
+        # Filter the impulse response and the unit impulse through 1/A(z)
+        u = lfilter([1.0], a, h)
+        v = lfilter([1.0], a, impulse)
+
+        # Build convolution matrices (truncated to N rows)
+        C1 = convolution_matrix(u, order_a + 1, mode="full")[:N, :]
+        C2 = convolution_matrix(v, order_b + 1, mode="full")[:N, :]
+
+        # Assemble the system:  [-C1[:,1:] | C2] @ c = C1[:,0]
+        # where c = [a_1..a_na, b_0..b_nb]
+        T = np.hstack((-C1[:, 1:], C2))
+        rhs = C1[:, 0]
+
+        # Use direct solve for square systems, least-squares otherwise
+        c = solve(T, rhs) if T.shape[0] == T.shape[1] else lstsq(T, rhs)[0]
+
+        # Extract updated AR and MA coefficients from solution vector
+        a = np.concatenate(([1.0], c[:order_a]))
+        b = c[order_a : order_a + order_b + 1]
+
+    return b, a

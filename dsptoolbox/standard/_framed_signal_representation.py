@@ -105,7 +105,7 @@ def _reconstruct_framed_signal(
     if window is not None:
         if type(window) is str:
             window = windows.get_window(window, td_framed.shape[0])
-        elif type(window) is NDArray[np.float64]:
+        elif isinstance(window, np.ndarray):
             assert window.ndim == 1, "Window must be a 1D-array"
             assert (
                 window.shape[0] == td_framed.shape[0]

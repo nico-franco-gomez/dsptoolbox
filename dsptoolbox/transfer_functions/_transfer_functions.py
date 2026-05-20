@@ -395,7 +395,7 @@ def __find_index_above_noise_floor(
         .coef
     )
 
-    if polynomial[1] > 0.0:
+    if polynomial[1] >= 0.0:
         return len(envelope)
 
     new_stop_index = int(

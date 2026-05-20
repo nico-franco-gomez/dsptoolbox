@@ -13,7 +13,7 @@ class ExponentialAverageFilter(RealtimeFilter):
         accuracy_step_response: float = 0.95,
     ):
         """The exponential average filter is a one-pole IIR filter which
-        smoothes a the input (lowpass filter). It can have a different
+        smoothes the input (lowpass filter). It can have a different
         coefficients for increasing and decreasing values.
 
         Parameters
@@ -47,7 +47,7 @@ class ExponentialAverageFilter(RealtimeFilter):
         self.state.fill(0.0)
 
     def process_sample(self, x: float, channel: int):
-        if x > self.state:  # Ascending
+        if x > self.state[0, channel]:  # Ascending
             y = (
                 x * self.increase_coefficient
                 + (1 - self.increase_coefficient) * self.state[0, channel]

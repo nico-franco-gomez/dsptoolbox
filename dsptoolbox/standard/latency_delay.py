@@ -236,7 +236,7 @@ def fractional_delay(
         )
 
         # Handle delayed and undelayed channels
-        channels_not = np.setdiff1d(channels, np.arange(new_time_data.shape[1]))
+        channels_not = np.setdiff1d(np.arange(new_time_data.shape[1]), channels)
         not_delayed = new_time_data[:, channels_not]
         delayed = new_time_data[:, channels]
 
@@ -333,7 +333,7 @@ def delay(
         new_time_data = sig.time_data
 
         # Handle delayed and undelayed channels
-        channels_not = np.setdiff1d(channels, np.arange(new_time_data.shape[1]))
+        channels_not = np.setdiff1d(np.arange(new_time_data.shape[1]), channels)
         not_delayed = new_time_data[:, channels_not]
         delayed = new_time_data[:, channels]
 

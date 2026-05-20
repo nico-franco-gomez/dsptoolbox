@@ -80,7 +80,7 @@ def _minimum_phase(
         When `True`, it is assumed that the spectrum is passed with both
         positive and negative frequencies. Otherwise, the negative frequencies
         are obtained by mirroring the spectrum. Default: `False`.
-    uwrapped : bool, optional
+    unwrapped : bool, optional
         If `True`, the unwrapped phase is returned. Default: `True`.
     odd_length : bool, optional
         When `True`, it is assumed that the underlying time data of the half
@@ -199,7 +199,7 @@ def _center_frequencies_fractional_octaves_iec(
     octave_ratio = 10 ** (3 / 10)
 
     iseven = np.mod(num_fractions, 2) == 0
-    if ~iseven:
+    if not iseven:
         indices = np.around(
             num_fractions * np.log(nominal / reference_freq) / np.log(octave_ratio)
         )

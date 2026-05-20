@@ -878,7 +878,7 @@ def vqt(
 
     # Find necessary sampling rate, i.e., one with nyquist just above
     # highest frequency. This delivers the necessary decimation factor.
-    decimation = int((signal.sampling_rate_hz // 2) / (highest_f * 1.1))
+    decimation = max(1, int((signal.sampling_rate_hz // 2) / (highest_f * 1.1)))
     mid_fs = signal.sampling_rate_hz // decimation
     td = resample_poly(td, up=1, down=decimation, axis=0)
 
@@ -889,36 +889,40 @@ def vqt(
 
     octs = octaves[1] - octaves[0] + 1
     cqt = np.zeros(
-        (0, signal.time_data.shape[0], signal.number_of_channels),
+        (octs * len(kernels), signal.time_data.shape[0], td.shape[1]),
         dtype=np.complex128,
     )
 
     for oc in np.arange(octs):
         # Accumulator for octave
-        acc = np.zeros((0, td.shape[0], td.shape[1]), dtype=np.complex128)
+        acc = np.zeros((len(kernels), td.shape[0], td.shape[1]), dtype=np.complex128)
 
-        for k in kernels:
-            out = oaconvolve(td, k[..., None], mode="same", axes=0)
-            acc = np.append(acc, out[None, ...], axis=0)
+        for ind, k in enumerate(kernels):
+            acc[ind, ...] = oaconvolve(td, k[..., None], mode="same", axes=0)
 
         # Resample back to original sampling rate and save
         if oc != 0:
             acc = resample_poly(acc, up=2**oc, down=1, axis=1)
-        acc = resample_poly(acc, up=decimation, down=1, axis=1)
+
+        if decimation != 1:
+            acc = resample_poly(acc, up=decimation, down=1, axis=1)
 
         length_diff = acc.shape[1] - cqt.shape[1]
         if length_diff > 0:
             acc = acc[:, : cqt.shape[1], :]
         elif length_diff < 0:
             acc = np.pad(acc, ((0, 0), (0, -length_diff), (0, 0)))
-        cqt = np.append(cqt, acc, axis=0)
+        cqt[oc * len(kernels) : (oc + 1) * len(kernels), ...] = acc
         # Decimate for further computation
         td = resample_poly(td, up=1, down=2, axis=0)
 
     # Invert frequency axis
     cqt = np.flip(cqt, axis=0)
+    n_bins = octs * bins_per_octave
     f = a4_tuning * 2 ** (
-        np.arange(octaves[0] - 4 - 9 / 12, octaves[1] - 4 + 2 / 12, 1 / 12)
+        np.linspace(
+            octaves[0] - 4 - 9 / 12, octaves[1] - 4 + 2 / 12, n_bins, endpoint=False
+        )
     )
     return f, cqt
 
@@ -1280,7 +1284,7 @@ def lpc(
     synthesized_signal = _reconstruct_framed_signal(
         synthesized_signal, hop_size_samples, window, len(signal)
     )
-    return Signal.from_time_data(synthesized_signal, signal.sampling_rate_hz)
+    return a, var, Signal.from_time_data(synthesized_signal, signal.sampling_rate_hz)
 
 
 def dft(signal: Signal, frequency_vector_hz: NDArray[np.float64]):

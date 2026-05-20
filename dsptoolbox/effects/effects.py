@@ -1009,7 +1009,7 @@ class Compressor(AudioEffect):
             td = self._restore_rms_values(td)
 
         # Post-compression gain
-        td = self._add_gain_in_db(td, self.pre_gain_db)
+        td = self._add_gain_in_db(td, self.post_gain_db)
 
         return signal.copy_with_new_time_data(td)
 
@@ -1049,17 +1049,16 @@ class Tremolo(AudioEffect):
     def __set_parameters(self, depth: float, modulator: LFO | NDArray[np.float64]):
         """Internal method to change parameters."""
         if modulator is not None:
-            assert type(modulator) in (
-                LFO,
-                NDArray[np.float64],
+            assert isinstance(
+                modulator, (LFO, np.ndarray)
             ), "Unsupported modulator type. Use LFO or numpy.ndarray"
-            if type(modulator) is NDArray[np.float64]:
+            if isinstance(modulator, np.ndarray):
                 modulator = modulator.squeeze()
                 assert modulator.ndim == 1, "Modulator signal can have only one channel"
             self.modulator = modulator
 
         if depth is not None:
-            if type(self.modulator) is LFO:
+            if isinstance(self.modulator, LFO):
                 assert depth > 0 and depth <= 1, "Depth must be in ]0, 1]"
             self.depth = depth
 
@@ -1205,21 +1204,18 @@ class Chorus(AudioEffect):
                 )
 
         if modulators is not None:
-            assert type(modulators) in (
-                LFO,
-                list,
-                tuple,
-                NDArray[np.float64],
+            assert isinstance(
+                modulators, (LFO, list, tuple, np.ndarray)
             ), "Unsupported modulators type. Use LFO or numpy.ndarray"
-            if type(modulators) is NDArray[np.float64]:
+            if isinstance(modulators, np.ndarray):
                 modulators = np.atleast_2d(modulators)
-                modulators.shape[1] == self.number_of_voices, (
+                assert modulators.shape[1] == self.number_of_voices, (
                     "The modulators signal must "
                     + "have the same number of channels as there are "
                     + f"voices {self.number_of_voices}"
                 )
                 self.modulators = modulators
-            elif type(modulators) is LFO:
+            elif isinstance(modulators, LFO):
                 self.modulators = [modulators] * self.number_of_voices
             else:
                 assert len(modulators) in (1, self.number_of_voices), (
@@ -1227,7 +1223,7 @@ class Chorus(AudioEffect):
                     + f"number of voices {self.number_of_voices}"
                 )
                 assert all(
-                    [type(i) is LFO for i in modulators]
+                    [isinstance(i, LFO) for i in modulators]
                 ), "All modulators signals have to be of type LFO"
                 self.modulators = modulators
                 if len(self.modulators) == 1:
@@ -1354,7 +1350,7 @@ class DigitalDelay(AudioEffect):
         assert delay_time_ms > 0, "Delay time must be larger than 0"
         self.delay_ms = delay_time_ms
 
-        assert feedback > 0, "Feedback must be larger than one"
+        assert feedback > 0, "Feedback must be larger than zero"
         self.feedback = feedback
 
     def set_parameters(
