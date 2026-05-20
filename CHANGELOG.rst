@@ -14,6 +14,24 @@ adheres to `Semantic Versioning <http://semver.org/spec/v2.0.0.html>`_.
 - Validation for results from tests in every module (so far many tests are
   only regarding functionality)
 
+`0.9 <https://pypi.org/project/dsptoolbox/0.9>`_ -
+---------------------
+Added
+~~~~~
+- More methods to `arma` in ``filterbanks``
+- Faster computation of group delay for impulse responses and FIR filters
+
+Bugfix
+~~~~~~
+- some cases of `vqt` were crashing due to an index error
+- corrected the frequency vector produced when obtaining the spectogram of a signal
+- robustness checks while generating some windows in backend functions
+
+Misc
+~~~~
+- Improved some type annotations
+- Corrected and extended docstrings
+
 `0.8 <https://pypi.org/project/dsptoolbox/0.8>`_ -
 ---------------------
 Added
