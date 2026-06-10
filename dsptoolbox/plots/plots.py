@@ -346,7 +346,7 @@ def general_subplots_line(
         if ylabels is not None:
             ax[n].set_ylabel(ylabels[n])
         if xlabels is not None:
-            if not type(xlabels) is str and len(xlabels) > 1:
+            if type(xlabels) is not str and len(xlabels) > 1:
                 ax[n].set_xlabel(xlabels[n])
         if range_x is not None:
             ax[n].set_xlim(range_x)

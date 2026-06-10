@@ -193,8 +193,7 @@ class Signal(MultichannelData):
             temp += "-"
         txt += temp + "\n"
         for k in metadata.keys():
-            txt += f"""{str(k).replace('_', ' ').
-                        capitalize()}: {metadata[k]}\n"""
+            txt += f"""{str(k).replace("_", " ").capitalize()}: {metadata[k]}\n"""
         return txt
 
     def _generate_time_vector(self):
@@ -403,9 +402,9 @@ class Signal(MultichannelData):
 
         """
         if new_imag is not None:
-            assert (
-                new_imag.shape == self.__time_data.shape
-            ), "Shape of imaginary part time data does not match"
+            assert new_imag.shape == self.__time_data.shape, (
+                "Shape of imaginary part time data does not match"
+            )
         self.__time_data_imaginary: NDArray[np.float64] | None = new_imag
 
     @property
@@ -813,7 +812,7 @@ class Signal(MultichannelData):
             f"{sampling_rate_hz} does not match {self.sampling_rate_hz} "
             + "as the sampling rate"
         )
-        if not type(new_time_data) is NDArray[np.float64]:
+        if type(new_time_data) is not NDArray[np.float64]:
             new_time_data = np.array(new_time_data)
         if new_time_data.ndim > 2:
             new_time_data = new_time_data.squeeze()
@@ -1123,7 +1122,7 @@ class Signal(MultichannelData):
 
         if show_info_box:
             txt = "Info"
-            txt += f"""\nMode: {self._spectrum_parameters['method']}"""
+            txt += f"""\nMode: {self._spectrum_parameters["method"]}"""
             if range_hz is not None:
                 txt += f"\nRange: [{range_hz[0]}, {range_hz[1]}]"
             txt += f"\nNormalized: {normalize}"
@@ -1489,9 +1488,9 @@ class Signal(MultichannelData):
             Axes.
 
         """
-        assert (
-            self.spectrum_method == SpectrumMethod.FFT
-        ), "Phase cannot be plotted since the spectrum is welch."
+        assert self.spectrum_method == SpectrumMethod.FFT, (
+            "Phase cannot be plotted since the spectrum is welch."
+        )
 
         prior_smoothing = self._spectrum_parameters["smoothing"]
         self._spectrum_parameters["smoothing"] = 0

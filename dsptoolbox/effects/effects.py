@@ -25,6 +25,7 @@ from scipy.signal.windows import get_window
 import numpy as np
 from numpy.typing import NDArray
 from warnings import warn
+from typing import Callable
 
 __all__ = [
     "get_frequency_from_musical_rhythm",
@@ -230,9 +231,9 @@ class SpectralSubtractor(AudioEffect):
 
         if spectrum_to_subtract is not None:
             if np.any(spectrum_to_subtract):
-                assert (
-                    type(spectrum_to_subtract) is np.ndarray
-                ), "Spectrum to subtract must be of type numpy.ndarray"
+                assert type(spectrum_to_subtract) is np.ndarray, (
+                    "Spectrum to subtract must be of type numpy.ndarray"
+                )
                 spectrum_to_subtract = np.squeeze(spectrum_to_subtract)
                 assert spectrum_to_subtract.ndim == 1, (
                     "Spectrum to subtract could not be broadcasted to " + "a 1D-Array"
@@ -319,16 +320,16 @@ class SpectralSubtractor(AudioEffect):
                 - ad_release_time_ms
 
         """
-        assert (0 <= overlap_percent) and (
-            100 > overlap_percent
-        ), "Overlap should be in [0, 100["
+        assert (0 <= overlap_percent) and (100 > overlap_percent), (
+            "Overlap should be in [0, 100["
+        )
         self.overlap = overlap_percent / 100
 
         self.window_type = window_type
 
-        assert (0 < noise_forgetting_factor) and (
-            noise_forgetting_factor <= 1
-        ), "Noise forgetting factor must be in ]0, 1]"
+        assert (0 < noise_forgetting_factor) and (noise_forgetting_factor <= 1), (
+            "Noise forgetting factor must be in ]0, 1]"
+        )
         self.noise_forgetting_factor = noise_forgetting_factor
 
         assert subtraction_factor > 0, "The subtraction factor must be positive"
@@ -338,14 +339,14 @@ class SpectralSubtractor(AudioEffect):
         self.subtraction_exponent = subtraction_exponent
 
         # === Static Mode
-        assert (
-            ad_attack_time_ms >= 0
-        ), "Attack time for activity detector must be 0 or above"
+        assert ad_attack_time_ms >= 0, (
+            "Attack time for activity detector must be 0 or above"
+        )
         self.ad_attack_time_ms = ad_attack_time_ms
 
-        assert (
-            ad_release_time_ms >= 0
-        ), "Release time for activity detector must be 0 or above"
+        assert ad_release_time_ms >= 0, (
+            "Release time for activity detector must be 0 or above"
+        )
         self.ad_release_time_ms = ad_release_time_ms
 
     def set_parameters(
@@ -662,9 +663,9 @@ class Distortion(AudioEffect):
         """
         # Assert ranges
         mix_percent = np.atleast_1d(mix_percent)
-        assert np.all(
-            mix_percent <= 100
-        ), "No value of mix_percent can be greater than 100"
+        assert np.all(mix_percent <= 100), (
+            "No value of mix_percent can be greater than 100"
+        )
 
         # Set distortions to use
         self.__select_distortions(type_of_distortion)
@@ -686,12 +687,12 @@ class Distortion(AudioEffect):
         # Check that all parameters have right lengths
         assert n == len(self.mix), "Length of mix_percent does not match distortions"
         assert np.isclose(np.sum(self.mix), 1), "mix_percent does not sum up to 100"
-        assert n == len(
-            self.distortion_levels
-        ), "Length of distortion_levels does not match distortions"
-        assert n == len(
-            self.offset_db
-        ), "Length of offset_db does not match distortions"
+        assert n == len(self.distortion_levels), (
+            "Length of distortion_levels does not match distortions"
+        )
+        assert n == len(self.offset_db), (
+            "Length of offset_db does not match distortions"
+        )
 
         self.post_gain_db = post_gain_db
 
@@ -1049,9 +1050,9 @@ class Tremolo(AudioEffect):
     def __set_parameters(self, depth: float, modulator: LFO | NDArray[np.float64]):
         """Internal method to change parameters."""
         if modulator is not None:
-            assert isinstance(
-                modulator, (LFO, np.ndarray)
-            ), "Unsupported modulator type. Use LFO or numpy.ndarray"
+            assert isinstance(modulator, (LFO, np.ndarray)), (
+                "Unsupported modulator type. Use LFO or numpy.ndarray"
+            )
             if isinstance(modulator, np.ndarray):
                 modulator = modulator.squeeze()
                 assert modulator.ndim == 1, "Modulator signal can have only one channel"
@@ -1204,9 +1205,9 @@ class Chorus(AudioEffect):
                 )
 
         if modulators is not None:
-            assert isinstance(
-                modulators, (LFO, list, tuple, np.ndarray)
-            ), "Unsupported modulators type. Use LFO or numpy.ndarray"
+            assert isinstance(modulators, (LFO, list, tuple, np.ndarray)), (
+                "Unsupported modulators type. Use LFO or numpy.ndarray"
+            )
             if isinstance(modulators, np.ndarray):
                 modulators = np.atleast_2d(modulators)
                 assert modulators.shape[1] == self.number_of_voices, (
@@ -1222,9 +1223,9 @@ class Chorus(AudioEffect):
                     "The number of modulators signals does not match the "
                     + f"number of voices {self.number_of_voices}"
                 )
-                assert all(
-                    [isinstance(i, LFO) for i in modulators]
-                ), "All modulators signals have to be of type LFO"
+                assert all([isinstance(i, LFO) for i in modulators]), (
+                    "All modulators signals have to be of type LFO"
+                )
                 self.modulators = modulators
                 if len(self.modulators) == 1:
                     self.modulators = [self.modulators[0]] * self.number_of_voices
@@ -1242,9 +1243,9 @@ class Chorus(AudioEffect):
 
         if mix_percent is not None:
             mix_percent /= 100
-            assert (
-                mix_percent <= 1 and mix_percent > 0
-            ), "Mix percent must be below 100 and above 0"
+            assert mix_percent <= 1 and mix_percent > 0, (
+                "Mix percent must be below 100 and above 0"
+            )
             self.mix = mix_percent
 
     def set_parameters(
@@ -1373,7 +1374,7 @@ class DigitalDelay(AudioEffect):
         assert self.delay_ms is not None
         assert self.feedback is not None
 
-    def set_advanced_parameters(self, saturation: str | None = None):
+    def set_advanced_parameters(self, saturation: str | Callable | None = None):
         """This function sets the advanced parameters for the delay effect.
 
         Parameters
@@ -1400,9 +1401,9 @@ class DigitalDelay(AudioEffect):
                 return 0.5 * np.arctan(2 * x)
 
         else:
-            assert (
-                type(saturation(1.0)) == float
-            ), "Saturation function might not be valid"
+            assert isinstance(saturation(1.0), float), (
+                "Saturation function might not be valid"
+            )
 
             def func(x):
                 return saturation(x)
