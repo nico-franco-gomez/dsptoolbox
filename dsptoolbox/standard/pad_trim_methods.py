@@ -1,6 +1,6 @@
 import numpy as np
 
-from ..classes import Signal, MultiBandSignal
+from ..classes import MultiBandSignal, Signal
 from ..helpers.other import _pad_trim
 from ..tools import from_db
 
@@ -39,9 +39,9 @@ def pad_trim(
             )
         return signal.copy_with_new_time_data(new_time_data)
     elif isinstance(signal, MultiBandSignal):
-        assert (
-            signal.same_sampling_rate
-        ), "Padding or trimming is not supported for multirate signals"
+        assert signal.same_sampling_rate, (
+            "Padding or trimming is not supported for multirate signals"
+        )
         new_sig = signal.copy()
         for ind, b in enumerate(signal.bands):
             new_sig.bands[ind] = pad_trim(b, desired_length_samples, in_the_end)
@@ -77,9 +77,9 @@ def modify_signal_length(
 
     """
     if isinstance(signal, Signal):
-        assert (
-            start_seconds is not None or end_seconds is not None
-        ), "At least the start or the end should be modified"
+        assert start_seconds is not None or end_seconds is not None, (
+            "At least the start or the end should be modified"
+        )
         fs = signal.sampling_rate_hz
         start_samples = (
             0
@@ -207,14 +207,14 @@ def trim_with_time_selection(
 
     """
     if isinstance(signal, Signal):
-        assert (
-            start_time_s is not None or end_time_s is not None
-        ), "At least one bound must be other than None"
+        assert start_time_s is not None or end_time_s is not None, (
+            "At least one bound must be other than None"
+        )
         if start_time_s:
             assert start_time_s >= 0.0, "Start time must be at least zero"
-            assert (
-                start_time_s < signal.length_seconds
-            ), "Start time must be less than signal's length"
+            assert start_time_s < signal.length_seconds, (
+                "Start time must be less than signal's length"
+            )
             start_sample = int(start_time_s * signal.sampling_rate_hz)
             if not inclusive:
                 start_sample += 1
@@ -223,9 +223,9 @@ def trim_with_time_selection(
 
         if end_time_s:
             assert end_time_s > 0.0, "End time must be greater than 0"
-            assert (
-                end_time_s <= signal.length_seconds
-            ), "End time must be less than signal length"
+            assert end_time_s <= signal.length_seconds, (
+                "End time must be less than signal length"
+            )
             end_sample = int(end_time_s * signal.sampling_rate_hz)
             if inclusive:
                 end_sample += 1

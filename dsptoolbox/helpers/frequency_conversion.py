@@ -46,24 +46,24 @@ def _mel2hz(mel: NDArray[np.float64]) -> NDArray[np.float64]:
     return 700 * (10 ** (mel / 2595) - 1)
 
 
-def _frequency_weightning(
-    f: NDArray[np.float64], weightning_mode: str = "a", db_output: bool = True
+def _frequency_weighting(
+    f: NDArray[np.float64], weighting_mode: str = "a", db_output: bool = True
 ) -> NDArray[np.float64]:
-    """Returns the weights for frequency-weightning.
+    """Returns the weights for frequency-weighting.
 
     Parameters
     ----------
     f : NDArray[np.float64]
         Frequency vector.
-    weightning_mode : str, optional
-        Type of weightning. Choose from `'a'` or `'c'`. Default: `'a'`.
+    weighting_mode : str, optional
+        Type of weighting. Choose from `'a'` or `'c'`. Default: `'a'`.
     db_output : str, optional
         When `True`, output is given in dB. Default: `True`.
 
     Returns
     -------
     weights : NDArray[np.float64]
-        Weightning values.
+        Weighting values.
 
     References
     ----------
@@ -72,12 +72,12 @@ def _frequency_weightning(
     """
     f = np.squeeze(f)
     assert f.ndim == 1, "Frequency must be a 1D-array"
-    weightning_mode = weightning_mode.lower()
-    assert weightning_mode in ("a", "c"), "weightning_mode must be a or c"
+    weighting_mode = weighting_mode.lower()
+    assert weighting_mode in ("a", "c"), "weighting_mode must be a or c"
 
     ind1k = np.argmin(np.abs(f - 1e3))
 
-    if weightning_mode == "a":
+    if weighting_mode == "a":
         weights = (
             12194**2
             * f**4

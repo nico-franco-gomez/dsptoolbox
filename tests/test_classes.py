@@ -2,13 +2,15 @@
 Tests for basic functionalities of the classes in dsptoolbox
 """
 
-import pytest
-import dsptoolbox as dsp
-import numpy as np
-from os.path import join
 import os
+from os.path import join
+
+import numpy as np
+import pytest
 import scipy.signal as sig
 from matplotlib.pyplot import close
+
+import dsptoolbox as dsp
 
 RIR_PATH = os.path.join(
     os.path.dirname(__file__),
@@ -38,7 +40,7 @@ class TestSignal:
     def test_importing_from_file(self):
         path = join(os.path.dirname(__file__), "..", "example_data", "chirp.wav")
         s = dsp.Signal(path)
-        s.number_of_channels
+        _ = s.number_of_channels
 
     def test_creating_signal_from_vector(self):
         # Check real and imag (Multichannel)
@@ -192,10 +194,10 @@ class TestSignal:
         assert s.spectrum_scaling == dsp.SpectrumScaling.FFTOrthogonal
 
         # Read-only properties - check
-        s.number_of_channels
-        s.length_samples
-        s.length_seconds
-        s.time_vector_s
+        _ = s.number_of_channels
+        _ = s.length_samples
+        _ = s.length_seconds
+        _ = s.time_vector_s
 
         # Some properties are read-only
         with pytest.raises(AttributeError):
@@ -319,7 +321,7 @@ class TestSignal:
             pass
         except Exception as e:
             print(e)
-            assert False
+            raise AssertionError() from e
 
     def test_copying_signal(self):
         s = dsp.Signal(time_data=self.time_vec, sampling_rate_hz=self.fs)
@@ -979,7 +981,7 @@ class TestFilterBankClass:
         fb.add_filter(self.get_iir_filter())
         fb.add_filter(self.get_fir_filter(True))
         for n in fb:
-            assert dsp.Filter == type(n)
+            assert type(n) is dsp.Filter
 
     def test_transfer_function(self):
         # Create
@@ -1175,18 +1177,18 @@ class TestMultiBandSignal:
             info=dict(information="test filter bank"),
         )
         for n in mbs:
-            assert dsp.Signal == type(n)
+            assert type(n) is dsp.Signal
 
     def test_multibandsignal_properties(self):
         mb = self.get_mb()
 
         # Get
-        mb.length_seconds
-        mb.number_of_bands
-        mb.number_of_channels
-        mb.length_samples
+        _ = mb.length_seconds
+        _ = mb.number_of_bands
+        _ = mb.number_of_channels
+        _ = mb.length_samples
 
-        mb.bands
+        _ = mb.bands
 
         # Read-only properties
         with pytest.raises(AttributeError):

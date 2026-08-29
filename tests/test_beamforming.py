@@ -1,7 +1,9 @@
-import dsptoolbox as dsp
-import numpy as np
-from os.path import join
 import os
+from os.path import join
+
+import numpy as np
+
+import dsptoolbox as dsp
 
 x = np.arange(0, 1.1, 0.25)
 y = x.copy()
@@ -50,9 +52,9 @@ class TestBeamformingModule:
     def test_mic_array(self):
         # Only functionality
         m = dsp.beamforming.MicArray(self.points_uniform)
-        m.array_center_channel_number
-        m.array_center_coordinates
-        m.aperture
+        _ = m.array_center_channel_number
+        _ = m.array_center_coordinates
+        _ = m.aperture
         m.get_maximum_frequency_range()
 
     def test_steering_vector(self):
@@ -177,7 +179,7 @@ class TestBeamformingModule:
             pass
         except Exception as e:
             print(e)
-            assert False
+            raise AssertionError() from e
 
         # Create beamformer and plot setting
         bf = dsp.beamforming.BeamformerCleanSC(s, ma, g, st)

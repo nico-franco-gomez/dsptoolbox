@@ -1,10 +1,11 @@
-import numpy as np
 from copy import deepcopy
 
+import numpy as np
+
 from ..classes import (
-    Signal,
-    MultiBandSignal,
     FilterBank,
+    MultiBandSignal,
+    Signal,
     Spectrum,
 )
 from ..helpers.other import _pad_trim
@@ -45,12 +46,12 @@ def append_signals(
     if isinstance(signals[0], Signal):
         complex_data = False
         for s in signals:
-            assert isinstance(
-                s, Signal
-            ), "All signals must be of type Signal or ImpulseResponse"
-            assert (
-                s.sampling_rate_hz == signals[0].sampling_rate_hz
-            ), "Sampling rates do not match"
+            assert isinstance(s, Signal), (
+                "All signals must be of type Signal or ImpulseResponse"
+            )
+            assert s.sampling_rate_hz == signals[0].sampling_rate_hz, (
+                "Sampling rates do not match"
+            )
             if not allow_padding_trimming:
                 assert len(s) == len(signals[0]), (
                     "Lengths do not match and padding or trimming " + "is not activated"
@@ -95,22 +96,22 @@ def append_signals(
         return new_sig
     elif isinstance(signals[0], MultiBandSignal):
         for s in signals:
-            assert isinstance(
-                s, MultiBandSignal
-            ), "All signals must be of type MultiBandSignal"
-            assert (
-                s.same_sampling_rate == signals[0].same_sampling_rate
-            ), "Sampling rates do not match"
-            assert (
-                s.sampling_rate_hz == signals[0].sampling_rate_hz
-            ), "Sampling rates do not match"
+            assert isinstance(s, MultiBandSignal), (
+                "All signals must be of type MultiBandSignal"
+            )
+            assert s.same_sampling_rate == signals[0].same_sampling_rate, (
+                "Sampling rates do not match"
+            )
+            assert s.sampling_rate_hz == signals[0].sampling_rate_hz, (
+                "Sampling rates do not match"
+            )
             if not allow_padding_trimming:
                 assert s.length_samples == signals[0].length_samples, (
                     "Lengths do not match and padding or trimming " + "is not activated"
                 )
-            assert (
-                s.number_of_bands == signals[0].number_of_bands
-            ), "Number of bands does not match"
+            assert s.number_of_bands == signals[0].number_of_bands, (
+                "Number of bands does not match"
+            )
         new_bands = []
         signals_without_first = signals.copy()  # Shallow copy
         signals_without_first.pop(0)
@@ -144,12 +145,12 @@ def append_filterbanks(fbs: list[FilterBank]) -> FilterBank:
     """
     assert len(fbs) > 1, "At least two filter banks should be passed"
     for f in fbs:
-        assert (
-            f.same_sampling_rate == fbs[0].same_sampling_rate
-        ), "Sampling rates do not match"
-        assert (
-            f.sampling_rate_hz == fbs[0].sampling_rate_hz
-        ), "Sampling rates do not match"
+        assert f.same_sampling_rate == fbs[0].same_sampling_rate, (
+            "Sampling rates do not match"
+        )
+        assert f.sampling_rate_hz == fbs[0].sampling_rate_hz, (
+            "Sampling rates do not match"
+        )
 
     new_fb = fbs[0].copy()
     for ind in range(1, len(fbs)):
@@ -182,9 +183,9 @@ def append_spectra(
     assert len(spectra) > 1, "There must be at least two spectra to join"
     complex_append = complex_if_available and not spectra[0].is_magnitude
     if complex_append:
-        assert all(
-            [not s.is_magnitude for s in spectra]
-        ), "At least one spectrum is not complex"
+        assert all([not s.is_magnitude for s in spectra]), (
+            "At least one spectrum is not complex"
+        )
 
     total_channels = sum([s.number_of_channels for s in spectra])
     freqs = spectra[0].frequency_vector_hz

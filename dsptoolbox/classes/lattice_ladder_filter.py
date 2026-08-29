@@ -3,13 +3,14 @@ This file contains alternative filter implementations.
 """
 
 from warnings import warn
+
 import numpy as np
 from numpy.typing import NDArray
 
-from .filter import Filter
 from ..standard.enums import FilterCoefficientsType
-from .signal import Signal
+from .filter import Filter
 from .realtime_filter import RealtimeFilter
+from .signal import Signal
 
 
 class LatticeLadderFilter(RealtimeFilter):
@@ -80,12 +81,12 @@ class LatticeLadderFilter(RealtimeFilter):
                 "When k has two dimensions, it is assumed that the "
                 + "second one has length 2 (second-order section)"
             )
-            assert (
-                c_coefficients.shape[1] == 3
-            ), "Second-order sections should have 3 c coefficients"
-            assert (
-                c_coefficients.shape[0] == k_coefficients.shape[0]
-            ), "Number of second-order sections do not match"
+            assert c_coefficients.shape[1] == 3, (
+                "Second-order sections should have 3 c coefficients"
+            )
+            assert c_coefficients.shape[0] == k_coefficients.shape[0], (
+                "Number of second-order sections do not match"
+            )
             self.iir_filter = True
             self.sos_filtering = True
         else:
@@ -179,9 +180,9 @@ class LatticeLadderFilter(RealtimeFilter):
           Discrete-Time Signal Processing. Prentice-hall Englewood Cliffs.
 
         """
-        assert (
-            signal.sampling_rate_hz == self.sampling_rate_hz
-        ), "Sampling rates do not match"
+        assert signal.sampling_rate_hz == self.sampling_rate_hz, (
+            "Sampling rates do not match"
+        )
 
         td = signal.time_data.copy()
 
@@ -189,7 +190,8 @@ class LatticeLadderFilter(RealtimeFilter):
             warn(
                 """Number of channels did not match the filter's """
                 + "state. The right number of channels are automatically"
-                + "initiated"
+                + "initiated",
+                stacklevel=2,
             )
             self.set_n_channels(signal.number_of_channels)
 

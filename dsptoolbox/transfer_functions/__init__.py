@@ -23,7 +23,7 @@ Modify TF/IR:
 Generate TF/IR from magnitude spectrum:
 
 - `min_phase_from_mag()` (generate an IR with minimum phase from a
-  magnitude spectrum using the distcrete hilbert transform)
+  magnitude spectrum using the discrete hilbert transform)
 - `lin_phase_from_mag()` (generate an IR with linear phase from a
   magnitude spectrum)
 
@@ -42,31 +42,31 @@ Analyze TF/IR:
 
 """
 
+from .enums import SmoothingDomain, TransferFunctionType
 from .transfer_functions import (
-    spectral_deconvolve,
-    window_ir,
-    window_frequency_dependent,
-    window_centered_ir,
-    window_ir_tukey,
-    compute_transfer_function,
     average_irs,
-    min_phase_from_mag,
-    lin_phase_from_mag,
-    min_phase_ir,
-    group_delay,
-    minimum_group_delay,
-    excess_group_delay,
-    minimum_phase,
-    ir_to_filter,
-    filter_to_ir,
     combine_ir_with_dirac,
-    find_ir_latency,
-    harmonics_from_chirp_ir,
-    harmonic_distortion_analysis,
-    trim_ir,
     complex_smoothing,
+    compute_transfer_function,
+    excess_group_delay,
+    filter_to_ir,
+    find_ir_latency,
+    group_delay,
+    harmonic_distortion_analysis,
+    harmonics_from_chirp_ir,
+    ir_to_filter,
+    lin_phase_from_mag,
+    min_phase_from_mag,
+    min_phase_ir,
+    minimum_group_delay,
+    minimum_phase,
+    spectral_deconvolve,
+    trim_ir,
+    window_centered_ir,
+    window_frequency_dependent,
+    window_ir,
+    window_ir_tukey,
 )
-from .enums import TransferFunctionType, SmoothingDomain
 
 __all__ = [
     "spectral_deconvolve",

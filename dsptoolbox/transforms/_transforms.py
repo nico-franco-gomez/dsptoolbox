@@ -57,7 +57,7 @@ class Wavelet:
         """
         x, func = self.get_base_wavelet()
         ind = np.argmax(np.abs(np.fft.fft(func)))
-        # Maybe for some wavelets it might be necessary to miror around nyquist
+        # Maybe for some wavelets it might be necessary to mirror around nyquist
         domain = x[-1] - x[0]
         return ind / domain
 

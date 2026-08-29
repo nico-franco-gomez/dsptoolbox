@@ -3,11 +3,11 @@ Very specific plots which are harder to create from the general templates
 """
 
 import matplotlib.pyplot as plt
-from matplotlib.ticker import ScalarFormatter
 import numpy as np
+from matplotlib.ticker import ScalarFormatter
 
-from ..helpers.other import find_nearest_points_index_in_vector
 from ..helpers.gain_and_level import to_db
+from ..helpers.other import find_nearest_points_index_in_vector
 
 
 def _zp_plot(z, p):

@@ -14,16 +14,16 @@ Here are contained some functions that are related to room acoustics.
 
 """
 
-from .room_acoustics import (
-    reverb_time,
-    find_modes,
-    convolve_rir_on_signal,
-    find_ir_start,
-    generate_synthetic_rir,
-    ShoeboxRoom,
-    descriptors,
-)
 from .enums import ReverbTime, RoomAcousticsDescriptor
+from .room_acoustics import (
+    ShoeboxRoom,
+    convolve_rir_on_signal,
+    descriptors,
+    find_ir_start,
+    find_modes,
+    generate_synthetic_rir,
+    reverb_time,
+)
 
 __all__ = [
     "reverb_time",

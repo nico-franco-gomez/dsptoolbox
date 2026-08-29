@@ -73,9 +73,9 @@ def _fractional_octave_smoothing(
 
     # Generate window
     if window_type is not None:
-        assert (
-            window_vec is None
-        ), "When window type is passed, no window vector should be added"
+        assert window_vec is None, (
+            "When window type is passed, no window vector should be added"
+        )
         if "gauss" in window_type[0]:
             window_type = (
                 "gaussian",
@@ -83,9 +83,9 @@ def _fractional_octave_smoothing(
             )
         window = windows.get_window(window_type, n_window, fftbins=False)
     else:
-        assert (
-            window_type is None
-        ), "When using a window as a vector, window type should be None"
+        assert window_type is None, (
+            "When using a window as a vector, window type should be None"
+        )
         window = window_vec
 
     # Dimension handling
@@ -232,9 +232,9 @@ def _time_smoothing(
         return y
 
     assert descending_time_s >= 0.0, "Release time must at least 0"
-    assert not (
-        ascending_time_s == 0.0 and descending_time_s == ascending_time_s
-    ), "These times will not apply any smoothing"
+    assert not (ascending_time_s == 0.0 and descending_time_s == ascending_time_s), (
+        "These times will not apply any smoothing"
+    )
 
     descending_factor = (
         _get_smoothing_factor_ema(descending_time_s, sampling_rate_hz)

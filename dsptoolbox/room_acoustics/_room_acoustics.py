@@ -2,15 +2,16 @@
 Low-level methods for room acoustics
 """
 
+from warnings import warn
+
 import numpy as np
 from numpy.typing import NDArray
 from scipy.stats import pearsonr
-from warnings import warn
 
-from ..helpers.gain_and_level import to_db, from_db
+from ..helpers.gain_and_level import from_db, to_db
 from ..plots import general_plot
-from ..transfer_functions._transfer_functions import _trim_ir
 from ..tools import time_smoothing
+from ..transfer_functions._transfer_functions import _trim_ir
 from .enums import ReverbTime
 
 
@@ -109,7 +110,8 @@ def _find_ir_start(ir: NDArray[np.float64], threshold_dbfs: float = -20) -> int:
     # -20 dB distance from peak value according to ISO 3382-1:2009-10
     threshold = ir_abs[start_ir] * from_db(-np.abs(threshold_dbfs), True)
 
-    for start_ir in range(start_ir, -1, -1):
+    peak_index = start_ir
+    for start_ir in range(peak_index, -1, -1):
         if ir_abs[start_ir] < threshold:
             break
     return start_ir
@@ -132,7 +134,7 @@ def _complex_mode_identification(
     Returns
     -------
     cmif : NDArray[np.float64]
-        Complex mode identificator function.
+        Complex mode identifier function.
 
     References
     ----------
@@ -255,7 +257,7 @@ def _generate_rir(room_dim, alpha, s_pos, r_pos, rt, mo, sr) -> NDArray[np.float
         diff = np.abs(lvec - u_vectors)
         return np.prod(beta_1**diff, axis=1) * np.prod(beta_2 ** np.abs(lvec))
 
-    # Core computation (Eq. 1) – could be further optimized by vectorizing
+    # Core computation (Eq. 1) - could be further optimized by vectorizing
     # the outer loops
     limit_loop = np.arange(-LIMIT, LIMIT + 1)
     for lind in limit_loop:
@@ -308,12 +310,12 @@ class Room:
         self.area = area_m2
 
         if t60_s is None:
-            assert (
-                absorption_coefficient is not None
-            ), "Absorption coefficient should not be None"
-            assert (
-                absorption_coefficient > 0 and absorption_coefficient <= 1
-            ), "Absorption coefficient should be ]0, 1]"
+            assert absorption_coefficient is not None, (
+                "Absorption coefficient should not be None"
+            )
+            assert absorption_coefficient > 0 and absorption_coefficient <= 1, (
+                "Absorption coefficient should be ]0, 1]"
+            )
             self.absorption_coefficient = absorption_coefficient
             self.t60_s = 0.161 * self.volume / self.area / self.absorption_coefficient
         if absorption_coefficient is None:
@@ -421,9 +423,9 @@ class ShoeboxRoom(Room):
 
         """
         dimensions_m = np.atleast_1d(np.squeeze(dimensions_m))
-        assert (
-            len(dimensions_m) == 3
-        ), "Dimensions for a shoebox room should have length 3 (x, y, z)"
+        assert len(dimensions_m) == 3, (
+            "Dimensions for a shoebox room should have length 3 (x, y, z)"
+        )
         assert np.all(dimensions_m > 0), "Room dimensions must be positive"
         self.dimensions_m = dimensions_m
         volume = np.prod(dimensions_m)
@@ -598,12 +600,12 @@ class ShoeboxRoom(Room):
         """
         source_pos = np.asarray(source_pos).squeeze()
         receiver_pos = np.asarray(receiver_pos).squeeze()
-        assert self.check_if_in_room(
-            source_pos
-        ), "Given source position is not in the room"
-        assert self.check_if_in_room(
-            receiver_pos
-        ), "Given receiver position is not in the room"
+        assert self.check_if_in_room(source_pos), (
+            "Given source position is not in the room"
+        )
+        assert self.check_if_in_room(receiver_pos), (
+            "Given receiver position is not in the room"
+        )
 
         if hasattr(self, "detailed_absorption"):
             # Absorption for each mode taken from the respective octave band
@@ -753,9 +755,9 @@ class ShoeboxRoom(Room):
                     "The absorption coefficient must be passed "
                     "with either 1 or less than 8 coefficients"
                 )
-            assert np.all(ab < 1) and np.all(
-                ab > 0
-            ), "Absorption must be between 0 and 1 (exclusively)"
+            assert np.all(ab < 1) and np.all(ab > 0), (
+                "Absorption must be between 0 and 1 (exclusively)"
+            )
         # Trim or pad for every wall
         for i in detailed_absorption:
             if len(detailed_absorption[i]) >= number_of_bands:
@@ -805,7 +807,7 @@ class ShoeboxRoom(Room):
         self.detailed_absorption["absorption_area"] = absorption_area
         self.detailed_absorption["mean_absorption_coefficients_per_frequency"] = (
             acpf
-        ) = (absorption_area / self.area)
+        ) = absorption_area / self.area
         self.detailed_absorption["center_frequencies"] = 125 * 2 ** np.arange(
             number_of_bands
         )
@@ -1046,7 +1048,8 @@ def _obtain_optimal_reverb_time(
         warn(
             f"Correlation coefficient for reverb computation is {r} "
             + "(larger than -0.95). Computation might be invalid. "
-            + "-1 is the ideal value."
+            + "-1 is the ideal value.",
+            stacklevel=2,
         )
     coefficients = _get_polynomial_coeffs_from_edc(time_vector, edc, start, end)[0]
     return 60 / np.abs(coefficients[0]), r
@@ -1150,8 +1153,8 @@ def _compute_energy_decay_curve(
     References
     ----------
     - [1]: W. T. Chu. “Comparison of reverberation measurements using
-      Schroeder’s impulse method and decay-curve averaging method”. In:
-      Journal of the Acoustical Society of America 63.5 (1978), pp. 1444–1450.
+      Schroeder's impulse method and decay-curve averaging method”. In:
+      Journal of the Acoustical Society of America 63.5 (1978), pp. 1444-1450.
     - [2]: Lundeby, Virgran, Bietz and Vorlaender - Uncertainties of
       Measurements in Room Acoustics - ACUSTICA Vol. 81 (1995).
 

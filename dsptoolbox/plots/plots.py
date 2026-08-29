@@ -3,11 +3,11 @@ Includes some basic plotting templates
 """
 
 import matplotlib.pyplot as plt
-from matplotlib.ticker import ScalarFormatter
 from matplotlib import colormaps as cm
-from matplotlib.figure import Figure
 from matplotlib.axes import Axes
-from numpy import array, max, min, arange
+from matplotlib.figure import Figure
+from matplotlib.ticker import ScalarFormatter
+from numpy import arange, array, max, min
 from numpy.typing import NDArray
 
 try:

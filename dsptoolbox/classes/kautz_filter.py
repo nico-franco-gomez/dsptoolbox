@@ -1,25 +1,28 @@
 import numpy as np
 from numpy.typing import NDArray
-from scipy.signal import lfilter
 from scipy.linalg import lstsq
+from scipy.signal import lfilter
 
-from .realtime_filter import RealtimeFilter
-from .impulse_response import ImpulseResponse
-from .signal import Signal
-from .iir_filter_realtime import IIRFilter
 from ..generators import dirac
+from .iir_filter_realtime import IIRFilter
+from .impulse_response import ImpulseResponse
+from .realtime_filter import RealtimeFilter
+from .signal import Signal
 
 
 class KautzFilter(RealtimeFilter):
     """Class for a Kautz filter that can process real-valued signals. See
     references for details on Kautz Filters and their uses.
 
+    Notes
+    -----
+    - This is a port from the MATLAB toolbox:
+      http://legacy.spa.aalto.fi/software/kautz/kautz.htm
+
     References
     ----------
     - [1]: Bank, B. (2022). Warped, Kautz, and Fixed-Pole Parallel Filters: A
       Review. Journal of the Audio Engineering Society.
-    - This function is a port from the matlab toolbox:
-      http://legacy.spa.aalto.fi/software/kautz/kautz.htm
 
     """
 
@@ -44,21 +47,21 @@ class KautzFilter(RealtimeFilter):
         Notes
         -----
         - All filter coefficients are initialized with 1.0.
+        - This is a port from the MATLAB toolbox:
+          http://legacy.spa.aalto.fi/software/kautz/kautz.htm
 
         References
         ----------
         - [1]: Bank, B. (2022). Warped, Kautz, and Fixed-Pole Parallel Filters:
           A Review. Journal of the Audio Engineering Society.
-        - This function is a port from the matlab toolbox:
-          http://legacy.spa.aalto.fi/software/kautz/kautz.htm
 
         """
-        assert not np.any(
-            poles.imag < 0.0
-        ), "No poles with negative imaginary part should be passed"
-        assert not np.any(
-            np.abs(poles) >= 1.0
-        ), "No poles should lie outside the unit circle"
+        assert not np.any(poles.imag < 0.0), (
+            "No poles with negative imaginary part should be passed"
+        )
+        assert not np.any(np.abs(poles) >= 1.0), (
+            "No poles should lie outside the unit circle"
+        )
         self.sampling_rate_hz = sampling_rate_hz
 
         self.__set_poles(poles)
@@ -142,7 +145,7 @@ class KautzFilter(RealtimeFilter):
         self.__filters_complex_advance_sample: list[IIRFilter] = []
 
         # Real poles
-        for ii, preal in enumerate(self.poles_real):
+        for preal in self.poles_real:
             self.__filters_real.append(
                 IIRFilter(
                     b=np.array([(1.0 - preal**2.0) ** 0.5]),
@@ -257,9 +260,9 @@ class KautzFilter(RealtimeFilter):
 
     def filter_signal(self, signal: Signal) -> Signal:
         """Filter a whole signal with the Kautz filter."""
-        assert (
-            signal.sampling_rate_hz == self.sampling_rate_hz
-        ), "Sampling rates do not match"
+        assert signal.sampling_rate_hz == self.sampling_rate_hz, (
+            "Sampling rates do not match"
+        )
         return signal.copy_with_new_time_data(
             self.__process_time_data_vector(signal.time_data, False)
         )

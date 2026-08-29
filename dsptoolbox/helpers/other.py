@@ -1,4 +1,5 @@
 from os import sep
+
 import numpy as np
 from numpy.typing import NDArray
 from scipy.linalg import toeplitz as toeplitz_scipy
@@ -61,7 +62,7 @@ def _toeplitz(h: NDArray[np.float64], length_of_input: int) -> NDArray[np.float6
 
     """
     column = np.hstack([h, np.zeros(length_of_input - 1)])
-    row = np.zeros((length_of_input))
+    row = np.zeros(length_of_input)
     row[0] = h[0]
     return toeplitz_scipy(c=column, r=row)
 

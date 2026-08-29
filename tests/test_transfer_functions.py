@@ -1,8 +1,10 @@
-import dsptoolbox as dsp
+import os
 from os.path import join
+
 import numpy as np
 import pytest
-import os
+
+import dsptoolbox as dsp
 
 
 class TestTransferFunctionsModule:
@@ -349,19 +351,19 @@ class TestTransferFunctionsModule:
         assert start_pos.dtype in [np.int32, np.int64, int]
         assert len(start_pos) == result.number_of_channels
         assert np.all(start_pos >= 0), "Start positions should be non-negative"
-        assert np.all(
-            start_pos < total_length_samples
-        ), "Start positions should be within bounds"
+        assert np.all(start_pos < total_length_samples), (
+            "Start positions should be within bounds"
+        )
         # Check impulse is detected at expected position in windowed result
         for ch in range(result.number_of_channels):
             impulse_pos_in_result = np.argmax(np.abs(result.time_data[:, ch]))
             # Impulse should be reasonably placed and windowed
-            assert (
-                impulse_pos_in_result > 0
-            ), "Impulse should have been placed with some padding"
-            assert (
-                result.time_data[impulse_pos_in_result, ch] > 0
-            ), "Peak should be positive"
+            assert impulse_pos_in_result > 0, (
+                "Impulse should have been placed with some padding"
+            )
+            assert result.time_data[impulse_pos_in_result, ch] > 0, (
+                "Peak should be positive"
+            )
 
         # Test 1b: IR with impulse in middle, non-adaptive
         ir_mid = dsp.ImpulseResponse(None, np.zeros((512, 1)), self.fs)

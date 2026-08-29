@@ -1,12 +1,14 @@
+from warnings import warn
+
+import numpy as np
+from numpy.typing import NDArray
+from scipy.integrate import cumulative_simpson, cumulative_trapezoid
+from scipy.interpolate import PchipInterpolator
+
+from ..helpers.other import _pad_trim
+from ..helpers.spectrum_utilities import _correct_for_real_phase_spectrum
 from .filter import Filter
 from .impulse_response import ImpulseResponse
-import numpy as np
-from scipy.integrate import cumulative_trapezoid, cumulative_simpson
-from scipy.interpolate import PchipInterpolator
-from numpy.typing import NDArray
-from ..helpers.spectrum_utilities import _correct_for_real_phase_spectrum
-from ..helpers.other import _pad_trim
-from warnings import warn
 
 
 class FirDesigner:
@@ -80,9 +82,9 @@ class FirDesigner:
         """
         assert delay_increase_ms >= 0, "Delay increase must be larger than zero"
         if additional_length_samples is not None:
-            assert (
-                additional_length_samples >= 0
-            ), "Additional length must be 0 or greater"
+            assert additional_length_samples >= 0, (
+                "Additional length must be 0 or greater"
+            )
         self.group_delay_increase_ms = delay_increase_ms
         self.trapezoidal_integration = trapezoidal_integration
         self.additional_length_samples = additional_length_samples
@@ -102,16 +104,16 @@ class FirDesigner:
             Target group delay (in samples) to use.
 
         """
-        assert (
-            target_group_delay_s.ndim == 1
-        ), "Target group delay can only have 1 dimension"
+        assert target_group_delay_s.ndim == 1, (
+            "Target group delay can only have 1 dimension"
+        )
         assert self.time_data_length_samples // 2 + 1 == len(target_group_delay_s), (
             f"Target group delay with length {len(target_group_delay_s)} and "
             + f"length {self.time_data_length_samples} do not match."
         )
-        assert len(target_group_delay_s) == len(
-            target_magnitude_response
-        ), "Lengths do not match"
+        assert len(target_group_delay_s) == len(target_magnitude_response), (
+            "Lengths do not match"
+        )
         self.target_magnitude_response = target_magnitude_response
         self.target_group_delay_s = target_group_delay_s
 
@@ -155,7 +157,8 @@ class FirDesigner:
                 + f"group delay {max_delay_samples_synthesized} (less "
                 + "than 10 times longer). Spectrum interpolation "
                 + "is triggered, but it is recommended to pass a phase "
-                + "spectrum with finer resolution!"
+                + "spectrum with finer resolution!",
+                stacklevel=2,
             )
             # Define new time length for the group delay
             new_gd_time_length_samples = int(max_delay_samples_synthesized * 10) + 1

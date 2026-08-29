@@ -1,32 +1,32 @@
-import numpy as np
 import pickle
-from scipy.signal import (
-    hilbert,
-    oaconvolve,
-    convolve,
-)
 from warnings import warn
 
+import numpy as np
+from scipy.signal import (
+    convolve,
+    hilbert,
+    oaconvolve,
+)
 
 from ..classes import (
-    Signal,
-    MultiBandSignal,
-    FilterBank,
     Filter,
+    FilterBank,
+    MultiBandSignal,
+    Signal,
     Spectrum,
 )
-from ._standard_backend import (
-    _indices_above_threshold_dbfs,
-    _detrend,
-)
-from ..helpers.smoothing import _get_smoothing_factor_ema
-from ..helpers.other import _check_format_in_path
 from ..helpers.gain_and_level import from_db
+from ..helpers.other import _check_format_in_path
+from ..helpers.smoothing import _get_smoothing_factor_ema
+from ._standard_backend import (
+    _detrend,
+    _indices_above_threshold_dbfs,
+)
 from .enums import (
-    SpectrumType,
-    InterpolationDomain,
     FilterBankMode,
     FilterCoefficientsType,
+    InterpolationDomain,
+    SpectrumType,
 )
 
 
@@ -158,7 +158,8 @@ def activity_detector(
     except ValueError as e:
         warn(
             "No detected activity, threshold might be too high. Detected "
-            + "signal will be a vector filled with zeroes"
+            + "signal will be a vector filled with zeroes",
+            stacklevel=2,
         )
         print("Numpy error: ", e)
         detected_sig.time_data = np.zeros(500)
@@ -168,7 +169,8 @@ def activity_detector(
     except ValueError as e:
         warn(
             "No detected noise, threshold might be too low. Noise will be "
-            + "a vector filled with zeroes"
+            + "a vector filled with zeroes",
+            stacklevel=2,
         )
         print("Numpy error: ", e)
         noise.time_data = np.zeros(500)
@@ -262,9 +264,9 @@ def envelope(
         rms_vec **= 0.5
         return rms_vec
     elif isinstance(signal, MultiBandSignal):
-        assert (
-            signal.same_sampling_rate
-        ), "This is only available for constant sampling rate bands"
+        assert signal.same_sampling_rate, (
+            "This is only available for constant sampling rate bands"
+        )
         rms_vec = np.zeros(
             (
                 len(signal.bands[0]),
@@ -382,9 +384,9 @@ def merge_filters(filters: list[Filter] | FilterBank) -> Filter:
     """
     filts = filters.filters if isinstance(filters, FilterBank) else filters
     assert len(filts) > 1, "There must be at least two filters to combine"
-    assert all(
-        [filts[0].sampling_rate_hz == f.sampling_rate_hz for f in filts]
-    ), "Sampling rates do not match"
+    assert all([filts[0].sampling_rate_hz == f.sampling_rate_hz for f in filts]), (
+        "Sampling rates do not match"
+    )
 
     if filts[0].is_fir:
         assert all([f.is_fir for f in filts]), "Some filter is not FIR"
@@ -440,9 +442,9 @@ def spectral_difference(
         Difference spectrum.
 
     """
-    assert (
-        input_1.number_of_channels == input_2.number_of_channels
-    ), "Number of channels does not match"
+    assert input_1.number_of_channels == input_2.number_of_channels, (
+        "Number of channels does not match"
+    )
 
     if isinstance(input_1, Signal):
         inp1 = Spectrum.from_signal(input_1, complex)

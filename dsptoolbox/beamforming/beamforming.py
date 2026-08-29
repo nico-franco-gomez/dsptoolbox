@@ -3,23 +3,24 @@ Beamforming classes and functions
 """
 
 from warnings import warn
-import numpy as np
-import matplotlib.pyplot as plt
-from scipy.integrate import simpson
-from matplotlib.figure import Figure
-from matplotlib.axes import Axes
-from numpy.typing import NDArray
 
+import matplotlib.pyplot as plt
+import numpy as np
+from matplotlib.axes import Axes
+from matplotlib.figure import Figure
+from numpy.typing import NDArray
+from scipy.integrate import simpson
+
+from .. import append_signals, fractional_delay, pad_trim
+from ..classes import Signal
+from ..helpers.gain_and_level import to_db
 from ..helpers.other import (
     _get_fractional_octave_bandwidth,
-    find_nearest_points_index_in_vector,
     _pad_trim,
+    find_nearest_points_index_in_vector,
 )
-from ..helpers.gain_and_level import to_db
-from ..classes import Signal
-from .. import fractional_delay, append_signals, pad_trim
-from ._beamforming import BasePoints, _clean_sc_deconvolve
 from ..plots import general_matrix_plot
+from ._beamforming import BasePoints, _clean_sc_deconvolve
 from .enums import SteeringVectorType
 
 try:
@@ -119,9 +120,9 @@ class Regular2DGrid(Grid):
             "dimensions must contain exactly two strings specifying to "
             + "which directions line1 and line2 correspond"
         )
-        assert len(np.unique(dimensions)) == len(
-            dimensions
-        ), "There are repeated dimensions"
+        assert len(np.unique(dimensions)) == len(dimensions), (
+            "There are repeated dimensions"
+        )
         dimensions = [n.lower() for n in dimensions]
         self.extent_dimensions = dimensions
         value3 = np.asarray(value3).squeeze()
@@ -167,9 +168,9 @@ class Regular2DGrid(Grid):
 
         """
         assert map_vector.ndim == 1, "The passed map should be a vector (flattened)"
-        assert (
-            len(map_vector) == self.number_of_points
-        ), "Length of passed vector does not match the number of points"
+        assert len(map_vector) == self.number_of_points, (
+            "Length of passed vector does not match the number of points"
+        )
         return map_vector.reshape(self.original_lengths)
 
     def plot_map(
@@ -289,9 +290,9 @@ class Regular3DGrid(Grid):
 
         """
         assert map_vector.ndim == 1, "The passed map should be a vector (flattened)"
-        assert (
-            len(map_vector) == self.number_of_points
-        ), "Length of passed vector does not match the number of points"
+        assert len(map_vector) == self.number_of_points, (
+            "Length of passed vector does not match the number of points"
+        )
         return map_vector.reshape(self.original_lengths)
 
     def plot_map(
@@ -473,8 +474,6 @@ class MicArray(BasePoints):
         # (computation is only done on demand)
         self.__array_center_coordinates = None
         self.__array_center_channel_number = None
-        # self.array_center_coord, self.array_center_mic = \
-        #     _get_array_center(self.coordinates)
         self.__aperture = None
         self.__min_distance = None
 
@@ -666,14 +665,14 @@ class BaseBeamformer:
             Speed of sound in m/s. Default: 343.
 
         """
-        assert isinstance(
-            multi_channel_signal, Signal
-        ), "Multi-channel signal must be of type Signal"
+        assert isinstance(multi_channel_signal, Signal), (
+            "Multi-channel signal must be of type Signal"
+        )
         assert type(mic_array) is MicArray, "mic_array should be of type MicArray"
         assert c > 0, "Speed of sound should be bigger than 0"
-        assert (
-            multi_channel_signal.number_of_channels == mic_array.number_of_points
-        ), "Number of channels in signal and microphone array do not match"
+        assert multi_channel_signal.number_of_channels == mic_array.number_of_points, (
+            "Number of channels in signal and microphone array do not match"
+        )
         self.signal = multi_channel_signal
         self.mics = mic_array
         self.c = c
@@ -717,7 +716,7 @@ class BaseBeamformer:
         return fig, ax
 
     # ======== Helpers ========================================================
-    def get_frequency_range_from_he(self, range_he=[4, 10]) -> list:
+    def get_frequency_range_from_he(self, range_he: list | None = None) -> list:
         """Takes in frequency range in He (Helmholtz number) and returns it
         in Hz. This is done by taking the array's aperture and speed of
         sound as inputs.
@@ -733,6 +732,7 @@ class BaseBeamformer:
             Frequency range in Hz.
 
         """
+        range_he = [4, 10] if range_he is None else range_he
         assert len(range_he) == 2, "Range in He should have length two"
         return [self.mics.he_to_hz(i, self.c) for i in range_he]
 
@@ -742,13 +742,11 @@ class BaseBeamformer:
         txt = "\n" + txt + "\n" + "-" * len(txt) + "\n"
         txt += f"""Aperture: {self.mics.aperture}\n"""
         txt += f"""Min mic distance: {self.mics.min_distance}\n"""
-        txt += f"""Recommended f range: {self.mics.
-                                         get_maximum_frequency_range()}\n"""
+        txt += f"""Recommended f range: {self.mics.get_maximum_frequency_range()}\n"""
         txt += f"""Number of mics: {self.mics.number_of_points}\n"""
         if hasattr(self, "grid"):
             if self.grid is not None:
-                txt += f"""Number of grid points: {self.grid.
-                                                   number_of_points}\n"""
+                txt += f"""Number of grid points: {self.grid.number_of_points}\n"""
         print(txt)
 
 
@@ -788,9 +786,9 @@ class BeamformerGridded(BaseBeamformer):
 
         """
         super().__init__(multi_channel_signal, mic_array, c)
-        assert (
-            type(steering_vector) is SteeringVector
-        ), "steering_vector should be of type SteeringVector"
+        assert type(steering_vector) is SteeringVector, (
+            "steering_vector should be of type SteeringVector"
+        )
         assert issubclass(type(grid), Grid), "grid should be a Grid object"
         self.grid = grid
         self.st_vec = steering_vector
@@ -1068,9 +1066,9 @@ class BeamformerOrthogonal(BeamformerGridded):
             assert number_eigenvalues <= self.signal.number_of_channels, (
                 "Number of eigenvalues cannot be more than number of " + "microphones"
             )
-            assert (
-                number_eigenvalues > 0
-            ), "At least one eigenvalue of the CSM must be regarded"
+            assert number_eigenvalues > 0, (
+                "At least one eigenvalue of the CSM must be regarded"
+            )
 
         txt = "Beamformer computation has started successfully:"
         print("\n" + txt)
@@ -1103,7 +1101,7 @@ class BeamformerOrthogonal(BeamformerGridded):
         map = np.zeros((self.grid.number_of_points, number_frequency_bins))
 
         for find in range(len(f)):
-            # Spectral decomposition – eigenvalues are given in ascending order
+            # Spectral decomposition - eigenvalues are given in ascending order
             w, v = np.linalg.eigh(csm[find, :, :])
             for eig in range(number_eigenvalues):
                 for gind in range(self.grid.number_of_points):
@@ -1414,13 +1412,13 @@ class MonopoleSource:
             with shape (x, y, z).
 
         """
-        assert (
-            signal.number_of_channels == 1
-        ), "Only signals with a single channel are supported"
+        assert signal.number_of_channels == 1, (
+            "Only signals with a single channel are supported"
+        )
         coordinates = np.squeeze(coordinates)
-        assert (
-            len(coordinates) == 3 and coordinates.ndim == 1
-        ), "Coordinates should have exactly three values"
+        assert len(coordinates) == 3 and coordinates.ndim == 1, (
+            "Coordinates should have exactly three values"
+        )
         self.emitted_signal = signal
         self.coordinates = coordinates
 
@@ -1447,7 +1445,7 @@ class MonopoleSource:
         for i in range(len(distances)):
             # Delay
             ns = fractional_delay(self.emitted_signal, delays[i], keep_length=True)
-            # Amplitude scaling – 1 on point and decays with distance
+            # Amplitude scaling - 1 on point and decays with distance
             ns.time_data /= 1.0 + distances[i]
             # Append to final signal
             multi_channel_signal = append_signals(
@@ -1484,9 +1482,9 @@ def mix_sources_on_array(
     if type(sources) is MonopoleSource:
         sources = [sources]
     assert len(sources) > 0, "There must be at least one source to project on array"
-    assert all(
-        [type(i) is MonopoleSource for i in sources]
-    ), "All sources in list should be of type Source"
+    assert all([type(i) is MonopoleSource for i in sources]), (
+        "All sources in list should be of type Source"
+    )
     # Take first source
     multi_channel_sig = sources[0].get_signals_on_array(mics, c)
     total_length_samples = multi_channel_sig.time_data.shape[0]
@@ -1498,7 +1496,8 @@ def mix_sources_on_array(
         if total_length_samples != s.emitted_signal.time_data.shape[0]:
             warn(
                 "Emitted signals from sources differ in length. Trimming to "
-                "shortest will be done"
+                "shortest will be done",
+                stacklevel=2,
             )
             total_length_samples = min(
                 total_length_samples, s.emitted_signal.time_data.shape[0]

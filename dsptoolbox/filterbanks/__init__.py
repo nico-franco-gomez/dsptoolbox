@@ -20,7 +20,7 @@ Other:
 - `qmf_crossover()`: Quadrature mirror filters crossover.
 - `fractional_octave_bands()`: Butterworth bandpass filter bank with signal
   energy conservation.
-- `weightning_filter()`: A- or C-Weightning filter.
+- `weighting_filter()`: A- or C-Weighting filter.
 - `complementary_fir_filter()`: Create a complementary FIR filter from a
   linear-phase FIR prototype.
 - `LatticeLadderFilter()`: Filter with lattice-ladder topology.
@@ -56,41 +56,39 @@ Other:
 
 """
 
-from .filterbanks import (
-    linkwitz_riley_crossovers,
-    reconstructing_fractional_octave_bands,
-    auditory_filters_gammatone,
-    fractional_octave_bands,
-    qmf_crossover,
-    weighting_filter,
-    complementary_fir_filter,
-    pinking_filter,
-    matched_biquad,
-    gaussian_kernel,
-    fractional_delay,
-)
-
-from ._filterbank import arma, ArmaMethod
-
-from ..classes.lattice_ladder_filter import LatticeLadderFilter
-from ..classes.parallel_filter import ParallelFilter
-from ..classes.iir_filter_realtime import IIRFilter
+from ..classes.exponential_average_filter import ExponentialAverageFilter
+from ..classes.filter_chain import FilterChain
 from ..classes.fir_filter_realtime import (
     FIRFilter,
     FIRFilterOverlapSave,
     FIRUniformPartitioned,
     FIRUniformPartitionedMultichannel,
 )
-from ..classes.warped_filters import WarpedFIR, WarpedIIR
-from ..classes.sv_filter import StateVariableFilter
-from ..classes.kautz_filter import KautzFilter
-from ..classes.exponential_average_filter import ExponentialAverageFilter
-from ..classes.filter_chain import FilterChain
-from ..classes.state_space_filter import StateSpaceFilter
 from ..classes.group_delay_designer_phase_linearizer import (
-    PhaseLinearizer,
-    GroupDelayDesigner,
     FirDesigner,
+    GroupDelayDesigner,
+    PhaseLinearizer,
+)
+from ..classes.iir_filter_realtime import IIRFilter
+from ..classes.kautz_filter import KautzFilter
+from ..classes.lattice_ladder_filter import LatticeLadderFilter
+from ..classes.parallel_filter import ParallelFilter
+from ..classes.state_space_filter import StateSpaceFilter
+from ..classes.sv_filter import StateVariableFilter
+from ..classes.warped_filters import WarpedFIR, WarpedIIR
+from ._filterbank import ArmaMethod, arma
+from .filterbanks import (
+    auditory_filters_gammatone,
+    complementary_fir_filter,
+    fractional_delay,
+    fractional_octave_bands,
+    gaussian_kernel,
+    linkwitz_riley_crossovers,
+    matched_biquad,
+    pinking_filter,
+    qmf_crossover,
+    reconstructing_fractional_octave_bands,
+    weighting_filter,
 )
 
 __all__ = [

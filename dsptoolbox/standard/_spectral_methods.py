@@ -1,7 +1,8 @@
-import numpy as np
-from scipy.signal import check_COLA, windows
 from warnings import warn
+
+import numpy as np
 from numpy.typing import NDArray
+from scipy.signal import check_COLA, windows
 
 from ..standard._framed_signal_representation import _get_framed_signal
 from ..standard.enums import SpectrumScaling, Window
@@ -73,7 +74,7 @@ def _welch(
             y = np.asarray(y).squeeze()
         assert x.shape == y.shape, "Shapes of data do not match"
         # NOTE: Computing the spectrum in a vectorized manner for all channels
-        # simultaneously does not seem to be faster than doing it sequentally
+        # simultaneously does not seem to be faster than doing it sequentially
         # for each channel. Maybe parallelizing with something like numba could
         # be advantageous...
 
@@ -91,9 +92,9 @@ def _welch(
         "Window length should be a power of 2 between [8, 262_144] or "
         + "[2**3, 2**18]"
     )
-    assert (
-        overlap_percent >= 0 and overlap_percent < 100
-    ), "overlap_percent should be between 0 and 100"
+    assert overlap_percent >= 0 and overlap_percent < 100, (
+        "overlap_percent should be between 0 and 100"
+    )
     valid_average = ["mean", "median"]
     assert average in valid_average, (
         f"{average} is not valid. Use " + "either mean or median"
@@ -110,7 +111,8 @@ def _welch(
     if not check_COLA(window, nperseg=len(window), noverlap=overlap_samples):
         warn(
             "Selected window type and overlap do not meet the constant "
-            + "overlap and add constraint! Results might be distorted"
+            + "overlap and add constraint! Results might be distorted",
+            stacklevel=2,
         )
 
     if not multi_channel:
@@ -161,7 +163,7 @@ def _welch(
         bias = np.sum((-1) ** (n + 1) / n)
         csd /= bias
 
-    # Weightning (with 2 because one-sided)
+    # Weighting (with 2 because one-sided)
     if scaling.has_physical_units():
         factor = scaling.get_scaling_factor(window_length_samples, fs_hz, window)
         csd *= factor
@@ -251,7 +253,8 @@ def _stft(
     if not check_COLA(window, nperseg=len(window), noverlap=overlap_samples):
         warn(
             "Selected window type and overlap do not meet the constant "
-            + "overlap and add constraint! Results might be distorted"
+            + "overlap and add constraint! Results might be distorted",
+            stacklevel=2,
         )
 
     # Padding

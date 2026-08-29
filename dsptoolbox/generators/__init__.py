@@ -10,8 +10,8 @@ This module contains some utility signal generators. Choose from:
 
 """
 
-from .generators import chirp, noise, dirac, oscillator
-from .enums import NoiseType, ChirpType, WaveForm
+from .enums import ChirpType, NoiseType, WaveForm
+from .generators import chirp, dirac, noise, oscillator
 
 __all__ = [
     "chirp",

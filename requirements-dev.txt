@@ -5,7 +5,7 @@
 hatch # build
 wheel # build
 twine # upload build
-flake8  # linter
+ruff  # linter and formatter
 pytest # tests
 # librosa  # validation
 # pyfar  # validation

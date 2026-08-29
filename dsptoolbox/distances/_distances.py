@@ -3,11 +3,11 @@ Backend for distance measures
 """
 
 import numpy as np
-from scipy.integrate import simpson
 from numpy.typing import NDArray
+from scipy.integrate import simpson
 
 from ..helpers.gain_and_level import _rms
-from ..helpers.other import _pad_trim, _compute_number_frames
+from ..helpers.other import _compute_number_frames, _pad_trim
 
 
 def _log_spectral_distance(
@@ -167,7 +167,7 @@ def _fw_snr_seg_per_channel(
         for ib in range(x.shape[1]):
             X_jm = np.abs(np.fft.rfft(x_m[:, ib] * time_window))
             Xhat_jm = np.abs(np.fft.rfft(xhat_m[:, ib] * time_window))
-            # Weightning function, gamma parameter can range between 0.1 and 2
+            # Weighting function, gamma parameter can range between 0.1 and 2
             W_jm = X_jm**gamma
 
             # Normalization of spectra: probably for avoiding scaling

@@ -2,43 +2,44 @@
 Contains Filter class
 """
 
-from pickle import dump, HIGHEST_PROTOCOL
-from warnings import warn
 from copy import deepcopy
-import numpy as np
 from fractions import Fraction
-from matplotlib.figure import Figure
-from matplotlib.axes import Axes
-import scipy.signal as sig
-from numpy.typing import NDArray, ArrayLike
+from pickle import HIGHEST_PROTOCOL, dump
+from warnings import warn
 
-from .signal import Signal
-from .impulse_response import ImpulseResponse
-from .filter_helpers import (
-    _biquad_coefficients,
-    _impulse,
-    _group_delay_filter,
-    _filter_on_signal,
-    _filter_on_signal_ba,
-    _filter_and_downsample,
-    _filter_and_upsample,
-)
-from .plots import _zp_plot
-from ..plots import general_plot
+import numpy as np
+import scipy.signal as sig
+from matplotlib.axes import Axes
+from matplotlib.figure import Figure
+from numpy.typing import ArrayLike, NDArray
+
+from ..helpers.gain_and_level import to_db
 from ..helpers.other import (
-    _pad_trim,
     _check_format_in_path,
+    _pad_trim,
     find_nearest_points_index_in_vector,
 )
-from ..helpers.gain_and_level import to_db
+from ..plots import general_plot
 from ..standard.enums import (
-    FilterCoefficientsType,
     BiquadEqType,
+    FilterCoefficientsType,
     FilterPassType,
     IirDesignMethod,
-    Window,
     MagnitudeNormalization,
+    Window,
 )
+from .filter_helpers import (
+    _biquad_coefficients,
+    _filter_and_downsample,
+    _filter_and_upsample,
+    _filter_on_signal,
+    _filter_on_signal_ba,
+    _group_delay_filter,
+    _impulse,
+)
+from .impulse_response import ImpulseResponse
+from .plots import _zp_plot
+from .signal import Signal
 
 
 class Filter:
@@ -116,7 +117,7 @@ class Filter:
         passband_ripple_db : float, None, optional
             Passband ripple in dB for Chebyshev1 and Elliptic. Default: None.
         stopband_attenuation_db : float, None, optional
-            Minimum stopband attenutation in dB for Chebyshev2 and Elliptic.
+            Minimum stopband attenuation in dB for Chebyshev2 and Elliptic.
             Default: None.
 
         Returns
@@ -339,9 +340,9 @@ class Filter:
             Default: 1.
 
         """
-        assert (
-            number_of_channels > 0
-        ), """Zi's have to be initialized for at least one channel"""
+        assert number_of_channels > 0, (
+            """Zi's have to be initialized for at least one channel"""
+        )
         self.zi = []
         if hasattr(self, "sos"):
             for _ in range(number_of_channels):
@@ -375,8 +376,7 @@ class Filter:
         for k in metadata:
             if k == "ba":
                 continue
-            txt += f"""{str(k).replace("_", " ").
-                        capitalize()}: {metadata[k]}\n"""
+            txt += f"""{str(k).replace("_", " ").capitalize()}: {metadata[k]}\n"""
         return txt
 
     @property
@@ -677,9 +677,9 @@ class Filter:
 
         """
         # Check sampling rates
-        assert (
-            self.sampling_rate_hz == signal.sampling_rate_hz
-        ), "Sampling rates do not match"
+        assert self.sampling_rate_hz == signal.sampling_rate_hz, (
+            "Sampling rates do not match"
+        )
         # Zero phase and zi
         assert not (activate_zi and zero_phase), (
             "Filter initial and final values cannot be updated when "
@@ -697,7 +697,7 @@ class Filter:
                 + f"signal with {signal.number_of_channels} channels"
             )
 
-        # Zi – create always for all channels and selected channels will get
+        # Zi - create always for all channels and selected channels will get
         # updated while filtering
         if activate_zi:
             if not hasattr(self, "zi"):
@@ -706,7 +706,8 @@ class Filter:
                 warn(
                     "zi values of the filter have not been correctly "
                     + "intialized for the number of channels. They have now"
-                    + " been corrected"
+                    + " been corrected",
+                    stacklevel=2,
                 )
                 self.initialize_zi(signal.number_of_channels)
             zi_old = self.zi
@@ -715,7 +716,10 @@ class Filter:
 
         # Check filter length compared to signal
         if self.order > signal.time_data.shape[0]:
-            warn("Filter is longer than signal, results might be " + "meaningless!")
+            warn(
+                "Filter is longer than signal, results might be " + "meaningless!",
+                stacklevel=2,
+            )
 
         # Filter with SOS when possible
         if hasattr(self, "sos"):
@@ -789,9 +793,9 @@ class Filter:
 
         # Check if down- or upsampling is required
         if fraction[0] == 1:
-            assert (
-                signal.sampling_rate_hz == self.sampling_rate_hz
-            ), "Sampling rates do not match"
+            assert signal.sampling_rate_hz == self.sampling_rate_hz, (
+                "Sampling rates do not match"
+            )
             new_time_data = _filter_and_downsample(
                 time_data=signal.time_data,
                 down_factor=fraction[1],
@@ -837,7 +841,8 @@ class Filter:
             if length_samples < len(b):
                 warn(
                     f"{length_samples} is not enough for filter with "
-                    + f"length {len(b)}. IR will have the latter length."
+                    + f"length {len(b)}. IR will have the latter length.",
+                    stacklevel=2,
                 )
                 length_samples = len(b)
             b = _pad_trim(b, length_samples)
@@ -878,12 +883,12 @@ class Filter:
           precise to use a direct FFT approach.
 
         """
-        assert (
-            frequency_vector_hz.ndim == 1
-        ), "Frequency vector can only have one dimension"
-        assert (
-            frequency_vector_hz.max() <= self.sampling_rate_hz / 2
-        ), "Queried frequency vector has values larger than nyquist"
+        assert frequency_vector_hz.ndim == 1, (
+            "Frequency vector can only have one dimension"
+        )
+        assert frequency_vector_hz.max() <= self.sampling_rate_hz / 2, (
+            "Queried frequency vector has values larger than nyquist"
+        )
 
         if self.is_iir and hasattr(self, "sos"):
             return sig.sosfreqz(
@@ -946,7 +951,10 @@ class Filter:
             if self.has_sos:
                 return self.sos.copy()
             if self.order > 500:
-                warn("Order is above 500. Computing SOS might take a " + "long time")
+                warn(
+                    "Order is above 500. Computing SOS might take a " + "long time",
+                    stacklevel=2,
+                )
             return sig.tf2sos(self.ba[0], self.ba[1])
         elif coefficients_mode == FilterCoefficientsType.Ba:
             if self.has_sos:
@@ -960,7 +968,10 @@ class Filter:
 
             # Check if filter is too long
             if self.order > 500:
-                warn("Order is above 500. Computing zpk might take a " + "long time")
+                warn(
+                    "Order is above 500. Computing zpk might take a " + "long time",
+                    stacklevel=2,
+                )
             return sig.tf2zpk(self.ba[0], self.ba[1])
         else:
             raise ValueError(f"{coefficients_mode} is not valid. Use sos, ba or zpk")
@@ -973,7 +984,7 @@ class Filter:
     def plot_magnitude(
         self,
         length_samples: int,
-        range_hz: list[float] | None = [20.0, 20e3],
+        range_hz: list[float] | None = (20.0, 20e3),
         normalize: MagnitudeNormalization = MagnitudeNormalization.NoNormalization,
         zero_phase: bool = False,
         show_info_box: bool = True,
@@ -1015,7 +1026,8 @@ class Filter:
             warn(
                 f"length_samples ({length_samples}) is shorter than the "
                 + f"""filter order {self.order}. Length will be """
-                + "automatically extended."
+                + "automatically extended.",
+                stacklevel=2,
             )
         ir = self.get_ir(length_samples=length_samples, zero_phase=zero_phase)
         fig, ax = ir.plot_magnitude(range_hz, normalize, show_info_box=False)
@@ -1034,7 +1046,7 @@ class Filter:
     def plot_group_delay(
         self,
         length_samples: int,
-        range_hz: list[float] | None = [20.0, 20e3],
+        range_hz: list[float] | None = (20.0, 20e3),
         show_info_box: bool = False,
     ) -> tuple[Figure, Axes]:
         """Plots group delay of the filter. Different methods are used for
@@ -1063,7 +1075,8 @@ class Filter:
             warn(
                 f"length_samples ({length_samples}) is shorter than the "
                 + f"""filter order {self.order}. Length will be """
-                + "automatically extended."
+                + "automatically extended.",
+                stacklevel=2,
             )
         if hasattr(self, "sos"):
             ba = sig.sos2tf(self.sos)
@@ -1104,7 +1117,7 @@ class Filter:
     def plot_phase(
         self,
         length_samples: int,
-        range_hz: list[float] | None = [20.0, 20e3],
+        range_hz: list[float] | None = (20.0, 20e3),
         unwrap: bool = False,
         show_info_box: bool = False,
     ) -> tuple[Figure, Axes]:
@@ -1142,7 +1155,8 @@ class Filter:
             warn(
                 f"length_samples ({length_samples}) is shorter than the "
                 + f"""filter order {self.order}. Length will be """
-                + "automatically extended."
+                + "automatically extended.",
+                stacklevel=2,
             )
         ir = self.get_ir(length_samples=length_samples)
         fig, ax = ir.plot_phase(range_hz, unwrap)
@@ -1180,9 +1194,12 @@ class Filter:
         elif self.has_sos:
             z, p, k = sig.sos2zpk(self.sos)
         else:
-            # Ask explicitely if filter is very long
+            # Ask explicitly if filter is very long
             if self.order > 500:
-                warn("Filter order is over 500. Computing zpk might take long")
+                warn(
+                    "Filter order is over 500. Computing zpk might take long",
+                    stacklevel=2,
+                )
             z, p, k = sig.tf2zpk(self.ba[0], self.ba[1])
         fig, ax = _zp_plot(z, p)
         ax.text(

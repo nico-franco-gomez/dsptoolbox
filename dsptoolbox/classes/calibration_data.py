@@ -2,8 +2,8 @@ import numpy as np
 from numpy.typing import NDArray
 
 from ..standard import append_signals, rms
-from .signal import Signal
 from .multibandsignal import MultiBandSignal
+from .signal import Signal
 
 
 class CalibrationData:
@@ -151,9 +151,9 @@ class CalibrationData:
             self.__update = True
         self._compute_calibration_factors()
         if len(self.calibration_factors) > 1:
-            assert signal.number_of_channels == len(
-                self.calibration_factors
-            ), "Number of channels does not match"
+            assert signal.number_of_channels == len(self.calibration_factors), (
+                "Number of channels does not match"
+            )
             calibration_factors = self.calibration_factors
         else:
             calibration_factors = (

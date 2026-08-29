@@ -2,50 +2,50 @@
 Here are methods considered as somewhat special or less common.
 """
 
-import numpy as np
-from numpy.typing import NDArray
-from scipy.signal.windows import get_window
-from scipy.fft import dct
-from scipy.signal import oaconvolve, resample_poly, lfilter
 import matplotlib.pyplot as plt
-from matplotlib.figure import Figure
+import numpy as np
 from matplotlib.axes import Axes
+from matplotlib.figure import Figure
+from numpy.typing import NDArray
+from scipy.fft import dct
+from scipy.signal import lfilter, oaconvolve, resample_poly
+from scipy.signal.windows import get_window
 
-from ..helpers.frequency_conversion import _hz2mel, _mel2hz
-from ..helpers.ar_estimation import _burg_ar_estimation, _yw_ar_estimation
-from ..classes.signal import Signal
-from ..classes.spectrum import Spectrum
 from ..classes.filter import Filter
 from ..classes.filterbank import FilterBank
 from ..classes.impulse_response import ImpulseResponse
 from ..classes.multibandsignal import MultiBandSignal
+from ..classes.signal import Signal
+from ..classes.spectrum import Spectrum
+from ..helpers.ar_estimation import _burg_ar_estimation, _yw_ar_estimation
+from ..helpers.frequency_conversion import _hz2mel, _mel2hz
+from ..helpers.gain_and_level import to_db
+from ..helpers.other import (
+    _pad_trim,
+)
 from ..plots import general_matrix_plot
+from ..room_acoustics._room_acoustics import _find_ir_start
 from ..standard._framed_signal_representation import (
     _get_framed_signal,
     _reconstruct_framed_signal,
 )
-from ..helpers.other import (
-    _pad_trim,
-)
-from ..room_acoustics._room_acoustics import _find_ir_start
-from ..transforms._transforms import (
-    _pitch2frequency,
-    Wavelet,
-    MorletWavelet,
-    _squeeze_scalogram,
-    _get_kernels_vqt,
-    _warp_time_series,
-    _get_warping_factor,
-    _dft_backend,
-)
-from ..helpers.gain_and_level import to_db
 from ..standard.enums import (
+    FilterBankMode,
     FilterCoefficientsType,
     FilterPassType,
-    FilterBankMode,
     Window,
 )
 from ..standard.gain_and_level import rms
+from ..transforms._transforms import (
+    MorletWavelet,
+    Wavelet,
+    _dft_backend,
+    _get_kernels_vqt,
+    _get_warping_factor,
+    _pitch2frequency,
+    _squeeze_scalogram,
+    _warp_time_series,
+)
 
 try:
     from seaborn import set_style
@@ -142,7 +142,7 @@ def log_mel_spectrogram(
     n_bands : int, optional
         Number of mel bands to generate. Default: 40.
     generate_plot : bool, optional
-        Plots the obtained results. Use ``dsptoolbox.plots.show()`` to show
+        Plots the obtained results. Use `dsptoolbox.plots.show()` to show
         the plot. Default: `True`.
     stft_parameters : dict, optional
         Pass arguments to define computation of STFT. If `None` is passed, the
@@ -239,9 +239,9 @@ def mel_filterbank(
         range_hz = f_hz[[0, -1]]
     else:
         range_hz = np.atleast_1d(np.asarray(range_hz).squeeze())
-        assert (
-            len(range_hz) == 2
-        ), "range_hz should be an array with exactly two values!"
+        assert len(range_hz) == 2, (
+            "range_hz should be an array with exactly two values!"
+        )
         range_hz = np.sort(range_hz)
         assert range_hz[-1] <= f_hz[-1], (
             f"Upper frequency in range {range_hz[-1]} is bigger than "
@@ -291,7 +291,7 @@ def plot_waterfall(
     Parameters
     ----------
     sig : `Signal`
-        Signal to plot waterfall diagramm for.
+        Signal to plot waterfall diagram for.
     channel : int, optional
         Channel to take for the waterfall plot.
     dynamic_range_db : float, optional
@@ -459,7 +459,7 @@ def istft(
     into its STFT representation. A dictionary containing the parameters
     corresponding can be passed, as well as the original `Signal` in which
     these parameters are saved. Alternatively, it is possible to pass them
-    explicitely.
+    explicitly.
 
     Parameters
     ----------
@@ -517,14 +517,14 @@ def istft(
       doi: 10.1109/TASSP.1984.1164317.
 
     """
-    assert (
-        stft.ndim == 3
-    ), f"{stft.ndim} is not a valid number of dimensions. It must be 3"
+    assert stft.ndim == 3, (
+        f"{stft.ndim} is not a valid number of dimensions. It must be 3"
+    )
 
     if original_signal is not None:
-        assert (
-            parameters is None
-        ), "A signal was passed. No parameters dictionary should be passed"
+        assert parameters is None, (
+            "A signal was passed. No parameters dictionary should be passed"
+        )
         parameters = original_signal._spectrogram_parameters.copy()
     elif parameters is not None:
         pass
@@ -718,7 +718,7 @@ def cwt(
     Returns
     -------
     scalogram : NDArray[np.complex128]
-        Complex scalogram scalogram with shape (frequency, time sample,
+        Complex scalogram with shape (frequency, time sample,
         channel).
 
     Notes
@@ -814,7 +814,7 @@ def vqt(
     channel: NDArray[np.int_] | None = None,
     q: float = 1,
     gamma: float = 50,
-    octaves: list = [1, 5],
+    octaves: list = (1, 5),
     bins_per_octave: int = 24,
     a4_tuning: int = 440,
     window: str | tuple = "hann",
@@ -1232,7 +1232,7 @@ def lpc(
         Hop size to use from window to window. If None is passed, a hop size
         corresponding to 50% of the window length will be used. Default: None.
     window_type : Window, optional
-        Window type to use. It is recommended that a window type that satifies
+        Window type to use. It is recommended that a window type that satisfies
         the COLA-condition with length and hop size is chosen. Default: Hann.
 
     Returns
@@ -1365,9 +1365,9 @@ def spectrum_via_filterbank(
         Magnitude spectrum
 
     """
-    assert (
-        bandwidth_octaves is not None or bandwidth_hz is not None
-    ), "At least one bandwidth parameter must be provided"
+    assert bandwidth_octaves is not None or bandwidth_hz is not None, (
+        "At least one bandwidth parameter must be provided"
+    )
     bands = []
     if bandwidth_hz is not None:
         assert bandwidth_hz > 0, "Bandwidth must be positive"

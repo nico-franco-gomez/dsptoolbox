@@ -8,15 +8,15 @@ anti-causal operations) or in a block-processing manner.
 """
 
 from .effects import (
-    SpectralSubtractor,
-    Distortion,
-    Compressor,
     LFO,
-    Tremolo,
     Chorus,
+    Compressor,
     DigitalDelay,
-    get_time_period_from_musical_rhythm,
+    Distortion,
+    SpectralSubtractor,
+    Tremolo,
     get_frequency_from_musical_rhythm,
+    get_time_period_from_musical_rhythm,
 )
 from .enums import DistortionType
 

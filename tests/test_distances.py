@@ -1,7 +1,9 @@
-import dsptoolbox as dsp
-import pytest
-from os.path import join
 import os
+from os.path import join
+
+import pytest
+
+import dsptoolbox as dsp
 
 stereo_signal = dsp.Signal(
     join(os.path.dirname(__file__), "..", "example_data", "chirp_stereo.wav")

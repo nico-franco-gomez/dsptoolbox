@@ -34,17 +34,17 @@ References
 """
 
 from .audio_io import (
+    CallbackStop,
+    default_config,
+    output_stream,
     play,
     play_and_record,
-    set_device,
-    record,
     print_device_info,
-    CallbackStop,
-    sleep,
-    output_stream,
-    default_config,
-    set_latency,
+    record,
     set_blocksize,
+    set_device,
+    set_latency,
+    sleep,
 )
 
 __all__ = [

@@ -1,6 +1,7 @@
-from numpy.typing import NDArray
-import numpy as np
 from enum import Enum, auto
+
+import numpy as np
+from numpy.typing import NDArray
 from scipy.signal.windows import get_window as get_window_scipy
 
 
@@ -375,7 +376,7 @@ class Window(Enum):
         return self.__extra_parameter
 
     def with_extra_parameter(self, extra_parameter: float | tuple[float, float]):
-        """Add the extra parameter parameter to the window. Windows that
+        """Add the extra parameter to the window. Windows that
         require an extra parameter are:
         - Kaiser
         - KaiserBesselDerived

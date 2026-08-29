@@ -37,9 +37,9 @@ def _polyphase_decomposition(
     # Dimensions of vector
     if in_sig.ndim == 1:
         in_sig = in_sig[..., None]
-    assert (
-        in_sig.ndim == 2
-    ), "Vector should have exactly two dimensions: (time samples, channels)"
+    assert in_sig.ndim == 2, (
+        "Vector should have exactly two dimensions: (time samples, channels)"
+    )
     # Rename for practical purposes
     n = number_polyphase_components
     # Pad zeros in the beginning to avoid remainder
@@ -68,7 +68,7 @@ def _polyphase_reconstruction(
     ----------
     poly : NDArray[np.float64]
         Array with 3 dimensions (time samples, polyphase components, channels)
-        as polyphase respresentation of signal.
+        as polyphase representation of signal.
 
     Returns
     -------

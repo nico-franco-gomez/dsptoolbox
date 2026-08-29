@@ -1,17 +1,17 @@
 import numpy as np
-from numpy.typing import NDArray
 import scipy.signal as sig
+from numpy.typing import NDArray
 from scipy.linalg import lstsq
 
-from .realtime_filter import RealtimeFilter
-from .iir_filter_realtime import IIRFilter
-from .fir_filter_realtime import FIRFilter
-from .impulse_response import ImpulseResponse
-from .filterbank import FilterBank
-from .filter import Filter
-from .signal import Signal
 from ..generators import dirac
 from ..standard.enums import FilterCoefficientsType
+from .filter import Filter
+from .filterbank import FilterBank
+from .fir_filter_realtime import FIRFilter
+from .iir_filter_realtime import IIRFilter
+from .impulse_response import ImpulseResponse
+from .realtime_filter import RealtimeFilter
+from .signal import Signal
 
 
 class ParallelFilter(RealtimeFilter):
@@ -61,16 +61,16 @@ class ParallelFilter(RealtimeFilter):
 
         """
         assert n_fir >= 0, "n_fir must be at least 0"
-        assert np.all(
-            np.abs(poles) < 1.0
-        ), "At least one pole lies outside the unit circle"
-        assert np.all(
-            poles.imag >= 0.0
-        ), "Only poles with positive imaginary part are accepted"
+        assert np.all(np.abs(poles) < 1.0), (
+            "At least one pole lies outside the unit circle"
+        )
+        assert np.all(poles.imag >= 0.0), (
+            "Only poles with positive imaginary part are accepted"
+        )
         assert np.all(np.abs(poles) > 0.0), "No poles at the origin should be used"
-        assert all(
-            [np.sum(np.isclose(poles, p)) == 1 for p in poles]
-        ), "Pole multiplicity cannot be more than 1"
+        assert all([np.sum(np.isclose(poles, p)) == 1 for p in poles]), (
+            "Pole multiplicity cannot be more than 1"
+        )
         assert sampling_rate_hz > 0, "Sampling rate must be greater than 0"
 
         self.poles = poles
@@ -224,7 +224,7 @@ class ParallelFilter(RealtimeFilter):
         # Put delays in between the fir coefficients
         if self.fir_offset_samples > 1 and self.n_fir > 1:
             ff = np.zeros(
-                ((self.fir_offset_samples) * (len(self.__fir_coefficients) - 1) + 1)
+                (self.fir_offset_samples) * (len(self.__fir_coefficients) - 1) + 1
             )
             ff[:: self.fir_offset_samples + 1] = self.__fir_coefficients[:-1]
             ff[-1] = self.__fir_coefficients[-1]
@@ -274,9 +274,9 @@ class ParallelFilter(RealtimeFilter):
             Filtered signal. It has the same length as the input.
 
         """
-        assert (
-            self.sampling_rate_hz == signal.sampling_rate_hz
-        ), "Sampling rates do not match"
+        assert self.sampling_rate_hz == signal.sampling_rate_hz, (
+            "Sampling rates do not match"
+        )
         td = signal.time_data
 
         if self.n_fir > 0:

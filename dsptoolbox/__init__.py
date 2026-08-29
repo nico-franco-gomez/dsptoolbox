@@ -9,70 +9,79 @@ Collection of dsp, audio and acoustics-related functions.
 
 """
 
+# Import order below is load-bearing; don't let an import sorter reshuffle it:
+# .standard must be imported before .classes (.standard.appending imports
+# from ..classes, which would otherwise see a partially-initialized .classes
+# module if .classes started importing first), and both must be imported
+# before the submodule block at the bottom, since several of those submodules
+# (audio_io, distances, filterbanks, beamforming, effects) do
+# `from .. import <name>`, which requires that name already bound here.
 from .standard import (
-    latency,
-    append_signals,
-    append_filterbanks,
-    pad_trim,
-    fractional_delay,
-    delay,
-    activity_detector,
-    fade,
-    normalize,
-    true_peak_level,
-    lufs_integrated,
-    crest_factor,
-    resample,
-    load_pkl_object,
-    detrend,
-    rms,
-    envelope,
-    dither,
-    apply_gain,
-    resample_filter,
-    modify_signal_length,
-    merge_filters,
-    spectral_difference,
-    append_spectra,
-    trim_with_level_threshold,
-    trim_with_time_selection,
+    BiquadEqType,
+    FadeType,
+    FilterBankMode,
+    FilterCoefficientsType,
+    FilterPassType,
+    FrequencySpacing,
+    IirDesignMethod,
+    InterpolationDomain,
+    InterpolationEdgeHandling,
+    InterpolationScheme,
+    MagnitudeNormalization,
+    SpectrumMethod,
     # Enums
     SpectrumScaling,
-    SpectrumMethod,
-    FilterCoefficientsType,
-    BiquadEqType,
-    FilterBankMode,
-    FilterPassType,
-    IirDesignMethod,
-    MagnitudeNormalization,
     SpectrumType,
-    InterpolationDomain,
-    InterpolationScheme,
-    InterpolationEdgeHandling,
-    FrequencySpacing,
     Window,
-    FadeType,
+    activity_detector,
+    append_filterbanks,
+    append_signals,
+    append_spectra,
+    apply_gain,
+    crest_factor,
+    delay,
+    detrend,
+    dither,
+    envelope,
+    fade,
+    fractional_delay,
+    latency,
+    load_pkl_object,
+    lufs_integrated,
+    merge_filters,
+    modify_signal_length,
+    normalize,
+    pad_trim,
+    resample,
+    resample_filter,
+    rms,
+    spectral_difference,
+    trim_with_level_threshold,
+    trim_with_time_selection,
+    true_peak_level,
 )
 from .classes import (
     Filter,
     FilterBank,
-    Signal,
     ImpulseResponse,
     MultiBandSignal,
+    Signal,
     Spectrum,
 )
 from .classes.calibration_data import CalibrationData
-from . import transfer_functions
-from . import distances
-from . import room_acoustics
-from . import plots
-from . import generators
-from . import filterbanks
-from . import transforms
-from . import audio_io
-from . import beamforming
-from . import effects
-from . import tools
+from . import (
+    audio_io,
+    beamforming,
+    distances,
+    effects,
+    filterbanks,
+    generators,
+    plots,
+    room_acoustics,
+    tools,
+    transfer_functions,
+    transforms,
+)
 
 __all__ = [
     # Basic classes

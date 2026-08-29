@@ -3,9 +3,10 @@ Tests for audio io module should be manual since they have pauses used
 for the streamings
 """
 
-import dsptoolbox as dsp
-from os.path import join
 import os
+from os.path import join
+
+import dsptoolbox as dsp
 
 
 class TestAudioIOModule:

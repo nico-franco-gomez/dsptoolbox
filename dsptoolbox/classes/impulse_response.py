@@ -1,21 +1,21 @@
-import numpy as np
-from numpy.typing import NDArray, ArrayLike
-from matplotlib.figure import Figure
-from matplotlib.axes import Axes
 from copy import deepcopy
 
-from .signal import Signal
-from ..helpers.gain_and_level import to_db
-from ..standard.enums import SpectrumMethod, MagnitudeNormalization
-from ..plots import general_plot_two_axes
+import numpy as np
+from matplotlib.axes import Axes
+from matplotlib.figure import Figure
+from numpy.typing import ArrayLike, NDArray
 
-from ..helpers.spectrum_utilities import _get_exact_gain_1khz
+from ..helpers.gain_and_level import to_db
 from ..helpers.latency import (
     _remove_ir_latency_from_phase,
     _remove_ir_latency_from_phase_peak,
 )
 from ..helpers.minimum_phase import _remove_ir_latency_from_phase_min_phase
+from ..helpers.spectrum_utilities import _get_exact_gain_1khz
+from ..plots import general_plot_two_axes
 from ..standard._standard_backend import _group_delay_direct
+from ..standard.enums import MagnitudeNormalization, SpectrumMethod
+from .signal import Signal
 
 
 class ImpulseResponse(Signal):
@@ -145,9 +145,9 @@ class ImpulseResponse(Signal):
             Window used for the IR.
 
         """
-        assert (
-            window.shape == self.time_data.shape
-        ), f"{window.shape} does not match shape {self.time_data.shape}"
+        assert window.shape == self.time_data.shape, (
+            f"{window.shape} does not match shape {self.time_data.shape}"
+        )
         self.window = window
         return self
 
@@ -235,7 +235,7 @@ class ImpulseResponse(Signal):
 
     def plot_bode(
         self,
-        range_hz=[20, 20e3],
+        range_hz=(20, 20e3),
         normalize: MagnitudeNormalization = MagnitudeNormalization.NoNormalization,
         range_db=None,
         show_group_delay: bool = False,

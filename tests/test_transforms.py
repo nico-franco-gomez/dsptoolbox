@@ -1,10 +1,12 @@
-import dsptoolbox as dsp
-import pytest
+import os
 from os.path import join
+
 import numpy as np
+import pytest
 from matplotlib.pyplot import close
 from scipy.signal import hilbert
-import os
+
+import dsptoolbox as dsp
 
 
 class TestTransformsModule:

@@ -120,7 +120,7 @@ def _compressor(
         momentary_rms = 0
         momentary_gain = 1
         for i in np.arange(len(x)):
-            # RMS Detection – if peaks, directly take rms
+            # RMS Detection - if peaks, directly take rms
             samp = x[i, n] ** 2
             if samp > momentary_rms:
                 coeff = 1.0
@@ -231,7 +231,7 @@ def _find_attack_hold_release(
 
     """
     # Number of samples that have to be above the threshold to trigger the
-    # effect – Should data be smoothed or just set to a couple samples?
+    # effect - Should data be smoothed or just set to a couple samples?
     surpass_samples = 2
 
     hold_samples = max(1, hold_samples)
@@ -310,7 +310,7 @@ class LFO:
             Type of waveform to use. Choose from `'harmonic'`, `'sawtooth'`,
             `'square'`, `'triangle'`. Default: `'harmonic'`.
         random_phase : bool, optional
-            When `True`, a random phase shift is applied everytime the LFO
+            When `True`, a random phase shift is applied every time the LFO
             is called. Default: `False`.
         smooth : float, optional
             For the non-differentiable waveforms, it is possible to generate
@@ -340,9 +340,9 @@ class LFO:
             if type(frequency_hz) in (float, int):
                 self.frequency_hz = np.abs(frequency_hz)
             elif type(frequency_hz) in (tuple, list):
-                assert (
-                    len(frequency_hz) == 2
-                ), "frequency_hz as tuple must have length 2"
+                assert len(frequency_hz) == 2, (
+                    "frequency_hz as tuple must have length 2"
+                )
                 self.frequency_hz = get_frequency_from_musical_rhythm(
                     frequency_hz[0], frequency_hz[1]
                 )
@@ -565,7 +565,6 @@ if __name__ == "__main__":
     x = _harmonic_oscillator(1, 50, 50, True, 0)
     # x = _square_oscillator(2, 20, 21, True, 0)
     # plt.plot(x)
-    # for i in np.linspace(1, 10, 9):
     # x = _triangle_oscillator(10, 20, 21, True, 0)
 
     # plt.plot(x)

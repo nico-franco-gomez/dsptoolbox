@@ -1,31 +1,32 @@
-from ..classes import Signal, MultiBandSignal
+from collections.abc import Callable
+from warnings import warn
+
+import numpy as np
+from numpy.typing import NDArray
+from scipy.signal.windows import get_window
+
 from .. import activity_detector
+from ..classes import MultiBandSignal, Signal
+from ..helpers.gain_and_level import _rms, to_db
+from ..helpers.other import _get_next_power_2, _pad_trim
+from ..plots import general_plot
 from ..standard._framed_signal_representation import (
     _get_framed_signal,
     _reconstruct_framed_signal,
 )
+from ..standard.enums import SpectrumMethod, SpectrumScaling, Window
 from ._effects import (
+    LFO,
     _arctan_distortion,
     _clean_signal,
-    _hard_clip_distortion,
-    _soft_clip_distortion,
     _compressor,
     _get_knee_func,
-    LFO,
+    _hard_clip_distortion,
+    _soft_clip_distortion,
     get_frequency_from_musical_rhythm,
     get_time_period_from_musical_rhythm,
 )
-from ..plots import general_plot
-from ..helpers.other import _get_next_power_2, _pad_trim
-from ..helpers.gain_and_level import _rms, to_db
-from ..standard.enums import SpectrumMethod, SpectrumScaling, Window
 from .enums import DistortionType
-
-from scipy.signal.windows import get_window
-import numpy as np
-from numpy.typing import NDArray
-from warnings import warn
-from typing import Callable
 
 __all__ = [
     "get_frequency_from_musical_rhythm",
@@ -114,7 +115,8 @@ class AudioEffect:
         if len(self._peak_values) != inp.shape[1]:
             warn(
                 "Number of saved peak values does not match number of "
-                + "channels. Restoring is ignored"
+                + "channels. Restoring is ignored",
+                stacklevel=2,
             )
             return inp
         return inp * (self._peak_values / np.max(np.abs(inp), axis=0))
@@ -130,7 +132,8 @@ class AudioEffect:
         if len(self._rms_values) != inp.shape[1]:
             warn(
                 "Number of saved RMS values does not match number of "
-                + "channels. Restoring is ignored"
+                + "channels. Restoring is ignored",
+                stacklevel=2,
             )
             return inp
         return inp * (self._rms_values / _rms(inp))
@@ -219,7 +222,7 @@ class SpectralSubtractor(AudioEffect):
                 float,
             ), "Threshold must be of type int or float"
             if threshold_rms_dbfs >= 0:
-                warn("Threshold is positive. This might be a wrong input")
+                warn("Threshold is positive. This might be a wrong input", stacklevel=2)
             self.threshold_rms_dbfs = threshold_rms_dbfs
 
         if block_length_s is not None:
@@ -242,7 +245,8 @@ class SpectralSubtractor(AudioEffect):
                     warn(
                         "A spectrum to subtract was passed but adaptive "
                         + "mode was selected. This is unsupported. Setting "
-                        + "adaptive mode to False"
+                        + "adaptive mode to False",
+                        stacklevel=2,
                     )
                     self.adaptive_mode = False
             self.spectrum_to_subtract = spectrum_to_subtract
@@ -520,7 +524,7 @@ class SpectralSubtractor(AudioEffect):
         # Iterate over frames
         for n in range(signal.number_of_channels):
             # Noise estimate
-            noise_psd = np.zeros((len(self.window) // 2 + 1))
+            noise_psd = np.zeros(len(self.window) // 2 + 1)
 
             print(f"Denoising channel {n + 1} of {signal.number_of_channels}")
             for i in range(td_spec.shape[1]):
@@ -809,7 +813,8 @@ class Compressor(AudioEffect):
             if threshold_dbfs > 0:
                 warn(
                     "Threshold is above 0 dBFS, this might lead to "
-                    + "unexpected results"
+                    + "unexpected results",
+                    stacklevel=2,
                 )
             self.threshold_dbfs = threshold_dbfs
 

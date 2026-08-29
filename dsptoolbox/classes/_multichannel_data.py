@@ -1,10 +1,10 @@
-import numpy as np
-from numpy.typing import NDArray, ArrayLike
 from abc import ABC, abstractmethod
+
+import numpy as np
+from numpy.typing import ArrayLike, NDArray
 
 
 class MultichannelData(ABC):
-
     # ======== Multichannel Data Base Class Implementation ====================
     @abstractmethod
     def _get_data(self) -> NDArray[np.float64 | np.complex128]:
@@ -72,16 +72,16 @@ class MultichannelData(ABC):
             "Too many or too few dimensions are given in the new "
             + "arrangement vector"
         )
-        assert self.number_of_channels == len(
-            new_order
-        ), "The number of channels does not match"
+        assert self.number_of_channels == len(new_order), (
+            "The number of channels does not match"
+        )
         assert all(new_order < self.number_of_channels) and all(new_order >= 0), (
             "Indexes of new channels have to be in "
             + f"[0, {self.number_of_channels - 1}]"
         )
-        assert len(np.unique(new_order)) == len(
-            new_order
-        ), "There are repeated indexes in the new order vector"
+        assert len(np.unique(new_order)) == len(new_order), (
+            "There are repeated indexes in the new order vector"
+        )
         self._set_data(self._get_data()[:, new_order])
         self._update_state()
         return self

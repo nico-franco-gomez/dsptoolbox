@@ -16,9 +16,9 @@ Here are the classes of the dsptoolbox:
 
 from .filter import Filter
 from .filterbank import FilterBank
-from .signal import Signal
 from .impulse_response import ImpulseResponse
 from .multibandsignal import MultiBandSignal
+from .signal import Signal
 from .spectrum import Spectrum
 
 __all__ = [

@@ -1,8 +1,8 @@
-from numpy.typing import NDArray
 import numpy as np
+from numpy.typing import NDArray
 
-from .filter import Filter
 from ..standard.enums import FilterCoefficientsType
+from .filter import Filter
 from .realtime_filter import RealtimeFilter
 
 

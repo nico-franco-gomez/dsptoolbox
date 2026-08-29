@@ -11,49 +11,49 @@ to `standard`).
 """
 
 from .appending import append_filterbanks, append_signals, append_spectra
-from .latency_delay import latency, delay, fractional_delay
+from .enums import (
+    BiquadEqType,
+    FadeType,
+    FilterBankMode,
+    FilterCoefficientsType,
+    FilterPassType,
+    FrequencySpacing,
+    IirDesignMethod,
+    InterpolationDomain,
+    InterpolationEdgeHandling,
+    InterpolationScheme,
+    MagnitudeNormalization,
+    SpectrumMethod,
+    SpectrumScaling,
+    SpectrumType,
+    Window,
+)
+from .gain_and_level import (
+    apply_gain,
+    crest_factor,
+    fade,
+    lufs_integrated,
+    normalize,
+    rms,
+    true_peak_level,
+)
+from .latency_delay import delay, fractional_delay, latency
+from .other import (
+    activity_detector,
+    detrend,
+    dither,
+    envelope,
+    load_pkl_object,
+    merge_filters,
+    spectral_difference,
+)
 from .pad_trim_methods import (
-    pad_trim,
     modify_signal_length,
+    pad_trim,
     trim_with_level_threshold,
     trim_with_time_selection,
 )
 from .resampling import resample, resample_filter
-from .gain_and_level import (
-    apply_gain,
-    normalize,
-    fade,
-    true_peak_level,
-    rms,
-    lufs_integrated,
-    crest_factor,
-)
-from .other import (
-    load_pkl_object,
-    activity_detector,
-    detrend,
-    envelope,
-    dither,
-    merge_filters,
-    spectral_difference,
-)
-from .enums import (
-    SpectrumMethod,
-    SpectrumScaling,
-    FilterCoefficientsType,
-    BiquadEqType,
-    FilterBankMode,
-    FilterPassType,
-    IirDesignMethod,
-    MagnitudeNormalization,
-    SpectrumType,
-    InterpolationDomain,
-    InterpolationScheme,
-    InterpolationEdgeHandling,
-    FrequencySpacing,
-    Window,
-    FadeType,
-)
 
 __all__ = [
     # Append

@@ -2,35 +2,36 @@
 General use filters and filter banks.
 """
 
+import warnings
+
 import numpy as np
 from numpy.typing import NDArray
 from scipy.signal import (
-    windows,
     bilinear_zpk,
     freqz_zpk,
     tf2sos,
+    windows,
 )
 from scipy.special import comb
-import warnings
 
 from .. import Filter, FilterBank
-from ..tools import fractional_octave_frequencies, erb_frequencies
-from ._filterbank import (
-    LRFilterBank,
-    GammaToneFilterBank,
-    QMFCrossover,
-    _get_matched_peaking_eq,
-    _get_matched_lowpass_eq,
-    _get_matched_highpass_eq,
-    _get_matched_bandpass_eq,
-    _get_matched_shelving_eq,
-)
 from ..standard._standard_backend import _kaiser_window_fractional
 from ..standard.enums import (
-    FilterCoefficientsType,
     BiquadEqType,
+    FilterCoefficientsType,
     FilterPassType,
     IirDesignMethod,
+)
+from ..tools import erb_frequencies, fractional_octave_frequencies
+from ._filterbank import (
+    GammaToneFilterBank,
+    LRFilterBank,
+    QMFCrossover,
+    _get_matched_bandpass_eq,
+    _get_matched_highpass_eq,
+    _get_matched_lowpass_eq,
+    _get_matched_peaking_eq,
+    _get_matched_shelving_eq,
 )
 
 
@@ -79,7 +80,7 @@ def linkwitz_riley_crossovers(
 
 
 def reconstructing_fractional_octave_bands(
-    frequency_range_hz=[63, 16000],
+    frequency_range_hz=(63, 16000),
     octave_fraction: int = 1,
     overlap: float = 1,
     slope: int = 0,
@@ -144,7 +145,7 @@ def reconstructing_fractional_octave_bands(
     # half the sampling rate
     f_id = f_m < sampling_rate_hz / 2
     if not np.all(f_id):
-        warnings.warn("Skipping bands above the Nyquist frequency")
+        warnings.warn("Skipping bands above the Nyquist frequency", stacklevel=2)
 
     # DFT lines of the lower cut-off and center frequency as in
     # Antoni, Eq. (14)
@@ -178,7 +179,7 @@ def reconstructing_fractional_octave_bands(
             g[b_idx - 1, k_1[b_idx] - P[b_idx] : k_1[b_idx] + P[b_idx] + 1] = np.cos(
                 np.pi / 2 * phi
             )
-            # apply fade in in to next channel
+            # apply fade in to next channel
             g[b_idx, k_1[b_idx] - P[b_idx] : k_1[b_idx] + P[b_idx] + 1] = np.sin(
                 np.pi / 2 * phi
             )
@@ -215,7 +216,7 @@ def reconstructing_fractional_octave_bands(
 
 
 def auditory_filters_gammatone(
-    frequency_range_hz=[20, 20000],
+    frequency_range_hz=(20, 20000),
     resolution: float = 1,
     sampling_rate_hz: int | None = None,
 ) -> GammaToneFilterBank:
@@ -258,12 +259,12 @@ def auditory_filters_gammatone(
     - auditory modelling toolbox: https://www.amtoolbox.org
 
     """
-    assert (
-        sampling_rate_hz is not None
-    ), "A sampling rate must be passed to create the filter bank"
-    assert (
-        np.max(frequency_range_hz) <= sampling_rate_hz // 2
-    ), "Highest frequency should not be higher than the nyquist frequency"
+    assert sampling_rate_hz is not None, (
+        "A sampling rate must be passed to create the filter bank"
+    )
+    assert np.max(frequency_range_hz) <= sampling_rate_hz // 2, (
+        "Highest frequency should not be higher than the nyquist frequency"
+    )
     # Create frequencies
     frequencies_hz = erb_frequencies(frequency_range_hz, resolution)
     n_bands = len(frequencies_hz)
@@ -334,14 +335,14 @@ def qmf_crossover(lowpass: Filter) -> QMFCrossover:
 
 
 def fractional_octave_bands(
-    frequency_range_hz=[31.5, 16e3],
+    frequency_range_hz=(31.5, 16e3),
     octave_fraction: int = 1,
     filter_order: int = 6,
     sampling_rate_hz: int | None = None,
 ) -> tuple[
     FilterBank, NDArray[np.float64], tuple[NDArray[np.float64], NDArray[np.float64]]
 ]:
-    """Create and return a filter bank containing a set of of fractional
+    """Create and return a filter bank containing a set of fractional
     octave filters that are compliant with the specifications presented in [1].
     These are butterworth filters with at least order 3. For offline
     applications where phase or time information is also needed, filtering
@@ -375,14 +376,14 @@ def fractional_octave_bands(
     - [1]: ANSI S1.11:2004.
 
     """
-    assert (
-        sampling_rate_hz is not None
-    ), "A sampling rate must be passed for the filter bank"
+    assert sampling_rate_hz is not None, (
+        "A sampling rate must be passed for the filter bank"
+    )
     frequency_range_hz = np.atleast_1d(np.squeeze(frequency_range_hz))
     frequency_range_hz.sort()
-    assert (
-        len(frequency_range_hz) == 2
-    ), "Frequency range must contain exactly two entries"
+    assert len(frequency_range_hz) == 2, (
+        "Frequency range must contain exactly two entries"
+    )
     assert frequency_range_hz[-1] < sampling_rate_hz // 2, (
         "The highest frequency in the range is higher than the nyquist " + "frequency"
     )
@@ -522,9 +523,9 @@ def pinking_filter(frequency_0_db: float, sampling_rate_hz: int) -> Filter:
     https://dsp.stackexchange.com/questions/27520/filter-to-add-3db-per-octave
 
     """
-    assert (
-        frequency_0_db < sampling_rate_hz / 2
-    ), "Frequency should not be above nyquist"
+    assert frequency_0_db < sampling_rate_hz / 2, (
+        "Frequency should not be above nyquist"
+    )
     z = np.array([0.698258, 0.937174, 0.985792, 0.996652])
     p = np.array([0.378332, 0.862595, 0.970548, 0.993022, 0.998655])
     k = 1
@@ -608,9 +609,9 @@ def matched_biquad(
     - [5]: M. Vicanek. Matched Two-Pole Digital Shelving Filters. 2024.
 
     """
-    assert (
-        freq_hz > 0 and freq_hz < sampling_rate_hz / 2
-    ), f"{freq_hz} is not a valid frequency"
+    assert freq_hz > 0 and freq_hz < sampling_rate_hz / 2, (
+        f"{freq_hz} is not a valid frequency"
+    )
     assert q > 0, "Quality factor must be greater than zero"
 
     match eq_type:
@@ -731,9 +732,9 @@ def fractional_delay(
 
     """
     assert order > 0, "Order must be positive"
-    assert (
-        fractional_delay_samples > 0.0 and fractional_delay_samples < 1.0
-    ), "Delay is outside valid range"
+    assert fractional_delay_samples > 0.0 and fractional_delay_samples < 1.0, (
+        "Delay is outside valid range"
+    )
     N = order
     D = N + fractional_delay_samples
     a = np.ones(N + 1)

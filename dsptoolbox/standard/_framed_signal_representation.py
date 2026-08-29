@@ -1,6 +1,6 @@
 import numpy as np
-from scipy.signal import windows
 from numpy.typing import NDArray
+from scipy.signal import windows
 
 from ..helpers.other import _compute_number_frames, _pad_trim
 from ._standard_backend import _get_window_envelope
@@ -107,9 +107,9 @@ def _reconstruct_framed_signal(
             window = windows.get_window(window, td_framed.shape[0])
         elif isinstance(window, np.ndarray):
             assert window.ndim == 1, "Window must be a 1D-array"
-            assert (
-                window.shape[0] == td_framed.shape[0]
-            ), "Window length does not match signal length"
+            assert window.shape[0] == td_framed.shape[0], (
+                "Window length does not match signal length"
+            )
         td_framed *= window[:, np.newaxis, np.newaxis]
 
     total_length = int(

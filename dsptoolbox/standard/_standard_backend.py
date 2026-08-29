@@ -3,12 +3,12 @@ Backend for standard functions
 """
 
 import numpy as np
+from numpy.typing import NDArray
 from scipy.signal import correlate, hilbert
 from scipy.special import iv as bessel_first_mod
-from numpy.typing import NDArray
 
-from ..helpers.spectrum_utilities import _wrap_phase
 from ..helpers.gain_and_level import from_db
+from ..helpers.spectrum_utilities import _wrap_phase
 
 
 def _latency(
@@ -440,7 +440,7 @@ def _fractional_delay_filter(
     references.
 
     Parameters
-    ---------
+    ----------
     delay_samples : float
         Amount of delay in samples.
     filter_order : int

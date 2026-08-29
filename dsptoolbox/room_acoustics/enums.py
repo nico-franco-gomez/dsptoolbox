@@ -20,7 +20,7 @@ class RoomAcousticsDescriptor(Enum):
     """Descriptors:
 
     - D50: Definition. It takes values between [0, 1] and should
-      correlate (positively) with speech inteligibility.
+      correlate (positively) with speech intelligibility.
     - C80: Clarity. It is a value in dB. The higher, the more energy
       arrives in the early part of the RIR compared to the later part.
     - BassRatio: It exposes the ratio of reverberation times

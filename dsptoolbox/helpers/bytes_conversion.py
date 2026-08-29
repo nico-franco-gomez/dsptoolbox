@@ -1,6 +1,7 @@
+import sys
+
 import numpy as np
 from numpy.typing import NDArray
-import sys
 
 
 def _array_to_bytes_24bits(vector: NDArray[np.int32 | np.uint32]):
@@ -33,9 +34,9 @@ def _array_to_bytes_24bits(vector: NDArray[np.int32 | np.uint32]):
 
 def _bytes_to_array_24bits(vector: bytes, signed_input: bool):
     """Convert bytes into an array."""
-    assert (
-        len(vector) % 3 == 0
-    ), "Vector should have a length with 3-bytes sized samples"
+    assert len(vector) % 3 == 0, (
+        "Vector should have a length with 3-bytes sized samples"
+    )
     output_format = eval(f"""np.{"int" if signed_input else "uint"}32""")
     values = [
         int.from_bytes(vector[n : n + 3], sys.byteorder, signed=signed_input)

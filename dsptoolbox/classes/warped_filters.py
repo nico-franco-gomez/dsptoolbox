@@ -1,10 +1,10 @@
-from numpy.typing import NDArray
 import numpy as np
+from numpy.typing import NDArray
 
 from ..standard.enums import FilterCoefficientsType
 from .filter import Filter
-from .signal import Signal
 from .realtime_filter import RealtimeFilter
+from .signal import Signal
 
 
 class WarpedFIR(RealtimeFilter):
@@ -117,9 +117,9 @@ class WarpedFIR(RealtimeFilter):
             Signal to be filtered.
 
         """
-        assert (
-            self.sampling_rate_hz == signal.sampling_rate_hz
-        ), "Sampling rates do not match"
+        assert self.sampling_rate_hz == signal.sampling_rate_hz, (
+            "Sampling rates do not match"
+        )
         buffer_prior = self.buffer.copy()
         self.set_n_channels(signal.number_of_channels)
         new_signal = signal.copy_with_new_time_data(

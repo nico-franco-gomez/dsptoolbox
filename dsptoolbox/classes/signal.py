@@ -2,47 +2,47 @@
 Signal class
 """
 
-from warnings import warn
-from pickle import dump, HIGHEST_PROTOCOL
 from copy import deepcopy
+from pickle import HIGHEST_PROTOCOL, dump
+from typing import Self
+from warnings import warn
+
 import numpy as np
 import soundfile as sf
-from matplotlib.figure import Figure
 from matplotlib.axes import Axes
+from matplotlib.figure import Figure
+from numpy.typing import ArrayLike, NDArray
+from scipy.fft import next_fast_len, rfft
 from scipy.signal import oaconvolve
-from numpy.typing import NDArray, ArrayLike
-from scipy.fft import rfft, next_fast_len
-from typing import Self
 
-from ._multichannel_data import MultichannelData
+from ..helpers.gain_and_level import to_db
+from ..helpers.latency import (
+    _remove_ir_latency_from_phase,
+    _remove_ir_latency_from_phase_peak,
+)
+from ..helpers.minimum_phase import _remove_ir_latency_from_phase_min_phase
+from ..helpers.other import (
+    _check_format_in_path,
+    _pad_trim,
+    find_nearest_points_index_in_vector,
+)
+from ..helpers.smoothing import _fractional_octave_smoothing
 from ..helpers.spectrum_utilities import (
     _get_normalized_spectrum,
     _scale_spectrum,
     _wrap_phase,
 )
-from ..helpers.minimum_phase import _remove_ir_latency_from_phase_min_phase
-from ..helpers.smoothing import _fractional_octave_smoothing
-from ..helpers.latency import (
-    _remove_ir_latency_from_phase,
-    _remove_ir_latency_from_phase_peak,
-)
-from ..helpers.other import (
-    _check_format_in_path,
-    find_nearest_points_index_in_vector,
-    _pad_trim,
-)
-from ..helpers.gain_and_level import to_db
-
-from ..plots import general_plot, general_subplots_line, general_matrix_plot
-from .plots import _csm_plot
+from ..plots import general_matrix_plot, general_plot, general_subplots_line
+from ..standard._spectral_methods import _csm_fft, _csm_welch, _stft, _welch
 from ..standard._standard_backend import _group_delay_direct
-from ..standard._spectral_methods import _welch, _stft, _csm_welch, _csm_fft
 from ..standard.enums import (
-    SpectrumScaling,
-    SpectrumMethod,
     MagnitudeNormalization,
+    SpectrumMethod,
+    SpectrumScaling,
     Window,
 )
+from ._multichannel_data import MultichannelData
+from .plots import _csm_plot
 
 
 class Signal(MultichannelData):
@@ -281,7 +281,8 @@ class Signal(MultichannelData):
                 new_time_data /= time_data_max
                 warn(
                     "Signal was over 0 dBFS, normalizing to 0 dBFS "
-                    + "peak level was triggered"
+                    + "peak level was triggered",
+                    stacklevel=2,
                 )
                 # Imaginary part is also scaled by same factor as real part
                 if new_time_data_imag is not None:
@@ -838,7 +839,8 @@ class Signal(MultichannelData):
                 )
                 warn(
                     f"{txt} has been performed "
-                    + "on the end of the new signal to match original one."
+                    + "on the end of the new signal to match original one.",
+                    stacklevel=2,
                 )
             else:
                 raise AttributeError(
@@ -1057,7 +1059,7 @@ class Signal(MultichannelData):
     # ======== Plots ==========================================================
     def plot_magnitude(
         self,
-        range_hz: list[float] | None = [20.0, 20e3],
+        range_hz: list[float] | None = (20.0, 20e3),
         normalize: MagnitudeNormalization = MagnitudeNormalization.NoNormalization,
         range_db=None,
         smoothing: int = 0,
@@ -1294,7 +1296,7 @@ class Signal(MultichannelData):
 
     def plot_group_delay(
         self,
-        range_hz: list[float] | None = [20.0, 20e3],
+        range_hz: list[float] | None = (20.0, 20e3),
         smoothing: int = 0,
         remove_ir_latency: str | ArrayLike | None = None,
     ) -> tuple[Figure, Axes]:
@@ -1449,7 +1451,7 @@ class Signal(MultichannelData):
 
     def plot_phase(
         self,
-        range_hz: list[float] | None = [20.0, 20e3],
+        range_hz: list[float] | None = (20.0, 20e3),
         unwrap: bool = False,
         smoothing: int = 0,
         remove_ir_latency: str | None | ArrayLike = None,
@@ -1544,7 +1546,7 @@ class Signal(MultichannelData):
         return fig, ax
 
     def plot_csm(
-        self, range_hz=[20, 20e3], with_phase: bool = True
+        self, range_hz=(20, 20e3), with_phase: bool = True
     ) -> tuple[Figure, Axes]:
         """Plots the cross spectral matrix of the multichannel signal.
 

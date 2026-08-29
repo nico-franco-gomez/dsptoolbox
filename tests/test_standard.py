@@ -1,7 +1,9 @@
-import pytest
-import dsptoolbox as dsp
-import numpy as np
 import os
+
+import numpy as np
+import pytest
+
+import dsptoolbox as dsp
 
 
 class TestStandardModule:
@@ -205,7 +207,7 @@ class TestStandardModule:
         )
 
     def test_fade(self):
-        # Functionality – result only tested for linear fade
+        # Functionality - result only tested for linear fade
         dsp.fade(self.audio_multi, fade_type=dsp.FadeType.Linear)
         dsp.fade(self.audio_multi, fade_type=dsp.FadeType.Logarithmic)
         dsp.fade(self.audio_multi, fade_type=dsp.FadeType.Exponential)

@@ -6,36 +6,48 @@ arrays and primitive data types instead of custom classes.
 
 """
 
+from typing import Any
+
 import numpy as np
 from numpy.typing import NDArray
-from typing import Any
 from scipy.interpolate import interp1d
 
-from .helpers.gain_and_level import to_db
-from .helpers.bytes_conversion import _array_to_bytes_24bits
-from .helpers.spectrum_utilities import (
-    _interpolate_fr as interpolate_fr,
-    _scale_spectrum as scale_spectrum,
-    _wrap_phase as wrap_phase,
-    _warp_frequency_vector as warp_frequency,
+from .helpers.bytes_conversion import (
+    _array_to_bytes_24bits,
+    _bytes_to_array_24bits,
 )
+from .helpers.gain_and_level import from_db, to_db
+from .helpers.other import _get_next_power_2 as next_power_2
 from .helpers.smoothing import (
     _fractional_octave_smoothing as fractional_octave_smoothing,
+)
+from .helpers.smoothing import (
     _get_smoothing_factor_ema as get_smoothing_factor_ema,
+)
+from .helpers.smoothing import (
     _time_smoothing as time_smoothing,
 )
-from .helpers.gain_and_level import from_db
-from .helpers.other import _get_next_power_2 as next_power_2
-from .helpers.bytes_conversion import (
-    _bytes_to_array_24bits,
+from .helpers.spectrum_utilities import (
+    _interpolate_fr as interpolate_fr,
+)
+from .helpers.spectrum_utilities import (
+    _scale_spectrum as scale_spectrum,
+)
+from .helpers.spectrum_utilities import (
+    _warp_frequency_vector as warp_frequency,
+)
+from .helpers.spectrum_utilities import (
+    _wrap_phase as wrap_phase,
+)
+from .standard._framed_signal_representation import (
+    _get_framed_signal as framed_signal,
+)
+from .standard._framed_signal_representation import (
+    _reconstruct_framed_signal as reconstruct_from_framed_signal,
 )
 from .standard._standard_backend import (
     _center_frequencies_fractional_octaves_iec,
     _exact_center_frequencies_fractional_octaves,
-)
-from .standard._framed_signal_representation import (
-    _get_framed_signal as framed_signal,
-    _reconstruct_framed_signal as reconstruct_from_framed_signal,
 )
 
 
@@ -85,9 +97,9 @@ def get_exact_value_at_frequency(
         Queried value.
 
     """
-    assert (
-        freqs_hz[0] <= f and freqs_hz[-1] >= f
-    ), "Frequency vector does not contain 1 kHz"
+    assert freqs_hz[0] <= f and freqs_hz[-1] >= f, (
+        "Frequency vector does not contain 1 kHz"
+    )
     assert freqs_hz.ndim == 1, "Frequency vector can only have one dimension"
     assert len(freqs_hz) == len(y), "Lengths do not match"
 
@@ -204,11 +216,11 @@ def fractional_octave_frequencies(
     Parameters
     ----------
     num_fractions : int, optional
-        The number of bands an octave is divided into. Eg., ``1`` refers to
-        octave bands and ``3`` to third octave bands. The default is ``1``.
+        The number of bands an octave is divided into. Eg., `1` refers to
+        octave bands and `3` to third octave bands. The default is `1`.
     frequency_range : array, tuple
         The lower and upper frequency limits, the default is
-        ``frequency_range=(20, 20e3)``.
+        `frequency_range=(20, 20e3)`.
 
     Returns
     -------
@@ -259,7 +271,7 @@ def fractional_octave_frequencies(
 
 
 def erb_frequencies(
-    freq_range_hz=[20, 20000],
+    freq_range_hz=(20, 20000),
     resolution: float = 1,
     reference_frequency_hz: float = 1000,
 ) -> NDArray[np.float64]:
@@ -410,9 +422,9 @@ def convert_sample_representation(
     ]
     input_format = input_format.lower()
     output_format = output_format.lower()
-    assert (
-        output_format in valid_formats and input_format in valid_formats
-    ), f"Format {input_format} or {output_format} is not supported"
+    assert output_format in valid_formats and input_format in valid_formats, (
+        f"Format {input_format} or {output_format} is not supported"
+    )
 
     if type(values) is bytes:
         signed_input = input_format[0] == "i"

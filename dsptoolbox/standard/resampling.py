@@ -1,8 +1,9 @@
-import numpy as np
-from scipy.signal import resample_poly, bilinear_zpk
-
 from fractions import Fraction
-from ..classes import Signal, Filter
+
+import numpy as np
+from scipy.signal import bilinear_zpk, resample_poly
+
+from ..classes import Filter, Signal
 from .enums import FilterCoefficientsType
 
 

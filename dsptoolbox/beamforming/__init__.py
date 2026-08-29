@@ -33,19 +33,19 @@ References:
 """
 
 from .beamforming import (
-    Grid,
-    Regular2DGrid,
-    Regular3DGrid,
-    LineGrid,
-    MicArray,
-    SteeringVector,
-    BeamformerDASFrequency,
     BeamformerCleanSC,
-    BeamformerOrthogonal,
+    BeamformerDASFrequency,
+    BeamformerDASTime,
     BeamformerFunctional,
     BeamformerMVDR,
-    BeamformerDASTime,
+    BeamformerOrthogonal,
+    Grid,
+    LineGrid,
+    MicArray,
     MonopoleSource,
+    Regular2DGrid,
+    Regular3DGrid,
+    SteeringVector,
     mix_sources_on_array,
 )
 from .enums import SteeringVectorType

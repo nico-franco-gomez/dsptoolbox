@@ -2,10 +2,10 @@ import numpy as np
 from numpy.typing import NDArray
 from scipy.interpolate import interp1d
 
+from ..standard.enums import MagnitudeNormalization, SpectrumScaling
 from .gain_and_level import from_db, to_db
 from .other import find_nearest_points_index_in_vector
 from .smoothing import _fractional_octave_smoothing
-from ..standard.enums import MagnitudeNormalization, SpectrumScaling
 
 
 def _wrap_phase(phase_vector: NDArray[np.float64]) -> NDArray[np.float64]:
@@ -157,10 +157,9 @@ def _get_normalized_spectrum(
             mag_spectra = (
                 _fractional_octave_smoothing(mag_spectra, None, smoothing)
                 if is_amplitude_scaling
+                # Smoothing always in amplitude representation
                 else (
-                    # Smoothing always in amplitude representation
-                    _fractional_octave_smoothing(mag_spectra**0.5, None, smoothing)
-                    ** 2
+                    _fractional_octave_smoothing(mag_spectra**0.5, None, smoothing) ** 2
                 )
             )
 

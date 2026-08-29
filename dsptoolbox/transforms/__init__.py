@@ -28,25 +28,25 @@ This module contains signal transforms.
 """
 
 from .transforms import (
-    cepstrum,
-    from_complex_cepstrum,
-    log_mel_spectrogram,
-    mel_filterbank,
-    plot_waterfall,
-    mfcc,
-    istft,
     MorletWavelet,
-    cwt,
+    cepstrum,
     chroma_stft,
+    cwt,
+    dft,
+    from_complex_cepstrum,
     hilbert,
-    vqt,
-    stereo_mid_side,
+    istft,
     laguerre,
+    log_mel_spectrogram,
+    lpc,
+    mel_filterbank,
+    mfcc,
+    plot_waterfall,
+    spectrum_via_filterbank,
+    stereo_mid_side,
+    vqt,
     warp,
     warp_filter,
-    lpc,
-    dft,
-    spectrum_via_filterbank,
 )
 
 __all__ = [

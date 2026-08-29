@@ -2,18 +2,19 @@
 Backend for transfer functions methods
 """
 
-import numpy as np
-from scipy.signal import get_window, hilbert
-from scipy.fft import next_fast_len
-from scipy.stats import pearsonr
 from warnings import warn
-from numpy.typing import NDArray
 
-from ..helpers.other import _pad_trim, find_nearest_points_index_in_vector
+import numpy as np
+from numpy.typing import NDArray
+from scipy.fft import next_fast_len
+from scipy.signal import get_window, hilbert
+from scipy.stats import pearsonr
+
 from ..helpers.gain_and_level import to_db
+from ..helpers.other import _pad_trim, find_nearest_points_index_in_vector
 from ..helpers.windows import calculate_tukey_like_window as _calculate_window
-from ..tools import time_smoothing
 from ..standard.enums import Window
+from ..tools import time_smoothing
 
 
 def _spectral_deconvolve(
@@ -129,9 +130,9 @@ def _window_this_ir_tukey(
         total_length - right_flank_length,
         total_length,
     ]
-    assert not np.any(
-        np.ediff1d(points) < 0
-    ), "A valid window could not be constructed with given parameters."
+    assert not np.any(np.ediff1d(points) < 0), (
+        "A valid window could not be constructed with given parameters."
+    )
     window = _calculate_window(
         points, total_length, window_type, at_start=at_start, inverse=False
     )
@@ -363,7 +364,10 @@ def _trim_ir(
         inds = corr_coeff <= -0.7
         end_point = int(np.mean(np.hstack([np.ones(9) * end[select], end[inds]])))
     else:
-        warn("No satisfactory estimation for trimming the rir could be made")
+        warn(
+            "No satisfactory estimation for trimming the rir could be made",
+            stacklevel=2,
+        )
         end_point = int(np.mean(np.hstack([np.ones(5) * len(envelope), end])))
 
     stop = end_point + start_index + impulse_index

@@ -1,31 +1,32 @@
-import numpy as np
-from numpy.typing import NDArray, ArrayLike
 from copy import deepcopy
+from pickle import HIGHEST_PROTOCOL, dump
+
+import numpy as np
+from matplotlib.axes import Axes
+from matplotlib.figure import Figure
+from numpy.typing import ArrayLike, NDArray
 from scipy import interpolate as int_sci
 from scipy.integrate import trapezoid
-from matplotlib.figure import Figure
-from matplotlib.axes import Axes
-from pickle import dump, HIGHEST_PROTOCOL
 
-from ._multichannel_data import MultichannelData
-from ..tools import fractional_octave_smoothing
 from .. import plots
-from .signal import Signal
-from .filter import Filter
-from .filterbank import FilterBank
-from ..helpers.gain_and_level import to_db, from_db
+from ..helpers.gain_and_level import from_db, to_db
 from ..helpers.other import _check_format_in_path, _pad_trim
 from ..helpers.spectrum_utilities import _warp_frequency_vector
 from ..standard.enums import (
     FilterBankMode,
     FrequencySpacing,
-    SpectrumType,
     InterpolationDomain,
     InterpolationEdgeHandling,
     InterpolationScheme,
     MagnitudeNormalization,
+    SpectrumType,
     Window,
 )
+from ..tools import fractional_octave_smoothing
+from ._multichannel_data import MultichannelData
+from .filter import Filter
+from .filterbank import FilterBank
+from .signal import Signal
 
 
 class Spectrum(MultichannelData):
@@ -69,9 +70,9 @@ class Spectrum(MultichannelData):
 
         """
         if complex:
-            assert sig.spectrum_scaling.outputs_complex_spectrum(
-                sig.spectrum_method
-            ), "Method or scaling do not deliver a complex spectrum"
+            assert sig.spectrum_scaling.outputs_complex_spectrum(sig.spectrum_method), (
+                "Method or scaling do not deliver a complex spectrum"
+            )
 
         f, sp = sig.get_spectrum()
         if complex:
@@ -256,17 +257,17 @@ class Spectrum(MultichannelData):
         assert data.ndim == 2, "Spectral data must have two dimensions"
         if data.shape[0] < data.shape[1]:
             data = data.T
-        assert (
-            data.shape[0] == self.number_frequency_bins
-        ), "Spectral data and frequency vector lengths do not match"
+        assert data.shape[0] == self.number_frequency_bins, (
+            "Spectral data and frequency vector lengths do not match"
+        )
         is_magnitude = np.isrealobj(data)
         self.__spectral_data = data.astype(
             np.float64 if is_magnitude else np.complex128
         )
         if self.is_magnitude:
-            assert np.all(
-                self.__spectral_data >= 0.0
-            ), "No negative values are allowed for the magnitude spectrum"
+            assert np.all(self.__spectral_data >= 0.0), (
+                "No negative values are allowed for the magnitude spectrum"
+            )
 
     @property
     def is_magnitude(self) -> bool:
@@ -449,14 +450,12 @@ class Spectrum(MultichannelData):
         """
         if power_sum:
             return self._create_copy_with_new_data(
-                (
-                    np.sum(
-                        np.abs(self.spectral_data) ** 2.0,
-                        axis=1,
-                        keepdims=True,
-                    )
-                    ** 0.5
+                np.sum(
+                    np.abs(self.spectral_data) ** 2.0,
+                    axis=1,
+                    keepdims=True,
                 )
+                ** 0.5
             )
         return super().sum_channels()
 
@@ -535,9 +534,9 @@ class Spectrum(MultichannelData):
 
         """
         gains = np.atleast_1d(gain_db)
-        assert (
-            len(gains) == 1 or len(gains) == self.number_of_channels
-        ), "Number of gains is not compatible"
+        assert len(gains) == 1 or len(gains) == self.number_of_channels, (
+            "Number of gains is not compatible"
+        )
         self.spectral_data *= from_db(gains, True)
         return self
 
@@ -715,9 +714,9 @@ class Spectrum(MultichannelData):
             InterpolationDomain.Complex,
             InterpolationDomain.MagnitudePhase,
         ):
-            assert (
-                not self.is_magnitude
-            ), "No complex interpolation is possible with this data"
+            assert not self.is_magnitude, (
+                "No complex interpolation is possible with this data"
+            )
         self.__int_domain = domain
         self.__int_scheme = scheme
         self.__int_edges = edges_handling
@@ -793,9 +792,9 @@ class Spectrum(MultichannelData):
 
         """
         if not np.isclose(sampling_rate_hz / 2, self.frequency_vector_hz[-1]):
-            assert (
-                sampling_rate_hz / 2 >= self.frequency_vector_hz[-1]
-            ), "Invalid sampling rate for frequency vector"
+            assert sampling_rate_hz / 2 >= self.frequency_vector_hz[-1], (
+                "Invalid sampling rate for frequency vector"
+            )
 
         self.frequency_vector_hz = _warp_frequency_vector(
             self.frequency_vector_hz, sampling_rate_hz, warping_factor
@@ -878,9 +877,9 @@ class Spectrum(MultichannelData):
             data.
 
         """
-        assert (
-            coherence.shape == self.spectral_data.shape
-        ), "Length of signals and given coherence do not match"
+        assert coherence.shape == self.spectral_data.shape, (
+            "Length of signals and given coherence do not match"
+        )
         assert not np.iscomplexobj(coherence), "Coherence cannot be complex"
         self.coherence = coherence
 

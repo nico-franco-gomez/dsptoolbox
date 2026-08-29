@@ -1,12 +1,12 @@
 import numpy as np
 from numpy.typing import NDArray
 
-from ..classes import Signal, MultiBandSignal, FilterBank, Filter
-from ..helpers.gain_and_level import _fade, from_db, _normalize, _rms, to_db
+from ..classes import Filter, FilterBank, MultiBandSignal, Signal
+from ..helpers.gain_and_level import _fade, _normalize, _rms, from_db, to_db
 from ._framed_signal_representation import _get_framed_signal
-from .resampling import resample
-from .enums import FadeType, BiquadEqType
+from .enums import BiquadEqType, FadeType
 from .other import merge_filters
+from .resampling import resample
 
 
 def normalize(
@@ -92,9 +92,9 @@ def fade(
     assert at_start or at_end, "At least start or end of signal should be faded"
     if length_fade_seconds is None:
         length_fade_seconds = sig.time_vector_s[-1] * 0.025
-    assert (
-        length_fade_seconds < sig.time_vector_s[-1]
-    ), "Fade length should not be longer than the signal itself"
+    assert length_fade_seconds < sig.time_vector_s[-1], (
+        "Fade length should not be longer than the signal itself"
+    )
 
     new_time_data = np.empty_like(sig.time_data)
     for n in range(sig.number_of_channels):
@@ -244,7 +244,7 @@ def lufs_integrated(s: Signal) -> float:
                 q=2**0.5 / 2.0,
                 sampling_rate_hz=fs_hz,
             ),
-            # RLB Weightning: Highpass
+            # RLB Weighting: Highpass
             Filter.biquad(
                 eq_type=BiquadEqType.Highpass,
                 frequency_hz=38.1,
@@ -347,9 +347,9 @@ def apply_gain(
         return filter
     elif isinstance(target, FilterBank):
         gain = np.atleast_1d(gain_db)
-        assert (
-            len(gain) == 1 or len(gain) == target.number_of_filters
-        ), "Incompatible number of gains"
+        assert len(gain) == 1 or len(gain) == target.number_of_filters, (
+            "Incompatible number of gains"
+        )
         if len(gain) == 1:
             gain = np.repeat(gain, target.number_of_filters)
         new_fb = target.copy()

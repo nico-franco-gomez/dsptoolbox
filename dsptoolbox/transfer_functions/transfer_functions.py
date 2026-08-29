@@ -4,58 +4,61 @@ Methods used for acquiring and windowing transfer functions
 
 import numpy as np
 from numpy.typing import NDArray
+from scipy.fft import next_fast_len as next_fast_length_fft
+from scipy.fft import rfft as rfft_scipy
+from scipy.interpolate import interp1d
 from scipy.signal import (
-    minimum_phase as min_phase_scipy,
     get_window as get_window_scipy,
 )
-from scipy.fft import rfft as rfft_scipy, next_fast_len as next_fast_length_fft
-from scipy.interpolate import interp1d
+from scipy.signal import (
+    minimum_phase as min_phase_scipy,
+)
 
-from ._transfer_functions import (
-    _spectral_deconvolve,
-    _window_this_ir_tukey,
-    _window_this_ir,
-    _get_harmonic_times,
-    _trim_ir,
-    _complex_smoothing_backend,
-    _get_frequency_vector_with_frequency_resolution,
-    _fdw_backend,
-)
-from ..helpers.spectrum_utilities import (
-    _correct_for_real_phase_spectrum,
-    _interpolate_fr,
-)
+from ..classes import Filter, FilterBank, ImpulseResponse, Signal, Spectrum
+from ..classes.filter_helpers import _group_delay_filter
+from ..filterbanks import linkwitz_riley_crossovers
+from ..generators import dirac
+from ..helpers.gain_and_level import from_db, to_db
+from ..helpers.latency import _get_fractional_impulse_peak_index
 from ..helpers.minimum_phase import (
     _get_minimum_phase_spectrum_from_real_cepstrum,
     _min_phase_ir_from_real_cepstrum,
     _remove_ir_latency_from_phase_min_phase,
 )
+from ..helpers.other import _pad_trim, find_frequencies_above_threshold
 from ..helpers.smoothing import _fractional_octave_smoothing
-from ..helpers.latency import _get_fractional_impulse_peak_index
-from ..helpers.other import find_frequencies_above_threshold, _pad_trim
-from ..classes import Signal, Filter, ImpulseResponse, FilterBank, Spectrum
-from ..classes.filter_helpers import _group_delay_filter
-from ..standard._standard_backend import (
-    _minimum_phase,
-    _group_delay_direct,
+from ..helpers.spectrum_utilities import (
+    _correct_for_real_phase_spectrum,
+    _interpolate_fr,
+)
+from ..standard import (
+    append_signals,
+    fractional_delay,
+    latency,
+    normalize,
 )
 from ..standard._spectral_methods import _welch
-from ..standard import (
-    fractional_delay,
-    append_signals,
-    normalize,
-    latency,
+from ..standard._standard_backend import (
+    _group_delay_direct,
+    _minimum_phase,
 )
-from ..generators import dirac
-from ..filterbanks import linkwitz_riley_crossovers
-from ..helpers.gain_and_level import to_db, from_db
 from ..standard.enums import (
+    MagnitudeNormalization,
     SpectrumMethod,
     SpectrumType,
-    MagnitudeNormalization,
     Window,
 )
-from .enums import TransferFunctionType, SmoothingDomain
+from ._transfer_functions import (
+    _complex_smoothing_backend,
+    _fdw_backend,
+    _get_frequency_vector_with_frequency_resolution,
+    _get_harmonic_times,
+    _spectral_deconvolve,
+    _trim_ir,
+    _window_this_ir,
+    _window_this_ir_tukey,
+)
+from .enums import SmoothingDomain, TransferFunctionType
 
 
 def spectral_deconvolve(
@@ -113,23 +116,23 @@ def spectral_deconvolve(
       dependent on the phase response.
 
     """
-    assert (
-        output.time_data.shape[0] == input.time_data.shape[0]
-    ), "Lengths do not match for spectral deconvolution"
+    assert output.time_data.shape[0] == input.time_data.shape[0], (
+        "Lengths do not match for spectral deconvolution"
+    )
     if input.number_of_channels != 1:
-        assert (
-            output.number_of_channels == input.number_of_channels
-        ), "The number of channels do not match."
+        assert output.number_of_channels == input.number_of_channels, (
+            "The number of channels do not match."
+        )
         multichannel = False
     else:
         multichannel = True
-    assert (
-        output.sampling_rate_hz == input.sampling_rate_hz
-    ), "Sampling rates do not match"
+    assert output.sampling_rate_hz == input.sampling_rate_hz, (
+        "Sampling rates do not match"
+    )
     if not apply_regularization:
-        assert (
-            start_stop_hz is None
-        ), "No start_stop_hz vector can be passed when using standard mode"
+        assert start_stop_hz is None, (
+            "No start_stop_hz vector can be passed when using standard mode"
+        )
 
     output = output.copy()
     input = input.copy()
@@ -255,17 +258,17 @@ def window_ir(
 
     """
     assert type(signal) is ImpulseResponse, "This is only valid for an impulse response"
-    assert (
-        constant_percentage < 1 and constant_percentage >= 0
-    ), "Constant percentage can not be larger than 1 or smaller than 0"
+    assert constant_percentage < 1 and constant_percentage >= 0, (
+        "Constant percentage can not be larger than 1 or smaller than 0"
+    )
     assert offset_samples >= 0, "Offset must be positive"
     assert offset_samples <= constant_percentage * total_length_samples, (
         "Offset is too large for the constant part of the window and its "
         + "total length"
     )
-    assert (
-        left_to_right_flank_length_ratio >= 0
-    ), "Ratio between window flanks must be a positive number"
+    assert left_to_right_flank_length_ratio >= 0, (
+        "Ratio between window flanks must be a positive number"
+    )
 
     new_time_data = np.zeros((total_length_samples, signal.number_of_channels))
     start_positions_samples = np.zeros(signal.number_of_channels, dtype=int)
@@ -328,9 +331,9 @@ def window_ir_tukey(
 
     """
     assert type(ir) is ImpulseResponse, "This is only valid for an impulse response"
-    assert (
-        left_flank_s is not None or right_flank_s is not None
-    ), "At least one flank length should be passed"
+    assert left_flank_s is not None or right_flank_s is not None, (
+        "At least one flank length should be passed"
+    )
     assert window_flank_type != Window.Tukey, (
         "Tukey window type is not supported here. "
         + "For computing a standard Tukey window, pass `Hann` as window type"
@@ -450,25 +453,25 @@ def compute_transfer_function(
     - SNR can be gained from the coherence: `snr = coherence / (1 - coherence)`
 
     """
-    assert (
-        input.sampling_rate_hz == output.sampling_rate_hz
-    ), "Sampling rates do not match"
-    assert (
-        input.time_data.shape[0] == output.time_data.shape[0]
-    ), "Signal lengths do not match"
+    assert input.sampling_rate_hz == output.sampling_rate_hz, (
+        "Sampling rates do not match"
+    )
+    assert input.time_data.shape[0] == output.time_data.shape[0], (
+        "Signal lengths do not match"
+    )
     if input.number_of_channels != 1:
-        assert (
-            input.number_of_channels == output.number_of_channels
-        ), "Channel number does not match between signals"
+        assert input.number_of_channels == output.number_of_channels, (
+            "Channel number does not match between signals"
+        )
         multichannel = False
     else:
         multichannel = True
 
     # Get rid of unnecessary spectrum parameters
     spectrum_parameters = input._spectrum_parameters.copy()
-    assert (
-        type(spectrum_parameters) is dict
-    ), "Spectrum parameters should be passed as a dictionary"
+    assert type(spectrum_parameters) is dict, (
+        "Spectrum parameters should be passed as a dictionary"
+    )
     spectrum_parameters.pop("window_length_samples")
     spectrum_parameters.pop("method")
     spectrum_parameters.pop("smoothing")
@@ -569,9 +572,9 @@ def average_irs(
 
     """
     assert type(signal) is ImpulseResponse, "This is only valid for an impulse response"
-    assert (
-        signal.number_of_channels > 1
-    ), "Signal has only one channel so no meaningful averaging can be done"
+    assert signal.number_of_channels > 1, (
+        "Signal has only one channel so no meaningful averaging can be done"
+    )
     avg_sig = signal.copy()
 
     if normalize_energy:
@@ -730,9 +733,9 @@ def lin_phase_from_mag(
     mag_spectrum = spectrum.get_interpolated_spectrum(f_vec, SpectrumType.Magnitude)
 
     if check_causality or minimum_group_delay:
-        assert (
-            minimum_group_delay_factor >= 1.0
-        ), "Minimum group delay factor should at least be 1"
+        assert minimum_group_delay_factor >= 1.0, (
+            "Minimum group delay factor should at least be 1"
+        )
         min_phase = _minimum_phase(
             mag_spectrum,
             odd_length=original_length_time_data % 2 == 1,
@@ -906,9 +909,9 @@ def group_delay(
         signal._spectrum_parameters = spec_parameters
 
         if remove_ir_latency:
-            assert (
-                type(signal) is ImpulseResponse
-            ), "This is only valid for an impulse response"
+            assert type(signal) is ImpulseResponse, (
+                "This is only valid for an impulse response"
+            )
             sp = _remove_ir_latency_from_phase_min_phase(
                 f, np.angle(sp), signal.time_data, signal.sampling_rate_hz, 1
             )
@@ -1273,9 +1276,9 @@ def filter_to_ir(fir: Filter | FilterBank) -> ImpulseResponse:
         )
     elif isinstance(fir, FilterBank):
         assert all([not f.is_iir for f in fir]), "Filter types must be fir"
-        assert (
-            fir.same_sampling_rate
-        ), "Only valid for filter banks with consistent sampling rate"
+        assert fir.same_sampling_rate, (
+            "Only valid for filter banks with consistent sampling rate"
+        )
         length_samples = max([len(f) for f in fir])
         td = np.zeros((length_samples, len(fir)), dtype=np.float64)
         for ind, f in enumerate(fir):
@@ -1448,9 +1451,9 @@ def harmonics_from_chirp_ir(
 
     """
     assert type(ir) is ImpulseResponse, "This is only valid for an impulse response"
-    assert (
-        offset_percentage < 1 and offset_percentage >= 0
-    ), "Offset must be smaller than one"
+    assert offset_percentage < 1 and offset_percentage >= 0, (
+        "Offset must be smaller than one"
+    )
     assert ir.number_of_channels == 1, "Only an IR with a single channel is supported"
 
     # Get offsets
@@ -1550,9 +1553,9 @@ def harmonic_distortion_analysis(
     if type(ir) is list:
         for each_ir in ir:
             assert isinstance(each_ir, ImpulseResponse), "Unsupported type"
-            assert (
-                each_ir.number_of_channels == 1
-            ), "Only single-channel IRs are supported"
+            assert each_ir.number_of_channels == 1, (
+                "Only single-channel IRs are supported"
+            )
 
         ir2 = ir.pop(0)
         ir2._spectrum_parameters["smoothing"] = smoothing
@@ -1819,7 +1822,7 @@ def complex_smoothing(
     f, sp = ir.get_spectrum()
     sp = sp.astype(sp.dtype, order="C")
 
-    # Get a window prototype – mapping to logarithmic space is done through
+    # Get a window prototype - mapping to logarithmic space is done through
     # interpolation
     window_values = window(3000, True).astype(np.float64, order="C")
     output_sp = np.zeros_like(sp, order="C")

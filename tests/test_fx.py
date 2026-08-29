@@ -2,10 +2,12 @@
 Tests regarding functionality of audio fx
 """
 
-import dsptoolbox as dsp
-import numpy as np
-from os.path import join
 import os
+from os.path import join
+
+import numpy as np
+
+import dsptoolbox as dsp
 
 
 class TestEffectsModule:

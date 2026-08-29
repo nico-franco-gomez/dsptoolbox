@@ -2,15 +2,16 @@
 Backend for filter class and general filtering functions.
 """
 
-import numpy as np
 from warnings import warn
+
+import numpy as np
 import scipy.signal as sig
 from numpy.typing import NDArray
 
-from .signal import Signal
-from .multibandsignal import MultiBandSignal
 from ..helpers.polyphase import _polyphase_decomposition
 from ..standard.enums import BiquadEqType, FilterBankMode
+from .multibandsignal import MultiBandSignal
+from .signal import Signal
 
 
 def _biquad_coefficients(
@@ -280,7 +281,8 @@ def _filter_on_signal(
         if warning_on_complex_output:
             warn(
                 "Filter output is complex. Imaginary part is saved in "
-                + "Signal as time_data_imaginary"
+                + "Signal as time_data_imaginary",
+                stacklevel=2,
             )
         new_time_data = new_time_data.astype(np.complex128)
 
@@ -377,7 +379,8 @@ def _filter_on_signal_ba(
         if warning_on_complex_output:
             warn(
                 "Filter output is complex. Imaginary part is saved in "
-                + "Signal as time_data_imaginary"
+                + "Signal as time_data_imaginary",
+                stacklevel=2,
             )
         new_time_data = new_time_data.astype(np.complex128)
 
@@ -478,9 +481,9 @@ def _lfilter_fir(
     `scipy.signal.lfilter`, but the first axis is always used.
 
     """
-    assert (
-        len(a) == 1
-    ), f"{a} is not valid. It has to be 1 in order to be a valid FIR filter"
+    assert len(a) == 1, (
+        f"{a} is not valid. It has to be 1 in order to be a valid FIR filter"
+    )
 
     # b dimensions handling
     if b.ndim != 1:
@@ -556,7 +559,7 @@ def _filter_and_downsample(
         half_length = (len(b) - 1) // 2
         b_poly, _ = _polyphase_decomposition(b, down_factor, flip=True)
         new_time_data = np.zeros((poly.shape[0] + b_poly.shape[0] - 1, poly.shape[2]))
-        # Accumulator for each channel – it would be better to find a way
+        # Accumulator for each channel - it would be better to find a way
         # to do it without loops, but using scipy.signal.convolve since it
         # is advantageous compared to numpy.convolve
         for ch in range(poly.shape[2]):
@@ -625,7 +628,7 @@ def _filter_and_upsample(
         b_poly, padding = _polyphase_decomposition(b, up_factor)
         b_poly *= up_factor
 
-        # Accumulator – Length is not right!
+        # Accumulator - Length is not right!
         new_time_data = np.zeros(
             (
                 (time_data.shape[0] + b_poly.shape[0] - 1) * up_factor,
@@ -633,7 +636,7 @@ def _filter_and_upsample(
             )
         )
 
-        # Interpolate per channel and per polyphase component – should be
+        # Interpolate per channel and per polyphase component - should be
         # a better way to do it without the loops...
         for ch in range(time_data.shape[1]):
             for ind in range(up_factor):

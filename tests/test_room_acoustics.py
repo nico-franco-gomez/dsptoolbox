@@ -1,9 +1,11 @@
-import numpy as np
-import dsptoolbox as dsp
-import pytest
-from os.path import join
-import scipy.signal as sig
 import os
+from os.path import join
+
+import numpy as np
+import pytest
+import scipy.signal as sig
+
+import dsptoolbox as dsp
 
 
 class TestRoomAcousticsModule:

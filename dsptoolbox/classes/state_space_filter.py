@@ -2,8 +2,8 @@ import numpy as np
 from numpy.typing import NDArray
 from scipy.signal import tf2ss
 
-from .filter import Filter
 from ..standard.enums import FilterCoefficientsType
+from .filter import Filter
 from .realtime_filter import RealtimeFilter
 
 

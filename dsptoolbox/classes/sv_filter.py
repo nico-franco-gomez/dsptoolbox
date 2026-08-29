@@ -4,15 +4,15 @@ State variable filter topology-Preserving (trapezoidal integrators)
 """
 
 import numpy as np
-from matplotlib.figure import Figure
 from matplotlib.axes import Axes
+from matplotlib.figure import Figure
 from numpy.typing import NDArray
 
-from .signal import Signal
-from .multibandsignal import MultiBandSignal
 from ..generators import dirac
-from .realtime_filter import RealtimeFilter
 from ..standard.enums import SpectrumMethod
+from .multibandsignal import MultiBandSignal
+from .realtime_filter import RealtimeFilter
+from .signal import Signal
 
 
 class StateVariableFilter(RealtimeFilter):
@@ -133,9 +133,9 @@ class StateVariableFilter(RealtimeFilter):
           afterwards.
 
         """
-        assert (
-            self.sampling_rate_hz == signal.sampling_rate_hz
-        ), "Sampling rates do not match"
+        assert self.sampling_rate_hz == signal.sampling_rate_hz, (
+            "Sampling rates do not match"
+        )
         td = self.__process_vector(signal.time_data)
         return MultiBandSignal(
             [
@@ -166,7 +166,7 @@ class StateVariableFilter(RealtimeFilter):
     def plot_magnitude(
         self,
         length_samples: int,
-        range_hz: list | None = [20, 20e3],
+        range_hz: list | None = (20, 20e3),
         range_db: list | None = None,
     ) -> tuple[Figure, Axes]:
         """Plot the magnitude response of each band output of the filter.
@@ -200,7 +200,7 @@ class StateVariableFilter(RealtimeFilter):
     def plot_group_delay(
         self,
         length_samples: int,
-        range_hz: list[float] | None = [20.0, 20e3],
+        range_hz: list[float] | None = (20.0, 20e3),
     ) -> tuple[Figure, Axes]:
         """Plot the group delay of each band output of the filter.
 
@@ -226,8 +226,9 @@ class StateVariableFilter(RealtimeFilter):
     def plot_phase(
         self,
         length_samples: int,
-        range_hz: list | None = [20, 20e3],
+        range_hz: list | None = (20, 20e3),
         unwrap: bool = False,
+        radians: bool = True,
     ) -> tuple[Figure, Axes]:
         """Plot the phase of each band output of the filter.
 
@@ -239,6 +240,9 @@ class StateVariableFilter(RealtimeFilter):
             Range of Hz to plot. Default: [20, 20e3].
         unwrap : bool, optional
             When `True`, the phase response is unwrapped. Default: `False`.
+        radians : bool, optional
+            When True, the phase is plotted in radians, otherwise it is in degrees.
+            Default: True.
 
         Returns
         -------
@@ -248,6 +252,6 @@ class StateVariableFilter(RealtimeFilter):
         """
         d = self.get_ir(length_samples).get_all_bands()
         d.spectrum_method = SpectrumMethod.FFT
-        fig, ax = d.plot_phase(range_hz=range_hz, unwrap=unwrap)
+        fig, ax = d.plot_phase(range_hz=range_hz, unwrap=unwrap, radians=radians)
         ax.legend(["Lowpass", "Highpass", "Bandpass", "Allpass"])
         return fig, ax

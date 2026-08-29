@@ -1,7 +1,8 @@
-import dsptoolbox as dsp
 import numpy as np
-from scipy.signal import chirp
 import pytest
+from scipy.signal import chirp
+
+import dsptoolbox as dsp
 
 
 class TestGeneratorsModule:

@@ -1,8 +1,9 @@
 from warnings import warn
-from scipy.stats import pearsonr
+
 import numpy as np
 from numpy.typing import NDArray
 from scipy.signal import correlate, hilbert
+from scipy.stats import pearsonr
 
 from .spectrum_utilities import _wrap_phase
 
@@ -53,7 +54,8 @@ def _get_fractional_impulse_peak_index(
             warn(
                 f"Fractional latency detection failed for channel {ch}. "
                 + "Integer latency is"
-                + " returned"
+                + " returned",
+                stacklevel=2,
             )
             continue
         # =====
@@ -62,9 +64,7 @@ def _get_fractional_impulse_peak_index(
         pol = np.polyfit(
             x,
             h[
-                delay_samples[ch]
-                - polynomial_points
-                + 1 : delay_samples[ch]
+                delay_samples[ch] - polynomial_points + 1 : delay_samples[ch]
                 + polynomial_points
                 + 1,
                 ch,
@@ -89,7 +89,8 @@ def _get_fractional_impulse_peak_index(
             warn(
                 f"Fractional latency detection failed for channel {ch}. "
                 + "Integer latency is"
-                + " returned"
+                + " returned",
+                stacklevel=2,
             )
             latency_samples[ch] = delay_samples[ch] + int(move_back_one_sample)
             continue
@@ -111,7 +112,7 @@ def _fractional_latency(
 
     Parameters
     ----------
-    td1 : `np.ndaray`
+    td1 : `np.ndarray`
         Delayed version of the signal.
     td2 : NDArray[np.float64]
         Original version of the signal. If `None` is passed, the latencies

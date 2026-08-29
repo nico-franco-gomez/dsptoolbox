@@ -21,7 +21,7 @@ Mixed:
 
 """
 
-from .distances import log_spectral, itakura_saito, snr, si_sdr, fw_snr_seg
+from .distances import fw_snr_seg, itakura_saito, log_spectral, si_sdr, snr
 
 __all__ = [
     "log_spectral",

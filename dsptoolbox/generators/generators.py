@@ -6,15 +6,15 @@ used
 
 import numpy as np
 
-from ..helpers.frequency_conversion import _frequency_weightning
+from ..classes.filter_helpers import _impulse
+from ..classes.impulse_response import ImpulseResponse
+from ..classes.signal import Signal
+from ..helpers.frequency_conversion import _frequency_weighting
 from ..helpers.gain_and_level import _fade, _normalize
 from ..helpers.other import _pad_trim
-from ..classes.signal import Signal
-from ..classes.impulse_response import ImpulseResponse
-from ..classes.filter_helpers import _impulse
-from ._generators import _sync_log_chirp
 from ..standard.enums import FadeType
-from .enums import NoiseType, ChirpType, WaveForm
+from ._generators import _sync_log_chirp
+from .enums import ChirpType, NoiseType, WaveForm
 
 
 def noise(
@@ -69,9 +69,9 @@ def noise(
     """
     assert sampling_rate_hz is not None, "Sampling rate can not be None"
     if type(type_of_noise) is not NoiseType:
-        assert (
-            type(type_of_noise) is float
-        ), "type_of_noise must be either NoiseType or float"
+        assert type(type_of_noise) is float, (
+            "type_of_noise must be either NoiseType or float"
+        )
 
     assert length_seconds > 0, "Length has to be positive"
     assert peak_level_dbfs <= 0, "Peak level cannot surpass 0 dBFS"
@@ -113,7 +113,7 @@ def noise(
     elif type_of_noise == NoiseType.Violet:
         mag[id_low:, :] *= f[id_low:][..., None]
     elif type_of_noise == NoiseType.Grey:
-        w = _frequency_weightning(f, "a", db_output=False)
+        w = _frequency_weighting(f, "a", db_output=False)
         mag[id_low:, :] /= w[id_low:][..., None]
     elif type(type_of_noise) is float:
         mag[id_low:, :] *= (f[id_low:] ** (-type_of_noise * 0.5))[..., None]
@@ -204,9 +204,9 @@ def chirp(
     if range_hz is not None:
         assert len(range_hz) == 2, "range_hz has to contain exactly two frequencies"
         range_hz = sorted(range_hz)
-        assert (
-            range_hz[0] > 0
-        ), "Range has to start with positive frequencies excluding 0"
+        assert range_hz[0] > 0, (
+            "Range has to start with positive frequencies excluding 0"
+        )
         assert range_hz[1] <= sampling_rate_hz // 2, (
             "Upper limit for frequency range cannot be bigger than the "
             + "nyquist frequency"
@@ -296,15 +296,15 @@ def dirac(
 
     """
     assert sampling_rate_hz is not None, "Sampling rate can not be None"
-    assert (
-        type(length_samples) is int and length_samples > 0
-    ), "Only positive lengths are valid"
-    assert (
-        type(delay_samples) is int and delay_samples >= 0
-    ), "Only positive delay is supported"
-    assert (
-        delay_samples < length_samples
-    ), "Delay is bigger than the samples of the signal"
+    assert type(length_samples) is int and length_samples > 0, (
+        "Only positive lengths are valid"
+    )
+    assert type(delay_samples) is int and delay_samples >= 0, (
+        "Only positive delay is supported"
+    )
+    assert delay_samples < length_samples, (
+        "Delay is bigger than the samples of the signal"
+    )
     assert number_of_channels > 0, "At least one channel has to be created"
     assert sampling_rate_hz > 0, "Sampling rate can only be positive"
     td = np.zeros((length_samples, number_of_channels))
@@ -362,9 +362,9 @@ def oscillator(
         Wave signal.
 
     """
-    assert (
-        frequency_hz < sampling_rate_hz // 2
-    ), "Frequency must be beneath nyquist frequency"
+    assert frequency_hz < sampling_rate_hz // 2, (
+        "Frequency must be beneath nyquist frequency"
+    )
     assert frequency_hz > 0, "Frequency must be bigger than 0"
 
     if padding_end_seconds != 0:
@@ -378,14 +378,14 @@ def oscillator(
 
     if harmonic_cutoff_hz is None:
         harmonic_cutoff_hz = sampling_rate_hz // 2
-    assert (
-        harmonic_cutoff_hz > 0 and harmonic_cutoff_hz <= sampling_rate_hz // 2
-    ), "Cutoff frequency must be between 0 and the nyquist frequency!"
+    assert harmonic_cutoff_hz > 0 and harmonic_cutoff_hz <= sampling_rate_hz // 2, (
+        "Cutoff frequency must be between 0 and the nyquist frequency!"
+    )
 
     if uncorrelated:
         phase_shift = np.random.uniform(-np.pi, np.pi, (number_of_channels))[None, ...]
     else:
-        phase_shift = np.zeros((number_of_channels))[None, ...]
+        phase_shift = np.zeros(number_of_channels)[None, ...]
 
     # Get waveforms
     td = np.zeros((l_samples, number_of_channels))

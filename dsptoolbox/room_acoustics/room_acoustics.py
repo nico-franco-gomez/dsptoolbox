@@ -3,30 +3,30 @@ High-level methods for room acoustics functions
 """
 
 import numpy as np
-from scipy.signal import find_peaks, oaconvolve, convolve
 from numpy.typing import NDArray
+from scipy.signal import convolve, find_peaks, oaconvolve
 
-from ..classes import Signal, MultiBandSignal, Filter, ImpulseResponse
+from ..classes import Filter, ImpulseResponse, MultiBandSignal, Signal
 from ..filterbanks import fractional_octave_bands, linkwitz_riley_crossovers
+from ..helpers.gain_and_level import to_db
+from ..helpers.other import _pad_trim, find_nearest_points_index_in_vector
+from ..standard import pad_trim
+from ..standard.enums import (
+    FilterBankMode,
+    FilterPassType,
+    IirDesignMethod,
+    SpectrumMethod,
+)
 from ._room_acoustics import (
-    _reverb,
-    _complex_mode_identification,
-    _find_ir_start,
-    _generate_rir,
     ShoeboxRoom,
     _add_reverberant_tail_noise,
-    _d50_from_rir,
     _c80_from_rir,
+    _complex_mode_identification,
+    _d50_from_rir,
+    _find_ir_start,
+    _generate_rir,
+    _reverb,
     _ts_from_rir,
-)
-from ..standard import pad_trim
-from ..helpers.other import _pad_trim, find_nearest_points_index_in_vector
-from ..helpers.gain_and_level import to_db
-from ..standard.enums import (
-    IirDesignMethod,
-    FilterPassType,
-    SpectrumMethod,
-    FilterBankMode,
 )
 from .enums import ReverbTime, RoomAcousticsDescriptor
 
@@ -95,15 +95,15 @@ def reverb_time(
     - [2]: Lundeby, Virgran, Bietz and Vorlaender - Uncertainties of
       Measurements in Room Acoustics - ACUSTICA Vol. 81 (1995).
     - [3]: W. T. Chu. “Comparison of reverberation measurements using
-      Schroeder’s impulse method and decay-curve averaging method”. In:
-      Journal of the Acoustical Society of America 63.5 (1978), pp. 1444–1450.
+      Schroeder's impulse method and decay-curve averaging method”. In:
+      Journal of the Acoustical Society of America 63.5 (1978), pp. 1444-1450.
     - [4]: Room-EQ-Wizard for Topt.
 
     """
     if type(signal) is ImpulseResponse:
         ir_start = _check_ir_start_reverb(signal, ir_start)
-        reverberation_times = np.zeros((signal.number_of_channels))
-        correlation_coefficients = np.zeros((signal.number_of_channels))
+        reverberation_times = np.zeros(signal.number_of_channels)
+        correlation_coefficients = np.zeros(signal.number_of_channels)
         for n in range(signal.number_of_channels):
             reverberation_times[n], correlation_coefficients[n] = _reverb(
                 signal.time_data[:, n].copy(),
@@ -139,7 +139,7 @@ def reverb_time(
 
 def find_modes(
     signal: ImpulseResponse,
-    f_range_hz=[50, 200],
+    f_range_hz=(50, 200),
     dist_hz: float = 5,
     prominence_db: float | None = None,
     antiresonances: bool = False,
@@ -244,9 +244,9 @@ def convolve_rir_on_signal(
 
     """
     assert rir.number_of_channels == 1, "RIR should not contain more than one channel."
-    assert (
-        rir.sampling_rate_hz == signal.sampling_rate_hz
-    ), "The sampling rates do not match"
+    assert rir.sampling_rate_hz == signal.sampling_rate_hz, (
+        "The sampling rates do not match"
+    )
 
     length_ratio = signal.length_samples / rir.length_samples
     if length_ratio < 15.0 or length_ratio < 1.0 / 15.0:
@@ -366,12 +366,12 @@ def generate_synthetic_rir(
     assert type(room) is ShoeboxRoom, "Room must be of type ShoeboxRoom"
     source_position = np.asarray(source_position)
     receiver_position = np.asarray(receiver_position)
-    assert room.check_if_in_room(
-        source_position
-    ), "Source is not located inside the room"
-    assert room.check_if_in_room(
-        receiver_position
-    ), "Receiver is not located inside the room"
+    assert room.check_if_in_room(source_position), (
+        "Source is not located inside the room"
+    )
+    assert room.check_if_in_room(receiver_position), (
+        "Receiver is not located inside the room"
+    )
 
     total_length_samples = int(total_length_seconds * sampling_rate_hz)
 
@@ -391,9 +391,9 @@ def generate_synthetic_rir(
         np.nan_to_num(rir, copy=False, nan=0)
     else:
         # ====== Frequency dependent
-        assert hasattr(
-            room, "detailed_absorption"
-        ), "Given room has no detailed absorption dictionary"
+        assert hasattr(room, "detailed_absorption"), (
+            "Given room has no detailed absorption dictionary"
+        )
         # Create filter bank
         freqs = room.detailed_absorption["center_frequencies"][:-1] * np.sqrt(2)
         fb = linkwitz_riley_crossovers(
@@ -567,9 +567,9 @@ def _check_ir_start_reverb(
             ir_start = np.ones(sig.number_of_channels, dtype=np.int_) * ir_start
         elif ir_start is None:
             return [None] * sig.number_of_channels
-        assert (
-            ir_start.ndim == 1 and len(ir_start) == sig.number_of_channels
-        ), "Shape of ir_start is not valid"
+        assert ir_start.ndim == 1 and len(ir_start) == sig.number_of_channels, (
+            "Shape of ir_start is not valid"
+        )
     else:
         if np.issubdtype(type(ir_start), np.integer):
             ir_start = (

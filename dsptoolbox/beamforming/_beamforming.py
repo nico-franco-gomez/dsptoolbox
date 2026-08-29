@@ -2,10 +2,11 @@
 Backend for beamforming module
 """
 
-import numpy as np
 import matplotlib.pyplot as plt
-from seaborn import set_style
+import numpy as np
 from numpy.typing import NDArray
+from seaborn import set_style
+
 from ..helpers.other import _euclidean_distance_matrix
 
 set_style("whitegrid")
@@ -44,9 +45,9 @@ class BasePoints:
         x = np.asarray(positions["x"]).squeeze()[None, ...]
         y = np.asarray(positions["y"]).squeeze()[None, ...]
         z = np.asarray(positions["z"]).squeeze()[None, ...]
-        assert (
-            x.shape == y.shape and x.shape == z.shape
-        ), "Shapes of x, y or z are not compatible"
+        assert x.shape == y.shape and x.shape == z.shape, (
+            "Shapes of x, y or z are not compatible"
+        )
         new_r = np.append(x, y, axis=0)
         new_r = np.append(new_r, z, axis=0)
         self.coordinates = new_r.T
@@ -62,9 +63,9 @@ class BasePoints:
 
     @coordinates.setter
     def coordinates(self, new_r):
-        assert (
-            type(new_r) is np.ndarray
-        ), "R vectors array should be of type numpy.ndarray"
+        assert type(new_r) is np.ndarray, (
+            "R vectors array should be of type numpy.ndarray"
+        )
         # Check if grid is 1, 2 or 3D
         ndimensions = 3
         dimensions = ["x", "y", "z"]
@@ -108,9 +109,9 @@ class BasePoints:
             point = np.asarray(point)
         if point.ndim == 1:
             point = point[None, ...]
-        assert (
-            point.shape[1] == self.coordinates.shape[1]
-        ), f"Invalid shapes: {point.shape}, {self.coordinates.shape}"
+        assert point.shape[1] == self.coordinates.shape[1], (
+            f"Invalid shapes: {point.shape}, {self.coordinates.shape}"
+        )
         return _euclidean_distance_matrix(self.coordinates, point).squeeze()
 
     # ======== Plotting =======================================================
@@ -161,7 +162,7 @@ class BasePoints:
                 y=self.coordinates[:, dim2],
             )
             ax.set_xlabel(f"${self.dim[0]}$ / m")
-            ax.set_ylabel(f"""${['x', 'y', 'z'][dim2]}$ / m""")
+            ax.set_ylabel(f"""${["x", "y", "z"][dim2]}$ / m""")
         fig.tight_layout()
         return fig, ax
 
@@ -241,13 +242,10 @@ def _clean_sc_deconvolve(
     # Save last CSM to check stopping criterion given in [1]
     D = np.append(D[None, ...] * 2, D[None, ...], axis=0)
 
-    # Save powers for stopping criterion – Alternative
-    # powers = np.zeros(maximum_iterations)
-
     second_map = np.zeros_like(map)
 
     # Deconvolve
-    for itr in range(maximum_iterations):
+    for _ in range(maximum_iterations):
         # Find maximum in map
         maximum_power_ind = np.argmax(map)
         maximum_power = map[maximum_power_ind]

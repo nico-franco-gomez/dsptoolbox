@@ -1,8 +1,9 @@
+from enum import Enum, auto
+
 import numpy as np
 from numpy.typing import NDArray
-from scipy.signal import correlate, lfilter
 from scipy.linalg import convolution_matrix, lstsq, solve, toeplitz
-from enum import Enum, auto
+from scipy.signal import correlate, lfilter
 
 
 class ArmaMethod(Enum):
@@ -126,9 +127,9 @@ def _yw_ar_estimation(
         Variance of the remaining error.
 
     """
-    assert (
-        time_data.ndim <= 3
-    ), "This function only accepts a signal with one, two or three dimensions"
+    assert time_data.ndim <= 3, (
+        "This function only accepts a signal with one, two or three dimensions"
+    )
 
     length_td = time_data.shape[0]
     if time_data.ndim == 1:

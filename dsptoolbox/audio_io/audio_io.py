@@ -16,6 +16,7 @@ if sys.platform == "win32":
         os.environ[env_variable] = "1"
 
 import sounddevice as sd
+
 from .. import Signal
 from ..helpers.gain_and_level import _normalize
 
@@ -206,7 +207,7 @@ def play_and_record(
     normalized_dbfs: float | None = -6,
     device: str | None = None,
     play_channels=None,
-    rec_channels=[1],
+    rec_channels: int | list[int] | None = None,
 ) -> Signal:
     """Play and record using some available device. Note that the channel
     numbers start here with 1.
@@ -244,6 +245,8 @@ def play_and_record(
         play_channels = list(range(1, signal.number_of_channels + 1))
     if type(play_channels) is int:
         play_channels = [play_channels]
+    if rec_channels is None:
+        rec_channels = [1]
     if type(rec_channels) is int:
         rec_channels = [rec_channels]
     play_channels = sorted(play_channels)
@@ -253,9 +256,9 @@ def play_and_record(
         + "channels in play_channels"
     )
     assert not any([p < 1 for p in play_channels]), "Play channel has to be 1 or more"
-    assert not any(
-        [r < 1 for r in rec_channels]
-    ), "Recording channel has to be 1 or more"
+    assert not any([r < 1 for r in rec_channels]), (
+        "Recording channel has to be 1 or more"
+    )
     #
     if duration_seconds is not None:
         assert duration_seconds > 0, "Duration must be positive"
@@ -296,7 +299,7 @@ def record(
     duration_seconds: float = 5,
     sampling_rate_hz: int = 48000,
     device: str | int | None = None,
-    rec_channels=[1],
+    rec_channels: int | list[int] | None = None,
 ) -> Signal:
     """Record using some available device. Note that the channel numbers
     start here with 1.
@@ -320,12 +323,14 @@ def record(
 
     """
     # Asserts
+    if rec_channels is None:
+        rec_channels = [1]
     if type(rec_channels) is int:
         rec_channels = [rec_channels]
     rec_channels = sorted(rec_channels)
-    assert not any(
-        [r < 1 for r in rec_channels]
-    ), "Recording channel has to be 1 or more"
+    assert not any([r < 1 for r in rec_channels]), (
+        "Recording channel has to be 1 or more"
+    )
     #
     if device is not None:
         sd.default.device = device
@@ -356,7 +361,7 @@ def play(
     Parameters
     ----------
     signal : Signal
-        Signal to be reproduced. Its channel number must match the the length
+        Signal to be reproduced. Its channel number must match the length
         of the play_channels vector.
     duration_seconds : float, optional
         If `None`, the whole signal is played, otherwise it is trimmed to the

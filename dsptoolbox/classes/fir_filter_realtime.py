@@ -1,11 +1,11 @@
-from numpy.typing import NDArray
 import numpy as np
 import scipy.fft as fft
+from numpy.typing import NDArray
 
-from ..standard.enums import FilterCoefficientsType
-from .realtime_filter import RealtimeFilter
 from ..classes.filter import Filter
 from ..classes.signal import Signal
+from ..standard.enums import FilterCoefficientsType
+from .realtime_filter import RealtimeFilter
 
 
 class FIRFilter(RealtimeFilter):

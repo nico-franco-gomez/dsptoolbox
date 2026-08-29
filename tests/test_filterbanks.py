@@ -1,12 +1,13 @@
-import dsptoolbox as dsp
-import pytest
-import numpy as np
-import scipy.signal as sig
 import os
+
+import numpy as np
+import pytest
+import scipy.signal as sig
+
+import dsptoolbox as dsp
 
 
 class TestFilterbanksModule:
-
     fs = 5000
 
     def get_noise(self):
@@ -142,7 +143,7 @@ class TestFilterbanksModule:
                 sampling_rate_hz=fs_hz,
             )
 
-    def test_weightning_filter(self):
+    def test_weighting_filter(self):
         fs_hz = 5_000
         dsp.filterbanks.weighting_filter(True, fs_hz)
         dsp.filterbanks.weighting_filter(False, fs_hz)
@@ -201,7 +202,7 @@ class TestFilterbanksModule:
         pl.get_filter()
         pl.set_parameters()
 
-        # Phase linearizer – with interpolation
+        # Phase linearizer - with interpolation
         ir = fb.get_ir(length_samples=2**9).collapse()
         ir.spectrum_method = dsp.SpectrumMethod.FFT
         _, sp = ir.get_spectrum()

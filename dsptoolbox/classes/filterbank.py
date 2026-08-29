@@ -1,29 +1,29 @@
-from pickle import dump, HIGHEST_PROTOCOL
 from copy import deepcopy
-import numpy as np
+from pickle import HIGHEST_PROTOCOL, dump
+from typing import Literal, Self, overload
 from warnings import warn
-from matplotlib.figure import Figure
+
+import numpy as np
 from matplotlib.axes import Axes
+from matplotlib.figure import Figure
 from numpy.typing import NDArray
-from typing import overload, Literal, Self
 
-
-from .signal import Signal
-from .impulse_response import ImpulseResponse
-from .multibandsignal import MultiBandSignal
-from .filter import Filter
-from .filter_helpers import _filterbank_on_signal
 from ..generators import dirac
-from ..plots import general_plot
 from ..helpers.other import _check_format_in_path
 from ..helpers.spectrum_utilities import _get_normalized_spectrum
+from ..plots import general_plot
 from ..standard._standard_backend import _group_delay_direct
 from ..standard.enums import (
-    SpectrumMethod,
-    SpectrumScaling,
     FilterBankMode,
     MagnitudeNormalization,
+    SpectrumMethod,
+    SpectrumScaling,
 )
+from .filter import Filter
+from .filter_helpers import _filterbank_on_signal
+from .impulse_response import ImpulseResponse
+from .multibandsignal import MultiBandSignal
+from .signal import Signal
 
 
 class FilterBank:
@@ -107,8 +107,7 @@ class FilterBank:
         txt = ""
         info = self.metadata
         for k in info:
-            txt += f""" | {str(k).replace('_', ' ').
-                           capitalize()}: {info[k]}"""
+            txt += f""" | {str(k).replace("_", " ").capitalize()}: {info[k]}"""
         txt = "Filter Bank:" + txt
         txt += "\n"
         txt += "–" * len(txt)
@@ -119,8 +118,9 @@ class FilterBank:
             for kf in filter_metadata:
                 if kf == "ba":
                     continue
-                txt += f""" | {str(kf).replace('_', ' ').
-                               capitalize()}: {filter_metadata[kf]}"""
+                txt += f""" | {str(kf).replace("_", " ").capitalize()}: {
+                    filter_metadata[kf]
+                }"""
         return txt
 
     def initialize_zi(self, number_of_channels: int = 1):
@@ -174,9 +174,9 @@ class FilterBank:
         """
         new_sampling_rate_hz = np.asarray(new_sampling_rate_hz).squeeze()
         if self.same_sampling_rate:
-            assert (
-                new_sampling_rate_hz.ndim == 0
-            ), "Sampling rate should be only an integer"
+            assert new_sampling_rate_hz.ndim == 0, (
+                "Sampling rate should be only an integer"
+            )
             self.__sampling_rate_hz = int(new_sampling_rate_hz)
         else:
             new_sampling_rate_hz = np.atleast_1d(new_sampling_rate_hz)
@@ -231,13 +231,13 @@ class FilterBank:
                     sr.append(f.sampling_rate_hz)
                 self.sampling_rate_hz = sr
             for ind, f in enumerate(new_filters):
-                assert (
-                    type(f) is Filter
-                ), f"Object at index {ind} is not a supported Filter"
+                assert type(f) is Filter, (
+                    f"Object at index {ind} is not a supported Filter"
+                )
                 if self.same_sampling_rate:
-                    assert (
-                        f.sampling_rate_hz == self.sampling_rate_hz
-                    ), "Sampling rates do not match"
+                    assert f.sampling_rate_hz == self.sampling_rate_hz, (
+                        "Sampling rates do not match"
+                    )
         self.__filters = new_filters
 
     @property
@@ -316,9 +316,9 @@ class FilterBank:
         else:
             fs = self.filters.copy()
             if self.same_sampling_rate:
-                assert (
-                    self.sampling_rate_hz == filt.sampling_rate_hz
-                ), "Sampling rates do not match"
+                assert self.sampling_rate_hz == filt.sampling_rate_hz, (
+                    "Sampling rates do not match"
+                )
             if index == -1:
                 fs.append(filt)
             else:
@@ -349,9 +349,9 @@ class FilterBank:
         assert self.filters, "There are no filters to remove"
         if index == -1:
             index = len(self.filters) - 1
-        assert index in range(
-            len(self.filters)
-        ), f"There is no filter at index {index}."
+        assert index in range(len(self.filters)), (
+            f"There is no filter at index {index}."
+        )
         n_f = self.filters.copy()
         f = n_f.pop(index)
         self.filters = n_f
@@ -377,16 +377,16 @@ class FilterBank:
             "Too many or too few dimensions are given in the new "
             + "arrangement vector"
         )
-        assert self.number_of_filters == len(
-            new_order
-        ), "The number of filters does not match"
+        assert self.number_of_filters == len(new_order), (
+            "The number of filters does not match"
+        )
         assert all(new_order < self.number_of_filters) and all(new_order >= 0), (
             "Indexes of new filters have to be in "
             + f"[0, {self.number_of_filters - 1}]"
         )
-        assert len(np.unique(new_order)) == len(
-            new_order
-        ), "There are repeated indexes in the new order vector"
+        assert len(np.unique(new_order)) == len(new_order), (
+            "There are repeated indexes in the new order vector"
+        )
         n_f = [self.filters[i] for i in new_order]
         self.filters = n_f
         return self
@@ -453,9 +453,9 @@ class FilterBank:
                 "Multirate filtering is not valid for sequential or summed "
                 + "filtering"
             )
-        assert np.all(
-            signal.sampling_rate_hz == self.sampling_rate_hz
-        ), "Sampling rates do not match"
+        assert np.all(signal.sampling_rate_hz == self.sampling_rate_hz), (
+            "Sampling rates do not match"
+        )
         if zero_phase:
             assert not activate_zi, (
                 "Zero-phase filtering and zi cannot be used at " + "the same time"
@@ -505,9 +505,9 @@ class FilterBank:
             New signal after filtering.
 
         """
-        assert np.all(
-            mbsignal.sampling_rate_hz == self.sampling_rate_hz
-        ), "Sampling rates do not match"
+        assert np.all(mbsignal.sampling_rate_hz == self.sampling_rate_hz), (
+            "Sampling rates do not match"
+        )
         if zero_phase:
             assert not activate_zi, (
                 "Zero-phase filtering and zi cannot be used at " + "the same time"
@@ -570,9 +570,9 @@ class FilterBank:
 
         """
         if not self.same_sampling_rate:
-            assert (
-                mode == FilterBankMode.Parallel
-            ), "Multirate filter bank can only deliver an IR in parallel mode"
+            assert mode == FilterBankMode.Parallel, (
+                "Multirate filter bank can only deliver an IR in parallel mode"
+            )
             mb = MultiBandSignal(same_sampling_rate=False)
             sr = self.sampling_rate_hz
             for ind, f in enumerate(self.filters):
@@ -593,7 +593,8 @@ class FilterBank:
             warn(
                 f"Filter order {max_order} is longer than {length_samples}."
                 + "The length will be adapted to be 100 samples longer than"
-                + " the longest filter"
+                + " the longest filter",
+                stacklevel=2,
             )
             length_samples = max_order + 100
 
@@ -643,11 +644,11 @@ class FilterBank:
                     h[:, ind] = f.get_transfer_function(frequency_vector_hz)
             case FilterBankMode.Sequential:
                 h = np.ones(len(frequency_vector_hz), dtype=np.complex128)
-                for ind, f in enumerate(self.filters):
+                for f in self.filters:
                     h *= f.get_transfer_function(frequency_vector_hz)
             case FilterBankMode.Summed:
                 h = np.ones(len(frequency_vector_hz), dtype=np.complex128)
-                for ind, f in enumerate(self.filters):
+                for f in self.filters:
                     h += f.get_transfer_function(frequency_vector_hz)
             case _:
                 raise ValueError("No valid mode")
@@ -663,7 +664,7 @@ class FilterBank:
         self,
         length_samples: int,
         mode: FilterBankMode,
-        range_hz: list[float] | None = [20.0, 20e3],
+        range_hz: list[float] | None = (20.0, 20e3),
         zero_phase: bool = False,
     ) -> tuple[Figure, Axes] | None:
         """Plots the magnitude response of each filter.
@@ -695,7 +696,8 @@ class FilterBank:
         if not self.same_sampling_rate:
             warn(
                 "Plotting for multirate FilterBank is not supported, "
-                + "skipping plots"
+                + "skipping plots",
+                stacklevel=2,
             )
             return None
         # Length handling
@@ -706,7 +708,8 @@ class FilterBank:
             warn(
                 f"Filter order {max_order} is longer than {length_samples}."
                 + " The length will be adapted to be 100 samples longer than"
-                + " the longest filter"
+                + " the longest filter",
+                stacklevel=2,
             )
             length_samples = max_order + 100
 
@@ -800,7 +803,7 @@ class FilterBank:
         self,
         length_samples: int,
         mode: FilterBankMode,
-        range_hz=[20, 20e3],
+        range_hz=(20, 20e3),
         unwrap: bool = False,
     ) -> tuple[Figure, Axes] | None:
         """Plots the phase response of each filter.
@@ -831,7 +834,8 @@ class FilterBank:
         if not self.same_sampling_rate:
             warn(
                 "Plotting for multirate FilterBank is not supported, "
-                + "skipping plots"
+                + "skipping plots",
+                stacklevel=2,
             )
             return None
         # Length handling
@@ -842,7 +846,8 @@ class FilterBank:
             warn(
                 f"Filter order {max_order} is longer than {length_samples}."
                 + " The length will be adapted to be 100 samples longer than"
-                + " the longest filter"
+                + " the longest filter",
+                stacklevel=2,
             )
             length_samples = max_order + 100
 
@@ -907,7 +912,7 @@ class FilterBank:
         self,
         length_samples: int,
         mode: FilterBankMode,
-        range_hz: list[float] | None = [20.0, 20e3],
+        range_hz: list[float] | None = (20.0, 20e3),
     ) -> tuple[Figure, Axes] | None:
         """Plots the phase response of each filter.
 
@@ -935,7 +940,8 @@ class FilterBank:
         if not self.same_sampling_rate:
             warn(
                 "Plotting for multirate FilterBank is not supported, "
-                + "skipping plots"
+                + "skipping plots",
+                stacklevel=2,
             )
             return None
         # Length handling
@@ -946,7 +952,8 @@ class FilterBank:
             warn(
                 f"Filter order {max_order} is longer than {length_samples}."
                 + " The length will be adapted to be 100 samples longer than"
-                + " the longest filter"
+                + " the longest filter",
+                stacklevel=2,
             )
             length_samples = max_order + 100
 

@@ -2,48 +2,49 @@
 Backend for the creation of specific filter banks
 """
 
-import numpy as np
-from warnings import warn
-from os import sep
-from pickle import dump, HIGHEST_PROTOCOL
 from copy import deepcopy
+from os import sep
+from pickle import HIGHEST_PROTOCOL, dump
+from warnings import warn
+
+import numpy as np
 from numpy.typing import NDArray
+from scipy.linalg import lstsq
 from scipy.signal import (
+    bilinear,
+    butter,
+    freqz,
     sosfilt,
     sosfilt_zi,
-    butter,
     sosfiltfilt,
-    bilinear,
     tf2sos,
-    freqz,
 )
-from scipy.linalg import lstsq
 
 from ..classes import (
-    Signal,
-    MultiBandSignal,
-    FilterBank,
     Filter,
+    FilterBank,
     ImpulseResponse,
+    MultiBandSignal,
+    Signal,
 )
 from ..generators import dirac
-from ..plots import general_plot
-from ..helpers.spectrum_utilities import _get_normalized_spectrum
-from ..helpers.other import find_nearest_points_index_in_vector
-from ..standard._standard_backend import _group_delay_direct
-from ..standard.enums import (
-    FilterCoefficientsType,
-    FilterBankMode,
-    SpectrumMethod,
-    SpectrumScaling,
-    MagnitudeNormalization,
-)
 from ..helpers.ar_estimation import (
-    _burg_ar_estimation,
-    _yw_ar_estimation,
     ArmaMethod,
+    _burg_ar_estimation,
     _prony,
     _steiglitz_mcbride,
+    _yw_ar_estimation,
+)
+from ..helpers.other import find_nearest_points_index_in_vector
+from ..helpers.spectrum_utilities import _get_normalized_spectrum
+from ..plots import general_plot
+from ..standard._standard_backend import _group_delay_direct
+from ..standard.enums import (
+    FilterBankMode,
+    FilterCoefficientsType,
+    MagnitudeNormalization,
+    SpectrumMethod,
+    SpectrumScaling,
 )
 
 
@@ -110,7 +111,8 @@ class LRFilterBank:
                     "Order of the crossovers is recommended to be even. "
                     + "Odd orders have band crossing at -3 dB and are not "
                     + "really Linkwitz-Riley crossovers, although they have "
-                    + "perfect magnitude reconstruction."
+                    + "perfect magnitude reconstruction.",
+                    stacklevel=2,
                 )
         freqs_order = freqs.argsort()
         self.freqs = freqs[freqs_order]
@@ -160,9 +162,9 @@ class LRFilterBank:
                 continue
 
             if self.order[i] % 2 == 0:
-                assert (
-                    self.order[i] % 4 == 0
-                ), f"{self.order[i]} order is not supported for crossover"
+                assert self.order[i] % 4 == 0, (
+                    f"{self.order[i]} order is not supported for crossover"
+                )
                 order = self.order[i] // 2
             else:
                 order = self.order[i]
@@ -249,15 +251,16 @@ class LRFilterBank:
         if mode == FilterBankMode.Sequential:
             warn(
                 "sequential mode is not supported for this filter bank. "
-                + "It is automatically changed to summed"
+                + "It is automatically changed to summed",
+                stacklevel=2,
             )
             mode = FilterBankMode.Summed
-        assert (
-            s.sampling_rate_hz == self.sampling_rate_hz
-        ), "Sampling rates do not match"
-        assert not (
-            activate_zi and zero_phase
-        ), "Zero phase filtering and activating zi is a valid setting"
+        assert s.sampling_rate_hz == self.sampling_rate_hz, (
+            "Sampling rates do not match"
+        )
+        assert not (activate_zi and zero_phase), (
+            "Zero phase filtering and activating zi is a valid setting"
+        )
         new_time_data = np.zeros(
             (s.time_data.shape[0], s.number_of_channels, self.number_of_bands)
         )
@@ -415,7 +418,7 @@ class LRFilterBank:
         self,
         length_samples: int,
         mode: FilterBankMode = FilterBankMode.Parallel,
-        range_hz: list[float] | None = [20.0, 20e3],
+        range_hz: list[float] | None = (20.0, 20e3),
         zero_phase: bool = False,
     ):
         """Plots the magnitude response of each filter.
@@ -440,7 +443,8 @@ class LRFilterBank:
         if mode != FilterBankMode.Parallel:
             warn(
                 "Plotting for LRFilterBank is only supported with parallel "
-                + "mode. Setting to parallel"
+                + "mode. Setting to parallel",
+                stacklevel=2,
             )
         delay_samples = int(0.5 * length_samples) if zero_phase else 0
         d = dirac(
@@ -509,7 +513,7 @@ class LRFilterBank:
         self,
         length_samples: int,
         mode: FilterBankMode = FilterBankMode.Parallel,
-        range_hz: list[float] | None = [20.0, 20e3],
+        range_hz: list[float] | None = (20.0, 20e3),
         unwrap: bool = False,
     ):
         """Plots the phase response of each filter.
@@ -571,7 +575,7 @@ class LRFilterBank:
         self,
         length_samples: int,
         mode: FilterBankMode = FilterBankMode.Parallel,
-        range_hz: list[float] | None = [20.0, 20e3],
+        range_hz: list[float] | None = (20.0, 20e3),
     ):
         """Plots the phase response of each filter.
 
@@ -778,7 +782,7 @@ class GammaToneFilterBank(FilterBank):
 
         # iteratively find gains
         gains = np.ones((self.number_of_filters, 1))
-        for ii in range(100):
+        for _ in range(100):
             h_fin = np.matmul(h, gains)
             gains /= np.abs(h_fin)
 
@@ -835,7 +839,7 @@ class GammaToneFilterBank(FilterBank):
 
         # apply phase shift, delay, and gain
         for bb, (phase_factor, delay, gain) in enumerate(
-            zip(self._phase_factors, self._delays, self._gains)
+            zip(self._phase_factors, self._delays, self._gains, strict=True)
         ):
             time[bb] = np.real(np.roll(time[bb], delay, axis=-1) * phase_factor) * gain
 
@@ -879,9 +883,9 @@ class BaseCrossover(FilterBank):
           band signal.
 
         """
-        assert (
-            len(analysis_filters) == 2
-        ), "Exactly two filters are needed for a valid crossover"
+        assert len(analysis_filters) == 2, (
+            "Exactly two filters are needed for a valid crossover"
+        )
         self.filters_synthesis = synthesis_filters
         super().__init__(filters=analysis_filters, same_sampling_rate=True, info=info)
 
@@ -893,9 +897,9 @@ class BaseCrossover(FilterBank):
     @filters_synthesis.setter
     def filters_synthesis(self, new_filters):
         assert len(new_filters) == 2, "Two synthesis filters are needed in a crossover"
-        assert all(
-            [type(n) is Filter for n in new_filters]
-        ), "Filters have to be of type Filter"
+        assert all([type(n) is Filter for n in new_filters]), (
+            "Filters have to be of type Filter"
+        )
         self.__filters_synthesis = new_filters
 
     # ======== Filtering ======================================================
@@ -914,9 +918,9 @@ class BaseCrossover(FilterBank):
         # ========== In case of downsampling while filtering ==================
         if zero_phase:
             raise NotImplementedError("No zero-phase implementation with downsampling")
-        assert (
-            signal.sampling_rate_hz == self.sampling_rate_hz
-        ), "Sampling rates do not match"
+        assert signal.sampling_rate_hz == self.sampling_rate_hz, (
+            "Sampling rates do not match"
+        )
         if activate_zi:
             if len(self.filters[0].zi) != signal.number_of_channels:
                 self.initialize_zi(signal.number_of_channels)
@@ -961,7 +965,7 @@ class BaseCrossover(FilterBank):
         self,
         length_samples: int,
         mode: FilterBankMode = FilterBankMode.Parallel,
-        range_hz: list[float] | None = [20.0, 20e3],
+        range_hz: list[float] | None = (20.0, 20e3),
         downsample: bool = True,
     ):
         """Plots the magnitude response of each filter.
@@ -995,7 +999,8 @@ class BaseCrossover(FilterBank):
             warn(
                 f"Filter order {max_order} is longer than {length_samples}."
                 + " The length will be adapted to be 100 samples longer than"
-                + " the longest filter"
+                + " the longest filter",
+                stacklevel=2,
             )
             length_samples = max_order + 100
 

@@ -1,7 +1,9 @@
-import dsptoolbox as dsp
+from random import choice
+
 import numpy as np
 import pytest
-from random import choice
+
+import dsptoolbox as dsp
 
 
 class TestTools:
@@ -40,7 +42,7 @@ class TestTools:
         with pytest.raises(AssertionError):
             dsp.tools.convert_sample_representation(v, "f64", "f64", True)
 
-        # –––––– Standard f64 input
+        # ------ Standard f64 input
         # With casting
         for t in ["u8", "u16", "u32", "i8", "i16", "i32"]:
             out, eq, max_val = dsp.tools.convert_sample_representation(
@@ -61,7 +63,7 @@ class TestTools:
                 np.array([eq, eq + max_val, eq - max_val, eq + max_val // 2]),
             )
 
-        # –––––– Some different inputs to "f64" output
+        # ------ Some different inputs to "f64" output
         for f in ["i8", "u8", "i16", "u16", "i24", "u24", "i32", "u32"]:
             bits = int(f[1:])
             signed = f[0] == "i"

@@ -1,15 +1,16 @@
+from warnings import warn
+
 import numpy as np
 from numpy.typing import NDArray
 from scipy.signal import oaconvolve
-from warnings import warn
 
+from ..classes import MultiBandSignal, Signal
 from ..helpers.latency import (
     _fractional_latency,
     _get_correlation_of_latencies,
 )
 from ..helpers.other import _pad_trim
-from ..classes import Signal, MultiBandSignal
-from ._standard_backend import _latency, _fractional_delay_filter
+from ._standard_backend import _fractional_delay_filter, _latency
 
 
 def latency(
@@ -83,18 +84,18 @@ def latency(
 
     if isinstance(in1, Signal):
         if in2 is not None:
-            assert (
-                in1.sampling_rate_hz == in2.sampling_rate_hz
-            ), "Sampling rates must match"
-            assert (
-                in1.number_of_channels == in2.number_of_channels
-            ), "Number of channels between the two signals must match"
+            assert in1.sampling_rate_hz == in2.sampling_rate_hz, (
+                "Sampling rates must match"
+            )
+            assert in1.number_of_channels == in2.number_of_channels, (
+                "Number of channels between the two signals must match"
+            )
             assert isinstance(in2, Signal), "Both signals must be of type Signal"
             td2 = in2.time_data
         else:
-            assert (
-                in1.number_of_channels > 1
-            ), "Signal must have at least 2 channels to compare"
+            assert in1.number_of_channels > 1, (
+                "Signal must have at least 2 channels to compare"
+            )
             td2 = None
         latencies = latency_func(
             in1.time_data, td2, polynomial_points=polynomial_points
@@ -108,19 +109,20 @@ def latency(
         except Exception as e:
             print(e)
             warn(
-                "An error occured while computing the correlations. "
-                + "They are set to 0."
+                "An error occurred while computing the correlations. "
+                + "They are set to 0.",
+                stacklevel=2,
             )
             return latencies, np.zeros(len(latencies))
 
     elif isinstance(in1, MultiBandSignal):
         if in2 is not None:
-            assert isinstance(
-                in2, MultiBandSignal
-            ), "Both signals must be of type Signal"
-            assert (
-                in1.sampling_rate_hz == in2.sampling_rate_hz
-            ), "Sampling rates must match"
+            assert isinstance(in2, MultiBandSignal), (
+                "Both signals must be of type Signal"
+            )
+            assert in1.sampling_rate_hz == in2.sampling_rate_hz, (
+                "Sampling rates must match"
+            )
             pass_in2 = True
         else:
             pass_in2 = False
@@ -184,7 +186,7 @@ def fractional_delay(
         Order of the sinc filter, higher order yields better results at the
         expense of computation time. Default: 30.
     side_lobe_suppression_db : float, optional
-        Side lobe suppresion in dB for the Kaiser window. Default: 60.
+        Side lobe suppression in dB for the Kaiser window. Default: 60.
 
     Returns
     -------
@@ -200,13 +202,14 @@ def fractional_delay(
             warn(
                 "Imaginary time data will be ignored in this function. "
                 + "Delay it manually by creating another signal object, if "
-                + "needed."
+                + "needed.",
+                stacklevel=2,
             )
         delay_samples = delay_seconds * sig.sampling_rate_hz
         if keep_length:
-            assert (
-                delay_samples < sig.time_data.shape[0]
-            ), "Delay too large for the given signal"
+            assert delay_samples < sig.time_data.shape[0], (
+                "Delay too large for the given signal"
+            )
         if channels is None:
             channels = np.arange(sig.number_of_channels)
         channels = np.atleast_1d(np.asarray(channels).squeeze())
@@ -319,9 +322,9 @@ def delay(
         if delay_samples == 0:
             return sig.copy()
         if keep_length:
-            assert (
-                delay_samples < sig.time_data.shape[0]
-            ), "Delay too large for the given signal"
+            assert delay_samples < sig.time_data.shape[0], (
+                "Delay too large for the given signal"
+            )
         if channels is None:
             channels = np.arange(sig.number_of_channels)
         channels = np.atleast_1d(np.asarray(channels).squeeze())
