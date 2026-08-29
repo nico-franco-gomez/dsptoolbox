@@ -1,0 +1,426 @@
+"""
+Tests for the Signal class.
+"""
+
+import os
+import pickle
+import tempfile
+from os.path import join
+
+import numpy as np
+import pytest
+import scipy.signal as sig
+import soundfile as sf
+from matplotlib.pyplot import close
+
+import dsptoolbox as dsp
+
+
+class TestSignal:
+    """Testing signal functionalities."""
+
+    # Some vectors to run the tests
+    fs = 44100
+    length_samp = 2 * fs
+    channels = 4
+    time_vec = np.random.normal(0, 0.1, (length_samp, channels))
+    imag = np.random.normal(0, 0.1, (length_samp, channels))
+    complex_time_vec = time_vec + 1j * imag
+
+    def test_importing_from_file(self):
+        path = join(os.path.dirname(__file__), "..", "..", "example_data", "chirp.wav")
+        s = dsp.Signal(path)
+        _ = s.number_of_channels
+
+    def test_from_file_nonexistent_path_raises(self):
+        with pytest.raises(sf.LibsndfileError):
+            dsp.Signal.from_file(join(os.path.dirname(__file__), "does-not-exist.wav"))
+
+    def test_save_signal_round_trip_wav_flac_pkl(self):
+        """`save_signal` no longer takes a `mode` parameter -- the saving
+        format is inferred purely from `path`'s extension. Round-tripping
+        through each supported format should recover the original signal:
+        exactly for `.pkl` (a plain pickle of the object) and up to
+        quantization error for `.wav`/`.flac` (PCM/float encoding via
+        soundfile).
+
+        """
+        rng = np.random.default_rng(0)
+        s = dsp.Signal(None, rng.normal(0, 0.1, (2000, 2)), self.fs)
+
+        with tempfile.TemporaryDirectory() as d:
+            # Float32 PCM: near-exact round trip
+            s.save_signal(join(d, "x.wav"), bit_depth=32)
+            reloaded_wav = dsp.Signal.from_file(join(d, "x.wav"))
+            assert reloaded_wav.sampling_rate_hz == s.sampling_rate_hz
+            np.testing.assert_allclose(reloaded_wav.time_data, s.time_data, atol=1e-6)
+
+            # 16-bit PCM flac: quantization noise expected, format still
+            # inferred correctly from ".flac"
+            s.save_signal(join(d, "x.flac"), bit_depth=16)
+            reloaded_flac = dsp.Signal.from_file(join(d, "x.flac"))
+            np.testing.assert_allclose(reloaded_flac.time_data, s.time_data, atol=1e-4)
+
+            # Pickle: exact round trip of the whole object
+            s.save_signal(join(d, "x.pkl"))
+            with open(join(d, "x.pkl"), "rb") as f:
+                reloaded_pkl = pickle.load(f)
+            np.testing.assert_array_equal(reloaded_pkl.time_data, s.time_data)
+            assert reloaded_pkl.sampling_rate_hz == s.sampling_rate_hz
+
+    def test_save_signal_invalid_path_or_bit_depth_raises(self):
+        s = dsp.Signal(None, np.zeros((100, 1)), self.fs)
+        with tempfile.TemporaryDirectory() as d:
+            with pytest.raises(ValueError):
+                s.save_signal(join(d, "x.mp3"))  # unsupported format
+            with pytest.raises(ValueError):
+                s.save_signal(join(d, "x"))  # no extension to infer from
+            with pytest.raises(ValueError):
+                s.save_signal(join(d, "x.wav"), bit_depth=8)  # invalid bit depth
+
+    def test_creating_signal_from_vector(self):
+        # Check real and imag (Multichannel)
+        s = dsp.Signal(None, self.complex_time_vec, self.fs)
+        real_cond = np.all(s.time_data == self.time_vec)
+        imag_cond = np.all(s.time_data_imaginary == self.imag)
+        assert real_cond and imag_cond
+
+        # Check real and imag (Single channel)
+        one_ch = self.time_vec[:, 0]
+        one_ch_c = self.imag[:, 0]
+        s = dsp.Signal(None, one_ch + 1j * one_ch_c, self.fs)
+        real_cond = np.all(s.time_data == one_ch[..., None])
+        imag_cond = np.all(s.time_data_imaginary == one_ch_c[..., None])
+        assert real_cond and imag_cond
+
+        # Broadcasting with too many dimensions
+        r = np.random.normal(0, 0.1, (self.length_samp, self.channels, 1))
+        s = dsp.Signal(None, r, self.fs)
+
+        # Not broadcastable to time data vector
+        with pytest.raises(AssertionError):
+            r = np.random.normal(0, 0.1, (self.length_samp, self.channels, 4))
+            s = dsp.Signal(None, r, self.fs)
+
+        # Passing list
+        li = [self.time_vec[:, i] for i in range(self.time_vec.shape[1])]
+        s = dsp.Signal(None, li, self.fs)
+
+        # Passing tuple
+        tu = tuple(self.time_vec.T)
+        s = dsp.Signal(None, tu, self.fs)
+
+        # Not broadcastable to time data vector (with lists)
+        with pytest.raises(AssertionError):
+            r = np.random.normal(0, 0.1, (self.length_samp, self.channels, 4))
+            r = list(r)
+            s = dsp.Signal(None, r, self.fs)
+
+    def test_get_spectrum(self):
+        sp = np.fft.rfft(self.time_vec, axis=0)
+
+        # Check normal FFT
+        s = dsp.Signal(None, self.time_vec, self.fs)
+        s = s.set_spectrum_parameters(
+            method=dsp.SpectrumMethod.FFT,
+            scaling=dsp.SpectrumScaling.FFTBackward,
+            pad_to_fast_length=False,
+        )
+        _, sp_sig = s.get_spectrum()
+        np.testing.assert_allclose(sp, sp_sig)
+
+        # Check amplitude spectrum scaling for normal FFT
+        s = s.set_spectrum_parameters(
+            method=dsp.SpectrumMethod.FFT,
+            scaling=dsp.SpectrumScaling.PowerSpectrum,
+            pad_to_fast_length=False,
+        )
+        _, sp_sig = s.get_spectrum()
+        _, sp_reference = sig.periodogram(
+            self.time_vec.squeeze(),
+            fs=self.fs,
+            detrend=False,
+            scaling="spectrum",
+            axis=0,
+        )
+        assert np.all(np.isclose(sp_reference, sp_sig.squeeze()))
+
+        s = s.set_spectrum_parameters(
+            method=dsp.SpectrumMethod.FFT,
+            scaling=dsp.SpectrumScaling.PowerSpectralDensity,
+            pad_to_fast_length=False,
+        )
+        _, sp_sig = s.get_spectrum()
+        _, sp_reference = sig.periodogram(
+            self.time_vec.squeeze(),
+            axis=0,
+            detrend=False,
+            scaling="density",
+            fs=self.fs,
+        )
+        assert np.all(np.isclose(sp_reference, sp_sig.squeeze()))
+
+        # Try smoothing
+        s = s.set_spectrum_parameters(
+            method=dsp.SpectrumMethod.FFT,
+            scaling=dsp.SpectrumScaling.AmplitudeSpectrum,
+            pad_to_fast_length=False,
+            smoothing=3,
+        )
+        s.get_spectrum()
+
+    def test_managing_channels(self):
+        # Add new channel
+        new_ch = np.random.normal(0, 0.1, (self.length_samp, 1))
+        t_vec = np.append(self.time_vec, new_ch, axis=1)
+        s = dsp.Signal(None, self.time_vec.copy(), self.fs)
+        s = s.add_channel(None, new_ch, s.sampling_rate_hz)
+        assert np.all(t_vec == s.time_data)
+
+        # Remove channel
+        s = s.remove_channel(-1)
+        assert np.all(self.time_vec == s.time_data)
+
+        # Try to remove channel that does not exist
+        with pytest.raises(AssertionError):
+            s.remove_channel(self.channels + 10)
+
+        # Get specific channel
+        ch = s.get_channels(0)
+        assert np.all(self.time_vec[:, 0][..., None] == ch.time_data)
+
+        # Try to get a channel that does not exist
+        with pytest.raises(IndexError):
+            s.get_channels(self.channels + 10)
+
+        # Swap channels
+        new_order = np.arange(0, self.channels)[::-1]
+        assert np.all(self.time_vec[:, ::-1] == s.swap_channels(new_order).time_data)
+
+        # Try swapping channels wrongly
+        with pytest.raises(AssertionError):
+            # Order vector with too few elements
+            s.swap_channels(new_order[:-2])
+        with pytest.raises(AssertionError):
+            # Order vector with too many elements
+            s.swap_channels(np.append(new_order, new_order))
+        with pytest.raises(AssertionError):
+            # Order vector with repeated elements
+            s.swap_channels(np.append(new_order[:-1], new_order[0]))
+
+    def test_setting_properties(self):
+        s = dsp.Signal(time_data=self.time_vec, sampling_rate_hz=self.fs)
+
+        # Setting sampling rate
+        fs = 22000
+        s.sampling_rate_hz = fs
+        assert fs == s.sampling_rate_hz
+
+        # Setting a float sampling rate
+        with pytest.raises(AssertionError):
+            s.sampling_rate_hz = 44100.5
+
+        # Number of channels is generated right
+        assert s.number_of_channels == self.channels
+
+        # Spectrum parameters - Write+Read
+        s.spectrum_method = dsp.SpectrumMethod.FFT
+        assert s.spectrum_method == dsp.SpectrumMethod.FFT
+        s.spectrum_scaling = dsp.SpectrumScaling.FFTOrthogonal
+        assert s.spectrum_scaling == dsp.SpectrumScaling.FFTOrthogonal
+
+        # Read-only properties - check
+        _ = s.number_of_channels
+        _ = s.length_samples
+        _ = s.length_seconds
+        _ = s.time_vector_s
+
+        # Some properties are read-only
+        with pytest.raises(AttributeError):
+            s.number_of_channels = 10
+        with pytest.raises(AttributeError):
+            s.length_samples = 10
+        with pytest.raises(AttributeError):
+            s.length_seconds = 10.0
+        with pytest.raises(AttributeError):
+            s.time_vector_s = np.array([0.0, 1.0])
+
+    def test_plot_generation(self):
+        s = dsp.ImpulseResponse(time_data=self.time_vec, sampling_rate_hz=self.fs)
+        # Test that all plots are generated without problems
+        s.plot_magnitude()
+        s.plot_magnitude(show_info_box=True)
+        s.plot_time()
+        s.plot_spectrogram(channel_number=0, log_freqs=True)
+        s.plot_csm()
+        s.plot_csm(with_phase=False)
+        s.plot_spl(False)
+        s.plot_spl(True)
+
+        # Plot phase and group delay
+        s = s.set_spectrum_parameters(method=dsp.SpectrumMethod.FFT)
+        s.plot_phase()
+        s.plot_phase(unwrap=True, smoothing=4, remove_ir_latency=None)
+        s.plot_phase(remove_ir_latency="min_phase")
+        s.plot_phase(remove_ir_latency="peak")
+        s.plot_phase(remove_ir_latency=[10] * s.number_of_channels)
+        with pytest.raises(ValueError):
+            s.plot_phase(remove_ir_latency="no idea what removal method")
+        s.plot_group_delay()
+
+        # Try to plot phase having welch's method for magnitude
+        with pytest.raises(AssertionError):
+            s = s.set_spectrum_parameters(
+                method=dsp.SpectrumMethod.WelchPeriodogram,
+                window_length_samples=32,
+            )
+            s.plot_phase()
+
+        # Plot signal with window and imaginary time data
+        d = dsp.generators.dirac(
+            length_samples=1024, delay_samples=512, sampling_rate_hz=self.fs
+        )
+        d, _ = dsp.transfer_functions.window_centered_ir(d, len(d))
+        d = dsp.transforms.hilbert(d)
+        d.plot_time()
+        d.plot_spl()
+        close("all")
+
+    def test_get_power_spectrum_welch(self):
+        # Try to get power spectrum
+        s = dsp.Signal(time_data=self.time_vec, sampling_rate_hz=self.fs)
+        s.spectrum_scaling = dsp.SpectrumScaling.FFTBackward
+        s.spectrum_method = dsp.SpectrumMethod.WelchPeriodogram
+        s.get_spectrum()
+        s.spectrum_method = dsp.SpectrumMethod.FFT
+        s.get_spectrum()
+
+        s.spectrum_scaling = dsp.SpectrumScaling.PowerSpectralDensity
+        s.spectrum_method = dsp.SpectrumMethod.WelchPeriodogram
+        s.get_spectrum()
+        s.spectrum_method = dsp.SpectrumMethod.FFT
+        s.get_spectrum()
+
+    def test_get_csm(self):
+        s = dsp.Signal(time_data=self.time_vec, sampling_rate_hz=self.fs)
+        s.spectrum_scaling = dsp.SpectrumScaling.FFTBackward
+        s.spectrum_method = dsp.SpectrumMethod.WelchPeriodogram
+        s.get_csm()
+        s.spectrum_method = dsp.SpectrumMethod.FFT
+        s.get_csm()
+
+        s.spectrum_scaling = dsp.SpectrumScaling.PowerSpectralDensity
+        s.spectrum_method = dsp.SpectrumMethod.WelchPeriodogram
+        s.get_csm()
+        s.spectrum_method = dsp.SpectrumMethod.FFT
+        s.get_csm()
+
+    def test_get_stft(self):
+        s = dsp.Signal(time_data=self.time_vec, sampling_rate_hz=self.fs)
+        # Use parameters just like librosa for validation
+        s = s.set_spectrogram_parameters(
+            window_length_samples=1024,
+            window_type=dsp.Window.Hann,
+            overlap_percent=50,
+            fft_length_samples=4096,
+            detrend=False,
+            padding=False,
+            scaling=dsp.SpectrumScaling.FFTBackward,
+        )
+        t, f, stft = s.get_spectrogram()
+        s = s.set_spectrogram_parameters(
+            window_length_samples=1024,
+            window_type=dsp.Window.Hann,
+            overlap_percent=50,
+            fft_length_samples=None,
+            detrend=False,
+            padding=False,
+            scaling=dsp.SpectrumScaling.PowerSpectrum,
+        )
+        t, f, stft = s.get_spectrogram()
+
+        # Validate result with librosa library if installed
+        try:
+            import librosa
+
+            y = librosa.stft(
+                self.time_vec[:, 0],
+                n_fft=1024,
+                hop_length=1024 // 2,
+                window="hann",
+                center=False,
+            )
+            # There are some extra frames in the dsptoolbox version...
+            assert np.all(np.isclose(stft[:, : y.shape[1], 0], y))
+        except ModuleNotFoundError as e:
+            print(e)
+            pass
+        except Exception as e:
+            print(e)
+            raise AssertionError() from e
+
+    def test_copying_signal(self):
+        s = dsp.Signal(time_data=self.time_vec, sampling_rate_hz=self.fs)
+        s.copy()
+
+    def test_show_info(self):
+        s = dsp.Signal(time_data=self.time_vec, sampling_rate_hz=self.fs)
+        s.show_info()
+        print(s)
+
+    def test_time_vec(self):
+        s = dsp.Signal(time_data=self.time_vec, sampling_rate_hz=self.fs)
+        t = s.time_vector_s
+        le = s.time_data.shape[0]
+        t_ = np.linspace(0, le / self.fs, le, endpoint=True)
+        np.testing.assert_almost_equal(t, t_)
+
+    def test_length_signal(self):
+        s = dsp.Signal(time_data=self.time_vec, sampling_rate_hz=self.fs)
+        assert len(s) == s.time_data.shape[0]
+        assert s.length_samples == len(s)
+        assert s.length_seconds == len(s) / s.sampling_rate_hz
+        assert s.length_seconds == s.time_vector_s[-1]
+
+    def test_constrain_amplitude(self):
+        t = np.random.normal(0, 1, 200)
+        s = dsp.Signal(None, t, sampling_rate_hz=100, constrain_amplitude=True)
+        assert np.all(s.time_data <= 1)
+
+        s = dsp.Signal(None, t, sampling_rate_hz=100, constrain_amplitude=False)
+        assert np.all(t == s.time_data.squeeze())
+
+    def test_sum_channels(self):
+        n = np.random.normal(0, 0.01, (300, 2))
+        nn = dsp.Signal.from_time_data(n, 10_000)
+        np.testing.assert_array_equal(
+            nn.sum_channels().time_data, np.sum(n, axis=1, keepdims=True)
+        )
+
+    def test_copy_with_new_time_data(self):
+        n = dsp.Signal.from_time_data(self.time_vec, self.fs, False)
+
+        #
+        n.spectrum_method = dsp.SpectrumMethod.FFT
+        n.spectrum_scaling = dsp.SpectrumScaling.PowerSpectrum
+        n = n.set_spectrogram_parameters(256, window_type=dsp.Window.Blackman)
+        n2 = n.copy_with_new_time_data(np.zeros((100, 1)))
+
+        #
+        assert n2.spectrum_scaling == dsp.SpectrumScaling.PowerSpectrum
+        assert n2.spectrum_method == dsp.SpectrumMethod.FFT
+        assert n2._spectrogram_parameters["window_length_samples"] == 256
+        assert n2._spectrogram_parameters["window_type"] == dsp.Window.Blackman
+        assert n2.constrain_amplitude == n.constrain_amplitude
+        assert n2.time_data_imaginary == n.time_data_imaginary
+
+        # === Complex
+        n_comp = dsp.Signal.from_time_data(self.complex_time_vec, self.fs, True)
+        n2_comp = n_comp.copy_with_new_time_data(np.zeros((100, 1)))
+        assert not n2_comp.is_complex_signal
+
+        # === Check slicing and ownership
+        n = dsp.Signal.from_time_data(np.zeros((100, 2)), self.fs)
+        n2 = n.copy_with_new_time_data(n.time_data[:, 0])
+        n.time_data[0, ...] = 1.0
+        assert np.all(n2.time_data[0] == 0.0)

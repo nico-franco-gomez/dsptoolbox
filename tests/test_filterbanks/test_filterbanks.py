@@ -1,3 +1,9 @@
+"""
+Tests for the filterbanks module (crossovers, gammatone, QMF, octave
+filter bank, weighting filters, phase linearizer, group delay designer,
+etc.).
+"""
+
 import os
 import pickle
 import tempfile
@@ -560,7 +566,9 @@ class TestFilterbanksModule:
     def test_arma(self):
         # Only functionality
         rir = dsp.ImpulseResponse(
-            os.path.join(os.path.dirname(__file__), "..", "example_data", "rir.wav")
+            os.path.join(
+                os.path.dirname(__file__), "..", "..", "example_data", "rir.wav"
+            )
         )
         dsp.filterbanks.arma(rir, 10, 0)
         dsp.filterbanks.arma(rir, 10, 1)
@@ -587,77 +595,3 @@ class TestFilterbanksModule:
         noise_delayed = delay.filter_signal(noise)
         latency = dsp.latency(noise_delayed, noise, polynomial_points=3)[0][0]
         assert abs(latency - (fractional + order)) < 1e-3
-
-
-class TestLatticeLadderFilter:
-    b = np.array([1, 3, 3, 1])
-    a = np.array([1, -0.9, 0.64, -0.576])
-
-    def test_lattice_filter_coefficients(self):
-        # Example values taken from Oppenheim, A. V., Schafer, R. W.,,
-        # Buck, J. R. (1999). Discrete-Time Signal Processing.
-        # Prentice-hall Englewood Cliffs.
-        from dsptoolbox.classes.lattice_ladder_filter import (
-            _get_lattice_ladder_coefficients_iir,
-        )
-
-        k, c = _get_lattice_ladder_coefficients_iir(self.b, self.a)
-
-        k_expected = np.array([0.6728, -0.182, 0.576])
-        c_expected = np.array([4.5404, 5.4612, 3.9, 1])
-
-        assert np.all(np.isclose(k, k_expected, rtol=5))
-        assert np.all(np.isclose(c, c_expected, rtol=5))
-
-    def test_lattice_filter_filtering(self):
-        n = _seeded(0, dsp.generators.noise, length_seconds=1.0, sampling_rate_hz=200)
-        expected = sig.lfilter(self.b / 10, self.a, n.time_data.squeeze())
-
-        from dsptoolbox.classes.lattice_ladder_filter import (
-            _get_lattice_ladder_coefficients_iir,
-        )
-
-        k, c = _get_lattice_ladder_coefficients_iir(self.b / 10, self.a)
-
-        f = dsp.filterbanks.LatticeLadderFilter(k, c, sampling_rate_hz=200)
-        out = f.filter_signal(n)
-        out = out.time_data.squeeze()
-        assert np.all(np.isclose(expected, out))
-
-    def test_convert_lattice_filter(self):
-        fs = 44100
-        # Second-order sections
-        n = _seeded(0, dsp.generators.noise, length_seconds=1.0, sampling_rate_hz=fs)
-        f = dsp.Filter.iir_filter(
-            filter_design_method=dsp.IirDesignMethod.Bessel,
-            order=9,
-            type_of_pass=dsp.FilterPassType.Lowpass,
-            frequency_hz=1000,
-            sampling_rate_hz=fs,
-        )
-        new_f = dsp.filterbanks.LatticeLadderFilter.from_filter(f)
-        n1 = f.filter_signal(n).time_data.squeeze()
-        n2 = new_f.filter_signal(n).time_data.squeeze()
-        assert np.all(np.isclose(n1, n2))
-
-        # BA
-        b, a = f.get_coefficients(dsp.FilterCoefficientsType.Ba)
-        f2 = dsp.Filter(
-            {dsp.FilterCoefficientsType.Ba: [b, a]},
-            f.sampling_rate_hz,
-        )
-        new_f = dsp.filterbanks.LatticeLadderFilter.from_filter(f2)
-        n1 = f2.filter_signal(n).time_data.squeeze()
-        n2 = new_f.filter_signal(n).time_data.squeeze()
-        assert np.all(np.isclose(n1, n2))
-
-        # FIR
-        n = _seeded(1, dsp.generators.noise, length_seconds=1.0, sampling_rate_hz=fs)
-        f = dsp.Filter(
-            {dsp.FilterCoefficientsType.Ba: [[1, 13 / 24, 5 / 8, 1 / 3], [1]]},
-            sampling_rate_hz=fs,
-        )
-        new_f = dsp.filterbanks.LatticeLadderFilter.from_filter(f)
-        n1 = f.filter_signal(n).time_data.squeeze()
-        n2 = new_f.filter_signal(n).time_data.squeeze()
-        assert np.all(np.isclose(n1, n2))
