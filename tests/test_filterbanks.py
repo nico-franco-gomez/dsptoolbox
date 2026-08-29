@@ -1,4 +1,6 @@
 import os
+import pickle
+import tempfile
 
 import numpy as np
 import pytest
@@ -57,6 +59,29 @@ class TestFilterbanksModule:
         # Test filtering
         s = self.get_noise()
         fb.filter_signal(s, mode=dsp.FilterBankMode.Parallel)
+
+    def test_lr_filterbank_save_round_trip_and_rejects_extension(self):
+        """`LRFilterBank.save_filterbank` has a stricter, different contract
+        than the other `save_*` methods in the library (`_check_format_in_
+        path`, used everywhere else): it requires `path` to have NO
+        extension at all and always appends `.pkl` itself, raising instead
+        of silently overwriting/renaming when one is already present.
+
+        """
+        fb = dsp.filterbanks.linkwitz_riley_crossovers(
+            [500, 1000], order=4, sampling_rate_hz=self.fs
+        )
+        with tempfile.TemporaryDirectory() as d:
+            fb.save_filterbank(os.path.join(d, "lr_fb"))
+            with open(os.path.join(d, "lr_fb.pkl"), "rb") as fh:
+                reloaded = pickle.load(fh)
+            assert reloaded.number_of_bands == fb.number_of_bands
+            assert reloaded.sampling_rate_hz == fb.sampling_rate_hz
+
+            with pytest.raises(ValueError):
+                fb.save_filterbank(os.path.join(d, "lr_fb.pkl"))
+            with pytest.raises(ValueError):
+                fb.save_filterbank(os.path.join(d, "lr_fb.txt"))
 
     def test_linkwitz_riley_summed_magnitude_is_flat(self):
         """Per the docstring, LR crossovers are a "near perfect magnitude

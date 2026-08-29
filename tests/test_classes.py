@@ -3,11 +3,14 @@ Tests for basic functionalities of the classes in dsptoolbox
 """
 
 import os
+import pickle
+import tempfile
 from os.path import join
 
 import numpy as np
 import pytest
 import scipy.signal as sig
+import soundfile as sf
 from matplotlib.pyplot import close
 
 import dsptoolbox as dsp
@@ -61,6 +64,52 @@ class TestSignal:
         path = join(os.path.dirname(__file__), "..", "example_data", "chirp.wav")
         s = dsp.Signal(path)
         _ = s.number_of_channels
+
+    def test_from_file_nonexistent_path_raises(self):
+        with pytest.raises(sf.LibsndfileError):
+            dsp.Signal.from_file(join(os.path.dirname(__file__), "does-not-exist.wav"))
+
+    def test_save_signal_round_trip_wav_flac_pkl(self):
+        """`save_signal` no longer takes a `mode` parameter -- the saving
+        format is inferred purely from `path`'s extension. Round-tripping
+        through each supported format should recover the original signal:
+        exactly for `.pkl` (a plain pickle of the object) and up to
+        quantization error for `.wav`/`.flac` (PCM/float encoding via
+        soundfile).
+
+        """
+        rng = np.random.default_rng(0)
+        s = dsp.Signal(None, rng.normal(0, 0.1, (2000, 2)), self.fs)
+
+        with tempfile.TemporaryDirectory() as d:
+            # Float32 PCM: near-exact round trip
+            s.save_signal(join(d, "x.wav"), bit_depth=32)
+            reloaded_wav = dsp.Signal.from_file(join(d, "x.wav"))
+            assert reloaded_wav.sampling_rate_hz == s.sampling_rate_hz
+            np.testing.assert_allclose(reloaded_wav.time_data, s.time_data, atol=1e-6)
+
+            # 16-bit PCM flac: quantization noise expected, format still
+            # inferred correctly from ".flac"
+            s.save_signal(join(d, "x.flac"), bit_depth=16)
+            reloaded_flac = dsp.Signal.from_file(join(d, "x.flac"))
+            np.testing.assert_allclose(reloaded_flac.time_data, s.time_data, atol=1e-4)
+
+            # Pickle: exact round trip of the whole object
+            s.save_signal(join(d, "x.pkl"))
+            with open(join(d, "x.pkl"), "rb") as f:
+                reloaded_pkl = pickle.load(f)
+            np.testing.assert_array_equal(reloaded_pkl.time_data, s.time_data)
+            assert reloaded_pkl.sampling_rate_hz == s.sampling_rate_hz
+
+    def test_save_signal_invalid_path_or_bit_depth_raises(self):
+        s = dsp.Signal(None, np.zeros((100, 1)), self.fs)
+        with tempfile.TemporaryDirectory() as d:
+            with pytest.raises(ValueError):
+                s.save_signal(join(d, "x.mp3"))  # unsupported format
+            with pytest.raises(ValueError):
+                s.save_signal(join(d, "x"))  # no extension to infer from
+            with pytest.raises(ValueError):
+                s.save_signal(join(d, "x.wav"), bit_depth=8)  # invalid bit depth
 
     def test_creating_signal_from_vector(self):
         # Check real and imag (Multichannel)
@@ -599,6 +648,49 @@ class TestFilterClass:
         f = self.get_iir()
         f.get_ir(128)
 
+    def test_fir_from_file_matches_impulse_response(self):
+        """Per the source, `fir_from_file` just reads the audio file via
+        `ImpulseResponse.from_file` and takes one channel as the FIR taps
+        -- content should match exactly, and the requested channel should
+        be the one selected for stereo files.
+
+        """
+        ir = dsp.ImpulseResponse.from_file(RIR_PATH)
+        f = dsp.Filter.fir_from_file(RIR_PATH)
+        np.testing.assert_array_equal(f.ba[0], ir.time_data[:, 0])
+        assert f.sampling_rate_hz == ir.sampling_rate_hz
+
+        stereo_ir = dsp.ImpulseResponse.from_file(CHIRP_STEREO_PATH)
+        f_ch0 = dsp.Filter.fir_from_file(CHIRP_STEREO_PATH, channel=0)
+        f_ch1 = dsp.Filter.fir_from_file(CHIRP_STEREO_PATH, channel=1)
+        np.testing.assert_array_equal(f_ch0.ba[0], stereo_ir.time_data[:, 0])
+        np.testing.assert_array_equal(f_ch1.ba[0], stereo_ir.time_data[:, 1])
+
+    def test_save_filter_round_trip_and_format_checking(self):
+        """`save_filter` always saves as pickle: it appends `.pkl` when
+        `path` has no extension, and asserts that an existing extension
+        already matches (per `_check_format_in_path`).
+
+        """
+        f = self.get_fir()
+        with tempfile.TemporaryDirectory() as d:
+            # No extension -> ".pkl" gets appended
+            f.save_filter(join(d, "no_ext"))
+            with open(join(d, "no_ext.pkl"), "rb") as fh:
+                reloaded = pickle.load(fh)
+            np.testing.assert_array_equal(reloaded.ba[0], f.ba[0])
+            np.testing.assert_array_equal(reloaded.ba[1], f.ba[1])
+            assert reloaded.sampling_rate_hz == f.sampling_rate_hz
+
+            # Matching ".pkl" extension is accepted as is
+            f.save_filter(join(d, "with_ext.pkl"))
+            assert os.path.exists(join(d, "with_ext.pkl"))
+
+            # A mismatched extension is rejected instead of silently
+            # overwritten or renamed
+            with pytest.raises(AssertionError):
+                f.save_filter(join(d, "wrong_ext.txt"))
+
     def test_other_functionalities(self):
         #
         dsp.Filter.fir_from_file(RIR_PATH)
@@ -790,6 +882,27 @@ class TestFilterBankClass:
         assert len(firs) == 1
         firs = dsp.FilterBank.firs_from_file(CHIRP_STEREO_PATH)
         assert len(firs) == 2
+
+    def test_save_filterbank_round_trip_and_format_checking(self):
+        fb = dsp.FilterBank()
+        fb = fb.add_filter(self.get_iir_filter())
+        fb = fb.add_filter(self.get_fir_filter())
+
+        with tempfile.TemporaryDirectory() as d:
+            # No extension -> ".pkl" gets appended
+            fb.save_filterbank(join(d, "no_ext"))
+            with open(join(d, "no_ext.pkl"), "rb") as fh:
+                reloaded = pickle.load(fh)
+            assert reloaded.number_of_filters == fb.number_of_filters
+            assert reloaded.sampling_rate_hz == fb.sampling_rate_hz
+
+            # Matching ".pkl" extension is accepted as is
+            fb.save_filterbank(join(d, "with_ext.pkl"))
+            assert os.path.exists(join(d, "with_ext.pkl"))
+
+            # A mismatched extension is rejected
+            with pytest.raises(AssertionError):
+                fb.save_filterbank(join(d, "wrong_ext.txt"))
 
     def test_plots(self):
         # Create
@@ -1108,6 +1221,24 @@ class TestMultiBandSignal:
         # Create from filter bank
         mbs = self.fb.filter_signal(self.s, dsp.FilterBankMode.Parallel)
         assert type(mbs) is dsp.MultiBandSignal
+
+    def test_save_signal_round_trip_and_format_checking(self):
+        mbs = self.get_mb()
+        with tempfile.TemporaryDirectory() as d:
+            # No extension -> ".pkl" gets appended
+            mbs.save_signal(join(d, "no_ext"))
+            with open(join(d, "no_ext.pkl"), "rb") as fh:
+                reloaded = pickle.load(fh)
+            assert reloaded.number_of_bands == mbs.number_of_bands
+            assert reloaded.number_of_channels == mbs.number_of_channels
+
+            # Matching ".pkl" extension is accepted as is
+            mbs.save_signal(join(d, "with_ext.pkl"))
+            assert os.path.exists(join(d, "with_ext.pkl"))
+
+            # A mismatched extension is rejected
+            with pytest.raises(AssertionError):
+                mbs.save_signal(join(d, "wrong_ext.txt"))
 
     def test_collapse(self):
         td = self.s.time_data.copy()
@@ -1856,6 +1987,26 @@ class TestSpectrum:
         spec = dsp.Spectrum(freqs, [np.zeros(3) for _ in range(2)])
         assert len(spec) == len(freqs)
         assert spec.number_of_channels == 2
+
+    def test_save_spectrum_round_trip_and_format_checking(self):
+        spec = self.get_spectrum_from_filter()
+        with tempfile.TemporaryDirectory() as d:
+            # No extension -> ".pkl" gets appended
+            spec.save_spectrum(join(d, "no_ext"))
+            with open(join(d, "no_ext.pkl"), "rb") as fh:
+                reloaded = pickle.load(fh)
+            np.testing.assert_array_equal(
+                reloaded.frequency_vector_hz, spec.frequency_vector_hz
+            )
+            assert reloaded.number_of_channels == spec.number_of_channels
+
+            # Matching ".pkl" extension is accepted as is
+            spec.save_spectrum(join(d, "with_ext.pkl"))
+            assert os.path.exists(join(d, "with_ext.pkl"))
+
+            # A mismatched extension is rejected
+            with pytest.raises(AssertionError):
+                spec.save_spectrum(join(d, "wrong_ext.txt"))
 
     def test_trim(self):
         freqs = np.array([100.0, 200.0, 300.0, 504.0])
