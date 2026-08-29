@@ -4,6 +4,7 @@ Signal class
 
 from copy import deepcopy
 from fractions import Fraction
+from os.path import splitext
 from pickle import HIGHEST_PROTOCOL, dump
 from typing import TYPE_CHECKING, Self
 from warnings import warn
@@ -28,7 +29,6 @@ from ..helpers.latency import (
 )
 from ..helpers.minimum_phase import _remove_ir_latency_from_phase_min_phase
 from ..helpers.other import (
-    _check_format_in_path,
     _pad_trim,
     find_nearest_points_index_in_vector,
 )
@@ -1643,25 +1643,23 @@ class Signal(MultichannelData):
         return fig, ax
 
     # ======== Saving and copy ================================================
-    def save_signal(self, path: str, mode: str = "wav", bit_depth: int = 32):
-        """Saves the Signal object as wav, flac or pickle.
+    def save_signal(self, path: str, bit_depth: int = 32):
+        """Saves the Signal object as wav, flac or pickle. The saving format
+        is inferred from the file extension in `path`.
 
         Parameters
         ----------
         path : str
-            Path for the signal to be saved.
-        mode : str, optional
-            Mode of saving. Available modes are `'wav'`, `'flac'`, `'pkl'`.
-            Default: `'wav'`.
+            Path for the signal to be saved. Its extension (`'.wav'`,
+            `'.flac'` or `'.pkl'`) determines the saving format.
         bit_depth : int, optional
             Bit depth when saving a signal in `'wav'` or `'flac'` format.
             Only 16, 24, 32 and 64 are valid. 32 and 64 are only valid for
             `'wav'`. Default: 32.
 
         """
-        mode = mode.lower()
-        path = _check_format_in_path(path, mode)
-        if mode in ("wav", "flac"):
+        extension = splitext(path)[1].lower().lstrip(".")
+        if extension in ("wav", "flac"):
             if bit_depth == 32:
                 subtype = "FLOAT"
             elif bit_depth == 64:
@@ -1675,12 +1673,13 @@ class Signal(MultichannelData):
                     "Selected bit depth is not valid. " + "Use either 16, 24, 32 or 64"
                 )
             sf.write(path, self.time_data, self.sampling_rate_hz, subtype=subtype)
-        elif mode == "pkl":
+        elif extension == "pkl":
             with open(path, "wb") as data_file:
                 dump(self, data_file, HIGHEST_PROTOCOL)
         else:
             raise ValueError(
-                f"{mode} is not a supported saving mode. Use " + "wav, flac or pkl"
+                f"'{extension}' is not a supported saving format. Use a path "
+                "ending in .wav, .flac or .pkl"
             )
         return self
 

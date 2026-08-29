@@ -8,6 +8,7 @@ from numpy.typing import NDArray
 from ..helpers.smoothing import _get_smoothing_factor_ema
 from ..plots import general_plot
 from ..tools import from_db
+from .enums import Waveform
 
 
 # ========= Distortion ========================================================
@@ -292,7 +293,7 @@ class LFO:
     def __init__(
         self,
         frequency_hz: float | tuple,
-        waveform: str = "harmonic",
+        waveform: Waveform = Waveform.Harmonic,
         random_phase: bool = False,
         smooth: float = 0,
     ):
@@ -306,9 +307,8 @@ class LFO:
             corresponding to bpm. An example would be
             `frequency_hz=('quarter', 60)`, meaning that the frequency should
             be set to a quarter note at 60 bpm. See Notes for more details.
-        waveform : str, optional
-            Type of waveform to use. Choose from `'harmonic'`, `'sawtooth'`,
-            `'square'`, `'triangle'`. Default: `'harmonic'`.
+        waveform : Waveform, optional
+            Type of waveform to use. Default: `Waveform.Harmonic`.
         random_phase : bool, optional
             When `True`, a random phase shift is applied every time the LFO
             is called. Default: `False`.
@@ -334,7 +334,7 @@ class LFO:
         """
         self.__set_parameters(frequency_hz, waveform, random_phase, smooth)
 
-    def __set_parameters(self, frequency_hz, waveform: str, random_phase, smooth):
+    def __set_parameters(self, frequency_hz, waveform: Waveform, random_phase, smooth):
         """Internal method to set parameters."""
         if frequency_hz is not None:
             if type(frequency_hz) in (float, int):
@@ -350,14 +350,13 @@ class LFO:
                 raise TypeError("frequency_hz does not have a valid type")
 
         if waveform is not None:
-            waveform = waveform.lower()
-            if waveform == "harmonic":
+            if waveform == Waveform.Harmonic:
                 self.oscillator = _harmonic_oscillator
-            elif waveform == "sawtooth":
+            elif waveform == Waveform.Sawtooth:
                 self.oscillator = _sawtooth_oscillator
-            elif waveform == "square":
+            elif waveform == Waveform.Square:
                 self.oscillator = _square_oscillator
-            elif waveform == "triangle":
+            elif waveform == Waveform.Triangle:
                 self.oscillator = _triangle_oscillator
             else:
                 raise ValueError("Selected waveform is not valid")
@@ -371,7 +370,7 @@ class LFO:
     def set_parameters(
         self,
         frequency_hz: float | tuple | None = None,
-        waveform: str | None = None,
+        waveform: Waveform | None = None,
         random_phase: bool | None = None,
         smooth: float | None = None,
     ):

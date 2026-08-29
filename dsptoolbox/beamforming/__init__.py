@@ -48,7 +48,7 @@ from .beamforming import (
     SteeringVector,
     mix_sources_on_array,
 )
-from .enums import SteeringVectorType
+from .enums import SpatialDimension, SteeringVectorType
 
 __all__ = [
     "Grid",
@@ -66,4 +66,5 @@ __all__ = [
     "MonopoleSource",
     "mix_sources_on_array",
     "SteeringVectorType",
+    "SpatialDimension",
 ]

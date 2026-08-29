@@ -37,7 +37,13 @@ class TestBeamformingModule:
         # Only functionality
         # 2D
         g = dsp.beamforming.Regular2DGrid(
-            line1=x, line2=y, dimensions=("x", "y"), value3=2
+            line1=x,
+            line2=y,
+            dimensions=(
+                dsp.beamforming.SpatialDimension.X,
+                dsp.beamforming.SpatialDimension.Y,
+            ),
+            value3=2,
         )
         g.plot_points()
 
@@ -46,7 +52,12 @@ class TestBeamformingModule:
         g.plot_points()
 
         # Line
-        g = dsp.beamforming.LineGrid(line=x, dimension="x", value2=0, value3=1)
+        g = dsp.beamforming.LineGrid(
+            line=x,
+            dimension=dsp.beamforming.SpatialDimension.X,
+            value2=0,
+            value3=1,
+        )
         g.plot_points()
 
     def test_mic_array(self):
@@ -73,7 +84,12 @@ class TestBeamformingModule:
         xval = np.arange(-0.5, 0.5, 0.1)
         yval = np.arange(-0.5, 0.5, 0.1)
         zval = 1
-        g = dsp.beamforming.Regular2DGrid(xval, yval, ["x", "y"], value3=zval)
+        g = dsp.beamforming.Regular2DGrid(
+            xval,
+            yval,
+            [dsp.beamforming.SpatialDimension.X, dsp.beamforming.SpatialDimension.Y],
+            value3=zval,
+        )
         r0 = ma.array_center_coordinates
 
         def dist(r1, r0):
@@ -147,7 +163,12 @@ class TestBeamformingModule:
         xval = np.arange(-0.2, 0.2, 0.1)
         yval = np.arange(-0.5, 0.5, 0.1)
         zval = 0.5
-        g = dsp.beamforming.Regular2DGrid(xval, yval, ["x", "y"], value3=zval)
+        g = dsp.beamforming.Regular2DGrid(
+            xval,
+            yval,
+            [dsp.beamforming.SpatialDimension.X, dsp.beamforming.SpatialDimension.Y],
+            value3=zval,
+        )
 
         # Steering vector
         st = dsp.beamforming.SteeringVector(
@@ -218,7 +239,7 @@ class TestBeamformingModule:
         s = dsp.beamforming.mix_sources_on_array([sp, ns], ma)
         # Grid
         xval = np.arange(-0.5, 0.5, 0.1)
-        g = dsp.beamforming.LineGrid(xval, "y", 0.5, 0)
+        g = dsp.beamforming.LineGrid(xval, dsp.beamforming.SpatialDimension.Y, 0.5, 0)
         bf = dsp.beamforming.BeamformerDASTime(s, ma, g)
         bf.get_beamformer_output()
 
@@ -257,7 +278,12 @@ class TestBeamformingModule:
 
         gx = np.arange(0.0, 1.01, 0.2)
         gy = np.arange(0.0, 1.01, 0.2)
-        grid = dsp.beamforming.Regular2DGrid(gx, gy, ["x", "y"], value3=0.5)
+        grid = dsp.beamforming.Regular2DGrid(
+            gx,
+            gy,
+            [dsp.beamforming.SpatialDimension.X, dsp.beamforming.SpatialDimension.Y],
+            value3=0.5,
+        )
         st = dsp.beamforming.SteeringVector(
             formulation=dsp.beamforming.SteeringVectorType.TrueLocation
         )
@@ -289,7 +315,12 @@ class TestBeamformingModule:
 
         gx = np.arange(0.0, 1.01, 0.2)
         gy = np.arange(0.0, 1.01, 0.2)
-        grid = dsp.beamforming.Regular2DGrid(gx, gy, ["x", "y"], value3=0.5)
+        grid = dsp.beamforming.Regular2DGrid(
+            gx,
+            gy,
+            [dsp.beamforming.SpatialDimension.X, dsp.beamforming.SpatialDimension.Y],
+            value3=0.5,
+        )
 
         bf = dsp.beamforming.BeamformerDASTime(s, ma, grid)
         out = bf.get_beamformer_output()
@@ -338,7 +369,12 @@ class TestBeamformingModule:
 
         gx = np.arange(-0.2, 0.21, 0.1)
         gy = np.arange(-0.5, 0.51, 0.1)
-        grid = dsp.beamforming.Regular2DGrid(gx, gy, ["x", "y"], value3=0.5)
+        grid = dsp.beamforming.Regular2DGrid(
+            gx,
+            gy,
+            [dsp.beamforming.SpatialDimension.X, dsp.beamforming.SpatialDimension.Y],
+            value3=0.5,
+        )
         st = dsp.beamforming.SteeringVector(
             formulation=dsp.beamforming.SteeringVectorType.TrueLocation
         )

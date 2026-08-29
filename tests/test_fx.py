@@ -406,13 +406,18 @@ class TestEffectsModule:
 
     def testLFO(self):
         l_osc = dsp.effects.LFO(
-            frequency_hz=100, waveform="triangle", random_phase=True, smooth=5
+            frequency_hz=100,
+            waveform=dsp.effects.Waveform.Triangle,
+            random_phase=True,
+            smooth=5,
         )
         l_osc.plot_waveform()
         l_osc.get_waveform(self.fs_hz, 2000)
 
         l_osc.set_parameters(
-            frequency_hz=("dotted quarter", 130), waveform="sawtooth", smooth=0
+            frequency_hz=("dotted quarter", 130),
+            waveform=dsp.effects.Waveform.Sawtooth,
+            smooth=0,
         )
         l_osc.plot_waveform()
         l_osc.get_waveform(self.fs_hz, 2000)
@@ -429,7 +434,9 @@ class TestEffectsModule:
 
     def testTremolo(self):
         l_osc = dsp.effects.LFO(
-            frequency_hz=("dotted quarter", 130), waveform="sawtooth", smooth=0
+            frequency_hz=("dotted quarter", 130),
+            waveform=dsp.effects.Waveform.Sawtooth,
+            smooth=0,
         )
         trem = dsp.effects.Tremolo(depth=0.8, modulator=l_osc)
         trem.apply(self.speech)
@@ -450,7 +457,9 @@ class TestEffectsModule:
         x = 0.5 * np.sin(2 * np.pi * carrier_freq * t)
         sig = dsp.Signal(None, x[:, None], fs)
 
-        lfo = dsp.effects.LFO(lfo_freq, "harmonic", random_phase=False, smooth=0)
+        lfo = dsp.effects.LFO(
+            lfo_freq, dsp.effects.Waveform.Harmonic, random_phase=False, smooth=0
+        )
         trem = dsp.effects.Tremolo(depth=depth, modulator=lfo)
         out = trem.apply(sig)
 
@@ -473,7 +482,9 @@ class TestEffectsModule:
 
     def testChorus(self):
         l_osc = dsp.effects.LFO(
-            frequency_hz=("dotted quarter", 130), waveform="sawtooth", smooth=0
+            frequency_hz=("dotted quarter", 130),
+            waveform=dsp.effects.Waveform.Sawtooth,
+            smooth=0,
         )
         chor = dsp.effects.Chorus(
             depths_ms=10, base_delays_ms=25, modulators=l_osc, mix_percent=0.95
@@ -512,7 +523,7 @@ class TestEffectsModule:
         x = rng.normal(0, 1, n_samples)
         sig = dsp.Signal(None, x[:, None], fs)
 
-        lfo = dsp.effects.LFO(2.0, "harmonic", random_phase=False)
+        lfo = dsp.effects.LFO(2.0, dsp.effects.Waveform.Harmonic, random_phase=False)
         chor = dsp.effects.Chorus(
             depths_ms=0, base_delays_ms=base_delay_ms, modulators=lfo, mix_percent=100
         )
@@ -559,7 +570,7 @@ class TestEffectsModule:
         delay.set_advanced_parameters(None)
         delay.apply(self.speech)
 
-        delay.set_advanced_parameters("arctan")
+        delay.set_advanced_parameters(dsp.effects.SaturationType.Arctan)
         delay.apply(self.speech)
 
     def testDigitalDelayEchoRecursionMatchesClosedForm(self):

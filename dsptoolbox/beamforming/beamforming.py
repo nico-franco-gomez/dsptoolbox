@@ -2,6 +2,7 @@
 Beamforming classes and functions
 """
 
+from collections.abc import Sequence
 from warnings import warn
 
 import matplotlib.pyplot as plt
@@ -20,7 +21,7 @@ from ..helpers.other import (
 )
 from ..plots import general_matrix_plot
 from ._beamforming import BasePoints, _clean_sc_deconvolve
-from .enums import SteeringVectorType
+from .enums import SpatialDimension, SteeringVectorType
 
 try:
     from seaborn import set_style
@@ -78,7 +79,13 @@ class Grid(BasePoints):
 class Regular2DGrid(Grid):
     """This class creates a Grid object with a 2D, rectangular shape."""
 
-    def __init__(self, line1, line2, dimensions, value3):
+    def __init__(
+        self,
+        line1,
+        line2,
+        dimensions: Sequence[SpatialDimension],
+        value3,
+    ):
         """Creates a rectangular 2d grid on a coincident plane with coordinate
         system. If you wish to create a non-coincident grid do it manually and
         pass positions to Grid.
@@ -89,11 +96,11 @@ class Regular2DGrid(Grid):
             First line with values to define grid.
         line2 : array-like
             Second line that defines grid.
-        dimensions : array-like with length 2
-            Array of length 2 with strings specifying in which coordinates the
-            grid expands. For instance: ('x', 'z') means that `line1`
-            corresponds to the x direction and `line2` corresponds to the z
-            direction.
+        dimensions : Sequence[SpatialDimension] with length 2
+            Sequence of length 2 specifying in which coordinates the grid
+            expands. For instance: `(SpatialDimension.X, SpatialDimension.Z)`
+            means that `line1` corresponds to the x direction and `line2`
+            corresponds to the z direction.
         value3: float
             Value for the third coordinate.
 
@@ -116,14 +123,12 @@ class Regular2DGrid(Grid):
 
         """
         assert len(dimensions) == 2, (
-            "dimensions must contain exactly two strings specifying to "
+            "dimensions must contain exactly two entries specifying to "
             + "which directions line1 and line2 correspond"
         )
-        assert len(np.unique(dimensions)) == len(dimensions), (
-            "There are repeated dimensions"
-        )
-        dimensions = [n.lower() for n in dimensions]
-        self.extent_dimensions = dimensions
+        assert len(set(dimensions)) == len(dimensions), "There are repeated dimensions"
+        dimension_strs = [d.to_str() for d in dimensions]
+        self.extent_dimensions = dimension_strs
         value3 = np.asarray(value3).squeeze()
         assert value3.ndim == 0, "value3 can only be a single value"
 
@@ -141,11 +146,11 @@ class Regular2DGrid(Grid):
 
         # Convert to the positions dictionary
         base_dimensions = ["x", "y", "z"]
-        base_dimensions.remove(dimensions[0])
-        base_dimensions.remove(dimensions[1])
+        base_dimensions.remove(dimension_strs[0])
+        base_dimensions.remove(dimension_strs[1])
         positions = {
-            f"{dimensions[0]}": positions[:, 0],
-            f"{dimensions[1]}": positions[:, 1],
+            f"{dimension_strs[0]}": positions[:, 0],
+            f"{dimension_strs[1]}": positions[:, 1],
             f"{base_dimensions[0]}": positions[:, 2],
         }
         super().__init__(positions)
@@ -297,7 +302,7 @@ class Regular3DGrid(Grid):
     def plot_map(
         self,
         map: NDArray[np.float64],
-        third_dimension: str,
+        third_dimension: SpatialDimension,
         value_third_dimension: float,
         range_db: float = 20,
     ) -> tuple[Figure, Axes]:
@@ -307,9 +312,8 @@ class Regular3DGrid(Grid):
         ----------
         map : NDArray[np.float64]
             Beamformer map.
-        third_dimension : str
-            Choose the dimension that is normal to plane. Choose from `'x'`,
-            `'y'` or `'z'`.
+        third_dimension : SpatialDimension
+            Dimension that is normal to the plotted plane.
         value_third_dimension : float
             Value for third dimension that should be plotted. The nearest
             possible value will be taken if it is not exact.
@@ -330,15 +334,15 @@ class Regular3DGrid(Grid):
         assert map.shape == self.original_lengths, "Map shape does not match grid shape"
 
         # Normal dimension to plane
-        if third_dimension == "x":
+        if third_dimension == SpatialDimension.X:
             ind_plane = np.argmin(np.abs(value_third_dimension - self.lines[0]))
             map = map[ind_plane, :, :]
             extent_dimensions = ["y", "z"]
-        elif third_dimension == "y":
+        elif third_dimension == SpatialDimension.Y:
             ind_plane = np.argmin(np.abs(value_third_dimension - self.lines[1]))
             map = map[:, ind_plane, :]
             extent_dimensions = ["x", "z"]
-        elif third_dimension == "z":
+        elif third_dimension == SpatialDimension.Z:
             ind_plane = np.argmin(np.abs(value_third_dimension - self.lines[2]))
             map = map[:, :, ind_plane]
             extent_dimensions = ["x", "y"]
@@ -366,7 +370,7 @@ class Regular3DGrid(Grid):
 class LineGrid(Grid):
     """Class for a line grid."""
 
-    def __init__(self, line, dimension: str, value2: float, value3: float):
+    def __init__(self, line, dimension: SpatialDimension, value2: float, value3: float):
         """Constructor for a line grid. It is a line that goes in the
         direction of one of the coordinates. For a non-coincident line, create
         it manually using the Grid class.
@@ -376,9 +380,8 @@ class LineGrid(Grid):
         line : array-like
             Position for the grid points (in meters) along the extended
             dimension.
-        dimension : str
-            Dimension along which line is extended. Choose from `'x'`, `'y'`
-            or `'z'`.
+        dimension : SpatialDimension
+            Dimension along which line is extended.
         value2 : float
             Value for the second dimension. First dimension is the one along
             which the line is extended. Order goes x -> y -> z -> x -> etc.
@@ -402,20 +405,19 @@ class LineGrid(Grid):
         """
         line = np.atleast_1d(np.squeeze(line))
         assert line.ndim == 1, "Line has an invalid shape"
-        dimension = dimension.lower()
+        dimension_str = dimension.to_str()
         # Initialize with 4 values to later find second
         base_dimensions = ["x", "y", "z", "x"]
-        assert dimension in base_dimensions, "Dimension should be x, y or z"
         # Get dimensions
-        ind = base_dimensions.index(dimension)
+        ind = base_dimensions.index(dimension_str)
         base_dimensions.pop(ind)
         dim2 = base_dimensions[ind]
-        dim3 = list(set(["x", "y", "z"]) - set([dimension, dim2]))[0]
+        dim3 = list(set(["x", "y", "z"]) - set([dimension_str, dim2]))[0]
 
-        self.extent_dimension = dimension
+        self.extent_dimension = dimension_str
         # Initialize positions
         pos = {
-            dimension: line,
+            dimension_str: line,
             dim2: np.ones(len(line)) * value2,
             dim3: np.ones(len(line)) * value3,
         }

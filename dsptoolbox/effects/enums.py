@@ -6,3 +6,19 @@ class DistortionType(Enum):
     HardClip = auto()
     SoftClip = auto()
     NoDistortion = auto()
+
+
+class Waveform(Enum):
+    """Waveforms available for the LFO."""
+
+    Harmonic = auto()
+    Sawtooth = auto()
+    Square = auto()
+    Triangle = auto()
+
+
+class SaturationType(Enum):
+    """Named saturation presets for the delay effect."""
+
+    Digital = auto()
+    Arctan = auto()

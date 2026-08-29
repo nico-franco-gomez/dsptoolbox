@@ -18,7 +18,7 @@ from .effects import (
     get_frequency_from_musical_rhythm,
     get_time_period_from_musical_rhythm,
 )
-from .enums import DistortionType
+from .enums import DistortionType, SaturationType, Waveform
 
 __all__ = [
     "SpectralSubtractor",
@@ -31,4 +31,6 @@ __all__ = [
     "get_frequency_from_musical_rhythm",
     "get_time_period_from_musical_rhythm",
     "DistortionType",
+    "Waveform",
+    "SaturationType",
 ]

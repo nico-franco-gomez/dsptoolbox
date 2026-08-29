@@ -25,7 +25,7 @@ from ._effects import (
     get_frequency_from_musical_rhythm,
     get_time_period_from_musical_rhythm,
 )
-from .enums import DistortionType
+from .enums import DistortionType, SaturationType, Waveform
 
 __all__ = [
     "get_frequency_from_musical_rhythm",
@@ -1047,7 +1047,7 @@ class Tremolo(AudioEffect):
         """
         super().__init__("Modulation effect: Tremolo")
         if modulator is None:
-            modulator = LFO(1, "harmonic")
+            modulator = LFO(1, Waveform.Harmonic)
         self.__set_parameters(depth, modulator)
 
     def __set_parameters(self, depth: float, modulator: LFO | NDArray[np.float64]):
@@ -1154,7 +1154,7 @@ class Chorus(AudioEffect):
         """
         super().__init__("Modulation effect: Chorus/Flanger")
         if modulators is None:
-            modulators = LFO(2, "harmonic", random_phase=True)
+            modulators = LFO(2, Waveform.Harmonic, random_phase=True)
         self.__set_parameters(depths_ms, base_delays_ms, modulators, mix_percent)
 
     def __set_parameters(
@@ -1377,33 +1377,39 @@ class DigitalDelay(AudioEffect):
         assert self.delay_ms is not None
         assert self.feedback is not None
 
-    def set_advanced_parameters(self, saturation: str | Callable | None = None):
+    def set_advanced_parameters(
+        self, saturation: SaturationType | Callable | None = None
+    ):
         """This function sets the advanced parameters for the delay effect.
 
         Parameters
         ----------
-        saturation : str, optional
-            If `None`, a linear digital delay line is applied. If `'arctan'`,
-            some arctan saturation is added to the delayed signal. Pass
-            a callable if a custom saturation should be applied. It must
+        saturation : SaturationType, Callable, optional
+            If `None`, a linear digital delay line is applied
+            (`SaturationType.Digital`). If `SaturationType.Arctan`, some
+            arctan saturation is added to the delayed signal. Pass a
+            callable if a custom saturation should be applied. It must
             take in 1 float and return 1 float in order to be valid.
             Default: `None`.
 
         """
         if saturation is None:
-            saturation = "digital"
-        saturation = saturation.lower()
-        if saturation == "digital":
+            saturation = SaturationType.Digital
+
+        if saturation == SaturationType.Digital:
 
             def func(x):
                 return x
 
-        elif saturation == "arctan":
+        elif saturation == SaturationType.Arctan:
 
             def func(x):
                 return 0.5 * np.arctan(2 * x)
 
         else:
+            assert callable(saturation), (
+                "saturation must be a SaturationType or a callable"
+            )
             assert isinstance(saturation(1.0), float), (
                 "Saturation function might not be valid"
             )

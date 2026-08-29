@@ -16,3 +16,14 @@ class SteeringVectorType(Enum):
     Inverse = auto()
     TruePower = auto()
     TrueLocation = auto()
+
+
+class SpatialDimension(Enum):
+    """Cartesian spatial dimensions."""
+
+    X = auto()
+    Y = auto()
+    Z = auto()
+
+    def to_str(self) -> str:
+        return self.name.lower()
