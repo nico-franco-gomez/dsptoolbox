@@ -26,6 +26,26 @@ CHIRP_STEREO_PATH = os.path.join(
 )
 
 
+def _seeded(seed: int, func, *args, **kwargs):
+    """Call `func` with the global `numpy.random` state pinned to `seed`,
+    then restore whatever state it had before. Some tests compare a
+    per-sample recursive filter implementation against a vectorized
+    scipy reference with a tight `assert_allclose`/`isclose` tolerance;
+    the specific (otherwise unseeded) noise realization can occasionally
+    push floating-point rounding differences between the two
+    implementations past that tolerance. Pinning the seed here makes the
+    result reproducible regardless of how much of the shared global RNG
+    state prior tests in a full-suite run have already consumed.
+
+    """
+    state = np.random.get_state()
+    np.random.seed(seed)
+    try:
+        return func(*args, **kwargs)
+    finally:
+        np.random.set_state(state)
+
+
 class TestSignal:
     """Testing signal functionalities."""
 
@@ -1313,7 +1333,9 @@ class TestFilterTopologies:
     fs_hz = 24_000
 
     def get_noise(self):
-        return dsp.generators.noise(length_seconds=1, sampling_rate_hz=self.fs_hz)
+        return _seeded(
+            0, dsp.generators.noise, length_seconds=1, sampling_rate_hz=self.fs_hz
+        )
 
     def test_svfilter(self):
         # Functionality
@@ -1622,7 +1644,9 @@ class TestFilterTopologies:
         ff = dsp.Filter.biquad(dsp.BiquadEqType.Peaking, 100, 6, 0.7, self.fs_hz)
         b, a = ff.get_coefficients(dsp.FilterCoefficientsType.Ba)
         A, B, C, D = sig.tf2ss(b, a)
-        noise = dsp.generators.noise(
+        noise = _seeded(
+            0,
+            dsp.generators.noise,
             length_seconds=1.0,
             type_of_noise=-2.0,
             sampling_rate_hz=self.fs_hz,
