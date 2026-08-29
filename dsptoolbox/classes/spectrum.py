@@ -51,7 +51,7 @@ class Spectrum(MultichannelData):
         """
         self.frequency_vector_hz = frequency_vector_hz
         self.spectral_data = spectral_data
-        self.set_interpolator_parameters()
+        self._set_interpolator_parameters()
 
     @staticmethod
     def from_signal(sig: Signal, complex: bool = False) -> "Spectrum":
@@ -396,12 +396,15 @@ class Spectrum(MultichannelData):
                 1 / sampling_rate_hz,
             )
 
-        self.set_interpolator_parameters(
+        working = self.copy()
+        working._set_interpolator_parameters(
             InterpolationDomain.MagnitudePhase,
             InterpolationScheme.Pchip,
             InterpolationEdgeHandling.ZeroPad,
         )
-        spectrum = self.get_interpolated_spectrum(requested_freqs, SpectrumType.Complex)
+        spectrum = working.get_interpolated_spectrum(
+            requested_freqs, SpectrumType.Complex
+        )
 
         return __td_from_spec(spectrum, length_seconds, sampling_rate_hz)
 
@@ -410,8 +413,8 @@ class Spectrum(MultichannelData):
         f_lower_hz: float | None,
         f_upper_hz: float | None,
         inclusive: bool = True,
-    ):
-        """Trim the spectrum (inplace) to the new boundaries.
+    ) -> "Spectrum":
+        """Return a copy of the spectrum trimmed to the new boundaries.
 
         Parameters
         ----------
@@ -425,13 +428,15 @@ class Spectrum(MultichannelData):
 
         Returns
         -------
-        self
+        Spectrum
+            New, trimmed spectrum.
 
         """
         s = self.__freqs_to_slice(f_lower_hz, f_upper_hz, inclusive)
-        self.frequency_vector_hz = self.frequency_vector_hz[s]
-        self.spectral_data = self.spectral_data[s, ...]
-        return self
+        new = self.copy()
+        new.frequency_vector_hz = new.frequency_vector_hz[s]
+        new.spectral_data = new.spectral_data[s, ...]
+        return new
 
     def sum_channels(self, power_sum: bool = True) -> "Spectrum":
         """Sum all channels of the spectrum and return new spectrum with single channel.
@@ -459,9 +464,9 @@ class Spectrum(MultichannelData):
             )
         return super().sum_channels()
 
-    def resample(self, new_freqs_hz: NDArray[np.float64]):
-        """Resample current spectrum (inplace) to new frequency vector. The
-        stored interpolation parameters will be used.
+    def resample(self, new_freqs_hz: NDArray[np.float64]) -> "Spectrum":
+        """Return a copy of the spectrum resampled to a new frequency vector.
+        The stored interpolation parameters will be used.
 
         Parameters
         ----------
@@ -470,32 +475,35 @@ class Spectrum(MultichannelData):
 
         Returns
         -------
-        self
+        Spectrum
+            New, resampled spectrum.
 
         """
-        self.set_interpolator_parameters(
+        new = self.copy()
+        new._set_interpolator_parameters(
             (
                 InterpolationDomain.Power
-                if self.is_magnitude
+                if new.is_magnitude
                 else InterpolationDomain.MagnitudePhase
             ),
-            self.__int_scheme,
-            self.__int_edges,
+            new.__int_scheme,
+            new.__int_edges,
         )
-        new_sp = self.get_interpolated_spectrum(
+        new_sp = new.get_interpolated_spectrum(
             new_freqs_hz,
-            (SpectrumType.Magnitude if self.is_magnitude else SpectrumType.Complex),
+            (SpectrumType.Magnitude if new.is_magnitude else SpectrumType.Complex),
         )
-        self.frequency_vector_hz = new_freqs_hz
-        self.spectral_data = new_sp
-        return self
+        new.frequency_vector_hz = new_freqs_hz
+        new.spectral_data = new_sp
+        return new
 
     def normalize(
         self,
         reference_frequency_hz: float,
         reference_channel: int | None = None,
-    ):
-        """Normalize spectrum to be 0 dB at the specified frequency.
+    ) -> "Spectrum":
+        """Return a copy of the spectrum normalized to be 0 dB at the
+        specified frequency.
 
         Parameters
         ----------
@@ -507,7 +515,8 @@ class Spectrum(MultichannelData):
 
         Returns
         -------
-        self
+        Spectrum
+            New, normalized spectrum.
 
         """
         values = self.get_interpolated_spectrum(
@@ -516,11 +525,12 @@ class Spectrum(MultichannelData):
         normalization_value = (
             values if reference_channel is None else values[0, reference_channel]
         )
-        self.spectral_data /= normalization_value
-        return self
+        new = self.copy()
+        new.spectral_data /= normalization_value
+        return new
 
-    def apply_gain(self, gain_db: float | NDArray[np.float64]):
-        """Add gain to spectrum.
+    def apply_gain(self, gain_db: float | NDArray[np.float64]) -> "Spectrum":
+        """Return a copy of the spectrum with gain applied.
 
         Parameters
         ----------
@@ -530,15 +540,17 @@ class Spectrum(MultichannelData):
 
         Returns
         -------
-        self
+        Spectrum
+            New spectrum with gain applied.
 
         """
         gains = np.atleast_1d(gain_db)
         assert len(gains) == 1 or len(gains) == self.number_of_channels, (
             "Number of gains is not compatible"
         )
-        self.spectral_data *= from_db(gains, True)
-        return self
+        new = self.copy()
+        new.spectral_data *= from_db(gains, True)
+        return new
 
     def get_interpolated_spectrum(
         self,
@@ -682,13 +694,34 @@ class Spectrum(MultichannelData):
 
         raise ValueError("Some unexpected case happened!")
 
+    def _set_interpolator_parameters(
+        self,
+        domain: InterpolationDomain = InterpolationDomain.Power,
+        scheme: InterpolationScheme = InterpolationScheme.Linear,
+        edges_handling: InterpolationEdgeHandling = InterpolationEdgeHandling.ZeroPad,
+    ) -> None:
+        """Set the parameters of the interpolator in place. Private: used by
+        `__init__` and internally by methods that already operate on a
+        disposable working copy. Public API is `set_interpolator_parameters`.
+        """
+        if domain in (
+            InterpolationDomain.Complex,
+            InterpolationDomain.MagnitudePhase,
+        ):
+            assert not self.is_magnitude, (
+                "No complex interpolation is possible with this data"
+            )
+        self.__int_domain = domain
+        self.__int_scheme = scheme
+        self.__int_edges = edges_handling
+
     def set_interpolator_parameters(
         self,
         domain: InterpolationDomain = InterpolationDomain.Power,
         scheme: InterpolationScheme = InterpolationScheme.Linear,
         edges_handling: InterpolationEdgeHandling = InterpolationEdgeHandling.ZeroPad,
-    ):
-        """Set the parameters of the interpolator.
+    ) -> "Spectrum":
+        """Return a copy of the spectrum with new interpolator parameters.
 
         Parameters
         ----------
@@ -701,6 +734,11 @@ class Spectrum(MultichannelData):
             Type of handling for interpolating outside the saved range. See
             notes for details. Default: ZeroPad.
 
+        Returns
+        -------
+        Spectrum
+            New spectrum with the new interpolator parameters.
+
         Notes
         -----
         - The domain for spectrum interpolation defaults to power. This renders
@@ -710,17 +748,9 @@ class Spectrum(MultichannelData):
           the values of different frequency bins.
 
         """
-        if domain in (
-            InterpolationDomain.Complex,
-            InterpolationDomain.MagnitudePhase,
-        ):
-            assert not self.is_magnitude, (
-                "No complex interpolation is possible with this data"
-            )
-        self.__int_domain = domain
-        self.__int_scheme = scheme
-        self.__int_edges = edges_handling
-        return self
+        new = self.copy()
+        new._set_interpolator_parameters(domain, scheme, edges_handling)
+        return new
 
     def get_energy(
         self, f_lower_hz: float | None = None, f_upper_hz: float | None = None
@@ -758,10 +788,10 @@ class Spectrum(MultichannelData):
             axis=0,
         )
 
-    def warp(self, warping_factor: float, sampling_rate_hz: int):
-        """Transform (inplace) the spectrum by warping it through
-        interpolation with the stored interpolation parameters. This is done
-        according to the formula shown in [1].
+    def warp(self, warping_factor: float, sampling_rate_hz: int) -> "Spectrum":
+        """Return a copy of the spectrum warped through interpolation with
+        the stored interpolation parameters. This is done according to the
+        formula shown in [1].
 
         Parameters
         ----------
@@ -773,7 +803,8 @@ class Spectrum(MultichannelData):
 
         Returns
         -------
-        self
+        Spectrum
+            New, warped spectrum.
 
         References
         ----------
@@ -796,17 +827,19 @@ class Spectrum(MultichannelData):
                 "Invalid sampling rate for frequency vector"
             )
 
-        self.frequency_vector_hz = _warp_frequency_vector(
-            self.frequency_vector_hz, sampling_rate_hz, warping_factor
+        new = self.copy()
+        new.frequency_vector_hz = _warp_frequency_vector(
+            new.frequency_vector_hz, sampling_rate_hz, warping_factor
         )
-        return self
+        return new
 
     def apply_octave_smoothing(
         self, octave_fraction: float, window_type: Window = Window.Hann
-    ):
-        """Apply octave smoothing (inplace) on the spectral data. When complex,
-        the smoothing happens on the magnitude and phase representation.
-        Otherwise, the smoothing happens on the magnitude spectrum.
+    ) -> "Spectrum":
+        """Return a copy of the spectrum with octave smoothing applied to
+        the spectral data. When complex, the smoothing happens on the
+        magnitude and phase representation. Otherwise, the smoothing happens
+        on the magnitude spectrum.
 
         Parameters
         ----------
@@ -817,7 +850,8 @@ class Spectrum(MultichannelData):
 
         Returns
         -------
-        self
+        Spectrum
+            New, smoothed spectrum.
 
         Notes
         -----
@@ -849,11 +883,12 @@ class Spectrum(MultichannelData):
                 (SpectrumType.Magnitude if self.is_magnitude else SpectrumType.Complex),
             )
 
+        new = self.copy()
         if self.is_magnitude:
-            self.spectral_data = fractional_octave_smoothing(
+            new.spectral_data = fractional_octave_smoothing(
                 data, beta, octave_fraction, window_type.to_scipy_format()
             )
-            return self
+            return new
 
         mag = fractional_octave_smoothing(
             np.abs(data), beta, octave_fraction, window_type.to_scipy_format()
@@ -864,11 +899,12 @@ class Spectrum(MultichannelData):
             octave_fraction,
             window_type.to_scipy_format(),
         )
-        self.spectral_data = mag * np.exp(1j * ph)
-        return self
+        new.spectral_data = mag * np.exp(1j * ph)
+        return new
 
-    def set_coherence(self, coherence: NDArray[np.float64]):
-        """Sets the coherence matrix from the transfer function computation.
+    def set_coherence(self, coherence: NDArray[np.float64]) -> "Spectrum":
+        """Return a copy of the spectrum with the coherence matrix from the
+        transfer function computation set.
 
         Parameters
         ----------
@@ -876,12 +912,144 @@ class Spectrum(MultichannelData):
             Coherence matrix. It must match the shape of the saved spectral
             data.
 
+        Returns
+        -------
+        Spectrum
+            New spectrum with coherence set.
+
         """
         assert coherence.shape == self.spectral_data.shape, (
             "Length of signals and given coherence do not match"
         )
         assert not np.iscomplexobj(coherence), "Coherence cannot be complex"
-        self.coherence = coherence
+        new = self.copy()
+        new.coherence = coherence
+        return new
+
+    def spectral_difference(
+        self,
+        other: "Signal | Spectrum",
+        octave_fraction_smoothing: float = 0.0,
+        energy_normalization: bool = True,
+        complex: bool = False,
+        dynamic_range_db: float | None = 100.0,
+    ) -> "Spectrum":
+        """Compute the spectral difference between this and another signal
+        or spectrum. Their number of channels must match. It is computed as
+        `self / other`.
+
+        Parameters
+        ----------
+        other : Signal, Spectrum
+        octave_fraction_smoothing : float, optional
+            Smoothing can be applied prior to computing the difference.
+            Default: 0 (no smoothing).
+        energy_normalization : bool, optional
+            When True, each channel is energy normalized before computing
+            the difference. Default: True.
+        complex : bool, optional
+            When True, the output will be complex. This is only supported if
+            the inputs are complex (for signals, the saved spectrum
+            parameters must deliver a complex spectrum). Default: False.
+        dynamic_range_db : float, None, optional
+            Dynamic range in dB to regard when building the difference. Pass
+            None to avoid limiting the range. Default: 100.
+
+        Returns
+        -------
+        Spectrum
+            Difference spectrum.
+
+        """
+        assert self.number_of_channels == other.number_of_channels, (
+            "Number of channels does not match"
+        )
+
+        inp1 = self.copy()
+
+        if isinstance(other, Signal):
+            inp2 = Spectrum.from_signal(other, complex)
+        else:
+            if complex:
+                assert not other.is_magnitude, "Input data should be complex"
+            inp2 = other.copy()
+
+        if energy_normalization:
+            inp1.spectral_data /= inp1.get_energy() ** 0.5
+            inp2.spectral_data /= inp2.get_energy() ** 0.5
+
+        if octave_fraction_smoothing != 0:
+            inp1 = inp1.apply_octave_smoothing(octave_fraction_smoothing)
+            inp2 = inp2.apply_octave_smoothing(octave_fraction_smoothing)
+
+        inp2 = inp2.set_interpolator_parameters(
+            InterpolationDomain.MagnitudePhase if complex else InterpolationDomain.Power
+        )
+        mag2 = inp2.get_interpolated_spectrum(
+            inp1.frequency_vector_hz,
+            SpectrumType.Complex if complex else SpectrumType.Magnitude,
+        )
+
+        if dynamic_range_db is not None:
+            dynamic_range_factor = from_db(-abs(dynamic_range_db), True)
+            mag2 = np.clip(mag2, np.max(mag2, axis=0) * dynamic_range_factor, None)
+
+        inp1.spectral_data /= mag2
+        return inp1
+
+    def append_spectra(
+        self, others: list["Spectrum"], complex_if_available: bool = True
+    ) -> "Spectrum":
+        """Return a new spectrum joining this and other spectra by
+        appending their channels.
+
+        Parameters
+        ----------
+        others : list[Spectrum]
+            Other spectra to be appended. All will be interpolated to this
+            spectrum's frequency vector.
+        complex_if_available : bool, optional
+            If this spectrum is complex and this is set to True, all other
+            spectra are expected to be complex as well and will be appended.
+            In any other case, only magnitude spectra will be appended.
+            Default: True.
+
+        Returns
+        -------
+        Spectrum
+            New spectrum with all channels.
+
+        """
+        spectra = [self] + list(others)
+        assert len(spectra) > 1, "There must be at least one other spectrum to join"
+        complex_append = complex_if_available and not spectra[0].is_magnitude
+        if complex_append:
+            assert all([not s.is_magnitude for s in spectra]), (
+                "At least one spectrum is not complex"
+            )
+
+        total_channels = sum([s.number_of_channels for s in spectra])
+        freqs = spectra[0].frequency_vector_hz
+        spec = np.zeros(
+            (len(freqs), total_channels),
+            dtype=np.complex128 if complex_append else np.float64,
+        )
+
+        ch_ind = 0
+        for s in spectra:
+            spec[:, ch_ind : ch_ind + s.number_of_channels] = (
+                s.get_interpolated_spectrum(
+                    freqs,
+                    (
+                        SpectrumType.Complex
+                        if complex_append
+                        else SpectrumType.Magnitude
+                    ),
+                )
+            )
+            ch_ind += s.number_of_channels
+
+        return Spectrum(freqs, spec)
 
     def plot_magnitude(
         self,
@@ -1010,14 +1178,14 @@ class Spectrum(MultichannelData):
         """Create a copy with new spectral data."""
         new_spectrum = Spectrum(self.frequency_vector_hz, data)
         # Copy interpolator parameters
-        new_spectrum.set_interpolator_parameters(
+        new_spectrum._set_interpolator_parameters(
             self.__int_domain,
             self.__int_scheme,
             self.__int_edges,
         )
         # Copy coherence if it exists
         if self.has_coherence:
-            new_spectrum.set_coherence(self.coherence)
+            new_spectrum.coherence = self.coherence
         return new_spectrum
 
     def _update_state(self) -> None:

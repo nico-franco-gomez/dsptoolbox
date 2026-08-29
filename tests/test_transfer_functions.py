@@ -84,7 +84,7 @@ class TestTransferFunctionsModule:
         h.time_data = np.repeat(h.time_data, 2, axis=1)
 
         delay_second_channel = 10
-        h = dsp.delay(h, delay_second_channel, [1], True)
+        h = h.delay(delay_second_channel, [1], True)
         hh = dsp.transfer_functions.window_ir_tukey(
             h, 210 / h.sampling_rate_hz, 10 / h.sampling_rate_hz
         )
@@ -264,7 +264,7 @@ class TestTransferFunctionsModule:
         # Only functionality
         h = dsp.transfer_functions.spectral_deconvolve(self.y_m, self.x)
         h.time_data = np.roll(h.time_data, 256 - np.argmax(np.abs(h.time_data)), axis=0)
-        h = dsp.pad_trim(h, 2**13)
+        h = h.pad_trim(2**13)
 
         dsp.transfer_functions.window_ir(h, 2**11, at_start=True)
         dsp.transfer_functions.window_ir(h, 2**11, at_start=False)
@@ -753,7 +753,7 @@ class TestTransferFunctionsModule:
 
     def test_min_phase_from_mag(self):
         # Only functionality is tested
-        self.y_st.set_spectrum_parameters(method=dsp.SpectrumMethod.FFT)
+        self.y_st = self.y_st.set_spectrum_parameters(method=dsp.SpectrumMethod.FFT)
         spec = dsp.Spectrum.from_signal(self.y_st)
         dsp.transfer_functions.min_phase_from_mag(spec, self.y_st.sampling_rate_hz)
         dsp.transfer_functions.min_phase_from_mag(
@@ -762,7 +762,7 @@ class TestTransferFunctionsModule:
 
     def test_lin_phase_from_mag(self):
         # Only functionality is tested here
-        self.y_st.set_spectrum_parameters(method=dsp.SpectrumMethod.FFT)
+        self.y_st = self.y_st.set_spectrum_parameters(method=dsp.SpectrumMethod.FFT)
         spec = dsp.Spectrum.from_signal(self.y_st)
         dsp.transfer_functions.lin_phase_from_mag(
             spec,
@@ -836,9 +836,7 @@ class TestTransferFunctionsModule:
         f, min_phases = dsp.transfer_functions.minimum_phase(ir)
         assert len(f) == len(min_phases)
 
-        f, min_phases = dsp.transfer_functions.minimum_phase(
-            dsp.pad_trim(ir, len(ir) + 1)
-        )
+        f, min_phases = dsp.transfer_functions.minimum_phase(ir.pad_trim(len(ir) + 1))
         assert len(f) == len(min_phases)
         with pytest.raises(AssertionError):
             s1 = dsp.Signal(None, ir.time_data, ir.sampling_rate_hz)
@@ -918,7 +916,7 @@ class TestTransferFunctionsModule:
         ir = dsp.generators.dirac(self.fs, sampling_rate_hz=self.fs)
         delay_seconds = 0.00133  # Some value to have a fractional delay
         delay_samples = self.fs * delay_seconds
-        ir = dsp.fractional_delay(ir, delay_seconds)
+        ir = ir.fractional_delay(delay_seconds)
         peak_min_phase = dsp.transfer_functions.find_ir_latency(ir).squeeze()
         peak = dsp.transfer_functions.find_ir_latency(ir, False)
 
@@ -1007,7 +1005,7 @@ class TestTransferFunctionsModule:
         ir = dsp.ImpulseResponse(
             join(os.path.dirname(__file__), "..", "example_data", "rir.wav")
         )
-        ir = dsp.pad_trim(ir, int(50e-3 * ir.sampling_rate_hz))
+        ir = ir.pad_trim(int(50e-3 * ir.sampling_rate_hz))
         dsp.transfer_functions.complex_smoothing(
             ir, 12.0, dsp.transfer_functions.SmoothingDomain.RealImaginary
         )

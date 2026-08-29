@@ -120,7 +120,7 @@ class TestBeamformingModule:
         sp = dsp.Signal(
             join(os.path.dirname(__file__), "..", "example_data", "speech.flac")
         )
-        sp = dsp.pad_trim(sp, 20_000)
+        sp = sp.pad_trim(20_000)
         ns = dsp.generators.noise(
             length_seconds=0.5, sampling_rate_hz=sp.sampling_rate_hz
         )
@@ -202,7 +202,7 @@ class TestBeamformingModule:
         sp = dsp.Signal(
             join(os.path.dirname(__file__), "..", "example_data", "speech.flac")
         )
-        sp = dsp.pad_trim(sp, 20_000)
+        sp = sp.pad_trim(20_000)
         ns = dsp.generators.noise(
             length_seconds=0.3, sampling_rate_hz=sp.sampling_rate_hz
         )

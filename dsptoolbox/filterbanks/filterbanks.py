@@ -409,7 +409,7 @@ def fractional_octave_bands(
             filter_design_method=IirDesignMethod.Butterworth,
             sampling_rate_hz=sampling_rate_hz,
         )
-        octave_filter_bank.add_filter(f)
+        octave_filter_bank = octave_filter_bank.add_filter(f)
 
     return octave_filter_bank, center_freqs_hz, (lower_hz, upper_hz)
 

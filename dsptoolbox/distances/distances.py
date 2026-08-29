@@ -80,8 +80,8 @@ def log_spectral(
             "Upper bound for " + "frequency must be smaller than the nyquist frequency"
         )
         assert not any(f_range_hz < 0), "Frequencies in range must be " + "positive"
-    insig1.set_spectrum_parameters(method=method, **spectrum_parameters)
-    insig2.set_spectrum_parameters(method=method, **spectrum_parameters)
+    insig1 = insig1.set_spectrum_parameters(method=method, **spectrum_parameters)
+    insig2 = insig2.set_spectrum_parameters(method=method, **spectrum_parameters)
     f, spec1 = insig1.get_spectrum()
     f, spec2 = insig2.get_spectrum()
 
@@ -166,8 +166,8 @@ def itakura_saito(
             "Upper bound for " + "frequency must be smaller than the nyquist frequency"
         )
         assert not any(f_range_hz < 0), "Frequencies in range must be " + "positive"
-    insig1.set_spectrum_parameters(method=method, **spectrum_parameters)
-    insig2.set_spectrum_parameters(method=method, **spectrum_parameters)
+    insig1 = insig1.set_spectrum_parameters(method=method, **spectrum_parameters)
+    insig2 = insig2.set_spectrum_parameters(method=method, **spectrum_parameters)
     f, spec1 = insig1.get_spectrum()
     f, spec2 = insig2.get_spectrum()
 

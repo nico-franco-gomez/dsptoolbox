@@ -173,7 +173,7 @@ def log_mel_spectrogram(
 
     """
     if stft_parameters is not None:
-        s.set_spectrogram_parameters(**stft_parameters)
+        s = s.set_spectrogram_parameters(**stft_parameters)
     time_s, f_hz, sp = s.get_spectrogram()
 
     mfilt, f_mel = mel_filterbank(f_hz, range_hz, n_bands, normalize=True)
@@ -313,7 +313,7 @@ def plot_waterfall(
     assert dynamic_range_db > 0, "Dynamic range has to be more than 0"
     sig = sig.get_channels(channel)
     if stft_parameters is not None:
-        sig.set_spectrogram_parameters(**stft_parameters)
+        sig = sig.set_spectrogram_parameters(**stft_parameters)
     t, f, stft = sig.get_spectrogram()
 
     amplitude_scaling = sig.spectrum_scaling.is_amplitude_scaling()
@@ -403,7 +403,7 @@ def mfcc(
 
     """
     if stft_parameters is not None:
-        signal.set_spectrogram_parameters(**stft_parameters)
+        signal = signal.set_spectrogram_parameters(**stft_parameters)
     time_s, f, sp = signal.get_spectrogram()
 
     # Mel filters

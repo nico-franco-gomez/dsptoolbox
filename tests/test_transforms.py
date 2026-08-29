@@ -119,7 +119,7 @@ class TestTransformsModule:
 
         # With longer fft length than window
         wl = 512
-        self.speech.set_spectrogram_parameters(
+        self.speech = self.speech.set_spectrogram_parameters(
             window_length_samples=wl, fft_length_samples=wl * 2
         )
         t, f, sp = self.speech.get_spectrogram()
@@ -159,7 +159,7 @@ class TestTransformsModule:
         np.testing.assert_allclose(s, s2)
 
         # Now other length (even vs. odd)
-        s = dsp.transforms.hilbert(dsp.pad_trim(speech, len(speech) - 1))
+        s = dsp.transforms.hilbert(speech.pad_trim(len(speech) - 1))
         s = s.time_data + s.time_data_imaginary * 1j
         s2 = speech.time_data[:-1, ...]
 
@@ -173,14 +173,14 @@ class TestTransformsModule:
         dsp.transforms.hilbert(s_mb)
 
     def test_stereo_mid_side(self):
-        sp = dsp.append_signals([self.speech, self.speech])
+        sp = self.speech.append_signals([self.speech])
         sp_aft = dsp.transforms.stereo_mid_side(sp, True)
         sp_aft = dsp.transforms.stereo_mid_side(sp_aft, False)
         assert np.all(np.isclose(sp.time_data, sp_aft.time_data))
 
     def test_laguerre(self):
         # Only functionality
-        sp = dsp.pad_trim(self.speech, 128)
+        sp = self.speech.pad_trim(128)
         dsp.transforms.laguerre(sp, -0.7)
 
     def test_warp(self):
@@ -213,7 +213,7 @@ class TestTransformsModule:
 
     def test_lpc(self):
         # Only functionality
-        speech = dsp.resample(self.speech, 8000)
+        speech = self.speech.resample(8000)
         dsp.transforms.lpc(speech, 10, 1024, False, True, 512)
         dsp.transforms.lpc(speech, 10, 1024, True, True, 512)
 
@@ -221,7 +221,7 @@ class TestTransformsModule:
         dsp.transforms.lpc(speech, 10, 1024, True, False, 512)
 
     def test_dft(self):
-        s = dsp.pad_trim(self.speech, 20_000)
+        s = self.speech.pad_trim(20_000)
         s.spectrum_method = dsp.SpectrumMethod.FFT
         f, spectrum = s.get_spectrum()
 
@@ -230,13 +230,13 @@ class TestTransformsModule:
         np.testing.assert_allclose(dft, spectrum[select, ...])
 
     def test_spectrum_via_filterbank(self):
-        s = dsp.pad_trim(self.speech, 20_000)
+        s = self.speech.pad_trim(20_000)
         freqs = np.asarray([500, 550, 1000])
         # Linear
         spec1 = dsp.transforms.spectrum_via_filterbank(s, freqs, None, 20.0, 8, False)
         dsp.transforms.spectrum_via_filterbank(s, freqs, None, 20.0, 8, True)
 
-        s_multi = dsp.append_signals([s, s.copy()])
+        s_multi = s.append_signals([s.copy()])
         spec2 = dsp.transforms.spectrum_via_filterbank(
             s_multi, freqs, None, 20.0, 8, False
         )

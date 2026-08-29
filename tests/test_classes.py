@@ -85,7 +85,7 @@ class TestSignal:
 
         # Check normal FFT
         s = dsp.Signal(None, self.time_vec, self.fs)
-        s.set_spectrum_parameters(
+        s = s.set_spectrum_parameters(
             method=dsp.SpectrumMethod.FFT,
             scaling=dsp.SpectrumScaling.FFTBackward,
             pad_to_fast_length=False,
@@ -94,7 +94,7 @@ class TestSignal:
         np.testing.assert_allclose(sp, sp_sig)
 
         # Check amplitude spectrum scaling for normal FFT
-        s.set_spectrum_parameters(
+        s = s.set_spectrum_parameters(
             method=dsp.SpectrumMethod.FFT,
             scaling=dsp.SpectrumScaling.PowerSpectrum,
             pad_to_fast_length=False,
@@ -109,7 +109,7 @@ class TestSignal:
         )
         assert np.all(np.isclose(sp_reference, sp_sig.squeeze()))
 
-        s.set_spectrum_parameters(
+        s = s.set_spectrum_parameters(
             method=dsp.SpectrumMethod.FFT,
             scaling=dsp.SpectrumScaling.PowerSpectralDensity,
             pad_to_fast_length=False,
@@ -125,7 +125,7 @@ class TestSignal:
         assert np.all(np.isclose(sp_reference, sp_sig.squeeze()))
 
         # Try smoothing
-        s.set_spectrum_parameters(
+        s = s.set_spectrum_parameters(
             method=dsp.SpectrumMethod.FFT,
             scaling=dsp.SpectrumScaling.AmplitudeSpectrum,
             pad_to_fast_length=False,
@@ -138,12 +138,12 @@ class TestSignal:
         new_ch = np.random.normal(0, 0.1, (self.length_samp, 1))
         t_vec = np.append(self.time_vec, new_ch, axis=1)
         s = dsp.Signal(None, self.time_vec.copy(), self.fs)
-        assert np.all(
-            t_vec == s.add_channel(None, new_ch, s.sampling_rate_hz).time_data
-        )
+        s = s.add_channel(None, new_ch, s.sampling_rate_hz)
+        assert np.all(t_vec == s.time_data)
 
         # Remove channel
-        assert np.all(self.time_vec == s.remove_channel(-1).time_data)
+        s = s.remove_channel(-1)
+        assert np.all(self.time_vec == s.time_data)
 
         # Try to remove channel that does not exist
         with pytest.raises(AssertionError):
@@ -222,7 +222,7 @@ class TestSignal:
         s.plot_spl(True)
 
         # Plot phase and group delay
-        s.set_spectrum_parameters(method=dsp.SpectrumMethod.FFT)
+        s = s.set_spectrum_parameters(method=dsp.SpectrumMethod.FFT)
         s.plot_phase()
         s.plot_phase(unwrap=True, smoothing=4, remove_ir_latency=None)
         s.plot_phase(remove_ir_latency="min_phase")
@@ -234,7 +234,7 @@ class TestSignal:
 
         # Try to plot phase having welch's method for magnitude
         with pytest.raises(AssertionError):
-            s.set_spectrum_parameters(
+            s = s.set_spectrum_parameters(
                 method=dsp.SpectrumMethod.WelchPeriodogram,
                 window_length_samples=32,
             )
@@ -282,7 +282,7 @@ class TestSignal:
     def test_get_stft(self):
         s = dsp.Signal(time_data=self.time_vec, sampling_rate_hz=self.fs)
         # Use parameters just like librosa for validation
-        s.set_spectrogram_parameters(
+        s = s.set_spectrogram_parameters(
             window_length_samples=1024,
             window_type=dsp.Window.Hann,
             overlap_percent=50,
@@ -292,7 +292,7 @@ class TestSignal:
             scaling=dsp.SpectrumScaling.FFTBackward,
         )
         t, f, stft = s.get_spectrogram()
-        s.set_spectrogram_parameters(
+        s = s.set_spectrogram_parameters(
             window_length_samples=1024,
             window_type=dsp.Window.Hann,
             overlap_percent=50,
@@ -367,7 +367,7 @@ class TestSignal:
         #
         n.spectrum_method = dsp.SpectrumMethod.FFT
         n.spectrum_scaling = dsp.SpectrumScaling.PowerSpectrum
-        n.set_spectrogram_parameters(256, window_type=dsp.Window.Blackman)
+        n = n.set_spectrogram_parameters(256, window_type=dsp.Window.Blackman)
         n2 = n.copy_with_new_time_data(np.zeros((100, 1)))
 
         #
@@ -743,12 +743,12 @@ class TestFilterBankClass:
     def test_create_filter_bank(self):
         # Create filter bank sequentially
         fb = dsp.FilterBank()
-        fb.add_filter(self.get_iir_filter())
+        fb = fb.add_filter(self.get_iir_filter())
 
         assert fb.number_of_filters == 1
         assert fb.sampling_rate_hz == self.fs
 
-        fb.add_filter(self.get_fir_filter())
+        fb = fb.add_filter(self.get_fir_filter())
 
         assert fb.number_of_filters == 2
         assert fb.sampling_rate_hz == self.fs
@@ -774,8 +774,8 @@ class TestFilterBankClass:
     def test_plots(self):
         # Create
         fb = dsp.FilterBank()
-        fb.add_filter(self.get_iir_filter())
-        fb.add_filter(self.get_fir_filter())
+        fb = fb.add_filter(self.get_iir_filter())
+        fb = fb.add_filter(self.get_fir_filter())
 
         # Get plots
         fb.plot_magnitude(length_samples=512, mode=dsp.FilterBankMode.Parallel)
@@ -795,32 +795,32 @@ class TestFilterBankClass:
 
     def test_filterbank_functionalities(self):
         fb = dsp.FilterBank()
-        fb.add_filter(self.get_iir_filter())
-        fb.add_filter(self.get_fir_filter())
+        fb = fb.add_filter(self.get_iir_filter())
+        fb = fb.add_filter(self.get_fir_filter())
 
         assert fb.number_of_filters == 2
         assert fb.sampling_rate_hz == self.fs
 
         # Remove
-        fb.remove_filter(0)
+        fb = fb.remove_filter(0)
         assert fb.number_of_filters == 1
         assert fb.sampling_rate_hz == self.fs
 
         # Readd
-        fb.add_filter(self.get_fir_filter())
+        fb = fb.add_filter(self.get_fir_filter())
         assert fb.number_of_filters == 2
         assert fb.sampling_rate_hz == self.fs
 
         # Swap (and Assertions)
-        fb.swap_filters([1, 0])
+        fb = fb.swap_filters([1, 0])
         assert fb.number_of_filters == 2
         assert len(fb) == 2
         assert fb.sampling_rate_hz == self.fs
 
         with pytest.raises(AssertionError):
-            fb.swap_filters([1, 1])
+            fb = fb.swap_filters([1, 1])
         with pytest.raises(AssertionError):
-            fb.swap_filters([1, 2])
+            fb = fb.swap_filters([1, 2])
 
         # Others
         fb.get_ir(128, dsp.FilterBankMode.Parallel)
@@ -831,8 +831,8 @@ class TestFilterBankClass:
     def test_filtering(self):
         # Create
         fb = dsp.FilterBank()
-        fb.add_filter(self.get_iir_filter())
-        fb.add_filter(self.get_fir_filter())
+        fb = fb.add_filter(self.get_iir_filter())
+        fb = fb.add_filter(self.get_fir_filter())
 
         t_vec = np.random.normal(0, 0.01, (self.fs * 3, 2))
         s = dsp.Signal(None, t_vec, self.fs)
@@ -896,36 +896,36 @@ class TestFilterBankClass:
 
     def test_multirate(self):
         fb = dsp.FilterBank(same_sampling_rate=False)
-        fb.add_filter(self.get_iir_filter())
+        fb = fb.add_filter(self.get_iir_filter())
 
         assert fb.number_of_filters == 1
         assert fb.sampling_rate_hz == [self.fs]
 
-        fb.add_filter(self.get_fir_filter(True))
+        fb = fb.add_filter(self.get_fir_filter(True))
 
         assert fb.number_of_filters == 2
         assert fb.sampling_rate_hz == [self.fs, self.fs // 2]
 
         # Remove
-        fb.remove_filter(0)
+        fb = fb.remove_filter(0)
         assert fb.number_of_filters == 1
         assert fb.sampling_rate_hz == [self.fs // 2]
 
         # Readd
-        fb.add_filter(self.get_fir_filter())
+        fb = fb.add_filter(self.get_fir_filter())
         assert fb.number_of_filters == 2
         assert fb.sampling_rate_hz == [self.fs // 2, self.fs]
 
         # Swap (and Assertions)
-        fb.swap_filters([1, 0])
+        fb = fb.swap_filters([1, 0])
         assert fb.number_of_filters == 2
         assert fb.sampling_rate_hz == [self.fs, self.fs // 2]
 
         # Should not be possible to create
         with pytest.raises(AssertionError):
             fb = dsp.FilterBank(same_sampling_rate=True)
-            fb.add_filter(self.get_iir_filter())
-            fb.add_filter(self.get_fir_filter(True))
+            fb = fb.add_filter(self.get_iir_filter())
+            fb = fb.add_filter(self.get_fir_filter(True))
 
         # Create filter bank passing a list
         filters = []
@@ -950,8 +950,8 @@ class TestFilterBankClass:
     def test_plotting_multirate(self):
         # Should not fail but no plots are created
         fb = dsp.FilterBank(same_sampling_rate=False)
-        fb.add_filter(self.get_iir_filter())
-        fb.add_filter(self.get_fir_filter(True))
+        fb = fb.add_filter(self.get_iir_filter())
+        fb = fb.add_filter(self.get_fir_filter(True))
 
         fb.plot_magnitude(length_samples=512, mode=dsp.FilterBankMode.Parallel)
         fb.plot_phase(length_samples=512, mode=dsp.FilterBankMode.Parallel)
@@ -962,8 +962,8 @@ class TestFilterBankClass:
 
     def test_filtering_multirate_multiband(self):
         fb = dsp.FilterBank(same_sampling_rate=False)
-        fb.add_filter(self.get_iir_filter())
-        fb.add_filter(self.get_fir_filter(True))
+        fb = fb.add_filter(self.get_iir_filter())
+        fb = fb.add_filter(self.get_fir_filter(True))
 
         s1 = dsp.generators.noise(length_seconds=1, sampling_rate_hz=self.fs)
         s2 = dsp.generators.noise(length_seconds=2, sampling_rate_hz=self.fs // 2)
@@ -978,16 +978,16 @@ class TestFilterBankClass:
 
     def test_iterator(self):
         fb = dsp.FilterBank(same_sampling_rate=False)
-        fb.add_filter(self.get_iir_filter())
-        fb.add_filter(self.get_fir_filter(True))
+        fb = fb.add_filter(self.get_iir_filter())
+        fb = fb.add_filter(self.get_fir_filter(True))
         for n in fb:
             assert type(n) is dsp.Filter
 
     def test_transfer_function(self):
         # Create
         fb = dsp.FilterBank(same_sampling_rate=False)
-        fb.add_filter(self.get_iir_filter())
-        fb.add_filter(self.get_fir_filter())
+        fb = fb.add_filter(self.get_iir_filter())
+        fb = fb.add_filter(self.get_fir_filter())
 
         freqs = np.linspace(1, 2e3, 400)
         fb.get_transfer_function(freqs, mode=dsp.FilterBankMode.Parallel)
@@ -1021,14 +1021,14 @@ class TestMultiBandSignal:
         assert mbs.number_of_channels == self.s.number_of_channels
         assert mbs.sampling_rate_hz == self.s.sampling_rate_hz
 
-        mbs.add_band(self.s)
+        mbs = mbs.add_band(self.s)
         assert mbs.number_of_bands == 3
         assert mbs.number_of_channels == self.s.number_of_channels
         assert mbs.sampling_rate_hz == self.s.sampling_rate_hz
-        mbs.remove_band(0)
+        mbs = mbs.remove_band(0)
         assert mbs.number_of_bands == 2
         assert mbs.number_of_channels == self.s.number_of_channels
-        mbs.swap_bands([1, 0])
+        mbs = mbs.swap_bands([1, 0])
         mbs.show_info()
         print(mbs)
         mbs.copy()
@@ -1106,7 +1106,7 @@ class TestMultiBandSignal:
         assert fs == self.s.sampling_rate_hz
 
         # Multirate
-        s2 = dsp.resample(self.s, self.s.sampling_rate_hz // 2)
+        s2 = self.s.resample(self.s.sampling_rate_hz // 2)
         mbs = dsp.MultiBandSignal(
             bands=[self.s, s2],
             same_sampling_rate=False,
@@ -1121,7 +1121,7 @@ class TestMultiBandSignal:
         assert np.all(tds[1][1] == s2.sampling_rate_hz)
 
     def test_multirate(self):
-        s2 = dsp.resample(self.s, self.s.sampling_rate_hz // 2)
+        s2 = self.s.resample(self.s.sampling_rate_hz // 2)
 
         # Parameter same sampling rate has to be False
         with pytest.raises(AssertionError):
@@ -1142,7 +1142,7 @@ class TestMultiBandSignal:
             mbs.sampling_rate_hz == [self.s.sampling_rate_hz, s2.sampling_rate_hz]
         )
 
-        mbs.add_band(self.s)
+        mbs = mbs.add_band(self.s)
         assert mbs.number_of_bands == 3
         assert mbs.number_of_channels == self.s.number_of_channels
         assert np.all(
@@ -1154,14 +1154,14 @@ class TestMultiBandSignal:
             ]
         )
 
-        mbs.remove_band(0)
+        mbs = mbs.remove_band(0)
         assert mbs.number_of_bands == 2
         assert mbs.number_of_channels == self.s.number_of_channels
         assert np.all(
             mbs.sampling_rate_hz == [s2.sampling_rate_hz, self.s.sampling_rate_hz]
         )
 
-        mbs.swap_bands([1, 0])
+        mbs = mbs.swap_bands([1, 0])
         assert mbs.number_of_bands == 2
         assert len(mbs) == 2
         assert mbs.number_of_channels == self.s.number_of_channels
@@ -1221,7 +1221,7 @@ class TestImpulseResponse:
         rir = dsp.transfer_functions.window_centered_ir(rir, len(rir))[0]
 
         # Add channel
-        rir.add_channel(self.path_rir)
+        rir = rir.add_channel(self.path_rir)
         assert not hasattr(rir, "window")
 
         # Window again
@@ -1230,12 +1230,12 @@ class TestImpulseResponse:
         np.testing.assert_array_equal(rir.window[:, 1], rir.window[:, 0])
 
         # Remove channel
-        rir.remove_channel(1)
+        rir = rir.remove_channel(1)
 
         # Swap channels
-        rir.add_channel(self.path_rir)
-        rir.add_channel(self.path_rir)
-        rir.swap_channels([2, 1, 0])
+        rir = rir.add_channel(self.path_rir)
+        rir = rir.add_channel(self.path_rir)
+        rir = rir.swap_channels([2, 1, 0])
 
     def test_plotting_with_window(self):
         rir = self.get_ir()
@@ -1437,7 +1437,7 @@ class TestFilterTopologies:
 
         # Normalize
         td /= np.max(np.abs(td))
-        dd = dsp.normalize(dd, norm_dbfs=0.0)
+        dd = dd.normalize(norm_dbfs=0.0)
         np.testing.assert_allclose(td, dd.time_data.squeeze(), rtol=1e-6)
 
         filter.fit_coefficients_to_ir(d)
@@ -1537,13 +1537,13 @@ class TestFilterTopologies:
         self, implementation: dsp.filterbanks.FIRFilterOverlapSave
     ):
         rir = dsp.ImpulseResponse.from_file(RIR_PATH)
-        noise = dsp.resample(self.get_noise(), rir.sampling_rate_hz)
+        noise = (self.get_noise()).resample(rir.sampling_rate_hz)
         fir = implementation.from_filter(dsp.transfer_functions.ir_to_filter(rir))
 
         blocksize = 512
         fir.prepare(blocksize, 1)
         n_blocks = len(noise) // blocksize + 1
-        noise = dsp.pad_trim(noise, n_blocks * blocksize)
+        noise = noise.pad_trim(n_blocks * blocksize)
         accumulator = np.zeros_like(noise.time_data)
         for n in range(n_blocks):
             stop = min((n + 1) * blocksize, len(accumulator))
@@ -1558,15 +1558,15 @@ class TestFilterTopologies:
 
     def test_fir_filter_multichannel_uniform_partitioned(self):
         rir = dsp.ImpulseResponse.from_file(RIR_PATH)
-        noise = dsp.resample(self.get_noise(), rir.sampling_rate_hz)
-        rir = dsp.append_signals([rir, rir.copy()])
-        noise = dsp.append_signals([noise, noise.copy()])
+        noise = self.get_noise().resample(rir.sampling_rate_hz)
+        rir = rir.append_signals([rir.copy()])
+        noise = noise.append_signals([noise.copy()])
         fir = dsp.filterbanks.FIRUniformPartitionedMultichannel(rir.time_data)
 
         blocksize = 512
         fir.prepare(blocksize)
         n_blocks = len(noise) // blocksize + 1
-        noise = dsp.pad_trim(noise, n_blocks * blocksize)
+        noise = noise.pad_trim(n_blocks * blocksize)
         accumulator = np.zeros_like(noise.time_data)
         for n in range(n_blocks):
             stop = min((n + 1) * blocksize, len(accumulator))
@@ -1583,7 +1583,7 @@ class TestFilterTopologies:
 
     def test_warped_fir_filter(self):
         # Only functionality
-        rir = dsp.pad_trim(dsp.ImpulseResponse.from_file(RIR_PATH), 300)
+        rir = (dsp.ImpulseResponse.from_file(RIR_PATH)).pad_trim(300)
         fir = dsp.filterbanks.WarpedFIR(np.hanning(15), -0.6, rir.sampling_rate_hz)
         [fir.process_sample(x, 0) for x in rir.time_data[:, 0]]
 
@@ -1598,7 +1598,7 @@ class TestFilterTopologies:
 
     def test_warped_iir_filter(self):
         # Only functionality
-        rir = dsp.pad_trim(dsp.ImpulseResponse.from_file(RIR_PATH), 300)
+        rir = (dsp.ImpulseResponse.from_file(RIR_PATH)).pad_trim(300)
         iir_coefficients = dsp.Filter.biquad(
             dsp.BiquadEqType.Peaking, 200.0, 4, 0.7, rir.sampling_rate_hz
         )
@@ -1709,7 +1709,7 @@ class TestSpectrum:
         freqs = np.array([100.0, 200.0, 300.0, 500.0])
         spec = self.get_spectrum_from_filter(freqs, complex=False)
 
-        spec = dsp.append_spectra([spec, spec.copy().apply_gain(-6.0)])
+        spec = spec.append_spectra([spec.copy().apply_gain(-6.0)])
         np.testing.assert_allclose(
             spec.copy()
             .normalize(200.0, None)
@@ -1737,7 +1737,7 @@ class TestSpectrum:
             dsp.tools.from_db(-10, True),
         )
 
-        spec = dsp.append_spectra([spec, spec.copy().apply_gain(-6.0)])
+        spec = spec.append_spectra([spec.copy().apply_gain(-6.0)])
         np.testing.assert_allclose(
             spec.get_interpolated_spectrum(
                 np.array([150.0]), dsp.SpectrumType.Magnitude
@@ -1768,9 +1768,9 @@ class TestSpectrum:
         freqs = np.array([100.0, 200.0, 300.0])
 
         sp = self.get_spectrum_from_rir(False)
-        sp.resample(freqs)
+        sp = sp.resample(freqs)
         sp = self.get_spectrum_from_rir(True)
-        sp.resample(freqs)
+        sp = sp.resample(freqs)
 
     def test_interpolation_magnitude(self):
         sp_mag = self.get_spectrum_from_filter(None, False)
@@ -1800,15 +1800,15 @@ class TestSpectrum:
 
         # Padding
         with pytest.raises(AssertionError):
-            sp_mag.set_interpolator_parameters(
+            sp_mag_err = sp_mag.set_interpolator_parameters(
                 dsp.InterpolationDomain.Power,
                 edges_handling=dsp.InterpolationEdgeHandling.Error,
             )
-            sp_mag.get_interpolated_spectrum(f_outside, dsp.SpectrumType.Magnitude)
+            sp_mag_err.get_interpolated_spectrum(f_outside, dsp.SpectrumType.Magnitude)
 
         # Normal functionality magnitude (no checking results)
         #
-        sp_mag.set_interpolator_parameters(
+        sp_mag = sp_mag.set_interpolator_parameters(
             dsp.InterpolationDomain.Power,
             dsp.InterpolationScheme.Linear,
             dsp.InterpolationEdgeHandling.ZeroPad,
@@ -1816,7 +1816,7 @@ class TestSpectrum:
         sp_mag.get_interpolated_spectrum(f, dsp.SpectrumType.Power)
         sp_mag.get_interpolated_spectrum(f, dsp.SpectrumType.Magnitude)
         sp_mag.get_interpolated_spectrum(f, dsp.SpectrumType.Db)
-        sp_mag.set_interpolator_parameters(
+        sp_mag = sp_mag.set_interpolator_parameters(
             dsp.InterpolationDomain.Magnitude,
             dsp.InterpolationScheme.Linear,
             dsp.InterpolationEdgeHandling.ZeroPad,
@@ -1825,7 +1825,7 @@ class TestSpectrum:
         sp_mag.get_interpolated_spectrum(f, dsp.SpectrumType.Magnitude)
         sp_mag.get_interpolated_spectrum(f, dsp.SpectrumType.Db)
         #
-        sp_mag.set_interpolator_parameters(
+        sp_mag = sp_mag.set_interpolator_parameters(
             dsp.InterpolationDomain.Power,
             dsp.InterpolationScheme.Cubic,
             dsp.InterpolationEdgeHandling.ZeroPad,
@@ -1833,7 +1833,7 @@ class TestSpectrum:
         sp_mag.get_interpolated_spectrum(f, dsp.SpectrumType.Power)
         sp_mag.get_interpolated_spectrum(f, dsp.SpectrumType.Magnitude)
         sp_mag.get_interpolated_spectrum(f, dsp.SpectrumType.Db)
-        sp_mag.set_interpolator_parameters(
+        sp_mag = sp_mag.set_interpolator_parameters(
             dsp.InterpolationDomain.Magnitude,
             dsp.InterpolationScheme.Cubic,
             dsp.InterpolationEdgeHandling.ZeroPad,
@@ -1842,7 +1842,7 @@ class TestSpectrum:
         sp_mag.get_interpolated_spectrum(f, dsp.SpectrumType.Magnitude)
         sp_mag.get_interpolated_spectrum(f, dsp.SpectrumType.Db)
         #
-        sp_mag.set_interpolator_parameters(
+        sp_mag = sp_mag.set_interpolator_parameters(
             dsp.InterpolationDomain.Power,
             dsp.InterpolationScheme.Pchip,
             dsp.InterpolationEdgeHandling.ZeroPad,
@@ -1850,7 +1850,7 @@ class TestSpectrum:
         sp_mag.get_interpolated_spectrum(f, dsp.SpectrumType.Power)
         sp_mag.get_interpolated_spectrum(f, dsp.SpectrumType.Magnitude)
         sp_mag.get_interpolated_spectrum(f, dsp.SpectrumType.Db)
-        sp_mag.set_interpolator_parameters(
+        sp_mag = sp_mag.set_interpolator_parameters(
             dsp.InterpolationDomain.Magnitude,
             dsp.InterpolationScheme.Pchip,
             dsp.InterpolationEdgeHandling.ZeroPad,
@@ -1859,21 +1859,21 @@ class TestSpectrum:
         sp_mag.get_interpolated_spectrum(f, dsp.SpectrumType.Magnitude)
         sp_mag.get_interpolated_spectrum(f, dsp.SpectrumType.Db)
         #
-        sp_mag.set_interpolator_parameters(
+        sp_mag = sp_mag.set_interpolator_parameters(
             dsp.InterpolationDomain.Power,
             dsp.InterpolationScheme.Linear,
             dsp.InterpolationEdgeHandling.ZeroPad,
         )
         sp_mag.get_interpolated_spectrum(f_outside, dsp.SpectrumType.Power)
         sp_mag.get_interpolated_spectrum(f_outside, dsp.SpectrumType.Db)
-        sp_mag.set_interpolator_parameters(
+        sp_mag = sp_mag.set_interpolator_parameters(
             dsp.InterpolationDomain.Magnitude,
             dsp.InterpolationScheme.Pchip,
             dsp.InterpolationEdgeHandling.Extend,
         )
         sp_mag.get_interpolated_spectrum(f_outside, dsp.SpectrumType.Magnitude)
         sp_mag.get_interpolated_spectrum(f_outside, dsp.SpectrumType.Db)
-        sp_mag.set_interpolator_parameters(
+        sp_mag = sp_mag.set_interpolator_parameters(
             dsp.InterpolationDomain.Magnitude,
             dsp.InterpolationScheme.Pchip,
             dsp.InterpolationEdgeHandling.OnePad,
@@ -1888,7 +1888,7 @@ class TestSpectrum:
 
         # Normal functionality magnitude (no checking results)
         #
-        sp_comp.set_interpolator_parameters(
+        sp_comp = sp_comp.set_interpolator_parameters(
             dsp.InterpolationDomain.Complex,
             dsp.InterpolationScheme.Linear,
             dsp.InterpolationEdgeHandling.ZeroPad,
@@ -1897,7 +1897,7 @@ class TestSpectrum:
         sp_comp.get_interpolated_spectrum(f, dsp.SpectrumType.Magnitude)
         sp_comp.get_interpolated_spectrum(f, dsp.SpectrumType.Db)
         sp_comp.get_interpolated_spectrum(f, dsp.SpectrumType.Complex)
-        sp_comp.set_interpolator_parameters(
+        sp_comp = sp_comp.set_interpolator_parameters(
             dsp.InterpolationDomain.MagnitudePhase,
             dsp.InterpolationScheme.Linear,
             dsp.InterpolationEdgeHandling.ZeroPad,
@@ -1907,7 +1907,7 @@ class TestSpectrum:
         sp_comp.get_interpolated_spectrum(f, dsp.SpectrumType.Db)
         sp_comp.get_interpolated_spectrum(f, dsp.SpectrumType.Complex)
         #
-        sp_comp.set_interpolator_parameters(
+        sp_comp = sp_comp.set_interpolator_parameters(
             dsp.InterpolationDomain.Complex,
             dsp.InterpolationScheme.Cubic,
             dsp.InterpolationEdgeHandling.ZeroPad,
@@ -1916,7 +1916,7 @@ class TestSpectrum:
         sp_comp.get_interpolated_spectrum(f, dsp.SpectrumType.Magnitude)
         sp_comp.get_interpolated_spectrum(f, dsp.SpectrumType.Db)
         sp_comp.get_interpolated_spectrum(f, dsp.SpectrumType.Complex)
-        sp_comp.set_interpolator_parameters(
+        sp_comp = sp_comp.set_interpolator_parameters(
             dsp.InterpolationDomain.MagnitudePhase,
             dsp.InterpolationScheme.Cubic,
             dsp.InterpolationEdgeHandling.ZeroPad,
@@ -1926,7 +1926,7 @@ class TestSpectrum:
         sp_comp.get_interpolated_spectrum(f, dsp.SpectrumType.Db)
         sp_comp.get_interpolated_spectrum(f, dsp.SpectrumType.Complex)
         #
-        sp_comp.set_interpolator_parameters(
+        sp_comp = sp_comp.set_interpolator_parameters(
             dsp.InterpolationDomain.Complex,
             dsp.InterpolationScheme.Pchip,
             dsp.InterpolationEdgeHandling.ZeroPad,
@@ -1935,7 +1935,7 @@ class TestSpectrum:
         sp_comp.get_interpolated_spectrum(f, dsp.SpectrumType.Magnitude)
         sp_comp.get_interpolated_spectrum(f, dsp.SpectrumType.Db)
         sp_comp.get_interpolated_spectrum(f, dsp.SpectrumType.Complex)
-        sp_comp.set_interpolator_parameters(
+        sp_comp = sp_comp.set_interpolator_parameters(
             dsp.InterpolationDomain.MagnitudePhase,
             dsp.InterpolationScheme.Pchip,
             dsp.InterpolationEdgeHandling.ZeroPad,
@@ -1945,7 +1945,7 @@ class TestSpectrum:
         sp_comp.get_interpolated_spectrum(f, dsp.SpectrumType.Db)
         sp_comp.get_interpolated_spectrum(f, dsp.SpectrumType.Complex)
         #
-        sp_comp.set_interpolator_parameters(
+        sp_comp = sp_comp.set_interpolator_parameters(
             dsp.InterpolationDomain.Magnitude,
             dsp.InterpolationScheme.Linear,
             dsp.InterpolationEdgeHandling.ZeroPad,
@@ -1953,7 +1953,7 @@ class TestSpectrum:
         sp_comp.get_interpolated_spectrum(f, dsp.SpectrumType.Power)
         sp_comp.get_interpolated_spectrum(f, dsp.SpectrumType.Magnitude)
         sp_comp.get_interpolated_spectrum(f, dsp.SpectrumType.Db)
-        sp_comp.set_interpolator_parameters(
+        sp_comp = sp_comp.set_interpolator_parameters(
             dsp.InterpolationDomain.Power,
             dsp.InterpolationScheme.Linear,
             dsp.InterpolationEdgeHandling.ZeroPad,
@@ -1962,7 +1962,7 @@ class TestSpectrum:
         sp_comp.get_interpolated_spectrum(f, dsp.SpectrumType.Magnitude)
         sp_comp.get_interpolated_spectrum(f, dsp.SpectrumType.Db)
         #
-        sp_comp.set_interpolator_parameters(
+        sp_comp = sp_comp.set_interpolator_parameters(
             dsp.InterpolationDomain.Power,
             dsp.InterpolationScheme.Cubic,
             dsp.InterpolationEdgeHandling.ZeroPad,
@@ -1970,7 +1970,7 @@ class TestSpectrum:
         sp_comp.get_interpolated_spectrum(f, dsp.SpectrumType.Power)
         sp_comp.get_interpolated_spectrum(f, dsp.SpectrumType.Magnitude)
         sp_comp.get_interpolated_spectrum(f, dsp.SpectrumType.Db)
-        sp_comp.set_interpolator_parameters(
+        sp_comp = sp_comp.set_interpolator_parameters(
             dsp.InterpolationDomain.Magnitude,
             dsp.InterpolationScheme.Cubic,
             dsp.InterpolationEdgeHandling.ZeroPad,
@@ -1979,7 +1979,7 @@ class TestSpectrum:
         sp_comp.get_interpolated_spectrum(f, dsp.SpectrumType.Magnitude)
         sp_comp.get_interpolated_spectrum(f, dsp.SpectrumType.Db)
         #
-        sp_comp.set_interpolator_parameters(
+        sp_comp = sp_comp.set_interpolator_parameters(
             dsp.InterpolationDomain.Power,
             dsp.InterpolationScheme.Pchip,
             dsp.InterpolationEdgeHandling.ZeroPad,
@@ -1987,7 +1987,7 @@ class TestSpectrum:
         sp_comp.get_interpolated_spectrum(f, dsp.SpectrumType.Power)
         sp_comp.get_interpolated_spectrum(f, dsp.SpectrumType.Magnitude)
         sp_comp.get_interpolated_spectrum(f, dsp.SpectrumType.Db)
-        sp_comp.set_interpolator_parameters(
+        sp_comp = sp_comp.set_interpolator_parameters(
             dsp.InterpolationDomain.Magnitude,
             dsp.InterpolationScheme.Pchip,
             dsp.InterpolationEdgeHandling.ZeroPad,
@@ -1996,21 +1996,21 @@ class TestSpectrum:
         sp_comp.get_interpolated_spectrum(f, dsp.SpectrumType.Magnitude)
         sp_comp.get_interpolated_spectrum(f, dsp.SpectrumType.Db)
         #
-        sp_comp.set_interpolator_parameters(
+        sp_comp = sp_comp.set_interpolator_parameters(
             dsp.InterpolationDomain.Power,
             dsp.InterpolationScheme.Linear,
             dsp.InterpolationEdgeHandling.ZeroPad,
         )
         sp_comp.get_interpolated_spectrum(f_outside, dsp.SpectrumType.Power)
         sp_comp.get_interpolated_spectrum(f_outside, dsp.SpectrumType.Db)
-        sp_comp.set_interpolator_parameters(
+        sp_comp = sp_comp.set_interpolator_parameters(
             dsp.InterpolationDomain.Magnitude,
             dsp.InterpolationScheme.Pchip,
             dsp.InterpolationEdgeHandling.Extend,
         )
         sp_comp.get_interpolated_spectrum(f_outside, dsp.SpectrumType.Magnitude)
         sp_comp.get_interpolated_spectrum(f_outside, dsp.SpectrumType.Db)
-        sp_comp.set_interpolator_parameters(
+        sp_comp = sp_comp.set_interpolator_parameters(
             dsp.InterpolationDomain.Complex,
             dsp.InterpolationScheme.Pchip,
             dsp.InterpolationEdgeHandling.Extend,
@@ -2018,7 +2018,7 @@ class TestSpectrum:
         sp_comp.get_interpolated_spectrum(f_outside, dsp.SpectrumType.Magnitude)
         sp_comp.get_interpolated_spectrum(f_outside, dsp.SpectrumType.Db)
         sp_comp.get_interpolated_spectrum(f_outside, dsp.SpectrumType.Complex)
-        sp_comp.set_interpolator_parameters(
+        sp_comp = sp_comp.set_interpolator_parameters(
             dsp.InterpolationDomain.MagnitudePhase,
             dsp.InterpolationScheme.Pchip,
             dsp.InterpolationEdgeHandling.Extend,
@@ -2027,7 +2027,7 @@ class TestSpectrum:
         sp_comp.get_interpolated_spectrum(f_outside, dsp.SpectrumType.Db)
         sp_comp.get_interpolated_spectrum(f_outside, dsp.SpectrumType.Complex)
         #
-        sp_comp.set_interpolator_parameters(
+        sp_comp = sp_comp.set_interpolator_parameters(
             dsp.InterpolationDomain.MagnitudePhase,
             dsp.InterpolationScheme.Pchip,
             dsp.InterpolationEdgeHandling.ZeroPad,
@@ -2057,14 +2057,14 @@ class TestSpectrum:
     def test_apply_octave_smoothing(self):
         # Only functionality
         sp = self.get_spectrum_from_filter()
-        sp.apply_octave_smoothing(12.0)
+        sp = sp.apply_octave_smoothing(12.0)
 
         sp = self.get_spectrum_from_filter(np.linspace(500, 2000))
-        sp.apply_octave_smoothing(12.0)
+        sp = sp.apply_octave_smoothing(12.0)
 
     def test_coherence(self):
         sp = self.get_spectrum_from_rir()
-        sp.set_coherence(np.zeros((len(sp), 1)))
+        sp = sp.set_coherence(np.zeros((len(sp), 1)))
         sp.plot_coherence()
 
     def test_plot_magnitude(self):
@@ -2090,9 +2090,8 @@ class TestSpectrum:
         spec.to_signal(44100, 2.0)
 
         # Non-linear frequency
-        spec.resample(dsp.tools.log_frequency_vector([1, 24e3], 512)).to_signal(
-            44100, 2.0
-        )
+        spec = spec.resample(dsp.tools.log_frequency_vector([1, 24e3], 512))
+        spec.to_signal(44100, 2.0)
 
         with pytest.raises(AssertionError):
             spec.to_signal(44100)
@@ -2111,3 +2110,9 @@ class TestSpectrum:
             spec.warp(1.1, self.rir.sampling_rate_hz)
         with pytest.raises(AssertionError):
             spec.warp(0.1, self.rir.sampling_rate_hz - 200)
+
+    def test_set_interpolator_parameters_returns_new_instance(self):
+        sp = self.get_spectrum_from_rir(False)
+        sp2 = sp.set_interpolator_parameters(dsp.InterpolationDomain.Magnitude)
+        assert sp2 is not sp
+        assert sp.frequency_vector_type is not None  # original still usable

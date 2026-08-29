@@ -3,8 +3,9 @@ Signal class
 """
 
 from copy import deepcopy
+from fractions import Fraction
 from pickle import HIGHEST_PROTOCOL, dump
-from typing import Self
+from typing import TYPE_CHECKING, Self
 from warnings import warn
 
 import numpy as np
@@ -13,9 +14,14 @@ from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 from numpy.typing import ArrayLike, NDArray
 from scipy.fft import next_fast_len, rfft
-from scipy.signal import oaconvolve
+from scipy.signal import oaconvolve, resample_poly
 
-from ..helpers.gain_and_level import to_db
+if TYPE_CHECKING:
+    from .filter import Filter
+    from .filterbank import FilterBank
+    from .spectrum import Spectrum
+
+from ..helpers.gain_and_level import _fade, _normalize, from_db, to_db
 from ..helpers.latency import (
     _remove_ir_latency_from_phase,
     _remove_ir_latency_from_phase_peak,
@@ -26,7 +32,7 @@ from ..helpers.other import (
     _pad_trim,
     find_nearest_points_index_in_vector,
 )
-from ..helpers.smoothing import _fractional_octave_smoothing
+from ..helpers.smoothing import _fractional_octave_smoothing, _get_smoothing_factor_ema
 from ..helpers.spectrum_utilities import (
     _get_normalized_spectrum,
     _scale_spectrum,
@@ -34,8 +40,15 @@ from ..helpers.spectrum_utilities import (
 )
 from ..plots import general_matrix_plot, general_plot, general_subplots_line
 from ..standard._spectral_methods import _csm_fft, _csm_welch, _stft, _welch
-from ..standard._standard_backend import _group_delay_direct
+from ..standard._standard_backend import (
+    _detrend,
+    _fractional_delay_filter,
+    _group_delay_direct,
+    _indices_above_threshold_dbfs,
+)
 from ..standard.enums import (
+    FadeType,
+    FilterBankMode,
     MagnitudeNormalization,
     SpectrumMethod,
     SpectrumScaling,
@@ -111,8 +124,8 @@ class Signal(MultichannelData):
             assert sampling_rate_hz is not None, "A sampling rate should be passed!"
         self.sampling_rate_hz = sampling_rate_hz
         self.time_data = time_data
-        self.set_spectrum_parameters()
-        self.set_spectrogram_parameters()
+        self._set_spectrum_parameters()
+        self._set_spectrogram_parameters()
 
     @staticmethod
     def from_file(path: str):
@@ -298,7 +311,8 @@ class Signal(MultichannelData):
         self.time_data_imaginary = new_time_data_imag
         self.__update_state()
 
-        self.clear_time_window()
+        if hasattr(self, "window"):
+            del self.window
 
     @property
     def amplitude_scale_factor(self) -> float:
@@ -494,6 +508,49 @@ class Signal(MultichannelData):
         samples can be done through these slices."""
         return iter([self.time_data[:, x] for x in range(self.number_of_channels)])
 
+    def _set_spectrum_parameters(
+        self,
+        method: SpectrumMethod = SpectrumMethod.WelchPeriodogram,
+        smoothing: int = 0,
+        pad_to_fast_length: bool = True,
+        window_length_samples: int = 1024,
+        window_type: Window = Window.Hann,
+        overlap_percent: float = 50,
+        detrend: bool = True,
+        average: str = "mean",
+        scaling: SpectrumScaling = SpectrumScaling.FFTBackward,
+    ) -> None:
+        """Set spectrum parameters in place. Private: used by `__init__` and
+        internally where a disposable/owned object is already being mutated.
+        Public API is `set_spectrum_parameters`.
+        """
+        _new_spectrum_parameters = dict(
+            method=method,
+            smoothing=smoothing,
+            pad_to_fast_length=pad_to_fast_length,
+            window_length_samples=window_length_samples,
+            window_type=window_type,
+            overlap_percent=overlap_percent,
+            detrend=detrend,
+            average=average,
+            scaling=scaling,
+        )
+        if not hasattr(self, "_spectrum_parameters"):
+            self._spectrum_parameters = _new_spectrum_parameters
+            self.__spectrum_state_update = True
+        else:
+            if not all(
+                [
+                    self._spectrum_parameters[k] == _new_spectrum_parameters[k]
+                    for k in self._spectrum_parameters
+                ]
+            ):
+                self._spectrum_parameters = _new_spectrum_parameters
+                self.__spectrum_state_update = True
+
+                # Also CSM
+                self.__csm_state_update = True
+
     def set_spectrum_parameters(
         self,
         method: SpectrumMethod = SpectrumMethod.WelchPeriodogram,
@@ -506,7 +563,8 @@ class Signal(MultichannelData):
         average: str = "mean",
         scaling: SpectrumScaling = SpectrumScaling.FFTBackward,
     ) -> Self:
-        """Sets all necessary parameters for the computation of the spectrum.
+        """Return a copy of the signal with new parameters set for the
+        computation of the spectrum.
 
         Parameters
         ----------
@@ -541,7 +599,8 @@ class Signal(MultichannelData):
 
         Returns
         -------
-        self
+        Signal
+            New signal with the new spectrum parameters.
 
         References
         ----------
@@ -559,7 +618,8 @@ class Signal(MultichannelData):
               averaged spectrum for non-stationary signals.
 
         """
-        _new_spectrum_parameters = dict(
+        new = self.copy()
+        new._set_spectrum_parameters(
             method=method,
             smoothing=smoothing,
             pad_to_fast_length=pad_to_fast_length,
@@ -570,22 +630,7 @@ class Signal(MultichannelData):
             average=average,
             scaling=scaling,
         )
-        if not hasattr(self, "_spectrum_parameters"):
-            self._spectrum_parameters = _new_spectrum_parameters
-            self.__spectrum_state_update = True
-        else:
-            if not all(
-                [
-                    self._spectrum_parameters[k] == _new_spectrum_parameters[k]
-                    for k in self._spectrum_parameters
-                ]
-            ):
-                self._spectrum_parameters = _new_spectrum_parameters
-                self.__spectrum_state_update = True
-
-                # Also CSM
-                self.__csm_state_update = True
-        return self
+        return new
 
     @property
     def spectrum_scaling(self) -> SpectrumScaling:
@@ -703,6 +748,42 @@ class Signal(MultichannelData):
         assert new_smoothing >= 0.0, "Smoothing must be positive or zero"
         self._spectrum_parameters["smoothing"] = float(new_smoothing)
 
+    def _set_spectrogram_parameters(
+        self,
+        window_length_samples: int = 1024,
+        window_type: Window = Window.Hann,
+        overlap_percent: float = 50.0,
+        fft_length_samples: int | None = None,
+        detrend: bool = False,
+        padding: bool = True,
+        scaling: SpectrumScaling = SpectrumScaling.FFTBackward,
+    ) -> None:
+        """Set spectrogram parameters in place. Private: used by `__init__`
+        and internally where a disposable/owned object is already being
+        mutated. Public API is `set_spectrogram_parameters`.
+        """
+        _new_spectrogram_parameters = dict(
+            window_length_samples=window_length_samples,
+            window_type=window_type,
+            overlap_percent=overlap_percent,
+            fft_length_samples=fft_length_samples,
+            detrend=detrend,
+            padding=padding,
+            scaling=scaling,
+        )
+        if not hasattr(self, "_spectrogram_parameters"):
+            self._spectrogram_parameters = _new_spectrogram_parameters
+            self.__spectrogram_state_update = True
+        else:
+            if not all(
+                [
+                    self._spectrogram_parameters[k] == _new_spectrogram_parameters[k]
+                    for k in self._spectrogram_parameters
+                ]
+            ):
+                self._spectrogram_parameters = _new_spectrogram_parameters
+                self.__spectrogram_state_update = True
+
     def set_spectrogram_parameters(
         self,
         window_length_samples: int = 1024,
@@ -713,8 +794,8 @@ class Signal(MultichannelData):
         padding: bool = True,
         scaling: SpectrumScaling = SpectrumScaling.FFTBackward,
     ) -> Self:
-        """Sets all necessary parameters for the computation of the
-        spectrogram.
+        """Return a copy of the signal with new parameters set for the
+        computation of the spectrogram.
 
         Parameters
         ----------
@@ -739,7 +820,8 @@ class Signal(MultichannelData):
 
         Returns
         -------
-        self
+        Signal
+            New signal with the new spectrogram parameters.
 
         References
         ----------
@@ -749,7 +831,8 @@ class Signal(MultichannelData):
           at-top windows.
 
         """
-        _new_spectrogram_parameters = dict(
+        new = self.copy()
+        new._set_spectrogram_parameters(
             window_length_samples=window_length_samples,
             window_type=window_type,
             overlap_percent=overlap_percent,
@@ -758,19 +841,7 @@ class Signal(MultichannelData):
             padding=padding,
             scaling=scaling,
         )
-        if not hasattr(self, "_spectrogram_parameters"):
-            self._spectrogram_parameters = _new_spectrogram_parameters
-            self.__spectrogram_state_update = True
-        else:
-            if not all(
-                [
-                    self._spectrogram_parameters[k] == _new_spectrogram_parameters[k]
-                    for k in self._spectrogram_parameters
-                ]
-            ):
-                self._spectrogram_parameters = _new_spectrogram_parameters
-                self.__spectrogram_state_update = True
-        return self
+        return new
 
     # ======== Add, remove and reorder channels ===============================
     def add_channel(
@@ -780,7 +851,7 @@ class Signal(MultichannelData):
         sampling_rate_hz: int | None = None,
         allow_padding_trimming: bool = True,
     ) -> Self:
-        """Adds new channels to this signal object.
+        """Return a copy of the signal with new channels added.
 
         Parameters
         ----------
@@ -796,7 +867,8 @@ class Signal(MultichannelData):
 
         Returns
         -------
-        self
+        Signal
+            New signal with the added channels.
 
         """
         if path is not None:
@@ -848,15 +920,16 @@ class Signal(MultichannelData):
                     + f"{self.time_data.shape[0]}. Activate allow_padding_trimming "
                     + "for allowing this channel to be added"
                 )
-        self.time_data = np.concatenate([self.time_data, new_time_data], axis=1)
-        self.__update_state()
-        return self
+        return self.copy_with_new_time_data(
+            np.concatenate([self.time_data, new_time_data], axis=1)
+        )
 
     def clear_time_window(self) -> Self:
-        """Deletes the time window of the signal in case there is any."""
-        if hasattr(self, "window"):
-            del self.window
-        return self
+        """Return a copy of the signal with the time window removed, if any."""
+        new = self.copy()
+        if hasattr(new, "window"):
+            del new.window
+        return new
 
     # ======== Getters ========================================================
     def get_spectrum(
@@ -1333,7 +1406,7 @@ class Signal(MultichannelData):
         """
         # Handle spectrum parameters
         prior_spectrum_parameters = self._spectrum_parameters
-        self.set_spectrum_parameters(
+        self._set_spectrum_parameters(
             SpectrumMethod.FFT,
             scaling=SpectrumScaling.FFTBackward,
             smoothing=0,
@@ -1679,6 +1752,883 @@ class Signal(MultichannelData):
         new_signal._spectrum_parameters = deepcopy(self._spectrum_parameters)
         new_signal._spectrogram_parameters = deepcopy(self._spectrogram_parameters)
         return new_signal
+
+    # ======== Transforms (returning a new Signal) ============================
+    def pad_trim(
+        self, desired_length_samples: int, in_the_end: bool = True
+    ) -> "Signal":
+        """Return a copy of the signal with padded or trimmed time data.
+
+        Parameters
+        ----------
+        desired_length_samples : int
+            Length of resulting signal.
+        in_the_end : bool, optional
+            Defines if padding or trimming should be done in the beginning or
+            in the end of the signal. Default: `True`.
+
+        Returns
+        -------
+        Signal
+            New padded or trimmed signal.
+
+        """
+        new_time_data = np.zeros((desired_length_samples, self.number_of_channels))
+        for n in range(self.number_of_channels):
+            new_time_data[:, n] = _pad_trim(
+                self.time_data[:, n],
+                desired_length_samples,
+                in_the_end=in_the_end,
+            )
+        return self.copy_with_new_time_data(new_time_data)
+
+    def modify_signal_length(
+        self, start_seconds: float | None, end_seconds: float | None
+    ) -> "Signal":
+        """Return a copy of the signal with added silence at the beginning
+        or the end. Time samples can also be trimmed when using negative
+        time values.
+
+        Parameters
+        ----------
+        start_seconds : float, None
+            Seconds to add or remove from the start. Positive values append
+            samples while negative ones remove them. Pass None to avoid any
+            modification.
+        end_seconds : float, None
+            Seconds to add or remove from the end. Positive values append
+            samples while negative ones remove them. Pass None to avoid any
+            modification.
+
+        Returns
+        -------
+        Signal
+            Copy of the signal with new length.
+
+        """
+        assert start_seconds is not None or end_seconds is not None, (
+            "At least the start or the end should be modified"
+        )
+        fs = self.sampling_rate_hz
+        start_samples = (
+            0
+            if start_seconds is None
+            else int(start_seconds * fs + 0.5 * np.sign(start_seconds))
+        )
+        end_samples = (
+            0
+            if end_seconds is None
+            else int(end_seconds * fs + 0.5 * np.sign(end_seconds))
+        )
+
+        # Avoid cutting too many samples
+        if start_samples < 0:
+            assert len(self) > -start_samples, "Trimming is too much"
+        if end_samples < 0:
+            assert len(self) > -end_samples, "Trimming is too much"
+        if start_samples < 0 and end_samples < 0:
+            assert len(self) > -(start_samples + end_samples), "Trimming is too much"
+
+        td = self.time_data
+        if start_samples >= 0:
+            td = np.pad(td, ((start_samples, 0), (0, 0)))
+        else:
+            td = td[-start_samples:, ...]
+
+        if end_samples >= 0:
+            td = np.pad(td, ((0, end_samples), (0, 0)))
+        else:
+            td = td[:end_samples, ...]
+        return self.copy_with_new_time_data(td)
+
+    def trim_with_level_threshold(
+        self, threshold_db: float, at_start: bool = True, at_end: bool = True
+    ) -> tuple["Signal", int, int]:
+        """Return a copy of the signal trimmed by discarding the edge
+        samples below a certain threshold.
+
+        Parameters
+        ----------
+        threshold_db : float
+            (Inclusive) Threshold for trimming. Generally in dBFS, but it can
+            be in dBSPL if the signal has been calibrated.
+        at_start : bool, optional
+            Activate trimming in the beginning. Default: True.
+        at_end : bool, optional
+            Activate trimming in the end. Default: True.
+
+        Returns
+        -------
+        Signal
+            Copy of the signal with trimmed time series.
+        int
+            Start index in the original array.
+        int
+            Stop index in the original array.
+
+        """
+        assert at_start or at_end, "Either start or end should be trimmed"
+
+        threshold_linear = from_db(threshold_db, True)
+        above_threshold = np.where(np.abs(self.time_data) >= threshold_linear)
+        if at_start:
+            indices_along_first_axis = above_threshold[0][: self.number_of_channels]
+            start = int(np.min(indices_along_first_axis))
+        else:
+            start = 0
+
+        if at_end:
+            indices_along_first_axis = above_threshold[0][-self.number_of_channels :]
+            stop = min(self.length_samples, int(np.max(indices_along_first_axis)) + 1)
+        else:
+            stop = self.length_samples
+
+        return (
+            self.copy_with_new_time_data(self.time_data[start:stop]),
+            start,
+            stop,
+        )
+
+    def trim_with_time_selection(
+        self,
+        start_time_s: float | None,
+        end_time_s: float | None,
+        inclusive: bool = True,
+    ) -> "Signal":
+        """Return a copy of the signal trimmed to a selected time window.
+
+        Parameters
+        ----------
+        start_time_s : float, None
+            Start time for the window. Pass None to start the time window
+            at the beginning of the signal.
+        end_time_s : float, None
+            End time for the window. Pass None to place the end of the time
+            window at the end of the signal.
+        inclusive : bool, optional
+            When True, the bounds are inclusive. Default: True.
+
+        Returns
+        -------
+        Signal
+            Trimmed copy.
+
+        """
+        assert start_time_s is not None or end_time_s is not None, (
+            "At least one bound must be other than None"
+        )
+        if start_time_s:
+            assert start_time_s >= 0.0, "Start time must be at least zero"
+            assert start_time_s < self.length_seconds, (
+                "Start time must be less than signal's length"
+            )
+            start_sample = int(start_time_s * self.sampling_rate_hz)
+            if not inclusive:
+                start_sample += 1
+        else:
+            start_sample = 0
+
+        if end_time_s:
+            assert end_time_s > 0.0, "End time must be greater than 0"
+            assert end_time_s <= self.length_seconds, (
+                "End time must be less than signal length"
+            )
+            end_sample = int(end_time_s * self.sampling_rate_hz)
+            if inclusive:
+                end_sample += 1
+        else:
+            end_sample = self.length_samples
+
+        assert end_sample > start_sample, "Invalid time window"
+        selection = slice(start_sample, end_sample)
+        return self.copy_with_new_time_data(self.time_data[selection, ...])
+
+    def normalize(
+        self,
+        norm_dbfs: float,
+        peak_normalization: bool = True,
+        each_channel: bool = False,
+    ) -> "Signal":
+        """Return a copy of the signal normalized to a given dBFS value. It
+        either normalizes each channel or the signal as a whole.
+
+        Parameters
+        ----------
+        norm_dbfs : float
+            Value in dBFS to reach after normalization.
+        peak_normalization : bool, optional
+            When True, signal is normalized at peak. False uses RMS value.
+            See notes. Default: True.
+        each_channel : bool, optional
+            When `True`, each channel on its own is normalized. When `False`,
+            the peak or rms value across all channels is regarded.
+            Default: `False`.
+
+        Returns
+        -------
+        Signal
+            Normalized signal.
+
+        Notes
+        -----
+        - Normalization can be done for peak or RMS. The latter might
+          generate a signal with samples above 0 dBFS if
+          `signal.constrain_amplitude=False`.
+
+        """
+        return self.copy_with_new_time_data(
+            _normalize(self.time_data, norm_dbfs, peak_normalization, each_channel)
+        )
+
+    def fade(
+        self,
+        fade_type: FadeType,
+        length_fade_seconds: float | None = None,
+        at_start: bool = True,
+        at_end: bool = True,
+    ) -> "Signal":
+        """Return a copy of the signal with fading applied.
+
+        Parameters
+        ----------
+        fade_type : FadeType
+            Type of fading to be applied.
+        length_fade_seconds : float, optional
+            Fade length in seconds. If `None`, 2.5% of the signal's length is
+            used for the fade. Default: `None`.
+        at_start : bool, optional
+            When `True`, the start of signal is faded. Default: `True`.
+        at_end : bool, optional
+            When `True`, the ending of signal is faded. Default: `True`.
+
+        Returns
+        -------
+        Signal
+            New signal.
+
+        """
+        assert at_start or at_end, "At least start or end of signal should be faded"
+        if length_fade_seconds is None:
+            length_fade_seconds = self.time_vector_s[-1] * 0.025
+        assert length_fade_seconds < self.time_vector_s[-1], (
+            "Fade length should not be longer than the signal itself"
+        )
+
+        new_time_data = np.empty_like(self.time_data)
+        for n in range(self.number_of_channels):
+            vec = self.time_data[:, n].copy()
+            if at_start:
+                vec = _fade(
+                    vec,
+                    length_fade_seconds,
+                    mode=fade_type,
+                    sampling_rate_hz=self.sampling_rate_hz,
+                    at_start=True,
+                )
+            if at_end:
+                vec = _fade(
+                    vec,
+                    length_fade_seconds,
+                    mode=fade_type,
+                    sampling_rate_hz=self.sampling_rate_hz,
+                    at_start=False,
+                )
+            new_time_data[:, n] = vec
+        return self.copy_with_new_time_data(new_time_data)
+
+    def apply_gain(self, gain_db: float | NDArray[np.float64]) -> "Signal":
+        """Return a copy of the signal with gain applied, either to the
+        signal as a whole or per channel.
+
+        Parameters
+        ----------
+        gain_db : float, NDArray[np.float64]
+            Gain in dB to be applied. If it is an array, it should have as
+            many elements as there are channels in the signal.
+
+        Returns
+        -------
+        Signal
+            Signal with new gain.
+
+        Notes
+        -----
+        - If `constrain_amplitude=True` in the signal, the resulting time
+          data might get rescaled after applying the gain.
+
+        """
+        gain_linear = from_db(np.atleast_1d(gain_db), True)
+        if len(gain_linear) == 1:
+            gain_linear = gain_linear[0]
+        new_sig = self.copy_with_new_time_data(self.time_data * gain_linear)
+        if new_sig.is_complex_signal:
+            new_sig.time_data_imaginary *= gain_linear
+        return new_sig
+
+    def detrend(self, polynomial_order: int = 0) -> "Signal":
+        """Return the detrended signal.
+
+        Parameters
+        ----------
+        polynomial_order : int, optional
+            Polynomial order of the fitted polynomial that will be removed
+            from time data. 0 is equal to mean removal. Default: 0.
+
+        Returns
+        -------
+        Signal
+            Detrended signal.
+
+        """
+        assert polynomial_order >= 0, "Polynomial order should be positive"
+        return self.copy_with_new_time_data(
+            _detrend(self.time_data.copy(), polynomial_order)
+        )
+
+    def dither(
+        self,
+        triangular_distribution: bool = True,
+        epsilon: float = float(np.finfo(np.float16).smallest_subnormal),
+        noise_shaping_filterbank: "FilterBank | None" = None,
+        truncate: bool = False,
+    ) -> "Signal":
+        """Return a copy of the signal with dither applied and, optionally,
+        truncated to 16-bit floating point representation.
+
+        Parameters
+        ----------
+        triangular_distribution : bool, optional
+            Type of probability distribution to acquire noise from. When
+            True, a rectangular distribution is used, otherwise it is
+            uniform. Default: True.
+        epsilon : float, optional
+            Value that represents the quantization step. The default value
+            supposes quantization to 16-bit floating point. It is obtained
+            through numpy's smallest subnormal for np.float16. See notes for
+            the value concerning the 24-bit case. Default: 6e-08.
+        noise_shaping_filterbank : `FilterBank`, `None`, optional
+            Noise can be arbitrarily shaped using a filter bank (in
+            sequential mode). Pass `None` to avoid any noise-shaping.
+            Default: `None`.
+        truncate : bool, optional
+            When `True`, the time samples are truncated to np.float16
+            resolution. `False` only applies dither noise to the signal
+            without truncating. Default: `False`.
+
+        Returns
+        -------
+        Signal
+            Signal with dither.
+
+        Notes
+        -----
+        - The output signal has time samples with 16-bit precision, but the
+          data type of the array is `np.float64` for consistency.
+        - Rectangular distribution applies noise with samples coming from a
+          uniform distribution [-epsilon/2, epsilon/2]. Triangular has a
+          triangle shape for the noise distribution with values between
+          [-epsilon, epsilon]. See [1] for more details.
+        - Dither might be only necessary when lowering the bit-depth down to
+          16 bits, though the 24-bit case might be relevant if there are
+          signal components with very low volumes.
+        - 24-bit signed integers range from -8388608 to 8388607. The
+          quantization step is therefore `1/8388608=1.1920928955078125e-07`.
+
+        References
+        ----------
+        - [1]: Lerch, Weinzierl. Handbuch der Audiotechnik: Chapter 14.
+
+        """
+        shape = self.time_data.shape
+
+        if not triangular_distribution:
+            noise = np.random.uniform(-epsilon / 2, epsilon / 2, size=shape)
+        else:
+            noise = np.random.uniform(
+                -epsilon / 2, epsilon / 2, size=shape
+            ) + np.random.uniform(-epsilon / 2, epsilon / 2, size=shape)
+
+        if noise_shaping_filterbank is not None:
+            noise_s = Signal(None, noise, self.sampling_rate_hz)
+            noise_s = noise_shaping_filterbank.filter_signal(
+                noise_s, mode=FilterBankMode.Sequential
+            )
+            noise = noise_s.time_data
+
+        if truncate:
+            return self.copy_with_new_time_data(
+                (self.time_data + noise).astype(np.float16).astype(np.float64)
+            )
+
+        return self.copy_with_new_time_data(self.time_data + noise)
+
+    def activity_detector(
+        self,
+        threshold_dbfs: float = -20,
+        channel: int = 0,
+        relative_to_peak: bool = True,
+        pre_filter: "Filter | None" = None,
+        attack_time_ms: float = 1,
+        release_time_ms: float = 25,
+    ) -> tuple["Signal", dict]:
+        """This is a simple signal activity detector that uses a power
+        threshold. It can be used relative to the signal's peak value or
+        absolute. It is only applicable to one channel of the signal. This
+        method returns the signal and a dictionary containing noise (as a
+        signal) and the time indices corresponding to the bins that were
+        found to surpass the threshold according to attack and release
+        times.
+
+        Prefiltering (for example with a bandpass filter) is possible when a
+        `pre_filter` is passed.
+
+        See Returns to gain insight into the returned dictionary and its
+        keys.
+
+        Parameters
+        ----------
+        threshold_dbfs : float
+            Threshold in dBFS to separate noise from activity.
+        channel : int, optional
+            Channel in which to perform the detection. Default: 0.
+        relative_to_peak : bool, optional
+            When `True`, the threshold value is relative to the signal's peak
+            value. Otherwise, it is regarded as an absolute threshold.
+            Default: `True`.
+        pre_filter : `Filter`, optional
+            Filter used for prefiltering the signal. It can be for instance a
+            bandpass filter selecting the relevant frequencies in which the
+            activity might be. Pass `None` to avoid any pre filtering. The
+            filter is applied using zero-phase filtering. Default: `None`.
+        attack_time_ms : float, optional
+            Attack time (in ms). It corresponds to a lag time for detecting
+            activity after surpassing the threshold. Default: 1.
+        release_time_ms : float, optional
+            Release time (in ms) for activity detector after signal has
+            fallen below power threshold. Pass 0 to release immediately.
+            Default: 25.
+
+        Returns
+        -------
+        detected_sig : `Signal`
+            Detected signal.
+        others : dict
+            Dictionary containing following keys:
+            - `'noise'`: left-out noise in original signal (below threshold)
+              as `Signal` object.
+            - `'signal_indices'`: array of boolean that describes which
+              indices of the original time series belong to signal and which
+              to noise. `True` at index n means index n was passed to
+              signal.
+            - `'noise_indices'`: the inverse array to `'signal_indices'`.
+
+        """
+        assert isinstance(channel, int), (
+            "Channel must be type integer. Function is not implemented for "
+            + "multiple channels."
+        )
+        assert threshold_dbfs < 0, "Threshold must be below zero"
+        assert release_time_ms >= 0, "Release time must be positive"
+        assert attack_time_ms >= 0, "Attack time must be positive"
+
+        # Get channel
+        signal = self.get_channels(channel)
+
+        # Pre-filtering
+        if pre_filter is not None:
+            from .filter import Filter
+
+            assert isinstance(pre_filter, Filter), "pre_filter must be of type Filter"
+            signal_filtered = pre_filter.filter_signal(signal, zero_phase=True)
+        else:
+            signal_filtered = signal
+
+        # Release samples
+        attack_coeff = _get_smoothing_factor_ema(
+            attack_time_ms / 1e3, signal.sampling_rate_hz
+        )
+        release_coeff = _get_smoothing_factor_ema(
+            release_time_ms / 1e3, signal.sampling_rate_hz
+        )
+
+        # Get indices
+        signal_indices = _indices_above_threshold_dbfs(
+            signal_filtered.time_data.copy(),
+            threshold_dbfs=threshold_dbfs,
+            attack_smoothing_coeff=attack_coeff,
+            release_smoothing_coeff=release_coeff,
+            normalize=relative_to_peak,
+        )
+        noise_indices = ~signal_indices
+
+        # Separate signals
+        detected_sig = signal.copy()
+        noise = signal.copy()
+
+        try:
+            detected_sig.time_data = signal.time_data[signal_indices, 0]
+        except ValueError as e:
+            warn(
+                "No detected activity, threshold might be too high. Detected "
+                + "signal will be a vector filled with zeroes",
+                stacklevel=2,
+            )
+            print("Numpy error: ", e)
+            detected_sig.time_data = np.zeros(500)
+
+        try:
+            noise.time_data = signal.time_data[noise_indices, 0]
+        except ValueError as e:
+            warn(
+                "No detected noise, threshold might be too low. Noise will be "
+                + "a vector filled with zeroes",
+                stacklevel=2,
+            )
+            print("Numpy error: ", e)
+            noise.time_data = np.zeros(500)
+
+        others = dict(
+            noise=noise, signal_indices=signal_indices, noise_indices=noise_indices
+        )
+        return detected_sig, others
+
+    def spectral_difference(
+        self,
+        other: "Signal | Spectrum",
+        octave_fraction_smoothing: float = 0.0,
+        energy_normalization: bool = True,
+        complex: bool = False,
+        dynamic_range_db: float | None = 100.0,
+    ) -> "Spectrum":
+        """Compute the spectral difference between this and another signal
+        or spectrum. Their number of channels must match. It is computed as
+        `self / other`.
+
+        Parameters
+        ----------
+        other : Signal, Spectrum
+        octave_fraction_smoothing : float, optional
+            Smoothing can be applied prior to computing the difference.
+            Default: 0 (no smoothing).
+        energy_normalization : bool, optional
+            When True, each channel is energy normalized before computing
+            the difference. Default: True.
+        complex : bool, optional
+            When True, the output will be complex. This is only supported if
+            the inputs are complex (for signals, the saved spectrum
+            parameters must deliver a complex spectrum). Default: False.
+        dynamic_range_db : float, None, optional
+            Dynamic range in dB to regard when building the difference. Pass
+            None to avoid limiting the range. Default: 100.
+
+        Returns
+        -------
+        Spectrum
+            Difference spectrum.
+
+        """
+        from .spectrum import Spectrum
+
+        return Spectrum.from_signal(self, complex).spectral_difference(
+            other,
+            octave_fraction_smoothing,
+            energy_normalization,
+            complex,
+            dynamic_range_db,
+        )
+
+    def fractional_delay(
+        self,
+        delay_seconds: float,
+        channels=None,
+        keep_length: bool = False,
+        order: int = 30,
+        side_lobe_suppression_db: float = 60,
+    ) -> "Signal":
+        """Return a copy of the signal with fractional time delay applied.
+
+        Parameters
+        ----------
+        delay_seconds : float
+            Delay in seconds.
+        channels : int or array-like, optional
+            Channels to be delayed. Pass `None` to delay all channels.
+            Default: `None`.
+        keep_length : bool, optional
+            When `True`, the signal retains its original length and loses
+            information for the latest samples. If only specific channels
+            are to be delayed, and keep_length is set to `False`, the
+            remaining channels are zero-padded in the end. Default: `False`.
+        order : int, optional
+            Order of the sinc filter, higher order yields better results at
+            the expense of computation time. Default: 30.
+        side_lobe_suppression_db : float, optional
+            Side lobe suppression in dB for the Kaiser window. Default: 60.
+
+        Returns
+        -------
+        Signal
+            Delayed signal.
+
+        """
+        assert delay_seconds >= 0, "Delay must be positive"
+        if delay_seconds == 0:
+            return self.copy()
+        if self.time_data_imaginary is not None:
+            warn(
+                "Imaginary time data will be ignored in this function. "
+                + "Delay it manually by creating another signal object, if "
+                + "needed.",
+                stacklevel=2,
+            )
+        delay_samples = delay_seconds * self.sampling_rate_hz
+        if keep_length:
+            assert delay_samples < self.time_data.shape[0], (
+                "Delay too large for the given signal"
+            )
+        if channels is None:
+            channels = np.arange(self.number_of_channels)
+        channels = np.atleast_1d(np.asarray(channels).squeeze())
+        assert np.all(channels < self.number_of_channels) and len(
+            np.unique(channels)
+        ) == len(channels), "There is at least an invalid channel number"
+
+        # Get filter and integer delay
+        delay_int, frac_delay_filter = _fractional_delay_filter(
+            delay_samples, order, side_lobe_suppression_db
+        )
+
+        # Copy data
+        new_time_data = self.time_data
+
+        # Create space for the filter in the end of signal
+        new_time_data = _pad_trim(
+            new_time_data, self.time_data.shape[0] + len(frac_delay_filter) - 1
+        )
+
+        # Delay channels
+        new_time_data[:, channels] = oaconvolve(
+            self.time_data[:, channels],
+            frac_delay_filter[..., None],
+            mode="full",
+            axes=0,
+        )
+
+        # Handle delayed and undelayed channels
+        channels_not = np.setdiff1d(np.arange(new_time_data.shape[1]), channels)
+        not_delayed = new_time_data[:, channels_not]
+        delayed = new_time_data[:, channels]
+
+        # Delay respective channels in the beginning and add zeros in the end
+        # to the others
+        delayed = _pad_trim(
+            delayed, delay_int + new_time_data.shape[0], in_the_end=False
+        )
+        not_delayed = _pad_trim(
+            not_delayed, delay_int + new_time_data.shape[0], in_the_end=True
+        )
+
+        new_time_data = _pad_trim(
+            new_time_data, delay_int + new_time_data.shape[0], in_the_end=True
+        )
+        new_time_data[:, channels_not] = not_delayed
+        new_time_data[:, channels] = delayed
+
+        # =========== handle length ===========================================
+        if keep_length:
+            new_time_data = new_time_data[: self.time_data.shape[0], :]
+
+        return self.copy_with_new_time_data(new_time_data)
+
+    def delay(
+        self,
+        delay_samples: int,
+        channels=None,
+        keep_length: bool = False,
+    ) -> "Signal":
+        """Return a copy of the signal with a time delay applied. This
+        method is faster than `fractional_delay` because it only applies
+        integer delay by zero-padding.
+
+        Parameters
+        ----------
+        delay_samples : int
+            Delay in samples.
+        channels : int or array-like, optional
+            Channels to be delayed. Pass `None` to delay all channels.
+            Default: `None`.
+        keep_length : bool, optional
+            When `True`, the signal retains its original length and loses
+            information for the latest samples. If only specific channels
+            are to be delayed, and keep_length is set to `False`, the
+            remaining channels are zero-padded in the end. Default: `False`.
+
+        Returns
+        -------
+        Signal
+            Delayed signal.
+
+        """
+        if delay_samples == 0:
+            return self.copy()
+        if keep_length:
+            assert delay_samples < self.time_data.shape[0], (
+                "Delay too large for the given signal"
+            )
+        if channels is None:
+            channels = np.arange(self.number_of_channels)
+        channels = np.atleast_1d(np.asarray(channels).squeeze())
+        assert np.all(channels < self.number_of_channels) and len(
+            np.unique(channels)
+        ) == len(channels), "There is at least an invalid channel number"
+
+        # Copy data
+        new_time_data = self.time_data
+
+        # Handle delayed and undelayed channels
+        channels_not = np.setdiff1d(np.arange(new_time_data.shape[1]), channels)
+        not_delayed = new_time_data[:, channels_not]
+        delayed = new_time_data[:, channels]
+
+        delayed = _pad_trim(
+            delayed, delay_samples + new_time_data.shape[0], in_the_end=False
+        )
+        not_delayed = _pad_trim(
+            not_delayed,
+            delay_samples + new_time_data.shape[0],
+            in_the_end=True,
+        )
+
+        new_time_data = _pad_trim(
+            new_time_data,
+            delay_samples + new_time_data.shape[0],
+            in_the_end=True,
+        )
+        new_time_data[:, channels_not] = not_delayed
+        new_time_data[:, channels] = delayed
+        if keep_length:
+            new_time_data = new_time_data[: self.time_data.shape[0], :]
+
+        return self.copy_with_new_time_data(new_time_data)
+
+    def resample(
+        self, desired_sampling_rate_hz: int, rescaling: bool = False
+    ) -> "Signal":
+        """Return a copy of the signal resampled to the desired sampling
+        rate using `scipy.signal.resample_poly` with an efficient polyphase
+        representation.
+
+        Parameters
+        ----------
+        desired_sampling_rate_hz : int
+            Sampling rate to convert the signal to.
+        rescaling : bool, optional
+            When True, the data is rescaled by dividing by the resampling
+            factor. This retains the magnitude scaling when regarding the
+            unscaled spectrum. Default: False.
+
+        Returns
+        -------
+        Signal
+            Resampled signal.
+
+        """
+        if self.sampling_rate_hz == desired_sampling_rate_hz:
+            return self.copy()
+        ratio = Fraction(
+            numerator=desired_sampling_rate_hz, denominator=self.sampling_rate_hz
+        )
+        u, d = ratio.as_integer_ratio()
+        new_time_data = resample_poly(self.time_data, up=u, down=d, axis=0)
+        new_sig = self.copy_with_new_time_data(
+            new_time_data * (d / u) if rescaling else new_time_data
+        )
+        new_sig.sampling_rate_hz = desired_sampling_rate_hz
+        return new_sig
+
+    def append_signals(
+        self,
+        others: list["Signal"],
+        allow_padding_trimming: bool = True,
+        at_end: bool = True,
+    ) -> "Signal":
+        """Return a copy of the signal with the channels of other signals
+        appended. If their lengths are not the same, trimming or padding can
+        be applied to match this signal's length.
+
+        Parameters
+        ----------
+        others : list[Signal]
+            Other signals whose channels should be appended.
+        allow_padding_trimming : bool, optional
+            If the signals do not have the same length, all are trimmed or
+            zero-padded to match this signal's length, when this is True.
+            Otherwise, an error will be raised if the lengths do not match.
+            Default: `True`.
+        at_end : bool, optional
+            When `True` and `allow_padding_trimming=True`, padding or
+            trimming is done at the end of the signals. Otherwise, it is
+            done in the beginning. Default: `True`.
+
+        Returns
+        -------
+        Signal
+            Signal with all channels.
+
+        """
+        signals = [self] + list(others)
+        assert len(signals) > 1, "At least one other signal should be passed"
+
+        complex_data = False
+        for s in signals:
+            assert isinstance(s, Signal), (
+                "All signals must be of type Signal or ImpulseResponse"
+            )
+            assert s.sampling_rate_hz == signals[0].sampling_rate_hz, (
+                "Sampling rates do not match"
+            )
+            if not allow_padding_trimming:
+                assert len(s) == len(signals[0]), (
+                    "Lengths do not match and padding or trimming " + "is not activated"
+                )
+            complex_data |= s.is_complex_signal
+
+        total_n_channels = sum([s.number_of_channels for s in signals])
+        total_length = len(signals[0])
+        td = np.zeros(
+            (len(signals[0]), total_n_channels),
+            dtype=np.complex128 if complex_data else np.float64,
+        )
+
+        current_channel = 0
+        for s in signals:
+            if complex_data:
+                if s.is_complex_signal:
+                    td[
+                        :,
+                        current_channel : current_channel + s.number_of_channels,
+                    ] = _pad_trim(
+                        s.time_data + 1j * s.time_data_imaginary,
+                        total_length,
+                        in_the_end=at_end,
+                    )
+                else:
+                    td[
+                        :,
+                        current_channel : current_channel + s.number_of_channels,
+                    ] = _pad_trim(
+                        s.time_data.astype(np.complex128),
+                        total_length,
+                        in_the_end=at_end,
+                    )
+            else:
+                td[:, current_channel : current_channel + s.number_of_channels] = (
+                    _pad_trim(s.time_data, total_length, in_the_end=at_end)
+                )
+            current_channel += s.number_of_channels
+        new_sig = self.copy()
+        new_sig.time_data = td
+        return new_sig
 
     def show_info(self):
         """Prints all the signal information to the console."""

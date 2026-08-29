@@ -54,7 +54,7 @@ class TestRoomAcousticsModule:
         dsp.room_acoustics.reverb_time(
             self.rir, dsp.room_acoustics.ReverbTime.EDT, ir_start=ind
         )
-        combined = dsp.append_signals([self.rir, self.rir])
+        combined = self.rir.append_signals([self.rir])
         dsp.room_acoustics.reverb_time(
             combined,
             dsp.room_acoustics.ReverbTime.EDT,
@@ -111,7 +111,7 @@ class TestRoomAcousticsModule:
         speech = dsp.Signal(
             join(os.path.dirname(__file__), "..", "example_data", "speech.flac")
         )
-        speech_2 = dsp.append_signals([speech, speech])
+        speech_2 = speech.append_signals([speech])
         result = dsp.room_acoustics.convolve_rir_on_signal(
             speech, self.rir, keep_peak_level=False, keep_length=True
         )
@@ -142,7 +142,7 @@ class TestRoomAcousticsModule:
         length_ir = len(td) // 11
         oaconv = dsp.room_acoustics.convolve_rir_on_signal(
             speech_2,
-            dsp.pad_trim(self.rir, length_ir),
+            self.rir.pad_trim(length_ir),
             keep_peak_level=False,
             keep_length=False,
         ).time_data

@@ -32,10 +32,7 @@ from ..helpers.spectrum_utilities import (
     _interpolate_fr,
 )
 from ..standard import (
-    append_signals,
-    fractional_delay,
     latency,
-    normalize,
 )
 from ..standard._spectral_methods import _welch
 from ..standard._standard_backend import (
@@ -291,7 +288,7 @@ def window_ir(
         )
 
     new_sig = signal.copy_with_new_time_data(new_time_data)
-    new_sig.set_window(window)
+    new_sig = new_sig.set_window(window)
     return new_sig, start_positions_samples
 
 
@@ -364,7 +361,7 @@ def window_ir_tukey(
             right_flank_duration_samples * 2,
         )[right_flank_duration_samples:]
     new_ir = ir.copy_with_new_time_data(ir.time_data * window)
-    new_ir.set_window(np.repeat(window, ir.number_of_channels, 1))
+    new_ir = new_ir.set_window(np.repeat(window, ir.number_of_channels, 1))
     return new_ir
 
 
@@ -415,7 +412,7 @@ def window_centered_ir(
         ) = _window_this_ir(signal.time_data[:, n], total_length_samples, window_type)
 
     new_sig = signal.copy_with_new_time_data(new_time_data)
-    new_sig.set_window(window)
+    new_sig = new_sig.set_window(window)
     return new_sig, start_positions_samples
 
 
@@ -538,7 +535,7 @@ def compute_transfer_function(
     spec = Spectrum(
         np.fft.rfftfreq(window_length_samples, 1 / input.sampling_rate_hz), tf
     )
-    spec.set_coherence(coherence)
+    spec = spec.set_coherence(coherence)
     return spec
 
 
@@ -605,8 +602,8 @@ def average_irs(
             latency_s = (
                 latencies[channel_to_follow] - latencies[i]
             ) / signal.sampling_rate_hz
-            new_channel = fractional_delay(
-                signal.get_channels(i), latency_s, keep_length=True
+            new_channel = signal.get_channels(i).fractional_delay(
+                latency_s, keep_length=True
             )
             avg_sig.time_data[:, i] = new_channel.time_data[:, 0]
         new_time_data = np.mean(avg_sig.time_data, axis=1)
@@ -1140,7 +1137,7 @@ def combine_ir_with_dirac(
             "energy",
             "peak",
         ), "Invalid normalization parameter"
-    ir = normalize(ir, 0.0)
+    ir = ir.normalize(0.0)
     latencies_samples = _get_fractional_impulse_peak_index(ir.time_data)
 
     # Make impulse
@@ -1157,12 +1154,12 @@ def combine_ir_with_dirac(
     for ch in range(ir.number_of_channels):
         delay_seconds = latencies_samples[ch] / ir.sampling_rate_hz
         imp_ch = imp.get_channels(ch)
-        imp_ch = fractional_delay(imp_ch, delay_seconds=delay_seconds, keep_length=True)
-        imp = append_signals([imp, imp_ch])
+        imp_ch = imp_ch.fractional_delay(delay_seconds=delay_seconds, keep_length=True)
+        imp = imp.append_signals([imp_ch])
 
         # Save polarity for each channel using sample prior to peak
         polarity[ch] *= np.sign(ir.time_data[int(latencies_samples[ch] + 0.5), ch])
-    imp.remove_channel(0)
+    imp = imp.remove_channel(0)
 
     # Filter crossover for both
     fb = linkwitz_riley_crossovers([crossover_frequency], order, ir.sampling_rate_hz)
@@ -1190,7 +1187,7 @@ def combine_ir_with_dirac(
 
     # Combine
     combined_ir = ir.copy_with_new_time_data(td_ir + td_imp * polarity[None, ...])
-    return normalize(combined_ir, 0.0)
+    return combined_ir.normalize(0.0)
 
 
 def ir_to_filter(
@@ -1617,7 +1614,7 @@ def harmonic_distortion_analysis(
     for i in range(len(harm)):
         if not passed_harmonics:
             harm[i] = window_ir(harm[i], len(harm[i]), constant_percentage=0.9)[0]
-        harm[i].set_spectrum_parameters(**ir2._spectrum_parameters)
+        harm[i] = harm[i].set_spectrum_parameters(**ir2._spectrum_parameters)
         f, sp = harm[i].get_spectrum()
 
         # Select frequencies that really were excited by chirp and fftshift
@@ -1662,7 +1659,7 @@ def harmonic_distortion_analysis(
 
     # THD+N
     thd_n = Signal(None, thd, ir2.sampling_rate_hz)
-    thd_n.set_spectrum_parameters(**ir2._spectrum_parameters)
+    thd_n = thd_n.set_spectrum_parameters(**ir2._spectrum_parameters)
     f_thd_n, sp_thd_n = thd_n.get_spectrum()
     if not quadratic_spectrum:
         sp_thd_n = np.abs(sp_thd_n) ** 2.0

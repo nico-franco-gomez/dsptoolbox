@@ -102,7 +102,7 @@ class TestFilterbanksModule:
 
             # Reconstruction
             round_trip = fb.reconstruct_signal(mb_, upsample=True)
-            spec = dsp.spectral_difference(s, round_trip, energy_normalization=False)
+            spec = s.spectral_difference(round_trip, energy_normalization=False)
             spec.spectral_data[:2] = 1.0  # Remove DC
             np.testing.assert_allclose(
                 dsp.tools.to_db(spec.spectral_data, True), 0.0, atol=1
@@ -247,12 +247,11 @@ class TestFilterbanksModule:
         # Only functionality
         fs_hz = 44100
         n = dsp.generators.noise(length_seconds=1.0, sampling_rate_hz=fs_hz)
-        n.set_spectrum_parameters(window_length_samples=1024)
+        n = n.set_spectrum_parameters(window_length_samples=1024)
         f = dsp.filterbanks.pinking_filter(3000, fs_hz)
         n2 = f.filter_signal(n)
-        n2 = dsp.append_signals(
+        n2 = n2.append_signals(
             [
-                n2,
                 dsp.generators.noise(
                     length_seconds=1.0,
                     type_of_noise=dsp.generators.NoiseType.Pink,
@@ -260,7 +259,7 @@ class TestFilterbanksModule:
                 ),
             ]
         )
-        n2 = dsp.append_signals([n2, n])
+        n2 = n2.append_signals([n])
 
     def test_matched_biquads(self):
         # Only functionality and plausibility
@@ -296,7 +295,7 @@ class TestFilterbanksModule:
         w = sig.windows.gaussian(length, sigma, True)
         w /= w.sum()
         f = dsp.Filter.from_ba(w, [1.0], fs_hz)
-        n1 = dsp.append_signals([n1, f.filter_signal(n, zero_phase=False)])
+        n1 = n1.append_signals([f.filter_signal(n, zero_phase=False)])
 
         # n1.plot_time()
         # dsp.plots.show()
@@ -309,7 +308,7 @@ class TestFilterbanksModule:
         dsp.filterbanks.arma(rir, 10, 0)
         dsp.filterbanks.arma(rir, 10, 1)
         dsp.filterbanks.arma(rir, 10, 11)
-        dsp.filterbanks.arma(dsp.pad_trim(rir, len(rir) - 1), 10, 11)
+        dsp.filterbanks.arma(rir.pad_trim(len(rir) - 1), 10, 11)
 
         for m in [
             dsp.filterbanks.ArmaMethod.SteiglitzMcBride,

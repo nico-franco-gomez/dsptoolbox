@@ -7,6 +7,7 @@ import numpy as np
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 from numpy.typing import NDArray
+from scipy.signal import convolve
 
 from ..generators import dirac
 from ..helpers.other import _check_format_in_path
@@ -15,6 +16,7 @@ from ..plots import general_plot
 from ..standard._standard_backend import _group_delay_direct
 from ..standard.enums import (
     FilterBankMode,
+    FilterCoefficientsType,
     MagnitudeNormalization,
     SpectrumMethod,
     SpectrumScaling,
@@ -296,7 +298,8 @@ class FilterBank:
 
     # ======== Add and remove =================================================
     def add_filter(self, filt: Filter, index: int = -1) -> Self:
-        """Adds a new filter at the end of the filters dictionary.
+        """Return a copy of the filter bank with a new filter added at the
+        given index.
 
         Parameters
         ----------
@@ -307,29 +310,31 @@ class FilterBank:
 
         Returns
         -------
-        self
+        FilterBank
+            New filter bank with the filter added.
 
         """
-        if not self.filters:
-            self.sampling_rate_hz = filt.sampling_rate_hz
-            self.filters = [filt]
+        new = self.copy()
+        if not new.filters:
+            new.sampling_rate_hz = filt.sampling_rate_hz
+            new.filters = [filt]
         else:
-            fs = self.filters.copy()
-            if self.same_sampling_rate:
-                assert self.sampling_rate_hz == filt.sampling_rate_hz, (
+            fs = new.filters.copy()
+            if new.same_sampling_rate:
+                assert new.sampling_rate_hz == filt.sampling_rate_hz, (
                     "Sampling rates do not match"
                 )
             if index == -1:
                 fs.append(filt)
             else:
                 fs.insert(index, filt)
-            self.filters = fs
-        return self
+            new.filters = fs
+        return new
 
     def remove_filter(
         self, index: int = -1, return_filter: bool = False
-    ) -> Filter | Self:
-        """Removes a filter from the filter bank.
+    ) -> Self | tuple[Self, Filter]:
+        """Return a copy of the filter bank with a filter removed.
 
         Parameters
         ----------
@@ -338,12 +343,15 @@ class FilterBank:
             will be erased. When -1, last filter is erased.
             Default: -1.
         return_filter : bool, optional
-            When `True`, the erased filter is returned. Otherwise, the
-            filterbank instance is returned. Default: `False`.
+            When `True`, a tuple of the new filter bank and the erased
+            filter is returned. Otherwise, only the new filter bank is
+            returned. Default: `False`.
 
         Returns
         -------
-        Filter | self
+        FilterBank | tuple[FilterBank, Filter]
+            New filter bank with the filter removed, and optionally the
+            removed filter.
 
         """
         assert self.filters, "There are no filters to remove"
@@ -352,15 +360,17 @@ class FilterBank:
         assert index in range(len(self.filters)), (
             f"There is no filter at index {index}."
         )
-        n_f = self.filters.copy()
+        new = self.copy()
+        n_f = new.filters.copy()
         f = n_f.pop(index)
-        self.filters = n_f
+        new.filters = n_f
         if return_filter:
-            return f
-        return self
+            return new, f
+        return new
 
     def swap_filters(self, new_order) -> Self:
-        """Rearranges the filters in the new given order.
+        """Return a copy of the filter bank with the filters rearranged in
+        the new given order.
 
         Parameters
         ----------
@@ -369,7 +379,8 @@ class FilterBank:
 
         Returns
         -------
-        self
+        FilterBank
+            New filter bank with the filters rearranged.
 
         """
         new_order = np.array(new_order).squeeze()
@@ -387,9 +398,9 @@ class FilterBank:
         assert len(np.unique(new_order)) == len(new_order), (
             "There are repeated indexes in the new order vector"
         )
-        n_f = [self.filters[i] for i in new_order]
-        self.filters = n_f
-        return self
+        new = self.copy()
+        new.filters = [self.filters[i] for i in new_order]
+        return new
 
     # ======== Filtering ======================================================
     @overload
@@ -582,7 +593,7 @@ class FilterBank:
                     sampling_rate_hz=sr[ind],
                     number_of_channels=1,
                 )
-                mb.add_band(f.filter_signal(d, zero_phase=zero_phase))
+                mb = mb.add_band(f.filter_signal(d, zero_phase=zero_phase))
             return mb
 
         # Obtain biggest filter order from FilterBank
@@ -1037,3 +1048,103 @@ class FilterBank:
 
         """
         return deepcopy(self)
+
+    def apply_gain(self, gain_db: float | NDArray[np.float64]) -> "FilterBank":
+        """Return a copy of the filter bank with gain applied to its
+        filters. When passing a single gain value, this will be applied to
+        all filters. See notes for details.
+
+        Parameters
+        ----------
+        gain_db : float, NDArray[np.float64]
+            Gain in dB to be applied. If it is an array, it should have as
+            many elements as there are filters in the filter bank.
+
+        Returns
+        -------
+        FilterBank
+            Filter bank with new gain.
+
+        Notes
+        -----
+        - It should be regarded how the filter bank will be used. If the
+          intended mode is "parallel", then a single gain value will modify
+          each band. If "sequential", the gain value will be applied to the
+          output signal for each filter. In the latter case, a single filter
+          should get the gain modification.
+
+        """
+        gain = np.atleast_1d(gain_db)
+        assert len(gain) == 1 or len(gain) == self.number_of_filters, (
+            "Incompatible number of gains"
+        )
+        if len(gain) == 1:
+            gain = np.repeat(gain, self.number_of_filters)
+        new = self.copy()
+        new.filters = [f.apply_gain(g) for f, g in zip(new.filters, gain, strict=True)]
+        return new
+
+    def merge_filters(self) -> Filter:
+        """Return a filter that concatenates all filters in the bank. For
+        FIR filters, it is the result of convolving all FIR filters. For
+        IIR, their SOS are concatenated. Mixed types will raise an error.
+
+        Returns
+        -------
+        Filter
+            Combined filter.
+
+        """
+        filts = self.filters
+        assert len(filts) > 1, "There must be at least two filters to combine"
+        assert all([filts[0].sampling_rate_hz == f.sampling_rate_hz for f in filts]), (
+            "Sampling rates do not match"
+        )
+
+        if filts[0].is_fir:
+            assert all([f.is_fir for f in filts]), "Some filter is not FIR"
+            b_coefficients = filts[0].ba[0].copy()
+            for ind in range(1, len(filts)):
+                b_coefficients = convolve(
+                    b_coefficients, filts[ind].ba[0], mode="full", method="auto"
+                )
+            return Filter.from_ba(b_coefficients, [1.0], filts[0].sampling_rate_hz)
+
+        assert all([f.is_iir for f in filts]), "Some filter is not IIR"
+        sos = filts[0].get_coefficients(FilterCoefficientsType.Sos)
+        for ind in range(1, len(filts)):
+            sos = np.concatenate(
+                [sos, filts[ind].get_coefficients(FilterCoefficientsType.Sos)],
+                axis=0,
+            )
+        return Filter.from_sos(sos, filts[0].sampling_rate_hz)
+
+    def append_filterbanks(self, others: list["FilterBank"]) -> "FilterBank":
+        """Return a copy of the filter bank with the filters of other filter
+        banks appended.
+
+        Parameters
+        ----------
+        others : list[FilterBank]
+            Other filter banks whose filters should be appended.
+
+        Returns
+        -------
+        FilterBank
+            New filter bank with all filters.
+
+        """
+        fbs = [self] + list(others)
+        assert len(fbs) > 1, "At least one other filter bank should be passed"
+        for f in fbs:
+            assert f.same_sampling_rate == fbs[0].same_sampling_rate, (
+                "Sampling rates do not match"
+            )
+            assert f.sampling_rate_hz == fbs[0].sampling_rate_hz, (
+                "Sampling rates do not match"
+            )
+
+        new_fb = fbs[0].copy()
+        for ind in range(1, len(fbs)):
+            new_fb.filters += deepcopy(fbs[ind].filters)
+        return new_fb

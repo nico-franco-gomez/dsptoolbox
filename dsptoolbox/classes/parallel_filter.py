@@ -241,7 +241,7 @@ class ParallelFilter(RealtimeFilter):
             ]
         )
         if len(self.__fir_coefficients) > 0:
-            fb.add_filter(
+            fb = fb.add_filter(
                 Filter.from_ba(self.__fir_coefficients, [1.0], self.sampling_rate_hz)
             )
         self.filter_bank = fb

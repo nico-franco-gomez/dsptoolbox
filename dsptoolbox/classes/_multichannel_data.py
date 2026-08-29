@@ -30,7 +30,7 @@ class MultichannelData(ABC):
         return self._get_data().shape[0]
 
     def remove_channel(self, channel_number: int = -1):
-        """Removes a channel.
+        """Return a copy with a channel removed.
 
         Parameters
         ----------
@@ -39,7 +39,7 @@ class MultichannelData(ABC):
 
         Returns
         -------
-        self
+        New object of the same type, with the channel removed.
 
         """
         data = self._get_data()
@@ -50,12 +50,10 @@ class MultichannelData(ABC):
             f"Channel number {channel_number} does not exist. Signal only "
             + f"has {self.number_of_channels - 1} channels (zero included)."
         )
-        self._set_data(np.delete(data, channel_number, axis=-1))
-        self._update_state()
-        return self
+        return self._create_copy_with_new_data(np.delete(data, channel_number, axis=-1))
 
     def swap_channels(self, new_order):
-        """Rearranges the channels (inplace) in the new given order.
+        """Return a copy with the channels rearranged in the new given order.
 
         Parameters
         ----------
@@ -64,7 +62,7 @@ class MultichannelData(ABC):
 
         Returns
         -------
-        self
+        New object of the same type, with the channels rearranged.
 
         """
         new_order = np.atleast_1d(np.asarray(new_order).squeeze())
@@ -82,9 +80,7 @@ class MultichannelData(ABC):
         assert len(np.unique(new_order)) == len(new_order), (
             "There are repeated indexes in the new order vector"
         )
-        self._set_data(self._get_data()[:, new_order])
-        self._update_state()
-        return self
+        return self._create_copy_with_new_data(self._get_data()[:, new_order])
 
     def get_channels(self, channels: int | ArrayLike):
         """Returns a signal object with the selected channels. Beware that

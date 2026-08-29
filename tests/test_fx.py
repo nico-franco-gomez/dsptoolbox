@@ -11,10 +11,9 @@ import dsptoolbox as dsp
 
 
 class TestEffectsModule:
-    speech = dsp.resample(
-        dsp.Signal(
-            join(os.path.dirname(__file__), "..", "example_data", "speech.flac")
-        ),
+    speech = (
+        dsp.Signal(join(os.path.dirname(__file__), "..", "example_data", "speech.flac"))
+    ).resample(
         8_000,
     )
     fs_hz = speech.sampling_rate_hz

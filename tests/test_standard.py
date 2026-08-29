@@ -62,14 +62,14 @@ class TestStandardModule:
         # ===== Fractional delays
         delay = 0.003301
         noi = dsp.generators.noise(length_seconds=1, sampling_rate_hz=10_000)
-        noi_del = dsp.fractional_delay(noi, delay)
+        noi_del = noi.fractional_delay(delay)
         td_previous_noi_del = noi_del.time_data.copy()  # Data does not change
         lat, corr = dsp.latency(noi_del, noi, 2)
         np.testing.assert_array_equal(td_previous_noi_del, noi_del.time_data)  #
         assert np.allclose(corr, 1.0, atol=1e-2)
         assert np.abs(lat[0] - delay * noi.sampling_rate_hz) < 0.9
 
-        noi = dsp.append_signals([noi_del, noi])
+        noi = noi_del.append_signals([noi])
         latencies, corr = dsp.latency(noi, polynomial_points=1)
         assert len(latencies) == noi.number_of_channels - 1
         assert np.allclose(corr, 1.0, atol=1e-2)
@@ -83,9 +83,7 @@ class TestStandardModule:
         trim_length = 40_000
         td = self.audio_multi.time_data[:trim_length]
         s = dsp.Signal(None, td, self.fs)
-        assert np.all(
-            s.time_data == dsp.pad_trim(self.audio_multi, trim_length).time_data
-        )
+        assert np.all(s.time_data == self.audio_multi.pad_trim(trim_length).time_data)
 
         # Check for signal: pad at the end
         pad_length = 10_000
@@ -93,7 +91,7 @@ class TestStandardModule:
             [td, np.zeros((pad_length, self.audio_multi.number_of_channels))],
             axis=0,
         )
-        s = dsp.pad_trim(s, s.time_data.shape[0] + pad_length)
+        s = s.pad_trim(s.time_data.shape[0] + pad_length)
         s1 = dsp.Signal(None, td, self.fs)
         assert np.all(s.time_data == s1.time_data)
 
@@ -103,7 +101,7 @@ class TestStandardModule:
         s = dsp.Signal(None, td, self.fs)
         assert np.all(
             s.time_data
-            == dsp.pad_trim(self.audio_multi, trim_length, in_the_end=False).time_data
+            == self.audio_multi.pad_trim(trim_length, in_the_end=False).time_data
         )
 
         # Check for signal: pad at the end
@@ -112,13 +110,13 @@ class TestStandardModule:
             [np.zeros((pad_length, self.audio_multi.number_of_channels)), td],
             axis=0,
         )
-        s = dsp.pad_trim(s, s.time_data.shape[0] + pad_length, in_the_end=False)
+        s = s.pad_trim(s.time_data.shape[0] + pad_length, in_the_end=False)
         s1 = dsp.Signal(None, td, self.fs)
         assert np.all(s.time_data == s1.time_data)
 
         # Plausibility for single-channel signal
         s = s.get_channels(0)
-        dsp.pad_trim(s, 50_000)
+        s.pad_trim(50_000)
 
         # MultiBandSignal test
         b = [
@@ -126,13 +124,13 @@ class TestStandardModule:
             self.audio_multi.get_channels(1),
         ]
         multi = dsp.MultiBandSignal(b)
-        dsp.pad_trim(multi, 40_000)
+        multi.pad_trim(40_000)
 
     def test_append_signals(self):
         # Signal
         s1 = self.audio_multi.get_channels(0)
         s2 = self.audio_multi.get_channels(1)
-        s = dsp.append_signals([s1, s2])
+        s = s1.append_signals([s2])
         assert s.number_of_channels == 2
         assert np.all(s.time_data == self.audio_multi.time_data[:, :2])
         # MultiBandSignal
@@ -142,7 +140,7 @@ class TestStandardModule:
         ]
         sm = dsp.MultiBandSignal(b)
         sm1 = dsp.MultiBandSignal(b)
-        sm_ = dsp.append_signals([sm, sm1])
+        sm_ = sm.append_signals([sm1])
         assert sm_.number_of_channels == 2
         assert sm_.number_of_bands == 2
 
@@ -153,25 +151,25 @@ class TestStandardModule:
         fb2 = dsp.filterbanks.auditory_filters_gammatone(
             [800, 1000], sampling_rate_hz=self.fs
         )
-        fb_out = dsp.append_filterbanks([fb1, fb2])
+        fb_out = fb1.append_filterbanks([fb2])
         assert len(fb_out) == len(fb1) + len(fb2)
 
         with pytest.raises(AssertionError):
             fb3 = dsp.filterbanks.auditory_filters_gammatone(
                 [800, 1000], sampling_rate_hz=48000
             )
-            dsp.append_filterbanks([fb1, fb3])
+            fb1.append_filterbanks([fb3])
 
     def test_resample(self):
         # The result itself will not be checked, only that there is an output
         # Since it is a wrapper around scipy's function, it might not be
         # necessary to check...
-        dsp.resample(self.audio_multi, desired_sampling_rate_hz=22050)
+        self.audio_multi.resample(desired_sampling_rate_hz=22050)
 
     def test_normalize(self):
         # Check peak normalization
         td = self.audio_multi.time_data
-        n = dsp.normalize(self.audio_multi, norm_dbfs=-20)
+        n = self.audio_multi.normalize(norm_dbfs=-20)
         td /= np.max(np.abs(td))
         factor = 10 ** (-20 / 20)
         td *= factor
@@ -180,27 +178,22 @@ class TestStandardModule:
         # Check rms
         channel = self.audio_multi.get_channels(0)
         rms_previous = dsp.rms(channel)[0]
-        n = dsp.normalize(
-            channel, norm_dbfs=rms_previous - 10, peak_normalization=False
-        )
+        n = channel.normalize(norm_dbfs=rms_previous - 10, peak_normalization=False)
         rms = dsp.rms(n)[0]
         assert np.isclose(rms_previous - 10, rms)
 
         # Check rest of api
-        dsp.normalize(
-            self.audio_multi,
+        self.audio_multi.normalize(
             norm_dbfs=-20,
             peak_normalization=False,
             each_channel=False,
         )
-        dsp.normalize(
-            self.audio_multi,
+        self.audio_multi.normalize(
             norm_dbfs=-20,
             peak_normalization=False,
             each_channel=True,
         )
-        dsp.normalize(
-            self.audio_multi,
+        self.audio_multi.normalize(
             norm_dbfs=-20,
             peak_normalization=True,
             each_channel=True,
@@ -208,25 +201,22 @@ class TestStandardModule:
 
     def test_fade(self):
         # Functionality - result only tested for linear fade
-        dsp.fade(self.audio_multi, fade_type=dsp.FadeType.Linear)
-        dsp.fade(self.audio_multi, fade_type=dsp.FadeType.Logarithmic)
-        dsp.fade(self.audio_multi, fade_type=dsp.FadeType.Exponential)
+        self.audio_multi.fade(fade_type=dsp.FadeType.Linear)
+        self.audio_multi.fade(fade_type=dsp.FadeType.Logarithmic)
+        self.audio_multi.fade(fade_type=dsp.FadeType.Exponential)
 
-        f_end = dsp.fade(
-            self.audio_multi,
+        f_end = self.audio_multi.fade(
             fade_type=dsp.FadeType.Linear,
             at_start=False,
             at_end=True,
         )
-        f_st = dsp.fade(
-            self.audio_multi,
+        f_st = self.audio_multi.fade(
             fade_type=dsp.FadeType.Linear,
             at_start=True,
             at_end=False,
         )
         with pytest.raises(AssertionError):
-            dsp.fade(
-                self.audio_multi,
+            self.audio_multi.fade(
                 fade_type=dsp.FadeType.Linear,
                 at_start=False,
                 at_end=False,
@@ -258,12 +248,12 @@ class TestStandardModule:
         delay_s = 150 / self.fs
 
         # All channels
-        s = dsp.fractional_delay(self.audio_multi, delay_s)
+        s = self.audio_multi.fractional_delay(delay_s)
         lat = dsp.latency(s, self.audio_multi)[0]
         assert np.all(np.isclose(np.abs(lat), 150))
 
         # Selected channels only
-        s = dsp.fractional_delay(self.audio_multi, delay_s, channels=0)
+        s = self.audio_multi.fractional_delay(delay_s, channels=0)
         lat = dsp.latency(s, self.audio_multi)[0]
         assert np.all(np.isclose(np.abs(lat), [150, 0, 0]))
 
@@ -272,12 +262,12 @@ class TestStandardModule:
         delay_samp = 150
 
         # All channels
-        s = dsp.delay(self.audio_multi, delay_samp)
+        s = self.audio_multi.delay(delay_samp)
         lat = dsp.latency(s, self.audio_multi)[0]
         assert np.all(np.isclose(np.abs(lat), 150))
 
         # Selected channels only
-        s = dsp.delay(self.audio_multi, delay_samp, channels=0)
+        s = self.audio_multi.delay(delay_samp, channels=0)
         lat = dsp.latency(s, self.audio_multi)[0]
         assert np.all(np.isclose(np.abs(lat), [150, 0, 0]))
 
@@ -285,8 +275,8 @@ class TestStandardModule:
         # Only functionality tested
         # Create harmonic signal and silence afterwards
         s = dsp.generators.oscillator(1000.0, sampling_rate_hz=self.fs)
-        s = dsp.pad_trim(s, s.time_data.shape[0] * 2)
-        dsp.activity_detector(s)
+        s = s.pad_trim(s.time_data.shape[0] * 2)
+        s.activity_detector()
 
     def test_detrend(self):
         # Functionality
@@ -298,7 +288,7 @@ class TestStandardModule:
             uncorrelated=True,
         )
         s.time_data += 0.2
-        dsp.detrend(s, polynomial_order=0)
+        s.detrend(polynomial_order=0)
 
         # One channel
         s = dsp.generators.oscillator(
@@ -310,13 +300,13 @@ class TestStandardModule:
         )
         n = 0.3 * np.arange(len(s)) / len(s)
         s.time_data += n[..., None]
-        dsp.detrend(s, polynomial_order=1)
+        s.detrend(polynomial_order=1)
 
         # Large polynomial order
-        dsp.detrend(s, polynomial_order=10)
+        s.detrend(polynomial_order=10)
 
         with pytest.raises(AssertionError):
-            dsp.detrend(s, polynomial_order=-10)
+            s.detrend(polynomial_order=-10)
 
     def test_load_pkl_object(self):
         f = dsp.Filter.fir_filter(
@@ -418,7 +408,7 @@ class TestStandardModule:
 
     def test_dither(self):
         # Functionality
-        dsp.dither(self.audio_multi)
+        self.audio_multi.dither()
 
         fb = dsp.FilterBank(
             [
@@ -431,26 +421,26 @@ class TestStandardModule:
                 )
             ]
         )
-        dsp.dither(self.audio_multi, noise_shaping_filterbank=fb)
-        dsp.dither(self.audio_multi, truncate=False)
+        self.audio_multi.dither(noise_shaping_filterbank=fb)
+        self.audio_multi.dither(truncate=False)
 
     def test_apply_gain(self):
         some_signal = self.audio_multi.copy()
         # Signal
-        audio_multi = dsp.apply_gain(some_signal, 5)
+        audio_multi = some_signal.apply_gain(5)
         np.testing.assert_array_equal(
             audio_multi.time_data,
             some_signal.time_data * dsp.tools.from_db(5, True),
         )
 
         gains = np.linspace(1, 5, some_signal.number_of_channels)
-        audio_multi = dsp.apply_gain(some_signal, gains)
+        audio_multi = some_signal.apply_gain(gains)
         np.testing.assert_array_equal(
             audio_multi.time_data,
             some_signal.time_data * dsp.tools.from_db(gains, True),
         )
 
-        audio_multi = dsp.apply_gain(some_signal, gains)
+        audio_multi = some_signal.apply_gain(gains)
         np.testing.assert_array_equal(
             audio_multi.time_data,
             some_signal.time_data * dsp.tools.from_db(gains, True),
@@ -459,7 +449,7 @@ class TestStandardModule:
         # MultiBandSignal
         audio_multi_mb = self.get_multiband_signal()
         previous = audio_multi_mb.get_all_time_data()[0]
-        audio_multi_mb = dsp.apply_gain(audio_multi_mb, 5)
+        audio_multi_mb = audio_multi_mb.apply_gain(5)
         np.testing.assert_array_equal(
             previous * dsp.tools.from_db(5, True),
             audio_multi_mb.get_all_time_data()[0],
@@ -467,7 +457,7 @@ class TestStandardModule:
 
         previous = audio_multi_mb.get_all_time_data()[0]
         gains = np.linspace(1, 5, audio_multi.number_of_channels)
-        audio_multi_mb = dsp.apply_gain(audio_multi_mb, gains)
+        audio_multi_mb = audio_multi_mb.apply_gain(gains)
         np.testing.assert_array_equal(
             previous * dsp.tools.from_db(gains, True),
             audio_multi_mb.get_all_time_data()[0],
@@ -477,19 +467,17 @@ class TestStandardModule:
         iir = dsp.Filter.biquad(dsp.BiquadEqType.Peaking, 500.0, 0.0, 0.7, self.fs)
         output_level1 = dsp.rms(iir.filter_signal(self.audio_multi))
         gain_db = -5.0
-        output_level2 = dsp.rms(
-            dsp.apply_gain(iir, gain_db).filter_signal(self.audio_multi)
-        )
+        output_level2 = dsp.rms(iir.apply_gain(gain_db).filter_signal(self.audio_multi))
         np.testing.assert_array_almost_equal(output_level1 + gain_db, output_level2)
         with pytest.raises(ValueError):
-            dsp.apply_gain(iir, [gain_db, 0])
+            iir.apply_gain([gain_db, 0])
 
         # FilterBank
         fb = dsp.FilterBank([iir, iir])
         base_level = dsp.rms(
             fb.filter_signal(self.audio_multi, mode=dsp.FilterBankMode.Sequential)
         )
-        fb2 = dsp.apply_gain(fb, gain_db)
+        fb2 = fb.apply_gain(gain_db)
         output_level = dsp.rms(
             fb2.filter_signal(self.audio_multi, mode=dsp.FilterBankMode.Sequential)
         )
@@ -498,13 +486,13 @@ class TestStandardModule:
         )
 
         # multiple gains for a filter bank
-        fb2 = dsp.apply_gain(fb, [gain_db] + [0] * (len(fb) - 1))
+        fb2 = fb.apply_gain([gain_db] + [0] * (len(fb) - 1))
         output_level = dsp.rms(
             fb2.filter_signal(self.audio_multi, mode=dsp.FilterBankMode.Sequential)
         )
         np.testing.assert_array_almost_equal(base_level + gain_db, output_level)
         with pytest.raises(AssertionError):
-            dsp.apply_gain(fb, [gain_db] + [0] * (len(fb) + 1))
+            fb.apply_gain([gain_db] + [0] * (len(fb) + 1))
 
     def test_crest_factor(self):
         # Only functionality
@@ -527,7 +515,7 @@ class TestStandardModule:
             filter_design_method=dsp.IirDesignMethod.Bessel,
             sampling_rate_hz=fs_hz,
         )
-        dsp.resample_filter(f, 24000)
+        f.resample_filter(24000)
         f = dsp.Filter.iir_filter(
             order=5,
             frequency_hz=500,
@@ -535,7 +523,7 @@ class TestStandardModule:
             filter_design_method=dsp.IirDesignMethod.Bessel,
             sampling_rate_hz=fs_hz,
         )
-        dsp.resample_filter(f, 24000)
+        f.resample_filter(24000)
         f = dsp.Filter.iir_filter(
             order=8,
             frequency_hz=500,
@@ -543,7 +531,7 @@ class TestStandardModule:
             filter_design_method=dsp.IirDesignMethod.Bessel,
             sampling_rate_hz=fs_hz,
         )
-        dsp.resample_filter(f, 24000)
+        f.resample_filter(24000)
         f = dsp.Filter.iir_filter(
             order=7,
             frequency_hz=[500, 18e3],
@@ -554,22 +542,19 @@ class TestStandardModule:
 
     def test_modify_signal_length(self):
         with pytest.raises(AssertionError):
-            dsp.modify_signal_length(self.audio_multi, None, None)
+            self.audio_multi.modify_signal_length(None, None)
         with pytest.raises(AssertionError):
-            dsp.modify_signal_length(
-                self.audio_multi,
+            self.audio_multi.modify_signal_length(
                 -(self.audio_multi.length_seconds + 1.0),
                 None,
             )
         with pytest.raises(AssertionError):
-            dsp.modify_signal_length(
-                self.audio_multi,
+            self.audio_multi.modify_signal_length(
                 None,
                 -(self.audio_multi.length_seconds + 1.0),
             )
         with pytest.raises(AssertionError):
-            dsp.modify_signal_length(
-                self.audio_multi,
+            self.audio_multi.modify_signal_length(
                 -self.audio_multi.length_seconds / 2.0,
                 -self.audio_multi.length_seconds / 1.9,
             )
@@ -577,24 +562,24 @@ class TestStandardModule:
         original_length = len(self.audio_multi)
 
         # Add both
-        new = dsp.modify_signal_length(self.audio_multi, 1.0, 1.0)
+        new = self.audio_multi.modify_signal_length(1.0, 1.0)
         assert new.length_seconds == self.audio_multi.length_seconds + 2.0
         assert len(self.audio_multi) == original_length
 
         # Add only start
-        new = dsp.modify_signal_length(self.audio_multi, 1.0, None)
+        new = self.audio_multi.modify_signal_length(1.0, None)
         assert new.length_seconds == self.audio_multi.length_seconds + 1.0
         assert len(self.audio_multi) == original_length
         np.testing.assert_array_equal(new.time_data[: new.sampling_rate_hz], 0.0)
 
         # Add only end
-        new = dsp.modify_signal_length(self.audio_multi, None, 1.0)
+        new = self.audio_multi.modify_signal_length(None, 1.0)
         assert new.length_seconds == self.audio_multi.length_seconds + 1.0
         assert len(self.audio_multi) == original_length
         np.testing.assert_array_equal(new.time_data[-new.sampling_rate_hz :], 0.0)
 
         # Remove both
-        new = dsp.modify_signal_length(self.audio_multi, -0.5, -0.5)
+        new = self.audio_multi.modify_signal_length(-0.5, -0.5)
         assert new.length_seconds == self.audio_multi.length_seconds - 1.0
         assert len(self.audio_multi) == original_length
         np.testing.assert_array_equal(
@@ -605,7 +590,7 @@ class TestStandardModule:
         )
 
         # Remove only start
-        new = dsp.modify_signal_length(self.audio_multi, -0.5, None)
+        new = self.audio_multi.modify_signal_length(-0.5, None)
         assert new.length_seconds == self.audio_multi.length_seconds - 0.5
         assert len(self.audio_multi) == original_length
         np.testing.assert_array_equal(
@@ -614,7 +599,7 @@ class TestStandardModule:
         )
 
         # Remove only end
-        new = dsp.modify_signal_length(self.audio_multi, None, -0.5)
+        new = self.audio_multi.modify_signal_length(None, -0.5)
         assert new.length_seconds == self.audio_multi.length_seconds - 0.5
         assert len(self.audio_multi) == original_length
         np.testing.assert_array_equal(
@@ -623,7 +608,7 @@ class TestStandardModule:
         )
 
         # Mixed
-        new = dsp.modify_signal_length(self.audio_multi, 1.5, -0.5)
+        new = self.audio_multi.modify_signal_length(1.5, -0.5)
         assert new.length_seconds == self.audio_multi.length_seconds + 1.0
         assert len(self.audio_multi) == original_length
         np.testing.assert_array_equal(
@@ -636,7 +621,7 @@ class TestStandardModule:
 
         # ===== MultiBandSignal: Only functionality
         mb = self.get_multiband_signal()
-        dsp.modify_signal_length(mb, 1.5, -0.5)
+        mb.modify_signal_length(1.5, -0.5)
 
     def test_merge_fir_filters(self):
         f1 = dsp.Filter.fir_filter(
@@ -653,25 +638,25 @@ class TestStandardModule:
         dirac[-1] = 1.0
         f2 = dsp.Filter.from_ba(dirac, [1.0], self.fs)
 
-        f3 = dsp.merge_filters([f1, f2])
+        f3 = dsp.FilterBank([f1, f2]).merge_filters()
         np.testing.assert_array_equal(f3.ba[0][delay:], f1.ba[0])
 
         # With filterbank
-        f3 = dsp.merge_filters(dsp.FilterBank([f1, f2]))
+        f3 = dsp.FilterBank([f1, f2]).merge_filters()
         np.testing.assert_array_equal(f3.ba[0][delay:], f1.ba[0])
 
         with pytest.raises(AssertionError):
-            dsp.merge_filters([f1])
+            dsp.FilterBank([f1]).merge_filters()
 
         with pytest.raises(AssertionError):
             iir = dsp.Filter.biquad(
                 dsp.BiquadEqType.LowpassFirstOrder, 50.0, -3.0, 0.7, self.fs
             )
-            dsp.merge_filters([f1, iir])
+            dsp.FilterBank([f1, iir]).merge_filters()
 
         with pytest.raises(AssertionError):
             f2 = dsp.Filter.from_ba(dirac, [1.0], self.fs * 2)
-            dsp.merge_filters([f1, f2])
+            dsp.FilterBank([f1, f2]).merge_filters()
 
     def test_merge_iir_filters(self):
         f1 = dsp.Filter.biquad(
@@ -682,7 +667,7 @@ class TestStandardModule:
             sampling_rate_hz=self.fs,
         )
 
-        f3 = dsp.merge_filters([f1, f1.copy()])
+        f3 = dsp.FilterBank([f1, f1.copy()]).merge_filters()
         assert f3.has_sos
         assert f3.sos.shape[0] == 2
 
@@ -696,17 +681,16 @@ class TestStandardModule:
             dsp.Filter.biquad(dsp.BiquadEqType.Peaking, 500.0, 0.0, 1.0, 48000),
             False,
         )
-        sp_out = dsp.spectral_difference(spec, spec_flat, energy_normalization=False)
+        sp_out = spec.spectral_difference(spec_flat, energy_normalization=False)
         np.testing.assert_almost_equal(spec.spectral_data, sp_out.spectral_data)
 
         with pytest.raises(AssertionError):
-            sp_out = dsp.spectral_difference(
-                spec, spec_flat, energy_normalization=False, complex=True
+            sp_out = spec.spectral_difference(
+                spec_flat, energy_normalization=False, complex=True
             )
 
         # Some different parameters
-        dsp.spectral_difference(
-            spec,
+        spec.spectral_difference(
             spec_flat,
             energy_normalization=True,
             octave_fraction_smoothing=12.0,
@@ -726,35 +710,36 @@ class TestStandardModule:
 
         # Start and end
         np.testing.assert_array_equal(
-            dsp.trim_with_level_threshold(
-                dsp.Signal.from_time_data(s, self.fs), threshold_db, True, True
-            )[0].time_data.squeeze(),
+            (dsp.Signal.from_time_data(s, self.fs))
+            .trim_with_level_threshold(threshold_db, True, True)[0]
+            .time_data.squeeze(),
             s[ones_slice],
         )
         # End
         np.testing.assert_array_equal(
-            dsp.trim_with_level_threshold(
-                dsp.Signal.from_time_data(s, self.fs),
+            (dsp.Signal.from_time_data(s, self.fs))
+            .trim_with_level_threshold(
                 threshold_db,
                 False,
                 True,
-            )[0].time_data.squeeze(),
+            )[0]
+            .time_data.squeeze(),
             s[: ones_slice.stop],
         )
         # Start
         np.testing.assert_array_equal(
-            dsp.trim_with_level_threshold(
-                dsp.Signal.from_time_data(s, self.fs),
+            (dsp.Signal.from_time_data(s, self.fs))
+            .trim_with_level_threshold(
                 threshold_db,
                 True,
                 False,
-            )[0].time_data.squeeze(),
+            )[0]
+            .time_data.squeeze(),
             s[ones_slice.start :],
         )
         # None
         with pytest.raises(AssertionError):
-            dsp.trim_with_level_threshold(
-                dsp.Signal.from_time_data(s, self.fs),
+            (dsp.Signal.from_time_data(s, self.fs)).trim_with_level_threshold(
                 threshold_db,
                 False,
                 False,
@@ -771,35 +756,36 @@ class TestStandardModule:
 
         # Start and end
         np.testing.assert_array_equal(
-            dsp.trim_with_level_threshold(
-                dsp.Signal.from_time_data(s, self.fs), threshold_db, True, True
-            )[0].time_data,
+            (dsp.Signal.from_time_data(s, self.fs))
+            .trim_with_level_threshold(threshold_db, True, True)[0]
+            .time_data,
             s[ones_slice],
         )
         # End
         np.testing.assert_array_equal(
-            dsp.trim_with_level_threshold(
-                dsp.Signal.from_time_data(s, self.fs),
+            (dsp.Signal.from_time_data(s, self.fs))
+            .trim_with_level_threshold(
                 threshold_db,
                 False,
                 True,
-            )[0].time_data,
+            )[0]
+            .time_data,
             s[: ones_slice.stop],
         )
         # Start
         np.testing.assert_array_equal(
-            dsp.trim_with_level_threshold(
-                dsp.Signal.from_time_data(s, self.fs),
+            (dsp.Signal.from_time_data(s, self.fs))
+            .trim_with_level_threshold(
                 threshold_db,
                 True,
                 False,
-            )[0].time_data,
+            )[0]
+            .time_data,
             s[ones_slice.start :],
         )
         # None
         with pytest.raises(AssertionError):
-            dsp.trim_with_level_threshold(
-                dsp.Signal.from_time_data(s, self.fs),
+            (dsp.Signal.from_time_data(s, self.fs)).trim_with_level_threshold(
                 threshold_db,
                 False,
                 False,
@@ -807,19 +793,19 @@ class TestStandardModule:
 
     def test_select_time_window(self):
         s = self.audio_multi
-        s2 = dsp.trim_with_time_selection(s, 0.1, 0.3, True)
+        s2 = s.trim_with_time_selection(0.1, 0.3, True)
         assert abs(s2.length_seconds - 0.2) <= 1 / s.sampling_rate_hz
-        dsp.trim_with_time_selection(s, 0.1, 0.3, False)
-        dsp.trim_with_time_selection(s, None, 0.3, False)
-        dsp.trim_with_time_selection(s, 0.1, None, False)
+        s.trim_with_time_selection(0.1, 0.3, False)
+        s.trim_with_time_selection(None, 0.3, False)
+        s.trim_with_time_selection(0.1, None, False)
 
         mbs = self.get_multiband_signal()
-        dsp.trim_with_time_selection(mbs, 0.1, 0.3, False)
-        dsp.trim_with_time_selection(mbs, 0.1, 0.3, True)
+        mbs.trim_with_time_selection(0.1, 0.3, False)
+        mbs.trim_with_time_selection(0.1, 0.3, True)
 
         with pytest.raises(AssertionError):
-            dsp.trim_with_time_selection(s, 0.3, 0.1, False)
+            s.trim_with_time_selection(0.3, 0.1, False)
         with pytest.raises(AssertionError):
-            dsp.trim_with_time_selection(s, 0.1, s.length_seconds + 1.0, False)
+            s.trim_with_time_selection(0.1, s.length_seconds + 1.0, False)
         with pytest.raises(AssertionError):
-            dsp.trim_with_time_selection(s, None, None, False)
+            s.trim_with_time_selection(None, None, False)

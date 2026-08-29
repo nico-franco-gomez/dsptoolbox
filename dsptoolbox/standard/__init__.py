@@ -10,7 +10,6 @@ to `standard`).
 
 """
 
-from .appending import append_filterbanks, append_signals, append_spectra
 from .enums import (
     BiquadEqType,
     FadeType,
@@ -29,65 +28,28 @@ from .enums import (
     Window,
 )
 from .gain_and_level import (
-    apply_gain,
     crest_factor,
-    fade,
     lufs_integrated,
-    normalize,
     rms,
     true_peak_level,
 )
-from .latency_delay import delay, fractional_delay, latency
+from .latency_delay import latency
 from .other import (
-    activity_detector,
-    detrend,
-    dither,
     envelope,
     load_pkl_object,
-    merge_filters,
-    spectral_difference,
 )
-from .pad_trim_methods import (
-    modify_signal_length,
-    pad_trim,
-    trim_with_level_threshold,
-    trim_with_time_selection,
-)
-from .resampling import resample, resample_filter
 
 __all__ = [
-    # Append
-    "append_filterbanks",
-    "append_signals",
-    "append_spectra",
     # Latency+Delay
     "latency",
-    "delay",
-    "fractional_delay",
-    # Padding and trimming
-    "pad_trim",
-    "modify_signal_length",
-    "trim_with_level_threshold",
-    "trim_with_time_selection",
-    # Resampling
-    "resample",
-    "resample_filter",
     # Gain-related functions
-    "apply_gain",
-    "normalize",
-    "fade",
     "true_peak_level",
     "rms",
     "crest_factor",
     "lufs_integrated",
     # Other
     "load_pkl_object",
-    "activity_detector",
-    "detrend",
     "envelope",
-    "dither",
-    "merge_filters",
-    "spectral_difference",
     # Enums
     "SpectrumMethod",
     "SpectrumScaling",

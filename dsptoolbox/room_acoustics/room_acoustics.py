@@ -10,7 +10,6 @@ from ..classes import Filter, ImpulseResponse, MultiBandSignal, Signal
 from ..filterbanks import fractional_octave_bands, linkwitz_riley_crossovers
 from ..helpers.gain_and_level import to_db
 from ..helpers.other import _pad_trim, find_nearest_points_index_in_vector
-from ..standard import pad_trim
 from ..standard.enums import (
     FilterBankMode,
     FilterPassType,
@@ -184,7 +183,7 @@ def find_modes(
 
     # Pad signal to have a resolution of around 1 Hz
     length = signal.sampling_rate_hz
-    signal = pad_trim(signal, length)
+    signal = signal.pad_trim(length)
     f, sp = signal.get_spectrum()
 
     # Setting up frequency range

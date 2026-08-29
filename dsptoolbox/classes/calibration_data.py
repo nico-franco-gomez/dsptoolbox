@@ -1,7 +1,7 @@
 import numpy as np
 from numpy.typing import NDArray
 
-from ..standard import append_signals, rms
+from ..standard import rms
 from .multibandsignal import MultiBandSignal
 from .signal import Signal
 
@@ -96,8 +96,8 @@ class CalibrationData:
                 f"{type(new_channel)} is not a valid type. Use "
                 "either str, tuple or Signal"
             )
-        self.calibration_signal = append_signals(
-            [self.calibration_signal, new_channel],
+        self.calibration_signal = self.calibration_signal.append_signals(
+            [new_channel],
             allow_padding_trimming=allow_padding_trimming,
         )
         self.__update = True
@@ -116,7 +116,7 @@ class CalibrationData:
             self.__update = False
 
     def _get_rms_from_spectrum(self):
-        self.calibration_signal.set_spectrum_parameters(
+        self.calibration_signal = self.calibration_signal.set_spectrum_parameters(
             method="standard", scaling="amplitude spectrum"
         )
         f, sp = self.calibration_signal.get_spectrum()

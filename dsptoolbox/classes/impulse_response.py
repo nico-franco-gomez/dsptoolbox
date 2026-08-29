@@ -137,19 +137,25 @@ class ImpulseResponse(Signal):
         return ImpulseResponse.from_signal(s)
 
     def set_window(self, window: NDArray[np.float64]):
-        """Sets the window used for the IR.
+        """Return a copy of the IR with the window set.
 
         Parameters
         ----------
         window : NDArray[np.float64]
             Window used for the IR.
 
+        Returns
+        -------
+        ImpulseResponse
+            New impulse response with the window set.
+
         """
         assert window.shape == self.time_data.shape, (
             f"{window.shape} does not match shape {self.time_data.shape}"
         )
-        self.window = window
-        return self
+        new = self.copy()
+        new.window = window
+        return new
 
     def plot_time(self) -> tuple[Figure, list[Axes]]:
         """Plots time signals.

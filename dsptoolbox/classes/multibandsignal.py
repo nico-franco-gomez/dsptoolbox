@@ -332,7 +332,7 @@ class MultiBandSignal:
 
     # ======== Add and remove =================================================
     def add_band(self, sig: Signal, index: int = -1):
-        """Adds a new band to the `MultiBandSignal`.
+        """Return a copy of the `MultiBandSignal` with a new band added.
 
         Parameters
         ----------
@@ -341,21 +341,27 @@ class MultiBandSignal:
         index : int, optional
             Index at which to insert the new Signal. Default: -1.
 
+        Returns
+        -------
+        MultiBandSignal
+            New multiband signal with the band added.
+
         """
-        bs = self.bands.copy()
-        if not self.bands:
+        new = self.copy()
+        bs = new.bands.copy()
+        if not new.bands:
             bs.append(sig)
-            self.bands = bs
+            new.bands = bs
         else:
             if index == -1:
                 bs.append(sig)
             else:
                 bs.insert(index, sig)
-            self.bands = bs
-        return self
+            new.bands = bs
+        return new
 
     def remove_band(self, index: int = -1, return_band: bool = False):
-        """Removes a band from the `MultiBandSignal`.
+        """Return a copy of the `MultiBandSignal` with a band removed.
 
         Parameters
         ----------
@@ -364,25 +370,39 @@ class MultiBandSignal:
             will be erased. When -1, last band is erased.
             Default: -1.
         return_band : bool, optional
-            When `True`, the erased band is returned. Otherwise, the
-            multibandsignal is returned. Default: `False`.
+            When `True`, a tuple of the new multiband signal and the erased
+            band is returned. Otherwise, only the new multiband signal is
+            returned. Default: `False`.
+
+        Returns
+        -------
+        MultiBandSignal | tuple[MultiBandSignal, Signal]
+            New multiband signal with the band removed, and optionally the
+            removed band.
 
         """
         assert self.bands, "There are no filters to remove"
-        bs = self.bands.copy()
+        new = self.copy()
+        bs = new.bands.copy()
         f = bs.pop(index)
-        self.bands = bs
+        new.bands = bs
         if return_band:
-            return f
-        return self
+            return new, f
+        return new
 
     def swap_bands(self, new_order):
-        """Rearranges the bands in the new given order.
+        """Return a copy of the `MultiBandSignal` with the bands rearranged
+        in the new given order.
 
         Parameters
         ----------
         new_order : array-like
             New rearrangement of bands.
+
+        Returns
+        -------
+        MultiBandSignal
+            New multiband signal with the bands rearranged.
 
         """
         new_order = array(new_order).squeeze()
@@ -399,9 +419,9 @@ class MultiBandSignal:
         assert len(unique(new_order)) == len(new_order), (
             "There are repeated indexes in the new order vector"
         )
-        n_b = [self.bands[i] for i in new_order]
-        self.bands = n_b
-        return self
+        new = self.copy()
+        new.bands = [self.bands[i] for i in new_order]
+        return new
 
     def collapse(self) -> Signal:
         """Collapses MultiBandSignal by summing all of its bands and returning
@@ -595,3 +615,303 @@ class MultiBandSignal:
 
         """
         return deepcopy(self)
+
+    # ======== Transforms (returning a new MultiBandSignal) ===================
+    def pad_trim(
+        self, desired_length_samples: int, in_the_end: bool = True
+    ) -> "MultiBandSignal":
+        """Return a copy of the multiband signal with padded or trimmed time
+        data in each band. Only valid for `same_sampling_rate=True`.
+
+        Parameters
+        ----------
+        desired_length_samples : int
+            Length of resulting signal.
+        in_the_end : bool, optional
+            Defines if padding or trimming should be done in the beginning or
+            in the end of the signal. Default: `True`.
+
+        Returns
+        -------
+        MultiBandSignal
+            New padded or trimmed multiband signal.
+
+        """
+        assert self.same_sampling_rate, (
+            "Padding or trimming is not supported for multirate signals"
+        )
+        new = self.copy()
+        new.bands = [b.pad_trim(desired_length_samples, in_the_end) for b in self.bands]
+        return new
+
+    def modify_signal_length(
+        self, start_seconds: float | None, end_seconds: float | None
+    ) -> "MultiBandSignal":
+        """Return a copy of the multiband signal with added silence at the
+        beginning or the end of each band. Time samples can also be trimmed
+        when using negative time values.
+
+        Parameters
+        ----------
+        start_seconds : float, None
+            Seconds to add or remove from the start. Positive values append
+            samples while negative ones remove them. Pass None to avoid any
+            modification.
+        end_seconds : float, None
+            Seconds to add or remove from the end. Positive values append
+            samples while negative ones remove them. Pass None to avoid any
+            modification.
+
+        Returns
+        -------
+        MultiBandSignal
+            Copy of the multiband signal with new length.
+
+        """
+        new = self.copy()
+        new.bands = [
+            b.modify_signal_length(start_seconds, end_seconds) for b in self.bands
+        ]
+        return new
+
+    def trim_with_time_selection(
+        self,
+        start_time_s: float | None,
+        end_time_s: float | None,
+        inclusive: bool = True,
+    ) -> "MultiBandSignal":
+        """Return a copy of the multiband signal trimmed to a selected time
+        window in each band.
+
+        Parameters
+        ----------
+        start_time_s : float, None
+            Start time for the window. Pass None to start the time window
+            at the beginning of the signal.
+        end_time_s : float, None
+            End time for the window. Pass None to place the end of the time
+            window at the end of the signal.
+        inclusive : bool, optional
+            When True, the bounds are inclusive. Default: True.
+
+        Returns
+        -------
+        MultiBandSignal
+            Trimmed copy.
+
+        """
+        new = self.copy()
+        new.bands = [
+            b.trim_with_time_selection(start_time_s, end_time_s, inclusive)
+            for b in self.bands
+        ]
+        return new
+
+    def normalize(
+        self,
+        norm_dbfs: float,
+        peak_normalization: bool = True,
+        each_channel: bool = False,
+    ) -> "MultiBandSignal":
+        """Return a copy of the multiband signal normalized to a given dBFS
+        value in each band. It either normalizes each channel or each band
+        as a whole.
+
+        Parameters
+        ----------
+        norm_dbfs : float
+            Value in dBFS to reach after normalization.
+        peak_normalization : bool, optional
+            When True, signal is normalized at peak. False uses RMS value.
+            Default: True.
+        each_channel : bool, optional
+            When `True`, each channel on its own is normalized. When
+            `False`, the peak or rms value across all channels is regarded.
+            Default: `False`.
+
+        Returns
+        -------
+        MultiBandSignal
+            Normalized multiband signal.
+
+        """
+        new = self.copy()
+        new.bands = [
+            b.normalize(norm_dbfs, peak_normalization, each_channel) for b in self.bands
+        ]
+        return new
+
+    def apply_gain(self, gain_db: float | NDArray[np.float64]) -> "MultiBandSignal":
+        """Return a copy of the multiband signal with gain applied to each
+        band.
+
+        Parameters
+        ----------
+        gain_db : float, NDArray[np.float64]
+            Gain in dB to be applied. If it is an array, it should have as
+            many elements as there are channels in the signal.
+
+        Returns
+        -------
+        MultiBandSignal
+            Multiband signal with new gain.
+
+        """
+        new = self.copy()
+        new.bands = [b.apply_gain(gain_db) for b in self.bands]
+        return new
+
+    def detrend(self, polynomial_order: int = 0) -> "MultiBandSignal":
+        """Return the detrended multiband signal.
+
+        Parameters
+        ----------
+        polynomial_order : int, optional
+            Polynomial order of the fitted polynomial that will be removed
+            from time data. 0 is equal to mean removal. Default: 0.
+
+        Returns
+        -------
+        MultiBandSignal
+            Detrended multiband signal.
+
+        """
+        new = self.copy()
+        new.bands = [b.detrend(polynomial_order) for b in self.bands]
+        return new
+
+    def fractional_delay(
+        self,
+        delay_seconds: float,
+        channels=None,
+        keep_length: bool = False,
+        order: int = 30,
+        side_lobe_suppression_db: float = 60,
+    ) -> "MultiBandSignal":
+        """Return a copy of the multiband signal with fractional time delay
+        applied to each band.
+
+        Parameters
+        ----------
+        delay_seconds : float
+            Delay in seconds.
+        channels : int or array-like, optional
+            Channels to be delayed. Pass `None` to delay all channels.
+            Default: `None`.
+        keep_length : bool, optional
+            When `True`, the signal retains its original length and loses
+            information for the latest samples. Default: `False`.
+        order : int, optional
+            Order of the sinc filter, higher order yields better results at
+            the expense of computation time. Default: 30.
+        side_lobe_suppression_db : float, optional
+            Side lobe suppression in dB for the Kaiser window. Default: 60.
+
+        Returns
+        -------
+        MultiBandSignal
+            Delayed multiband signal.
+
+        """
+        new = self.copy()
+        new.bands = [
+            b.fractional_delay(
+                delay_seconds, channels, keep_length, order, side_lobe_suppression_db
+            )
+            for b in self.bands
+        ]
+        return new
+
+    def delay(
+        self,
+        delay_samples: int,
+        channels=None,
+        keep_length: bool = False,
+    ) -> "MultiBandSignal":
+        """Return a copy of the multiband signal with a time delay applied
+        to each band. This method is faster than `fractional_delay` because
+        it only applies integer delay by zero-padding.
+
+        Parameters
+        ----------
+        delay_samples : int
+            Delay in samples.
+        channels : int or array-like, optional
+            Channels to be delayed. Pass `None` to delay all channels.
+            Default: `None`.
+        keep_length : bool, optional
+            When `True`, the signal retains its original length and loses
+            information for the latest samples. Default: `False`.
+
+        Returns
+        -------
+        MultiBandSignal
+            Delayed multiband signal.
+
+        """
+        new = self.copy()
+        new.bands = [b.delay(delay_samples, channels, keep_length) for b in self.bands]
+        return new
+
+    def append_signals(
+        self,
+        others: list["MultiBandSignal"],
+        allow_padding_trimming: bool = True,
+        at_end: bool = True,
+    ) -> "MultiBandSignal":
+        """Return a copy of the multiband signal with the channels of other
+        multiband signals appended to each band. If their lengths are not
+        the same, trimming or padding can be applied to match this signal's
+        length.
+
+        Parameters
+        ----------
+        others : list[MultiBandSignal]
+            Other multiband signals whose channels should be appended.
+        allow_padding_trimming : bool, optional
+            If the signals do not have the same length, all are trimmed or
+            zero-padded to match this signal's length, when this is True.
+            Otherwise, an error will be raised if the lengths do not match.
+            Default: `True`.
+        at_end : bool, optional
+            When `True` and `allow_padding_trimming=True`, padding or
+            trimming is done at the end of the signals. Otherwise, it is
+            done in the beginning. Default: `True`.
+
+        Returns
+        -------
+        MultiBandSignal
+            Multiband signal with all channels.
+
+        """
+        signals = [self] + list(others)
+        assert len(signals) > 1, "At least one other signal should be passed"
+        for s in signals:
+            assert isinstance(s, MultiBandSignal), (
+                "All signals must be of type MultiBandSignal"
+            )
+            assert s.same_sampling_rate == signals[0].same_sampling_rate, (
+                "Sampling rates do not match"
+            )
+            assert s.sampling_rate_hz == signals[0].sampling_rate_hz, (
+                "Sampling rates do not match"
+            )
+            if not allow_padding_trimming:
+                assert s.length_samples == signals[0].length_samples, (
+                    "Lengths do not match and padding or trimming " + "is not activated"
+                )
+            assert s.number_of_bands == signals[0].number_of_bands, (
+                "Number of bands does not match"
+            )
+        new_bands = []
+        signals_without_first = signals[1:]
+        for n in range(signals[0].number_of_bands):
+            new_band = signals[0].bands[n].copy()
+            for s in signals_without_first:
+                new_band = new_band.append_signals(
+                    [s.bands[n]], allow_padding_trimming, at_end
+                )
+            new_bands.append(new_band)
+        return MultiBandSignal(
+            new_bands, same_sampling_rate=signals[0].same_sampling_rate
+        )

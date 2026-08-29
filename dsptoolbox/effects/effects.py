@@ -5,7 +5,6 @@ import numpy as np
 from numpy.typing import NDArray
 from scipy.signal.windows import get_window
 
-from .. import activity_detector
 from ..classes import MultiBandSignal, Signal
 from ..helpers.gain_and_level import _rms, to_db
 from ..helpers.other import _get_next_power_2, _pad_trim
@@ -166,7 +165,7 @@ class SpectralSubtractor(AudioEffect):
             could be advantageous when the noise in the signal is thought to be
             stationary and the least possible audible distortions are expected.
             In order to separate signal from noise,
-            `dsptoolbox.activity_detector` is used. Default: `True`.
+            `Signal.activity_detector` is used. Default: `True`.
         threshold_rms_dbfs : float, optional
             Threshold for the RMS value of a signal segment in dBFS that has
             to separates signal from noise. This means, when below the
@@ -372,7 +371,7 @@ class SpectralSubtractor(AudioEffect):
             could be advantageous when the noise in the signal is thought to be
             stationary and the least possible audible distortions are expected.
             In order to separate signal from noise,
-            `dsptoolbox.activity_detector` is used. Default: `True`.
+            `Signal.activity_detector` is used. Default: `True`.
         threshold_rms_dbfs : float, optional
             Threshold for the RMS value of a signal segment in dBFS that has
             to separates signal from noise. This means, when below the
@@ -453,14 +452,13 @@ class SpectralSubtractor(AudioEffect):
         for n in range(signal.number_of_channels):
             if not np.any(self.spectrum_to_subtract):
                 # Obtain noise psd
-                _, noise = activity_detector(
-                    signal,
+                _, noise = signal.activity_detector(
                     channel=n,
                     threshold_dbfs=self.threshold_rms_dbfs,
                     attack_time_ms=self.ad_attack_time_ms,
                     release_time_ms=self.ad_release_time_ms,
                 )
-                noise["noise"].set_spectrum_parameters(
+                noise["noise"] = noise["noise"].set_spectrum_parameters(
                     method=SpectrumMethod.WelchPeriodogram,
                     window_length_samples=len(self.window),
                     overlap_percent=self.overlap * 100,

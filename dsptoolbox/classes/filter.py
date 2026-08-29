@@ -13,7 +13,7 @@ from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 from numpy.typing import ArrayLike, NDArray
 
-from ..helpers.gain_and_level import to_db
+from ..helpers.gain_and_level import from_db, to_db
 from ..helpers.other import (
     _check_format_in_path,
     _pad_trim,
@@ -1280,3 +1280,67 @@ class Filter:
 
         """
         return deepcopy(self)
+
+    def apply_gain(self, gain_db: float | NDArray[np.float64]) -> "Filter":
+        """Return a copy of the filter with gain applied.
+
+        Parameters
+        ----------
+        gain_db : float, NDArray[np.float64]
+            Gain in dB to be applied.
+
+        Returns
+        -------
+        Filter
+            Filter with new gain.
+
+        """
+        filt = self.copy()
+        gain_linear = from_db(np.atleast_1d(gain_db), True)
+        if len(gain_linear) == 1:
+            gain_linear = gain_linear[0]
+        if filt.has_zpk:
+            filt.zpk[-1] *= gain_linear
+        if filt.has_sos:
+            filt.sos[-1, :3] *= gain_linear
+        else:
+            filt.ba[0] *= gain_linear
+        return filt
+
+    def resample_filter(self, new_sampling_rate_hz: int) -> "Filter":
+        """Return a copy of the filter resampled by mapping its zpk
+        representation to the s-plane and reapplying the bilinear transform
+        to the new sampling rate. This approach can deliver satisfactory
+        results for filters whose poles and zeros correspond to low
+        normalized frequencies (~0.1), but higher frequencies will get
+        significantly distorted due to the bilinear mapping.
+
+        Parameters
+        ----------
+        new_sampling_rate_hz : int
+            Target sampling rate in Hz.
+
+        Returns
+        -------
+        Filter
+            Filter with new sampling rate.
+
+        """
+        z, p, k = self.get_coefficients(FilterCoefficientsType.Zpk)
+        add_to_poles = max(0, len(z) - len(p))
+        add_to_zeros = max(0, len(p) - len(z))
+
+        f = 2 * self.sampling_rate_hz
+        p = f * (p - 1) / (p + 1)
+        z = z[z != -1.0]
+        z = f * (z - 1) / (z + 1)
+
+        if add_to_poles:
+            p = np.hstack([p, [-f] * (len(z) - len(p))])
+        if add_to_zeros:
+            z = np.hstack([z, [-f] * (len(p) - len(z))])
+
+        k /= np.real(np.prod(f - z) / np.prod(f - p))
+
+        z, p, k = sig.bilinear_zpk(z, p, k, new_sampling_rate_hz)
+        return Filter.from_zpk(z, p, k, new_sampling_rate_hz)

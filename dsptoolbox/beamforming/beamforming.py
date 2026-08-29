@@ -11,7 +11,6 @@ from matplotlib.figure import Figure
 from numpy.typing import NDArray
 from scipy.integrate import simpson
 
-from .. import append_signals, fractional_delay, pad_trim
 from ..classes import Signal
 from ..helpers.gain_and_level import to_db
 from ..helpers.other import (
@@ -1370,7 +1369,7 @@ class BeamformerDASTime(BaseBeamformer):
         )
         longest_delay_samples = int(longest_delay_samples + 2)
         total_length_samples = out_sig.time_data.shape[0] + longest_delay_samples
-        out_sig = pad_trim(out_sig, total_length_samples)
+        out_sig = out_sig.pad_trim(total_length_samples)
 
         # Start computation for each grid point
         print("...grid focusing...")
@@ -1382,13 +1381,13 @@ class BeamformerDASTime(BaseBeamformer):
             new_time_data = np.zeros((total_length_samples, 1))
             for im in range(self.mics.number_of_points):
                 ntd = (
-                    fractional_delay(self.signal.get_channels(im), delays[im]).time_data
+                    self.signal.get_channels(im).fractional_delay(delays[im]).time_data
                     * ds[im, ig]
                 )
                 new_time_data += _pad_trim(ntd, total_length_samples)
             new_time_data /= self.mics.number_of_points
-            out_sig.add_channel(None, new_time_data, out_sig.sampling_rate_hz)
-        out_sig.remove_channel(0)
+            out_sig = out_sig.add_channel(None, new_time_data, out_sig.sampling_rate_hz)
+        out_sig = out_sig.remove_channel(0)
         return out_sig
 
 
@@ -1444,15 +1443,15 @@ class MonopoleSource:
         multi_channel_signal = self.emitted_signal.copy()
         for i in range(len(distances)):
             # Delay
-            ns = fractional_delay(self.emitted_signal, delays[i], keep_length=True)
+            ns = self.emitted_signal.fractional_delay(delays[i], keep_length=True)
             # Amplitude scaling - 1 on point and decays with distance
             ns.time_data /= 1.0 + distances[i]
             # Append to final signal
-            multi_channel_signal = append_signals(
-                [multi_channel_signal, ns], allow_padding_trimming=True
+            multi_channel_signal = multi_channel_signal.append_signals(
+                [ns], allow_padding_trimming=True
             )
         # Remove original signal
-        multi_channel_signal.remove_channel(0)
+        multi_channel_signal = multi_channel_signal.remove_channel(0)
         return multi_channel_signal
 
 
@@ -1502,8 +1501,8 @@ def mix_sources_on_array(
             total_length_samples = min(
                 total_length_samples, s.emitted_signal.time_data.shape[0]
             )
-            multi_channel_sig = pad_trim(multi_channel_sig, total_length_samples)
-            s.emitted_signal = pad_trim(s.emitted_signal, total_length_samples)
+            multi_channel_sig = multi_channel_sig.pad_trim(total_length_samples)
+            s.emitted_signal = s.emitted_signal.pad_trim(total_length_samples)
         # Add to multi-channel data
         ns = s.get_signals_on_array(mics, c)
         multi_channel_sig.time_data += ns.time_data
