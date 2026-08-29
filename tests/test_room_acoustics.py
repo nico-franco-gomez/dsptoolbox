@@ -83,6 +83,40 @@ class TestRoomAcousticsModule:
             mb, dsp.room_acoustics.ReverbTime.T20, ir_start=starts
         )
 
+    def test_reverb_time_matches_known_decay_constant(self):
+        """A synthetic noise IR shaped by `exp(-t/tau)` has an energy decay
+        curve (Schroeder backward integration of the squared IR) that also
+        decays exponentially at twice the rate, `exp(-2t/tau)`; in dB this
+        is a straight line with slope `-8.686/tau` dB/s (since
+        `10*log10(exp(-2/tau)) = -20/(tau*ln(10))`), giving
+        `T60 = 60*tau/8.686 = 6.908*tau`. Verified empirically first: T30
+        (the least edge-sensitive fit range) matches to within ~0.2% and
+        the correlation coefficient is ~-0.9999 for this clean synthetic
+        case, well clear of the pre-existing "> -0.95" warning seen
+        elsewhere in this suite with real (noisier) RIRs.
+
+        """
+        fs = 8_000
+        tau = 0.3
+        n_samples = int(2.0 * fs)
+        t = np.arange(n_samples) / fs
+        rng = np.random.default_rng(0)
+        td = rng.normal(0, 1, n_samples) * np.exp(-t / tau)
+        # Small noise floor to keep the decay curve well-behaved down to
+        # the -65 dB range T60's fit needs, avoiding log(~0) instabilities.
+        td += rng.normal(0, 1e-4, n_samples)
+
+        ir = dsp.ImpulseResponse(None, td[:, None], fs, constrain_amplitude=False)
+        rt, corr = dsp.room_acoustics.reverb_time(
+            ir,
+            dsp.room_acoustics.ReverbTime.T30,
+            ir_start=None,
+            automatic_trimming=False,
+        )
+
+        np.testing.assert_allclose(rt[0], 6.908 * tau, rtol=0.02)
+        assert corr[0] < -0.999
+
     def test_room_modes(self):
         # Only functionality
         # Take a multi-channel signal in order to find modes
@@ -106,6 +140,30 @@ class TestRoomAcousticsModule:
 
         h = h.get_channels(0)
         dsp.room_acoustics.find_modes(h, f_range_hz=[50, 150], dist_hz=5)
+
+    def test_find_modes_recovers_known_frequencies(self):
+        """A synthetic IR built as a sum of decaying sinusoids at known
+        frequencies should have its modes detected via the complex mode
+        indicator function at (near) those exact frequencies -- verified
+        empirically to be an exact match at ~1 Hz resolution (the function
+        pads to a 1-second buffer internally) for this well-separated,
+        low-noise case.
+
+        """
+        fs = 2_000
+        n_samples = int(0.5 * fs)
+        t = np.arange(n_samples) / fs
+        freqs_true = [80.0, 120.0, 170.0]
+        rng = np.random.default_rng(1)
+        td = np.zeros(n_samples)
+        for f in freqs_true:
+            td += np.sin(2 * np.pi * f * t) * np.exp(-t / 0.1)
+        td += rng.normal(0, 1e-4, n_samples)
+
+        ir = dsp.ImpulseResponse(None, td[:, None], fs, constrain_amplitude=False)
+        modes = dsp.room_acoustics.find_modes(ir, f_range_hz=[50, 200], dist_hz=5)
+
+        np.testing.assert_allclose(modes, freqs_true, atol=1.0)
 
     def test_convolve_rir_on_signal(self):
         speech = dsp.Signal(
@@ -254,3 +312,39 @@ class TestRoomAcousticsModule:
             dsp.room_acoustics.descriptors(
                 rir_filt, dsp.room_acoustics.RoomAcousticsDescriptor.BassRatio
             )
+
+    def test_descriptors_boundary_case_energy_before_50ms(self):
+        """Per the source, D50 = energy(0-50ms) / energy(0-stop) (a
+        fraction, no unit) and C80 = 10*log10(energy(0-80ms) /
+        energy(80ms-stop)) (in dB). An IR with (almost) all its energy
+        concentrated in the first 10 ms should therefore have D50 close to
+        1 (nearly all energy already within the 50ms window) and C80 very
+        high (the 80ms-to-end denominator is close to the noise floor).
+
+        """
+        fs = 8_000
+        n_samples = fs
+        early_len = int(0.01 * fs)
+        rng = np.random.default_rng(0)
+        td = np.zeros(n_samples)
+        td[:early_len] = rng.normal(0, 1, early_len) * np.exp(
+            -np.arange(early_len) / (early_len / 5)
+        )
+        # Tiny noise floor everywhere else so C80's late-energy denominator
+        # is small but not literally zero.
+        td[early_len:] = rng.normal(0, 1e-4, n_samples - early_len)
+
+        ir = dsp.ImpulseResponse(None, td[:, None], fs, constrain_amplitude=False)
+        d50 = dsp.room_acoustics.descriptors(
+            ir,
+            dsp.room_acoustics.RoomAcousticsDescriptor.D50,
+            automatic_trimming_rir=False,
+        )
+        c80 = dsp.room_acoustics.descriptors(
+            ir,
+            dsp.room_acoustics.RoomAcousticsDescriptor.C80,
+            automatic_trimming_rir=False,
+        )
+
+        assert d50[0] > 0.999
+        assert c80[0] > 30.0

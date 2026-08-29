@@ -658,7 +658,7 @@ class FilterBank:
                 for f in self.filters:
                     h *= f.get_transfer_function(frequency_vector_hz)
             case FilterBankMode.Summed:
-                h = np.ones(len(frequency_vector_hz), dtype=np.complex128)
+                h = np.zeros(len(frequency_vector_hz), dtype=np.complex128)
                 for f in self.filters:
                     h += f.get_transfer_function(frequency_vector_hz)
             case _:

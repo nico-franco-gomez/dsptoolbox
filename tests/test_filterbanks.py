@@ -36,6 +36,36 @@ class TestFilterbanksModule:
         s = self.get_noise()
         fb.filter_signal(s, mode=dsp.FilterBankMode.Parallel)
 
+    def test_linkwitz_riley_summed_magnitude_is_flat(self):
+        """Per the docstring, LR crossovers are a "near perfect magnitude
+        reconstruction filter bank": summing all bands reconstructs a flat
+        0 dB magnitude response, but NOT a time-domain identity -- the
+        combined system is allpass-like (flat magnitude, non-trivial phase,
+        confirmed empirically: only ~84% of a reconstructed impulse's
+        energy lands in its main lobe, though the peak stays exactly
+        aligned with the input impulse). So this checks magnitude only, via
+        the FFT of a summed impulse response, not `np.isclose` on samples.
+
+        """
+        fs = 48_000
+        fb = dsp.filterbanks.linkwitz_riley_crossovers(
+            [500, 2000], order=4, sampling_rate_hz=fs
+        )
+        n_samples = 2**13
+        d = dsp.generators.dirac(
+            n_samples, delay_samples=n_samples // 2, sampling_rate_hz=fs
+        )
+        mb = fb.filter_signal(d, mode=dsp.FilterBankMode.Parallel)
+        summed = np.sum(mb.collapse().time_data, axis=1)
+
+        # Peak stays exactly at the input impulse's position.
+        assert np.argmax(np.abs(summed)) == n_samples // 2
+
+        mag_db = 20 * np.log10(np.abs(np.fft.rfft(summed)) + 1e-300)
+        freqs = np.fft.rfftfreq(n_samples, 1 / fs)
+        band = (freqs > 20) & (freqs < fs / 2 - 100)
+        np.testing.assert_allclose(mag_db[band], 0.0, atol=1e-6)
+
     def test_reconstructing_fractional_octave_bands(self):
         # Only functionality
         n = self.get_noise()
@@ -49,6 +79,33 @@ class TestFilterbanksModule:
         )
         fb.filter_signal(n, dsp.FilterBankMode.Parallel)
         fb.filter_signal(n, dsp.FilterBankMode.Summed)
+
+    def test_reconstructing_fractional_octave_bands_perfect_reconstruction(self):
+        """Unlike LR crossovers, these are linear-phase FIR filters (per
+        the source, group delay is exactly `n_samples/2` samples), so
+        summing all bands reconstructs the original signal in the time
+        domain almost exactly, once shifted by that known group delay.
+
+        """
+        fs = 5_000
+        n_filt = 2**10
+        fb = dsp.filterbanks.reconstructing_fractional_octave_bands(
+            octave_fraction=1,
+            frequency_range_hz=[63, 1024],
+            overlap=0.5,
+            slope=1,
+            n_samples=n_filt,
+            sampling_rate_hz=fs,
+        )
+        n_samples = 4_000
+        delay_in = 100
+        d = dsp.generators.dirac(n_samples, delay_samples=delay_in, sampling_rate_hz=fs)
+        mb = fb.filter_signal(d, dsp.FilterBankMode.Parallel)
+        summed = np.sum(mb.collapse().time_data, axis=1)
+
+        expected = np.zeros(n_samples)
+        expected[delay_in + n_filt // 2] = 1.0
+        np.testing.assert_allclose(summed, expected, atol=1e-5)
 
     def test_auditory_filters_gammatone(self):
         # Only functionality
@@ -64,6 +121,24 @@ class TestFilterbanksModule:
         n = self.get_noise()
         mb = fb.filter_signal(n, dsp.FilterBankMode.Parallel)
         fb.reconstruct(mb)
+
+    def test_auditory_filters_gammatone_center_frequencies_match_erb_spacing(self):
+        """The filter bank's center frequencies are (per the source of
+        `auditory_filters_gammatone`) computed directly by
+        `dsptoolbox.tools.erb_frequencies`; this cross-checks that the two
+        public APIs agree (the bank stores them as the private
+        `_frequencies` attribute -- there is no other public accessor).
+
+        """
+        freq_range = [200.0, 2000.0]
+        resolution = 0.5
+        fb = dsp.filterbanks.auditory_filters_gammatone(
+            frequency_range_hz=freq_range,
+            resolution=resolution,
+            sampling_rate_hz=self.fs,
+        )
+        expected = dsp.tools.erb_frequencies(freq_range, resolution)
+        np.testing.assert_allclose(fb._frequencies, expected, rtol=1e-12)
 
     def test_qmf_crossover(self):
         # Factors around half band frequency were manually extracted for satisfactory
@@ -147,6 +222,30 @@ class TestFilterbanksModule:
         fs_hz = 5_000
         dsp.filterbanks.weighting_filter(True, fs_hz)
         dsp.filterbanks.weighting_filter(False, fs_hz)
+
+    def test_a_weighting_matches_iec_61672_reference_values(self):
+        """Published IEC 61672-1:2013 Table 2 A-weighting values (dB) at
+        standard nominal frequencies: 31.5->-39.4, 63->-26.2, 125->-16.1,
+        250->-8.6, 500->-3.2, 1000->0.0, 2000->+1.2, 4000->+1.0. A higher
+        sampling rate (48 kHz) is used here (rather than this class's
+        default 5 kHz fixture) to keep all reference points well below
+        Nyquist -- `weighting_filter` designs via a plain `bilinear_zpk`
+        transform with no analog pre-warping, so its error grows quickly
+        as a reference frequency approaches Nyquist (empirically confirmed:
+        at fs=48 kHz the deviation is <0.15 dB up to 4 kHz, but already
+        ~0.6 dB at 8 kHz and several dB by 16 kHz -- an inherent bilinear-
+        transform limitation, not a bug, so those higher points are
+        excluded here rather than loosening the tolerance for everyone).
+
+        """
+        fs_hz = 48_000
+        f = dsp.filterbanks.weighting_filter(True, fs_hz)
+        freqs = np.array([31.5, 63, 125, 250, 500, 1000, 2000, 4000])
+        expected_db = np.array([-39.4, -26.2, -16.1, -8.6, -3.2, 0.0, 1.2, 1.0])
+
+        h = f.get_transfer_function(freqs)
+        mag_db = 20 * np.log10(np.abs(h))
+        np.testing.assert_allclose(mag_db, expected_db, atol=0.3)
 
     def test_complementary_filter_fir(self):
         fs_hz = 5000
@@ -243,6 +342,84 @@ class TestFilterbanksModule:
             .get_filter()
         )
 
+    def test_group_delay_designer_flattens_group_delay(self):
+        """Designing a correction filter with `target_group_delay = 2*max(gd)
+        - gd` (mirroring the original response's group delay around its
+        max) and cascading it with the original system should flatten the
+        combined group delay much closer to a constant than the original
+        alone (monotonic-improvement plausibility, no exact target value --
+        `smoothing` and a passband well away from DC/Nyquist are needed
+        here since raw numerical group-delay estimates are noisy at the
+        edges, empirically confirmed to dominate the spread otherwise).
+
+        """
+        fs_hz = 48_000
+        fb = dsp.filterbanks.linkwitz_riley_crossovers(
+            [570, 2000], order=[2, 2], sampling_rate_hz=fs_hz
+        )
+        ir = fb.get_ir(length_samples=2**14).collapse()
+        f1, gd1 = dsp.transfer_functions.group_delay(
+            ir, analytic_computation=True, smoothing=6
+        )
+        gd1 = gd1.squeeze()
+        target = np.max(gd1) * 2 - gd1
+
+        pl = dsp.filterbanks.GroupDelayDesigner(target, len(ir), fs_hz)
+        pl.set_parameters(1.0)
+        corr_filt = pl.get_filter()
+        corr_ir = dsp.transfer_functions.filter_to_ir(corr_filt)
+
+        combined_td = np.convolve(ir.time_data[:, 0], corr_ir.time_data[:, 0])
+        combined = dsp.ImpulseResponse(None, combined_td[:, None], fs_hz)
+        f2, gd2 = dsp.transfer_functions.group_delay(
+            combined, analytic_computation=True, smoothing=6
+        )
+        gd2 = gd2.squeeze()
+
+        mask1 = (f1 > 100) & (f1 < 10_000)
+        mask2 = (f2 > 100) & (f2 < 10_000)
+        assert np.std(gd2[mask2]) < np.std(gd1[mask1]) / 5
+
+    def test_phase_linearizer_flattens_phase_nonlinearity(self):
+        """Same monotonic-improvement idea as `GroupDelayDesigner`, but
+        starting from a phase response directly (as `PhaseLinearizer` is
+        meant to be used): the phase's deviation from a straight-line
+        (linear-phase) fit should shrink substantially once corrected.
+
+        """
+        fs_hz = 48_000
+        fb = dsp.filterbanks.linkwitz_riley_crossovers(
+            [570, 2000], order=[2, 2], sampling_rate_hz=fs_hz
+        )
+        ir = fb.get_ir(length_samples=2**14).collapse()
+        ir.spectrum_method = dsp.SpectrumMethod.FFT
+        _, sp = ir.get_spectrum()
+        phase = np.angle(sp[:, 0])
+
+        pl = dsp.filterbanks.PhaseLinearizer(phase, len(ir), fs_hz)
+        corr_filt = pl.get_filter()
+        corr_ir = dsp.transfer_functions.filter_to_ir(corr_filt)
+
+        combined_td = np.convolve(ir.time_data[:, 0], corr_ir.time_data[:, 0])
+        combined = dsp.ImpulseResponse(None, combined_td[:, None], fs_hz)
+        combined.spectrum_method = dsp.SpectrumMethod.FFT
+        f2, sp2 = combined.get_spectrum()
+        phase2 = np.unwrap(np.angle(sp2[:, 0]))
+
+        f1 = np.fft.rfftfreq(len(ir), 1 / fs_hz)
+        phase1 = np.unwrap(phase)
+
+        def linear_fit_residual_std(f, p):
+            a = np.vstack([f, np.ones_like(f)]).T
+            coeffs = np.linalg.lstsq(a, p, rcond=None)[0]
+            return np.std(p - a @ coeffs)
+
+        mask1 = (f1 > 200) & (f1 < 10_000)
+        mask2 = (f2 > 200) & (f2 < 10_000)
+        residual_before = linear_fit_residual_std(f1[mask1], phase1[mask1])
+        residual_after = linear_fit_residual_std(f2[mask2], phase2[mask2])
+        assert residual_after < residual_before / 5
+
     def test_pinking_filter(self):
         # Only functionality
         fs_hz = 44100
@@ -299,6 +476,39 @@ class TestFilterbanksModule:
 
         # n1.plot_time()
         # dsp.plots.show()
+
+    def test_gaussian_kernel_matches_scipy_window_shape(self):
+        """`gaussian_kernel` is documented as a first-order IIR
+        *approximation* of a true Gaussian FIR window, not an exact match,
+        so this compares its zero-phase-filtered impulse response against
+        `scipy.signal.windows.gaussian` (built with the same sigma
+        derivation used internally, per the source) via correlation and a
+        bounded per-sample error rather than requiring bit-identical
+        values (empirically verified: correlation > 0.998, max abs error
+        well under 1e-3 for this configuration).
+
+        """
+        fs_hz = 44100
+        kernel_length_s = 0.02
+        length = int(kernel_length_s * fs_hz + 0.5)
+        sigma = length / (2.0 * np.log(1 / 1e-2)) ** 0.5
+        w = sig.windows.gaussian(length, sigma, True)
+        w /= w.sum()
+
+        f = dsp.filterbanks.gaussian_kernel(kernel_length_s, sampling_rate_hz=fs_hz)
+        n_samples = 2_000
+        imp = np.zeros(n_samples)
+        imp[n_samples // 2] = 1.0
+        imp_sig = dsp.Signal(None, imp[:, None], fs_hz)
+        out = f.filter_signal(imp_sig, zero_phase=True)
+        ir = out.time_data[:, 0]
+
+        peak = np.argmax(np.abs(ir))
+        half = length // 2
+        center = ir[peak - half : peak - half + length]
+
+        np.testing.assert_allclose(center, w, atol=5e-4)
+        assert np.corrcoef(center, w)[0, 1] > 0.998
 
     def test_arma(self):
         # Only functionality

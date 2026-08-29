@@ -365,9 +365,9 @@ def _indices_above_threshold_dbfs(
 
     momentary_gain = np.zeros(len(time_power), dtype=np.float64)
     for i in np.arange(1, len(time_power)):
-        if momentary_gain[i] > time_power[i - 1]:
+        if time_power[i] > momentary_gain[i - 1]:
             coeff = attack_smoothing_coeff
-        elif momentary_gain[i] < time_power[i - 1]:
+        elif time_power[i] < momentary_gain[i - 1]:
             coeff = release_smoothing_coeff
         else:
             coeff = 0

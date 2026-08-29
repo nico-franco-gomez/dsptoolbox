@@ -135,6 +135,8 @@ class ParallelFilter(RealtimeFilter):
         else:
             self.__fir_coefficients = np.array([])
         self.n_fir = len(self.__fir_coefficients)
+
+        self.__compute_filter_bank()
         return self
 
     def fit_to_ir(self, ir: ImpulseResponse):

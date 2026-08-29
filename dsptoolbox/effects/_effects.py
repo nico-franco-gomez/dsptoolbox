@@ -140,8 +140,8 @@ def _compressor(
                 coeff = release_coeff
             momentary_gain = coeff * gain_factor + (1 - coeff) * momentary_gain
 
-            # Apply gain
-            x_[i, n] *= momentary_gain
+            # Apply gain, mixed with the dry (uncompressed) signal
+            x_[i, n] = x[i, n] * (1 - mix_compressed + mix_compressed * momentary_gain)
 
     if single_channel:
         x_ = x_.squeeze()

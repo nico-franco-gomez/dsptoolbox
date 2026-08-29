@@ -20,6 +20,123 @@ class TestTools:
         dsp.tools.fractional_octave_frequencies()
         dsp.tools.erb_frequencies()
 
+    def test_log_frequency_vector_matches_closed_form(self):
+        """Per the source, the k-th bin is `f0 * 2**(k/n_bins_per_octave)`
+        for `k=0, 1, ...` up to (but not including) the octave count that
+        would reach the stop frequency.
+
+        """
+        f0 = 100.0
+        n_bins_per_octave = 12
+        v = dsp.tools.log_frequency_vector([f0, 800.0], n_bins_per_octave)
+        k = np.arange(len(v))
+        expected = f0 * 2 ** (k / n_bins_per_octave)
+        np.testing.assert_allclose(v, expected, rtol=1e-14)
+
+    def test_log_frequency_vector_invalid_parameters_raise(self):
+        with pytest.raises(AssertionError):
+            dsp.tools.log_frequency_vector([0, 200], 10)
+        with pytest.raises(AssertionError):
+            dsp.tools.log_frequency_vector([-20, 200], 10)
+
+    def test_fractional_octave_frequencies_match_iec_61260(self):
+        """Published IEC 61260-1:2014 nominal band centers (Hz). 1/1-octave:
+        31.5, 63, 125, 250, 500, 1000, 2000, 4000, 8000, 16000. 1/3-octave
+        (subset): 25, 31.5, 40, 50, 63, 80, 100, 125, 160, 200, 250, 315,
+        400, 500, 630.
+
+        """
+        nominal_1_1, _ = dsp.tools.fractional_octave_frequencies(1, (20, 20e3))
+        expected_1_1 = np.array(
+            [31.5, 63, 125, 250, 500, 1000, 2000, 4000, 8000, 16000]
+        )
+        np.testing.assert_allclose(nominal_1_1, expected_1_1)
+
+        nominal_1_3, _ = dsp.tools.fractional_octave_frequencies(3, (20, 700))
+        expected_1_3 = np.array(
+            [25, 31.5, 40, 50, 63, 80, 100, 125, 160, 200, 250, 315, 400, 500, 630]
+        )
+        np.testing.assert_allclose(nominal_1_3, expected_1_3)
+
+    def test_fractional_octave_frequencies_invalid_parameters_raise(self):
+        with pytest.raises(ValueError):
+            dsp.tools.fractional_octave_frequencies(1, (20,))
+        with pytest.raises(ValueError):
+            dsp.tools.fractional_octave_frequencies(1, (2000, 20))
+
+    def test_erb_frequencies_round_trip_and_closed_form(self):
+        """Per the source (citing Hohmann 2002, Eq. 16), the ERB scale used
+        here is `erb(f) = 9.2645*sign(f)*ln(1+|f|*0.00437)`, with inverse
+        `f(erb) = sign(erb)/0.00437 * (exp(|erb|/9.2645) - 1)`. This is a
+        distinct (natural-log-based) formula from the more commonly cited
+        Glasberg & Moore `21.4*log10(...)` ERB-rate scale, so it is
+        re-derived independently here from the source's own docstring/
+        reference rather than the textbook formula.
+
+        """
+
+        def erb_of_hz(f_hz):
+            return 9.2645 * np.sign(f_hz) * np.log(1 + np.abs(f_hz) * 0.00437)
+
+        def hz_of_erb(erb):
+            return np.sign(erb) / 0.00437 * (np.exp(np.abs(erb) / 9.2645) - 1)
+
+        freqs_hz = np.array([50.0, 500.0, 1000.0, 4000.0, 15000.0])
+        np.testing.assert_allclose(hz_of_erb(erb_of_hz(freqs_hz)), freqs_hz, rtol=1e-10)
+
+        result = dsp.tools.erb_frequencies(
+            freq_range_hz=(100, 4000), resolution=1.0, reference_frequency_hz=1000
+        )
+        # The vector must be linearly spaced by exactly `resolution` ERB
+        # units and its own Hz<->ERB round trip must hold.
+        erb_vals = erb_of_hz(result)
+        np.testing.assert_allclose(np.diff(erb_vals), 1.0, atol=1e-10)
+        np.testing.assert_allclose(hz_of_erb(erb_vals), result, rtol=1e-10)
+
+    def test_frequency_crossover_boundary_values(self):
+        """The crossover is a Hann-window fade-in interpolated over the
+        frequency axis, with `fill_value=(0.0, 1.0)` for out-of-range
+        queries (per the source). For the (default) logarithmic mode, the
+        vector's first sample coincides exactly with the start frequency
+        (where the underlying Hann window is exactly 0), while the last
+        sample falls strictly short of the stop frequency -- so querying
+        exactly at the stop frequency lands in the *extrapolated* region
+        and returns the exact fill value 1.0, not a near-1 interpolated
+        value (verified empirically). The non-logarithmic mode does NOT
+        have this property (its vector's last sample lands exactly ON the
+        stop frequency, an actually-interpolated near-1 value), so this
+        checks the logarithmic (default) mode only.
+
+        """
+        crossover = dsp.tools.frequency_crossover([100.0, 200.0], logarithmic=True)
+        assert crossover(100.0) == 0.0
+        assert crossover(200.0) == 1.0
+        assert crossover(50.0) == 0.0
+        assert crossover(300.0) == 1.0
+
+    def test_log_mean_matches_manual_log_resampling(self):
+        """Per the source, `log_mean` treats `x` as sampled at linearly
+        spaced integer positions `1..N`, resamples it at `N` log-spaced
+        positions between 1 and N (`N**(k/(N-1))` for `k=0..N-1`) via
+        linear interpolation, then takes the arithmetic mean. Re-derived
+        here directly with `scipy.interpolate.interp1d`, independent of
+        the internal helper.
+
+        """
+        from scipy.interpolate import interp1d
+
+        x = np.linspace(100.0, 1000.0, 50)
+        n = len(x)
+        positions = np.arange(1, n + 1)
+        log_positions = n ** (np.arange(n) / (n - 1))
+        resampled = interp1d(positions, x, kind="linear", assume_sorted=True)(
+            log_positions
+        )
+        expected = np.mean(resampled)
+
+        result = dsp.tools.log_mean(x)
+        np.testing.assert_allclose(result, expected, rtol=1e-12)
+
     def test_framed_signal(self):
         # Only functionality, no results
         n = np.random.normal(0, 0.1, (100, 1))

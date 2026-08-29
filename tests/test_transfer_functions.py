@@ -3,6 +3,7 @@ from os.path import join
 
 import numpy as np
 import pytest
+import scipy.signal
 
 import dsptoolbox as dsp
 
@@ -1030,3 +1031,306 @@ class TestTransferFunctionsModule:
                 0.0,
                 dsp.transfer_functions.SmoothingDomain.EquivalentComplex,
             )
+
+    def test_complex_smoothing_flat_spectrum_stays_flat(self):
+        """A dirac impulse has a perfectly flat magnitude spectrum and zero
+        phase; there is no ripple for any smoothing domain to remove, so the
+        output must stay flat (exact case, no closed-form needed beyond
+        this invariant).
+
+        """
+        fs = 8_000
+        n = 512
+        td = np.zeros((n, 1))
+        td[0, 0] = 1.0
+        ir = dsp.ImpulseResponse(None, td, fs)
+
+        for domain in dsp.transfer_functions.SmoothingDomain:
+            sp = dsp.transfer_functions.complex_smoothing(ir, 12.0, domain)
+            mag = np.abs(sp.spectral_data[:, 0])
+            phase = np.angle(sp.spectral_data[1:, 0])
+            np.testing.assert_allclose(mag, 1.0, atol=1e-10)
+            np.testing.assert_allclose(phase, 0.0, atol=1e-10)
+
+    def test_window_ir_matches_elementwise_product(self):
+        """`window_ir` returns a `.window` array and `start_positions_samples`
+        such that the windowed output equals the elementwise product of the
+        window with the original IR sliced (and zero-padded as needed) at
+        that start offset: `out[n] == original[start + n] * window[n]`.
+
+        """
+        fs = 8_000
+        n = 300
+        td = np.zeros((n, 1))
+        td[100, 0] = 1.0
+        ir = dsp.ImpulseResponse(None, td, fs)
+
+        total_length = 512
+        result, start_pos = dsp.transfer_functions.window_ir(
+            ir, total_length, adaptive=False
+        )
+
+        sp = int(start_pos[0])
+        original = td[:, 0]
+        if sp < 0:
+            extended = np.concatenate([np.zeros(-sp), original])
+            sp = 0
+        else:
+            extended = original
+        if sp + total_length > len(extended):
+            extended = np.concatenate(
+                [extended, np.zeros(sp + total_length - len(extended))]
+            )
+        placed = extended[sp : sp + total_length]
+
+        np.testing.assert_allclose(
+            result.time_data[:, 0], placed * result.window[:, 0], atol=1e-12
+        )
+
+    def test_window_centered_ir_matches_elementwise_product(self):
+        """Same elementwise-product invariant as `window_ir`, but for
+        `window_centered_ir`: `out[n] == original[start + n] * window[n]`,
+        checked here for a peak in the first half (no internal flip branch).
+
+        """
+        fs = 8_000
+        n = 300
+        td = np.zeros((n, 1))
+        td[100, 0] = 1.0
+        ir = dsp.ImpulseResponse(None, td, fs)
+
+        total_length = 200  # peak_ind (100) <= half_length (100): no flip
+        result, start_pos = dsp.transfer_functions.window_centered_ir(
+            ir, total_length, window_type=dsp.Window.Hann
+        )
+        sp = int(start_pos[0])
+        placed = td[sp : sp + total_length, 0]
+
+        np.testing.assert_allclose(
+            result.time_data[:, 0], placed * result.window[:, 0], atol=1e-12
+        )
+
+    def test_group_delay_of_delayed_dirac_matches_delay(self):
+        """A pure integer-sample-delayed dirac has exactly linear phase, so
+        its group delay is constant and equal to the delay itself (in
+        seconds), for both the analytic and numerical computation methods.
+
+        """
+        fs = 8_000
+        delay_samples = 37
+        ir = dsp.generators.dirac(
+            length_samples=2_048, delay_samples=delay_samples, sampling_rate_hz=fs
+        )
+
+        _, gd_analytic = dsp.transfer_functions.group_delay(
+            ir, analytic_computation=True
+        )
+        _, gd_numeric = dsp.transfer_functions.group_delay(
+            ir, analytic_computation=False
+        )
+
+        expected_s = delay_samples / fs
+        np.testing.assert_allclose(gd_analytic[:, 0], expected_s, atol=1e-12)
+        np.testing.assert_allclose(gd_numeric[:, 0], expected_s, atol=1e-9)
+
+    def test_excess_group_delay_is_small_for_minimum_phase_system(self):
+        """A true type-I linear-phase FIR (odd length, symmetric taps, built
+        directly with `scipy.signal.firwin` as an independent reference) has
+        an exactly constant group delay of `(N-1)/2` samples in its
+        passband -- this part is an exact check via `group_delay`.
+        Converting the same magnitude response to its minimum-phase
+        equivalent (`min_phase_ir`) should collapse nearly all of that delay
+        away: its excess group delay in the same passband should be a small
+        fraction of the original linear-phase delay (plausibility; the
+        cepstral minimum-phase estimate is not exact, so this checks orders
+        of magnitude, not near-zero).
+
+        """
+        fs = 8_000
+        order = 200
+        taps = scipy.signal.firwin(order + 1, 1000, fs=fs)
+        linear_phase_ir = dsp.ImpulseResponse(None, taps[:, None], fs)
+
+        f, gd = dsp.transfer_functions.group_delay(linear_phase_ir)
+        passband = (f > 500) & (f < 1500)
+        expected_delay_samples = order / 2
+        np.testing.assert_allclose(
+            gd[passband, 0] * fs, expected_delay_samples, atol=1e-6
+        )
+
+        min_phase_ir_sig = dsp.transfer_functions.min_phase_ir(
+            linear_phase_ir, padding_factor=16
+        )
+        f2, ex_gd = dsp.transfer_functions.excess_group_delay(min_phase_ir_sig)
+        passband2 = (f2 > 500) & (f2 < 1500)
+        min_phase_excess_samples = np.median(np.abs(ex_gd[passband2, 0])) * fs
+
+        assert min_phase_excess_samples < expected_delay_samples / 10
+
+    def test_lin_phase_from_mag_produces_delayed_dirac_for_flat_magnitude(self):
+        """A flat magnitude spectrum (that of a dirac impulse) combined with
+        an exactly linear phase must reconstruct to a pure delayed dirac at
+        `round(group_delay_ms/1000 * fs)` samples (round-trip identity;
+        direct phase-slope fitting is unreliable here because this
+        function's output length is always exactly twice the delay, so the
+        phase step between adjacent bins sits exactly at pi radians -- a
+        degenerate case for `numpy.unwrap`).
+
+        """
+        fs = 8_000
+        n = 512
+        td = np.zeros((n, 1))
+        td[0, 0] = 1.0
+        ir = dsp.ImpulseResponse(None, td, fs)
+        spec = dsp.Spectrum.from_signal(ir)
+
+        for group_delay_ms in (3.0, 7.5, 12.25):
+            lp_ir = dsp.transfer_functions.lin_phase_from_mag(
+                spec, fs, group_delay_ms=group_delay_ms, check_causality=False
+            )
+            expected_delay = round(group_delay_ms / 1000 * fs)
+            peak = np.argmax(np.abs(lp_ir.time_data[:, 0]))
+            assert peak == expected_delay
+            np.testing.assert_allclose(lp_ir.time_data[peak, 0], 1.0, atol=1e-10)
+            other = np.delete(lp_ir.time_data[:, 0], peak)
+            np.testing.assert_allclose(other, 0.0, atol=1e-10)
+
+    def test_min_phase_from_mag_preserves_magnitude_shape(self):
+        """The defining property of `min_phase_from_mag` is that it returns
+        a signal with the same magnitude spectrum as the input. Because the
+        resulting `ImpulseResponse` may get auto-normalized to 0 dBFS
+        (`constrain_amplitude=True` default), the comparison is made up to
+        a constant scale factor rather than requiring bit-identical values.
+
+        """
+        fs = 8_000
+        n = 512
+        rng = np.random.default_rng(1)
+        td = rng.normal(0, 0.1, (n, 1))
+        ir = dsp.ImpulseResponse(None, td, fs)
+        spec = dsp.Spectrum.from_signal(ir)
+
+        mp_ir = dsp.transfer_functions.min_phase_from_mag(spec, fs, ir_length_samples=n)
+        mag_orig = np.abs(np.fft.rfft(td[:, 0]))
+        mag_new = np.abs(np.fft.rfft(mp_ir.time_data[:, 0], n=len(mp_ir)))
+
+        ratio = mag_new / mag_orig
+        np.testing.assert_allclose(ratio, ratio[0], rtol=1e-8)
+
+    def test_spectral_deconvolve_self_deconvolution_is_unit_impulse(self):
+        """Deconvolving a signal with itself (`H = X/X`) should produce an
+        exact unit impulse at sample 0 when regularization is disabled.
+
+        """
+        fs = 8_000
+        n = 4_096
+        rng = np.random.default_rng(0)
+        x = rng.normal(0, 1, n)
+        sig = dsp.Signal(None, x[:, None], fs)
+
+        h = dsp.transfer_functions.spectral_deconvolve(
+            sig,
+            sig,
+            apply_regularization=False,
+            start_stop_hz=None,
+            threshold_db=None,
+            padding=False,
+            keep_original_length=False,
+        )
+        expected = np.zeros(n)
+        expected[0] = 1.0
+        np.testing.assert_allclose(h.time_data[:, 0], expected, atol=1e-9)
+
+    def test_average_irs_identical_channels_returns_same_ir(self):
+        """Averaging N identical channels (no noise, `time_average=True`)
+        must return exactly that same IR (round-trip identity).
+
+        """
+        fs = 8_000
+        n = 512
+        clean = np.zeros((n, 3))
+        clean[50, :] = 1.0
+        clean[51, :] = 0.5
+
+        ir = dsp.ImpulseResponse(None, clean, fs)
+        avg = dsp.transfer_functions.average_irs(
+            ir, time_average=True, normalize_energy=False
+        )
+        np.testing.assert_allclose(avg.time_data[:, 0], clean[:, 0], atol=1e-12)
+
+    def test_average_irs_noise_floor_shrinks_with_sqrt_n(self):
+        """Averaging N repeated measurements of the same clean IR, each with
+        an independent noise realization, should shrink the noise floor's
+        standard deviation roughly like `noise_std / sqrt(N)` (plausibility;
+        checked as an order-of-magnitude/ratio comparison, not exact).
+
+        """
+        fs = 8_000
+        n = 512
+        clean = np.zeros(n)
+        clean[50] = 1.0
+        clean[51] = 0.5
+        noise_std = 0.01
+        rng = np.random.default_rng(5)
+
+        stds = {}
+        for num_repetitions in (4, 64):
+            td = np.zeros((n, num_repetitions))
+            for i in range(num_repetitions):
+                td[:, i] = clean + rng.normal(0, noise_std, n)
+            ir = dsp.ImpulseResponse(None, td, fs)
+            avg = dsp.transfer_functions.average_irs(
+                ir, time_average=True, normalize_energy=False
+            )
+            # Region with no clean-signal content: pure averaged noise floor.
+            stds[num_repetitions] = np.std(avg.time_data[200:, 0])
+
+        expected_ratio = np.sqrt(64 / 4)  # 4x more repetitions -> sqrt(16)=4x
+        measured_ratio = stds[4] / stds[64]
+        np.testing.assert_allclose(measured_ratio, expected_ratio, rtol=0.3)
+
+    def test_trim_ir_recovers_known_offset(self):
+        """A dirac at a known sample offset, once trimmed, must still have
+        its peak at exactly `original_peak_index - start` in the trimmed
+        signal (exact for this integer-sample case, regardless of the
+        internal offset-rounding convention `trim_ir` uses for `start`).
+
+        """
+        fs = 8_000
+        delay_samples = 500
+        ir = dsp.generators.dirac(
+            length_samples=2_000, delay_samples=delay_samples, sampling_rate_hz=fs
+        )
+        trimmed, start, _stop = dsp.transfer_functions.trim_ir(
+            ir, channel=0, start_offset_s=0.01
+        )
+        peak = np.argmax(np.abs(trimmed.time_data[:, 0]))
+        assert peak == delay_samples - start
+        np.testing.assert_allclose(trimmed.time_data[peak, 0], 1.0, atol=1e-12)
+
+    def test_harmonics_from_chirp_ir_energy_lands_before_fundamental(self):
+        """Per Farina's exponential-sweep-deconvolution theory, the k-th
+        harmonic distortion product appears in the deconvolved IR at a
+        negative time offset (i.e. earlier than the fundamental at t=0) of
+        `-T * ln(k) / ln(f2/f1)`, where T is the sweep duration and
+        [f1, f2] its frequency range. `harmonics_from_chirp_ir` slices out
+        windows around each of these expected offsets; this only checks the
+        weaker, more robust plausibility property that each returned
+        harmonic snippet is non-trivial (has some energy) -- exact peak
+        alignment depends on the (undocumented) internal snippet-window
+        convention and is out of scope for a plausibility check.
+
+        """
+        ir = dsp.ImpulseResponse(
+            join(os.path.dirname(__file__), "..", "example_data", "rir.wav")
+        )
+        harmonics = dsp.transfer_functions.harmonics_from_chirp_ir(
+            ir,
+            chirp_range_hz=[20, 20e3],
+            chirp_length_s=2,
+            n_harmonics=3,
+        )
+        assert len(harmonics) == 3
+        for h in harmonics:
+            assert len(h) > 0
+            assert np.sum(h.time_data[:, 0] ** 2) > 0

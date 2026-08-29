@@ -169,6 +169,17 @@ class TestBeamformingModule:
         # Get and show map
         bf.get_beamformer_map(2000, 0, gamma=10)
 
+        # MVDR inverts the cross-spectral matrix per frequency bin. The
+        # mic array shared by this smoke test is `points_uniform` with `z`
+        # collapsed to 0: it was built from a 5x5x5 3D grid, so every one
+        # of the 25 unique (x, y) locations is physically duplicated 5
+        # times once z is flattened away. Duplicate mic positions record
+        # numerically identical signals, which makes the CSM exactly
+        # rank-deficient regardless of snapshot count -- an expected
+        # degenerate-input failure of this specific shared smoke-test
+        # fixture, not a defect in `BeamformerMVDR` itself. See
+        # `test_beamformer_mvdr_localizes_source` below for MVDR exercised
+        # on a non-degenerate array, where it is asserted on directly.
         try:
             # Create beamformer and plot setting
             bf = dsp.beamforming.BeamformerMVDR(s, ma, g, st)
@@ -176,10 +187,6 @@ class TestBeamformingModule:
             bf.get_beamformer_map(2000, 0, gamma=10)
         except np.linalg.LinAlgError as e:
             print(e)
-            pass
-        except Exception as e:
-            print(e)
-            raise AssertionError() from e
 
         # Create beamformer and plot setting
         bf = dsp.beamforming.BeamformerCleanSC(s, ma, g, st)
@@ -214,3 +221,131 @@ class TestBeamformingModule:
         g = dsp.beamforming.LineGrid(xval, "y", 0.5, 0)
         bf = dsp.beamforming.BeamformerDASTime(s, ma, g)
         bf.get_beamformer_output()
+
+    def _make_planar_array(self, spacing=0.25, extent=1.0, z=0.0):
+        """A non-degenerate (no duplicate positions) planar mic array,
+        unlike this module's `points_uniform` fixture which, once its `z`
+        coordinate is collapsed to a constant, physically duplicates every
+        (x, y) location several times over (it was built as a 3D grid).
+
+        """
+        line = np.arange(0, extent + 1e-9, spacing)
+        xx, yy = np.meshgrid(line, line, indexing="ij")
+        return dsp.beamforming.MicArray(
+            dict(x=xx.flatten(), y=yy.flatten(), z=np.full(xx.size, z))
+        )
+
+    def test_beamformer_das_frequency_localizes_source(self):
+        """A single monopole source, propagated onto an idealized free-field
+        planar array via `MonopoleSource.get_signals_on_array` (per its
+        source: spherical-wave delay `distance/c` plus `1/(1+distance)`
+        amplitude falloff), should have the DAS frequency-domain map peak
+        exactly at the grid point coinciding with the true source location
+        (verified empirically to land exactly on the source's grid node,
+        not just nearby, for this noise-source/free-field setup).
+
+        """
+        fs = 10_000
+        ma = self._make_planar_array(spacing=0.25, extent=1.0, z=0.0)
+
+        true_xy = (0.4, 0.6)
+        source = dsp.beamforming.MonopoleSource(
+            dsp.generators.noise(length_seconds=2, sampling_rate_hz=fs),
+            [true_xy[0], true_xy[1], 0.5],
+        )
+        s = source.get_signals_on_array(ma)
+
+        gx = np.arange(0.0, 1.01, 0.2)
+        gy = np.arange(0.0, 1.01, 0.2)
+        grid = dsp.beamforming.Regular2DGrid(gx, gy, ["x", "y"], value3=0.5)
+        st = dsp.beamforming.SteeringVector(
+            formulation=dsp.beamforming.SteeringVectorType.TrueLocation
+        )
+
+        bf = dsp.beamforming.BeamformerDASFrequency(s, ma, grid, st)
+        beamformer_map = bf.get_beamformer_map(2000, 3, remove_csm_diagonal=True)
+
+        peak_idx = np.unravel_index(np.argmax(beamformer_map), beamformer_map.shape)
+        peak_xy = (gx[peak_idx[0]], gy[peak_idx[1]])
+        np.testing.assert_allclose(peak_xy, true_xy, atol=1e-9)
+
+    def test_beamformer_das_time_localizes_source(self):
+        """Same idealized free-field peak-location check as the frequency-
+        domain DAS test, but for `BeamformerDASTime`: the grid-focused
+        output channel with the highest energy should coincide exactly
+        with the true source location (verified empirically to be exact
+        for this noise-source setup).
+
+        """
+        fs = 10_000
+        ma = self._make_planar_array(spacing=0.25, extent=1.0, z=0.0)
+
+        true_xy = (0.4, 0.6)
+        source = dsp.beamforming.MonopoleSource(
+            dsp.generators.noise(length_seconds=1, sampling_rate_hz=fs),
+            [true_xy[0], true_xy[1], 0.5],
+        )
+        s = source.get_signals_on_array(ma)
+
+        gx = np.arange(0.0, 1.01, 0.2)
+        gy = np.arange(0.0, 1.01, 0.2)
+        grid = dsp.beamforming.Regular2DGrid(gx, gy, ["x", "y"], value3=0.5)
+
+        bf = dsp.beamforming.BeamformerDASTime(s, ma, grid)
+        out = bf.get_beamformer_output()
+
+        energies = np.sum(out.time_data**2, axis=0)
+        energy_map = grid.reconstruct_map_shape(energies)
+        peak_idx = np.unravel_index(np.argmax(energy_map), energy_map.shape)
+        peak_xy = (gx[peak_idx[0]], gy[peak_idx[1]])
+        np.testing.assert_allclose(peak_xy, true_xy, atol=1e-9)
+
+    def test_beamformer_mvdr_localizes_source(self):
+        """MVDR needs an invertible cross-spectral matrix per frequency
+        bin, which requires enough independent Welch snapshots relative to
+        the channel count and (critically) no duplicate mic positions --
+        neither of which the shared `points_uniform`-derived array in
+        `test_beamformer_frequency` satisfies (see the comment there). With
+        a proper non-degenerate array and a long-enough signal, MVDR works
+        without needing any exception handling.
+
+        Unlike the DAS variants above (a fixed, deterministic delay-sum
+        that localizes exactly regardless of the specific noise
+        realization), MVDR's CSM inverse makes it a statistical estimator
+        sensitive to finite-data covariance noise -- an adaptive
+        beamformer per the plan's own carve-out for cases "genuinely too
+        complex for an exact reference". A fixed seed and a one-grid-step
+        tolerance (rather than requiring the exact grid node) account for
+        this; without the seed, the peak was empirically observed to
+        occasionally land one grid cell away from the true location on an
+        unlucky noise draw.
+
+        """
+        fs = 10_000
+        ma = self._make_planar_array(spacing=0.25, extent=1.0, z=0.0)
+
+        true_xy = (0.0, 0.4)
+        rng_state = np.random.get_state()
+        np.random.seed(0)
+        try:
+            noise_signal = dsp.generators.noise(length_seconds=5, sampling_rate_hz=fs)
+        finally:
+            np.random.set_state(rng_state)
+        source = dsp.beamforming.MonopoleSource(
+            noise_signal, [true_xy[0], true_xy[1], 0.5]
+        )
+        s = source.get_signals_on_array(ma)
+
+        gx = np.arange(-0.2, 0.21, 0.1)
+        gy = np.arange(-0.5, 0.51, 0.1)
+        grid = dsp.beamforming.Regular2DGrid(gx, gy, ["x", "y"], value3=0.5)
+        st = dsp.beamforming.SteeringVector(
+            formulation=dsp.beamforming.SteeringVectorType.TrueLocation
+        )
+
+        bf = dsp.beamforming.BeamformerMVDR(s, ma, grid, st)
+        beamformer_map = bf.get_beamformer_map(2000, 3, gamma=10)
+
+        peak_idx = np.unravel_index(np.argmax(beamformer_map), beamformer_map.shape)
+        peak_xy = (gx[peak_idx[0]], gy[peak_idx[1]])
+        np.testing.assert_allclose(peak_xy, true_xy, atol=0.1)

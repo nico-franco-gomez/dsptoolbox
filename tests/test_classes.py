@@ -998,11 +998,47 @@ class TestFilterBankClass:
             freqs = np.linspace(1, self.fs, 40)
             fb.get_transfer_function(freqs, mode=dsp.FilterBankMode.Parallel)
 
+    def test_transfer_function_matches_manual_freqz_composition(self):
+        """Cross-check `FilterBank.get_transfer_function` against transfer
+        functions computed directly with `scipy.signal.sosfreqz`/`freqz`
+        from each filter's own coefficients -- an independent reference,
+        not a call into `Filter.get_transfer_function` (which internally
+        also uses `freqz`, so this isn't circular re-verification of the
+        same code path, just the same underlying scipy primitive).
+        `Parallel` keeps per-filter transfer functions, `Sequential` is
+        their product (cascade), `Summed` is their sum -- matching the same
+        composition already verified in the time domain by `test_filtering`.
+
+        """
+        fb = dsp.FilterBank()
+        fb = fb.add_filter(self.get_iir_filter())
+        fb = fb.add_filter(self.get_fir_filter())
+
+        freqs = np.linspace(1, 2e3, 200)
+        sos1 = fb.filters[0].get_coefficients(
+            coefficients_mode=dsp.FilterCoefficientsType.Sos
+        )
+        b2, a2 = fb.filters[1].get_coefficients(
+            coefficients_mode=dsp.FilterCoefficientsType.Ba
+        )
+        w = 2 * np.pi * freqs / self.fs
+        _, h1 = sig.sosfreqz(sos1, worN=w)
+        _, h2 = sig.freqz(b2, a2, worN=w)
+
+        h_parallel = fb.get_transfer_function(freqs, mode=dsp.FilterBankMode.Parallel)
+        np.testing.assert_allclose(h_parallel[:, 0], h1, atol=1e-10)
+        np.testing.assert_allclose(h_parallel[:, 1], h2, atol=1e-8)
+
+        h_seq = fb.get_transfer_function(freqs, mode=dsp.FilterBankMode.Sequential)
+        np.testing.assert_allclose(h_seq, h1 * h2, atol=1e-8)
+
+        h_sum = fb.get_transfer_function(freqs, mode=dsp.FilterBankMode.Summed)
+        np.testing.assert_allclose(h_sum, h1 + h2, atol=1e-8)
+
 
 class TestMultiBandSignal:
     fs = 44100
-    s = np.random.normal(0, 0.01, (fs * 3, 3))
-    s = dsp.Signal(None, s, fs)
+    s = dsp.Signal(None, np.random.normal(0, 0.01, (fs * 3, 3)), fs)
     fb = dsp.filterbanks.auditory_filters_gammatone(
         frequency_range_hz=[500, 1200], sampling_rate_hz=fs
     )
@@ -1253,6 +1289,25 @@ class TestImpulseResponse:
         rir.plot_bode(show_group_delay=True)
         # dsp.plots.show()
 
+    def test_set_window(self):
+        rir = self.get_ir()
+        window = np.hanning(rir.time_data.shape[0])[:, None] * np.ones(
+            (1, rir.number_of_channels)
+        )
+        windowed = rir.set_window(window)
+
+        assert hasattr(windowed, "window")
+        np.testing.assert_array_equal(windowed.window, window)
+        # `set_window` only attaches the window array; it does not apply it
+        # to the stored time data (that happens in the windowing functions
+        # under `dsp.transfer_functions`, e.g. `window_ir`/`window_centered_ir`).
+        np.testing.assert_array_equal(windowed.time_data, rir.time_data)
+        # Returns a copy, the original is unaffected
+        assert not hasattr(rir, "window")
+
+        with pytest.raises(AssertionError):
+            rir.set_window(np.hanning(rir.time_data.shape[0] - 1)[:, None])
+
 
 class TestFilterTopologies:
     fs_hz = 24_000
@@ -1478,6 +1533,48 @@ class TestFilterTopologies:
         fb.set_parameters(10, 1e-3)
         fb.fit_to_ir(rir)
 
+    def test_parallel_filterbank_process_sample_matches_scipy_sosfilt(self):
+        """`fit_to_ir` is a frequency-domain least-squares fit -- too
+        complex for an exact reference (per the plan's own carve-out for
+        IR-fitting optimizers) -- but with *known* coefficients set
+        directly via `set_coefficients`, the filter bank becomes a
+        deterministic sum of pole-fixed SOS sections, which can be
+        reproduced independently with `scipy.signal.sosfilt` composed by
+        hand from the same poles/numerators (via `scipy.signal.zpk2sos`,
+        not by reading back the library's own internal SOS array).
+
+        Tolerance is not machine-precision: `process_sample` runs each
+        section through this codebase's own Transposed-Direct-Form-II
+        `IIRFilter`, a different (if mathematically equivalent) per-sample
+        recursion from `scipy.signal.sosfilt`'s internal state machine, so
+        a small but bounded (non-growing with signal length, empirically
+        checked up to 500 samples) floating-point discrepancy is expected.
+
+        """
+        rir = dsp.ImpulseResponse.from_file(RIR_PATH).pad_trim(2000)
+        poles = np.array([0.6 * np.exp(1j * 0.5), 0.3 * np.exp(1j * 1.5)])
+        fb = dsp.filterbanks.ParallelFilter(poles, 0, rir.sampling_rate_hz)
+        # `fit_to_ir` is only used here to allocate the SOS array from the
+        # poles; the fitted numerator coefficients are overwritten next.
+        fb.fit_to_ir(rir)
+
+        rng = np.random.default_rng(3)
+        b_numerators = rng.normal(0, 0.1, (len(poles), 2))
+        fb.set_coefficients(b_numerators, None)
+
+        poles_with_conjugates = np.hstack([poles, poles.conjugate()])
+        sos_reference = sig.zpk2sos([], poles_with_conjugates, 1.0)
+        sos_reference[:, :2] = b_numerators
+
+        x = rng.normal(0, 0.1, 500)
+        fb.reset_state()
+        out = np.array([fb.process_sample(v, 0) for v in x])
+        expected = np.zeros_like(x)
+        for row in sos_reference:
+            expected += sig.sosfilt(row[None, :], x)
+
+        np.testing.assert_allclose(out, expected, atol=1e-4)
+
     def test_filter_chain(self):
         # Only functionality
         fc = dsp.filterbanks.FilterChain(
@@ -1495,6 +1592,30 @@ class TestFilterTopologies:
 
         fc.reset_state()
         fc.set_n_channels(1)
+
+    def test_filter_chain_matches_cascaded_lfilter(self):
+        """`FilterChain.process_sample` applies each filter's
+        `process_sample` sequentially, so the whole chain is equivalent to
+        cascading `scipy.signal.lfilter` calls with each filter's own
+        coefficients in order (exact reference).
+
+        """
+        b_iir, a_iir = np.array([0.5]), np.array([0.5, 0.1])
+        b_fir = np.array([0.5, 0.5])
+        fc = dsp.filterbanks.FilterChain(
+            [
+                dsp.filterbanks.IIRFilter(b_iir.copy(), a_iir.copy()),
+                dsp.filterbanks.FIRFilter(b_fir.copy()),
+            ]
+        )
+
+        rng = np.random.default_rng(2)
+        x = rng.normal(0, 0.1, 200)
+        out = np.array([fc.process_sample(v, 0) for v in x])
+
+        expected = sig.lfilter(b_iir, a_iir, x)
+        expected = sig.lfilter(b_fir, [1], expected)
+        np.testing.assert_allclose(out, expected)
 
     def test_state_space_filtering(self):
         # Check filter's output against usual TDF2 implementation
@@ -1626,6 +1747,40 @@ class TestFilterTopologies:
 
         # Constructor
         dsp.filterbanks.WarpedIIR.from_filter(iir_coefficients, 0.1)
+
+    def test_warped_fir_filter_zero_warp_matches_scipy_lfilter(self):
+        """At `warping_factor=0`, the allpass warping stage
+        (`(buffer[nn+1]-residue)*warp + buffer[nn]`) reduces exactly to
+        `buffer[nn]`: a plain shift register, i.e. `WarpedFIR` collapses to
+        an ordinary FIR filter -- an exact reference against
+        `scipy.signal.lfilter`.
+
+        """
+        rng = np.random.default_rng(0)
+        b = rng.normal(0, 1, 7)
+        x = rng.normal(0, 1, 200)
+
+        fir = dsp.filterbanks.WarpedFIR(b, 0.0, self.fs_hz)
+        out = np.array([fir.process_sample(v, 0) for v in x])
+        expected = sig.lfilter(b, [1], x)
+        np.testing.assert_allclose(out, expected, atol=1e-10)
+
+    def test_warped_iir_filter_zero_warp_matches_scipy_lfilter(self):
+        """Same zero-warp collapse as `WarpedFIR`, but for the IIR variant:
+        at `warping_factor=0`, `WarpedIIR` reduces to an ordinary direct-
+        form IIR filter -- an exact reference against
+        `scipy.signal.lfilter`.
+
+        """
+        rng = np.random.default_rng(1)
+        b = rng.normal(0, 1, 4)
+        a = np.array([1.0, -0.5, 0.2])
+        x = rng.normal(0, 1, 200)
+
+        iir = dsp.filterbanks.WarpedIIR(b, a, 0.0, self.fs_hz)
+        out = np.array([iir.process_sample(v, 0) for v in x])
+        expected = sig.lfilter(b, a, x)
+        np.testing.assert_allclose(out, expected, atol=1e-9)
 
 
 class TestSpectrum:
@@ -2036,6 +2191,91 @@ class TestSpectrum:
         sp_comp.get_interpolated_spectrum(f_outside, dsp.SpectrumType.Db)
         sp_comp.get_interpolated_spectrum(f_outside, dsp.SpectrumType.Complex)
 
+    def test_interpolation_magnitude_matches_scipy(self):
+        """`Linear` scheme delegates to `numpy.interp`, `Cubic` to
+        `scipy.interpolate.CubicSpline`, and `Pchip` to
+        `scipy.interpolate.PchipInterpolator` (per the source of
+        `get_interpolated_spectrum`); this checks each against its actual
+        scipy/numpy counterpart directly, independent of the internal call.
+
+        """
+        sp_mag = self.get_spectrum_from_filter(None, False)
+        f = np.array([200.0, 300.0, 1234.5])
+        freqs = sp_mag.frequency_vector_hz
+        data = sp_mag.spectral_data[:, 0]
+
+        # Linear scheme, Magnitude domain -> np.interp on the magnitude itself
+        sp_lin = sp_mag.set_interpolator_parameters(
+            dsp.InterpolationDomain.Magnitude,
+            dsp.InterpolationScheme.Linear,
+            dsp.InterpolationEdgeHandling.ZeroPad,
+        )
+        out = sp_lin.get_interpolated_spectrum(f, dsp.SpectrumType.Magnitude)
+        expected = np.interp(f, freqs, data)
+        np.testing.assert_allclose(out[:, 0], expected, rtol=1e-12)
+
+        # Cubic scheme, Magnitude domain -> scipy CubicSpline on the magnitude
+        sp_cubic = sp_mag.set_interpolator_parameters(
+            dsp.InterpolationDomain.Magnitude,
+            dsp.InterpolationScheme.Cubic,
+            dsp.InterpolationEdgeHandling.ZeroPad,
+        )
+        out = sp_cubic.get_interpolated_spectrum(f, dsp.SpectrumType.Magnitude)
+        from scipy.interpolate import CubicSpline
+
+        expected = CubicSpline(freqs, data)(f)
+        np.testing.assert_allclose(out[:, 0], expected, rtol=1e-10)
+
+        # Power domain -> interpolation happens on magnitude**2; Magnitude
+        # output type takes the square root of the interpolated power.
+        sp_power = sp_mag.set_interpolator_parameters(
+            dsp.InterpolationDomain.Power,
+            dsp.InterpolationScheme.Linear,
+            dsp.InterpolationEdgeHandling.ZeroPad,
+        )
+        out_power = sp_power.get_interpolated_spectrum(f, dsp.SpectrumType.Power)
+        expected_power = np.interp(f, freqs, data**2.0)
+        np.testing.assert_allclose(out_power[:, 0], expected_power, rtol=1e-12)
+        out_mag = sp_power.get_interpolated_spectrum(f, dsp.SpectrumType.Magnitude)
+        np.testing.assert_allclose(out_mag[:, 0], expected_power**0.5, rtol=1e-12)
+
+    def test_interpolation_complex_matches_scipy(self):
+        """`Complex` domain interpolates the real and imaginary parts
+        independently (per the source); this checks the `Linear` and
+        `Pchip` schemes against `numpy.interp`/
+        `scipy.interpolate.PchipInterpolator` applied separately to the
+        real and imaginary parts.
+
+        """
+        sp_comp = self.get_spectrum_from_filter(None, True)
+        f = np.array([200.0, 300.0, 1234.5])
+        freqs = sp_comp.frequency_vector_hz
+        data = sp_comp.spectral_data[:, 0]
+
+        sp_lin = sp_comp.set_interpolator_parameters(
+            dsp.InterpolationDomain.Complex,
+            dsp.InterpolationScheme.Linear,
+            dsp.InterpolationEdgeHandling.ZeroPad,
+        )
+        out = sp_lin.get_interpolated_spectrum(f, dsp.SpectrumType.Complex)
+        expected = np.interp(f, freqs, np.real(data)) + 1j * np.interp(
+            f, freqs, np.imag(data)
+        )
+        np.testing.assert_allclose(out[:, 0], expected, rtol=1e-12)
+
+        from scipy.interpolate import PchipInterpolator
+
+        sp_pchip = sp_comp.set_interpolator_parameters(
+            dsp.InterpolationDomain.Complex,
+            dsp.InterpolationScheme.Pchip,
+            dsp.InterpolationEdgeHandling.ZeroPad,
+        )
+        out = sp_pchip.get_interpolated_spectrum(f, dsp.SpectrumType.Complex)
+        expected = PchipInterpolator(freqs, np.real(data))(f) + 1j * PchipInterpolator(
+            freqs, np.imag(data)
+        )(f)
+        np.testing.assert_allclose(out[:, 0], expected, rtol=1e-10)
+
     def test_get_energy(self):
         # Total energy
         sp = self.get_spectrum_from_rir()
@@ -2061,6 +2301,18 @@ class TestSpectrum:
 
         sp = self.get_spectrum_from_filter(np.linspace(500, 2000))
         sp = sp.apply_octave_smoothing(12.0)
+
+    def test_apply_octave_smoothing_flat_input_stays_flat(self):
+        """A perfectly flat magnitude spectrum has no ripple for octave
+        smoothing to remove, so it must come back (near) unchanged
+        (exact-case plausibility check).
+
+        """
+        freqs = dsp.tools.log_frequency_vector([20, 20e3], 128)
+        flat = np.ones((len(freqs), 1))
+        sp = dsp.Spectrum(freqs, flat)
+        smoothed = sp.apply_octave_smoothing(3.0)
+        np.testing.assert_allclose(smoothed.spectral_data, 1.0, atol=1e-9)
 
     def test_coherence(self):
         sp = self.get_spectrum_from_rir()
@@ -2110,6 +2362,30 @@ class TestSpectrum:
             spec.warp(1.1, self.rir.sampling_rate_hz)
         with pytest.raises(AssertionError):
             spec.warp(0.1, self.rir.sampling_rate_hz - 200)
+
+    def test_warp_boundary_fixed_points(self):
+        """`Spectrum.warp` only relabels the frequency axis via the
+        Oppenheim allpass frequency-warping map (it does not touch
+        `spectral_data`, unlike `transforms.warp`/`warp_filter` covered
+        elsewhere). That map has f=0 and f=Nyquist as fixed points for any
+        warping factor -- an exact closed-form invariant, verified here for
+        both signs of warping factor. The RIR's spectrum vector spans
+        exactly [0, fs/2], so its first/last entries are the boundary
+        points themselves.
+
+        """
+        spec = self.get_spectrum_from_rir(False)
+        assert spec.frequency_vector_hz[0] == 0.0
+        assert spec.frequency_vector_hz[-1] == self.rir.sampling_rate_hz / 2
+
+        for warping_factor in (-0.7, 0.4):
+            warped = spec.warp(warping_factor, self.rir.sampling_rate_hz)
+            assert np.isclose(warped.frequency_vector_hz[0], 0.0, atol=1e-9)
+            assert np.isclose(
+                warped.frequency_vector_hz[-1],
+                self.rir.sampling_rate_hz / 2,
+                atol=1e-6,
+            )
 
     def test_set_interpolator_parameters_returns_new_instance(self):
         sp = self.get_spectrum_from_rir(False)

@@ -2,6 +2,7 @@ import os
 
 import numpy as np
 import pytest
+from scipy.signal import hilbert
 
 import dsptoolbox as dsp
 
@@ -166,6 +167,34 @@ class TestStandardModule:
         # necessary to check...
         self.audio_multi.resample(desired_sampling_rate_hz=22050)
 
+    def test_resample_preserves_frequency_and_amplitude(self):
+        """`resample` wraps `scipy.signal.resample_poly`; a pure tone well
+        below both the original and target Nyquist frequencies should keep
+        its FFT peak frequency exactly (bin-aligned in both sampling
+        rates) and its amplitude close to the original (small ripple from
+        the polyphase anti-aliasing filter is expected, not exact).
+
+        """
+        fs_in = 8_000
+        fs_out = 6_000
+        freq = 200.0
+        amplitude = 0.6
+        n_samples = 4_000
+        t = np.arange(n_samples) / fs_in
+        x = amplitude * np.sin(2 * np.pi * freq * t)
+        sig = dsp.Signal(None, x[:, None], fs_in, constrain_amplitude=False)
+
+        out = sig.resample(fs_out)
+        assert out.sampling_rate_hz == fs_out
+
+        X = np.fft.rfft(out.time_data[:, 0])
+        f = np.fft.rfftfreq(len(out), 1 / fs_out)
+        peak_bin = np.argmax(np.abs(X))
+
+        np.testing.assert_allclose(f[peak_bin], freq, atol=1e-9)
+        peak_amplitude = 2 * np.abs(X[peak_bin]) / len(out)
+        np.testing.assert_allclose(peak_amplitude, amplitude, rtol=0.02)
+
     def test_normalize(self):
         # Check peak normalization
         td = self.audio_multi.time_data
@@ -243,6 +272,37 @@ class TestStandardModule:
         mb = dsp.MultiBandSignal(b)
         dsp.true_peak_level(mb)
 
+    def test_true_peak_level_headroom_scaling(self):
+        """Per the source, true peak is obtained by gain-reducing by
+        12.04 dB, 4x-oversampling (`resample`), then restoring the gain --
+        this recovers inter-sample overshoot invisible to the plain sample
+        peak. For a sine well below Nyquist (negligible inter-sample
+        overshoot when oversampled), true peak (dBTP) should be very close
+        to the sample peak (dBFS); true peak must also never be smaller
+        than the sample peak, by construction (oversampling can only reveal
+        additional peaks, never hide the existing sample peak).
+
+        """
+        fs = 8_000
+        n_samples = 4_000
+        t = np.arange(n_samples) / fs
+        amplitude = 0.7
+        x = amplitude * np.sin(2 * np.pi * 50.0 * t)
+        sig = dsp.Signal(None, x[:, None], fs, constrain_amplitude=False)
+
+        true_peak_db, sample_peak_db = dsp.true_peak_level(sig)
+        np.testing.assert_allclose(true_peak_db, sample_peak_db, atol=0.05)
+        assert np.all(true_peak_db >= sample_peak_db - 1e-9)
+
+        # A signal with real inter-sample overshoot (a near-Nyquist tone at
+        # a phase where the sample grid straddles the true peak, found by
+        # an empirical phase search) should show a true peak measurably
+        # above its sample peak.
+        x_steep = 0.9 * np.sin(2 * np.pi * (fs * 0.495) * t + 1.488)
+        sig_steep = dsp.Signal(None, x_steep[:, None], fs, constrain_amplitude=False)
+        tp_steep, sp_steep = dsp.true_peak_level(sig_steep)
+        assert tp_steep[0] > sp_steep[0] + 1.0
+
     def test_fractional_delay(self):
         # Delay in seconds
         delay_s = 150 / self.fs
@@ -278,6 +338,41 @@ class TestStandardModule:
         s = s.pad_trim(s.time_data.shape[0] * 2)
         s.activity_detector()
 
+    def test_activity_detector_synthetic_burst_boundaries(self):
+        """A signal built as silence -> tone burst -> silence should have
+        its detected `signal_indices` boundaries close to the true burst
+        boundaries, lagging by roughly the attack/release smoothing time
+        (an EMA envelope follower, not an instantaneous threshold -- exact
+        alignment isn't expected, but the lag should be on the order of
+        the requested attack/release times, verified empirically: with a
+        1 ms attack and 25 ms release at fs=8000 Hz, the onset lags by a
+        few samples and the offset by a few hundred).
+
+        """
+        fs = 8_000
+        silence_len = int(0.5 * fs)
+        burst_len = int(0.5 * fs)
+        t_burst = np.arange(burst_len) / fs
+        tone = 0.8 * np.sin(2 * np.pi * 300 * t_burst)
+        x = np.concatenate([np.zeros(silence_len), tone, np.zeros(silence_len)])
+        sig = dsp.Signal(None, x[:, None], fs, constrain_amplitude=False)
+
+        _, others = sig.activity_detector(
+            threshold_dbfs=-20, attack_time_ms=1, release_time_ms=25
+        )
+        idx = others["signal_indices"]
+        onset = np.argmax(idx)
+        offset = len(idx) - 1 - np.argmax(idx[::-1])
+
+        # Onset should lag the true burst start (silence_len) by only a
+        # handful of samples (attack is fast); offset should lag the true
+        # burst end (silence_len + burst_len) by no more than a few
+        # release time constants, and in any case land well before the
+        # end of the trailing silence.
+        assert 0 <= onset - silence_len < 50
+        assert 0 <= offset - (silence_len + burst_len) < 800
+        assert offset < len(idx) - 1000
+
     def test_detrend(self):
         # Functionality
         s = dsp.generators.oscillator(
@@ -307,6 +402,41 @@ class TestStandardModule:
 
         with pytest.raises(AssertionError):
             s.detrend(polynomial_order=-10)
+
+    def test_detrend_removes_known_polynomial_trend(self):
+        """Per the source, `detrend` fits and subtracts a `numpy.polyfit`
+        polynomial of the requested order (using sample index, not time in
+        seconds, as the fit's x-axis). Because least-squares fitting is a
+        linear operator, `polyfit(clean + trend) == polyfit(clean) +
+        trend` exactly whenever `trend` already lies exactly in the fitted
+        polynomial's degree -- so detrending should recover exactly
+        `clean - polyval(polyfit(clean), index)`, i.e. `clean` itself minus
+        whatever quadratic component was already present by chance in the
+        noise (not simply `clean` unchanged, since finite-sample noise is
+        never perfectly orthogonal to a quadratic basis).
+
+        """
+        fs = 700
+        n_samples = 2_000
+        index = np.arange(n_samples)
+        rng = np.random.default_rng(0)
+        clean = rng.normal(0, 0.01, n_samples)
+        clean -= clean.mean()
+
+        a2, a1, a0 = 0.5, -1.2, 0.3
+        trend = a2 * index**2 + a1 * index + a0
+        trended = clean + trend
+
+        sig = dsp.Signal(None, trended[:, None], fs, constrain_amplitude=False)
+        detrended = sig.detrend(polynomial_order=2)
+
+        poly_of_clean = np.polyfit(index, clean, deg=2)
+        expected = clean - np.polyval(poly_of_clean, index)
+        np.testing.assert_allclose(detrended.time_data[:, 0], expected, atol=1e-7)
+
+        # The recovered residual should still be small relative to the
+        # trend that was removed (order-of-magnitude sanity check).
+        assert np.max(np.abs(detrended.time_data[:, 0])) < 0.1 * np.max(np.abs(trend))
 
     def test_load_pkl_object(self):
         f = dsp.Filter.fir_filter(
@@ -406,6 +536,37 @@ class TestStandardModule:
         ss = fb.filter_signal(s, dsp.FilterBankMode.Parallel)
         dsp.envelope(ss)
 
+    def test_envelope_matches_scipy_hilbert_reference(self):
+        """Per the source, `envelope(analytic=True)` first linearly
+        detrends the signal (`Signal.detrend(1)`, itself independently
+        covered by `test_detrend`), then returns `abs(scipy.signal.hilbert(
+        ...))` directly with no further processing -- a genuine exact
+        passthrough, not an approximation. For a constant-amplitude sine
+        (many full periods, so the linear detrend is a near-no-op), the
+        envelope should also be close to the constant amplitude away from
+        the Hilbert transform's edge-ringing region.
+
+        """
+        fs = 5_000
+        freq = 200.0
+        n_periods = 100
+        n_samples = int(n_periods * fs / freq)
+        t = np.arange(n_samples) / fs
+        amplitude = 0.6
+        x = amplitude * np.sin(2 * np.pi * freq * t)
+        sig = dsp.Signal(None, x[:, None], fs, constrain_amplitude=False)
+
+        env = dsp.envelope(sig, analytic=True)
+
+        detrended = sig.detrend(1)
+        expected = np.abs(hilbert(detrended.time_data, axis=0))
+        np.testing.assert_allclose(env, expected, atol=1e-12)
+
+        # Away from the edges (Hilbert-transform ringing), the envelope of
+        # a constant-amplitude tone should stay close to that amplitude.
+        interior = env[n_samples // 10 : -n_samples // 10, 0]
+        np.testing.assert_allclose(interior, amplitude, atol=0.01)
+
     def test_dither(self):
         # Functionality
         self.audio_multi.dither()
@@ -423,6 +584,27 @@ class TestStandardModule:
         )
         self.audio_multi.dither(noise_shaping_filterbank=fb)
         self.audio_multi.dither(truncate=False)
+
+    def test_dither_adds_bounded_noise(self):
+        """Per the source, triangular-distribution dither (the default) is
+        the sum of two `Uniform(-eps/2, eps/2)` draws, bounded exactly by
+        `[-eps, eps]`; rectangular dither is a single `Uniform(-eps/2,
+        eps/2)` draw, bounded by `[-eps/2, eps/2]`. `epsilon` defaults to
+        the float16 smallest subnormal (~5.96e-8).
+
+        """
+        fs = 8_000
+        sig = dsp.Signal(None, np.zeros((4_000, 2)), fs, constrain_amplitude=False)
+        epsilon = float(np.finfo(np.float16).smallest_subnormal)
+
+        dithered_tri = sig.dither(triangular_distribution=True)
+        noise_tri = dithered_tri.time_data - sig.time_data
+        assert np.all(np.abs(noise_tri) <= epsilon)
+        assert np.std(noise_tri) > 0
+
+        dithered_rect = sig.dither(triangular_distribution=False)
+        noise_rect = dithered_rect.time_data - sig.time_data
+        assert np.all(np.abs(noise_rect) <= epsilon / 2)
 
     def test_apply_gain(self):
         some_signal = self.audio_multi.copy()
@@ -504,6 +686,33 @@ class TestStandardModule:
         assert np.all(cf > 0.0) and np.all(cf2 >= cf)
 
         dsp.crest_factor(self.get_multiband_signal(), False)
+
+    def test_crest_factor_matches_closed_form(self):
+        """Crest factor is `peak / rms` (linear form, `in_db=False`); for a
+        zero-mean sine that is exactly `A/sqrt(2)` (a textbook closed
+        form), and for a zero-mean square wave, exactly 1 (peak equals
+        rms). A tiny phase offset avoids exact-zero samples in the square
+        wave, where `numpy.sign` returns 0 instead of +-1 and would
+        introduce a small, uninteresting numerical artifact.
+
+        """
+        fs = 8_000
+        n_samples = 4_000
+        t = np.arange(n_samples) / fs
+        freq = 100.0
+        phase = 0.001
+
+        sine = np.sin(2 * np.pi * freq * t + phase)
+        square = np.sign(np.sin(2 * np.pi * freq * t + phase))
+
+        sig_sine = dsp.Signal(None, sine[:, None], fs, constrain_amplitude=False)
+        sig_square = dsp.Signal(None, square[:, None], fs, constrain_amplitude=False)
+
+        cf_sine = dsp.crest_factor(sig_sine, in_db=False)
+        cf_square = dsp.crest_factor(sig_square, in_db=False)
+
+        np.testing.assert_allclose(cf_sine, np.sqrt(2), rtol=1e-6)
+        np.testing.assert_allclose(cf_square, 1.0, rtol=1e-6)
 
     def test_resample_filter(self):
         # Functionality
