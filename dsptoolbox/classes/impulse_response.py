@@ -8,7 +8,11 @@ from ..helpers.latency import _apply_ir_latency_removal_to_phase
 from ..helpers.spectrum_utilities import _get_normalization_offset_db
 from ..plots import general_plot_two_axes
 from ..standard._standard_backend import _group_delay_direct
-from ..standard.enums import MagnitudeNormalization, SpectrumMethod
+from ..standard.enums import (
+    IrLatencyRemoval,
+    MagnitudeNormalization,
+    SpectrumMethod,
+)
 from .signal import Signal
 
 
@@ -279,7 +283,7 @@ class ImpulseResponse(Signal):
         show_group_delay: bool = False,
         range_rad_s=None,
         smoothing: int = 0,
-        remove_ir_latency: str | None | ArrayLike = None,
+        remove_ir_latency: IrLatencyRemoval | ArrayLike | None = None,
         ax: Axes | None = None,
     ) -> tuple[Figure, list[Axes]]:
         """Create a bode plot where magnitude and phase response are plotted
@@ -307,13 +311,12 @@ class ImpulseResponse(Signal):
             the plot data and not to `get_spectrum()`. It is applied to both
             magnitude and phase/group delay response. Default: 0
             (no smoothing).
-        remove_ir_latency : str {"peak", "min_phase"}, ArrayLike,\
-                None, optional
+        remove_ir_latency : IrLatencyRemoval, ArrayLike, None, optional
             If the signal is an impulse response, the delay of the impulse can
             be removed. IR delay removal options are:
 
-            - str {"peak" or "min_phase"}: By regarding its delay in relation
-              to the minimum-phase equivalent or its peak in the time signal.
+            - IrLatencyRemoval: by regarding its delay in relation to the
+              minimum-phase equivalent or its peak in the time signal.
             - ArrayLike: Delay in samples to remove from each channel.
             - None: no latency removal.
 

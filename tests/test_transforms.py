@@ -223,7 +223,7 @@ class TestTransformsModule:
 
         speech_rec = dsp.transforms.istft(
             sp,
-            parameters=self.speech._spectrogram_parameters,
+            parameters=self.speech.spectrogram_parameters,
             sampling_rate_hz=self.speech.sampling_rate_hz,
         )
         assert np.all(
@@ -241,7 +241,7 @@ class TestTransformsModule:
 
         speech_rec = dsp.transforms.istft(
             sp,
-            parameters=self.speech._spectrogram_parameters,
+            parameters=self.speech.spectrogram_parameters,
             sampling_rate_hz=self.speech.sampling_rate_hz,
         )
         assert np.all(

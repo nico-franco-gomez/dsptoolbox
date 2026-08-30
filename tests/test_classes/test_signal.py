@@ -5,6 +5,7 @@ Tests for the Signal class.
 import os
 import pickle
 import tempfile
+from dataclasses import FrozenInstanceError
 from os.path import join
 
 import numpy as np
@@ -240,8 +241,8 @@ class TestSignal:
         s = s.set_spectrum_parameters(method=dsp.SpectrumMethod.FFT)
         s.plot_phase()
         s.plot_phase(unwrap=True, smoothing=4, remove_ir_latency=None)
-        s.plot_phase(remove_ir_latency="min_phase")
-        s.plot_phase(remove_ir_latency="peak")
+        s.plot_phase(remove_ir_latency=dsp.IrLatencyRemoval.MinimumPhase)
+        s.plot_phase(remove_ir_latency=dsp.IrLatencyRemoval.Peak)
         s.plot_phase(remove_ir_latency=[10] * s.number_of_channels)
         with pytest.raises(ValueError):
             s.plot_phase(remove_ir_latency="no idea what removal method")
@@ -385,8 +386,8 @@ class TestSignal:
 
         assert n2.spectrum_scaling == dsp.SpectrumScaling.PowerSpectrum
         assert n2.spectrum_method == dsp.SpectrumMethod.FFT
-        assert n2._spectrogram_parameters["window_length_samples"] == 256
-        assert n2._spectrogram_parameters["window_type"] == dsp.Window.Blackman
+        assert n2.spectrogram_parameters.window_length_samples == 256
+        assert n2.spectrogram_parameters.window_type == dsp.Window.Blackman
         assert n2.constrain_amplitude == n.constrain_amplitude
         assert n2.time_data_imaginary == n.time_data_imaginary
 
@@ -431,9 +432,9 @@ class TestSignal:
         s = dsp.Signal(
             None, np.random.default_rng(0).normal(0, 0.1, (8192, 1)), self.fs
         )
-        window_length = s._spectrogram_parameters["window_length_samples"]
+        window_length = s.spectrogram_parameters.window_length_samples
         overlap = int(
-            s._spectrogram_parameters["overlap_percent"] / 100 * window_length + 0.5
+            s.spectrogram_parameters.overlap_percent / 100 * window_length + 0.5
         )
         step = window_length - overlap
 
@@ -451,5 +452,32 @@ class TestSignal:
         t, _, stft = s.get_spectrogram()
         loudest_frame = np.argmax(np.sum(np.abs(stft[..., 0]) ** 2.0, axis=0))
 
-        window_length = s._spectrogram_parameters["window_length_samples"]
+        window_length = s.spectrogram_parameters.window_length_samples
         assert abs(t[loudest_frame] - peak_sample / self.fs) < window_length / self.fs
+
+    def test_spectrum_shape_is_independent_of_the_method(self):
+        """`get_spectrum` must keep the channel axis for a single-channel
+        signal, whichever method computes it."""
+        s = dsp.Signal(None, _rng.normal(0, 0.1, (4096, 1)), self.fs)
+
+        _, welch = s.set_spectrum_parameters(
+            method=dsp.SpectrumMethod.WelchPeriodogram
+        ).get_spectrum()
+        _, fft = s.set_spectrum_parameters(method=dsp.SpectrumMethod.FFT).get_spectrum()
+
+        assert welch.ndim == fft.ndim == 2
+        assert welch.shape[1] == fft.shape[1] == 1
+
+    def test_spectrum_parameters_are_a_frozen_dataclass(self):
+        s = dsp.Signal(None, np.zeros((256, 1)), self.fs)
+        parameters = s.spectrum_parameters
+        assert parameters.method == dsp.SpectrumMethod.WelchPeriodogram
+
+        with pytest.raises(FrozenInstanceError):
+            parameters.method = dsp.SpectrumMethod.FFT
+
+        new = s.with_spectrum_parameters(
+            parameters.replace(method=dsp.SpectrumMethod.FFT)
+        )
+        assert new.spectrum_method == dsp.SpectrumMethod.FFT
+        assert s.spectrum_method == dsp.SpectrumMethod.WelchPeriodogram

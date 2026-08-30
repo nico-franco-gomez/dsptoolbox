@@ -11,6 +11,7 @@ from .. import Signal
 from ..filterbanks import auditory_filters_gammatone
 from ..helpers.other import find_nearest_points_index_in_vector
 from ..standard.enums import FilterBankMode, SpectrumMethod
+from ..standard.parameters import SpectrumParameters
 from ._distances import (
     _fw_snr_seg_per_channel,
     _itakura_saito_measure,
@@ -26,7 +27,7 @@ def log_spectral(
     method: SpectrumMethod = SpectrumMethod.WelchPeriodogram,
     f_range_hz=(20, 20000),
     energy_normalization: bool = True,
-    spectrum_parameters: dict | None = None,
+    spectrum_parameters: SpectrumParameters | None = None,
 ) -> NDArray[np.float64]:
     """Computes log spectral distance between two signals.
 
@@ -44,10 +45,9 @@ def log_spectral(
     energy_normalization : bool, optional
         When `True`, the observed part of the spectrum is energy-normalized.
         Default: `True`.
-    spectrum_parameters : dict, optional
-        Additional parameters to be used in the computation of spectrum. Pass
-        `None` to use default parameters in the
-        `Signal.set_spectrum_parameters()` method. Default: `None`.
+    spectrum_parameters : SpectrumParameters, optional
+        Parameters used for the spectrum of both signals. `method` overrides
+        the one it carries. Pass `None` for the defaults. Default: `None`.
 
     Returns
     -------
@@ -66,7 +66,8 @@ def log_spectral(
         "Signals have different channel numbers"
     )
     if spectrum_parameters is None:
-        spectrum_parameters = {}
+        spectrum_parameters = SpectrumParameters()
+    spectrum_parameters = spectrum_parameters.replace(method=method)
 
     fs_hz = insig1.sampling_rate_hz
     if f_range_hz is None:
@@ -80,8 +81,8 @@ def log_spectral(
             "Upper bound for " + "frequency must be smaller than the nyquist frequency"
         )
         assert not any(f_range_hz < 0), "Frequencies in range must be " + "positive"
-    insig1 = insig1.set_spectrum_parameters(method=method, **spectrum_parameters)
-    insig2 = insig2.set_spectrum_parameters(method=method, **spectrum_parameters)
+    insig1 = insig1.with_spectrum_parameters(spectrum_parameters)
+    insig2 = insig2.with_spectrum_parameters(spectrum_parameters)
     f, spec1 = insig1.get_spectrum()
     f, spec2 = insig2.get_spectrum()
 
@@ -111,7 +112,7 @@ def itakura_saito(
     method: SpectrumMethod = SpectrumMethod.WelchPeriodogram,
     f_range_hz=(20, 20000),
     energy_normalization: bool = True,
-    spectrum_parameters: dict | None = None,
+    spectrum_parameters: SpectrumParameters | None = None,
 ) -> NDArray[np.float64]:
     """Computes itakura-saito measure between two signals. Beware that this
     measure is not symmetric (x, y) != (y, x).
@@ -130,10 +131,9 @@ def itakura_saito(
     energy_normalization : bool, optional
         When `True`, the observed part of the spectrum is energy-normalized.
         Default: `True`.
-    spectrum_parameters : dict, optional
-        Additional parameters to be used in the computation of spectrum. Pass
-        `None` to use default parameters in the
-        `Signal.set_spectrum_parameters()` method. Default: `None`.
+    spectrum_parameters : SpectrumParameters, optional
+        Parameters used for the spectrum of both signals. `method` overrides
+        the one it carries. Pass `None` for the defaults. Default: `None`.
 
     Returns
     -------
@@ -152,7 +152,8 @@ def itakura_saito(
         "Signals have different channel numbers"
     )
     if spectrum_parameters is None:
-        spectrum_parameters = {}
+        spectrum_parameters = SpectrumParameters()
+    spectrum_parameters = spectrum_parameters.replace(method=method)
 
     fs_hz = insig1.sampling_rate_hz
     if f_range_hz is None:
@@ -166,8 +167,8 @@ def itakura_saito(
             "Upper bound for " + "frequency must be smaller than the nyquist frequency"
         )
         assert not any(f_range_hz < 0), "Frequencies in range must be " + "positive"
-    insig1 = insig1.set_spectrum_parameters(method=method, **spectrum_parameters)
-    insig2 = insig2.set_spectrum_parameters(method=method, **spectrum_parameters)
+    insig1 = insig1.with_spectrum_parameters(spectrum_parameters)
+    insig2 = insig2.with_spectrum_parameters(spectrum_parameters)
     f, spec1 = insig1.get_spectrum()
     f, spec2 = insig2.get_spectrum()
 

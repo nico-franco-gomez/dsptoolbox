@@ -21,7 +21,10 @@ from .enums import (
     InterpolationDomain,
     InterpolationEdgeHandling,
     InterpolationScheme,
+    IrLatencyRemoval,
     MagnitudeNormalization,
+    Power2Rounding,
+    SpectrumAverageMethod,
     SpectrumMethod,
     SpectrumScaling,
     SpectrumType,
@@ -38,6 +41,7 @@ from .other import (
     envelope,
     load_pkl_object,
 )
+from .parameters import SpectrogramParameters, SpectrumParameters
 
 __all__ = [
     # Latency+Delay
@@ -64,6 +68,11 @@ __all__ = [
     "InterpolationScheme",
     "InterpolationEdgeHandling",
     "FrequencySpacing",
+    "IrLatencyRemoval",
+    "Power2Rounding",
+    "SpectrumAverageMethod",
+    "SpectrumParameters",
+    "SpectrogramParameters",
     "Window",
     "FadeType",
 ]

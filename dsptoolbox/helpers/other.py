@@ -4,6 +4,7 @@ import numpy as np
 from numpy.typing import NDArray
 from scipy.linalg import toeplitz as toeplitz_scipy
 
+from ..standard.enums import Power2Rounding
 from .gain_and_level import to_db
 
 
@@ -96,16 +97,15 @@ def _check_path_format(path: str, expected_format: str) -> None:
         )
 
 
-def _get_next_power_2(number, mode: str = "closest") -> int:
+def _get_next_power_2(number, mode: Power2Rounding = Power2Rounding.Closest) -> int:
     """This function returns the power of 2 closest to the given number.
 
     Parameters
     ----------
     number : int, float
         Number for which to find the closest power of 2.
-    mode : str {'closest', 'floor', 'ceil'}, optional
-        `'closest'` gives the closest value. `'floor'` returns the next smaller
-        power of 2 and `'ceil'` the next larger. Default: `'closest'`.
+    mode : Power2Rounding, optional
+        Rounding direction. Default: Closest.
 
     Returns
     -------
@@ -114,20 +114,14 @@ def _get_next_power_2(number, mode: str = "closest") -> int:
 
     """
     assert number > 0, "Only positive numbers are valid"
-    mode = mode.lower()
-    assert mode in (
-        "closest",
-        "floor",
-        "ceil",
-    ), "Mode must be either closest, floor or ceil"
 
     p = np.log2(number)
-    if mode == "closest":
+    if mode == Power2Rounding.Closest:
         remainder = p - int(p)
-        mode = "floor" if remainder < 0.5 else "ceil"
-    if mode == "floor":
+        mode = Power2Rounding.Floor if remainder < 0.5 else Power2Rounding.Ceil
+    if mode == Power2Rounding.Floor:
         p = np.floor(p).astype(int)
-    elif mode == "ceil":
+    elif mode == Power2Rounding.Ceil:
         p = np.ceil(p).astype(int)
     return int(2**p)
 

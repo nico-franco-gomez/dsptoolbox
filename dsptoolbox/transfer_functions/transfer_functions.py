@@ -471,15 +471,17 @@ def compute_transfer_function(
     else:
         multichannel = True
 
-    # Get rid of unnecessary spectrum parameters
-    spectrum_parameters = input._spectrum_parameters.copy()
-    assert type(spectrum_parameters) is dict, (
-        "Spectrum parameters should be passed as a dictionary"
+    # Welch's method is applied with the input's parameters, but with the
+    # window length that the requested spectrum length asks for
+    parameters = input.spectrum_parameters
+    welch_parameters = dict(
+        window_type=parameters.window_type,
+        window_length_samples=window_length_samples,
+        overlap_percent=parameters.overlap_percent,
+        detrend=parameters.detrend,
+        average=parameters.average,
+        scaling=parameters.scaling,
     )
-    spectrum_parameters.pop("window_length_samples")
-    spectrum_parameters.pop("method")
-    spectrum_parameters.pop("smoothing")
-    spectrum_parameters.pop("pad_to_fast_length")
 
     coherence = np.zeros((window_length_samples // 2 + 1, output.number_of_channels))
     tf = np.zeros(
@@ -491,16 +493,14 @@ def compute_transfer_function(
             input.time_data[:, 0],
             None,
             input.sampling_rate_hz,
-            window_length_samples=window_length_samples,
-            **spectrum_parameters,
+            **welch_parameters,
         )
     for n in range(output.number_of_channels):
         G_yy = _welch(
             output.time_data[:, n],
             None,
             input.sampling_rate_hz,
-            window_length_samples=window_length_samples,
-            **spectrum_parameters,
+            **welch_parameters,
         )
         if multichannel:
             n_input = 0
@@ -510,23 +510,20 @@ def compute_transfer_function(
                 input.time_data[:, n_input],
                 None,
                 input.sampling_rate_hz,
-                window_length_samples=window_length_samples,
-                **spectrum_parameters,
+                **welch_parameters,
             )
         if mode == TransferFunctionType.H2:
             G_yx = _welch(
                 output.time_data[:, n],
                 input.time_data[:, n_input],
                 output.sampling_rate_hz,
-                window_length_samples=window_length_samples,
-                **spectrum_parameters,
+                **welch_parameters,
             )
         G_xy = _welch(
             input.time_data[:, n_input],
             output.time_data[:, n],
             output.sampling_rate_hz,
-            window_length_samples=window_length_samples,
-            **spectrum_parameters,
+            **welch_parameters,
         )
 
         match mode:
@@ -918,10 +915,7 @@ def group_delay(
     f = np.fft.rfftfreq(td.shape[0], 1 / signal.sampling_rate_hz)
 
     if not analytic_computation:
-        spec_parameters = signal._spectrum_parameters
-        signal.spectrum_method = SpectrumMethod.FFT
         sp = rfft_scipy(td, axis=0)
-        signal._spectrum_parameters = spec_parameters
 
         if remove_ir_latency:
             assert type(signal) is ImpulseResponse, (
@@ -1573,7 +1567,7 @@ def harmonic_distortion_analysis(
             )
 
         ir2 = ir.pop(0)
-        ir2._spectrum_parameters["smoothing"] = smoothing
+        ir2.spectrum_smoothing = smoothing
 
         harm = ir
         n_harmonics = len(harm)
@@ -1598,7 +1592,7 @@ def harmonic_distortion_analysis(
         start, stop, _ = _trim_ir(ir2.time_data[:, 0], ir.sampling_rate_hz, 10e-3)
         ir2.time_data = ir2.time_data[start:stop]
         ir2 = window_ir(ir2, len(ir2), constant_percentage=0.9)[0]
-        ir2._spectrum_parameters["smoothing"] = smoothing
+        ir2.spectrum_smoothing = smoothing
 
         passed_harmonics = False
     else:
@@ -1632,7 +1626,7 @@ def harmonic_distortion_analysis(
     for i in range(len(harm)):
         if not passed_harmonics:
             harm[i] = window_ir(harm[i], len(harm[i]), constant_percentage=0.9)[0]
-        harm[i] = harm[i].set_spectrum_parameters(**ir2._spectrum_parameters)
+        harm[i] = harm[i].with_spectrum_parameters(ir2.spectrum_parameters)
         f, sp = harm[i].get_spectrum()
 
         # Select frequencies that really were excited by chirp and fftshift
@@ -1677,7 +1671,7 @@ def harmonic_distortion_analysis(
 
     # THD+N
     thd_n = Signal(None, thd, ir2.sampling_rate_hz)
-    thd_n = thd_n.set_spectrum_parameters(**ir2._spectrum_parameters)
+    thd_n = thd_n.with_spectrum_parameters(ir2.spectrum_parameters)
     f_thd_n, sp_thd_n = thd_n.get_spectrum()
     if not quadratic_spectrum:
         sp_thd_n = np.abs(sp_thd_n) ** 2.0

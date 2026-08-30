@@ -16,8 +16,60 @@ adheres to `Semantic Versioning <http://semver.org/spec/v2.0.0.html>`_.
 
 Unreleased
 ---------------------
+API breaks
+~~~~~~~~~~
+- The 14 realtime filter structures moved from ``filterbanks`` into the new
+  ``dsptoolbox.realtime`` module, together with their `RealtimeFilter` base
+  class. The FIR designers (`FirDesigner`, `PhaseLinearizer`,
+  `GroupDelayDesigner`) stay in ``filterbanks``
+- `Filter` is created through its factory methods (`from_ba`, `from_sos`,
+  `from_zpk`, `fir_from_file`, `iir_filter`, `fir_filter`, `biquad`). The
+  coefficients dictionary is now a private second constructor argument
+- Functions whose return type was decided by an argument were split:
+  `generators.chirp` always returns a `Signal` and the synchronized sweep has
+  its own `generators.sync_log_chirp`, which also returns its effective
+  duration; `MultiBandSignal.get_all_bands` and `get_all_time_data` require a
+  common sampling rate and have `*_multirate` counterparts; `remove_filter`
+  and `remove_band` return only the new object, `pop_filter` and `pop_band`
+  return the removed one as well
+- `add_filter`, `add_band` and `remove_channel` take `None` instead of `-1`
+  to mean "at the end"
+- `constrain_amplitude` now defaults to `False` everywhere, including
+  `Signal.from_time_data` and `ImpulseResponse`. `activate_cache` is
+  available on every constructor and factory
+- Every `save_*` method and `load_pkl_object` take the format from the path's
+  extension, which has to be present and correct. `LRFilterBank`'s stricter
+  no-extension convention is gone
+- `AudioEffect` is an abstract base class; effects keep no state between
+  applications
+- `audio_io.set_device()` requires a device: the interactive `input()` prompt
+  is now `audio_io.list_devices()`. `default_config` became
+  `get_default_config()`
+- Importing the library no longer changes matplotlib's global settings nor
+  sets `SD_ENABLE_ASIO`. Use `plots.use_default_style()` and
+  `audio_io.enable_asio()`. sounddevice is imported on first use
+- The last string selectors became enums: `IrLatencyRemoval` for
+  `remove_ir_latency`, `SpectrumAverageMethod` for `average`, and
+  `Power2Rounding` for `tools.next_power_2`
+- `transforms.istft` takes either the original signal or a
+  `SpectrogramParameters` with a sampling rate; the loose keyword arguments
+  are gone. `distances.*` take a `SpectrumParameters` instead of a dictionary
+
 Added
 ~~~~~
+- `process_block()` on every realtime filter. The base implementation loops
+  over `process_sample`; `IIRFilter`, `FIRFilter` and `FilterChain` filter a
+  whole block at once
+- `ax` on every plot template and `plot_*` method, so that several results
+  can be drawn onto the same axes
+- `MultiBandSignal` is a `MultichannelData`, so it has channel operations
+  (`get_channels`, `remove_channel`, `swap_channels`, `sum_channels`), and it
+  gained `resample`, `fade`, `trim_with_level_threshold`, `plot_magnitude`
+  and `plot_time`
+- `SpectrumParameters` and `SpectrogramParameters` frozen dataclasses, read
+  from `Signal.spectrum_parameters` / `spectrogram_parameters` and applied
+  with `with_spectrum_parameters()` / `with_spectrogram_parameters()`
+- `verbose` on the beamformers, which are silent by default
 - `rng` parameter on every stochastic entry point, so that results can be
   reproduced and seeded independently: `generators.noise`,
   `generators.oscillator`, `Signal.dither`, `effects.LFO`, `transforms.lpc`
@@ -73,6 +125,17 @@ Bugfix
 - `CalibrationData(high_snr=False)` raised an `AttributeError` because it
   still passed the pre-enum spectrum parameters
 - `mix_sources_on_array` emptied the list of sources passed to it
+- `Signal.get_spectrum()` dropped the channel axis of a single-channel signal
+  when using Welch's method, so its shape depended on the spectrum method.
+  This also made `distances.log_spectral` and `distances.itakura_saito` fail
+  with Welch's method
+- `generators.chirp(ChirpType.SyncLog)` trimmed or padded the sweep to the
+  requested length, which destroyed the synchronization whenever the
+  effective length came out longer. `sync_log_chirp` keeps its natural length
+- `Compressor` divided the caller's time data in place when no pre-gain was
+  set
+- `FIRFilter.reset_state()` left the write index of its circular buffer
+  where it was
 - the energy normalizations of `Spectrum.plot_magnitude` divided the
   integrated energy by the number of frequency bins instead of using the mean
   square, so the offset depended on the frequency resolution and differed
@@ -88,6 +151,8 @@ Bugfix
 
 Misc
 ~~~~
+- The beamformers' grid loops are vectorized with `einsum`
+- `plots.plots` no longer shadows the `max` and `min` builtins module-wide
 - In-place writes through property getters were replaced by assignments
   through the setters, so validation, complex-value handling and cache
   invalidation are reached

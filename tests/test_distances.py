@@ -19,7 +19,7 @@ class TestDistancesModule:
         dsp.distances.log_spectral(
             self.sig1,
             self.sig2,
-            method="standard",
+            method=dsp.SpectrumMethod.FFT,
             f_range_hz=[20, 20e3],
             energy_normalization=True,
             spectrum_parameters=None,
@@ -27,7 +27,7 @@ class TestDistancesModule:
         dsp.distances.log_spectral(
             self.sig1,
             self.sig2,
-            method="welch",
+            method=dsp.SpectrumMethod.WelchPeriodogram,
             f_range_hz=[200, 5000],
             energy_normalization=True,
             spectrum_parameters=None,
@@ -36,7 +36,7 @@ class TestDistancesModule:
             dsp.distances.log_spectral(
                 self.sig1,
                 self.sig2,
-                method="welch",
+                method=dsp.SpectrumMethod.WelchPeriodogram,
                 f_range_hz=[20, 30e3],
                 energy_normalization=True,
                 spectrum_parameters=None,
@@ -45,10 +45,12 @@ class TestDistancesModule:
         dsp.distances.log_spectral(
             self.sig1,
             self.sig2,
-            method="welch",
+            method=dsp.SpectrumMethod.WelchPeriodogram,
             f_range_hz=[20, 20e3],
             energy_normalization=False,
-            spectrum_parameters=dict(window_type=("chebwin", 40)),
+            spectrum_parameters=dsp.SpectrumParameters(
+                window_type=dsp.Window.Chebwin.with_extra_parameter(40)
+            ),
         )
 
     def test_log_spectral_matches_closed_form(self):
@@ -62,8 +64,12 @@ class TestDistancesModule:
         from scipy.integrate import simpson
 
         f_range_hz = [200, 5000]
-        s1 = self.sig1.set_spectrum_parameters(method="welch")
-        s2 = self.sig2.set_spectrum_parameters(method="welch")
+        s1 = self.sig1.set_spectrum_parameters(
+            method=dsp.SpectrumMethod.WelchPeriodogram
+        )
+        s2 = self.sig2.set_spectrum_parameters(
+            method=dsp.SpectrumMethod.WelchPeriodogram
+        )
         f, spec1 = s1.get_spectrum()
         _, spec2 = s2.get_spectrum()
 
@@ -88,7 +94,7 @@ class TestDistancesModule:
         result = dsp.distances.log_spectral(
             self.sig1,
             self.sig2,
-            method="welch",
+            method=dsp.SpectrumMethod.WelchPeriodogram,
             f_range_hz=f_range_hz,
             energy_normalization=True,
             spectrum_parameters=None,
@@ -99,7 +105,7 @@ class TestDistancesModule:
         dsp.distances.itakura_saito(
             self.sig1,
             self.sig2,
-            method="standard",
+            method=dsp.SpectrumMethod.FFT,
             f_range_hz=[20, 20e3],
             energy_normalization=True,
             spectrum_parameters=None,
@@ -107,7 +113,7 @@ class TestDistancesModule:
         dsp.distances.itakura_saito(
             self.sig1,
             self.sig2,
-            method="welch",
+            method=dsp.SpectrumMethod.WelchPeriodogram,
             f_range_hz=[200, 5000],
             energy_normalization=True,
             spectrum_parameters=None,
@@ -116,7 +122,7 @@ class TestDistancesModule:
             dsp.distances.itakura_saito(
                 self.sig1,
                 self.sig2,
-                method="welch",
+                method=dsp.SpectrumMethod.WelchPeriodogram,
                 f_range_hz=[20, 30e3],
                 energy_normalization=True,
                 spectrum_parameters=None,
@@ -125,10 +131,12 @@ class TestDistancesModule:
         dsp.distances.itakura_saito(
             self.sig1,
             self.sig2,
-            method="welch",
+            method=dsp.SpectrumMethod.WelchPeriodogram,
             f_range_hz=[20, 20e3],
             energy_normalization=False,
-            spectrum_parameters=dict(window_type=("chebwin", 40)),
+            spectrum_parameters=dsp.SpectrumParameters(
+                window_type=dsp.Window.Chebwin.with_extra_parameter(40)
+            ),
         )
 
     def test_itakura_saito_matches_closed_form(self):
@@ -143,8 +151,12 @@ class TestDistancesModule:
         from scipy.integrate import simpson
 
         f_range_hz = [200, 5000]
-        s1 = self.sig1.set_spectrum_parameters(method="welch")
-        s2 = self.sig2.set_spectrum_parameters(method="welch")
+        s1 = self.sig1.set_spectrum_parameters(
+            method=dsp.SpectrumMethod.WelchPeriodogram
+        )
+        s2 = self.sig2.set_spectrum_parameters(
+            method=dsp.SpectrumMethod.WelchPeriodogram
+        )
         f, spec1 = s1.get_spectrum()
         _, spec2 = s2.get_spectrum()
 
@@ -169,7 +181,7 @@ class TestDistancesModule:
         result = dsp.distances.itakura_saito(
             self.sig1,
             self.sig2,
-            method="welch",
+            method=dsp.SpectrumMethod.WelchPeriodogram,
             f_range_hz=f_range_hz,
             energy_normalization=True,
             spectrum_parameters=None,

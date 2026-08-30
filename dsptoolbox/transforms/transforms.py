@@ -38,6 +38,7 @@ from ..standard.enums import (
     WindowType,
 )
 from ..standard.gain_and_level import rms
+from ..standard.parameters import SpectrogramParameters
 from ..transforms._transforms import (
     MorletWavelet,
     Wavelet,
@@ -438,22 +439,15 @@ def mfcc(
 def istft(
     stft: NDArray[np.complex128],
     original_signal: Signal | None = None,
-    parameters: dict | None = None,
+    parameters: SpectrogramParameters | None = None,
     sampling_rate_hz: int | None = None,
-    window_length_samples: int | None = None,
-    window_type: str | None = None,
-    overlap_percent: int | None = None,
-    fft_length_samples: int | None = None,
-    padding: bool | None = None,
-    scaling: bool | None = None,
 ) -> Signal:
     """This function transforms a complex STFT back into its respective time
     signal using the method presented in [1]. For this to be possible, it is
     necessary to know the parameters that were used while converting the signal
-    into its STFT representation. A dictionary containing the parameters
-    corresponding can be passed, as well as the original `Signal` in which
-    these parameters are saved. Alternatively, it is possible to pass them
-    explicitly.
+    into its STFT representation. Pass either the original `Signal`, which
+    carries them, or a `SpectrogramParameters` together with the sampling
+    rate.
 
     Parameters
     ----------
@@ -461,29 +455,14 @@ def istft(
         Complex STFT with shape (frequency, time frame, channel). It is assumed
         that only positive frequencies (including 0) are present.
     original_signal : `Signal`, optional
-        Initial signal from which the STFT matrix was generated.
-        Default: `None`.
-    parameters : dict, optional
-        Dictionary containing the parameters used to compute the STFT matrix.
-        Default: `None`.
+        Initial signal from which the STFT matrix was generated. Its
+        parameters, sampling rate and length are then used. Default: `None`.
+    parameters : SpectrogramParameters, optional
+        Parameters used to compute the STFT matrix. Only needed when no
+        original signal is passed. Default: `None`.
     sampling_rate_hz : int, optional
-        Sampling rate of the original signal.
-    window_length_samples : int, optional
-        Window length in samples. Default: `None`.
-    window_type : str, optional
-        Window type. It must be supported by `scipy.signal.windows.get_window`.
-        Default: `None`.
-    overlap_percent : int, optional
-        Window overlap in percent (between 0 and 100). Default: `None`.
-    fft_length_samples : int, optional
-        Length of the FFT applied to the time frames. Default: `None`.
-    padding : bool, optional
-        `True` means that the original signal was zero-padded in the beginning
-        and end in order to avoid losing energy due to window effects.
-        Default: `None`.
-    scaling : bool, optional
-        When `True`, it is assumed that the STFT matrix was scaled as an
-        amplitude spectrum. Default: `None`.
+        Sampling rate of the original signal. Only needed when no original
+        signal is passed. Default: `None`.
 
     Returns
     -------
@@ -517,51 +496,39 @@ def istft(
 
     if original_signal is not None:
         assert parameters is None, (
-            "A signal was passed. No parameters dictionary should be passed"
+            "A signal was passed, no parameters should be passed as well"
         )
-        parameters = original_signal._spectrogram_parameters.copy()
-    elif parameters is not None:
-        pass
+        parameters = original_signal.spectrogram_parameters
+        sampling_rate_hz = original_signal.sampling_rate_hz
     else:
-        assert (
-            (window_length_samples is not None)
-            and (window_type is not None)
-            and (overlap_percent is not None)
-            and (padding is not None)
-            and (scaling is not None)
-        ), "At least one of the needed parameters needed was passed as None"
-        parameters = {
-            "window_length_samples": window_length_samples,
-            "window_type": window_type,
-            "overlap_percent": overlap_percent,
-            "fft_length_samples": fft_length_samples,
-            "padding": padding,
-            "scaling": scaling,
-        }
+        assert parameters is not None and sampling_rate_hz is not None, (
+            "Without an original signal, both parameters and the sampling "
+            + "rate are needed"
+        )
 
     window = get_window(
-        parameters["window_type"].to_scipy_format(),
-        parameters["window_length_samples"],
+        parameters.window_type.to_scipy_format(),
+        parameters.window_length_samples,
     )
 
     td_framed = np.fft.irfft(
         stft,
         axis=0,
-        n=parameters["fft_length_samples"],
-        norm=parameters["scaling"].fft_norm(),
+        n=parameters.fft_length_samples,
+        norm=parameters.scaling.fft_norm(),
     )
-    td_framed = td_framed[: parameters["window_length_samples"], ...]
-    if parameters["scaling"].has_physical_units():
-        td_framed /= parameters["scaling"].get_scaling_factor(
-            parameters["fft_length_samples"], sampling_rate_hz, window
+    td_framed = td_framed[: parameters.window_length_samples, ...]
+    if parameters.scaling.has_physical_units():
+        td_framed /= parameters.scaling.get_scaling_factor(
+            parameters.fft_length_samples, sampling_rate_hz, window
         )
 
     # Reconstruct from framed representation to continuous
-    step = int((1 - parameters["overlap_percent"] / 100) * len(window))
+    step = int((1 - parameters.overlap_percent / 100) * len(window))
 
-    if parameters["padding"]:
+    if parameters.padding:
         td = _reconstruct_framed_signal(td_framed, step_size=step, window=window)
-        overlap = int(parameters["overlap_percent"] / 100 * len(window))
+        overlap = int(parameters.overlap_percent / 100 * len(window))
         td = td[overlap:-overlap, :]
     else:
         extra_window = np.zeros_like(td_framed[:, 0, :])[:, np.newaxis, :]

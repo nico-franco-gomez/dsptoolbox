@@ -46,12 +46,15 @@ from ..standard._standard_backend import (
 from ..standard.enums import (
     FadeType,
     FilterBankMode,
+    IrLatencyRemoval,
     MagnitudeNormalization,
+    SpectrumAverageMethod,
     SpectrumMethod,
     SpectrumScaling,
     Window,
     WindowType,
 )
+from ..standard.parameters import SpectrogramParameters, SpectrumParameters
 from ._multichannel_data import MultichannelData
 from .plots import _csm_plot
 
@@ -538,39 +541,86 @@ class Signal(MultichannelData):
         window_type: WindowType = Window.Hann,
         overlap_percent: float = 50,
         detrend: bool = True,
-        average: str = "mean",
+        average: SpectrumAverageMethod = SpectrumAverageMethod.Mean,
         scaling: SpectrumScaling = SpectrumScaling.FFTBackward,
     ) -> None:
         """Set spectrum parameters in place. Private: used by `__init__` and
         internally where a disposable/owned object is already being mutated.
         Public API is `set_spectrum_parameters`.
         """
-        _new_spectrum_parameters = dict(
-            method=method,
-            smoothing=smoothing,
-            pad_to_fast_length=pad_to_fast_length,
-            window_length_samples=window_length_samples,
-            window_type=window_type,
-            overlap_percent=overlap_percent,
-            detrend=detrend,
-            average=average,
-            scaling=scaling,
+        self._replace_spectrum_parameters(
+            SpectrumParameters(
+                method=method,
+                smoothing=smoothing,
+                pad_to_fast_length=pad_to_fast_length,
+                window_length_samples=window_length_samples,
+                window_type=window_type,
+                overlap_percent=overlap_percent,
+                detrend=detrend,
+                average=average,
+                scaling=scaling,
+            )
         )
-        if not hasattr(self, "_spectrum_parameters"):
-            self._spectrum_parameters = _new_spectrum_parameters
-            self.__spectrum_state_update = True
-        else:
-            if not all(
-                [
-                    self._spectrum_parameters[k] == _new_spectrum_parameters[k]
-                    for k in self._spectrum_parameters
-                ]
-            ):
-                self._spectrum_parameters = _new_spectrum_parameters
-                self.__spectrum_state_update = True
 
-                # Also CSM
-                self.__csm_state_update = True
+    @property
+    def spectrum_parameters(self) -> SpectrumParameters:
+        """The frozen parameter set used by `get_spectrum()`."""
+        return self._spectrum_parameters
+
+    @property
+    def spectrogram_parameters(self) -> SpectrogramParameters:
+        """The frozen parameter set used by `get_spectrogram()`."""
+        return self._spectrogram_parameters
+
+    def with_spectrum_parameters(self, parameters: SpectrumParameters) -> Self:
+        """Return a copy of the signal with a whole parameter set applied.
+
+        Parameters
+        ----------
+        parameters : SpectrumParameters
+            Parameters for the spectrum computation.
+
+        Returns
+        -------
+        Signal
+            Copy with the new parameters.
+
+        """
+        new = self.copy()
+        new._replace_spectrum_parameters(parameters)
+        return new
+
+    def with_spectrogram_parameters(self, parameters: SpectrogramParameters) -> Self:
+        """Return a copy of the signal with a whole parameter set applied.
+
+        Parameters
+        ----------
+        parameters : SpectrogramParameters
+            Parameters for the spectrogram computation.
+
+        Returns
+        -------
+        Signal
+            Copy with the new parameters.
+
+        """
+        new = self.copy()
+        new._replace_spectrogram_parameters(parameters)
+        return new
+
+    def _replace_spectrum_parameters(self, parameters: SpectrumParameters) -> None:
+        """Store new spectrum parameters in place and invalidate the caches
+        when they actually changed."""
+        if not hasattr(self, "_spectrum_parameters"):
+            self._spectrum_parameters = parameters
+            self.__spectrum_state_update = True
+            return
+
+        if self._spectrum_parameters != parameters:
+            self._spectrum_parameters = parameters
+            self.__spectrum_state_update = True
+            # Also CSM
+            self.__csm_state_update = True
 
     def set_spectrum_parameters(
         self,
@@ -581,7 +631,7 @@ class Signal(MultichannelData):
         window_type: WindowType = Window.Hann,
         overlap_percent: float = 50,
         detrend: bool = True,
-        average: str = "mean",
+        average: SpectrumAverageMethod = SpectrumAverageMethod.Mean,
         scaling: SpectrumScaling = SpectrumScaling.FFTBackward,
     ) -> Self:
         """Return a copy of the signal with new parameters set for the
@@ -611,9 +661,8 @@ class Signal(MultichannelData):
             Overlap in percent. Default: 50.
         detrend : bool, optional
             Detrending (subtracting mean). Default: True.
-        average : str, optional
-            Averaging method. Choose from `'mean'` or `'median'`.
-            Default: `'mean'`.
+        average : SpectrumAverageMethod, optional
+            Statistic used to average the periodograms. Default: Mean.
         scaling : SpectrumScaling, optional
             Scaling of spectrum. See references for details about scaling.
             Default: FFTBackward.
@@ -664,7 +713,7 @@ class Signal(MultichannelData):
 
         """
         """Selected scaling for the spectrum."""
-        return self._spectrum_parameters["scaling"]
+        return self._spectrum_parameters.scaling
 
     @spectrum_scaling.setter
     def spectrum_scaling(self, new_scaling: SpectrumScaling):
@@ -688,7 +737,9 @@ class Signal(MultichannelData):
 
         """
         assert isinstance(new_scaling, SpectrumScaling)
-        self._spectrum_parameters["scaling"] = new_scaling
+        self._spectrum_parameters = self._spectrum_parameters.replace(
+            scaling=new_scaling
+        )
         self.__spectrum_state_update = True
         self.__csm_state_update = True
 
@@ -702,7 +753,7 @@ class Signal(MultichannelData):
             The method used for spectrum computation (e.g., FFT, WelchPeriodogram).
 
         """
-        return self._spectrum_parameters["method"]
+        return self._spectrum_parameters.method
 
     @spectrum_method.setter
     def spectrum_method(self, new_method: SpectrumMethod):
@@ -727,7 +778,7 @@ class Signal(MultichannelData):
 
         """
         assert isinstance(new_method, SpectrumMethod)
-        self._spectrum_parameters["method"] = new_method
+        self._spectrum_parameters = self._spectrum_parameters.replace(method=new_method)
         self.__spectrum_state_update = True
         self.__csm_state_update = True
 
@@ -742,7 +793,7 @@ class Signal(MultichannelData):
             smoothing in fractions of octaves.
 
         """
-        return self._spectrum_parameters["smoothing"]
+        return self._spectrum_parameters.smoothing
 
     @spectrum_smoothing.setter
     def spectrum_smoothing(self, new_smoothing):
@@ -767,7 +818,9 @@ class Signal(MultichannelData):
 
         """
         assert new_smoothing >= 0.0, "Smoothing must be positive or zero"
-        self._spectrum_parameters["smoothing"] = float(new_smoothing)
+        self._spectrum_parameters = self._spectrum_parameters.replace(
+            smoothing=float(new_smoothing)
+        )
         self.__spectrum_state_update = True
 
     def _set_spectrogram_parameters(
@@ -784,27 +837,31 @@ class Signal(MultichannelData):
         and internally where a disposable/owned object is already being
         mutated. Public API is `set_spectrogram_parameters`.
         """
-        _new_spectrogram_parameters = dict(
-            window_length_samples=window_length_samples,
-            window_type=window_type,
-            overlap_percent=overlap_percent,
-            fft_length_samples=fft_length_samples,
-            detrend=detrend,
-            padding=padding,
-            scaling=scaling,
+        self._replace_spectrogram_parameters(
+            SpectrogramParameters(
+                window_length_samples=window_length_samples,
+                window_type=window_type,
+                overlap_percent=overlap_percent,
+                fft_length_samples=fft_length_samples,
+                detrend=detrend,
+                padding=padding,
+                scaling=scaling,
+            )
         )
+
+    def _replace_spectrogram_parameters(
+        self, parameters: SpectrogramParameters
+    ) -> None:
+        """Store new spectrogram parameters in place and invalidate the cache
+        when they actually changed."""
         if not hasattr(self, "_spectrogram_parameters"):
-            self._spectrogram_parameters = _new_spectrogram_parameters
+            self._spectrogram_parameters = parameters
             self.__spectrogram_state_update = True
-        else:
-            if not all(
-                [
-                    self._spectrogram_parameters[k] == _new_spectrogram_parameters[k]
-                    for k in self._spectrogram_parameters
-                ]
-            ):
-                self._spectrogram_parameters = _new_spectrogram_parameters
-                self.__spectrogram_state_update = True
+            return
+
+        if self._spectrogram_parameters != parameters:
+            self._spectrogram_parameters = parameters
+            self.__spectrogram_state_update = True
 
     def set_spectrogram_parameters(
         self,
@@ -984,18 +1041,18 @@ class Signal(MultichannelData):
                     self.time_data,
                     None,
                     self.sampling_rate_hz,
-                    self._spectrum_parameters["window_type"],
-                    self._spectrum_parameters["window_length_samples"],
-                    self._spectrum_parameters["overlap_percent"],
-                    self._spectrum_parameters["detrend"],
-                    self._spectrum_parameters["average"],
-                    self._spectrum_parameters["scaling"],
+                    self._spectrum_parameters.window_type,
+                    self._spectrum_parameters.window_length_samples,
+                    self._spectrum_parameters.overlap_percent,
+                    self._spectrum_parameters.detrend,
+                    self._spectrum_parameters.average,
+                    self._spectrum_parameters.scaling,
                 )
-                fft_length = self._spectrum_parameters["window_length_samples"]
+                fft_length = self._spectrum_parameters.window_length_samples
             else:  # FFT
                 fft_length = (
                     next_fast_len(self.length_samples, True)
-                    if self._spectrum_parameters["pad_to_fast_length"]
+                    if self._spectrum_parameters.pad_to_fast_length
                     else self.length_samples
                 )
                 # Get spectrum
@@ -1007,19 +1064,19 @@ class Signal(MultichannelData):
                 )
 
                 # Smoothing
-                if self._spectrum_parameters["smoothing"] != 0:
+                if self._spectrum_parameters.smoothing != 0:
                     # Smoothing the magnitude
                     temp_abs = _fractional_octave_smoothing(
                         np.abs(spectrum),
                         None,
-                        self._spectrum_parameters["smoothing"],
+                        self._spectrum_parameters.smoothing,
                         clip_values=True,
                     )
                     # Smoothing the phase is not shift-invariant...
                     temp_phase = _fractional_octave_smoothing(
                         np.unwrap(np.angle(spectrum), axis=0),
                         None,
-                        self._spectrum_parameters["smoothing"],
+                        self._spectrum_parameters.smoothing,
                     )
                     spectrum = temp_abs * np.exp(1j * temp_phase)
 
@@ -1075,12 +1132,12 @@ class Signal(MultichannelData):
                 f, csm = _csm_welch(
                     self.time_data,
                     self.sampling_rate_hz,
-                    self._spectrum_parameters["window_length_samples"],
-                    self._spectrum_parameters["window_type"],
-                    self._spectrum_parameters["overlap_percent"],
-                    self._spectrum_parameters["detrend"],
-                    self._spectrum_parameters["average"],
-                    self._spectrum_parameters["scaling"],
+                    self._spectrum_parameters.window_length_samples,
+                    self._spectrum_parameters.window_type,
+                    self._spectrum_parameters.overlap_percent,
+                    self._spectrum_parameters.detrend,
+                    self._spectrum_parameters.average,
+                    self._spectrum_parameters.scaling,
                 )
             else:
                 # Ensure a complex type of scaling during computation of
@@ -1132,13 +1189,13 @@ class Signal(MultichannelData):
             spectrogram = _stft(
                 self.time_data,
                 self.sampling_rate_hz,
-                self._spectrogram_parameters["window_length_samples"],
-                self._spectrogram_parameters["window_type"],
-                self._spectrogram_parameters["overlap_percent"],
-                self._spectrogram_parameters["fft_length_samples"],
-                self._spectrogram_parameters["detrend"],
-                self._spectrogram_parameters["padding"],
-                self._spectrogram_parameters["scaling"],
+                self._spectrogram_parameters.window_length_samples,
+                self._spectrogram_parameters.window_type,
+                self._spectrogram_parameters.overlap_percent,
+                self._spectrogram_parameters.fft_length_samples,
+                self._spectrogram_parameters.detrend,
+                self._spectrogram_parameters.padding,
+                self._spectrogram_parameters.scaling,
             )
             self.__spectrogram_state_update = False
             if self.activate_cache:
@@ -1203,13 +1260,13 @@ class Signal(MultichannelData):
 
         """
         # Handle smoothing
-        prior_smoothing = self._spectrum_parameters["smoothing"]
-        self._spectrum_parameters["smoothing"] = 0
+        prior_smoothing = self._spectrum_parameters.smoothing
+        self.spectrum_smoothing = 0
 
         # Get spectrum
         f, sp = self.get_spectrum()
 
-        self._spectrum_parameters["smoothing"] = prior_smoothing
+        self.spectrum_smoothing = prior_smoothing
 
         f, mag_db = _get_normalized_spectrum(
             f=f,
@@ -1224,7 +1281,7 @@ class Signal(MultichannelData):
 
         if show_info_box:
             txt = "Info"
-            txt += f"""\nMode: {self._spectrum_parameters["method"]}"""
+            txt += f"""\nMode: {self._spectrum_parameters.method}"""
             if range_hz is not None:
                 txt += f"\nRange: [{range_hz[0]}, {range_hz[1]}]"
             txt += f"\nNormalized: {normalize}"
@@ -1413,7 +1470,7 @@ class Signal(MultichannelData):
         self,
         range_hz: list[float] | None = (20.0, 20e3),
         smoothing: int = 0,
-        remove_ir_latency: str | ArrayLike | None = None,
+        remove_ir_latency: IrLatencyRemoval | ArrayLike | None = None,
         ax: Axes | None = None,
     ) -> tuple[Figure, Axes]:
         """Plots group delay of each channel.
@@ -1427,13 +1484,12 @@ class Signal(MultichannelData):
             When different than 0, smoothing is applied to the group delay
             along the (1/smoothing) octave band. This only affects the values
             in the plot. Default: 0.
-        remove_ir_latency : str {"peak", "min_phase"}, ArrayLike, None,\
-                optional
+        remove_ir_latency : IrLatencyRemoval, ArrayLike, None, optional
             If the signal is an impulse response, the delay of the impulse can
             be removed. IR delay removal options are:
 
-            - str {"peak" or "min_phase"}: By regarding its delay in relation
-              to the minimum-phase equivalent or its peak in the time signal.
+            - IrLatencyRemoval: by regarding its delay in relation to the
+              minimum-phase equivalent or its peak in the time signal.
             - ArrayLike: Delay in samples to remove from each channel.
             - None: no latency removal.
 
@@ -1537,7 +1593,7 @@ class Signal(MultichannelData):
         zlabel = "dBFS"
         stft_db = to_db(
             stft,
-            self._spectrogram_parameters["scaling"].is_amplitude_scaling(),
+            self._spectrogram_parameters.scaling.is_amplitude_scaling(),
         )
 
         if self.calibrated_signal:
@@ -1565,7 +1621,7 @@ class Signal(MultichannelData):
         range_hz: list[float] | None = (20.0, 20e3),
         unwrap: bool = False,
         smoothing: int = 0,
-        remove_ir_latency: str | None | ArrayLike = None,
+        remove_ir_latency: IrLatencyRemoval | ArrayLike | None = None,
         ax: Axes | None = None,
     ) -> tuple[Figure, Axes]:
         """Plots phase of the frequency response, only available if the method
@@ -1582,13 +1638,12 @@ class Signal(MultichannelData):
             When different than 0, the phase response is smoothed across the
             1/smoothing-octave band. This only applies smoothing to the plot
             data. Default: 0.
-        remove_ir_latency : str {"peak", "min_phase"}, ArrayLike,\
-                None, optional
+        remove_ir_latency : IrLatencyRemoval, ArrayLike, None, optional
             If the signal is an impulse response, the delay of the impulse can
             be removed. IR delay removal options are:
 
-            - str {"peak" or "min_phase"}: By regarding its delay in relation
-              to the minimum-phase equivalent or its peak in the time signal.
+            - IrLatencyRemoval: by regarding its delay in relation to the
+              minimum-phase equivalent or its peak in the time signal.
             - ArrayLike: Delay in samples to remove from each channel.
             - None: no latency removal.
 
@@ -1610,14 +1665,14 @@ class Signal(MultichannelData):
             "Phase cannot be plotted since the spectrum is welch."
         )
 
-        prior_smoothing = self._spectrum_parameters["smoothing"]
-        self._spectrum_parameters["smoothing"] = 0
+        prior_smoothing = self._spectrum_parameters.smoothing
+        self.spectrum_smoothing = 0
 
         # Get spectrum
         f, sp = self.get_spectrum()
         ph = np.angle(sp)
 
-        self._spectrum_parameters["smoothing"] = prior_smoothing
+        self.spectrum_smoothing = prior_smoothing
 
         ph = _apply_ir_latency_removal_to_phase(
             remove_ir_latency, f, ph, self.time_data, self.sampling_rate_hz

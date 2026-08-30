@@ -5,7 +5,7 @@ from numpy.typing import NDArray
 from scipy.signal import check_COLA, windows
 
 from ..standard._framed_signal_representation import _get_framed_signal
-from ..standard.enums import SpectrumScaling, WindowType
+from ..standard.enums import SpectrumAverageMethod, SpectrumScaling, WindowType
 
 
 def _welch(
@@ -16,7 +16,7 @@ def _welch(
     window_length_samples: int,
     overlap_percent: float,
     detrend: bool,
-    average: str,
+    average: SpectrumAverageMethod,
     scaling: SpectrumScaling,
 ) -> NDArray[np.float64]:
     """Cross spectral density computation with Welch's method.
@@ -39,8 +39,8 @@ def _welch(
         Overlap in percentage.
     detrend : bool
         Detrending from each time segment (removing mean).
-    average : str
-        Type of mean to be computed. Take `'mean'` or `'median'`.
+    average : SpectrumAverageMethod
+        Statistic used to average the periodograms.
     scaling : SpectrumScaling
         Scaling. See references for details about scaling.
 
@@ -66,26 +66,25 @@ def _welch(
     """
     autospectrum = y is None
 
-    if type(x) is not NDArray[np.float64]:
-        x = np.asarray(x).squeeze()
+    x = np.asarray(x)
+    assert x.ndim <= 2, (
+        f"{x.shape} are too many dimensions. Use flat" + " arrays or 2D-Arrays instead"
+    )
+    # A single-channel input is kept as one channel, so that the output always
+    # has the same number of dimensions as the input
+    one_dimensional = x.ndim == 1
+    if one_dimensional:
+        x = x[..., None]
 
     if not autospectrum:
-        if type(y) is not NDArray[np.float64]:
-            y = np.asarray(y).squeeze()
+        y = np.asarray(y)
+        if y.ndim == 1:
+            y = y[..., None]
         assert x.shape == y.shape, "Shapes of data do not match"
         # NOTE: Computing the spectrum in a vectorized manner for all channels
         # simultaneously does not seem to be faster than doing it sequentially
         # for each channel. Maybe parallelizing with something like numba could
         # be advantageous...
-
-    if x.ndim == 2:
-        multi_channel = True
-    else:
-        multi_channel = False
-
-    assert len(x.shape) <= 2, (
-        f"{x.shape} are too many dimensions. Use flat" + " arrays or 2D-Arrays instead"
-    )
 
     valid_window_sizes = np.array([int(2**x) for x in range(3, 19)])
     assert window_length_samples in valid_window_sizes, (
@@ -95,11 +94,6 @@ def _welch(
     assert overlap_percent >= 0 and overlap_percent < 100, (
         "overlap_percent should be between 0 and 100"
     )
-    valid_average = ["mean", "median"]
-    assert average in valid_average, (
-        f"{average} is not valid. Use " + "either mean or median"
-    )
-
     # Window and step
     window = windows.get_window(
         window_type.to_scipy_format(), window_length_samples, fftbins=True
@@ -115,11 +109,6 @@ def _welch(
             stacklevel=2,
         )
 
-    if not multi_channel:
-        x = x[..., None]
-        if not autospectrum:
-            y = y[..., None]
-
     x_frames = _get_framed_signal(x, window_length_samples, step)
     if not autospectrum:
         y_frames = _get_framed_signal(y, window_length_samples, step)
@@ -128,11 +117,6 @@ def _welch(
     x_frames *= window[:, np.newaxis, np.newaxis]
     if not autospectrum:
         y_frames *= window[:, np.newaxis, np.newaxis]
-
-    if not multi_channel:
-        x_frames = np.squeeze(x_frames)
-        if not autospectrum:
-            y_frames = np.squeeze(y_frames)
 
     # Detrend
     if detrend:
@@ -150,7 +134,7 @@ def _welch(
         )
 
     # Direct averaging (much faster than averaging magnitude and phase)
-    if average == "mean":
+    if average == SpectrumAverageMethod.Mean:
         csd = np.mean(sp_frames, axis=1)
     else:
         csd = np.median(sp_frames.real, axis=1) + 1j * np.median(sp_frames.imag, axis=1)
@@ -172,7 +156,7 @@ def _welch(
     if scaling.is_amplitude_scaling():
         csd = np.sqrt(csd)
 
-    return csd
+    return csd[..., 0] if one_dimensional else csd
 
 
 def _stft(
@@ -302,7 +286,7 @@ def _csm_welch(
     window_type: str,
     overlap_percent: int,
     detrend: bool,
-    average: str,
+    average: SpectrumAverageMethod,
     scaling: str,
 ):
     """Computes the cross spectral matrix of a multichannel signal using
@@ -325,8 +309,8 @@ def _csm_welch(
         Overlap in percentage.
     detrend : bool
         Detrending from each time segment (removing mean).
-    average : str
-        Type of mean to be computed. Take `'mean'` or `'median'`.
+    average : SpectrumAverageMethod
+        Statistic used to average the periodograms.
     scaling : SpectrumScaling
         Scaling. See references for details about scaling.
 

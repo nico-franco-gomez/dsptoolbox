@@ -579,3 +579,43 @@ class FadeType(Enum):
     Exponential = auto()
     Logarithmic = auto()
     NoFade = auto()
+
+
+class SpectrumAverageMethod(Enum):
+    """Statistic used to average the periodograms of Welch's method:
+
+    - Mean.
+    - Median: more robust against outlying frames, at the cost of a bias that
+      this implementation corrects for.
+
+    """
+
+    Mean = auto()
+    Median = auto()
+
+
+class IrLatencyRemoval(Enum):
+    """Way of estimating the latency of an impulse response so that it can be
+    removed from its phase response:
+
+    - Peak: the position of the peak in the time signal.
+    - MinimumPhase: the delay in relation to the minimum-phase equivalent.
+
+    """
+
+    Peak = auto()
+    MinimumPhase = auto()
+
+
+class Power2Rounding(Enum):
+    """Rounding towards a power of 2:
+
+    - Closest.
+    - Floor: the next smaller power of 2.
+    - Ceil: the next larger power of 2.
+
+    """
+
+    Closest = auto()
+    Floor = auto()
+    Ceil = auto()
