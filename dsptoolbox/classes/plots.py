@@ -4,14 +4,18 @@ Very specific plots which are harder to create from the general templates
 
 import matplotlib.pyplot as plt
 import numpy as np
+from matplotlib.axes import Axes
 from matplotlib.ticker import ScalarFormatter
 
 from ..helpers.gain_and_level import to_db
 from ..helpers.other import find_nearest_points_index_in_vector
 
 
-def _zp_plot(z, p):
-    fig, ax = plt.subplots(1, 1, figsize=(5, 5))
+def _zp_plot(z, p, ax: Axes | None = None):
+    if ax is None:
+        fig, ax = plt.subplots(1, 1, figsize=(5, 5))
+    else:
+        fig = ax.get_figure()
     circle = plt.Circle(
         (0, 0),
         1,
@@ -31,9 +35,10 @@ def _zp_plot(z, p):
     return fig, ax
 
 
-def _csm_plot(f, csm, range_x=None, log=True, with_phase=True):
+def _csm_plot(f, csm, range_x=None, log=True, with_phase=True, ax=None):
     """Function to plot cross-spectral matrix. Since it is very specialized,
-    it is not in the plots module.
+    it is not in the plots module. `ax` expects a (channel, channel) grid of
+    axes, which is created when None is given.
 
     """
     ch = csm.shape[1]
@@ -43,9 +48,13 @@ def _csm_plot(f, csm, range_x=None, log=True, with_phase=True):
         id0, id1 = 0, -1
     f = f[id0:id1]
     csm = csm[id0:id1]
-    fig, ax = plt.subplots(
-        ch, ch, figsize=(2.5 * ch, 2.5 * ch), sharex=True, sharey=True
-    )
+    if ax is None:
+        fig, ax = plt.subplots(
+            ch, ch, figsize=(2.5 * ch, 2.5 * ch), sharex=True, sharey=True
+        )
+    else:
+        ax = np.asarray(ax).reshape(ch, ch)
+        fig = ax[0, 0].get_figure()
     for c1 in range(ch):
         ax[c1, 0].set_ylabel("dB")
         for c2 in range(ch):

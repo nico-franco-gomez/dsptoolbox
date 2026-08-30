@@ -1066,7 +1066,8 @@ class Spectrum(MultichannelData):
         in_db: bool = True,
         normalization: MagnitudeNormalization = MagnitudeNormalization.NoNormalization,
         dynamic_range_db: float | None = None,
-    ):
+        ax: Axes | None = None,
+    ) -> tuple[Figure, Axes]:
         """Plot the magnitude spectrum.
 
         Parameters
@@ -1079,6 +1080,17 @@ class Spectrum(MultichannelData):
         dynamic_range_db : float, None, optional
             Pass a dynamic range in order to constrain the plot. Use None
             to avoid it. Default: `None`.
+
+        ax : `matplotlib.axes.Axes`, None, optional
+            Axes to draw on, so that several plots can share one axis. A new
+            figure is created when None. Default: None.
+
+        Returns
+        -------
+        fig : `matplotlib.figure.Figure`
+            Figure.
+        ax : `matplotlib.axes.Axes`
+            Axes.
 
         """
         magnitude = np.abs(self.spectral_data)
@@ -1097,11 +1109,19 @@ class Spectrum(MultichannelData):
             log_x=True,
             labels=[f"Channel {i}" for i in range(self.number_of_channels)],
             ylabel="Magnitude / " + "dB" if in_db else "1",
+            ax=ax,
         )
 
-    def plot_coherence(self) -> tuple[Figure, list[Axes]]:
+    def plot_coherence(
+        self,
+        ax: list[Axes] | None = None,
+    ) -> tuple[Figure, list[Axes]]:
         """Plots coherence. If not available, an attribute error will be
         triggered.
+
+        ax : list of `matplotlib.axes.Axes`, None, optional
+            Axes to draw on, one per channel. New ones are created when None.
+            Default: None.
 
         Returns
         -------
@@ -1123,6 +1143,7 @@ class Spectrum(MultichannelData):
             range_x=None,
             xlabels="Frequency / Hz",
             range_y=[-0.1, 1.1],
+            ax=ax,
         )
         return fig, ax
 

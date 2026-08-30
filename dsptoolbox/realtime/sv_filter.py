@@ -194,6 +194,7 @@ class StateVariableFilter(RealtimeFilter):
         length_samples: int,
         range_hz: list | None = (20, 20e3),
         range_db: list | None = None,
+        ax: Axes | None = None,
     ) -> tuple[Figure, Axes]:
         """Plot the magnitude response of each band output of the filter.
 
@@ -205,6 +206,10 @@ class StateVariableFilter(RealtimeFilter):
             Range of Hz to plot. Default: [20, 20e3].
         range_db : list, None, optional
             Range of dB to plot. Pass `None` to plot automatically. Default: `None`.
+
+        ax : `matplotlib.axes.Axes`, None, optional
+            Axes to draw on, so that several plots can share one axis. A new
+            figure is created when None. Default: None.
 
         Returns
         -------
@@ -219,6 +224,7 @@ class StateVariableFilter(RealtimeFilter):
             normalize=None,
             range_db=range_db,
             smoothing=0,
+            ax=ax,
         )
         ax.legend(["Lowpass", "Highpass", "Bandpass", "Allpass"])
         return fig, ax
@@ -227,6 +233,7 @@ class StateVariableFilter(RealtimeFilter):
         self,
         length_samples: int,
         range_hz: list[float] | None = (20.0, 20e3),
+        ax: Axes | None = None,
     ) -> tuple[Figure, Axes]:
         """Plot the group delay of each band output of the filter.
 
@@ -237,6 +244,10 @@ class StateVariableFilter(RealtimeFilter):
         range_hz : list, None, optional
             Range of Hz to plot. Default: [20, 20e3].
 
+        ax : `matplotlib.axes.Axes`, None, optional
+            Axes to draw on, so that several plots can share one axis. A new
+            figure is created when None. Default: None.
+
         Returns
         -------
         Figure, Axes
@@ -245,7 +256,7 @@ class StateVariableFilter(RealtimeFilter):
         """
         d = self.get_ir(length_samples).get_all_bands()
         d.spectrum_method = SpectrumMethod.FFT
-        fig, ax = d.plot_group_delay(range_hz=range_hz)
+        fig, ax = d.plot_group_delay(range_hz=range_hz, ax=ax)
         ax.legend(["Lowpass", "Highpass", "Bandpass", "Allpass"])
         return fig, ax
 
@@ -255,6 +266,7 @@ class StateVariableFilter(RealtimeFilter):
         range_hz: list | None = (20, 20e3),
         unwrap: bool = False,
         radians: bool = True,
+        ax: Axes | None = None,
     ) -> tuple[Figure, Axes]:
         """Plot the phase of each band output of the filter.
 
@@ -270,6 +282,10 @@ class StateVariableFilter(RealtimeFilter):
             When True, the phase is plotted in radians, otherwise it is in degrees.
             Default: True.
 
+        ax : `matplotlib.axes.Axes`, None, optional
+            Axes to draw on, so that several plots can share one axis. A new
+            figure is created when None. Default: None.
+
         Returns
         -------
         Figure, Axes
@@ -278,6 +294,6 @@ class StateVariableFilter(RealtimeFilter):
         """
         d = self.get_ir(length_samples).get_all_bands()
         d.spectrum_method = SpectrumMethod.FFT
-        fig, ax = d.plot_phase(range_hz=range_hz, unwrap=unwrap, radians=radians)
+        fig, ax = d.plot_phase(range_hz=range_hz, unwrap=unwrap, radians=radians, ax=ax)
         ax.legend(["Lowpass", "Highpass", "Bandpass", "Allpass"])
         return fig, ax

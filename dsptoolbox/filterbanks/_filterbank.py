@@ -7,6 +7,7 @@ from pickle import HIGHEST_PROTOCOL, dump
 from warnings import warn
 
 import numpy as np
+from matplotlib.axes import Axes
 from numpy.typing import NDArray
 from scipy.linalg import lstsq
 from scipy.signal import (
@@ -419,6 +420,7 @@ class LRFilterBank:
         mode: FilterBankMode = FilterBankMode.Parallel,
         range_hz: list[float] | None = (20.0, 20e3),
         zero_phase: bool = False,
+        ax: Axes | None = None,
     ):
         """Plots the magnitude response of each filter.
 
@@ -432,6 +434,10 @@ class LRFilterBank:
             Range of Hz to plot. Default: [20, 20e3].
         zero_phase : bool, optional
             Activates zero phase filtering. Default: `False`.
+
+        ax : `matplotlib.axes.Axes`, None, optional
+            Axes to draw on, so that several plots can share one axis. A new
+            figure is created when None. Default: None.
 
         Returns
         -------
@@ -484,6 +490,7 @@ class LRFilterBank:
             ylabel="Magnitude / dB",
             labels=[f"Filter {h}" for h in range(bs.number_of_bands)],
             range_y=[-30, 10],
+            ax=ax,
         )
         # Summed signal
         summed = np.sum(np.array(summed).T, axis=1)
@@ -514,6 +521,7 @@ class LRFilterBank:
         mode: FilterBankMode = FilterBankMode.Parallel,
         range_hz: list[float] | None = (20.0, 20e3),
         unwrap: bool = False,
+        ax: Axes | None = None,
     ):
         """Plots the phase response of each filter.
 
@@ -528,6 +536,10 @@ class LRFilterBank:
             Range of Hz to plot. Default: [20, 20e3].
         unwrap : bool, optional
             When `True`, unwrapped phase is plotted. Default: `False`.
+
+        ax : `matplotlib.axes.Axes`, None, optional
+            Axes to draw on, so that several plots can share one axis. A new
+            figure is created when None. Default: None.
 
         Returns
         -------
@@ -567,6 +579,7 @@ class LRFilterBank:
             range_hz,
             ylabel="Phase / rad",
             labels=labels,
+            ax=ax,
         )
         return fig, ax
 
@@ -575,6 +588,7 @@ class LRFilterBank:
         length_samples: int,
         mode: FilterBankMode = FilterBankMode.Parallel,
         range_hz: list[float] | None = (20.0, 20e3),
+        ax: Axes | None = None,
     ):
         """Plots the phase response of each filter.
 
@@ -588,6 +602,10 @@ class LRFilterBank:
         range_hz : array-like, None, optional
             Range of Hz to plot. Use None to avoid any range.
             Default: [20, 20e3].
+
+        ax : `matplotlib.axes.Axes`, None, optional
+            Axes to draw on, so that several plots can share one axis. A new
+            figure is created when None. Default: None.
 
         Returns
         -------
@@ -632,6 +650,7 @@ class LRFilterBank:
             range_hz,
             ylabel="Group delay / ms",
             labels=labels,
+            ax=ax,
         )
 
     def show_info(self):

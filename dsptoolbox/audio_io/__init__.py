@@ -6,11 +6,13 @@ This module handles audio playback and recording. It is based on sounddevice
 
 Setting audio device:
 
+- `list_devices()`
 - `set_device()`
 - `print_device_info()`
-- `default_config`
+- `get_default_config()`
 - `set_latency()`
 - `set_blocksize()`
+- `enable_asio()` (Windows only, before sounddevice is imported)
 
 Playing audio:
 
@@ -35,7 +37,9 @@ References
 
 from .audio_io import (
     CallbackStop,
-    default_config,
+    enable_asio,
+    get_default_config,
+    list_devices,
     output_stream,
     play,
     play_and_record,
@@ -51,12 +55,14 @@ __all__ = [
     "play",
     "play_and_record",
     "set_device",
+    "list_devices",
     "record",
     "print_device_info",
     "CallbackStop",
     "sleep",
     "output_stream",
-    "default_config",
+    "get_default_config",
+    "enable_asio",
     "set_latency",
     "set_blocksize",
 ]

@@ -986,6 +986,7 @@ class Filter:
         normalize: MagnitudeNormalization = MagnitudeNormalization.NoNormalization,
         zero_phase: bool = False,
         show_info_box: bool = True,
+        ax: Axes | None = None,
     ) -> tuple[Figure, Axes]:
         """Plots magnitude spectrum.
         Change parameters of spectrum with set_spectrum_parameters.
@@ -1003,6 +1004,10 @@ class Filter:
             Plots magnitude for zero phase filtering. Default: `False`.
         show_info_box : bool, optional
             Shows an information box on the plot. Default: `True`.
+
+        ax : `matplotlib.axes.Axes`, None, optional
+            Axes to draw on, so that several plots can share one axis. A new
+            figure is created when None. Default: None.
 
         Returns
         -------
@@ -1028,7 +1033,7 @@ class Filter:
                 stacklevel=2,
             )
         ir = self.get_ir(length_samples=length_samples, zero_phase=zero_phase)
-        fig, ax = ir.plot_magnitude(range_hz, normalize, show_info_box=False)
+        fig, ax = ir.plot_magnitude(range_hz, normalize, show_info_box=False, ax=ax)
         if show_info_box:
             txt = self.metadata_str
             ax.text(
@@ -1046,6 +1051,7 @@ class Filter:
         length_samples: int,
         range_hz: list[float] | None = (20.0, 20e3),
         show_info_box: bool = False,
+        ax: Axes | None = None,
     ) -> tuple[Figure, Axes]:
         """Plots group delay of the filter. Different methods are used for
         FIR or IIR filters.
@@ -1059,6 +1065,10 @@ class Filter:
             setting any range. Default: [20, 20000].
         show_info_box : bool, optional
             Shows an information box on the plot. Default: `False`.
+
+        ax : `matplotlib.axes.Axes`, None, optional
+            Axes to draw on, so that several plots can share one axis. A new
+            figure is created when None. Default: None.
 
         Returns
         -------
@@ -1099,6 +1109,7 @@ class Filter:
             range_x=range_hz,
             range_y=[ymin, ymax],
             ylabel="Group delay / ms",
+            ax=ax,
         )
         if show_info_box:
             txt = self.metadata_str
@@ -1118,6 +1129,7 @@ class Filter:
         range_hz: list[float] | None = (20.0, 20e3),
         unwrap: bool = False,
         show_info_box: bool = False,
+        ax: Axes | None = None,
     ) -> tuple[Figure, Axes]:
         """Plots phase spectrum.
 
@@ -1132,6 +1144,10 @@ class Filter:
             Unwraps the phase to show. Default: `False`.
         show_info_box : bool, optional
             Shows an information box on the plot. Default: `False`.
+
+        ax : `matplotlib.axes.Axes`, None, optional
+            Axes to draw on, so that several plots can share one axis. A new
+            figure is created when None. Default: None.
 
         Returns
         -------
@@ -1157,7 +1173,7 @@ class Filter:
                 stacklevel=2,
             )
         ir = self.get_ir(length_samples=length_samples)
-        fig, ax = ir.plot_phase(range_hz, unwrap)
+        fig, ax = ir.plot_phase(range_hz, unwrap, ax=ax)
         if show_info_box:
             txt = self.metadata_str
             ax.text(
@@ -1170,7 +1186,11 @@ class Filter:
             )
         return fig, ax
 
-    def plot_zp(self, show_info_box: bool = False) -> tuple[Figure, Axes]:
+    def plot_zp(
+        self,
+        show_info_box: bool = False,
+        ax: Axes | None = None,
+    ) -> tuple[Figure, Axes]:
         """Plots zeros and poles with the unit circle. This returns `None` and
         produces no plot if user decides that conversion ba->sos is too costly.
 
@@ -1178,6 +1198,10 @@ class Filter:
         ----------
         show_info_box : bool, optional
             Shows an information box on the plot. Default: `False`.
+
+        ax : `matplotlib.axes.Axes`, None, optional
+            Axes to draw on, so that several plots can share one axis. A new
+            figure is created when None. Default: None.
 
         Returns
         -------
@@ -1199,7 +1223,7 @@ class Filter:
                     stacklevel=2,
                 )
             z, p, k = sig.tf2zpk(self.ba[0], self.ba[1])
-        fig, ax = _zp_plot(z, p)
+        fig, ax = _zp_plot(z, p, ax=ax)
         ax.text(
             0.75,
             0.91,
@@ -1220,7 +1244,10 @@ class Filter:
         return fig, ax
 
     def plot_taps(
-        self, show_info_box: bool = False, in_db: bool = False
+        self,
+        show_info_box: bool = False,
+        in_db: bool = False,
+        ax: Axes | None = None,
     ) -> tuple[Figure, Axes]:
         """Plots filter taps for an FIR filter. IIR filters will raise an
         assertion error.
@@ -1231,6 +1258,10 @@ class Filter:
             Shows an information box on the plot. Default: `False`.
         in_db : bool, optional
             When True, the FIR coefficients are shown in dB. Default: `False`.
+
+        ax : `matplotlib.axes.Axes`, None, optional
+            Axes to draw on, so that several plots can share one axis. A new
+            figure is created when None. Default: None.
 
         Returns
         -------
@@ -1251,6 +1282,7 @@ class Filter:
             ylabel="Taps / 1",
             info_box=txt,
             tight_layout=True,
+            ax=ax,
         )
 
     # ======== Saving and export ==============================================

@@ -171,7 +171,10 @@ class Regular2DGrid(Grid):
         return map_vector.reshape(self.original_lengths)
 
     def plot_map(
-        self, map: NDArray[np.float64], range_db: float = 20
+        self,
+        map: NDArray[np.float64],
+        range_db: float = 20,
+        ax: Axes | None = None,
     ) -> tuple[Figure, Axes]:
         """Plot a map done with this type of grid.
 
@@ -181,6 +184,10 @@ class Regular2DGrid(Grid):
             Beamformer map.
         range_db : float, optional
             Range in dB to plot.
+
+        ax : `matplotlib.axes.Axes`, None, optional
+            Axes to draw on, so that several plots can share one axis. A new
+            figure is created when None. Default: None.
 
         Returns
         -------
@@ -209,6 +216,7 @@ class Regular2DGrid(Grid):
             colorbar=True,
             lower_origin=True,
             returns=True,
+            ax=ax,
         )
         return fig, ax
 
@@ -644,7 +652,11 @@ class BaseBeamformer:
     """Base class for a beamformer."""
 
     def __init__(
-        self, multi_channel_signal: Signal, mic_array: MicArray, c: float = 343
+        self,
+        multi_channel_signal: Signal,
+        mic_array: MicArray,
+        c: float = 343,
+        verbose: bool = False,
     ):
         """Base constructor for Beamformer.
 
@@ -657,6 +669,9 @@ class BaseBeamformer:
             Microphone array object containing microphone positions.
         c : float, optional
             Speed of sound in m/s. Default: 343.
+        verbose : bool, optional
+            When True, the progress of a beamformer run is printed.
+            Default: False.
 
         """
         assert isinstance(multi_channel_signal, Signal), (
@@ -670,7 +685,13 @@ class BaseBeamformer:
         self.signal = multi_channel_signal
         self.mics = mic_array
         self.c = c
+        self.verbose = verbose
         self.beamformer_type = "Base"
+
+    def _report(self, message: str):
+        """Print a progress message when the beamformer is verbose."""
+        if self.verbose:
+            print(message)
 
     # ======== Prints and plots ===============================================
     def plot_setting(self) -> tuple[Figure, Axes]:
@@ -754,6 +775,7 @@ class BeamformerGridded(BaseBeamformer):
         grid: Grid,
         steering_vector: SteeringVector,
         c: float = 343,
+        verbose: bool = False,
     ):
         """Constructor for beamformer with grid and steering vector.
 
@@ -770,6 +792,9 @@ class BeamformerGridded(BaseBeamformer):
             Steering vector to be used for the beamforming.
         c : float, optional
             Speed of sound in m/s. Default: 343.
+        verbose : bool, optional
+            When True, the progress of a beamformer run is printed.
+            Default: False.
 
         Methods
         -------
@@ -779,7 +804,7 @@ class BeamformerGridded(BaseBeamformer):
         - `get_beamformer_map()`: computes a map using all passed parameters.
 
         """
-        super().__init__(multi_channel_signal, mic_array, c)
+        super().__init__(multi_channel_signal, mic_array, c, verbose)
         assert type(steering_vector) is SteeringVector, (
             "steering_vector should be of type SteeringVector"
         )
@@ -826,9 +851,8 @@ class BeamformerDASFrequency(BeamformerGridded):
         )
 
         txt = "Beamformer computation has started successfully:"
-        print("\n" + txt)
-        print("-" * len(txt))
-        print("...csm...")
+        self._report("\n" + txt + "\n" + "-" * len(txt))
+        self._report("...csm...")
         f, csm = self.signal.get_csm()
         if remove_csm_diagonal:
             # Account for energy loss
@@ -836,7 +860,7 @@ class BeamformerDASFrequency(BeamformerGridded):
             for i in range(len(f)):
                 np.fill_diagonal(csm[i, :, :], 0)
 
-        print("...Steering vector...")
+        self._report("...Steering vector...")
         # Frequency selection, wave numbers and steering vector
         ids = find_nearest_points_index_in_vector(self.f_range_hz, f)
         id1, id2 = ids[0], ids[1]
@@ -851,13 +875,8 @@ class BeamformerDASFrequency(BeamformerGridded):
         h_H = np.swapaxes(h, 1, 2).conjugate()
         self.f_range_hz = np.array([f[0], f[-1]])
 
-        print("...Apply...")
-        map = np.zeros((self.grid.number_of_points, number_frequency_bins))
-        for gind in range(self.grid.number_of_points):
-            for find in range(len(f)):
-                map[gind, find] = np.linalg.multi_dot(
-                    [h_H[find, gind, :], csm[find, :, :], h[find, :, gind]]
-                ).real
+        self._report("...Apply...")
+        map = np.einsum("fgm,fmn,fng->gf", h_H, csm, h, optimize=True).real
 
         # Unphysical values for removed diagonal of CSM
         if remove_csm_diagonal:
@@ -945,12 +964,11 @@ class BeamformerCleanSC(BeamformerGridded):
         )
 
         txt = "Beamformer computation has started successfully:"
-        print("\n" + txt)
-        print("-" * len(txt))
-        print("...csm...")
+        self._report("\n" + txt + "\n" + "-" * len(txt))
+        self._report("...csm...")
         f, csm = self.signal.get_csm()
 
-        print("...Steering vector...")
+        self._report("...Steering vector...")
         # Frequency selection, wave numbers and steering vector
         ids = find_nearest_points_index_in_vector(self.f_range_hz, f)
         id1, id2 = ids[0], ids[1]
@@ -972,14 +990,9 @@ class BeamformerCleanSC(BeamformerGridded):
             for find in range(len(f)):
                 np.fill_diagonal(csm[find, :, :], 0)
 
-        print("...Create and deconvolve map...")
-        map = np.zeros((self.grid.number_of_points, number_frequency_bins))
+        self._report("...Create and deconvolve map...")
+        map = np.einsum("fgm,fmn,fng->gf", h_H, csm, h, optimize=True).real
         for find in range(len(f)):
-            for gind in range(self.grid.number_of_points):
-                # Create initial map
-                map[gind, find] = np.linalg.multi_dot(
-                    [h_H[find, gind, :], csm[find, :, :], h[find, :, gind]]
-                ).real
             map[:, find] = _clean_sc_deconvolve(
                 map[:, find],
                 csm[find, :, :],
@@ -1065,12 +1078,11 @@ class BeamformerOrthogonal(BeamformerGridded):
             )
 
         txt = "Beamformer computation has started successfully:"
-        print("\n" + txt)
-        print("-" * len(txt))
-        print("...csm...")
+        self._report("\n" + txt + "\n" + "-" * len(txt))
+        self._report("...csm...")
         f, csm = self.signal.get_csm()
 
-        print("...Steering vector...")
+        self._report("...Steering vector...")
         # Frequency selection, wave numbers and steering vector
         ids = find_nearest_points_index_in_vector(self.f_range_hz, f)
         id1, id2 = ids[0], ids[1]
@@ -1084,7 +1096,7 @@ class BeamformerOrthogonal(BeamformerGridded):
         h = self.st_vec.get_vector(wave_numbers, grid=self.grid, mic=self.mics)
         self.f_range_hz = np.array([f[0], f[-1]])
 
-        print("...Apply...")
+        self._report("...Apply...")
         eig_map = np.zeros(
             (
                 number_eigenvalues,
@@ -1098,10 +1110,9 @@ class BeamformerOrthogonal(BeamformerGridded):
             # Spectral decomposition - eigenvalues are given in ascending order
             w, v = np.linalg.eigh(csm[find, :, :])
             for eig in range(number_eigenvalues):
-                for gind in range(self.grid.number_of_points):
-                    # Generate whole map
-                    product = h[find, :, gind].conjugate() @ v[:, -eig - 1]
-                    eig_map[eig, gind, find] = (product * product.conjugate()).real
+                # Generate whole map
+                product = h[find, :, :].conjugate().T @ v[:, -eig - 1]
+                eig_map[eig, :, find] = np.abs(product) ** 2.0
                 # Find largest value
                 source_ind = np.argmax(eig_map[eig, :, find])
                 # Scale by eigenvalue and pass to final map
@@ -1163,12 +1174,11 @@ class BeamformerFunctional(BeamformerGridded):
         )
 
         txt = "Beamformer computation has started successfully:"
-        print("\n" + txt)
-        print("-" * len(txt))
-        print("...csm...")
+        self._report("\n" + txt + "\n" + "-" * len(txt))
+        self._report("...csm...")
         f, csm = self.signal.get_csm()
 
-        print("...Steering vector...")
+        self._report("...Steering vector...")
         # Frequency selection, wave numbers and steering vector
         ids = find_nearest_points_index_in_vector(self.f_range_hz, f)
         id1, id2 = ids[0], ids[1]
@@ -1185,7 +1195,7 @@ class BeamformerFunctional(BeamformerGridded):
         h_H = np.swapaxes(h, 1, 2).conjugate()
         self.f_range_hz = np.array([f[0], f[-1]])
 
-        print("...Apply...")
+        self._report("...Apply...")
         map = np.zeros((self.grid.number_of_points, number_frequency_bins))
 
         for find in range(len(f)):
@@ -1194,14 +1204,15 @@ class BeamformerFunctional(BeamformerGridded):
             s = np.diag(s ** (1 / gamma))
             # New CSM
             csm_ = np.linalg.multi_dot([u, s, vh])
-            for gind in range(self.grid.number_of_points):
-                map[gind, find] = np.linalg.multi_dot(
-                    [h_H[find, gind, :], csm_, h[find, :, gind]]
-                ).real
-                steering_normalization = (h_H[find, gind, :] @ h[find, :, gind]).real
-                map[gind, find] = (
-                    map[gind, find] / steering_normalization
-                ) ** gamma * steering_normalization
+            quadratic_form = np.einsum(
+                "gm,mn,ng->g", h_H[find], csm_, h[find], optimize=True
+            ).real
+            steering_normalization = np.einsum(
+                "gm,mg->g", h_H[find], h[find], optimize=True
+            ).real
+            map[:, find] = (
+                quadratic_form / steering_normalization
+            ) ** gamma * steering_normalization
 
         # Integrate over all frequencies
         if number_frequency_bins > 1:
@@ -1262,12 +1273,11 @@ class BeamformerMVDR(BeamformerGridded):
         )
 
         txt = "Beamformer computation has started successfully:"
-        print("\n" + txt)
-        print("-" * len(txt))
-        print("...csm...")
+        self._report("\n" + txt + "\n" + "-" * len(txt))
+        self._report("...csm...")
         f, csm = self.signal.get_csm()
 
-        print("...Steering vector...")
+        self._report("...Steering vector...")
         # Frequency selection, wave numbers and steering vector
         ids = find_nearest_points_index_in_vector(self.f_range_hz, f)
         id1, id2 = ids[0], ids[1]
@@ -1284,18 +1294,15 @@ class BeamformerMVDR(BeamformerGridded):
         h_H = np.swapaxes(h, 1, 2).conjugate()
         self.f_range_hz = np.array([f[0], f[-1]])
 
-        print("...Apply...")
+        self._report("...Apply...")
         map = np.zeros((self.grid.number_of_points, number_frequency_bins))
 
-        for find in range(len(f)):
-            csm_1 = np.linalg.inv(csm[find, :, :])
-            for gind in range(self.grid.number_of_points):
-                map[gind, find] = (
-                    1
-                    / np.linalg.multi_dot(
-                        [h_H[find, gind, :], csm_1, h[find, :, gind]]
-                    ).real
-                )
+        map = (
+            1.0
+            / np.einsum(
+                "fgm,fmn,fng->gf", h_H, np.linalg.inv(csm), h, optimize=True
+            ).real
+        )
 
         # Integrate over all frequencies
         if number_frequency_bins > 1:
@@ -1347,9 +1354,8 @@ class BeamformerDASTime(BaseBeamformer):
 
         """
         txt = "Beamformer computation has started successfully:"
-        print("\n" + txt)
-        print("-" * len(txt))
-        print("...get delays...")
+        self._report("\n" + txt + "\n" + "-" * len(txt))
+        self._report("...get delays...")
         # Start Signal from one channel
         out_sig = self.signal.get_channels(0)
 
@@ -1367,10 +1373,10 @@ class BeamformerDASTime(BaseBeamformer):
         out_sig = out_sig.pad_trim(total_length_samples)
 
         # Start computation for each grid point
-        print("...grid focusing...")
+        self._report("...grid focusing...")
         for ig in range(self.grid.number_of_points):
             if ig == self.grid.number_of_points // 2:
-                print(r"...50% grid done...")
+                self._report(r"...50% grid done...")
             delays = (r0 - ds[:, ig]) / self.c
             # Accumulator
             new_time_data = np.zeros((total_length_samples, 1))

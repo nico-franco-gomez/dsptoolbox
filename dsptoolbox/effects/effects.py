@@ -72,9 +72,7 @@ class AudioEffect(ABC):
             new_mbs.bands = [self._apply_this_effect(b) for b in signal.bands]
             return new_mbs
 
-        raise TypeError(
-            "Audio effect can only be applied to Signal or MultiBandSignal"
-        )
+        raise TypeError("Audio effect can only be applied to Signal or MultiBandSignal")
 
     @abstractmethod
     def _apply_this_effect(self, signal: Signal) -> Signal:

@@ -693,6 +693,7 @@ class FilterBank:
         mode: FilterBankMode,
         range_hz: list[float] | None = (20.0, 20e3),
         zero_phase: bool = False,
+        ax: Axes | None = None,
     ) -> tuple[Figure, Axes] | None:
         """Plots the magnitude response of each filter.
 
@@ -710,6 +711,10 @@ class FilterBank:
             Default: [20., 20e3].
         zero_phase : bool, optional
             When `True`, zero-phase filtering is used. Default: `False`.
+
+        ax : `matplotlib.axes.Axes`, None, optional
+            Axes to draw on, so that several plots can share one axis. A new
+            figure is created when None. Default: None.
 
         Returns
         -------
@@ -752,6 +757,7 @@ class FilterBank:
                 labels=[f"Filter {h}" for h in range(bs.number_of_bands)],
                 range_y=range_y,
                 tight_layout=False,
+                ax=ax,
             )
         elif mode == FilterBankMode.Sequential:
             bs.spectrum_method = SpectrumMethod.FFT
@@ -806,6 +812,7 @@ class FilterBank:
         range_hz=(20, 20e3),
         unwrap: bool = False,
         zero_phase: bool = False,
+        ax: Axes | None = None,
     ) -> tuple[Figure, Axes] | None:
         """Plots the phase response of each filter.
 
@@ -822,6 +829,10 @@ class FilterBank:
             Range of Hz to plot. Default: [20, 20e3].
         unwrap : bool, optional
             When `True`, unwrapped phase is plotted. Default: `False`.
+
+        ax : `matplotlib.axes.Axes`, None, optional
+            Axes to draw on, so that several plots can share one axis. A new
+            figure is created when None. Default: None.
 
         Returns
         -------
@@ -851,6 +862,7 @@ class FilterBank:
                 ylabel="Phase / rad",
                 labels=[f"Filter {h}" for h in range(bs.number_of_bands)],
                 tight_layout=False,
+                ax=ax,
             )
         elif mode == FilterBankMode.Sequential:
             f, sp = bs.get_spectrum()
@@ -888,6 +900,7 @@ class FilterBank:
         mode: FilterBankMode,
         range_hz: list[float] | None = (20.0, 20e3),
         zero_phase: bool = False,
+        ax: Axes | None = None,
     ) -> tuple[Figure, Axes] | None:
         """Plots the group delay of each filter.
 
@@ -904,6 +917,10 @@ class FilterBank:
             Range of Hz to plot. Default: [20, 20e3].
         zero_phase : bool, optional
             When `True`, zero phase filtering is activated. Default: `False`.
+
+        ax : `matplotlib.axes.Axes`, None, optional
+            Axes to draw on, so that several plots can share one axis. A new
+            figure is created when None. Default: None.
 
         Returns
         -------
@@ -935,6 +952,7 @@ class FilterBank:
                 ylabel="Group delay / ms",
                 labels=[f"Filter {h}" for h in range(bs.number_of_bands)],
                 tight_layout=False,
+                ax=ax,
             )
         elif mode == FilterBankMode.Sequential:
             f, sp = bs.get_spectrum()

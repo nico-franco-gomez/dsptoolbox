@@ -1159,6 +1159,7 @@ class Signal(MultichannelData):
         range_db=None,
         smoothing: int = 0,
         show_info_box: bool = False,
+        ax: Axes | None = None,
     ) -> tuple[Figure, Axes]:
         """Plots magnitude spectrum.
         Change parameters of spectrum with set_spectrum_parameters.
@@ -1181,6 +1182,10 @@ class Signal(MultichannelData):
             Plots a info box regarding spectrum parameters and plot parameters.
             If it is str, it overwrites the standard message.
             Default: `False`.
+
+        ax : `matplotlib.axes.Axes`, None, optional
+            Axes to draw on, so that several plots can share one axis. A new
+            figure is created when None. Default: None.
 
         Returns
         -------
@@ -1253,11 +1258,19 @@ class Signal(MultichannelData):
             info_box=txt,
             labels=[f"Channel {n}" for n in range(self.number_of_channels)],
             range_y=range_db,
+            ax=ax,
         )
         return fig, ax
 
-    def plot_time(self) -> tuple[Figure, list[Axes]]:
+    def plot_time(
+        self,
+        ax: list[Axes] | None = None,
+    ) -> tuple[Figure, list[Axes]]:
         """Plots time signals.
+
+        ax : list of `matplotlib.axes.Axes`, None, optional
+            Axes to draw on, one per channel. New ones are created when None.
+            Default: None.
 
         Returns
         -------
@@ -1273,6 +1286,7 @@ class Signal(MultichannelData):
             sharex=True,
             ylabels=[f"Channel {n}" for n in range(self.number_of_channels)],
             xlabels="Time / s",
+            ax=ax,
         )
 
         for n in range(self.number_of_channels):
@@ -1292,6 +1306,7 @@ class Signal(MultichannelData):
         normalize_at_peak: bool = False,
         dynamic_range_db: float | None = 100.0,
         window_length_s: float = 0.0,
+        ax: list[Axes] | None = None,
     ) -> tuple[Figure, list[Axes]]:
         """Plots the momentary sound pressure level (dB or dBFS) of each
         channel. If the signal is calibrated and not normalized at peak, the
@@ -1309,6 +1324,10 @@ class Signal(MultichannelData):
         window_length_s : float, optional
             When different than 0, a moving average along the time axis is done
             with the given length. Default: 0.
+
+        ax : list of `matplotlib.axes.Axes`, None, optional
+            Axes to draw on, one per channel. New ones are created when None.
+            Default: None.
 
         Returns
         -------
@@ -1371,6 +1390,7 @@ class Signal(MultichannelData):
                 f"Channel {n} / {db_type}" for n in range(self.number_of_channels)
             ],
             xlabels="Time / s",
+            ax=ax,
         )
 
         add_to_peak = 1  # Add 1 dB for better plotting
@@ -1394,6 +1414,7 @@ class Signal(MultichannelData):
         range_hz: list[float] | None = (20.0, 20e3),
         smoothing: int = 0,
         remove_ir_latency: str | ArrayLike | None = None,
+        ax: Axes | None = None,
     ) -> tuple[Figure, Axes]:
         """Plots group delay of each channel.
 
@@ -1417,6 +1438,10 @@ class Signal(MultichannelData):
             - None: no latency removal.
 
             Default: None.
+
+        ax : `matplotlib.axes.Axes`, None, optional
+            Axes to draw on, so that several plots can share one axis. A new
+            figure is created when None. Default: None.
 
         Returns
         -------
@@ -1458,6 +1483,7 @@ class Signal(MultichannelData):
             range_hz,
             labels=[f"Channel {n}" for n in range(self.number_of_channels)],
             ylabel="Group delay / ms",
+            ax=ax,
         )
         return fig, ax
 
@@ -1466,6 +1492,7 @@ class Signal(MultichannelData):
         channel_number: int = 0,
         log_freqs: bool = True,
         dynamic_range_db: float = 50,
+        ax: Axes | None = None,
     ) -> tuple[Figure, Axes]:
         """Plots STFT matrix of the given channel.
 
@@ -1482,6 +1509,10 @@ class Signal(MultichannelData):
             dynamic range. For example, dynamic_range_db=50 plots for a peak
             value of 30 dB the colormap of the spectrogram between
             [30, -20] dB. Default: 50.
+
+        ax : `matplotlib.axes.Axes`, None, optional
+            Axes to draw on, so that several plots can share one axis. A new
+            figure is created when None. Default: None.
 
         Returns
         -------
@@ -1525,6 +1556,7 @@ class Signal(MultichannelData):
             xlog=False,
             ylog=log_freqs,
             colorbar=True,
+            ax=ax,
         )
         return fig, ax
 
@@ -1534,6 +1566,7 @@ class Signal(MultichannelData):
         unwrap: bool = False,
         smoothing: int = 0,
         remove_ir_latency: str | None | ArrayLike = None,
+        ax: Axes | None = None,
     ) -> tuple[Figure, Axes]:
         """Plots phase of the frequency response, only available if the method
         for the spectrum is FFT.
@@ -1560,6 +1593,10 @@ class Signal(MultichannelData):
             - None: no latency removal.
 
             Default: None.
+
+        ax : `matplotlib.axes.Axes`, None, optional
+            Axes to draw on, so that several plots can share one axis. A new
+            figure is created when None. Default: None.
 
         Returns
         -------
@@ -1605,11 +1642,15 @@ class Signal(MultichannelData):
             range_x=range_hz,
             labels=[f"Channel {n}" for n in range(self.number_of_channels)],
             ylabel="Phase / rad",
+            ax=ax,
         )
         return fig, ax
 
     def plot_csm(
-        self, range_hz=(20, 20e3), with_phase: bool = True
+        self,
+        range_hz=(20, 20e3),
+        with_phase: bool = True,
+        ax: list[Axes] | None = None,
     ) -> tuple[Figure, Axes]:
         """Plots the cross spectral matrix of the multichannel signal.
 
@@ -1620,6 +1661,10 @@ class Signal(MultichannelData):
         with_phase : bool, optional
             When `True`, the unwrapped phase is also plotted. Default: `True`.
 
+        ax : list of `matplotlib.axes.Axes`, None, optional
+            Axes to draw on, one per channel. New ones are created when None.
+            Default: None.
+
         Returns
         -------
         fig : `matplotlib.figure.Figure`
@@ -1629,7 +1674,7 @@ class Signal(MultichannelData):
 
         """
         f, csm = self.get_csm()
-        fig, ax = _csm_plot(f, csm, range_hz, True, with_phase)
+        fig, ax = _csm_plot(f, csm, range_hz, True, with_phase, ax=ax)
         return fig, ax
 
     # ======== Saving and copy ================================================

@@ -175,8 +175,15 @@ class ImpulseResponse(Signal):
         new.window = window
         return new
 
-    def plot_time(self) -> tuple[Figure, list[Axes]]:
+    def plot_time(
+        self,
+        ax: list[Axes] | None = None,
+    ) -> tuple[Figure, list[Axes]]:
         """Plots time signals.
+
+        ax : list of `matplotlib.axes.Axes`, None, optional
+            Axes to draw on, one per channel. New ones are created when None.
+            Default: None.
 
         Returns
         -------
@@ -186,7 +193,7 @@ class ImpulseResponse(Signal):
             Axes.
 
         """
-        fig, ax = super().plot_time()
+        fig, ax = super().plot_time(ax=ax)
         if hasattr(self, "window"):
             mx = np.max(np.abs(self.time_data), axis=0)
 
@@ -203,6 +210,7 @@ class ImpulseResponse(Signal):
         normalize_at_peak: bool = False,
         dynamic_range_db: float | None = 100.0,
         window_length_s: float = 0.0,
+        ax: list[Axes] | None = None,
     ) -> tuple[Figure, list[Axes]]:
         """Plots the momentary sound pressure level (dB or dBFS) of each
         channel. If the signal is calibrated and not normalized at peak, the
@@ -221,6 +229,10 @@ class ImpulseResponse(Signal):
             When different than 0, a moving average along the time axis is done
             with the given length. Default: 0.
 
+        ax : list of `matplotlib.axes.Axes`, None, optional
+            Axes to draw on, one per channel. New ones are created when None.
+            Default: None.
+
         Returns
         -------
         fig : `matplotlib.figure.Figure`
@@ -237,7 +249,9 @@ class ImpulseResponse(Signal):
           be present due to zero-padding.
 
         """
-        fig, ax = super().plot_spl(normalize_at_peak, dynamic_range_db, window_length_s)
+        fig, ax = super().plot_spl(
+            normalize_at_peak, dynamic_range_db, window_length_s, ax=ax
+        )
 
         peak_values = to_db(np.max(np.abs(self.time_data), axis=0), True)
 
@@ -266,6 +280,7 @@ class ImpulseResponse(Signal):
         range_rad_s=None,
         smoothing: int = 0,
         remove_ir_latency: str | None | ArrayLike = None,
+        ax: Axes | None = None,
     ) -> tuple[Figure, list[Axes]]:
         """Create a bode plot where magnitude and phase response are plotted
         together.
@@ -303,6 +318,10 @@ class ImpulseResponse(Signal):
             - None: no latency removal.
 
             Default: None.
+
+        ax : `matplotlib.axes.Axes`, None, optional
+            Axes to draw on, so that several plots can share one axis. A new
+            figure is created when None. Default: None.
 
         Returns
         -------
@@ -344,6 +363,7 @@ class ImpulseResponse(Signal):
             y2label=("Group Delay / s" if show_group_delay else "Phase / rad"),
             y2_linestyle="dashed",
             y2_alpha=0.6,
+            ax=ax,
         )
         ax[-1].grid(linestyle="dashed")
 

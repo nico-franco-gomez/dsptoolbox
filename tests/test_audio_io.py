@@ -24,6 +24,13 @@ class TestAudioIOModule:
         assert d is not None
         dsp.audio_io.set_device(0)
 
+    def test_list_devices_replaces_the_interactive_prompt(self):
+        """`set_device()` used to call `input()` when no device was given,
+        which cannot be used from a script."""
+        assert dsp.audio_io.list_devices() is not None
+        with pytest.raises(TypeError):
+            dsp.audio_io.set_device()
+
     def test_print_device_info_invalid_device_raises(self):
         # Pure PortAudio device query, no stream is opened -- safe without
         # real playback/recording hardware.

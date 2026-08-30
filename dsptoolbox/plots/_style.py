@@ -1,14 +1,21 @@
-def _apply_default_plot_style():
-    """Apply the package's default seaborn style.
+def use_default_style():
+    """Apply the package's default seaborn style to matplotlib's global
+    settings.
 
-    Importing any module that plots reaches this once through the `plots`
-    package, so the style is set in a single place. Seaborn is a hard
-    dependency, but plotting must still work if only it is missing.
+    This is not done when importing the library, since it would change the
+    look of every other plot in the user's session. Call it explicitly to get
+    the styling that the plots in this package were designed with.
+
+    Returns
+    -------
+    bool
+        True when the style was applied, False when seaborn is not installed.
 
     """
     try:
         from seaborn import set_style
+    except ModuleNotFoundError:
+        return False
 
-        set_style("whitegrid")
-    except ModuleNotFoundError as e:
-        print("Seaborn will not be used for plotting: ", e)
+    set_style("whitegrid")
+    return True

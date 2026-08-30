@@ -3,24 +3,58 @@ Here are wrappers for streams with sounddevice. This is useful for
 measurements and testing audio streams
 """
 
+import os
 import sys
-
-if sys.platform == "win32":
-    # This enforces the use of the ASIO-enabled PortAudio dll in sounddevice
-    # but only if this is the first import of sounddevice...
-
-    import os
-
-    env_variable = "SD_ENABLE_ASIO"
-    if env_variable not in os.environ:
-        os.environ[env_variable] = "1"
-
-import sounddevice as sd
+from typing import Any
 
 from .. import Signal
 from ..helpers.gain_and_level import _normalize
 
-default_config = sd.default
+ASIO_ENVIRONMENT_VARIABLE = "SD_ENABLE_ASIO"
+
+
+def _sd() -> Any:
+    """Import sounddevice on first use.
+
+    It is not imported with this module so that neither the library import
+    nor `enable_asio()` depend on the audio backend being present or already
+    initialized.
+
+    """
+    import sounddevice
+
+    return sounddevice
+
+
+def enable_asio() -> bool:
+    """Ask sounddevice to load the ASIO-enabled PortAudio dll on Windows, by
+    setting the `SD_ENABLE_ASIO` environment variable.
+
+    This has to happen before sounddevice is imported anywhere in the process,
+    which is why it is not done when importing this module.
+
+    Returns
+    -------
+    bool
+        True when the variable was set by this call. It is False on other
+        platforms, when it was already set, or when sounddevice has already
+        been imported, in which case the setting has no effect any more.
+
+    """
+    if sys.platform != "win32":
+        return False
+    if "sounddevice" in sys.modules:
+        return False
+    if ASIO_ENVIRONMENT_VARIABLE in os.environ:
+        return False
+    os.environ[ASIO_ENVIRONMENT_VARIABLE] = "1"
+    return True
+
+
+def get_default_config() -> Any:
+    """Return sounddevice's default configuration object, on which the device,
+    sampling rate, latency and block size can be inspected or set."""
+    return _sd().default
 
 
 def print_device_info(device_number: int | None = None):
@@ -42,11 +76,11 @@ def print_device_info(device_number: int | None = None):
 
     """
     if device_number is None:
-        d = sd.query_devices()
+        d = _sd().query_devices()
         print(d)
         return d
     else:
-        d = sd.query_devices(device_number)
+        d = _sd().query_devices(device_number)
         print(d)
         return d
 
@@ -69,7 +103,7 @@ def set_latency(input_low: bool, output_low: bool):
         streams.
 
     """
-    sd.default.latency = (
+    _sd().default.latency = (
         "low" if input_low else "high",
         "low" if output_low else "high",
     )
@@ -87,28 +121,23 @@ def set_blocksize(blocksize: int):
         Desired block size.
 
     """
-    sd.default.blocksize = blocksize
+    _sd().default.blocksize = blocksize
 
 
 def set_device(
-    device: list[int] | list[str] | str | int | None = None,
+    device: list[int] | list[str] | str | int,
     sampling_rate_hz: int | None = None,
 ):
-    """Takes in a device number to set it as the default for the input and the
-    output. If `None` is passed, the available devices are first shown and
-    then the user is asked for input to set the device two values separated by
-    a comma "input_int, output_int".
+    """Set the default input and output device.
 
     Parameters
     ----------
-    device : list[int | str] with length 2, str, int, None, optional
+    device : list[int | str] with length 2, str, int
         Sets the input and output devices from two integers, e.g. [1, 2].
         Alternatively, two strings contained in the interface's name (or the
         name itself) can be passed. The first interface to match will be taken.
         If passing only one string or integer, the interface will be taken for
-        both input and output. Use `None` to be prompted with the options and
-        pass only two values separated by a comma, e.g., `1, 2`.
-        Default: `None`.
+        both input and output.
     sampling_rate_hz : int, None, optional
         Pass a default sampling rate to the devices. Pass `None` to ignore.
         Default: `None`.
@@ -117,30 +146,22 @@ def set_device(
     -------
     device_list : `sounddevice.DeviceList`
         Device List with dictionaries containing information about each
-        available device if `device=None`.
+        available device.
+
+    Notes
+    -----
+    - Use `list_devices()` to see which devices are available.
 
     """
-    if device is None:
-        txt = "List of available devices"
-        print(txt + "\n" + "-" * len(txt))
-        print(sd.query_devices())
-        print("-" * len(txt))
-        device = input(
-            "Which device should be set as default? Between "
-            + f"0 and {len(sd.query_devices()) - 1}: "
-        )
-        device = [int(d) for d in device.split(",")]
-        if len(device) == 1:
-            device = device[0]
-    device_list = sd.query_devices()
+    device_list = _sd().query_devices()
     if type(device) is int:
         d = device_list[device]["name"]
         print(f"""{d} will be used for input and output!""")
-        sd.default.device = device
+        _sd().default.device = device
     elif type(device) is str:
         d_id, d_name = get_interface_number_by_name(device, device_list)
         print(f"{d_name} will be used for input and output!")
-        sd.default.device = d_id
+        _sd().default.device = d_id
     elif type(device) is list:
         assert len(device) == 2, "List with device numbers must be exactly 2"
 
@@ -150,14 +171,14 @@ def set_device(
 
             d = device_list[device[1]]["name"]
             print(f"{d} will be used for output!")
-            sd.default.device = device
+            _sd().default.device = device
         elif type(device[0]) is str and type(device[1]) is str:
             d_id_in, d_name_in = get_interface_number_by_name(device[0], device_list)
             print(f"{d_name_in} will be used for input!")
 
             d_id_out, d_name_out = get_interface_number_by_name(device[1], device_list)
             print(f"{d_name_out} will be used for output!")
-            sd.default.device = [d_id_in, d_id_out]
+            _sd().default.device = [d_id_in, d_id_out]
         else:
             raise TypeError(
                 "device must be either a homogenouos list of int and "
@@ -171,13 +192,29 @@ def set_device(
 
     # Sampling rate
     if sampling_rate_hz is not None:
-        sd.default.samplerate = sampling_rate_hz
-    return sd.query_devices()
+        _sd().default.samplerate = sampling_rate_hz
+    return _sd().query_devices()
 
 
-def get_interface_number_by_name(
-    name: str, device_list: sd.DeviceList
-) -> tuple[int, str]:
+def list_devices():
+    """Return the available audio devices, and print them.
+
+    Returns
+    -------
+    device_list : `sounddevice.DeviceList`
+        Device list with dictionaries containing information about each
+        available device. Its indices are the ones `set_device()` expects.
+
+    """
+    device_list = _sd().query_devices()
+    title = "List of available devices"
+    print(title + "\n" + "-" * len(title))
+    print(device_list)
+    print("-" * len(title))
+    return device_list
+
+
+def get_interface_number_by_name(name: str, device_list: "Any") -> tuple[int, str]:
     """Return the interface ID (number) by looking at its name.
 
     Parameters
@@ -279,10 +316,10 @@ def play_and_record(
         )
 
     if device is not None:
-        sd.default.device = device
+        _sd().default.device = device
 
     print("Playback and recording have started " + f"({duration_seconds:.1f} s)...")
-    rec_time_data = sd.playrec(
+    rec_time_data = _sd().playrec(
         data=play_data,
         samplerate=signal.sampling_rate_hz,
         input_mapping=rec_channels,
@@ -333,10 +370,10 @@ def record(
     )
     #
     if device is not None:
-        sd.default.device = device
+        _sd().default.device = device
 
     print(f"\nRecording started ({duration_seconds:.1f} s)...")
-    rec_time_data = sd.rec(
+    rec_time_data = _sd().rec(
         frames=int(duration_seconds * sampling_rate_hz),
         samplerate=sampling_rate_hz,
         mapping=rec_channels,
@@ -402,10 +439,10 @@ def play(
         )
     #
     if device is not None:
-        sd.default.device = device
+        _sd().default.device = device
 
     print(f"Playback started ({duration_seconds:.1f} s)...")
-    sd.play(
+    _sd().play(
         data=play_data,
         samplerate=signal.sampling_rate_hz,
         mapping=play_channels,
@@ -419,7 +456,7 @@ def CallbackStop():
     streamings.
 
     """
-    sd.CallbackStop()
+    _sd().CallbackStop()
 
 
 def sleep(seconds: float):
@@ -432,7 +469,7 @@ def sleep(seconds: float):
         Seconds to wait.
 
     """
-    sd.sleep(int(seconds * 1000))
+    _sd().sleep(int(seconds * 1000))
 
 
 def output_stream(
@@ -473,7 +510,7 @@ def output_stream(
 
     Returns
     -------
-    stream : `sd.OutputStream`
+    stream : `sounddevice.OutputStream`
         Stream object.
 
     References
@@ -482,7 +519,7 @@ def output_stream(
 
     """
     pobusc = prime_output_buffers_using_stream_callback
-    stream = sd.OutputStream(
+    stream = _sd().OutputStream(
         samplerate=signal.sampling_rate_hz,
         blocksize=blocksize,
         device=device,
