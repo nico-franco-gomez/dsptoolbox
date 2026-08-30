@@ -72,7 +72,7 @@ def _reconstruct_framed_signal(
     step_size: int,
     window: str | NDArray[np.float64] | None = None,
     original_signal_length: int | None = None,
-    safety_threshold: float = 1e-4,
+    safety_threshold: float | None = 1e-4,
 ) -> NDArray[np.float64]:
     """Gets and returns a framed signal into its vector representation.
 
@@ -88,10 +88,11 @@ def _reconstruct_framed_signal(
     original_signal_length : int, optional
         When different than `None`, the output is padded or trimmed to this
         length. Default: `None`.
-    safety_threshold : float, optional
+    safety_threshold : float, None, optional
         When reconstructing the signal with a window, very small values can
         lead to instabilities. This safety threshold avoids dividing with
-        samples beneath this value. Default: 1e-4.
+        samples beneath this value. Pass `None` to skip the clipping.
+        Default: 1e-4.
 
         Dividing by 1e-4 is the same as amplifying by 80 dB.
 

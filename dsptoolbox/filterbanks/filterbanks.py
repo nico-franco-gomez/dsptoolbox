@@ -440,10 +440,8 @@ def weighting_filter(
         z = [0, 0]
         k = 5.91797e9
         p = [-129.4, -129.4, -76655, -76655]
-    return Filter.from_zpk(
-        *bilinear_zpk(z, p, k, sampling_rate_hz),
-        sampling_rate_hz,
-    )
+    z_digital, p_digital, k_digital = bilinear_zpk(z, p, k, sampling_rate_hz)
+    return Filter.from_zpk(z_digital, p_digital, k_digital, sampling_rate_hz)
 
 
 def complementary_fir_filter(fir: Filter) -> Filter:

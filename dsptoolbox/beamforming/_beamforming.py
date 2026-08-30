@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
+from mpl_toolkits.mplot3d import Axes3D
 from numpy.typing import NDArray
 
 from ..helpers.other import _euclidean_distance_matrix
@@ -131,6 +132,7 @@ class BasePoints:
             1, 1, figsize=(7, 5), subplot_kw={"projection": "3d" if threed else None}
         )
         if threed:
+            assert isinstance(ax, Axes3D)
             ax.scatter(
                 xs=self.coordinates[:, 0],
                 ys=self.coordinates[:, 1],

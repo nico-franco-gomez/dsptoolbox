@@ -29,6 +29,25 @@ class TestEffectsModule:
         delay.set_advanced_parameters(dsp.effects.SaturationType.Arctan)
         delay.apply(self.speech)
 
+    def test_set_parameters_leaves_the_other_one_unchanged(self):
+        """`set_parameters` documents that None leaves a parameter unchanged,
+        but both were asserted on directly, so passing only one raised a
+        TypeError.
+
+        """
+        delay = dsp.effects.DigitalDelay(150.0, feedback=0.15)
+
+        delay.set_parameters(feedback=0.5)
+        assert delay.delay_ms == 150.0 and delay.feedback == 0.5
+
+        delay.set_parameters(delay_time_ms=50.0)
+        assert delay.delay_ms == 50.0 and delay.feedback == 0.5
+
+        with pytest.raises(AssertionError):
+            delay.set_parameters(feedback=-1.0)
+        with pytest.raises(AssertionError):
+            delay.set_parameters(delay_time_ms=0.0)
+
     def testDigitalDelayEchoRecursionMatchesClosedForm(self):
         """For an impulse input, the delay line without saturation produces
         exact echoes at every multiple of the delay with amplitude

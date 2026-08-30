@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from enum import Enum, auto
+from typing import Literal
 
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
@@ -54,7 +55,7 @@ class SpectrumScaling(Enum):
     FFTForward = auto()
     FFTOrthogonal = auto()
 
-    def fft_norm(self) -> str:
+    def fft_norm(self) -> Literal["backward", "forward", "ortho"]:
         """Return the expected FFT normalization to use for the given
         scaling.
 

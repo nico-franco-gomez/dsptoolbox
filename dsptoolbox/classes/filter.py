@@ -6,6 +6,7 @@ from collections.abc import Sequence
 from copy import deepcopy
 from fractions import Fraction
 from pickle import HIGHEST_PROTOCOL, dump
+from typing import Literal, Self, overload
 from warnings import warn
 
 import numpy as np
@@ -286,8 +287,8 @@ class Filter:
 
     @staticmethod
     def from_zpk(
-        z: NDArray[np.float64],
-        p: NDArray[np.float64],
+        z: NDArray[np.complex128] | NDArray[np.float64],
+        p: NDArray[np.complex128] | NDArray[np.float64],
         k: float,
         sampling_rate_hz: int,
     ) -> "Filter":
@@ -295,9 +296,9 @@ class Filter:
 
         Parameters
         ----------
-        z : NDArray[np.float64]
+        z : NDArray[np.complex128]
             Zeros
-        p : NDArray[np.float64]
+        p : NDArray[np.complex128]
             Poles
         k : float
             Gain
@@ -849,14 +850,15 @@ class Filter:
             )
 
         # IIR or zero phase IR
-        ir_filt = _impulse(length_samples)
         ir_filt = ImpulseResponse(
             None,
-            ir_filt,
+            _impulse(length_samples),
             self.sampling_rate_hz,
             constrain_amplitude=False,
         )
-        return self.filter_signal(ir_filt, zero_phase=zero_phase)
+        filtered = self.filter_signal(ir_filt, zero_phase=zero_phase)
+        assert isinstance(filtered, ImpulseResponse)
+        return filtered
 
     def get_transfer_function(
         self, frequency_vector_hz: NDArray[np.float64]
@@ -927,9 +929,24 @@ class Filter:
         gd = sig.group_delay(ba, w=frequency_vector_hz, fs=self.sampling_rate_hz)[1]
         return gd / self.sampling_rate_hz if in_seconds else gd
 
+    @overload
+    def get_coefficients(
+        self, coefficients_mode: Literal[FilterCoefficientsType.Sos]
+    ) -> NDArray[np.float64]: ...
+
+    @overload
+    def get_coefficients(
+        self, coefficients_mode: Literal[FilterCoefficientsType.Ba]
+    ) -> list[NDArray[np.float64]]: ...
+
+    @overload
+    def get_coefficients(
+        self, coefficients_mode: Literal[FilterCoefficientsType.Zpk]
+    ) -> tuple[NDArray[np.complex128], NDArray[np.complex128], float]: ...
+
     def get_coefficients(
         self, coefficients_mode: FilterCoefficientsType
-    ) -> list | tuple | NDArray[np.float64] | None:
+    ) -> NDArray[np.float64] | list[NDArray[np.float64]] | tuple:
         """Return a copy of the filter coefficients.
 
         Parameters
@@ -1110,7 +1127,7 @@ class Filter:
             x=f,
             matrix=gd[..., None],
             range_x=range_hz,
-            range_y=[ymin, ymax],
+            range_y=(ymin, ymax),
             ylabel="Group delay / ms",
             ax=ax,
         )
@@ -1281,7 +1298,7 @@ class Filter:
         )
 
     # ======== Saving and export ==============================================
-    def save_filter(self, path: str) -> None:
+    def save_filter(self, path: str) -> Self:
         """Saves the Filter object as a pickle.
 
         Parameters
@@ -1295,7 +1312,7 @@ class Filter:
             dump(self, data_file, HIGHEST_PROTOCOL)
         return self
 
-    def copy(self) -> "Filter":
+    def copy(self) -> Self:
         """Returns a copy of the object.
 
         Returns

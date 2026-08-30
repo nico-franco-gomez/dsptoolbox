@@ -35,7 +35,7 @@ Time series:
 """
 
 from collections.abc import Callable
-from typing import Any
+from typing import Any, Literal, overload
 
 import numpy as np
 from numpy.typing import NDArray
@@ -224,6 +224,26 @@ def frequency_crossover(
         return i(x)
 
     return func
+
+
+@overload
+def fractional_octave_frequencies(
+    num_fractions: int = 1,
+    frequency_range: tuple[float, float] = (20.0, 20e3),
+    return_cutoff: Literal[False] = False,
+) -> tuple[NDArray[np.float64], NDArray[np.float64]]: ...
+
+
+@overload
+def fractional_octave_frequencies(
+    num_fractions: int,
+    frequency_range: tuple[float, float],
+    return_cutoff: Literal[True],
+) -> tuple[
+    NDArray[np.float64],
+    NDArray[np.float64],
+    tuple[NDArray[np.float64], NDArray[np.float64]],
+]: ...
 
 
 def fractional_octave_frequencies(

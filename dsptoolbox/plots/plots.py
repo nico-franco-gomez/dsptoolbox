@@ -3,6 +3,7 @@ Includes some basic plotting templates
 """
 
 from collections.abc import Sequence
+from typing import Literal
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -28,7 +29,9 @@ def _get_figure_and_axes(
     """Return the figure of the given axes, or create a new pair."""
     if ax is None:
         return plt.subplots(1, 1, figsize=figsize)
-    return ax.get_figure(), ax
+    figure = ax.get_figure()
+    assert isinstance(figure, Figure), "The axes do not belong to a figure"
+    return figure, ax
 
 
 def general_plot(
@@ -38,7 +41,7 @@ def general_plot(
     range_y: tuple[float, float] | None = None,
     log_x: bool = True,
     labels: Sequence[str] | None = None,
-    xlabel: str = "Frequency / Hz",
+    xlabel: str | None = "Frequency / Hz",
     ylabel: str | None = None,
     info_box: str | None = None,
     tight_layout: bool = True,
@@ -136,7 +139,7 @@ def general_plot_two_axes(
     log_x: bool = True,
     labels1: Sequence[str] | None = None,
     labels2: Sequence[str] | None = None,
-    xlabel: str = "Frequency / Hz",
+    xlabel: str | None = "Frequency / Hz",
     y1label: str | None = None,
     y2label: str | None = None,
     y1_linestyle: str | None = None,
@@ -330,53 +333,55 @@ def general_subplots_line(
         raise ValueError("Unsupported dimension. Matrix must be a 2D-array")
     number_of_channels = matrix.shape[1]
     if ax is not None:
-        ax = list(np.atleast_1d(ax))
-        assert len(ax) == number_of_channels, (
-            f"{len(ax)} axes were passed for {number_of_channels} channels"
+        axes = list(ax) if isinstance(ax, list) else [ax]
+        assert len(axes) == number_of_channels, (
+            f"{len(axes)} axes were passed for {number_of_channels} channels"
         )
-        fig = ax[0].get_figure()
+        figure = axes[0].get_figure()
+        assert isinstance(figure, Figure), "The axes do not belong to a figure"
+        fig = figure
     elif column:
-        fig, ax = plt.subplots(
+        fig, created_axes = plt.subplots(
             number_of_channels,
             1,
             sharex=sharex,
             figsize=(8, 2 * number_of_channels),
             sharey=sharey,
         )
+        axes = list(np.atleast_1d(np.asarray(created_axes, dtype=object)))
     else:
-        fig, ax = plt.subplots(
+        fig, created_axes = plt.subplots(
             1,
             number_of_channels,
             sharex=sharex,
             figsize=(2 * number_of_channels, 8),
             sharey=sharey,
         )
-    if number_of_channels == 1:
-        ax = list(np.atleast_1d(ax))
+        axes = list(np.atleast_1d(np.asarray(created_axes, dtype=object)))
     if x is None:
         x = np.arange(matrix.shape[0])
     for n in range(number_of_channels):
-        ax[n].plot(x, matrix[:, n])
+        axes[n].plot(x, matrix[:, n])
         if log_x:
-            ax[n].set_xscale("log")
+            axes[n].set_xscale("log")
             ticks = np.array([20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000])
             if range_x is not None:
                 ticks = ticks[(ticks > range_x[0]) & (ticks < range_x[-1])]
-            ax[n].set_xticks(ticks)
-            ax[n].get_xaxis().set_major_formatter(ScalarFormatter())
+            axes[n].set_xticks(ticks)
+            axes[n].get_xaxis().set_major_formatter(ScalarFormatter())
         if ylabels is not None:
-            ax[n].set_ylabel(ylabels[n])
+            axes[n].set_ylabel(ylabels[n])
         if xlabels is not None:
             if type(xlabels) is not str and len(xlabels) > 1:
-                ax[n].set_xlabel(xlabels[n])
+                axes[n].set_xlabel(xlabels[n])
         if range_x is not None:
-            ax[n].set_xlim(range_x)
+            axes[n].set_xlim(range_x)
         if range_y is not None:
-            ax[n].set_ylim(range_y)
+            axes[n].set_ylim(range_y)
     if type(xlabels) is str or len(xlabels) == 1:
-        ax[-1].set_xlabel(xlabels)
+        axes[-1].set_xlabel(xlabels)
     fig.tight_layout()
-    return fig, ax
+    return fig, axes
 
 
 def general_matrix_plot(
@@ -455,7 +460,7 @@ def general_matrix_plot(
         min_val = np.min(matrix)
 
     if lower_origin:
-        origin = "lower"
+        origin: Literal["lower", "upper"] = "lower"
     else:
         origin = "upper"
 

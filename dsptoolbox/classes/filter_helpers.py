@@ -167,7 +167,9 @@ def _impulse(length_samples: int = 512, delay_samples: int = 0) -> NDArray[np.fl
 
 
 def _group_delay_filter(
-    ba: Sequence[ArrayLike], length_samples: int = 512, fs_hz: int = 48000
+    ba: Sequence[NDArray[np.float64]],
+    length_samples: int = 512,
+    fs_hz: int = 48000,
 ) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
     """Computes group delay using the method in
     https://www.dsprelated.com/freebooks/filters/Phase_Group_Delay.html.
@@ -264,19 +266,22 @@ def _filter_on_signal(
     state = np.moveaxis(np.asarray(zi), 0, -1) if zi is not None else None
 
     # Channels
-    if channels is None:
-        channels = np.arange(signal.number_of_channels)
+    selection = (
+        np.arange(signal.number_of_channels)
+        if channels is None
+        else np.atleast_1d(np.asarray(channels))
+    )
 
     # Filtering
     if state is not None:
-        y, state[:, :, channels] = sig.sosfilt(
-            sos, signal.time_data[:, channels], zi=state[:, :, channels], axis=0
+        y, state[:, :, selection] = sig.sosfilt(
+            sos, signal.time_data[:, selection], zi=state[:, :, selection], axis=0
         )
     else:
         if zero_phase:
-            y = sig.sosfiltfilt(sos, signal.time_data[:, channels], axis=0)
+            y = sig.sosfiltfilt(sos, signal.time_data[:, selection], axis=0)
         else:
-            y = sig.sosfilt(sos, signal.time_data[:, channels], axis=0)
+            y = sig.sosfilt(sos, signal.time_data[:, selection], axis=0)
 
     # Check for complex output
     if np.iscomplexobj(y):
@@ -289,7 +294,7 @@ def _filter_on_signal(
         new_time_data = new_time_data.astype(np.complex128)
 
     # Create new signal
-    new_time_data[:, channels] = y
+    new_time_data[:, selection] = y
     new_signal = signal.copy_with_new_time_data(new_time_data)
 
     # zi packing: back to one entry per channel, as initialize_zi produces it
@@ -300,7 +305,7 @@ def _filter_on_signal(
 
 def _filter_on_signal_ba(
     signal: Signal,
-    ba: Sequence[ArrayLike],
+    ba: Sequence[NDArray[np.float64]],
     channels: int | ArrayLike | None,
     zi: list | None,
     zero_phase: bool,
@@ -355,23 +360,26 @@ def _filter_on_signal_ba(
     state = np.asarray(zi).T if zi is not None else None
 
     # Channels
-    if channels is None:
-        channels = np.arange(signal.number_of_channels)
+    selection = (
+        np.arange(signal.number_of_channels)
+        if channels is None
+        else np.atleast_1d(np.asarray(channels))
+    )
 
     # Filtering
     if state is not None:
-        y, state[:, channels] = lfilter(
+        y, state[:, selection] = lfilter(
             ba[0],
             a=ba[1],
-            x=signal.time_data[:, channels],
-            zi=state[:, channels],
+            x=signal.time_data[:, selection],
+            zi=state[:, selection],
             axis=0,
         )
     else:
         if zero_phase:
-            y = sig.filtfilt(b=ba[0], a=ba[1], x=signal.time_data[:, channels], axis=0)
+            y = sig.filtfilt(b=ba[0], a=ba[1], x=signal.time_data[:, selection], axis=0)
         else:
-            y = lfilter(ba[0], a=ba[1], x=signal.time_data[:, channels], axis=0)
+            y = lfilter(ba[0], a=ba[1], x=signal.time_data[:, selection], axis=0)
 
     # Check for complex output
     if np.iscomplexobj(y):
@@ -384,7 +392,7 @@ def _filter_on_signal_ba(
         new_time_data = new_time_data.astype(np.complex128)
 
     # Create new signal
-    new_time_data[:, channels] = y
+    new_time_data[:, selection] = y
     new_signal = signal.copy_with_new_time_data(new_time_data)
 
     # zi packing: back to one entry per channel, as initialize_zi produces it
@@ -517,7 +525,7 @@ def _lfilter_fir(
 def _filter_and_downsample(
     time_data: NDArray[np.float64],
     down_factor: int,
-    ba_coefficients: list,
+    ba_coefficients: Sequence[NDArray[np.float64]],
     polyphase: bool,
 ) -> NDArray[np.float64]:
     """Filters and downsamples time data. If polyphase is `True`, it is
@@ -582,7 +590,7 @@ def _filter_and_downsample(
 def _filter_and_upsample(
     time_data: NDArray[np.float64],
     up_factor: int,
-    ba_coefficients: list,
+    ba_coefficients: Sequence[NDArray[np.float64]],
     polyphase: bool,
 ) -> NDArray[np.float64]:
     """Filters and upsamples time data. If polyphase is `True`, it is

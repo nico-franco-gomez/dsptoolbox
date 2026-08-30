@@ -1355,16 +1355,17 @@ class Signal(MultichannelData):
             ax=ax,
         )
 
+        imaginary = self.time_data_imaginary
         for n in range(self.number_of_channels):
             mx = np.max(np.abs(self.time_data[:, n])) * 1.1
-            if self.is_complex_signal:
+            if imaginary is not None:
                 ax[n].plot(
                     self.time_vector_s,
-                    self.time_data_imaginary[:, n],
+                    imaginary[:, n],
                     alpha=0.9,
                     linestyle="dotted",
                 )
-            ax[n].set_ylim([-mx, mx])
+            ax[n].set_ylim((-mx, mx))
         return fig, ax
 
     def plot_spl(
@@ -1418,8 +1419,9 @@ class Signal(MultichannelData):
             window /= len(window)
             td_squared = oaconvolve(td_squared, window, mode="same", axes=0)
 
-        if self.is_complex_signal:
-            td_squared_imaginary = self.time_data_imaginary**2.0
+        imaginary = self.time_data_imaginary
+        if imaginary is not None:
+            td_squared_imaginary = imaginary**2.0
             if window_length_s > 0:
                 td_squared_imaginary = oaconvolve(
                     td_squared_imaginary, window, mode="same", axes=0
@@ -1702,8 +1704,8 @@ class Signal(MultichannelData):
         self,
         range_hz: tuple[float, float] | None = (20, 20e3),
         with_phase: bool = True,
-        ax: list[Axes] | None = None,
-    ) -> tuple[Figure, Axes]:
+        ax: NDArray | None = None,
+    ) -> tuple[Figure, NDArray]:
         """Plots the cross spectral matrix of the multichannel signal.
 
         Parameters
@@ -1726,11 +1728,10 @@ class Signal(MultichannelData):
 
         """
         f, csm = self.get_csm()
-        fig, ax = _csm_plot(f, csm, range_hz, True, with_phase, ax=ax)
-        return fig, ax
+        return _csm_plot(f, csm, range_hz, True, with_phase, ax=ax)
 
     # ======== Saving and copy ================================================
-    def save_signal(self, path: str, bit_depth: int = 32) -> None:
+    def save_signal(self, path: str, bit_depth: int = 32) -> Self:
         """Saves the Signal object as wav, flac or pickle. The saving format
         is inferred from the file extension in `path`.
 
@@ -1784,11 +1785,8 @@ class Signal(MultichannelData):
     # ======== Multichannel Data Base Class Implementation ====================
     def _get_data(self) -> NDArray[np.float64 | np.complex128]:
         """Get the time data for multichannel operations."""
-        return (
-            self.time_data + 1j * self.time_data_imaginary
-            if self.is_complex_signal
-            else self.time_data
-        )
+        imaginary = self.time_data_imaginary
+        return self.time_data if imaginary is None else self.time_data + 1j * imaginary
 
     def _set_data(self, data: NDArray[np.float64 | np.complex128]) -> None:
         """Set the time data for multichannel operations."""
@@ -2149,8 +2147,9 @@ class Signal(MultichannelData):
         if len(gain_linear) == 1:
             gain_linear = gain_linear[0]
         new_sig = self.copy_with_new_time_data(self.time_data * gain_linear)
-        if new_sig.is_complex_signal:
-            new_sig.time_data_imaginary *= gain_linear
+        imaginary = new_sig.time_data_imaginary
+        if imaginary is not None:
+            new_sig.time_data_imaginary = imaginary * gain_linear
         return new_sig
 
     def detrend(self, polynomial_order: int = 0) -> Self:
@@ -2694,12 +2693,13 @@ class Signal(MultichannelData):
         current_channel = 0
         for s in signals:
             if complex_data:
-                if s.is_complex_signal:
+                imaginary = s.time_data_imaginary
+                if imaginary is not None:
                     td[
                         :,
                         current_channel : current_channel + s.number_of_channels,
                     ] = _pad_trim(
-                        s.time_data + 1j * s.time_data_imaginary,
+                        s.time_data + 1j * imaginary,
                         total_length,
                         in_the_end=at_end,
                     )

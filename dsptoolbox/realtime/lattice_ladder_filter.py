@@ -100,7 +100,6 @@ class LatticeLadderFilter(RealtimeFilter[float]):
                 self.iir_filter = False
         self.k = k_coefficients
         self.c = c_coefficients
-        self.state: NDArray[np.float64] | None = None
         self.sampling_rate_hz = sampling_rate_hz
         self.set_n_channels(1)
 
@@ -242,6 +241,7 @@ class LatticeLadderFilter(RealtimeFilter[float]):
             return self.__lattice_filtering_fir_sample(x, channel)
 
     def __lattice_ladder_filtering_sos_sample(self, x: float, channel: int) -> float:
+        assert self.c is not None, "Ladder coefficients are needed"
         for section in range(self.k.shape[0]):
             x_low = 0
 
@@ -263,6 +263,7 @@ class LatticeLadderFilter(RealtimeFilter[float]):
         x: float,
         channel: int,
     ) -> float:
+        assert self.c is not None, "Ladder coefficients are needed"
         order_iterations = len(self.k) - 1
         x_low = 0
         for i in range(order_iterations, -1, -1):

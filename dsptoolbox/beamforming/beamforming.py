@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
+from mpl_toolkits.mplot3d import Axes3D
 from numpy.typing import NDArray
 from scipy.integrate import simpson
 
@@ -132,23 +133,24 @@ class Regular2DGrid(Grid):
         self.original_lengths = (len(line1), len(line2))
         dim1, dim2 = np.meshgrid(line1, line2, indexing="ij")
 
-        dim1 = dim1.flatten()
-        dim2 = dim2.flatten()
-        positions = np.append(dim1[..., None], dim2[..., None], axis=1)
-        positions = np.append(
-            positions, np.ones((len(dim1), 1)) * third_coordinate, axis=1
+        flat1 = dim1.flatten()
+        flat2 = dim2.flatten()
+        coordinates = np.append(flat1[..., None], flat2[..., None], axis=1)
+        coordinates = np.append(
+            coordinates, np.ones((len(flat1), 1)) * third_coordinate, axis=1
         )
 
         # Convert to the positions dictionary
         base_dimensions = ["x", "y", "z"]
         base_dimensions.remove(dimension_strs[0])
         base_dimensions.remove(dimension_strs[1])
-        positions = {
-            f"{dimension_strs[0]}": positions[:, 0],
-            f"{dimension_strs[1]}": positions[:, 1],
-            f"{base_dimensions[0]}": positions[:, 2],
-        }
-        super().__init__(positions)
+        super().__init__(
+            {
+                f"{dimension_strs[0]}": coordinates[:, 0],
+                f"{dimension_strs[1]}": coordinates[:, 1],
+                f"{base_dimensions[0]}": coordinates[:, 2],
+            }
+        )
 
     def reconstruct_map_shape(
         self, map_vector: NDArray[np.float64]
@@ -490,34 +492,38 @@ class MicArray(BasePoints):
         super().__init__(positions)
         # Initialize aperture and minimum distance between microphones as None
         # (computation is only done on demand)
-        self.__array_center_coordinates = None
-        self.__array_center_channel_number = None
-        self.__aperture = None
-        self.__min_distance = None
+        self.__array_center_coordinates: NDArray[np.float64] | None = None
+        self.__array_center_channel_number: int | None = None
+        self.__aperture: float | None = None
+        self.__min_distance: float | None = None
 
     # ======== Properties =====================================================
     @property
     def aperture(self) -> float:
         if self.__aperture is None:
             self.__compute_aperture_min_distance()
+        assert self.__aperture is not None
         return self.__aperture
 
     @property
     def min_distance(self) -> float:
         if self.__min_distance is None:
             self.__compute_aperture_min_distance()
+        assert self.__min_distance is not None
         return self.__min_distance
 
     @property
     def array_center_coordinates(self) -> NDArray[np.float64]:
         if self.__array_center_coordinates is None:
             self.__compute_array_center()
+        assert self.__array_center_coordinates is not None
         return self.__array_center_coordinates
 
     @property
     def array_center_channel_number(self) -> int:
         if self.__array_center_channel_number is None:
             self.__compute_array_center()
+        assert self.__array_center_channel_number is not None
         return self.__array_center_channel_number
 
     def __compute_aperture_min_distance(self) -> None:
@@ -700,6 +706,7 @@ class BaseBeamformer:
 
         """
         fig, ax = plt.subplots(1, 1, figsize=(8, 5), subplot_kw={"projection": "3d"})
+        assert isinstance(ax, Axes3D)
         ax.scatter(
             self.mics.coordinates[:, 0],
             self.mics.coordinates[:, 1],
@@ -1453,18 +1460,17 @@ def mix_sources_on_array(
 
     """
     # Convert to list if only Monopole source is passed
-    if type(sources) is MonopoleSource:
-        sources = [sources]
-    assert len(sources) > 0, "There must be at least one source to project on array"
-    assert all([type(i) is MonopoleSource for i in sources]), (
+    all_sources = [sources] if isinstance(sources, MonopoleSource) else list(sources)
+    assert len(all_sources) > 0, "There must be at least one source to project on array"
+    assert all([type(i) is MonopoleSource for i in all_sources]), (
         "All sources in list should be of type Source"
     )
     # Take first source
-    multi_channel_sig = sources[0].get_signals_on_array(mics, c)
+    multi_channel_sig = all_sources[0].get_signals_on_array(mics, c)
     total_length_samples = multi_channel_sig.time_data.shape[0]
 
     # Add all other sources progressively checking for shortest duration
-    for s in sources[1:]:
+    for s in all_sources[1:]:
         # Warning if lengths do not match
         if total_length_samples != s.emitted_signal.time_data.shape[0]:
             warn(

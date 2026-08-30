@@ -327,8 +327,8 @@ def _kaiser_window_fractional(
 def _indices_above_threshold_dbfs(
     time_vec: NDArray[np.float64],
     threshold_dbfs: float,
-    attack_smoothing_coeff: int,
-    release_smoothing_coeff: int,
+    attack_smoothing_coeff: float,
+    release_smoothing_coeff: float,
     normalize: bool = True,
 ) -> NDArray[np.bool_]:
     """Returns indices with power above a given power threshold (in dBFS) in a
@@ -341,9 +341,9 @@ def _indices_above_threshold_dbfs(
         take one channel.
     threshold_dbfs : float
         Threshold in dBFS to be regarded for activation.
-    attack_smoothing_coeff : int
+    attack_smoothing_coeff : float
         Coefficient for attack smoothing for level computation.
-    release_smoothing_coeff : int
+    release_smoothing_coeff : float
         Coefficient for release smoothing for level computation.
     normalize : bool, optional
         When `True`, signal is normalized such that the threshold is relative

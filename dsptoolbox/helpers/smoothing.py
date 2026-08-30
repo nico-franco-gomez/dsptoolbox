@@ -10,8 +10,8 @@ from .windows import _gaussian_window_sigma
 def _fractional_octave_smoothing(
     vector: NDArray[np.float64],
     bin_spacing_octaves: float | None = None,
-    num_fractions: int = 3,
-    window_type: WindowType | str = "hann",
+    num_fractions: float = 3,
+    window_type: WindowType | str | tuple = "hann",
     window_vec: NDArray[np.float64] | None = None,
     clip_values: bool = False,
 ) -> NDArray[np.float64]:
@@ -27,7 +27,7 @@ def _fractional_octave_smoothing(
     bin_spacing_octaves : float, None, optional
         Spacing between frequency bins in octaves. If None, it is assumed that
         the vector is linearly spaced. Default: None.
-    num_fractions : int, optional
+    num_fractions : float, optional
         Fraction of octave to be smoothed across. Default: 3 (third band).
     window_type : str, optional
         Type of window to be used. See `scipy.signal.windows.get_window` for

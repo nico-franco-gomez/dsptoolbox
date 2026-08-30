@@ -21,7 +21,9 @@ def _zp_plot(
     if ax is None:
         fig, ax = plt.subplots(1, 1, figsize=(5, 5))
     else:
-        fig = ax.get_figure()
+        figure = ax.get_figure()
+        assert isinstance(figure, Figure), "The axes do not belong to a figure"
+        fig = figure
     circle = plt.Circle(
         (0, 0),
         1,
@@ -62,28 +64,31 @@ def _csm_plot(
     f = f[id0:id1]
     csm = csm[id0:id1]
     if ax is None:
-        fig, ax = plt.subplots(
+        fig, axes = plt.subplots(
             ch, ch, figsize=(2.5 * ch, 2.5 * ch), sharex=True, sharey=True
         )
+        axes = np.asarray(axes).reshape(ch, ch)
     else:
-        ax = np.asarray(ax).reshape(ch, ch)
-        fig = ax[0, 0].get_figure()
+        axes = np.asarray(ax).reshape(ch, ch)
+        figure = axes[0, 0].get_figure()
+        assert isinstance(figure, Figure), "The axes do not belong to a figure"
+        fig = figure
     for c1 in range(ch):
-        ax[c1, 0].set_ylabel("dB")
+        axes[c1, 0].set_ylabel("dB")
         for c2 in range(ch):
             if log:
-                ax[c1, c2].set_xscale("log")
+                axes[c1, c2].set_xscale("log")
                 ticks = np.array(
                     [20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000]
                 )
                 if range_x is not None:
                     ticks = ticks[(ticks > range_x[0]) & (ticks < range_x[-1])]
-                ax[c1, c2].set_xticks(ticks)
-                ax[c1, c2].get_xaxis().set_major_formatter(ScalarFormatter())
-            ax[c1, c2].plot(f, to_db(csm[:, c1, c2], False))
+                axes[c1, c2].set_xticks(ticks)
+                axes[c1, c2].get_xaxis().set_major_formatter(ScalarFormatter())
+            axes[c1, c2].plot(f, to_db(csm[:, c1, c2], False))
             ax_right = None
             if with_phase and c1 != c2:
-                ax_right = ax[c1, c2].twinx()
+                ax_right = axes[c1, c2].twinx()
                 ax_right.plot(
                     f,
                     np.unwrap(np.angle(csm[:, c1, c2])),
@@ -93,8 +98,8 @@ def _csm_plot(
                 )
                 ax_right.grid(False)
             if c1 == ch - 1:
-                ax[c1, c2].set_xlabel("Hz")
+                axes[c1, c2].set_xlabel("Hz")
             if c2 == ch - 1 and ax_right is not None:
                 ax_right.set_ylabel("rad")
     fig.tight_layout()
-    return fig, ax
+    return fig, axes

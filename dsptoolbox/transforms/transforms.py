@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
+from mpl_toolkits.mplot3d import Axes3D
 from numpy.typing import NDArray
 from scipy.fft import dct
 from scipy.signal import lfilter, oaconvolve, resample_poly
@@ -182,8 +183,8 @@ def log_mel_spectrogram(
     if generate_plot:
         fig, ax = general_matrix_plot(
             log_mel_sp[..., channel],
-            range_x=[time_s[0], time_s[-1]],
-            range_y=[f_mel[0], f_mel[-1]],
+            range_x=(time_s[0], time_s[-1]),
+            range_y=(f_mel[0], f_mel[-1]),
             range_z=50,
             ylabel="Frequency / Mel",
             xlabel="Time / s",
@@ -316,6 +317,7 @@ def plot_waterfall(
 
     amplitude_scaling = sig.spectrum_scaling.is_amplitude_scaling()
     fig, ax = plt.subplots(figsize=(10, 8), subplot_kw=dict(projection="3d"))
+    assert isinstance(ax, Axes3D)
     tt, ff = np.meshgrid(t, f)
     ax.plot_surface(
         tt,
@@ -430,8 +432,8 @@ def mfcc(
     if generate_plot:
         fig, ax = general_matrix_plot(
             mfcc[..., channel],
-            range_x=[time_s[0], time_s[-1]],
-            range_y=[f_mel[0], f_mel[-1]],
+            range_x=(time_s[0], time_s[-1]),
+            range_y=(f_mel[0], f_mel[-1]),
             xlabel="Time / s",
             ylabel="Cepstral coefficients",
         )

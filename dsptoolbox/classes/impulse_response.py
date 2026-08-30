@@ -351,7 +351,7 @@ class ImpulseResponse(Signal):
             remove_ir_latency, f, phase, self.time_data, self.sampling_rate_hz
         )
 
-        fig, ax = general_plot_two_axes(
+        fig, axes = general_plot_two_axes(
             f,
             sp_abs_db,
             f,
@@ -371,9 +371,9 @@ class ImpulseResponse(Signal):
             y2_alpha=0.6,
             ax=ax,
         )
-        ax[-1].grid(linestyle="dashed")
+        axes[-1].grid(linestyle="dashed")
 
-        return fig, ax
+        return fig, axes
 
     def copy_with_new_time_data(self, new_time_data: ArrayLike) -> Self:
         new_signal = super().copy_with_new_time_data(new_time_data)

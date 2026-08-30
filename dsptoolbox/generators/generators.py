@@ -160,19 +160,19 @@ def _check_chirp_parameters(
     """Validate the frequency range and padding shared by the chirps."""
     if range_hz is not None:
         assert len(range_hz) == 2, "range_hz has to contain exactly two frequencies"
-        range_hz = sorted(range_hz)
-        assert range_hz[0] > 0, (
+        frequencies = sorted(float(f) for f in range_hz)
+        assert frequencies[0] > 0, (
             "Range has to start with positive frequencies excluding 0"
         )
-        assert range_hz[1] <= sampling_rate_hz // 2, (
+        assert frequencies[1] <= sampling_rate_hz // 2, (
             "Upper limit for frequency range cannot be bigger than the "
             + "nyquist frequency"
         )
     else:
-        range_hz = [15, sampling_rate_hz // 2]
+        frequencies = [15.0, float(sampling_rate_hz // 2)]
 
     assert padding_end_seconds >= 0, "Padding has to be a positive time"
-    return range_hz, int(padding_end_seconds * sampling_rate_hz)
+    return frequencies, int(padding_end_seconds * sampling_rate_hz)
 
 
 def _assemble_chirp(
@@ -267,7 +267,7 @@ def chirp(
     - https://de.wikipedia.org/wiki/Chirp
 
     """
-    range_hz, p_samples = _check_chirp_parameters(
+    frequencies, p_samples = _check_chirp_parameters(
         range_hz, sampling_rate_hz, padding_end_seconds
     )
     l_samples = int(sampling_rate_hz * length_seconds + 0.5)
@@ -275,13 +275,15 @@ def chirp(
 
     match type_of_chirp:
         case ChirpType.Linear:
-            k = (range_hz[1] - range_hz[0]) / length_seconds
-            freqs = (range_hz[0] + k / 2 * t) * 2 * np.pi
+            k = (frequencies[1] - frequencies[0]) / length_seconds
+            freqs = (frequencies[0] + k / 2 * t) * 2 * np.pi
             chirp_td = np.sin(freqs * t + phase_offset)
         case ChirpType.Logarithmic:
-            k = np.exp((np.log(range_hz[1]) - np.log(range_hz[0])) / length_seconds)
+            k = np.exp(
+                (np.log(frequencies[1]) - np.log(frequencies[0])) / length_seconds
+            )
             chirp_td = np.sin(
-                2 * np.pi * range_hz[0] / np.log(k) * (k**t - 1) + phase_offset
+                2 * np.pi * frequencies[0] / np.log(k) * (k**t - 1) + phase_offset
             )
         case _:
             raise ValueError("Unsupported chirp type")
@@ -345,11 +347,11 @@ def sync_log_chirp(
       Swept-Sine: Theory, Application and Implementation.
 
     """
-    range_hz, p_samples = _check_chirp_parameters(
+    frequencies, p_samples = _check_chirp_parameters(
         range_hz, sampling_rate_hz, padding_end_seconds
     )
     chirp_td, effective_length_seconds = _sync_log_chirp(
-        range_hz, length_seconds, sampling_rate_hz
+        frequencies, length_seconds, sampling_rate_hz
     )
     return (
         _assemble_chirp(

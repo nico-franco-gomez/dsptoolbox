@@ -2,6 +2,7 @@
 Low-level methods for room acoustics
 """
 
+from typing import Literal, overload
 from warnings import warn
 
 import numpy as np
@@ -13,6 +14,28 @@ from ..plots import general_plot
 from ..tools import time_smoothing
 from ..transfer_functions._transfer_functions import _trim_ir
 from .enums import ReverbTime
+
+
+@overload
+def _reverb(
+    h: NDArray[np.float64],
+    fs_hz: int,
+    mode: ReverbTime,
+    ir_start: int | None,
+    return_ir_start: Literal[False],
+    automatic_trimming: bool,
+) -> tuple[float, float]: ...
+
+
+@overload
+def _reverb(
+    h: NDArray[np.float64],
+    fs_hz: int,
+    mode: ReverbTime,
+    ir_start: int | None,
+    return_ir_start: Literal[True],
+    automatic_trimming: bool,
+) -> tuple[float, float, int]: ...
 
 
 def _reverb(
@@ -682,7 +705,7 @@ class ShoeboxRoom(Room):
         if generate_plot:
             p_db = to_db(p, True)
             p_db -= np.max(p_db)
-            plot = general_plot(f, p_db, range_x=[f[0], f[-1]], tight_layout=True)
+            plot = general_plot(f, p_db, range_x=(f[0], f[-1]), tight_layout=True)
             plot[1].set_ylabel("Magnitude / dBFS (norm @ Peak)")
         else:
             plot = None

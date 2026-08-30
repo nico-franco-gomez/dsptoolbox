@@ -220,6 +220,8 @@ Bugfix
 - `Signal.plot_csm(with_phase=False)` drew the phase anyway: the argument was
   accepted and never read. The right-hand axis label also landed on the
   previous row's twin axis
+- `DigitalDelay.set_parameters` raised a `TypeError` unless both parameters
+  were passed, although it documents that `None` leaves one unchanged
 - `effects.Distortion` and the warping factor rejected valid inputs because
   they tested `type(x) is <type>`: a list of distortion types and an integer
   or numpy float warping factor respectively
@@ -264,6 +266,17 @@ Misc
   annotations, literal defaults stay compatible with them, docstrings keep
   agreeing with their signatures, no invalid escape sequence appears, and
   nothing prints outside the three functions meant to
+- The type checker's findings were worked through: mypy reports 234 errors
+  where it reported 581, without any change to what the code does. The
+  annotations that disagreed with the code are corrected (`Filter.zi`,
+  `Filter.get_coefficients` never returns None, the private `__set_parameters`
+  of the effects take `None`, `_fractional_octave_smoothing` takes a
+  fractional octave, `Filter.from_zpk` takes complex zeros and poles,
+  `_reconstruct_framed_signal` takes `None` as its safety threshold, the
+  `save_*` methods return `Self` as their bodies always did), and the places
+  where a variable was rebound to a different type now use a second name.
+  `Filter.get_coefficients` and `tools.fractional_octave_frequencies` are
+  overloaded, so callers get the return type their argument selects
 - In-place writes through property getters were replaced by assignments
   through the setters, so validation, complex-value handling and cache
   invalidation are reached

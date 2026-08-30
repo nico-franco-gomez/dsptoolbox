@@ -470,7 +470,9 @@ class MultiBandSignal(MultichannelData):
             initial = zeros(self.bands[0].time_data.shape, dtype=complex128)
             for n in range(len(self.bands)):
                 initial += self.bands[n].time_data
-                initial += self.bands[n].time_data_imaginary * 1j
+                imaginary = self.bands[n].time_data_imaginary
+                assert imaginary is not None
+                initial += imaginary * 1j
         return self.bands[0].copy_with_new_time_data(initial)
 
     def show_info(self) -> Self:
@@ -543,9 +545,10 @@ class MultiBandSignal(MultichannelData):
                 dtype=complex128,
             )
             for n in range(len(self.bands)):
+                imaginary = self.bands[n].time_data_imaginary
+                assert imaginary is not None
                 new_time_data[:, n] = (
-                    self.bands[n].time_data[:, channel]
-                    + self.bands[n].time_data_imaginary[:, channel] * 1j
+                    self.bands[n].time_data[:, channel] + imaginary[:, channel] * 1j
                 )
         return self.__get_type_of_signal_bands()(
             None, new_time_data, self.sampling_rate_hz
@@ -576,9 +579,11 @@ class MultiBandSignal(MultichannelData):
         complex_data = self.bands[0].time_data_imaginary is not None
 
         for band in self.bands:
+            imaginary = band.time_data_imaginary
             new_time_data.append(
                 band.time_data[:, channel]
-                + (band.time_data_imaginary[:, channel] * 1j if complex_data else 0.0)
+                if imaginary is None
+                else band.time_data[:, channel] + imaginary[:, channel] * 1j
             )
             sampling_rates_hz.append(band.sampling_rate_hz)
 
@@ -618,10 +623,13 @@ class MultiBandSignal(MultichannelData):
             dtype=(complex128 if complex_data else "float"),
         )
         for ind, b in enumerate(self.bands):
-            td[:, ind, :] = b.time_data + (
-                b.time_data_imaginary * 1j if complex_data else 0.0
+            imaginary = b.time_data_imaginary
+            td[:, ind, :] = (
+                b.time_data if imaginary is None else b.time_data + imaginary * 1j
             )
-        return td, self.sampling_rate_hz
+        sampling_rate_hz = self.sampling_rate_hz
+        assert isinstance(sampling_rate_hz, int)
+        return td, sampling_rate_hz
 
     def get_all_time_data_multirate(
         self,
@@ -637,10 +645,11 @@ class MultiBandSignal(MultichannelData):
             channel), and its sampling rate in Hz.
 
         """
-        complex_data = self.bands[0].time_data_imaginary is not None
         return [
             (
-                b.time_data + (b.time_data_imaginary * 1j if complex_data else 0.0),
+                b.time_data
+                if b.time_data_imaginary is None
+                else b.time_data + b.time_data_imaginary * 1j,
                 b.sampling_rate_hz,
             )
             for b in self.bands
@@ -811,7 +820,7 @@ class MultiBandSignal(MultichannelData):
         return self.get_all_bands().plot_time(**kwargs)
 
     # ======== Saving and copying =============================================
-    def save_signal(self, path: str) -> None:
+    def save_signal(self, path: str) -> Self:
         """Saves the `MultiBandSignal` object as a pickle.
 
         Parameters

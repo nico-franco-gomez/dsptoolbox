@@ -1163,12 +1163,12 @@ class Spectrum(MultichannelData):
             ],
             range_x=None,
             xlabels="Frequency / Hz",
-            range_y=[-0.1, 1.1],
+            range_y=(-0.1, 1.1),
             ax=ax,
         )
         return fig, ax
 
-    def save_spectrum(self, path: str) -> None:
+    def save_spectrum(self, path: str) -> Self:
         """Saves the Spectrum object as a pickle.
 
         Parameters

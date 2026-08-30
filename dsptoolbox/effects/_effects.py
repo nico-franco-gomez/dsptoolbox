@@ -175,7 +175,7 @@ def _get_knee_func(
         def compress_in_db(
             x: NDArray[np.float64] | float,
         ) -> NDArray[np.float64] | float:
-            if type(x) is float:
+            if not isinstance(x, np.ndarray):
                 if x - T < -W / 2:
                     return x
                 elif np.abs(x - T) <= W / 2:
@@ -202,7 +202,7 @@ def _get_knee_func(
         def compress_in_db(
             x: NDArray[np.float64] | float,
         ) -> NDArray[np.float64] | float:
-            if type(x) is float:
+            if not isinstance(x, np.ndarray):
                 if x - T < -W / 2:
                     return T + (x - T) / R
                 elif np.abs(x - T) <= W / 2:
@@ -551,7 +551,7 @@ def get_frequency_from_musical_rhythm(note: str, bpm: float) -> float:
         float,
         int,
     ), "Wrong data types for note duration and bpm"
-    factor = 0
+    factor = 0.0
     if "quarter" in note:
         factor = 1
     if "half" in note:

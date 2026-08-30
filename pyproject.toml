@@ -76,7 +76,14 @@ python_version = "3.11"
 # already `Any` to mypy. Reporting the missing stubs on top of that is pure
 # noise and hides the findings that are actually about this package.
 [[tool.mypy.overrides]]
-module = ["scipy.*", "seaborn.*", "sounddevice.*", "soundfile.*", "numba.*"]
+module = [
+  "scipy.*",
+  "seaborn.*",
+  "sounddevice.*",
+  "soundfile.*",
+  "numba.*",
+  "mpl_toolkits.*",
+]
 ignore_missing_imports = true
 
 [tool.hatch.version]

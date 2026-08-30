@@ -481,14 +481,21 @@ def compute_transfer_function(
     # Welch's method is applied with the input's parameters, but with the
     # window length that the requested spectrum length asks for
     parameters = input.spectrum_parameters
-    welch_parameters = dict(
-        window_type=parameters.window_type,
-        window_length_samples=window_length_samples,
-        overlap_percent=parameters.overlap_percent,
-        detrend=parameters.detrend,
-        average=parameters.average,
-        scaling=parameters.scaling,
-    )
+
+    def welch(
+        x: NDArray[np.float64], y: NDArray[np.float64] | None, fs_hz: int
+    ) -> NDArray[np.float64]:
+        return _welch(
+            x,
+            y,
+            fs_hz,
+            window_type=parameters.window_type,
+            window_length_samples=window_length_samples,
+            overlap_percent=parameters.overlap_percent,
+            detrend=parameters.detrend,
+            average=parameters.average,
+            scaling=parameters.scaling,
+        )
 
     coherence = np.zeros((window_length_samples // 2 + 1, output.number_of_channels))
     tf = np.zeros(
@@ -496,41 +503,24 @@ def compute_transfer_function(
         dtype=np.complex128,
     )
     if multichannel:
-        G_xx = _welch(
-            input.time_data[:, 0],
-            None,
-            input.sampling_rate_hz,
-            **welch_parameters,
-        )
+        G_xx = welch(input.time_data[:, 0], None, input.sampling_rate_hz)
     for n in range(output.number_of_channels):
-        G_yy = _welch(
-            output.time_data[:, n],
-            None,
-            input.sampling_rate_hz,
-            **welch_parameters,
-        )
+        G_yy = welch(output.time_data[:, n], None, input.sampling_rate_hz)
         if multichannel:
             n_input = 0
         else:
             n_input = n
-            G_xx = _welch(
-                input.time_data[:, n_input],
-                None,
-                input.sampling_rate_hz,
-                **welch_parameters,
-            )
+            G_xx = welch(input.time_data[:, n_input], None, input.sampling_rate_hz)
         if mode == TransferFunctionType.H2:
-            G_yx = _welch(
+            G_yx = welch(
                 output.time_data[:, n],
                 input.time_data[:, n_input],
                 output.sampling_rate_hz,
-                **welch_parameters,
             )
-        G_xy = _welch(
+        G_xy = welch(
             input.time_data[:, n_input],
             output.time_data[:, n],
             output.sampling_rate_hz,
-            **welch_parameters,
         )
 
         match mode:
@@ -731,7 +721,7 @@ def lin_phase_from_mag(
     minimum_group_delay = group_delay_ms is None
     # Only check causality when necessary and requested
     check_causality = not minimum_group_delay and check_causality
-    if not minimum_group_delay:
+    if group_delay_ms is not None:
         group_delay_s = group_delay_ms / 1000.0
 
     if minimum_group_delay:

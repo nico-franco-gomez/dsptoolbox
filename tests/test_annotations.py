@@ -236,7 +236,10 @@ class TestAnnotations:
                 if default is None:
                     admitted = "None" in parts
                 elif isinstance(default, bool):
-                    admitted = "bool" in parts
+                    # A Literal admits exactly the values it enumerates
+                    admitted = "bool" in parts or any(
+                        p.startswith("Literal[") and repr(default) in p for p in parts
+                    )
                 else:
                     continue
                 if not admitted:

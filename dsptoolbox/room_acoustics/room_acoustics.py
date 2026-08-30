@@ -101,7 +101,8 @@ def reverb_time(
 
     """
     if type(signal) is ImpulseResponse:
-        ir_start = _check_ir_start_reverb(signal, ir_start)
+        starts = _check_ir_start_reverb(signal, ir_start)
+        assert starts is not None
         reverberation_times = np.zeros(signal.number_of_channels)
         correlation_coefficients = np.zeros(signal.number_of_channels)
         for n in range(signal.number_of_channels):
@@ -109,12 +110,12 @@ def reverb_time(
                 signal.time_data[:, n].copy(),
                 signal.sampling_rate_hz,
                 mode,
-                ir_start=ir_start[n],
+                ir_start=starts[n],
                 return_ir_start=False,
                 automatic_trimming=automatic_trimming,
             )
     elif type(signal) is MultiBandSignal:
-        ir_start = _check_ir_start_reverb(signal, ir_start)
+        band_starts = _check_ir_start_reverb(signal, ir_start)
         reverberation_times = np.zeros(
             (signal.number_of_bands, signal.bands[0].number_of_channels)
         )
@@ -122,7 +123,7 @@ def reverb_time(
             (signal.number_of_bands, signal.bands[0].number_of_channels)
         )
         for ind in range(signal.number_of_bands):
-            band_ir_start = None if ir_start is None else ir_start[ind, :]
+            band_ir_start = None if band_starts is None else band_starts[ind, :]
             reverberation_times[ind, :], correlation_coefficients[ind, :] = reverb_time(
                 signal.bands[ind],
                 mode,
@@ -554,7 +555,7 @@ def _bass_ratio(rir: ImpulseResponse) -> NDArray[np.float64]:
 def _check_ir_start_reverb(
     sig: ImpulseResponse | MultiBandSignal,
     ir_start: int | NDArray[np.int_] | list | tuple | None,
-) -> NDArray[np.float64] | list | None:
+) -> NDArray[np.int_] | list | None:
     """This method checks `ir_start` and parses it into the necessary form
     if relevant. For a `Signal`, it is a vector with the same number of
     elements as channels of `sig`. For `MultiBandSignal`, it is a 2d-array
@@ -565,39 +566,42 @@ def _check_ir_start_reverb(
     For `None`, `None` is returned.
 
     """
-    if ir_start is not None:
-        if type(ir_start) in (list, tuple, NDArray[np.float64]):
-            ir_start = np.atleast_1d(ir_start).astype(np.int_)
-        assert (
-            np.issubdtype(type(ir_start), np.integer) or type(ir_start) is np.ndarray
-        ), "Unsupported type for ir_start"
+    if ir_start is None:
+        if isinstance(sig, ImpulseResponse):
+            return [None] * sig.number_of_channels
+        return None
+
+    single_start = np.issubdtype(type(ir_start), np.integer)
+    assert single_start or isinstance(ir_start, (list, tuple, np.ndarray)), (
+        "Unsupported type for ir_start"
+    )
 
     if isinstance(sig, ImpulseResponse):
-        if np.issubdtype(type(ir_start), np.integer):
-            ir_start = np.ones(sig.number_of_channels, dtype=np.int_) * ir_start
-        elif ir_start is None:
-            return [None] * sig.number_of_channels
-        assert ir_start.ndim == 1 and len(ir_start) == sig.number_of_channels, (
+        starts = (
+            np.ones(sig.number_of_channels, dtype=np.int_) * ir_start
+            if single_start
+            else np.atleast_1d(np.asarray(ir_start))
+        )
+        assert starts.ndim == 1 and len(starts) == sig.number_of_channels, (
             "Shape of ir_start is not valid"
         )
     else:
-        if np.issubdtype(type(ir_start), np.integer):
-            ir_start = (
-                np.ones(
-                    (sig.number_of_bands, sig.number_of_channels),
-                    dtype=np.int_,
-                )
-                * ir_start
+        starts = (
+            np.ones(
+                (sig.number_of_bands, sig.number_of_channels),
+                dtype=np.int_,
             )
-        if ir_start is None:
-            return None
-        if ir_start.ndim == 1:
-            ir_start = np.repeat(ir_start[None, ...], sig.number_of_bands, axis=0)
+            * ir_start
+            if single_start
+            else np.atleast_1d(np.asarray(ir_start))
+        )
+        if starts.ndim == 1:
+            starts = np.repeat(starts[None, ...], sig.number_of_bands, axis=0)
         else:
-            assert ir_start.shape == (
+            assert starts.shape == (
                 sig.number_of_bands,
                 sig.number_of_channels,
             ), "Shape of ir_start is not valid for the passed signal"
-    if ir_start.dtype not in (int, np.intp):
-        ir_start = ir_start.astype(np.int_)
-    return ir_start
+    if starts.dtype not in (int, np.intp):
+        starts = starts.astype(np.int_)
+    return starts

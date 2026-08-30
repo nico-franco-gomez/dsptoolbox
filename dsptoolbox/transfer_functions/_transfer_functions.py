@@ -149,7 +149,7 @@ def _window_this_ir_tukey(
 
 
 def _window_this_ir(
-    vec: NDArray[np.float64], total_length: int, window_type: Window
+    vec: NDArray[np.float64], total_length: int, window_type: WindowType
 ) -> tuple[NDArray[np.float64], NDArray[np.float64], int]:
     """This function windows an impulse response by placing the peak exactly
     in the middle of the window. It trims or pads at the end if needed. The

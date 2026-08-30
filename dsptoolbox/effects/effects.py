@@ -399,6 +399,7 @@ class SpectralSubtractor(AudioEffect):
 
     def _compute_window(self, sampling_rate_hz: int) -> None:
         """Internal method to compute the window and step size in samples."""
+        self.window_length: int
         if self.spectrum_to_subtract is None:
             self.window_length = _get_next_power_2(
                 self.block_length_s * sampling_rate_hz
@@ -604,9 +605,9 @@ class Distortion(AudioEffect):
         type_of_distortion: (
             DistortionType | list[DistortionType]
         ) = DistortionType.Arctan,
-        distortion_levels_db: NDArray[np.float64] = 20,
-        mix_percent: NDArray[np.float64] = 100,
-        offset_db: NDArray[np.float64] = -np.inf,
+        distortion_levels_db: float | NDArray[np.float64] = 20.0,
+        mix_percent: float | NDArray[np.float64] = 100.0,
+        offset_db: float | NDArray[np.float64] = -np.inf,
         post_gain_db: float = 0,
     ) -> None:
         r"""This sets the parameters of the distortion. Multiple
@@ -801,11 +802,11 @@ class Compressor(AudioEffect):
 
     def __set_parameters(
         self,
-        threshold_dbfs: float,
-        attack_time_ms: float,
-        release_time_ms: float,
-        ratio: float,
-        relative_to_peak_level: bool,
+        threshold_dbfs: float | None,
+        attack_time_ms: float | None,
+        release_time_ms: float | None,
+        ratio: float | None,
+        relative_to_peak_level: bool | None,
     ) -> None:
         """Internal method to set the parameters."""
         if threshold_dbfs is not None:
@@ -1052,7 +1053,7 @@ class Tremolo(AudioEffect):
         self.__set_parameters(depth, modulator)
 
     def __set_parameters(
-        self, depth: float, modulator: LFO | NDArray[np.float64]
+        self, depth: float | None, modulator: LFO | NDArray[np.float64] | None
     ) -> None:
         """Internal method to change parameters."""
         if modulator is not None:
@@ -1162,10 +1163,10 @@ class Chorus(AudioEffect):
 
     def __set_parameters(
         self,
-        depths_ms: float | NDArray[np.float64],
-        base_delays_ms: float | NDArray[np.float64],
-        modulators: LFO | list | tuple | NDArray[np.float64],
-        mix_percent: float,
+        depths_ms: float | NDArray[np.float64] | None,
+        base_delays_ms: float | NDArray[np.float64] | None,
+        modulators: LFO | list | tuple | NDArray[np.float64] | None,
+        mix_percent: float | None,
     ) -> None:
         """Internal method to change parameters."""
         # Check lengths
@@ -1356,13 +1357,18 @@ class DigitalDelay(AudioEffect):
         self.__set_parameters(delay_time_ms, feedback)
         self.set_advanced_parameters()
 
-    def __set_parameters(self, delay_time_ms: float, feedback: int) -> None:
-        """Internal method to change parameters."""
-        assert delay_time_ms > 0, "Delay time must be larger than 0"
-        self.delay_ms = delay_time_ms
+    def __set_parameters(
+        self, delay_time_ms: float | None, feedback: float | None
+    ) -> None:
+        """Internal method to change parameters. `None` leaves each parameter
+        unchanged."""
+        if delay_time_ms is not None:
+            assert delay_time_ms > 0, "Delay time must be larger than 0"
+            self.delay_ms = delay_time_ms
 
-        assert feedback > 0, "Feedback must be larger than zero"
-        self.feedback = feedback
+        if feedback is not None:
+            assert feedback > 0, "Feedback must be larger than zero"
+            self.feedback = feedback
 
     def set_parameters(
         self, delay_time_ms: float | None = None, feedback: float | None = None
@@ -1458,7 +1464,7 @@ class DigitalDelay(AudioEffect):
             xlabel="Time / ms",
             ylabel="Amplitude [dB]",
         )
-        ax.set_ylim([-100, 1])
+        ax.set_ylim((-100.0, 1.0))
         ax.set_title("Delay – Repetitions decay")
         fig.tight_layout()
         return fig, ax

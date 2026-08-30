@@ -436,6 +436,16 @@ class FilterBank:
     ) -> MultiBandSignal:
         pass
 
+    @overload
+    def filter_signal(
+        self,
+        signal: Signal,
+        mode: FilterBankMode,
+        activate_zi: bool = False,
+        zero_phase: bool = False,
+    ) -> Signal | MultiBandSignal:
+        pass
+
     def filter_signal(
         self,
         signal: Signal,
@@ -599,6 +609,7 @@ class FilterBank:
             )
             mb = MultiBandSignal(same_sampling_rate=False)
             sr = self.sampling_rate_hz
+            assert isinstance(sr, list)
             for ind, f in enumerate(self.filters):
                 d = dirac(
                     length_samples,
@@ -609,10 +620,12 @@ class FilterBank:
                 mb = mb.add_band(f.filter_signal(d, zero_phase=zero_phase))
             return mb
 
+        sampling_rate_hz = self.sampling_rate_hz
+        assert isinstance(sampling_rate_hz, int)
         d = dirac(
             length_samples=self.__adapt_length_to_filters(length_samples),
             number_of_channels=1,
-            sampling_rate_hz=self.sampling_rate_hz,
+            sampling_rate_hz=sampling_rate_hz,
         )
         return self.filter_signal(d, mode, zero_phase=zero_phase)
 
@@ -727,12 +740,11 @@ class FilterBank:
         """
         if self.__skip_plot_for_multirate():
             return None
-        bs = self.get_ir(length_samples, mode, zero_phase)
-
         # Filtering and plot
         if mode == FilterBankMode.Parallel:
+            mb = self.get_ir(length_samples, mode, zero_phase)
             specs = []
-            for b in bs.bands:
+            for b in mb.bands:
                 b.spectrum_method = SpectrumMethod.FFT
                 b.spectrum_scaling = SpectrumScaling.FFTBackward
                 f, sp = _get_normalized_spectrum(
@@ -747,7 +759,7 @@ class FilterBank:
                 specs.append(np.squeeze(sp))
             specs = np.array(specs).T
             if np.min(specs) < np.max(specs) - 50:
-                range_y = [np.max(specs) - 50, np.max(specs) + 2]
+                range_y = (float(np.max(specs) - 50), float(np.max(specs) + 2))
             else:
                 range_y = None
             fig, ax = general_plot(
@@ -755,12 +767,13 @@ class FilterBank:
                 specs,
                 range_hz,
                 ylabel="Magnitude / dB",
-                labels=[f"Filter {h}" for h in range(bs.number_of_bands)],
+                labels=[f"Filter {h}" for h in range(mb.number_of_bands)],
                 range_y=range_y,
                 tight_layout=False,
                 ax=ax,
             )
         elif mode == FilterBankMode.Sequential:
+            bs = self.get_ir(length_samples, mode, zero_phase)
             bs.spectrum_method = SpectrumMethod.FFT
             bs.spectrum_scaling = SpectrumScaling.FFTBackward
             f, sp = _get_normalized_spectrum(
@@ -782,6 +795,7 @@ class FilterBank:
                 ],
             )
         elif mode == FilterBankMode.Summed:
+            bs = self.get_ir(length_samples, mode, zero_phase)
             bs.spectrum_method = SpectrumMethod.FFT
             bs.spectrum_scaling = SpectrumScaling.FFTBackward
             f, sp = bs.get_spectrum()
@@ -847,13 +861,12 @@ class FilterBank:
         """
         if self.__skip_plot_for_multirate():
             return None
-        bs = self.get_ir(length_samples, mode, zero_phase)
-
         # Plot
         if mode == FilterBankMode.Parallel:
+            mb = self.get_ir(length_samples, mode, zero_phase)
             phase = []
-            f = bs.bands[0].get_spectrum()[0]
-            for b in bs.bands:
+            f = mb.bands[0].get_spectrum()[0]
+            for b in mb.bands:
                 phase.append(np.angle(b.get_spectrum()[1]))
             phase_plot = np.squeeze(np.array(phase).T)
             if unwrap:
@@ -863,11 +876,12 @@ class FilterBank:
                 phase_plot,
                 range_hz,
                 ylabel="Phase / rad",
-                labels=[f"Filter {h}" for h in range(bs.number_of_bands)],
+                labels=[f"Filter {h}" for h in range(mb.number_of_bands)],
                 tight_layout=False,
                 ax=ax,
             )
         elif mode == FilterBankMode.Sequential:
+            bs = self.get_ir(length_samples, mode, zero_phase)
             f, sp = bs.get_spectrum()
             ph = np.angle(sp)
             if unwrap:
@@ -882,6 +896,7 @@ class FilterBank:
                 ],
             )
         elif mode == FilterBankMode.Summed:
+            bs = self.get_ir(length_samples, mode, zero_phase)
             f, sp = bs.get_spectrum()
             ph = np.angle(sp)
             if unwrap:
@@ -935,13 +950,12 @@ class FilterBank:
         """
         if self.__skip_plot_for_multirate():
             return None
-        bs = self.get_ir(length_samples, mode, zero_phase)
-
         # Plot
         if mode == FilterBankMode.Parallel:
+            mb = self.get_ir(length_samples, mode, zero_phase)
             gd = []
-            f = bs.bands[0].get_spectrum()[0]
-            for b in bs.bands:
+            f = mb.bands[0].get_spectrum()[0]
+            for b in mb.bands:
                 gd.append(
                     _group_delay_direct(
                         np.squeeze(b.get_spectrum()[1]), delta_f=f[1] - f[0]
@@ -953,11 +967,12 @@ class FilterBank:
                 gd_plot,
                 range_hz,
                 ylabel="Group delay / ms",
-                labels=[f"Filter {h}" for h in range(bs.number_of_bands)],
+                labels=[f"Filter {h}" for h in range(mb.number_of_bands)],
                 tight_layout=False,
                 ax=ax,
             )
         elif mode == FilterBankMode.Sequential:
+            bs = self.get_ir(length_samples, mode, zero_phase)
             f, sp = bs.get_spectrum()
             gd = _group_delay_direct(sp.squeeze(), f[1] - f[0]) * 1e3
             fig, ax = general_plot(
@@ -970,6 +985,7 @@ class FilterBank:
                 ],
             )
         elif mode == FilterBankMode.Summed:
+            bs = self.get_ir(length_samples, mode, zero_phase)
             f, sp = bs.get_spectrum()
             gd = _group_delay_direct(sp.squeeze(), f[1] - f[0]) * 1e3
             fig, ax = general_plot(
@@ -984,7 +1000,7 @@ class FilterBank:
         return fig, ax
 
     # ======== Saving and export ==============================================
-    def save_filterbank(self, path: str) -> None:
+    def save_filterbank(self, path: str) -> Self:
         """Saves the FilterBank object as a pickle.
 
         Parameters
@@ -1104,7 +1120,7 @@ class FilterBank:
                 "Sampling rates do not match"
             )
 
-        new_fb = fbs[0].copy()
-        for ind in range(1, len(fbs)):
-            new_fb.filters += deepcopy(fbs[ind].filters)
+        new_fb = self.copy()
+        for other in others:
+            new_fb.filters += deepcopy(other.filters)
         return new_fb
