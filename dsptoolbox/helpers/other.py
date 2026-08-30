@@ -34,12 +34,16 @@ def find_nearest_points_index_in_vector(points, vector) -> NDArray[np.int_]:
 
 
 def find_frequencies_above_threshold(spec, f, threshold_db, normalize=True) -> list:
-    """Finds frequencies above a certain threshold in a given (amplitude)
-    spectrum."""
+    """Finds the first and last frequency above a certain threshold in a given
+    (amplitude) spectrum."""
     denum_db = to_db(spec, True)
     if normalize:
         denum_db -= np.max(denum_db)
     freqs = f[denum_db > threshold_db]
+    if len(freqs) == 0:
+        raise ValueError(
+            f"No frequency bin lies above the threshold of {threshold_db} dB"
+        )
     return [freqs[0], freqs[-1]]
 
 

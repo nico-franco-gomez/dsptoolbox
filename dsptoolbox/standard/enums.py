@@ -8,6 +8,7 @@ from scipy.signal.windows import get_window as get_window_scipy
 
 class SpectrumMethod(Enum):
     """Methods to compute a spectrum.
+
     - Welch: produces a spectrum that is averaged over time. If it is the
       autospectrum, it is always real-valued (magnitude or power). If it is
       a cross-spectrum, it is complex.
@@ -22,6 +23,7 @@ class SpectrumMethod(Enum):
 
 class SpectrumScaling(Enum):
     """Amplitude scalings are:
+
     - AmplitudeSpectrum
     - AmplitudeSpectralDensity
     - FFTBackward
@@ -196,11 +198,18 @@ class SpectrumScaling(Enum):
 
         Parameters
         ----------
-        output : SpectrumScaling
-            Scaling output.
         length_time_data_samples : int
+            Length of the time data the spectrum was computed from.
         sampling_rate_hz : int
+            Sampling rate in Hz.
         window : NDArray[np.float64], None
+            Window that was applied to the time data. None means that no
+            window (i.e. a boxcar) was used.
+
+        Returns
+        -------
+        NDArray[np.float64]
+            Scaling factor.
 
         """
         if self == SpectrumScaling.FFTBackward:
@@ -280,6 +289,7 @@ class BiquadEqType(Enum):
 
 class FilterBankMode(Enum):
     """Ways to apply a filter bank to a signal:
+
     - Parallel: returns a MultiBandSignal where each band is the output of
       each filter.
     - Sequential: applies each filter to the given Signal in a sequential

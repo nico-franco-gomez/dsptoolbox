@@ -171,10 +171,9 @@ class Filter:
         -------
         Filter
 
-        Reference
-        ---------
-        - [1]: https://webaudio.github.io/Audio-EQ-Cookbook/audio-eq-
-            cookbook.html.
+        References
+        ----------
+        - [1]: https://webaudio.github.io/Audio-EQ-Cookbook/audio-eq-cookbook.html
 
         """
         return Filter(
@@ -662,7 +661,7 @@ class Filter:
             channels are filtered. If only some channels are selected, these
             will be filtered and the others will be bypassed (and returned).
             Default: `None`.
-        activate_zi : int, optional
+        activate_zi : bool, optional
             Gives the zi to update the filter values. Default: `False`.
         zero_phase : bool, optional
             Uses zero-phase filtering on signal. Be aware that the filter
@@ -939,6 +938,7 @@ class Filter:
         -------
         coefficients : array-like
             Array with filter coefficients with shape depending on mode:
+
             - ba: list(b, a) with b and a of type NDArray[np.float64].
             - sos: NDArray[np.float64] with shape (n_sections, 6).
             - zpk: tuple(z, p, k) with z, p, k of type
@@ -979,10 +979,24 @@ class Filter:
         """Prints all the filter parameters to the console."""
         print(self.metadata_str)
 
+    def __adapt_length_to_order(self, length_samples: int) -> int:
+        """Extend the requested IR length when it is shorter than the filter
+        order."""
+        if self.order <= length_samples:
+            return length_samples
+
+        new_length_samples = self.order + 100
+        warn(
+            f"length_samples ({length_samples}) is shorter than the filter "
+            + f"order {self.order}. It is extended to {new_length_samples}.",
+            stacklevel=3,
+        )
+        return new_length_samples
+
     def plot_magnitude(
         self,
         length_samples: int,
-        range_hz: list[float] | None = (20.0, 20e3),
+        range_hz: tuple[float, float] | None = (20.0, 20e3),
         normalize: MagnitudeNormalization = MagnitudeNormalization.NoNormalization,
         zero_phase: bool = False,
         show_info_box: bool = True,
@@ -1024,14 +1038,7 @@ class Filter:
           resolution.
 
         """
-        if self.order > length_samples:
-            length_samples = self.order + 100
-            warn(
-                f"length_samples ({length_samples}) is shorter than the "
-                + f"""filter order {self.order}. Length will be """
-                + "automatically extended.",
-                stacklevel=2,
-            )
+        length_samples = self.__adapt_length_to_order(length_samples)
         ir = self.get_ir(length_samples=length_samples, zero_phase=zero_phase)
         fig, ax = ir.plot_magnitude(range_hz, normalize, show_info_box=False, ax=ax)
         if show_info_box:
@@ -1049,7 +1056,7 @@ class Filter:
     def plot_group_delay(
         self,
         length_samples: int,
-        range_hz: list[float] | None = (20.0, 20e3),
+        range_hz: tuple[float, float] | None = (20.0, 20e3),
         show_info_box: bool = False,
         ax: Axes | None = None,
     ) -> tuple[Figure, Axes]:
@@ -1078,14 +1085,7 @@ class Filter:
             Axes.
 
         """
-        if self.order > length_samples:
-            length_samples = self.order + 100
-            warn(
-                f"length_samples ({length_samples}) is shorter than the "
-                + f"""filter order {self.order}. Length will be """
-                + "automatically extended.",
-                stacklevel=2,
-            )
+        length_samples = self.__adapt_length_to_order(length_samples)
         if hasattr(self, "sos"):
             ba = sig.sos2tf(self.sos)
         else:
@@ -1126,7 +1126,7 @@ class Filter:
     def plot_phase(
         self,
         length_samples: int,
-        range_hz: list[float] | None = (20.0, 20e3),
+        range_hz: tuple[float, float] | None = (20.0, 20e3),
         unwrap: bool = False,
         show_info_box: bool = False,
         ax: Axes | None = None,
@@ -1164,14 +1164,7 @@ class Filter:
           resolution.
 
         """
-        if self.order > length_samples:
-            length_samples = self.order + 1
-            warn(
-                f"length_samples ({length_samples}) is shorter than the "
-                + f"""filter order {self.order}. Length will be """
-                + "automatically extended.",
-                stacklevel=2,
-            )
+        length_samples = self.__adapt_length_to_order(length_samples)
         ir = self.get_ir(length_samples=length_samples)
         fig, ax = ir.plot_phase(range_hz, unwrap, ax=ax)
         if show_info_box:
@@ -1191,8 +1184,7 @@ class Filter:
         show_info_box: bool = False,
         ax: Axes | None = None,
     ) -> tuple[Figure, Axes]:
-        """Plots zeros and poles with the unit circle. This returns `None` and
-        produces no plot if user decides that conversion ba->sos is too costly.
+        """Plots zeros and poles with the unit circle.
 
         Parameters
         ----------

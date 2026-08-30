@@ -210,7 +210,7 @@ def reconstructing_fractional_octave_bands(
 
 
 def auditory_filters_gammatone(
-    frequency_range_hz=(20, 20000),
+    frequency_range_hz: tuple[float, float] | None = (20, 20000),
     resolution: float = 1,
     sampling_rate_hz: int | None = None,
 ) -> GammaToneFilterBank:
@@ -514,7 +514,7 @@ def pinking_filter(frequency_0_db: float, sampling_rate_hz: int) -> Filter:
     - This filter approximates a -3 dB/octave roll-off, though its frequency
       response might be slightly distorted for very low or high frequencies.
     - The zeros and poles were taken from
-    https://dsp.stackexchange.com/questions/27520/filter-to-add-3db-per-octave
+      https://dsp.stackexchange.com/questions/27520/filter-to-add-3db-per-octave
 
     """
     assert frequency_0_db < sampling_rate_hz / 2, (

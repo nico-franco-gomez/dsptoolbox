@@ -36,8 +36,26 @@ and expand or change functionalities.
 Getting Started
 ===============
 
-Check out the `examples`_ for some basic examples of the dsptoolbox package
-and refer to the `documentation`_ for the complete description of classes and functions.
+Refer to the `documentation`_ for the complete description of classes and
+functions.
+
+.. code-block:: python
+
+    import dsptoolbox as dsp
+
+    signal = dsp.Signal.from_file("recording.wav")
+    signal = signal.set_spectrum_parameters(method=dsp.SpectrumMethod.FFT)
+    frequencies_hz, spectrum = signal.get_spectrum()
+
+    lowpass = dsp.Filter.iir_filter(
+        order=8,
+        frequency_hz=2000.0,
+        type_of_pass=dsp.FilterPassType.Lowpass,
+        sampling_rate_hz=signal.sampling_rate_hz,
+    )
+    filtered = lowpass.filter_signal(signal)
+    filtered.plot_magnitude()
+    dsp.plots.show()
 
 Installation
 ============
@@ -65,6 +83,5 @@ If this does not work properly for some reason, refer to the documentation for
 `sounddevice`_ or `PortAudio`_.
 
 .. _documentation: http://dsptoolbox.readthedocs.io/
-.. _examples: https://github.com/nico-franco-gomez/dsptoolbox/tree/main/examples
 .. _sounddevice: https://python-sounddevice.readthedocs.io/en/0.4.5/
 .. _PortAudio: http://www.portaudio.com

@@ -21,7 +21,7 @@ class ParallelFilter(RealtimeFilter):
     References
     ----------
     - [1]: Bank, B. (2022). Warped, Kautz, and Fixed-Pole Parallel Filters: A
-    Review. Journal of the Audio Engineering Society.
+      Review. Journal of the Audio Engineering Society.
 
     """
 
@@ -57,7 +57,7 @@ class ParallelFilter(RealtimeFilter):
         References
         ----------
         - [1]: Bank, B. (2022). Warped, Kautz, and Fixed-Pole Parallel Filters:
-        A Review. Journal of the Audio Engineering Society.
+          A Review. Journal of the Audio Engineering Society.
 
         """
         assert n_fir >= 0, "n_fir must be at least 0"
@@ -153,7 +153,7 @@ class ParallelFilter(RealtimeFilter):
         References
         ----------
         - [1]: Bank, B. (2022). Warped, Kautz, and Fixed-Pole Parallel Filters:
-        A Review. Journal of the Audio Engineering Society.
+          A Review. Journal of the Audio Engineering Society.
 
         """
         assert ir.number_of_channels == 1, "This is only valid for a single-channel IR"

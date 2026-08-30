@@ -58,6 +58,10 @@ from ..standard.parameters import SpectrogramParameters, SpectrumParameters
 from ._multichannel_data import MultichannelData
 from .plots import _csm_plot
 
+# Dynamic range used when converting a momentary level to dB, so that silence
+# does not become -inf
+CLIPPING_RANGE_DB = 500.0
+
 
 class Signal(MultichannelData):
     """Class for general signals (time series). Most of the methods and
@@ -964,8 +968,7 @@ class Signal(MultichannelData):
             f"{sampling_rate_hz} does not match {self.sampling_rate_hz} "
             + "as the sampling rate"
         )
-        if type(new_time_data) is not NDArray[np.float64]:
-            new_time_data = np.array(new_time_data)
+        new_time_data = np.asarray(new_time_data)
         if new_time_data.ndim > 2:
             new_time_data = new_time_data.squeeze()
         assert new_time_data.ndim <= 2, (
@@ -1211,7 +1214,7 @@ class Signal(MultichannelData):
     # ======== Plots ==========================================================
     def plot_magnitude(
         self,
-        range_hz: list[float] | None = (20.0, 20e3),
+        range_hz: tuple[float, float] | None = (20.0, 20e3),
         normalize: MagnitudeNormalization = MagnitudeNormalization.NoNormalization,
         range_db=None,
         smoothing: int = 0,
@@ -1395,7 +1398,7 @@ class Signal(MultichannelData):
 
         Notes
         -----
-        - All values are clipped to be at least -800 dBFS.
+        - All values are clipped to at most 500 dB below the peak.
         - If it is an analytic signal and normalization is applied, the peak
           value of the real part is used as the normalization factor.
         - If the time window is not 0, effects at the edges of the signal might
@@ -1415,13 +1418,9 @@ class Signal(MultichannelData):
                 td_squared_imaginary = oaconvolve(
                     td_squared_imaginary, window, mode="same", axes=0
                 )
-            complex_etc = to_db(
-                td_squared_imaginary,
-                False,
-                500 if dynamic_range_db is None else dynamic_range_db,
-            )
+            complex_etc = to_db(td_squared_imaginary, False, CLIPPING_RANGE_DB)
 
-        etc = to_db(td_squared, False, 500)
+        etc = to_db(td_squared, False, CLIPPING_RANGE_DB)
         peak_values = np.max(etc, axis=0)
 
         if normalize_at_peak:
@@ -1468,7 +1467,7 @@ class Signal(MultichannelData):
 
     def plot_group_delay(
         self,
-        range_hz: list[float] | None = (20.0, 20e3),
+        range_hz: tuple[float, float] | None = (20.0, 20e3),
         smoothing: int = 0,
         remove_ir_latency: IrLatencyRemoval | ArrayLike | None = None,
         ax: Axes | None = None,
@@ -1618,7 +1617,7 @@ class Signal(MultichannelData):
 
     def plot_phase(
         self,
-        range_hz: list[float] | None = (20.0, 20e3),
+        range_hz: tuple[float, float] | None = (20.0, 20e3),
         unwrap: bool = False,
         smoothing: int = 0,
         remove_ir_latency: IrLatencyRemoval | ArrayLike | None = None,
@@ -1703,7 +1702,7 @@ class Signal(MultichannelData):
 
     def plot_csm(
         self,
-        range_hz=(20, 20e3),
+        range_hz: tuple[float, float] | None = (20, 20e3),
         with_phase: bool = True,
         ax: list[Axes] | None = None,
     ) -> tuple[Figure, Axes]:
@@ -1959,6 +1958,11 @@ class Signal(MultichannelData):
 
         threshold_linear = from_db(threshold_db, True)
         above_threshold = np.where(np.abs(self.time_data) >= threshold_linear)
+        if len(above_threshold[0]) == 0:
+            raise ValueError(
+                f"No sample reaches the threshold of {threshold_db} dB, so "
+                + "there is nothing left after trimming"
+            )
         if at_start:
             indices_along_first_axis = above_threshold[0][: self.number_of_channels]
             start = int(np.min(indices_along_first_axis))
@@ -2308,6 +2312,7 @@ class Signal(MultichannelData):
             Detected signal.
         others : dict
             Dictionary containing following keys:
+
             - `'noise'`: left-out noise in original signal (below threshold)
               as `Signal` object.
             - `'signal_indices'`: array of boolean that describes which

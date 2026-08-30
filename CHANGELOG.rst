@@ -151,6 +151,26 @@ Bugfix
 
 Misc
 ~~~~
+- The documentation builds without warnings: the class-member summaries no
+  longer ask for stub files, the orphaned `general_tools` page is gone, the
+  new ``realtime`` module has a page, and the nested lists and references in
+  the docstrings are valid reStructuredText
+- The README's link to a non-existent `examples/` directory was replaced by a
+  short usage example, and `docs/readme.rst` now includes the README instead
+  of duplicating an outdated copy of it
+- Group delay is plotted in ms everywhere; `plot_bode` used seconds
+- The frequency ranges of the plotting methods are annotated as tuples, which
+  is what their defaults are
+- `Filter.plot_magnitude`, `plot_phase` and `plot_group_delay` share one
+  length adaptation, which reports the length that was actually asked for and
+  extends by 100 samples in all three (`plot_phase` extended by 1)
+- `Signal.trim_with_level_threshold` and `find_frequencies_above_threshold`
+  raise a clear `ValueError` when nothing crosses the threshold instead of a
+  bare `IndexError`
+- `Spectrum.spectral_difference(complex=False)` returns a magnitude spectrum
+  even for complex inputs, and `transforms.cepstrum(complex=False)` returns a
+  real array, as both annotations promised
+- `Signal.plot_spl` clips the real and imaginary parts at the same 500 dB
 - The beamformers' grid loops are vectorized with `einsum`
 - `plots.plots` no longer shadows the `max` and `min` builtins module-wide
 - In-place writes through property getters were replaced by assignments

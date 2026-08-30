@@ -4,6 +4,34 @@ Tools
 This module contains general dsp utilities. These functions use exclusively
 arrays and primitive data types instead of custom classes.
 
+Levels and conversions:
+
+- `to_db()`, `from_db()`
+- `convert_sample_representation()`
+
+Frequency vectors:
+
+- `log_frequency_vector()`
+- `erb_frequencies()`
+- `fractional_octave_frequencies()`
+- `frequency_crossover()`
+- `warp_frequency()`
+
+Spectra:
+
+- `interpolate_fr()`
+- `scale_spectrum()`
+- `fractional_octave_smoothing()`
+- `wrap_phase()`
+- `get_exact_value_at_frequency()`
+- `log_mean()`
+
+Time series:
+
+- `framed_signal()`, `reconstruct_from_framed_signal()`
+- `time_smoothing()`, `get_smoothing_factor_ema()`
+- `next_power_2()`
+
 """
 
 from typing import Any
@@ -80,7 +108,8 @@ def log_frequency_vector(
 def get_exact_value_at_frequency(
     freqs_hz: NDArray[np.float64], y: NDArray[Any], f: float = 1e3
 ):
-    """Return the exact value at 1 kHz extracted by using linear interpolation.
+    """Return the exact value at a given frequency by using linear
+    interpolation.
 
     Parameters
     ----------
@@ -98,7 +127,7 @@ def get_exact_value_at_frequency(
 
     """
     assert freqs_hz[0] <= f and freqs_hz[-1] >= f, (
-        "Frequency vector does not contain 1 kHz"
+        f"Frequency vector does not contain {f} Hz"
     )
     assert freqs_hz.ndim == 1, "Frequency vector can only have one dimension"
     assert len(freqs_hz) == len(y), "Lengths do not match"
@@ -271,7 +300,7 @@ def fractional_octave_frequencies(
 
 
 def erb_frequencies(
-    freq_range_hz=(20, 20000),
+    freq_range_hz: tuple[float, float] | None = (20, 20000),
     resolution: float = 1,
     reference_frequency_hz: float = 1000,
 ) -> NDArray[np.float64]:

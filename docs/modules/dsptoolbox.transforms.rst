@@ -1,5 +1,5 @@
 Transforms (dsptoolbox.transforms)
-==============================
+==================================
 
 .. automodule:: dsptoolbox.transforms
    :members:

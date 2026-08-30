@@ -192,8 +192,8 @@ class StateVariableFilter(RealtimeFilter):
     def plot_magnitude(
         self,
         length_samples: int,
-        range_hz: list | None = (20, 20e3),
-        range_db: list | None = None,
+        range_hz: tuple[float, float] | None = (20.0, 20e3),
+        range_db: tuple[float, float] | None = None,
         ax: Axes | None = None,
     ) -> tuple[Figure, Axes]:
         """Plot the magnitude response of each band output of the filter.
@@ -232,7 +232,7 @@ class StateVariableFilter(RealtimeFilter):
     def plot_group_delay(
         self,
         length_samples: int,
-        range_hz: list[float] | None = (20.0, 20e3),
+        range_hz: tuple[float, float] | None = (20.0, 20e3),
         ax: Axes | None = None,
     ) -> tuple[Figure, Axes]:
         """Plot the group delay of each band output of the filter.
@@ -263,7 +263,7 @@ class StateVariableFilter(RealtimeFilter):
     def plot_phase(
         self,
         length_samples: int,
-        range_hz: list | None = (20, 20e3),
+        range_hz: tuple[float, float] | None = (20.0, 20e3),
         unwrap: bool = False,
         radians: bool = True,
         ax: Axes | None = None,

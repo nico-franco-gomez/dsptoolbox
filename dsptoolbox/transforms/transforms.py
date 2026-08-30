@@ -68,7 +68,8 @@ def cepstrum(
     Returns
     -------
     ceps : NDArray[np.float64] or NDArray[np.complex128]
-        Cepstrum.
+        Cepstrum with shape (quefrency, channel). It is complex when
+        `complex=True` and real otherwise.
 
     References
     ----------
@@ -78,7 +79,9 @@ def cepstrum(
     sp = np.fft.fft(signal.time_data, axis=0)
     if complex:
         return np.fft.ifft(np.log(sp), axis=0)
-    return np.fft.ifft(np.log(np.abs(sp)), axis=0)
+    # The log magnitude is even, so its inverse transform is real up to
+    # numerical noise
+    return np.fft.ifft(np.log(np.abs(sp)), axis=0).real
 
 
 def from_complex_cepstrum(
@@ -1049,7 +1052,7 @@ def warp(
       while appending the factor
 
         .. math::
-            \left(1 + \lambda z^{-1}\right)^{M_p - N_z}
+            \left(1 - \lambda z^{-1}\right)^{M_p - N_z}
 
       to the transfer function, where Mp is the total number of poles and Nz
       the total number of zeros.
@@ -1125,10 +1128,11 @@ def warp_filter(filter: Filter, warping_factor: float) -> Filter:
       while appending the factor
 
         .. math::
-            \left(1 + \lambda z^{-1}\right)^{M_p - N_z}
+            \left(1 - \lambda z^{-1}\right)^{M_p - N_z}
 
       to the transfer function, where Mp is the total number of poles and Nz
-      the total number of zeros.
+      the total number of zeros. This is why the roots that pad the shorter of
+      the two lists sit at :math:`\lambda`.
     - Warping filters with orders above 100 is not recommended due to numerical
       errors when finding their polynomial roots. This does not apply if the
       filter has the zeros and poles from which its coefficients were computed.

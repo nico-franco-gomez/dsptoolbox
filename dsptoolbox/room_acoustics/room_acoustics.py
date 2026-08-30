@@ -45,7 +45,7 @@ def reverb_time(
         IR for which to compute reverberation times.
     mode : ReverbTime, optional
         Reverberation time mode. Default: Adaptive.
-    ir_start : int or array-like, NDArray[np.int_], optional
+    ir_start : int or array-like, NDArray[np.int\_], optional
         If it is an integer, it is assumed as the start of the IR for all
         channels (and all bands). For more specific cases, pass a 1d-array
         containing the start indices for each channel or a 2d-array with
@@ -173,7 +173,9 @@ def find_modes(
 
     Notes
     -----
-    - This function finds the resonant modes but not the antiresonants.
+    - The modes are found as the peaks of the complex mode indicator
+      function. Pass `antiresonances=True` to invert the spectra and locate
+      the antiresonances instead.
 
     """
     assert len(f_range_hz) == 2, (
@@ -281,7 +283,7 @@ def find_ir_start(
 
     Returns
     -------
-    start_index : NDArray[np.int_]
+    start_index : NDArray[np.int\_]
         Index of IR start for each channel.
 
     References

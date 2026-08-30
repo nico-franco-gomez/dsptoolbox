@@ -1536,6 +1536,7 @@ def harmonic_distortion_analysis(
     dict
         A dictionary containing each spectrum is returned. Each item is of type
         Spectrum. Its keys are:
+
             - "1": spectrum of the fundamental.
             - "2": spectrum of the second harmonic.
             - "3": ...
@@ -1741,6 +1742,7 @@ def trim_ir(
     Notes
     -----
     - The method employed for finding the ending of the IR works as follows:
+
         - A (hilbert) envelope is computed in dB (energy time curve). This is
           smoothed by exponential averaging with 20 ms.
         - Non-overlapping windows with lengths 10, 30, 50 and 80 ms are
@@ -1750,6 +1752,7 @@ def trim_ir(
         - Pearson correlation coefficients (cc) of the energy decay for the
           segments obtained with each window size are computed. The final end
           point is selected following criteria:
+
             - If a good linear fit is obtained (cc < -0.95), it is used as
               the final point.
             - Else, if there are acceptable fits (cc < -0.9), the ending

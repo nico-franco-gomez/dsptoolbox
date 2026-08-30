@@ -295,7 +295,7 @@ def _get_correlation_of_latencies(
         of channels with `other_time_data`.
     other_time_data : NDArray[np.float64]
         "Delayed" time data, when the latency is positive.
-    latencies : NDArray[np.int_]
+    latencies : NDArray[np.int\_]
         Computed latencies for each channel.
 
     Returns

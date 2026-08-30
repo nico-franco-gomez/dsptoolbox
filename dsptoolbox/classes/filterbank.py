@@ -460,9 +460,9 @@ class FilterBank:
 
         Returns
         -------
-        new_sig : `'sequential'` or `'summed'` -> `Signal`.
-                  `'parallel'` -> `MultiBandSignal`.
-            New signal after filtering.
+        new_sig : `Signal` or `MultiBandSignal`
+            New signal after filtering. It is a `MultiBandSignal` for the
+            Parallel mode and a `Signal` for Sequential and Summed.
 
         """
         if type(signal) is MultiBandSignal:
@@ -691,7 +691,7 @@ class FilterBank:
         self,
         length_samples: int,
         mode: FilterBankMode,
-        range_hz: list[float] | None = (20.0, 20e3),
+        range_hz: tuple[float, float] | None = (20.0, 20e3),
         zero_phase: bool = False,
         ax: Axes | None = None,
     ) -> tuple[Figure, Axes] | None:
@@ -809,7 +809,7 @@ class FilterBank:
         self,
         length_samples: int,
         mode: FilterBankMode,
-        range_hz=(20, 20e3),
+        range_hz: tuple[float, float] | None = (20, 20e3),
         unwrap: bool = False,
         zero_phase: bool = False,
         ax: Axes | None = None,
@@ -898,7 +898,7 @@ class FilterBank:
         self,
         length_samples: int,
         mode: FilterBankMode,
-        range_hz: list[float] | None = (20.0, 20e3),
+        range_hz: tuple[float, float] | None = (20.0, 20e3),
         zero_phase: bool = False,
         ax: Axes | None = None,
     ) -> tuple[Figure, Axes] | None:

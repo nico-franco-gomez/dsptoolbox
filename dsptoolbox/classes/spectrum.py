@@ -454,7 +454,8 @@ class Spectrum(MultichannelData):
 
         Returns
         -------
-        self
+        Spectrum
+            New spectrum with a single channel.
 
         """
         if power_sum:
@@ -636,9 +637,9 @@ class Spectrum(MultichannelData):
                     )
                 )
 
-            if len(inds_outside_left) > 0:
+            if np.any(inds_outside_left):
                 output[inds_outside_left, :] = left_val
-            if len(inds_outside_right) > 0:
+            if np.any(inds_outside_right):
                 output[inds_outside_right, :] = right_val
         else:
             output = np.zeros(
@@ -976,6 +977,10 @@ class Spectrum(MultichannelData):
         )
 
         inp1 = self.copy()
+        if not complex and not inp1.is_magnitude:
+            # The result must not be complex when a magnitude difference was
+            # requested
+            inp1.spectral_data = np.abs(inp1.spectral_data)
 
         if isinstance(other, Signal):
             inp2 = Spectrum.from_signal(other, complex)

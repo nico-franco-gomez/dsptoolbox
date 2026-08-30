@@ -246,7 +246,7 @@ class ImpulseResponse(Signal):
 
         Notes
         -----
-        - All values are clipped to be at least -800 dBFS.
+        - All values are clipped to at most 500 dB below the peak.
         - If it is an analytic signal and normalization is applied, the peak
           value of the real part is used as the normalization factor.
         - If the time window is not 0, effects at the edges of the signal might
@@ -277,7 +277,7 @@ class ImpulseResponse(Signal):
 
     def plot_bode(
         self,
-        range_hz=(20, 20e3),
+        range_hz: tuple[float, float] | None = (20, 20e3),
         normalize: MagnitudeNormalization = MagnitudeNormalization.NoNormalization,
         range_db=None,
         show_group_delay: bool = False,
@@ -303,7 +303,7 @@ class ImpulseResponse(Signal):
             When True, the group delay is shown instead of the phase response.
             It is computed with the numerical derivative of the phase response.
             Default: False.
-        range_s : array-like with length 2, optional
+        range_rad_s : array-like with length 2, optional
             Range for plotting the group delay or phase response. Default:
             None.
         smoothing : int, optional
@@ -356,14 +356,18 @@ class ImpulseResponse(Signal):
             f,
             sp_abs_db,
             f,
-            (_group_delay_direct(phase, f[1] - f[0]) if show_group_delay else phase),
+            (
+                _group_delay_direct(phase, f[1] - f[0]) * 1e3
+                if show_group_delay
+                else phase
+            ),
             range_x=range_hz,
             range_y1=range_db,
             range_y2=range_rad_s,
             log_x=True,
             labels1=[f"Channel {n}" for n in range(self.number_of_channels)],
             y1label="Magnitude / dB",
-            y2label=("Group Delay / s" if show_group_delay else "Phase / rad"),
+            y2label=("Group delay / ms" if show_group_delay else "Phase / rad"),
             y2_linestyle="dashed",
             y2_alpha=0.6,
             ax=ax,

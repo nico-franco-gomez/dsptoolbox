@@ -25,7 +25,7 @@ def log_spectral(
     insig1: Signal,
     insig2: Signal,
     method: SpectrumMethod = SpectrumMethod.WelchPeriodogram,
-    f_range_hz=(20, 20000),
+    f_range_hz: tuple[float, float] | None = (20, 20000),
     energy_normalization: bool = True,
     spectrum_parameters: SpectrumParameters | None = None,
 ) -> NDArray[np.float64]:
@@ -110,7 +110,7 @@ def itakura_saito(
     insig1: Signal,
     insig2: Signal,
     method: SpectrumMethod = SpectrumMethod.WelchPeriodogram,
-    f_range_hz=(20, 20000),
+    f_range_hz: tuple[float, float] | None = (20, 20000),
     energy_normalization: bool = True,
     spectrum_parameters: SpectrumParameters | None = None,
 ) -> NDArray[np.float64]:
@@ -276,7 +276,7 @@ def si_sdr(target_signal: Signal, modified_signal: Signal) -> NDArray[np.float64
 def fw_snr_seg(
     x: Signal,
     xhat: Signal,
-    f_range_hz=(20, 10e3),
+    f_range_hz: tuple[float, float] | None = (20, 10e3),
     snr_range_db=(-10, 35),
     gamma: float = 0.2,
 ) -> NDArray[np.float64]:

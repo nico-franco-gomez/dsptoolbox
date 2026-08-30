@@ -408,6 +408,7 @@ def _interpolate_fr(
     - When converting to dB, the default clipping value of `to_db` is used.
     - Theoretical thoughts on interpolating an amplitude or power
       frequency response:
+
         - Using complex and dB values during interpolation are not very precise
           when comparing the results in terms of the amplitude or power
           spectrum.
@@ -425,9 +426,11 @@ def _interpolate_fr(
         - A direct FFT-result which is not in physical units needs rescaling
           depending on the normalization scheme used during the FFT -> IFFT (in
           the complex/amplitude representation):
+
               - Forward: scaling factor `old_length/new_length`.
               - Backward: no rescaling.
               - Orthogonal: scaling factor `(old_length/new_length)**0.5`
+
         - Interpolating the (amplitude or power) spectrum to a logarithmic-
           spaced frequency vector can be done without rescaling (the underlying
           transformation in the time domain would be warping). Doing so for the

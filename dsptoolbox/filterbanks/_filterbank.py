@@ -418,7 +418,7 @@ class LRFilterBank:
         self,
         length_samples: int,
         mode: FilterBankMode = FilterBankMode.Parallel,
-        range_hz: list[float] | None = (20.0, 20e3),
+        range_hz: tuple[float, float] | None = (20.0, 20e3),
         zero_phase: bool = False,
         ax: Axes | None = None,
     ):
@@ -519,7 +519,7 @@ class LRFilterBank:
         self,
         length_samples: int,
         mode: FilterBankMode = FilterBankMode.Parallel,
-        range_hz: list[float] | None = (20.0, 20e3),
+        range_hz: tuple[float, float] | None = (20.0, 20e3),
         unwrap: bool = False,
         ax: Axes | None = None,
     ):
@@ -587,7 +587,7 @@ class LRFilterBank:
         self,
         length_samples: int,
         mode: FilterBankMode = FilterBankMode.Parallel,
-        range_hz: list[float] | None = (20.0, 20e3),
+        range_hz: tuple[float, float] | None = (20.0, 20e3),
         ax: Axes | None = None,
     ):
         """Plots the phase response of each filter.
@@ -979,7 +979,7 @@ class BaseCrossover(FilterBank):
         self,
         length_samples: int,
         mode: FilterBankMode = FilterBankMode.Parallel,
-        range_hz: list[float] | None = (20.0, 20e3),
+        range_hz: tuple[float, float] | None = (20.0, 20e3),
         downsample: bool = True,
     ):
         """Plots the magnitude response of each filter.

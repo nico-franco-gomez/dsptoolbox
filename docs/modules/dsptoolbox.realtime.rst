@@ -1,7 +1,7 @@
-Tools (dsptoolbox.tools)
+Realtime (dsptoolbox.realtime)
 ==============================
 
-.. automodule:: dsptoolbox.tools
+.. automodule:: dsptoolbox.realtime
    :members:
    :undoc-members:
    :show-inheritance:

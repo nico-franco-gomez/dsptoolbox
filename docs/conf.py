@@ -33,7 +33,9 @@ extensions = [
     "autodocsumm",
 ]
 
-# numpydoc_show_class_members = False
+# The class-member summary that numpydoc emits needs a stub file per method,
+# which autosummary only generates for members referenced from .rst sources
+numpydoc_class_members_toctree = False
 autosummary_generate = True
 autosummary_imported_members = True
 

@@ -9,6 +9,7 @@ The modules and functions of dsptoolbox are listed down below.
    modules/dsptoolbox.distances
    modules/dsptoolbox.beamforming
    modules/dsptoolbox.filterbanks
+   modules/dsptoolbox.realtime
    modules/dsptoolbox.generators
    modules/dsptoolbox.audio_io
    modules/dsptoolbox.plots
