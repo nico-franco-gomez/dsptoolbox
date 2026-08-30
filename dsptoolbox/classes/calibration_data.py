@@ -1,3 +1,5 @@
+from typing import Self
+
 import numpy as np
 from numpy.typing import NDArray
 
@@ -15,10 +17,10 @@ class CalibrationData:
 
     def __init__(
         self,
-        calibration_data,
-        calibration_spl_db: float = 94,
+        calibration_data: str | tuple[NDArray[np.float64], int] | Signal,
+        calibration_spl_db: float = 94.0,
         high_snr: bool = True,
-    ):
+    ) -> None:
         """Load a calibration sound file. It is expected that it contains
         a recorded harmonic tone of 1 kHz with the given dB(SPL) value, common
         values are 94 dB or 114 dB SPL according to [1]. This class can later
@@ -67,7 +69,7 @@ class CalibrationData:
         self,
         new_channel: str | tuple[NDArray[np.float64], int] | Signal,
         allow_padding_trimming: bool = False,
-    ):
+    ) -> Self:
         """Adds a new calibration channel to the calibration signal.
 
         Parameters
@@ -104,7 +106,7 @@ class CalibrationData:
         self.__update = True
         return self
 
-    def _compute_calibration_factors(self):
+    def _compute_calibration_factors(self) -> None:
         """Computes the calibration factors for each channel."""
         if self.__update:
             if self.high_snr:
@@ -116,7 +118,7 @@ class CalibrationData:
             self.calibration_factors = p_analytical / rms_channels
             self.__update = False
 
-    def _get_rms_from_spectrum(self):
+    def _get_rms_from_spectrum(self) -> NDArray[np.float64]:
         self.calibration_signal = self.calibration_signal.set_spectrum_parameters(
             method=SpectrumMethod.FFT,
             scaling=SpectrumScaling.AmplitudeSpectrum,

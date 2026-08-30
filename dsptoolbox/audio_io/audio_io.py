@@ -5,6 +5,7 @@ measurements and testing audio streams
 
 import os
 import sys
+from collections.abc import Callable
 from typing import Any
 
 from .. import Signal
@@ -57,7 +58,7 @@ def get_default_config() -> Any:
     return _sd().default
 
 
-def print_device_info(device_number: int | None = None):
+def print_device_info(device_number: int | None = None) -> Any:
     """Prints available audio devices or information about a certain device
     when the device number is given.
 
@@ -85,7 +86,7 @@ def print_device_info(device_number: int | None = None):
         return d
 
 
-def set_latency(input_low: bool, output_low: bool):
+def set_latency(input_low: bool, output_low: bool) -> None:
     """Set the desired latency (Default is high). This can vary for each device
     and host. Sounddevice only allows for setting a low or a high latency.
     High latency is more robust, but it might be too large for some
@@ -109,7 +110,7 @@ def set_latency(input_low: bool, output_low: bool):
     )
 
 
-def set_blocksize(blocksize: int):
+def set_blocksize(blocksize: int) -> None:
     """Set a default blocksize for any stream. This can lead to a stable latency
     for most interfaces. Not setting it will lead to a default value.
 
@@ -127,7 +128,7 @@ def set_blocksize(blocksize: int):
 def set_device(
     device: list[int] | list[str] | str | int,
     sampling_rate_hz: int | None = None,
-):
+) -> Any:
     """Set the default input and output device.
 
     Parameters
@@ -196,7 +197,7 @@ def set_device(
     return _sd().query_devices()
 
 
-def list_devices():
+def list_devices() -> Any:
     """Return the available audio devices, and print them.
 
     Returns
@@ -243,7 +244,7 @@ def play_and_record(
     duration_seconds: float | None = None,
     normalized_dbfs: float | None = -6,
     device: str | None = None,
-    play_channels=None,
+    play_channels: int | list | tuple | None = None,
     rec_channels: int | list[int] | None = None,
 ) -> Signal:
     """Play and record using some available device. Note that the channel
@@ -391,7 +392,7 @@ def play(
     normalized_dbfs: float | None = -6,
     device: str | None = None,
     play_channels: int | list | tuple | None = None,
-):
+) -> None:
     """Playback of signal using some available device. Note that the channel
     numbers start here with 1.
 
@@ -451,7 +452,7 @@ def play(
     print("Playback has ended\n")
 
 
-def CallbackStop():
+def CallbackStop() -> None:
     """Wrapper around sounddevice's CallbackStop. Used for stopping audio
     streamings.
 
@@ -459,7 +460,7 @@ def CallbackStop():
     _sd().CallbackStop()
 
 
-def sleep(seconds: float):
+def sleep(seconds: float) -> None:
     """Wrapper around sounddevice's sleep. Use for waiting while a stream
     happens.
 
@@ -474,17 +475,17 @@ def sleep(seconds: float):
 
 def output_stream(
     signal: Signal,
-    blocksize=2048,
-    device=None,
-    latency=None,
-    extra_settings=None,
-    callback=None,
-    finished_callback=None,
-    clip_off=None,
-    dither_off=None,
-    never_drop_input=None,
-    prime_output_buffers_using_stream_callback=None,
-):
+    blocksize: int = 2048,
+    device: str | int | None = None,
+    latency: float | str | None = None,
+    extra_settings: Any = None,
+    callback: Callable | None = None,
+    finished_callback: Callable | None = None,
+    clip_off: bool | None = None,
+    dither_off: bool | None = None,
+    never_drop_input: bool | None = None,
+    prime_output_buffers_using_stream_callback: bool | None = None,
+) -> Any:
     """Creates and return a sounddevice's OutputStream object. See
     sounddevice's documentation for more information.
 

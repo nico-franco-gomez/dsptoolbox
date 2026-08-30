@@ -33,7 +33,7 @@ class Grid(BasePoints):
 
     """
 
-    def __init__(self, positions: dict):
+    def __init__(self, positions: dict) -> None:
         """Construct a grid for beamforming by passing positions for the point
         coordinates in meters. Additionally, there is a class method
         (reconstruct_map_shape) that you can manually add to the object in
@@ -74,11 +74,11 @@ class Regular2DGrid(Grid):
 
     def __init__(
         self,
-        line1,
-        line2,
+        line1: NDArray[np.float64],
+        line2: NDArray[np.float64],
         dimensions: Sequence[SpatialDimension],
-        value3,
-    ):
+        value3: float,
+    ) -> None:
         """Creates a rectangular 2d grid on a coincident plane with coordinate
         system. If you wish to create a non-coincident grid do it manually and
         pass positions to Grid.
@@ -122,8 +122,8 @@ class Regular2DGrid(Grid):
         assert len(set(dimensions)) == len(dimensions), "There are repeated dimensions"
         dimension_strs = [d.to_str() for d in dimensions]
         self.extent_dimensions = dimension_strs
-        value3 = np.asarray(value3).squeeze()
-        assert value3.ndim == 0, "value3 can only be a single value"
+        third_coordinate = np.asarray(value3).squeeze()
+        assert third_coordinate.ndim == 0, "value3 can only be a single value"
 
         line1 = np.asarray(line1).squeeze()
         line2 = np.asarray(line2).squeeze()
@@ -135,7 +135,9 @@ class Regular2DGrid(Grid):
         dim1 = dim1.flatten()
         dim2 = dim2.flatten()
         positions = np.append(dim1[..., None], dim2[..., None], axis=1)
-        positions = np.append(positions, np.ones((len(dim1), 1)) * value3, axis=1)
+        positions = np.append(
+            positions, np.ones((len(dim1), 1)) * third_coordinate, axis=1
+        )
 
         # Convert to the positions dictionary
         base_dimensions = ["x", "y", "z"]
@@ -215,7 +217,6 @@ class Regular2DGrid(Grid):
             zlabel="dBFS",
             colorbar=True,
             lower_origin=True,
-            returns=True,
             ax=ax,
         )
         return fig, ax
@@ -224,7 +225,12 @@ class Regular2DGrid(Grid):
 class Regular3DGrid(Grid):
     """Class for 3D regular Grids."""
 
-    def __init__(self, line_x, line_y, line_z):
+    def __init__(
+        self,
+        line_x: NDArray[np.float64],
+        line_y: NDArray[np.float64],
+        line_z: NDArray[np.float64],
+    ) -> None:
         """Constructor for a regular 3D grid.
 
         Parameters
@@ -305,7 +311,8 @@ class Regular3DGrid(Grid):
         map: NDArray[np.float64],
         third_dimension: SpatialDimension,
         value_third_dimension: float,
-        range_db: float = 20,
+        range_db: float = 20.0,
+        ax: Axes | None = None,
     ) -> tuple[Figure, Axes]:
         """Plot a map done with this type of grid.
 
@@ -320,6 +327,9 @@ class Regular3DGrid(Grid):
             possible value will be taken if it is not exact.
         range_db : float, optional
             Range in dB to plot.
+        ax : `matplotlib.axes.Axes`, None, optional
+            Axes to draw on, so that several plots can share one axis. A new
+            figure is created when None. Default: None.
 
         Returns
         -------
@@ -363,7 +373,7 @@ class Regular3DGrid(Grid):
             zlabel="dBFS",
             colorbar=True,
             lower_origin=True,
-            returns=True,
+            ax=ax,
         )
         return fig, ax
 
@@ -371,7 +381,13 @@ class Regular3DGrid(Grid):
 class LineGrid(Grid):
     """Class for a line grid."""
 
-    def __init__(self, line, dimension: SpatialDimension, value2: float, value3: float):
+    def __init__(
+        self,
+        line: NDArray[np.float64],
+        dimension: SpatialDimension,
+        value2: float,
+        value3: float,
+    ) -> None:
         """Constructor for a line grid. It is a line that goes in the
         direction of one of the coordinates. For a non-coincident line, create
         it manually using the Grid class.
@@ -386,7 +402,7 @@ class LineGrid(Grid):
         value2 : float
             Value for the second dimension. First dimension is the one along
             which the line is extended. Order goes x -> y -> z -> x -> etc.
-        value3 :float
+        value3 : float
             Value for the third dimension.
 
         Attributes and Methods
@@ -429,7 +445,7 @@ class MicArray(BasePoints):
     """This class contains a microphone array with all its metadata."""
 
     # ======== Constructor ====================================================
-    def __init__(self, positions: dict):
+    def __init__(self, positions: dict) -> None:
         """Initiate a MicArray based on the positions dictionary that contains
         all vectors.
 
@@ -481,30 +497,30 @@ class MicArray(BasePoints):
 
     # ======== Properties =====================================================
     @property
-    def aperture(self):
+    def aperture(self) -> float:
         if self.__aperture is None:
             self.__compute_aperture_min_distance()
         return self.__aperture
 
     @property
-    def min_distance(self):
+    def min_distance(self) -> float:
         if self.__min_distance is None:
             self.__compute_aperture_min_distance()
         return self.__min_distance
 
     @property
-    def array_center_coordinates(self):
+    def array_center_coordinates(self) -> NDArray[np.float64]:
         if self.__array_center_coordinates is None:
             self.__compute_array_center()
         return self.__array_center_coordinates
 
     @property
-    def array_center_channel_number(self):
+    def array_center_channel_number(self) -> int:
         if self.__array_center_channel_number is None:
             self.__compute_array_center()
         return self.__array_center_channel_number
 
-    def __compute_aperture_min_distance(self):
+    def __compute_aperture_min_distance(self) -> None:
         """Method to trigger the computation for the array's aperture and
         minimum distance between microphones.
 
@@ -515,7 +531,7 @@ class MicArray(BasePoints):
         np.fill_diagonal(distances, -np.inf)
         self.__aperture = np.max(distances)
 
-    def __compute_array_center(self):
+    def __compute_array_center(self) -> None:
         """Returns array center mic's coordinates and number.
 
         Parameters
@@ -612,7 +628,7 @@ class SteeringVector:
     # ======== Constructor ====================================================
     def __init__(
         self, formulation: SteeringVectorType = SteeringVectorType.TrueLocation
-    ):
+    ) -> None:
         """Initializes the SteeringVector using the passed formulation.
 
         Parameters
@@ -655,9 +671,9 @@ class BaseBeamformer:
         self,
         multi_channel_signal: Signal,
         mic_array: MicArray,
-        c: float = 343,
+        c: float = 343.0,
         verbose: bool = False,
-    ):
+    ) -> None:
         """Base constructor for Beamformer.
 
         Parameters
@@ -688,7 +704,7 @@ class BaseBeamformer:
         self.verbose = verbose
         self.beamformer_type = "Base"
 
-    def _report(self, message: str):
+    def _report(self, message: str) -> None:
         """Print a progress message when the beamformer is verbose."""
         if self.verbose:
             print(message)
@@ -751,7 +767,7 @@ class BaseBeamformer:
         assert len(range_he) == 2, "Range in He should have length two"
         return [self.mics.he_to_hz(i, self.c) for i in range_he]
 
-    def show_info(self):
+    def show_info(self) -> None:
         """Helper for creating a string containing metadata."""
         txt = f"""Beamformer: {self.beamformer_type}"""
         txt = "\n" + txt + "\n" + "-" * len(txt) + "\n"
@@ -774,9 +790,9 @@ class BeamformerGridded(BaseBeamformer):
         mic_array: MicArray,
         grid: Grid,
         steering_vector: SteeringVector,
-        c: float = 343,
+        c: float = 343.0,
         verbose: bool = False,
-    ):
+    ) -> None:
         """Constructor for beamformer with grid and steering vector.
 
         Parameters
@@ -1321,8 +1337,8 @@ class BeamformerDASTime(BaseBeamformer):
         multi_channel_signal: Signal,
         mic_array: MicArray,
         grid: Grid,
-        c: float = 343,
-    ):
+        c: float = 343.0,
+    ) -> None:
         """Constructor for the traditional Delay-and-sum beamforming approach
         in time domain.
 
@@ -1398,7 +1414,7 @@ class MonopoleSource:
 
     """
 
-    def __init__(self, signal: Signal, coordinates):
+    def __init__(self, signal: Signal, coordinates: NDArray[np.float64]) -> None:
         """Constructor for a monopole source. It is defined by an emitted
         signal and spatial coordinates. Its emission characteristic is
         omnidirectional.

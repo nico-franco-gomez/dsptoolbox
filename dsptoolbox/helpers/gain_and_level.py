@@ -30,7 +30,9 @@ def _rms(x: NDArray[np.float64]) -> float | NDArray[np.float64]:
     return rms_vals[..., 0] if single_dim else rms_vals
 
 
-def from_db(x: float | NDArray[np.float64], amplitude_output: bool):
+def from_db(
+    x: float | NDArray[np.float64], amplitude_output: bool
+) -> NDArray[np.float64]:
     """Get the values in their amplitude or power form from dB.
 
     Parameters

@@ -11,7 +11,7 @@ from .spectrum_utilities import _wrap_phase
 
 def _get_fractional_impulse_peak_index(
     time_data: NDArray[np.float64], polynomial_points: int = 1
-):
+) -> NDArray[np.float64]:
     """
     Obtain the index for the peak in subsample precision using the root
     of the analytical function.
@@ -104,7 +104,7 @@ def _fractional_latency(
     td1: NDArray[np.float64],
     td2: NDArray[np.float64] | None,
     polynomial_points: int,
-):
+) -> NDArray[np.float64]:
     """This function computes the sub-sample latency between two signals using
     Zero-Crossing of the analytic (hilbert transformed) correlation function.
     The number of polynomial points taken around the correlation maximum can be
@@ -156,7 +156,7 @@ def _remove_ir_latency_from_phase(
     phase: NDArray[np.float64],
     latency_samples: NDArray,
     sampling_rate_hz: int,
-):
+) -> NDArray[np.float64]:
     """
     Remove the impulse delay from a phase response.
 
@@ -188,7 +188,7 @@ def _remove_ir_latency_from_phase_peak(
     phase: NDArray[np.float64],
     time_data: NDArray[np.float64],
     sampling_rate_hz: int,
-):
+) -> NDArray[np.float64]:
     """
     Remove the impulse delay from a phase response.
 
@@ -295,7 +295,7 @@ def _get_correlation_of_latencies(
         of channels with `other_time_data`.
     other_time_data : NDArray[np.float64]
         "Delayed" time data, when the latency is positive.
-    latencies : NDArray[np.int\_]
+    latencies : ``NDArray[np.int_]``
         Computed latencies for each channel.
 
     Returns

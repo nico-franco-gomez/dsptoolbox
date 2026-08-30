@@ -39,7 +39,7 @@ def log_spectral(
         Signal 2.
     method : SpectrumMethod, optional
         Method to compute the spectrum. Default: WelchPeriodogram.
-    f_range_hz : array-like with length 2, optional
+    f_range_hz : tuple[float, float], None, optional
         Range of frequencies in which to compute the distance. When `None`,
         it is computed in all frequencies. Default: [20, 20000].
     energy_normalization : bool, optional
@@ -71,16 +71,16 @@ def log_spectral(
 
     fs_hz = insig1.sampling_rate_hz
     if f_range_hz is None:
-        f_range_hz = [0, fs_hz // 2]
+        f_range = np.array([0.0, fs_hz // 2])
     else:
         assert len(f_range_hz) == 2, (
             "f_range_hz must only have a lower" + " and an upper limit"
         )
-        f_range_hz = np.sort(f_range_hz)
-        assert f_range_hz[1] <= fs_hz // 2, (
+        f_range = np.sort(f_range_hz)
+        assert f_range[1] <= fs_hz // 2, (
             "Upper bound for " + "frequency must be smaller than the nyquist frequency"
         )
-        assert not any(f_range_hz < 0), "Frequencies in range must be " + "positive"
+        assert not any(f_range < 0), "Frequencies in range must be " + "positive"
     insig1 = insig1.with_spectrum_parameters(spectrum_parameters)
     insig2 = insig2.with_spectrum_parameters(spectrum_parameters)
     f, spec1 = insig1.get_spectrum()
@@ -92,7 +92,7 @@ def log_spectral(
         psd1 = psd1**2
         psd2 = psd2**2
 
-    ids = find_nearest_points_index_in_vector(f_range_hz, f)
+    ids = find_nearest_points_index_in_vector(f_range, f)
     f = f[ids[0] : ids[1]]
 
     distances = np.zeros(insig1.number_of_channels)
@@ -125,7 +125,7 @@ def itakura_saito(
         Signal 2.
     method : SpectrumMethod, optional
         Method to compute the spectrum. Default: WelchPeriodogram.
-    f_range_hz : array-like with length 2, optional
+    f_range_hz : tuple[float, float], None, optional
         Range of frequencies in which to compute the distance. When `None`,
         it is computed in all frequencies. Default: [20, 20000].
     energy_normalization : bool, optional
@@ -157,16 +157,16 @@ def itakura_saito(
 
     fs_hz = insig1.sampling_rate_hz
     if f_range_hz is None:
-        f_range_hz = [0, fs_hz // 2]
+        f_range = np.array([0.0, fs_hz // 2])
     else:
         assert len(f_range_hz) == 2, (
             "f_range_hz must only have a lower" + " and an upper limit"
         )
-        f_range_hz = np.sort(f_range_hz)
-        assert f_range_hz[1] <= fs_hz // 2, (
+        f_range = np.sort(f_range_hz)
+        assert f_range[1] <= fs_hz // 2, (
             "Upper bound for " + "frequency must be smaller than the nyquist frequency"
         )
-        assert not any(f_range_hz < 0), "Frequencies in range must be " + "positive"
+        assert not any(f_range < 0), "Frequencies in range must be " + "positive"
     insig1 = insig1.with_spectrum_parameters(spectrum_parameters)
     insig2 = insig2.with_spectrum_parameters(spectrum_parameters)
     f, spec1 = insig1.get_spectrum()
@@ -178,7 +178,7 @@ def itakura_saito(
         psd1 = psd1**2
         psd2 = psd2**2
 
-    ids = find_nearest_points_index_in_vector(f_range_hz, f)
+    ids = find_nearest_points_index_in_vector(f_range, f)
     f = f[ids[0] : ids[1]]
 
     distances = np.zeros(insig1.number_of_channels)
@@ -276,8 +276,8 @@ def si_sdr(target_signal: Signal, modified_signal: Signal) -> NDArray[np.float64
 def fw_snr_seg(
     x: Signal,
     xhat: Signal,
-    f_range_hz: tuple[float, float] | None = (20, 10e3),
-    snr_range_db=(-10, 35),
+    f_range_hz: tuple[float, float] | None = (20.0, 10e3),
+    snr_range_db: tuple[float, float] = (-10.0, 35.0),
     gamma: float = 0.2,
 ) -> NDArray[np.float64]:
     """Frequency-weighted segmental SNR (fwSNRseg) computation between two
@@ -301,9 +301,9 @@ def fw_snr_seg(
         others.
     xhat : `Signal`
         Enhanced/modified signal.
-    f_range_hz : array-like with length of 2, optional
+    f_range_hz : tuple[float, float], None, optional
         Frequency range in which to analyze the signals. Default: [20, 10e3].
-    snr_range_db : array-like with length of 2, optional
+    snr_range_db : tuple[float, float], optional
         SNR range to be regarded. If any frame throws a value outside this
         range, it is set to the boundary. Default: [-10, 35].
     gamma : float, optional
@@ -350,8 +350,7 @@ def fw_snr_seg(
     assert f_range[0] > 0, "Frequency range must be positive"
     # SNR range
     assert len(snr_range_db) == 2, "SNR range must have lower and upper bounds"
-    snr_range_db = np.asarray(snr_range_db)
-    snr_range_db.sort()
+    snr_range = np.sort(snr_range_db)
     # Time window
     length_samp = int(75e-3 * fs_hz)
     if length_samp % 2 == 1:
@@ -380,7 +379,7 @@ def fw_snr_seg(
         snr_per_channel[n] = _fw_snr_seg_per_channel(
             x_,
             xhat_,
-            snr_range_db,
+            snr_range,
             gamma,
             time_window=window,
             step_samples=step,

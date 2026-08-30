@@ -1,10 +1,14 @@
+from collections.abc import Iterator
 from copy import deepcopy
 from pickle import HIGHEST_PROTOCOL, dump
+from typing import Any, Self
 from warnings import warn
 
 import numpy as np
+from matplotlib.axes import Axes
+from matplotlib.figure import Figure
 from numpy import array, atleast_1d, complex128, unique, zeros
-from numpy.typing import NDArray
+from numpy.typing import ArrayLike, NDArray
 
 from ..helpers.other import _check_path_format
 from ..standard.enums import FadeType
@@ -27,10 +31,10 @@ class MultiBandSignal(MultichannelData):
     # ======== Constructor and initializers ===================================
     def __init__(
         self,
-        bands: list | None = None,
+        bands: list[Signal] | None = None,
         same_sampling_rate: bool = True,
         info: dict | None = None,
-    ):
+    ) -> None:
         """`MultiBandSignal` contains a composite band list where each index
         is a Signal object with the same number of channels. For multirate
         systems, the parameter `same_sampling_rate` has to be set to `False`.
@@ -71,7 +75,7 @@ class MultiBandSignal(MultichannelData):
         return self.__sampling_rate_hz
 
     @sampling_rate_hz.setter
-    def sampling_rate_hz(self, new_sampling_rate_hz):
+    def sampling_rate_hz(self, new_sampling_rate_hz: int | ArrayLike) -> None:
         """Set the sampling rate(s) in Hz.
 
         Parameters
@@ -117,7 +121,7 @@ class MultiBandSignal(MultichannelData):
         return self.__bands
 
     @bands.setter
-    def bands(self, new_bands: list[Signal]):
+    def bands(self, new_bands: list[Signal] | None) -> None:
         """Set the list of signal bands.
 
         Parameters
@@ -202,7 +206,7 @@ class MultiBandSignal(MultichannelData):
         return self.__same_sampling_rate
 
     @same_sampling_rate.setter
-    def same_sampling_rate(self, new_same):
+    def same_sampling_rate(self, new_same: bool) -> None:
         """Set whether all bands share the same sampling rate.
 
         Parameters
@@ -301,17 +305,17 @@ class MultiBandSignal(MultichannelData):
             else [b.length_samples for b in self.bands]
         )
 
-    def __get_type_of_signal_bands(self):
+    def __get_type_of_signal_bands(self) -> type[Signal]:
         """Return type of saved bands (either Signal or ImpulseResponse)."""
         return type(self.bands[0])
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.bands)
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[Signal]:
         return iter(self.bands)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.metadata_str
 
     @property
@@ -336,7 +340,7 @@ class MultiBandSignal(MultichannelData):
         return info
 
     # ======== Add and remove =================================================
-    def add_band(self, sig: Signal, index: int | None = None) -> "MultiBandSignal":
+    def add_band(self, sig: Signal, index: int | None = None) -> Self:
         """Return a copy of the `MultiBandSignal` with a new band added.
 
         Parameters
@@ -349,7 +353,7 @@ class MultiBandSignal(MultichannelData):
 
         Returns
         -------
-        MultiBandSignal
+        Self
             New multiband signal with the band added.
 
         """
@@ -362,7 +366,7 @@ class MultiBandSignal(MultichannelData):
         new.bands = bs
         return new
 
-    def remove_band(self, index: int | None = None) -> "MultiBandSignal":
+    def remove_band(self, index: int | None = None) -> Self:
         """Return a copy of the `MultiBandSignal` with a band removed.
 
         Parameters
@@ -373,7 +377,7 @@ class MultiBandSignal(MultichannelData):
 
         Returns
         -------
-        MultiBandSignal
+        Self
             New multiband signal with the band removed.
 
         Notes
@@ -411,7 +415,7 @@ class MultiBandSignal(MultichannelData):
         new.bands = bs
         return new, removed_band
 
-    def swap_bands(self, new_order):
+    def swap_bands(self, new_order: ArrayLike) -> Self:
         """Return a copy of the `MultiBandSignal` with the bands rearranged
         in the new given order.
 
@@ -469,7 +473,7 @@ class MultiBandSignal(MultichannelData):
                 initial += self.bands[n].time_data_imaginary * 1j
         return self.bands[0].copy_with_new_time_data(initial)
 
-    def show_info(self):
+    def show_info(self) -> Self:
         """Show information about the `MultiBandSignal`."""
         print(self.metadata_str)
         return self
@@ -658,7 +662,7 @@ class MultiBandSignal(MultichannelData):
 
     def _create_copy_with_new_data(
         self, data: NDArray[np.float64 | np.complex128]
-    ) -> "MultiBandSignal":
+    ) -> Self:
         """Create a copy with new time data for every band."""
         new = self.copy()
         new._set_data(data)
@@ -668,9 +672,7 @@ class MultiBandSignal(MultichannelData):
         """The bands own their state, so there is nothing to update here."""
 
     # ======== Signal operations per band =====================================
-    def resample(
-        self, desired_sampling_rate_hz: int, rescaling: bool = False
-    ) -> "MultiBandSignal":
+    def resample(self, desired_sampling_rate_hz: int, rescaling: bool = False) -> Self:
         """Return a copy where every band has been resampled to the desired
         sampling rate.
 
@@ -685,7 +687,7 @@ class MultiBandSignal(MultichannelData):
 
         Returns
         -------
-        MultiBandSignal
+        Self
             Resampled multiband signal.
 
         Notes
@@ -707,7 +709,7 @@ class MultiBandSignal(MultichannelData):
         length_fade_seconds: float | None = None,
         at_start: bool = True,
         at_end: bool = True,
-    ) -> "MultiBandSignal":
+    ) -> Self:
         """Return a copy with fading applied to every band.
 
         Parameters
@@ -724,7 +726,7 @@ class MultiBandSignal(MultichannelData):
 
         Returns
         -------
-        MultiBandSignal
+        Self
             Faded multiband signal.
 
         """
@@ -780,7 +782,7 @@ class MultiBandSignal(MultichannelData):
         ]
         return new, start_index, stop_index
 
-    def plot_magnitude(self, **kwargs):
+    def plot_magnitude(self, **kwargs: Any) -> tuple[Figure, Axes]:
         """Plot the magnitude response of every band as channels of a single
         signal. See `Signal.plot_magnitude()` for the accepted arguments.
 
@@ -794,7 +796,7 @@ class MultiBandSignal(MultichannelData):
         """
         return self.get_all_bands().plot_magnitude(**kwargs)
 
-    def plot_time(self, **kwargs):
+    def plot_time(self, **kwargs: Any) -> tuple[Figure, list[Axes]]:
         """Plot the time signal of every band as channels of a single signal.
         See `Signal.plot_time()` for the accepted arguments.
 
@@ -809,7 +811,7 @@ class MultiBandSignal(MultichannelData):
         return self.get_all_bands().plot_time(**kwargs)
 
     # ======== Saving and copying =============================================
-    def save_signal(self, path: str):
+    def save_signal(self, path: str) -> None:
         """Saves the `MultiBandSignal` object as a pickle.
 
         Parameters
@@ -823,21 +825,19 @@ class MultiBandSignal(MultichannelData):
             dump(self, data_file, HIGHEST_PROTOCOL)
         return self
 
-    def copy(self) -> "MultiBandSignal":
+    def copy(self) -> Self:
         """Returns a copy of the object.
 
         Returns
         -------
-        new_sig : `MultiBandSignal`
+        Self
             Copy of Signal.
 
         """
         return deepcopy(self)
 
     # ======== Transforms (returning a new MultiBandSignal) ===================
-    def pad_trim(
-        self, desired_length_samples: int, in_the_end: bool = True
-    ) -> "MultiBandSignal":
+    def pad_trim(self, desired_length_samples: int, in_the_end: bool = True) -> Self:
         """Return a copy of the multiband signal with padded or trimmed time
         data in each band. Only valid for `same_sampling_rate=True`.
 
@@ -851,7 +851,7 @@ class MultiBandSignal(MultichannelData):
 
         Returns
         -------
-        MultiBandSignal
+        Self
             New padded or trimmed multiband signal.
 
         """
@@ -864,7 +864,7 @@ class MultiBandSignal(MultichannelData):
 
     def modify_signal_length(
         self, start_seconds: float | None, end_seconds: float | None
-    ) -> "MultiBandSignal":
+    ) -> Self:
         """Return a copy of the multiband signal with added silence at the
         beginning or the end of each band. Time samples can also be trimmed
         when using negative time values.
@@ -882,7 +882,7 @@ class MultiBandSignal(MultichannelData):
 
         Returns
         -------
-        MultiBandSignal
+        Self
             Copy of the multiband signal with new length.
 
         """
@@ -897,7 +897,7 @@ class MultiBandSignal(MultichannelData):
         start_time_s: float | None,
         end_time_s: float | None,
         inclusive: bool = True,
-    ) -> "MultiBandSignal":
+    ) -> Self:
         """Return a copy of the multiband signal trimmed to a selected time
         window in each band.
 
@@ -914,7 +914,7 @@ class MultiBandSignal(MultichannelData):
 
         Returns
         -------
-        MultiBandSignal
+        Self
             Trimmed copy.
 
         """
@@ -930,7 +930,7 @@ class MultiBandSignal(MultichannelData):
         norm_dbfs: float,
         peak_normalization: bool = True,
         each_channel: bool = False,
-    ) -> "MultiBandSignal":
+    ) -> Self:
         """Return a copy of the multiband signal normalized to a given dBFS
         value in each band. It either normalizes each channel or each band
         as a whole.
@@ -949,7 +949,7 @@ class MultiBandSignal(MultichannelData):
 
         Returns
         -------
-        MultiBandSignal
+        Self
             Normalized multiband signal.
 
         """
@@ -959,7 +959,7 @@ class MultiBandSignal(MultichannelData):
         ]
         return new
 
-    def apply_gain(self, gain_db: float | NDArray[np.float64]) -> "MultiBandSignal":
+    def apply_gain(self, gain_db: float | NDArray[np.float64]) -> Self:
         """Return a copy of the multiband signal with gain applied to each
         band.
 
@@ -971,7 +971,7 @@ class MultiBandSignal(MultichannelData):
 
         Returns
         -------
-        MultiBandSignal
+        Self
             Multiband signal with new gain.
 
         """
@@ -979,7 +979,7 @@ class MultiBandSignal(MultichannelData):
         new.bands = [b.apply_gain(gain_db) for b in self.bands]
         return new
 
-    def detrend(self, polynomial_order: int = 0) -> "MultiBandSignal":
+    def detrend(self, polynomial_order: int = 0) -> Self:
         """Return the detrended multiband signal.
 
         Parameters
@@ -990,7 +990,7 @@ class MultiBandSignal(MultichannelData):
 
         Returns
         -------
-        MultiBandSignal
+        Self
             Detrended multiband signal.
 
         """
@@ -1001,11 +1001,11 @@ class MultiBandSignal(MultichannelData):
     def fractional_delay(
         self,
         delay_seconds: float,
-        channels=None,
+        channels: int | ArrayLike | None = None,
         keep_length: bool = False,
         order: int = 30,
         side_lobe_suppression_db: float = 60,
-    ) -> "MultiBandSignal":
+    ) -> Self:
         """Return a copy of the multiband signal with fractional time delay
         applied to each band.
 
@@ -1027,7 +1027,7 @@ class MultiBandSignal(MultichannelData):
 
         Returns
         -------
-        MultiBandSignal
+        Self
             Delayed multiband signal.
 
         """
@@ -1043,9 +1043,9 @@ class MultiBandSignal(MultichannelData):
     def delay(
         self,
         delay_samples: int,
-        channels=None,
+        channels: int | ArrayLike | None = None,
         keep_length: bool = False,
-    ) -> "MultiBandSignal":
+    ) -> Self:
         """Return a copy of the multiband signal with a time delay applied
         to each band. This method is faster than `fractional_delay` because
         it only applies integer delay by zero-padding.
@@ -1063,7 +1063,7 @@ class MultiBandSignal(MultichannelData):
 
         Returns
         -------
-        MultiBandSignal
+        Self
             Delayed multiband signal.
 
         """
@@ -1076,7 +1076,7 @@ class MultiBandSignal(MultichannelData):
         others: list["MultiBandSignal"],
         allow_padding_trimming: bool = True,
         at_end: bool = True,
-    ) -> "MultiBandSignal":
+    ) -> Self:
         """Return a copy of the multiband signal with the channels of other
         multiband signals appended to each band. If their lengths are not
         the same, trimming or padding can be applied to match this signal's
@@ -1098,7 +1098,7 @@ class MultiBandSignal(MultichannelData):
 
         Returns
         -------
-        MultiBandSignal
+        Self
             Multiband signal with all channels.
 
         """

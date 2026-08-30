@@ -5,7 +5,7 @@ Backend for transfer functions methods
 from warnings import warn
 
 import numpy as np
-from numpy.typing import NDArray
+from numpy.typing import ArrayLike, NDArray
 from scipy.fft import next_fast_len
 from scipy.signal import get_window, hilbert
 from scipy.stats import pearsonr
@@ -20,11 +20,11 @@ from ..tools import time_smoothing
 def _spectral_deconvolve(
     num_fft: NDArray[np.complex128],
     denum_fft: NDArray[np.complex128],
-    freqs_hz,
+    freqs_hz: NDArray[np.float64],
     time_signal_length: int,
     regularized: bool,
-    start_stop_hz,
-):
+    start_stop_hz: ArrayLike | None,
+) -> NDArray[np.complex128]:
     assert num_fft.shape == denum_fft.shape, "Shapes do not match"
     assert len(freqs_hz) == len(num_fft), "Frequency vector does not match"
 
@@ -44,7 +44,7 @@ def _spectral_deconvolve(
 
 
 def _window_this_ir_tukey(
-    vec,
+    vec: NDArray[np.float64],
     total_length: int,
     window_type: WindowType | list[WindowType],
     constant_percentage: float,
@@ -149,7 +149,7 @@ def _window_this_ir_tukey(
 
 
 def _window_this_ir(
-    vec, total_length: int, window_type: Window
+    vec: NDArray[np.float64], total_length: int, window_type: Window
 ) -> tuple[NDArray[np.float64], NDArray[np.float64], int]:
     """This function windows an impulse response by placing the peak exactly
     in the middle of the window. It trims or pads at the end if needed. The
@@ -386,7 +386,7 @@ def __find_index_above_noise_floor(
     envelope: NDArray[np.float64],
     noise_floor_db: float,
     distance_to_noise_floor_db: float,
-):
+) -> int:
     """Get a safety distance from the noise floor using a polynomial fit of
     the IR power density in dB."""
     polynomial = (
@@ -437,7 +437,7 @@ try:
         spectrum: NDArray[np.complex128],
         frequency_vector: NDArray[np.float64],
         window_y: NDArray[np.float64],
-    ):
+    ) -> NDArray[np.complex128]:
         """Parallel backend of complex smoothing. This function expects a
         linearly-spaced frequency vector."""
         window_x = np.linspace(np.float64(-1.0), np.float64(1.0), len(window_y))
@@ -498,7 +498,7 @@ try:
         spectrum: NDArray[np.complex128],
         alpha: NDArray[np.complex128],
         n: NDArray[np.complex128],
-    ):
+    ) -> NDArray[np.complex128]:
         """Parallel backend for frequency-dependent windowing."""
         for ind in nb.prange(len(freqs_normalized)):
             spectrum[ind, :] = np.sum(
@@ -516,7 +516,7 @@ except ModuleNotFoundError as e:
         spectrum: NDArray[np.complex128],
         frequency_vector: NDArray[np.float64],
         window_y: NDArray[np.float64],
-    ):
+    ) -> NDArray[np.complex128]:
         """Sequential backend of complex smoothing. This function expects a
         linearly-spaced frequency vector."""
         window_x = np.linspace(-1.0, 1.0, len(window_y), endpoint=True)
@@ -565,7 +565,7 @@ except ModuleNotFoundError as e:
         spectrum: NDArray[np.complex128],
         alpha: NDArray[np.complex128],
         n: NDArray[np.complex128],
-    ):
+    ) -> NDArray[np.complex128]:
         """Sequential backend for frequency-dependent windowing."""
         for ind in np.arange(len(freqs_normalized)):
             spectrum[ind, :] = np.sum(

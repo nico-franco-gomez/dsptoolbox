@@ -2,6 +2,7 @@
 Signal class
 """
 
+from collections.abc import Iterator
 from copy import deepcopy
 from fractions import Fraction
 from pickle import HIGHEST_PROTOCOL, dump
@@ -71,15 +72,19 @@ class Signal(MultichannelData):
 
     """
 
+    # Only present after a windowing method has set it; `hasattr` is the
+    # presence check, so this stays an annotation and creates no attribute
+    window: NDArray[np.float64]
+
     # ======== Constructor and State handler ==================================
     def __init__(
         self,
         path: str | None = None,
-        time_data=None,
+        time_data: ArrayLike | None = None,
         sampling_rate_hz: int | None = None,
         constrain_amplitude: bool = False,
         activate_cache: bool = False,
-    ):
+    ) -> None:
         """Signal class that saves time data, channel and sampling rate
         information as well as spectrum, cross-spectral matrix and more.
 
@@ -137,7 +142,7 @@ class Signal(MultichannelData):
         path: str,
         constrain_amplitude: bool = False,
         activate_cache: bool = False,
-    ):
+    ) -> "Signal":
         """Create a signal from a path to a wav or flac audio file.
 
         Parameters
@@ -173,7 +178,7 @@ class Signal(MultichannelData):
         sampling_rate_hz: int,
         constrain_amplitude: bool = False,
         activate_cache: bool = False,
-    ):
+    ) -> "Signal":
         """Create a signal from an array of PCM samples.
 
         Parameters
@@ -204,7 +209,7 @@ class Signal(MultichannelData):
             None, time_data, sampling_rate_hz, constrain_amplitude, activate_cache
         )
 
-    def __update_state(self):
+    def __update_state(self) -> None:
         """Internal update of object state. If for instance time data gets
         added, new spectrum, csm or stft has to be computed.
 
@@ -237,7 +242,7 @@ class Signal(MultichannelData):
             txt += f"""{str(k).replace("_", " ").capitalize()}: {metadata[k]}\n"""
         return txt
 
-    def _generate_time_vector(self):
+    def _generate_time_vector(self) -> None:
         """Internal method to generate a time vector on demand."""
         self.__time_vector_update = False
         self.__time_vector_s = (
@@ -260,7 +265,7 @@ class Signal(MultichannelData):
         return self.__time_data
 
     @time_data.setter
-    def time_data(self, new_time_data: ArrayLike):
+    def time_data(self, new_time_data: ArrayLike) -> None:
         """Set the time data for the signal.
 
         Parameters
@@ -367,7 +372,7 @@ class Signal(MultichannelData):
         return self.__sampling_rate_hz
 
     @sampling_rate_hz.setter
-    def sampling_rate_hz(self, new_sampling_rate_hz):
+    def sampling_rate_hz(self, new_sampling_rate_hz: int) -> None:
         """Set the sampling rate in Hz.
 
         Parameters
@@ -429,7 +434,7 @@ class Signal(MultichannelData):
         return self.__time_data_imaginary
 
     @time_data_imaginary.setter
-    def time_data_imaginary(self, new_imag: NDArray[np.float64]):
+    def time_data_imaginary(self, new_imag: NDArray[np.float64] | None) -> None:
         """Set the imaginary part of the time data.
 
         Parameters
@@ -468,7 +473,7 @@ class Signal(MultichannelData):
         return self.__constrain_amplitude
 
     @constrain_amplitude.setter
-    def constrain_amplitude(self, nca):
+    def constrain_amplitude(self, nca: bool) -> None:
         """Set whether to constrain the signal amplitude to [-1., 1.].
 
         Parameters
@@ -504,7 +509,7 @@ class Signal(MultichannelData):
         return self.__calibrated_signal
 
     @calibrated_signal.setter
-    def calibrated_signal(self, ncs):
+    def calibrated_signal(self, ncs: bool) -> None:
         """Set whether the signal is (amplitude) calibrated.
 
         Parameters
@@ -523,15 +528,15 @@ class Signal(MultichannelData):
         assert type(ncs) is bool, "calibrated_signal must be of type boolean"
         self.__calibrated_signal = ncs
 
-    def __len__(self):
+    def __len__(self) -> int:
         """Length of time signal in samples."""
         return self.time_data.shape[0]
 
-    def __str__(self):
+    def __str__(self) -> str:
         """Metadata of the signal."""
         return self.metadata_str
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[NDArray[np.float64 | np.complex128]]:
         """Iterate over the channels of the signal. Modifications to the
         samples can be done through these slices."""
         return iter([self.time_data[:, x] for x in range(self.number_of_channels)])
@@ -586,7 +591,7 @@ class Signal(MultichannelData):
 
         Returns
         -------
-        Signal
+        Self
             Copy with the new parameters.
 
         """
@@ -604,7 +609,7 @@ class Signal(MultichannelData):
 
         Returns
         -------
-        Signal
+        Self
             Copy with the new parameters.
 
         """
@@ -673,7 +678,7 @@ class Signal(MultichannelData):
 
         Returns
         -------
-        Signal
+        Self
             New signal with the new spectrum parameters.
 
         References
@@ -720,7 +725,7 @@ class Signal(MultichannelData):
         return self._spectrum_parameters.scaling
 
     @spectrum_scaling.setter
-    def spectrum_scaling(self, new_scaling: SpectrumScaling):
+    def spectrum_scaling(self, new_scaling: SpectrumScaling) -> None:
         """Set the spectrum scaling method.
 
         Parameters
@@ -760,7 +765,7 @@ class Signal(MultichannelData):
         return self._spectrum_parameters.method
 
     @spectrum_method.setter
-    def spectrum_method(self, new_method: SpectrumMethod):
+    def spectrum_method(self, new_method: SpectrumMethod) -> None:
         """Set the spectrum computation method.
 
         Parameters
@@ -800,7 +805,7 @@ class Signal(MultichannelData):
         return self._spectrum_parameters.smoothing
 
     @spectrum_smoothing.setter
-    def spectrum_smoothing(self, new_smoothing):
+    def spectrum_smoothing(self, new_smoothing: float) -> None:
         """Set the spectrum smoothing parameter.
 
         Parameters
@@ -903,7 +908,7 @@ class Signal(MultichannelData):
 
         Returns
         -------
-        Signal
+        Self
             New signal with the new spectrogram parameters.
 
         References
@@ -950,7 +955,7 @@ class Signal(MultichannelData):
 
         Returns
         -------
-        Signal
+        Self
             New signal with the added channels.
 
         """
@@ -1015,7 +1020,7 @@ class Signal(MultichannelData):
 
     # ======== Getters ========================================================
     def get_spectrum(
-        self, force_computation=False
+        self, force_computation: bool = False
     ) -> tuple[NDArray[np.float64], NDArray[np.complex128 | np.float64]]:
         """Returns spectrum according to the stored parameters.
 
@@ -1102,7 +1107,7 @@ class Signal(MultichannelData):
         return self.spectrum[0].copy(), self.spectrum[1].copy()
 
     def get_csm(
-        self, force_computation=False
+        self, force_computation: bool = False
     ) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
         """Get Cross spectral matrix for all channels with the shape
         (frequencies, channels, channels). It uses the parameters stored in
@@ -1216,7 +1221,7 @@ class Signal(MultichannelData):
         self,
         range_hz: tuple[float, float] | None = (20.0, 20e3),
         normalize: MagnitudeNormalization = MagnitudeNormalization.NoNormalization,
-        range_db=None,
+        range_db: tuple[float, float] | None = None,
         smoothing: int = 0,
         show_info_box: bool = False,
         ax: Axes | None = None,
@@ -1732,7 +1737,7 @@ class Signal(MultichannelData):
         return fig, ax
 
     # ======== Saving and copy ================================================
-    def save_signal(self, path: str, bit_depth: int = 32):
+    def save_signal(self, path: str, bit_depth: int = 32) -> None:
         """Saves the Signal object as wav, flac or pickle. The saving format
         is inferred from the file extension in `path`.
 
@@ -1772,12 +1777,12 @@ class Signal(MultichannelData):
             )
         return self
 
-    def copy(self) -> "Signal":
+    def copy(self) -> Self:
         """Returns a copy of the object.
 
         Returns
         -------
-        new_sig : `Signal`
+        Self
             Copy of Signal.
 
         """
@@ -1798,7 +1803,7 @@ class Signal(MultichannelData):
 
     def _create_copy_with_new_data(
         self, data: NDArray[np.float64 | np.complex128]
-    ) -> "Signal":
+    ) -> Self:
         """Create a copy with new time data."""
         return self.copy_with_new_time_data(data)
 
@@ -1841,9 +1846,7 @@ class Signal(MultichannelData):
         return new_signal
 
     # ======== Transforms (returning a new Signal) ============================
-    def pad_trim(
-        self, desired_length_samples: int, in_the_end: bool = True
-    ) -> "Signal":
+    def pad_trim(self, desired_length_samples: int, in_the_end: bool = True) -> Self:
         """Return a copy of the signal with padded or trimmed time data.
 
         Parameters
@@ -1856,7 +1859,7 @@ class Signal(MultichannelData):
 
         Returns
         -------
-        Signal
+        Self
             New padded or trimmed signal.
 
         """
@@ -1871,7 +1874,7 @@ class Signal(MultichannelData):
 
     def modify_signal_length(
         self, start_seconds: float | None, end_seconds: float | None
-    ) -> "Signal":
+    ) -> Self:
         """Return a copy of the signal with added silence at the beginning
         or the end. Time samples can also be trimmed when using negative
         time values.
@@ -1889,7 +1892,7 @@ class Signal(MultichannelData):
 
         Returns
         -------
-        Signal
+        Self
             Copy of the signal with new length.
 
         """
@@ -1986,7 +1989,7 @@ class Signal(MultichannelData):
         start_time_s: float | None,
         end_time_s: float | None,
         inclusive: bool = True,
-    ) -> "Signal":
+    ) -> Self:
         """Return a copy of the signal trimmed to a selected time window.
 
         Parameters
@@ -2002,7 +2005,7 @@ class Signal(MultichannelData):
 
         Returns
         -------
-        Signal
+        Self
             Trimmed copy.
 
         """
@@ -2040,7 +2043,7 @@ class Signal(MultichannelData):
         norm_dbfs: float,
         peak_normalization: bool = True,
         each_channel: bool = False,
-    ) -> "Signal":
+    ) -> Self:
         """Return a copy of the signal normalized to a given dBFS value. It
         either normalizes each channel or the signal as a whole.
 
@@ -2058,7 +2061,7 @@ class Signal(MultichannelData):
 
         Returns
         -------
-        Signal
+        Self
             Normalized signal.
 
         Notes
@@ -2078,7 +2081,7 @@ class Signal(MultichannelData):
         length_fade_seconds: float | None = None,
         at_start: bool = True,
         at_end: bool = True,
-    ) -> "Signal":
+    ) -> Self:
         """Return a copy of the signal with fading applied.
 
         Parameters
@@ -2095,7 +2098,7 @@ class Signal(MultichannelData):
 
         Returns
         -------
-        Signal
+        Self
             New signal.
 
         """
@@ -2128,7 +2131,7 @@ class Signal(MultichannelData):
             new_time_data[:, n] = vec
         return self.copy_with_new_time_data(new_time_data)
 
-    def apply_gain(self, gain_db: float | NDArray[np.float64]) -> "Signal":
+    def apply_gain(self, gain_db: float | NDArray[np.float64]) -> Self:
         """Return a copy of the signal with gain applied, either to the
         signal as a whole or per channel.
 
@@ -2140,7 +2143,7 @@ class Signal(MultichannelData):
 
         Returns
         -------
-        Signal
+        Self
             Signal with new gain.
 
         Notes
@@ -2157,7 +2160,7 @@ class Signal(MultichannelData):
             new_sig.time_data_imaginary *= gain_linear
         return new_sig
 
-    def detrend(self, polynomial_order: int = 0) -> "Signal":
+    def detrend(self, polynomial_order: int = 0) -> Self:
         """Return the detrended signal.
 
         Parameters
@@ -2168,7 +2171,7 @@ class Signal(MultichannelData):
 
         Returns
         -------
-        Signal
+        Self
             Detrended signal.
 
         """
@@ -2184,7 +2187,7 @@ class Signal(MultichannelData):
         noise_shaping_filterbank: "FilterBank | None" = None,
         truncate: bool = False,
         rng: RngLike = None,
-    ) -> "Signal":
+    ) -> Self:
         """Return a copy of the signal with dither applied and, optionally,
         truncated to 16-bit floating point representation.
 
@@ -2214,7 +2217,7 @@ class Signal(MultichannelData):
 
         Returns
         -------
-        Signal
+        Self
             Signal with dither.
 
         Notes
@@ -2369,10 +2372,9 @@ class Signal(MultichannelData):
         except ValueError as e:
             warn(
                 "No detected activity, threshold might be too high. Detected "
-                + "signal will be a vector filled with zeroes",
+                + f"signal will be a vector filled with zeroes ({e})",
                 stacklevel=2,
             )
-            print("Numpy error: ", e)
             detected_sig.time_data = np.zeros(500)
 
         try:
@@ -2380,10 +2382,9 @@ class Signal(MultichannelData):
         except ValueError as e:
             warn(
                 "No detected noise, threshold might be too low. Noise will be "
-                + "a vector filled with zeroes",
+                + f"a vector filled with zeroes ({e})",
                 stacklevel=2,
             )
-            print("Numpy error: ", e)
             noise.time_data = np.zeros(500)
 
         others = dict(
@@ -2439,11 +2440,11 @@ class Signal(MultichannelData):
     def fractional_delay(
         self,
         delay_seconds: float,
-        channels=None,
+        channels: int | ArrayLike | None = None,
         keep_length: bool = False,
         order: int = 30,
         side_lobe_suppression_db: float = 60,
-    ) -> "Signal":
+    ) -> Self:
         """Return a copy of the signal with fractional time delay applied.
 
         Parameters
@@ -2466,7 +2467,7 @@ class Signal(MultichannelData):
 
         Returns
         -------
-        Signal
+        Self
             Delayed signal.
 
         """
@@ -2542,9 +2543,9 @@ class Signal(MultichannelData):
     def delay(
         self,
         delay_samples: int,
-        channels=None,
+        channels: int | ArrayLike | None = None,
         keep_length: bool = False,
-    ) -> "Signal":
+    ) -> Self:
         """Return a copy of the signal with a time delay applied. This
         method is faster than `fractional_delay` because it only applies
         integer delay by zero-padding.
@@ -2564,7 +2565,7 @@ class Signal(MultichannelData):
 
         Returns
         -------
-        Signal
+        Self
             Delayed signal.
 
         """
@@ -2610,9 +2611,7 @@ class Signal(MultichannelData):
 
         return self.copy_with_new_time_data(new_time_data)
 
-    def resample(
-        self, desired_sampling_rate_hz: int, rescaling: bool = False
-    ) -> "Signal":
+    def resample(self, desired_sampling_rate_hz: int, rescaling: bool = False) -> Self:
         """Return a copy of the signal resampled to the desired sampling
         rate using `scipy.signal.resample_poly` with an efficient polyphase
         representation.
@@ -2628,7 +2627,7 @@ class Signal(MultichannelData):
 
         Returns
         -------
-        Signal
+        Self
             Resampled signal.
 
         """
@@ -2650,7 +2649,7 @@ class Signal(MultichannelData):
         others: list["Signal"],
         allow_padding_trimming: bool = True,
         at_end: bool = True,
-    ) -> "Signal":
+    ) -> Self:
         """Return a copy of the signal with the channels of other signals
         appended. If their lengths are not the same, trimming or padding can
         be applied to match this signal's length.
@@ -2671,7 +2670,7 @@ class Signal(MultichannelData):
 
         Returns
         -------
-        Signal
+        Self
             Signal with all channels.
 
         """
@@ -2729,7 +2728,7 @@ class Signal(MultichannelData):
         new_sig.time_data = td
         return new_sig
 
-    def show_info(self):
+    def show_info(self) -> Self:
         """Prints all the signal information to the console."""
         print(self.metadata_str)
         return self

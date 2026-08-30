@@ -2,6 +2,7 @@ import os
 from os.path import join
 
 import numpy as np
+from matplotlib.pyplot import close, subplots
 
 import dsptoolbox as dsp
 
@@ -352,3 +353,40 @@ class TestBeamformingModule:
         peak_idx = np.unravel_index(np.argmax(beamformer_map), beamformer_map.shape)
         peak_xy = (gx[peak_idx[0]], gy[peak_idx[1]])
         np.testing.assert_allclose(peak_xy, true_xy, atol=0.1)
+
+    def test_regular_grid_plot_map(self):
+        """Both regular grids used to pass a `returns` keyword that
+        `general_matrix_plot` does not accept.
+
+        """
+        rng = np.random.default_rng(0)
+
+        g2 = dsp.beamforming.Regular2DGrid(
+            line1=x,
+            line2=y,
+            dimensions=(
+                dsp.beamforming.SpatialDimension.X,
+                dsp.beamforming.SpatialDimension.Y,
+            ),
+            value3=2,
+        )
+        fig, ax = g2.plot_map(rng.uniform(size=g2.number_of_points))
+        close(fig)
+
+        g3 = dsp.beamforming.Regular3DGrid(x, y, z)
+        fig, _ = g3.plot_map(
+            rng.uniform(size=g3.number_of_points),
+            dsp.beamforming.SpatialDimension.Z,
+            0.5,
+        )
+        close(fig)
+
+        # Both accept an existing axis (A10)
+        _, shared = subplots(1, 1)
+        g2.plot_map(rng.uniform(size=g2.number_of_points), ax=shared)
+        g3.plot_map(
+            rng.uniform(size=g3.number_of_points),
+            dsp.beamforming.SpatialDimension.Z,
+            0.5,
+            ax=shared,
+        )

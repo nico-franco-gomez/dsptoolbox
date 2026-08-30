@@ -1,21 +1,26 @@
 import abc
+from typing import Generic, TypeVar
 
 import numpy as np
 from numpy.typing import NDArray
 
+# Most structures produce one output sample per input sample, but a multimode
+# filter produces one per mode, so the sample type is a parameter of the class
+SampleT = TypeVar("SampleT", bound=float | tuple[float, ...])
 
-class RealtimeFilter(abc.ABC):
+
+class RealtimeFilter(abc.ABC, Generic[SampleT]):
     @abc.abstractmethod
-    def process_sample(self, x: float, channel: int) -> float:
+    def process_sample(self, x: float, channel: int) -> SampleT:
         """Process a sample with the filter for a given channel. Channel index
         is not checked for speed."""
 
     @abc.abstractmethod
-    def reset_state(self):
+    def reset_state(self) -> None:
         """Reset all filter states to 0."""
 
     @abc.abstractmethod
-    def set_n_channels(self, n_channels: int):
+    def set_n_channels(self, n_channels: int) -> None:
         """Set the number of channels to be filtered."""
 
     def process_block(
@@ -42,6 +47,8 @@ class RealtimeFilter(abc.ABC):
         - This generic implementation calls `process_sample` for every sample
           and is therefore no faster than the per-sample loop it replaces.
           Structures that can filter a whole block at once override it.
+        - Only valid for filters that produce a single sample per input
+          sample. Multimode structures override it with their own layout.
 
         """
         output = np.empty(len(block), dtype=np.float64)

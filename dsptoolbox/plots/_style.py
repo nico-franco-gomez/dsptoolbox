@@ -1,4 +1,4 @@
-def use_default_style():
+def use_default_style() -> bool:
     """Apply the package's default seaborn style to matplotlib's global
     settings.
 

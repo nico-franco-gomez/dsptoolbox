@@ -5,13 +5,19 @@ Very specific plots which are harder to create from the general templates
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.axes import Axes
+from matplotlib.figure import Figure
 from matplotlib.ticker import ScalarFormatter
+from numpy.typing import NDArray
 
 from ..helpers.gain_and_level import to_db
 from ..helpers.other import find_nearest_points_index_in_vector
 
 
-def _zp_plot(z, p, ax: Axes | None = None):
+def _zp_plot(
+    z: NDArray[np.complex128],
+    p: NDArray[np.complex128],
+    ax: Axes | None = None,
+) -> tuple[Figure, Axes]:
     if ax is None:
         fig, ax = plt.subplots(1, 1, figsize=(5, 5))
     else:
@@ -35,7 +41,14 @@ def _zp_plot(z, p, ax: Axes | None = None):
     return fig, ax
 
 
-def _csm_plot(f, csm, range_x=None, log=True, with_phase=True, ax=None):
+def _csm_plot(
+    f: NDArray[np.float64],
+    csm: NDArray[np.complex128],
+    range_x: tuple[float, float] | None = None,
+    log: bool = True,
+    with_phase: bool = True,
+    ax: NDArray | None = None,
+) -> tuple[Figure, NDArray]:
     """Function to plot cross-spectral matrix. Since it is very specialized,
     it is not in the plots module. `ax` expects a (channel, channel) grid of
     axes, which is created when None is given.

@@ -13,7 +13,7 @@ from ..standard.enums import FilterCoefficientsType
 from .realtime_filter import RealtimeFilter
 
 
-class LatticeLadderFilter(RealtimeFilter):
+class LatticeLadderFilter(RealtimeFilter[float]):
     """This is a class that handles a Lattice/Ladder filter representation.
     Depending on the `k` (reflection) or `c` (feedforward) coefficients, it
     might be a lattice or lattice/ladder filter structure.
@@ -33,7 +33,7 @@ class LatticeLadderFilter(RealtimeFilter):
         k_coefficients: NDArray[np.float64],
         c_coefficients: NDArray[np.float64] | None = None,
         sampling_rate_hz: int | None = None,
-    ):
+    ) -> None:
         """Constructs a lattice or lattice/ladder filter. If `k_coefficients`
         and `c_coefficients` are passed, it is assumed that it is an IIR
         filter. In case no `c_coefficients` are passed, it is assumed to be an
@@ -148,7 +148,7 @@ class LatticeLadderFilter(RealtimeFilter):
         )
         return LatticeLadderFilter(k, None, filt.sampling_rate_hz)
 
-    def set_n_channels(self, n_channels: int):
+    def set_n_channels(self, n_channels: int) -> None:
         assert n_channels > 0, "At least one channel must be initialized"
 
         self.state = np.zeros((len(self.k), n_channels))
@@ -157,7 +157,7 @@ class LatticeLadderFilter(RealtimeFilter):
                 self.state = np.zeros((self.k.shape[0], 2, n_channels))
         self.n_channels = n_channels
 
-    def reset_state(self):
+    def reset_state(self) -> None:
         self.state.fill(0.0)
 
     def filter_signal(self, signal: Signal) -> Signal:
@@ -211,7 +211,7 @@ class LatticeLadderFilter(RealtimeFilter):
 
         return signal.copy_with_new_time_data(td)
 
-    def process_sample(self, x: float, channel: int):
+    def process_sample(self, x: float, channel: int) -> float:
         """Filtering using a lattice ladder structure (general IIR filter). The
         implementation follows [1].
 

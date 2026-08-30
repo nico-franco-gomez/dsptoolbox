@@ -4,6 +4,7 @@ that consume them.
 """
 
 from dataclasses import dataclass, replace
+from typing import Any
 
 from .enums import (
     SpectrumAverageMethod,
@@ -51,7 +52,7 @@ class SpectrumParameters:
     average: SpectrumAverageMethod = SpectrumAverageMethod.Mean
     scaling: SpectrumScaling = SpectrumScaling.FFTBackward
 
-    def replace(self, **changes) -> "SpectrumParameters":
+    def replace(self, **changes: Any) -> "SpectrumParameters":
         """Return a copy with the given attributes replaced."""
         return replace(self, **changes)
 
@@ -88,6 +89,6 @@ class SpectrogramParameters:
     padding: bool = True
     scaling: SpectrumScaling = SpectrumScaling.FFTBackward
 
-    def replace(self, **changes) -> "SpectrogramParameters":
+    def replace(self, **changes: Any) -> "SpectrogramParameters":
         """Return a copy with the given attributes replaced."""
         return replace(self, **changes)

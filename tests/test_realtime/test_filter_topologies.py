@@ -8,6 +8,7 @@ import os
 import numpy as np
 import pytest
 import scipy.signal as sig
+from matplotlib.pyplot import close
 
 import dsptoolbox as dsp
 
@@ -490,3 +491,16 @@ class TestFilterTopologies:
     def test_iir_filter_accepts_integer_coefficients(self):
         iir = dsp.realtime.IIRFilter(np.array([2, 1]), np.array([2, 0]))
         assert np.isclose(iir.process_sample(1.0, 0), 1.0)
+
+    def test_state_variable_filter_plots(self):
+        """All three plot methods must run: they used to pass arguments that
+        the underlying Signal/MultiBandSignal plots do not accept.
+
+        """
+        svf = dsp.realtime.StateVariableFilter(1000.0, 0.7, self.fs_hz)
+        for fig, _ in (
+            svf.plot_magnitude(1024),
+            svf.plot_phase(1024),
+            svf.plot_group_delay(1024),
+        ):
+            close(fig)

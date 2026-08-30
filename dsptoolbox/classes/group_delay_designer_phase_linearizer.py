@@ -1,3 +1,4 @@
+from typing import Self
 from warnings import warn
 
 import numpy as np
@@ -21,7 +22,7 @@ class FirDesigner:
         target_group_delay_s: NDArray[np.float64],
         time_data_length_samples: int,
         sampling_rate_hz: int,
-    ):
+    ) -> None:
         """This class creates an FIR filter with a desired magnitude and
         group delay response. Use the method `set_parameters` to define
         specific design parameters.
@@ -54,7 +55,7 @@ class FirDesigner:
         additional_length_samples: int | None = 0,
         trapezoidal_integration: bool = True,
         ensure_integer_delay: bool = False,
-    ):
+    ) -> Self:
         """Set parameters for the FIR filter.
 
         Parameters
@@ -95,7 +96,7 @@ class FirDesigner:
         self,
         target_magnitude_response: NDArray[np.float64],
         target_group_delay_s: NDArray[np.float64],
-    ):
+    ) -> None:
         """Set target group delay to use instead of phase response.
 
         Parameters
@@ -224,7 +225,7 @@ class GroupDelayDesigner(FirDesigner):
         target_group_delay_s: NDArray[np.float64],
         time_data_length_samples: int,
         sampling_rate_hz: int,
-    ):
+    ) -> None:
         """GroupDelayDesigner creates an FIR filter with a desired group delay
         response. Use the method `set_parameters` to define specific design
         parameters.
@@ -262,7 +263,7 @@ class PhaseLinearizer(GroupDelayDesigner):
         phase_response: NDArray[np.float64],
         time_data_length_samples: int,
         sampling_rate_hz: int,
-    ):
+    ) -> None:
         """PhaseLinearizer creates an FIR filter that can linearize a phase
         response. Use the method `set_parameters` to define specific design
         parameters.
@@ -293,7 +294,7 @@ class PhaseLinearizer(GroupDelayDesigner):
         additional_length_samples: int | None = 0,
         trapezoidal_integration: bool = True,
         ensure_integer_delay: bool = False,
-    ):
+    ) -> Self:
         """Set parameters for the FIR filter.
 
         Parameters
@@ -330,7 +331,9 @@ class PhaseLinearizer(GroupDelayDesigner):
             ensure_integer_delay=ensure_integer_delay,
         )
 
-    def __get_group_delay(self, phase_response) -> NDArray[np.float64]:
+    def __get_group_delay(
+        self, phase_response: NDArray[np.float64]
+    ) -> NDArray[np.float64]:
         """Return the unscaled group delay from the phase response."""
         return -np.gradient(np.unwrap(phase_response))
 

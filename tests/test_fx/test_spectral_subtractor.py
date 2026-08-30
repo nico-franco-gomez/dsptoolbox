@@ -147,3 +147,19 @@ class TestEffectsModule:
             specSub.set_advanced_parameters(subtraction_factor=0)
         with pytest.raises(AssertionError):
             specSub.set_advanced_parameters(subtraction_exponent=0)
+
+    def test_set_parameters_keeps_spectrum_to_subtract(self):
+        """`set_parameters` documents that None leaves a value unchanged. The
+        spectrum used to default to False, which cleared it instead.
+
+        """
+        spectrum = _rng.uniform(size=64)
+        specSub = dsp.effects.SpectralSubtractor(
+            adaptive_mode=False, spectrum_to_subtract=spectrum
+        )
+        specSub.set_parameters(threshold_rms_dbfs=-30.0)
+        np.testing.assert_array_equal(specSub.spectrum_to_subtract, spectrum)
+
+        # False still clears it explicitly
+        specSub.set_parameters(spectrum_to_subtract=False)
+        assert specSub.spectrum_to_subtract is False

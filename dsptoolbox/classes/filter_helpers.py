@@ -2,11 +2,12 @@
 Backend for filter class and general filtering functions.
 """
 
+from collections.abc import Sequence
 from warnings import warn
 
 import numpy as np
 import scipy.signal as sig
-from numpy.typing import NDArray
+from numpy.typing import ArrayLike, NDArray
 
 from ..helpers.polyphase import _polyphase_decomposition
 from ..standard.enums import BiquadEqType, FilterBankMode
@@ -20,7 +21,7 @@ def _biquad_coefficients(
     frequency_hz: float,
     gain_db: float,
     q: float,
-):
+) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
     """Creates the filter coefficients for biquad filters.
 
     References
@@ -144,7 +145,7 @@ def _biquad_coefficients(
     return b, a
 
 
-def _impulse(length_samples: int = 512, delay_samples: int = 0):
+def _impulse(length_samples: int = 512, delay_samples: int = 0) -> NDArray[np.float64]:
     """Creates an impulse with the given length
 
     Parameters
@@ -165,7 +166,9 @@ def _impulse(length_samples: int = 512, delay_samples: int = 0):
     return imp
 
 
-def _group_delay_filter(ba, length_samples: int = 512, fs_hz: int = 48000):
+def _group_delay_filter(
+    ba: Sequence[ArrayLike], length_samples: int = 512, fs_hz: int = 48000
+) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
     """Computes group delay using the method in
     https://www.dsprelated.com/freebooks/filters/Phase_Group_Delay.html.
     The implementation is mostly taken from `scipy.signal.group_delay` !
@@ -219,12 +222,12 @@ def _group_delay_filter(ba, length_samples: int = 512, fs_hz: int = 48000):
 
 def _filter_on_signal(
     signal: Signal,
-    sos,
-    channels,
-    zi,
+    sos: NDArray[np.float64],
+    channels: int | ArrayLike | None,
+    zi: list | None,
     zero_phase: bool,
     warning_on_complex_output: bool,
-):
+) -> tuple[Signal, list | None]:
     """Takes in a `Signal` object and filters selected channels. Exports a new
     `Signal` object.
 
@@ -258,17 +261,16 @@ def _filter_on_signal(
     new_time_data = signal.time_data.copy()
 
     # zi unpacking
-    if zi is not None:
-        zi = np.moveaxis(np.asarray(zi), 0, -1)
+    state = np.moveaxis(np.asarray(zi), 0, -1) if zi is not None else None
 
     # Channels
     if channels is None:
         channels = np.arange(signal.number_of_channels)
 
     # Filtering
-    if zi is not None:
-        y, zi[:, :, channels] = sig.sosfilt(
-            sos, signal.time_data[:, channels], zi=zi[:, :, channels], axis=0
+    if state is not None:
+        y, state[:, :, channels] = sig.sosfilt(
+            sos, signal.time_data[:, channels], zi=state[:, :, channels], axis=0
         )
     else:
         if zero_phase:
@@ -290,23 +292,21 @@ def _filter_on_signal(
     new_time_data[:, channels] = y
     new_signal = signal.copy_with_new_time_data(new_time_data)
 
-    # zi packing
-    if zi is not None:
-        zi_new = []
-        for n in range(signal.number_of_channels):
-            zi_new.append(zi[:, :, n])
-    return new_signal, zi
+    # zi packing: back to one entry per channel, as initialize_zi produces it
+    if state is None:
+        return new_signal, None
+    return new_signal, [state[:, :, n] for n in range(signal.number_of_channels)]
 
 
 def _filter_on_signal_ba(
     signal: Signal,
-    ba,
-    channels,
+    ba: Sequence[ArrayLike],
+    channels: int | ArrayLike | None,
     zi: list | None,
     zero_phase: bool,
     is_fir: bool,
     warning_on_complex_output: bool,
-):
+) -> tuple[Signal, list | None]:
     """Takes in a `Signal` object and filters selected channels. Exports a new
     `Signal` object.
 
@@ -352,20 +352,19 @@ def _filter_on_signal_ba(
     new_time_data = signal.time_data.copy()
 
     # zi unpacking
-    if zi is not None:
-        zi = np.asarray(zi).T
+    state = np.asarray(zi).T if zi is not None else None
 
     # Channels
     if channels is None:
         channels = np.arange(signal.number_of_channels)
 
     # Filtering
-    if zi is not None:
-        y, zi[:, channels] = lfilter(
+    if state is not None:
+        y, state[:, channels] = lfilter(
             ba[0],
             a=ba[1],
             x=signal.time_data[:, channels],
-            zi=zi[:, channels],
+            zi=state[:, channels],
             axis=0,
         )
     else:
@@ -388,22 +387,20 @@ def _filter_on_signal_ba(
     new_time_data[:, channels] = y
     new_signal = signal.copy_with_new_time_data(new_time_data)
 
-    # zi packing
-    if zi is not None:
-        zi_new = []
-        for n in range(zi.shape[1]):
-            zi_new.append(zi[:, n])
-    return new_signal, zi
+    # zi packing: back to one entry per channel, as initialize_zi produces it
+    if state is None:
+        return new_signal, None
+    return new_signal, [state[:, n] for n in range(state.shape[1])]
 
 
 def _filterbank_on_signal(
     signal: Signal,
-    filters,
+    filters: list,
     activate_zi: bool,
     mode: FilterBankMode,
     zero_phase: bool,
     same_sampling_rate: bool,
-):
+) -> Signal | MultiBandSignal:
     """Applies filter bank on a given signal.
 
     Parameters
@@ -471,7 +468,7 @@ def _lfilter_fir(
     x: NDArray[np.float64],
     zi: NDArray[np.float64] | None = None,
     axis: int = 0,
-):
+) -> NDArray[np.float64] | tuple[NDArray[np.float64], NDArray[np.float64]]:
     """Variant to the `scipy.signal.lfilter` that uses `scipy.signal.convolve`
     for filtering. The advantage of this is that the convolution will be
     automatically made using fft or direct, depending on the inputs' sizes.
@@ -587,7 +584,7 @@ def _filter_and_upsample(
     up_factor: int,
     ba_coefficients: list,
     polyphase: bool,
-):
+) -> NDArray[np.float64]:
     """Filters and upsamples time data. If polyphase is `True`, it is
     assumed that the filter is FIR and only b-coefficients are used. In
     that case, an efficient polyphase upsampling is done, otherwise standard

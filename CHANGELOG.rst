@@ -79,6 +79,13 @@ Added
 - `zero_phase` parameter on `FilterBank.plot_phase` and
   `FilterBank.plot_group_delay`, which the sibling `plot_magnitude` and
   `get_ir` already accepted
+- Type annotations on every function of the package, including the return
+  type. The copy-returning methods of `Signal`, `ImpulseResponse`,
+  `MultiBandSignal`, `FilterBank` and `Spectrum` are typed as `Self`, so a
+  subclass keeps its own type through them. `RealtimeFilter` is generic in
+  the type its `process_sample` produces, which is what distinguishes the
+  multimode `StateVariableFilter` from the rest
+- `ax` on `Regular3DGrid.plot_map`, which the other plots already had
 
 Bugfix
 ~~~~~~
@@ -154,6 +161,30 @@ Bugfix
 - the time vectors used for the energy decay curve, the centre time and
   Lundeby's noise compensation in ``room_acoustics`` were spaced by
   `length / (N - 1)` instead of the sampling period
+- `Filter.filter_signal(activate_zi=True)` carried no state between calls.
+  The filter state was returned in the wrong layout, so the channel-count
+  check re-initialized it on every call and block-wise filtering did not
+  match filtering the signal at once. `FilterBank` inherited the defect
+- `StateVariableFilter.plot_magnitude` and `plot_phase` always raised: the
+  first passed the pre-enum `normalize=None`, the second a `radians`
+  argument that `Signal.plot_phase` does not have
+- `Regular2DGrid.plot_map` and `Regular3DGrid.plot_map` always raised, having
+  passed a `returns` argument that `general_matrix_plot` does not have
+- the crossovers' `plot_magnitude` dropped the `zero_phase` and `ax`
+  arguments of the method it overrides, and its `Summed` branch still called
+  the pre-enum `_get_normalized_spectrum`, so that mode always raised.
+  `filter_signal` had the same problem, with `downsample` occupying the
+  positional slot of the base class's `activate_zi`. Sequential filtering
+  with downsampling now raises a clear `NotImplementedError`: the first
+  filter halves the sampling rate, so the second no longer matches it
+- `SpectralSubtractor.set_parameters` reset the spectrum to subtract unless
+  it was passed again, although the method documents that `None` leaves a
+  value unchanged. Pass `False` to clear it
+- `effects.Distortion` and `_get_warping_factor` rejected valid inputs
+  because they tested `type(x) is <type>`: a list of distortion types and an
+  integer or numpy float warping factor respectively
+- three docstrings contained an invalid `\_` escape sequence, which is a
+  `SyntaxWarning` today and an error in a future Python
 
 Misc
 ~~~~
@@ -198,6 +229,10 @@ Misc
   dispatch and the length/impulse prologue of `FilterBank`'s plotting
   methods no longer duplicate their `Signal`, helper and `get_ir`
   counterparts
+- `_get_normalized_spectrum` is overloaded on `phase`, so its callers know
+  whether they get two return values or three
+- `combine_ir_with_dirac` and `ir_to_filter` still take their selectors as
+  strings, but the accepted values are now in the annotation as a `Literal`
 
 `0.9 <https://pypi.org/project/dsptoolbox/0.9>`_ -
 ---------------------

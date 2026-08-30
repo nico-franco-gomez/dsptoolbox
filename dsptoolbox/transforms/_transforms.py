@@ -7,7 +7,7 @@ from numpy.typing import NDArray
 from scipy.signal import get_window, lfilter
 
 
-def _pitch2frequency(tuning_a_hz: float = 440):
+def _pitch2frequency(tuning_a_hz: float = 440.0) -> NDArray[np.float64]:
     """This function returns a vector having frequencies for pitches
     0 to 127 (Midi compatible), where 0 is C0.
 
@@ -29,28 +29,32 @@ def _pitch2frequency(tuning_a_hz: float = 440):
 class Wavelet:
     """Base class for a wavelet function."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Constructor for the base wavelet class. It's not supposed to be
         used directly.
 
         """
         pass
 
-    def get_base_wavelet(self):
+    def get_base_wavelet(
+        self,
+    ) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
         """Abstract method to get the mother wavelet. It must be implemented
         in each Wavelet class.
 
         """
         raise NotImplementedError("Wavelet function has not been implemented")
 
-    def get_wavelet(self, f, fs):
+    def get_wavelet(
+        self, f: float | NDArray[np.float64], fs: int
+    ) -> NDArray[np.float64] | list[NDArray[np.float64]]:
         """Abstract method to get the sampled wavelet. It must be implemented
         in each Wavelet class.
 
         """
         raise NotImplementedError("Wavelet function has not been implemented")
 
-    def get_center_frequency(self):
+    def get_center_frequency(self) -> float:
         """Returns the center frequency of the wavelet (normalized,
         i.e., with fs=1).
 
@@ -61,7 +65,9 @@ class Wavelet:
         domain = x[-1] - x[0]
         return ind / domain
 
-    def get_scale_lengths(self, frequencies: NDArray[np.float64], fs: int):
+    def get_scale_lengths(
+        self, frequencies: NDArray[np.float64], fs: int
+    ) -> NDArray[np.int_]:
         """Returns the lengths of the queried frequencies.
 
         Parameters
@@ -93,7 +99,7 @@ class MorletWavelet(Wavelet):
         precision_bounds: float = 1e-5,
         step: float = 5e-3,
         interpolation: bool = True,
-    ):
+    ) -> None:
         """Instantiate a complex morlet wavelet based on the given parameters.
         Bandwidth can be defined through `b` or `h` (see Notes for the
         difference).
@@ -205,7 +211,7 @@ class MorletWavelet(Wavelet):
 
     def _get_interpolated_wave(
         self, base: NDArray[np.float64], inds: NDArray[np.float64]
-    ):
+    ) -> NDArray[np.complex128]:
         """Return the wavelet function for a selection of index using
         linear interpolation.
 
@@ -306,7 +312,7 @@ def _squeeze_scalogram(
 
 def _get_length_longest_wavelet(
     wave: Wavelet | MorletWavelet, f: NDArray[np.float64], fs: int
-):
+) -> int:
     """Get longest wavelet for a frequency vector. This is useful information
     for zero-padding to avoid boundary effects.
 
@@ -335,7 +341,7 @@ def _get_kernels_vqt(
     sampling_rate_hz: int,
     window_type: str | tuple,
     gamma: float,
-):
+) -> list[NDArray[np.complex128]]:
     """Compute the complex kernels for the VQT from the highest frequency
     and the sampling rate.
 
@@ -387,7 +393,9 @@ def _get_kernels_vqt(
     return kernels
 
 
-def _warp_time_series(td: NDArray[np.float64], warping_factor: float):
+def _warp_time_series(
+    td: NDArray[np.float64], warping_factor: float
+) -> NDArray[np.float64]:
     """Warp or unwarp a time series. This is a port from [1].
 
     Parameters
@@ -443,28 +451,28 @@ def _get_warping_factor(warping_factor: float | str, fs_hz: int) -> float:
       697 - 708. 10.1109/89.799695.
 
     """
-    if type(warping_factor) is float:
-        assert np.abs(warping_factor) < 1.0, "Warping factor has to be in ]-1; 1["
-    elif type(warping_factor) is str:
-        warping_factor = warping_factor.lower()
-        invert = warping_factor[-1] not in ("k", "b")
-        if "bark" in warping_factor:
+    if isinstance(warping_factor, str):
+        approximation = warping_factor.lower()
+        invert = approximation[-1] not in ("k", "b")
+        if "bark" in approximation:
             # Eq. (26)
-            warping_factor = -1.0 * (
+            factor = -1.0 * (
                 1.0674 * (2.0 / np.pi * np.arctan(0.06583 * fs_hz)) ** 0.5 - 0.1916
             )
-        elif "erb" in warping_factor:
+        elif "erb" in approximation:
             # Eq. (30)
-            warping_factor = -1.0 * (
+            factor = -1.0 * (
                 0.7446 * (2.0 / np.pi * np.arctan(0.1418 * fs_hz)) ** 0.5 + 0.03237
             )
         else:
             raise ValueError("Warping factor approximation is not supported")
-        if invert:
-            warping_factor *= -1.0
-    else:
+        return -factor if invert else factor
+
+    if not isinstance(warping_factor, (int, float, np.floating, np.integer)):
         raise TypeError("Invalid type for warping factor")
-    return warping_factor
+    factor = float(warping_factor)
+    assert np.abs(factor) < 1.0, "Warping factor has to be in ]-1; 1["
+    return factor
 
 
 try:
@@ -485,7 +493,7 @@ try:
         freqs_normalized: NDArray[np.complex128],
         dft_factor: NDArray[np.complex128],
         spectrum: NDArray[np.complex128],
-    ):
+    ) -> NDArray[np.complex128]:
         for ind in nb.prange(len(freqs_normalized)):
             spectrum[ind, :] = np.exp(dft_factor * freqs_normalized[ind]) @ time_data
         return spectrum
@@ -498,7 +506,7 @@ except ModuleNotFoundError as e:
         freqs_normalized: NDArray[np.complex128],
         dft_factor: NDArray[np.complex128],
         spectrum: NDArray[np.complex128],
-    ):
+    ) -> NDArray[np.complex128]:
         for ind in range(len(freqs_normalized)):
             spectrum[ind, :] = np.exp(dft_factor * freqs_normalized[ind]) @ time_data
         return spectrum

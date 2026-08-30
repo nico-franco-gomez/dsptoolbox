@@ -1,3 +1,5 @@
+from typing import Self
+
 import numpy as np
 from numpy.typing import NDArray
 from scipy.linalg import lstsq
@@ -10,7 +12,7 @@ from .iir_filter_realtime import IIRFilter
 from .realtime_filter import RealtimeFilter
 
 
-class KautzFilter(RealtimeFilter):
+class KautzFilter(RealtimeFilter[float]):
     """Class for a Kautz filter that can process real-valued signals. See
     references for details on Kautz Filters and their uses.
 
@@ -30,7 +32,7 @@ class KautzFilter(RealtimeFilter):
         self,
         poles: NDArray[np.complex128],
         sampling_rate_hz: int,
-    ):
+    ) -> None:
         """Get a Kautz filter with a set of poles that defines the orthonormal
         basis. This filter only supports processing of real-valued signals.
 
@@ -71,7 +73,7 @@ class KautzFilter(RealtimeFilter):
         self.set_n_channels(1)
 
     @staticmethod
-    def from_ir(ir: ImpulseResponse, order: int, iterations: int):
+    def from_ir(ir: ImpulseResponse, order: int, iterations: int) -> "KautzFilter":
         """Approximate the IR with an optimal pole basis and coefficients. The
         algorithm is a port from [1] and based on [2].
 
@@ -101,7 +103,7 @@ class KautzFilter(RealtimeFilter):
         f.fit_poles_and_coefficients_to_ir(ir, order, iterations)
         return f
 
-    def __set_poles(self, poles: NDArray[np.complex128]):
+    def __set_poles(self, poles: NDArray[np.complex128]) -> None:
         """Set poles and compute real time filters."""
         # Separate into real and complex
         real_indices = poles.imag == 0.0
@@ -116,7 +118,7 @@ class KautzFilter(RealtimeFilter):
 
     def set_filter_coefficients(
         self, c_real: NDArray[np.float64], c_complex: NDArray[np.float64]
-    ):
+    ) -> Self:
         """Set the filter coefficients for each section of the Kautz filter.
         Optimal filter coefficients (in a least-squares sense) can be found
         by analyzing an IR with the desired magnitude and phase response in
@@ -138,7 +140,7 @@ class KautzFilter(RealtimeFilter):
         self.coefficients_complex_poles = c_complex
         return self
 
-    def __compute_filters(self):
+    def __compute_filters(self) -> None:
         self.__filters_real: list[IIRFilter] = []
         self.__filters_real_advance_sample: list[IIRFilter] = []
         self.__filters_complex: list[IIRFilter] = []
@@ -185,7 +187,7 @@ class KautzFilter(RealtimeFilter):
                 )
             )
 
-    def set_n_channels(self, n_channels: int):
+    def set_n_channels(self, n_channels: int) -> None:
         for f in self.__filters_complex:
             f.set_n_channels(n_channels)
         for f in self.__filters_real:
@@ -195,7 +197,7 @@ class KautzFilter(RealtimeFilter):
         for f in self.__filters_real_advance_sample:
             f.set_n_channels(n_channels)
 
-    def reset_state(self):
+    def reset_state(self) -> None:
         for f in self.__filters_real:
             f.reset_state()
         for f in self.__filters_complex:
@@ -205,7 +207,7 @@ class KautzFilter(RealtimeFilter):
         for f in self.__filters_complex_advance_sample:
             f.reset_state()
 
-    def process_sample(self, x: float, channel: int):
+    def process_sample(self, x: float, channel: int) -> float:
         y = 0.0
         for ind, f in enumerate(self.__filters_real):
             y += f.process_sample(x, channel) * self.coefficients_real_poles[ind]
@@ -223,7 +225,7 @@ class KautzFilter(RealtimeFilter):
             )
         return y
 
-    def fit_coefficients_to_ir(self, ir: ImpulseResponse):
+    def fit_coefficients_to_ir(self, ir: ImpulseResponse) -> Self:
         """Fit Kautz filter coefficients to an impulse response. See references
         for the details on how this is accomplished.
 
@@ -339,7 +341,7 @@ class KautzFilter(RealtimeFilter):
 
     def fit_poles_and_coefficients_to_ir(
         self, ir: ImpulseResponse, order: int, iterations: int
-    ):
+    ) -> Self:
         """Find optimal poles for fitting an IR using the algorithm of [1] and
         based on [2].
 
@@ -363,7 +365,7 @@ class KautzFilter(RealtimeFilter):
     @staticmethod
     def __find_optimal_poles_for_ir(
         order: int, iterations: int, target_response: NDArray[np.float64]
-    ):
+    ) -> NDArray[np.complex128]:
         """Port from [1]. Based on [2].
 
         References

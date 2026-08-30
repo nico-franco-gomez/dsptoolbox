@@ -1,12 +1,12 @@
 import numpy as np
-from numpy.typing import NDArray
+from numpy.typing import ArrayLike, NDArray
 from scipy.signal import windows
 
 from ..standard.enums import WindowType
 
 
 def calculate_tukey_like_window(
-    points,
+    points: ArrayLike,
     window_length: int,
     window_type: WindowType | list[WindowType],
     at_start: bool,
@@ -97,7 +97,9 @@ def _gaussian_window_sigma(window_length: int, alpha: float = 2.5) -> float:
     return (window_length - 1) / (2 * alpha)
 
 
-def gaussian_window(length: int, alpha: float, symmetric: bool, offset: int = 0):
+def gaussian_window(
+    length: int, alpha: float, symmetric: bool, offset: int = 0
+) -> NDArray[np.float64]:
     """Produces a gaussian window as defined in [1] and [2].
 
     Parameters

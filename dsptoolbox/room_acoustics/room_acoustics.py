@@ -45,7 +45,7 @@ def reverb_time(
         IR for which to compute reverberation times.
     mode : ReverbTime, optional
         Reverberation time mode. Default: Adaptive.
-    ir_start : int or array-like, NDArray[np.int\_], optional
+    ir_start : int, ``NDArray[np.int_]``, optional
         If it is an integer, it is assumed as the start of the IR for all
         channels (and all bands). For more specific cases, pass a 1d-array
         containing the start indices for each channel or a 2d-array with
@@ -139,7 +139,7 @@ def reverb_time(
 
 def find_modes(
     signal: ImpulseResponse,
-    f_range_hz=(50, 200),
+    f_range_hz: tuple[float, float] = (50.0, 200.0),
     dist_hz: float = 5,
     prominence_db: float | None = None,
     antiresonances: bool = False,
@@ -283,7 +283,7 @@ def find_ir_start(
 
     Returns
     -------
-    start_index : NDArray[np.int\_]
+    start_index : ``NDArray[np.int_]``
         Index of IR start for each channel.
 
     References
@@ -301,8 +301,8 @@ def find_ir_start(
 
 def generate_synthetic_rir(
     room: ShoeboxRoom,
-    source_position,
-    receiver_position,
+    source_position: NDArray[np.float64],
+    receiver_position: NDArray[np.float64],
     sampling_rate_hz: int,
     total_length_seconds: float = 0.5,
     add_noise_reverberant_tail: bool = False,
@@ -467,7 +467,7 @@ def descriptors(
     rir: ImpulseResponse | MultiBandSignal,
     descriptor: RoomAcousticsDescriptor,
     automatic_trimming_rir: bool = True,
-):
+) -> NDArray[np.float64]:
     """Returns a desired room acoustics descriptor from an RIR.
 
     Parameters

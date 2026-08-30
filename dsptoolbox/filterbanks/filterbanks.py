@@ -5,7 +5,7 @@ General use filters and filter banks.
 import warnings
 
 import numpy as np
-from numpy.typing import NDArray
+from numpy.typing import ArrayLike, NDArray
 from scipy.signal import (
     bilinear_zpk,
     freqz_zpk,
@@ -35,7 +35,9 @@ from ._filterbank import (
 
 
 def linkwitz_riley_crossovers(
-    crossover_frequencies_hz, order, sampling_rate_hz: int
+    crossover_frequencies_hz: ArrayLike,
+    order: ArrayLike | int,
+    sampling_rate_hz: int,
 ) -> LRFilterBank:
     """Returns a linkwitz-riley crossovers filter bank.
 
@@ -79,7 +81,7 @@ def linkwitz_riley_crossovers(
 
 
 def reconstructing_fractional_octave_bands(
-    frequency_range_hz=(63, 16000),
+    frequency_range_hz: tuple[float, float] = (63.0, 16000.0),
     octave_fraction: int = 1,
     overlap: float = 1,
     slope: int = 0,
@@ -329,7 +331,7 @@ def qmf_crossover(lowpass: Filter) -> QMFCrossover:
 
 
 def fractional_octave_bands(
-    frequency_range_hz=(31.5, 16e3),
+    frequency_range_hz: tuple[float, float] = (31.5, 16e3),
     octave_fraction: int = 1,
     filter_order: int = 6,
     sampling_rate_hz: int | None = None,
@@ -373,18 +375,15 @@ def fractional_octave_bands(
     assert sampling_rate_hz is not None, (
         "A sampling rate must be passed for the filter bank"
     )
-    frequency_range_hz = np.atleast_1d(np.squeeze(frequency_range_hz))
-    frequency_range_hz.sort()
-    assert len(frequency_range_hz) == 2, (
-        "Frequency range must contain exactly two entries"
-    )
-    assert frequency_range_hz[-1] < sampling_rate_hz // 2, (
+    frequency_range = np.sort(np.atleast_1d(np.squeeze(frequency_range_hz)))
+    assert len(frequency_range) == 2, "Frequency range must contain exactly two entries"
+    assert frequency_range[-1] < sampling_rate_hz // 2, (
         "The highest frequency in the range is higher than the nyquist " + "frequency"
     )
 
     # fractional octave frequencies
     _, center_freqs_hz, (lower_hz, upper_hz) = fractional_octave_frequencies(
-        octave_fraction, frequency_range_hz, return_cutoff=True
+        octave_fraction, frequency_range, return_cutoff=True
     )
 
     octave_filter_bank = FilterBank()
@@ -408,7 +407,9 @@ def fractional_octave_bands(
     return octave_filter_bank, center_freqs_hz, (lower_hz, upper_hz)
 
 
-def weighting_filter(a_weighting: bool = True, sampling_rate_hz: int | None = None):
+def weighting_filter(
+    a_weighting: bool = True, sampling_rate_hz: int | None = None
+) -> Filter:
     """Returns a digital IIR weighting filter according to [1]. The
     approximation is based on the coefficients given in [2].
 
@@ -636,7 +637,7 @@ def gaussian_kernel(
     kernel_boundary_value: float = 1e-2,
     approximation_order: int = 12,
     sampling_rate_hz: int | None = None,
-):
+) -> Filter:
     """Approximate a gaussian FIR window with a first-order IIR approximation
     kernel according to [1]. The resulting filter must be applied using
     zero-phase filtering.

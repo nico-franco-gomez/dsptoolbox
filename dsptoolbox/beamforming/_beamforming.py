@@ -4,6 +4,8 @@ Backend for beamforming module
 
 import matplotlib.pyplot as plt
 import numpy as np
+from matplotlib.axes import Axes
+from matplotlib.figure import Figure
 from numpy.typing import NDArray
 
 from ..helpers.other import _euclidean_distance_matrix
@@ -16,7 +18,7 @@ class BasePoints:
     """
 
     # ======== Constructor ====================================================
-    def __init__(self, positions: dict):
+    def __init__(self, positions: dict) -> None:
         """Initiate a grid based on the positions dictionary that contains
         all vectors.
 
@@ -51,7 +53,7 @@ class BasePoints:
 
     # ======== Properties =====================================================
     @property
-    def number_of_points(self):
+    def number_of_points(self) -> int:
         return self.coordinates.shape[0]
 
     @property
@@ -59,7 +61,7 @@ class BasePoints:
         return self._coordinates.copy()
 
     @coordinates.setter
-    def coordinates(self, new_r):
+    def coordinates(self, new_r: NDArray[np.float64]) -> None:
         assert type(new_r) is np.ndarray, (
             "R vectors array should be of type numpy.ndarray"
         )
@@ -76,7 +78,7 @@ class BasePoints:
         self._coordinates = new_r
 
     @property
-    def extent(self):
+    def extent(self) -> dict[str, list[float]]:
         extent = {}
         dims = ["x", "y", "z"]
         for i, d in enumerate(dims):
@@ -111,7 +113,7 @@ class BasePoints:
         return _euclidean_distance_matrix(self.coordinates, point).squeeze()
 
     # ======== Plotting =======================================================
-    def plot_points(self, projection: str | None = None):
+    def plot_points(self, projection: str | None = None) -> tuple[Figure, Axes]:
         """Plot points in 2D or 3D plot depending on the actual points.
 
         Parameters
@@ -162,7 +164,9 @@ class BasePoints:
         fig.tight_layout()
         return fig, ax
 
-    def find_nearest_point(self, point) -> tuple[int, NDArray[np.float64]]:
+    def find_nearest_point(
+        self, point: NDArray[np.float64]
+    ) -> tuple[int, NDArray[np.float64]]:
         """This method returns the coordinates and index of the nearest point
         to a given point using euclidean distance.
 

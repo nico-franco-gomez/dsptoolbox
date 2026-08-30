@@ -2,7 +2,11 @@
 Backend for the effects module
 """
 
+from collections.abc import Callable
+
 import numpy as np
+from matplotlib.axes import Axes
+from matplotlib.figure import Figure
 from numpy.typing import NDArray
 
 from ..helpers.rng import RngLike, _get_rng
@@ -155,7 +159,7 @@ def _get_knee_func(
     ratio: float,
     knee_factor_db: float,
     downward_compression: bool,
-):
+) -> Callable[[NDArray[np.float64] | float], NDArray[np.float64] | float]:
     """This function returns a callable that acts as the compression function
     in logarithmic space.
 
@@ -168,7 +172,9 @@ def _get_knee_func(
 
     if downward_compression:
 
-        def compress_in_db(x: NDArray[np.float64] | float):
+        def compress_in_db(
+            x: NDArray[np.float64] | float,
+        ) -> NDArray[np.float64] | float:
             if type(x) is float:
                 if x - T < -W / 2:
                     return x
@@ -193,7 +199,9 @@ def _get_knee_func(
 
     else:
 
-        def compress_in_db(x: NDArray[np.float64] | float):
+        def compress_in_db(
+            x: NDArray[np.float64] | float,
+        ) -> NDArray[np.float64] | float:
             if type(x) is float:
                 if x - T < -W / 2:
                     return T + (x - T) / R
@@ -246,13 +254,13 @@ def _find_attack_hold_release(
     # compression)
     if indices_above:
 
-        def trigger(x, ind1, ind2, y) -> bool:
-            return np.all(x[ind1:ind2] > y)
+        def trigger(x: NDArray[np.float64], ind1: int, ind2: int, y: float) -> bool:
+            return bool(np.all(x[ind1:ind2] > y))
 
     else:
 
-        def trigger(x, ind1, ind2, y) -> bool:
-            return np.all(x[ind1:ind2] < y)
+        def trigger(x: NDArray[np.float64], ind1: int, ind2: int, y: float) -> bool:
+            return bool(np.all(x[ind1:ind2] < y))
 
     if side_chain is None:
         # Accumulate global activations
@@ -298,7 +306,7 @@ class LFO:
         random_phase: bool = False,
         smooth: float = 0,
         rng: RngLike = None,
-    ):
+    ) -> None:
         """Constructor for a low-frequency oscillator.
 
         Parameters
@@ -341,7 +349,13 @@ class LFO:
         self.rng = _get_rng(rng)
         self.__set_parameters(frequency_hz, waveform, random_phase, smooth)
 
-    def __set_parameters(self, frequency_hz, waveform: Waveform, random_phase, smooth):
+    def __set_parameters(
+        self,
+        frequency_hz: float | tuple | None,
+        waveform: Waveform | None,
+        random_phase: bool | None,
+        smooth: float | None,
+    ) -> None:
         """Internal method to set parameters."""
         if frequency_hz is not None:
             if type(frequency_hz) in (float, int):
@@ -380,11 +394,13 @@ class LFO:
         waveform: Waveform | None = None,
         random_phase: bool | None = None,
         smooth: float | None = None,
-    ):
+    ) -> None:
         """Set the parameters of the LFO."""
         self.__set_parameters(frequency_hz, waveform, random_phase, smooth)
 
-    def get_waveform(self, sampling_rate_hz: int, length_samples: int | None = None):
+    def get_waveform(
+        self, sampling_rate_hz: int, length_samples: int | None = None
+    ) -> NDArray[np.float64]:
         """Get the waveform of the oscillator for a sampling frequency and a
         specified duration. If `length_samples` is `None`, only one oscillation
         is returned.
@@ -401,7 +417,7 @@ class LFO:
             self.rng,
         )
 
-    def plot_waveform(self):
+    def plot_waveform(self) -> tuple[Figure, Axes]:
         """Plot the waveform (2 periods).
 
         Returns
@@ -420,7 +436,14 @@ class LFO:
         return fig, ax
 
 
-def _harmonic_oscillator(freq, fs, length, random_phase, smooth, rng):
+def _harmonic_oscillator(
+    freq: float,
+    fs: int,
+    length: int | None,
+    random_phase: bool,
+    smooth: float,
+    rng: np.random.Generator,
+) -> NDArray[np.float64]:
     if length is None:
         length = int(fs / freq)
     norm_freq = freq / fs
@@ -428,7 +451,14 @@ def _harmonic_oscillator(freq, fs, length, random_phase, smooth, rng):
     return np.sin(norm_freq * 2 * np.pi * np.arange(length) + phase_shift)
 
 
-def _square_oscillator(freq, fs, length, random_phase, smooth, rng):
+def _square_oscillator(
+    freq: float,
+    fs: int,
+    length: int | None,
+    random_phase: bool,
+    smooth: float,
+    rng: np.random.Generator,
+) -> NDArray[np.float64]:
     # https://tinyurl.com/4d634xnk
     if length is None:
         length = int(fs / freq)
@@ -443,7 +473,14 @@ def _square_oscillator(freq, fs, length, random_phase, smooth, rng):
     return waveform
 
 
-def _sawtooth_oscillator(freq, fs, length, random_phase, smooth, rng):
+def _sawtooth_oscillator(
+    freq: float,
+    fs: int,
+    length: int | None,
+    random_phase: bool,
+    smooth: float,
+    rng: np.random.Generator,
+) -> NDArray[np.float64]:
     # https://tinyurl.com/5e8actzp
     if length is None:
         length = int(fs / freq)
@@ -463,7 +500,14 @@ def _sawtooth_oscillator(freq, fs, length, random_phase, smooth, rng):
     return waveform
 
 
-def _triangle_oscillator(freq, fs, length, random_phase, smooth, rng):
+def _triangle_oscillator(
+    freq: float,
+    fs: int,
+    length: int | None,
+    random_phase: bool,
+    smooth: float,
+    rng: np.random.Generator,
+) -> NDArray[np.float64]:
     # https://tinyurl.com/4d634xnk
     if length is None:
         length = int(fs / freq)
@@ -479,7 +523,7 @@ def _triangle_oscillator(freq, fs, length, random_phase, smooth, rng):
     return waveform
 
 
-def get_frequency_from_musical_rhythm(note, bpm):
+def get_frequency_from_musical_rhythm(note: str, bpm: float) -> float:
     """Method to compute frequency from a musical rhythm notation. The time
     signature is always assumed to be 4/4. Choose from:
 
@@ -531,7 +575,7 @@ def get_frequency_from_musical_rhythm(note, bpm):
     return 60 / bpm / factor
 
 
-def get_time_period_from_musical_rhythm(note, bpm):
+def get_time_period_from_musical_rhythm(note: str, bpm: float) -> float:
     """Method to compute time period from a musical rhythm notation. The time
     signature is always assumed to be 4/4. Choose from:
 

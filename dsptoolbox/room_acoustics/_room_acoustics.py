@@ -2,6 +2,7 @@
 Low-level methods for room acoustics
 """
 
+from typing import Literal
 from warnings import warn
 
 import numpy as np
@@ -17,12 +18,12 @@ from .enums import ReverbTime
 
 def _reverb(
     h: NDArray[np.float64],
-    fs_hz,
-    mode,
+    fs_hz: int,
+    mode: ReverbTime,
     ir_start: int | None,
     return_ir_start: bool,
     automatic_trimming: bool,
-):
+) -> tuple[float, float] | tuple[float, float, int]:
     """Computes reverberation time of signal.
 
     Parameters
@@ -161,7 +162,15 @@ def _complex_mode_identification(
     return cmif
 
 
-def _generate_rir(room_dim, alpha, s_pos, r_pos, rt, mo, sr) -> NDArray[np.float64]:
+def _generate_rir(
+    room_dim: NDArray[np.float64],
+    alpha: float | NDArray[np.float64],
+    s_pos: NDArray[np.float64],
+    r_pos: NDArray[np.float64],
+    rt: float,
+    mo: int,
+    sr: int,
+) -> NDArray[np.float64]:
     """Generate RIR using image source model according to Brinkmann, et al.
 
     Parameters
@@ -217,7 +226,7 @@ def _generate_rir(room_dim, alpha, s_pos, r_pos, rt, mo, sr) -> NDArray[np.float
     # Initialize empty vector
     rir_vec = np.zeros(int(t_max * 5 * sr))
 
-    def seconds2samples(t):
+    def seconds2samples(t: NDArray[np.float64]) -> NDArray[np.int_]:
         return np.asarray(t * sr + 0.5).astype(int)
 
     # Vectorized computation of nested sums U (Eq. 2)
@@ -246,14 +255,14 @@ def _generate_rir(room_dim, alpha, s_pos, r_pos, rt, mo, sr) -> NDArray[np.float
 
     # Distance (according to Eq. 6)
     # Using scipy's norm (scipy.linalg.norm) was somewhat slower...
-    def get_distance(lvec):
+    def get_distance(lvec: NDArray[np.float64]) -> NDArray[np.float64]:
         pos = (
             ((1 - 2 * u_vectors) * s_pos) + (2 * lvec * room_dim) - r_pos
         ).flatten() ** 2
         return (pos @ helper_matrix) ** 0.5
 
     # Damping term (Numerator in Eq. 8)
-    def get_damping(lvec):
+    def get_damping(lvec: NDArray[np.float64]) -> NDArray[np.float64]:
         diff = np.abs(lvec - u_vectors)
         return np.prod(beta_1**diff, axis=1) * np.prod(beta_2 ** np.abs(lvec))
 
@@ -280,7 +289,7 @@ class Room:
         area_m2: float,
         t60_s: float | None = None,
         absorption_coefficient: float | None = None,
-    ):
+    ) -> None:
         """Constructor for a generic Room. The passed reverberation time
         is checked for the volume and area.
 
@@ -337,20 +346,20 @@ class Room:
 
     # ============== Properties ===============================================
     @property
-    def volume(self):
+    def volume(self) -> float:
         return self.__volume
 
     @volume.setter
-    def volume(self, new_volume):
+    def volume(self, new_volume: float) -> None:
         assert new_volume > 0, "Room volume has to be positive"
         self.__volume = new_volume
 
     @property
-    def area(self):
+    def area(self) -> float:
         return self.__area
 
     @area.setter
-    def area(self, new_area):
+    def area(self, new_area: float) -> None:
         assert new_area > 0, "Room volume has to be positive"
         self.__area = new_area
 
@@ -384,10 +393,10 @@ class ShoeboxRoom(Room):
 
     def __init__(
         self,
-        dimensions_m,
+        dimensions_m: NDArray[np.float64],
         t60_s: float | None = None,
         absorption_coefficient: float | None = None,
-    ):
+    ) -> None:
         """Constructor for a shoebox-type room.
 
         Parameters
@@ -432,7 +441,7 @@ class ShoeboxRoom(Room):
         area = np.roll(dimensions_m, 1) @ dimensions_m * 2
         super().__init__(volume, area, t60_s, absorption_coefficient)
 
-    def check_if_in_room(self, coordinates_m) -> bool:
+    def check_if_in_room(self, coordinates_m: NDArray[np.float64]) -> bool:
         """Checks if a given point is inside the room.
 
         Parameters
@@ -452,7 +461,7 @@ class ShoeboxRoom(Room):
 
     def get_mixing_time(
         self,
-        mode: str = "perceptual",
+        mode: Literal["perceptual", "physical"] = "perceptual",
         n_reflections: int = 400,
         c: float = 343,
     ) -> float:
@@ -467,7 +476,7 @@ class ShoeboxRoom(Room):
 
         Parameters
         ----------
-        mode : str, optional
+        mode : {"perceptual", "physical"}, optional
             Choose from `'perceptual'` or `'physical'`.
             Default: `'perceptual'`.
         n_reflections : int, optional
@@ -555,13 +564,13 @@ class ShoeboxRoom(Room):
 
     def get_analytical_transfer_function(
         self,
-        source_pos,
-        receiver_pos,
-        freqs,
+        source_pos: NDArray[np.float64],
+        receiver_pos: NDArray[np.float64],
+        freqs: NDArray[np.float64],
         max_mode_order: int = 10,
         generate_plot: bool = True,
-        c: float = 343,
-    ):
+        c: float = 343.0,
+    ) -> tuple[NDArray[np.complex128], NDArray[np.float64], tuple | None]:
         """Compute and return the analytical transfer function for the room.
 
         Parameters
@@ -686,7 +695,7 @@ class ShoeboxRoom(Room):
             plot = None
         return p, modes, plot
 
-    def add_detailed_absorption(self, detailed_absorption: dict):
+    def add_detailed_absorption(self, detailed_absorption: dict) -> None:
         """This method allows for the room to take in a more complex
         description of the absorption in each wall. This updates the
         attributes `t60_s` and `absorption_coefficient`.
@@ -1066,7 +1075,7 @@ def _get_best_linear_fit_for_edc(
     edc: NDArray[np.float64],
     start_value: float,
     steps: NDArray[np.float64],
-):
+) -> tuple[float, float]:
     """Obtain the best end value for a linear regression of the EDC based on
     the lowest pearson correlation coefficient, i.e., with the maximum of
     linear correlation.

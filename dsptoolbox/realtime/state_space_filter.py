@@ -7,14 +7,14 @@ from ..standard.enums import FilterCoefficientsType
 from .realtime_filter import RealtimeFilter
 
 
-class StateSpaceFilter(RealtimeFilter):
+class StateSpaceFilter(RealtimeFilter[float]):
     def __init__(
         self,
         A: NDArray[np.float64],
         B: NDArray[np.float64],
         C: NDArray[np.float64],
         D: NDArray[np.float64],
-    ):
+    ) -> None:
         """Instantiate a state space filter from the system's matrices. State
         space filters have the structure:
 
@@ -55,7 +55,7 @@ class StateSpaceFilter(RealtimeFilter):
         self.set_n_channels(1)
 
     @staticmethod
-    def from_filter(filt: Filter):
+    def from_filter(filt: Filter) -> "StateSpaceFilter":
         """Get a state-space filter from a common IIR representation. This
         function converts always to b and a coefficients before going into
         A, B, C, D matrices. For better numerical stability in high order
@@ -74,7 +74,7 @@ class StateSpaceFilter(RealtimeFilter):
         return StateSpaceFilter(*tf2ss(b, a))
 
     @staticmethod
-    def from_filter_as_sos_list(filt: Filter):
+    def from_filter_as_sos_list(filt: Filter) -> list["StateSpaceFilter"]:
         """Get a state-space filter from a common IIR representation. This
         function converts each SOS of the original filter into A, B, C, D
         matrices and returns a list of second-order StateSpaceFilter.
@@ -94,13 +94,13 @@ class StateSpaceFilter(RealtimeFilter):
             StateSpaceFilter(*tf2ss(sos[n, :3], sos[n, 3:])) for n in range(n_sections)
         ]
 
-    def reset_state(self):
+    def reset_state(self) -> None:
         self.x.fill(0.0)
 
-    def set_n_channels(self, n_channels: int):
+    def set_n_channels(self, n_channels: int) -> None:
         self.x = np.zeros((self.A.shape[0], n_channels))
 
-    def process_sample(self, x: float, channel: int):
+    def process_sample(self, x: float, channel: int) -> float:
         y = self.C @ self.x[:, channel] + self.D * x
         self.x[:, channel] = self.A @ self.x[:, channel] + self.B * x
         return y

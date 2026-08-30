@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from typing import Self
 
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
@@ -15,7 +16,9 @@ class MultichannelData(ABC):
         pass
 
     @abstractmethod
-    def _create_copy_with_new_data(self, data: NDArray[np.float64 | np.complex128]):
+    def _create_copy_with_new_data(
+        self, data: NDArray[np.float64 | np.complex128]
+    ) -> Self:
         pass
 
     @abstractmethod
@@ -26,10 +29,10 @@ class MultichannelData(ABC):
     def number_of_channels(self) -> int:
         return self._get_data().shape[-1]
 
-    def __len__(self):
+    def __len__(self) -> int:
         return self._get_data().shape[0]
 
-    def remove_channel(self, channel_number: int | None = None):
+    def remove_channel(self, channel_number: int | None = None) -> Self:
         """Return a copy with a channel removed.
 
         Parameters
@@ -40,7 +43,8 @@ class MultichannelData(ABC):
 
         Returns
         -------
-        New object of the same type, with the channel removed.
+        Self
+            New object of the same type, with the channel removed.
 
         """
         data = self._get_data()
@@ -53,17 +57,18 @@ class MultichannelData(ABC):
         )
         return self._create_copy_with_new_data(np.delete(data, channel_number, axis=-1))
 
-    def swap_channels(self, new_order):
+    def swap_channels(self, new_order: ArrayLike) -> Self:
         """Return a copy with the channels rearranged in the new given order.
 
         Parameters
         ----------
-        new_order : array-like
+        new_order : ArrayLike
             New rearrangement of channels.
 
         Returns
         -------
-        New object of the same type, with the channels rearranged.
+        Self
+            New object of the same type, with the channels rearranged.
 
         """
         new_order = np.atleast_1d(np.asarray(new_order).squeeze())
@@ -83,7 +88,7 @@ class MultichannelData(ABC):
         )
         return self._create_copy_with_new_data(self._get_data()[..., new_order])
 
-    def get_channels(self, channels: int | ArrayLike):
+    def get_channels(self, channels: int | ArrayLike) -> Self:
         """Returns a new object with the selected channels. Beware that the
         first channel index is 0!
 
@@ -94,18 +99,20 @@ class MultichannelData(ABC):
 
         Returns
         -------
-        New object of the same type, with the selected channels.
+        Self
+            New object of the same type, with the selected channels.
 
         """
         channels = np.atleast_1d(np.asarray(channels).squeeze())
         return self._create_copy_with_new_data(self._get_data()[..., channels])
 
-    def sum_channels(self):
+    def sum_channels(self) -> Self:
         """Return a copy where all channels are summed into one.
 
         Returns
         -------
-        New object of the same type, with a single channel.
+        Self
+            New object of the same type, with a single channel.
 
         """
         return self._create_copy_with_new_data(

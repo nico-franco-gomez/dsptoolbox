@@ -387,3 +387,25 @@ class TestFilterClass:
         lines = f.metadata_str.splitlines()
         assert lines[0] == "Filter:"
         assert lines[1] == "-" * len(lines[0])
+
+    def test_activate_zi_carries_state_between_calls(self):
+        """The packed zi must come back in the per-channel layout that
+        `initialize_zi` produces, otherwise the channel-count check re-
+        initializes the state on every call and nothing is carried over.
+
+        """
+        td = _rng.normal(0, 0.1, (2000, 3))
+        whole = dsp.Signal.from_time_data(td, self.fs)
+        first = dsp.Signal.from_time_data(td[:1000], self.fs)
+        second = dsp.Signal.from_time_data(td[1000:], self.fs)
+
+        for f in (
+            dsp.Filter.iir_filter(4, 500, dsp.FilterPassType.Lowpass, self.fs),
+            dsp.Filter.from_ba(*sig.butter(4, 500, fs=self.fs), self.fs),
+        ):
+            reference = f.filter_signal(whole).time_data
+            f.initialize_zi(3)
+            f.filter_signal(first, activate_zi=True)
+            continuation = f.filter_signal(second, activate_zi=True).time_data
+            assert len(f.zi) == 3
+            np.testing.assert_allclose(continuation, reference[1000:], atol=1e-8)

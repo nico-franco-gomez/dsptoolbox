@@ -111,7 +111,7 @@ def from_complex_cepstrum(
 def log_mel_spectrogram(
     s: Signal,
     channel: int = 0,
-    range_hz=None,
+    range_hz: tuple[float, float] | None = None,
     n_bands: int = 40,
     generate_plot: bool = True,
     stft_parameters: dict | None = None,
@@ -195,7 +195,7 @@ def log_mel_spectrogram(
 
 def mel_filterbank(
     f_hz: NDArray[np.float64],
-    range_hz=None,
+    range_hz: tuple[float, float] | None = None,
     n_bands: int = 40,
     normalize: bool = True,
 ) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
@@ -1174,6 +1174,9 @@ def lpc(
     hop_size_samples: int | None = None,
     window_type: WindowType = Window.Hann,
     rng: RngLike = None,
+) -> (
+    tuple[NDArray[np.float64], NDArray[np.float64]]
+    | tuple[NDArray[np.float64], NDArray[np.float64], Signal]
 ):
     """Encode an input signal into its linear-predictive coding coefficients.
     This transforms the signal into source-filter representation and works
@@ -1259,7 +1262,9 @@ def lpc(
     return a, var, Signal.from_time_data(synthesized_signal, signal.sampling_rate_hz)
 
 
-def dft(signal: Signal, frequency_vector_hz: NDArray[np.float64]):
+def dft(
+    signal: Signal, frequency_vector_hz: NDArray[np.float64]
+) -> NDArray[np.complex128]:
     """DFT for any set of frequencies. This is a direct computation of the DFT,
     so it is significantly slower than an FFT, but it can be used to obtain any
     desired frequency resolution.

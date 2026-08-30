@@ -2,6 +2,7 @@
 Contains Filter class
 """
 
+from collections.abc import Sequence
 from copy import deepcopy
 from fractions import Fraction
 from pickle import HIGHEST_PROTOCOL, dump
@@ -54,7 +55,7 @@ class Filter:
         self,
         sampling_rate_hz: int,
         _coefficients: dict,
-    ):
+    ) -> None:
         """Filters are not constructed directly. Use one of the factory
         methods, which validate what they are given: `from_ba`, `from_sos`,
         `from_zpk`, `fir_from_file`, `iir_filter`, `fir_filter` or `biquad`.
@@ -331,7 +332,7 @@ class Filter:
         return Filter.from_ba(ir.time_data[:, channel], [1.0], ir.sampling_rate_hz)
 
     # ================
-    def initialize_zi(self, number_of_channels: int = 1):
+    def initialize_zi(self, number_of_channels: int = 1) -> "Filter":
         """Initializes zi for steady-state filtering. The number of parallel
         zi's can be defined externally.
 
@@ -377,7 +378,7 @@ class Filter:
         return txt
 
     @property
-    def sampling_rate_hz(self):
+    def sampling_rate_hz(self) -> int:
         """Get the sampling rate in Hz.
 
         Returns
@@ -389,7 +390,7 @@ class Filter:
         return self.__sampling_rate_hz
 
     @sampling_rate_hz.setter
-    def sampling_rate_hz(self, new_sampling_rate_hz):
+    def sampling_rate_hz(self, new_sampling_rate_hz: int) -> None:
         """Set the sampling rate in Hz.
 
         Parameters
@@ -408,7 +409,7 @@ class Filter:
         self.__sampling_rate_hz = new_sampling_rate_hz
 
     @property
-    def warning_if_complex(self):
+    def warning_if_complex(self) -> bool:
         """Get the warning flag for complex-valued filters.
 
         Returns
@@ -420,7 +421,7 @@ class Filter:
         return self.__warning_if_complex
 
     @warning_if_complex.setter
-    def warning_if_complex(self, new_warning):
+    def warning_if_complex(self, new_warning: bool) -> None:
         """Set the warning flag for complex-valued filters.
 
         Parameters
@@ -480,7 +481,7 @@ class Filter:
         return self.__ba
 
     @ba.setter
-    def ba(self, new_ba: tuple | list):
+    def ba(self, new_ba: Sequence[ArrayLike]) -> None:
         """Set the ba (b, a) filter coefficients.
 
         Parameters
@@ -539,7 +540,7 @@ class Filter:
         return self.__sos
 
     @sos.setter
-    def sos(self, sos):
+    def sos(self, sos: NDArray[np.float64]) -> None:
         """Set the second-order sections (SOS) filter coefficients.
 
         Parameters
@@ -597,7 +598,7 @@ class Filter:
         return self.__zpk
 
     @zpk.setter
-    def zpk(self, new_zpk):
+    def zpk(self, new_zpk: Sequence) -> None:
         """Set the zero-pole-gain (zpk) representation of the filter.
 
         Parameters
@@ -615,7 +616,7 @@ class Filter:
         self.__zpk = list(new_zpk)
 
     @property
-    def order(self):
+    def order(self) -> int:
         """Get the order of the filter.
 
         Returns
@@ -635,17 +636,17 @@ class Filter:
             return max(len(self.ba[0]), len(self.ba[1])) - 1
         raise ValueError("No order found")
 
-    def __len__(self):
+    def __len__(self) -> int:
         return self.order + 1
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.metadata_str
 
     # ======== Filtering ======================================================
     def filter_signal(
         self,
         signal: Signal,
-        channels=None,
+        channels: int | ArrayLike | None = None,
         activate_zi: bool = False,
         zero_phase: bool = False,
     ) -> Signal:
@@ -926,7 +927,9 @@ class Filter:
         gd = sig.group_delay(ba, w=frequency_vector_hz, fs=self.sampling_rate_hz)[1]
         return gd / self.sampling_rate_hz if in_seconds else gd
 
-    def get_coefficients(self, coefficients_mode: FilterCoefficientsType):
+    def get_coefficients(
+        self, coefficients_mode: FilterCoefficientsType
+    ) -> list | tuple | NDArray[np.float64] | None:
         """Return a copy of the filter coefficients.
 
         Parameters
@@ -975,7 +978,7 @@ class Filter:
             raise ValueError(f"{coefficients_mode} is not valid. Use sos, ba or zpk")
 
     # ======== Plots and prints ===============================================
-    def show_info(self):
+    def show_info(self) -> None:
         """Prints all the filter parameters to the console."""
         print(self.metadata_str)
 
@@ -1278,7 +1281,7 @@ class Filter:
         )
 
     # ======== Saving and export ==============================================
-    def save_filter(self, path: str):
+    def save_filter(self, path: str) -> None:
         """Saves the Filter object as a pickle.
 
         Parameters

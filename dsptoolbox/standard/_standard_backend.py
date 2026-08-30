@@ -15,7 +15,7 @@ def _latency(
     in1: NDArray[np.float64],
     in2: NDArray[np.float64] | None,
     polynomial_points: int,
-):
+) -> NDArray[np.int_]:
     """Computes the latency between two functions using the correlation method.
     The variable polynomial_points is only a dummy to share the same function
     signature as the `_fractional_latency` function.
@@ -120,7 +120,7 @@ def _minimum_phase(
 
 
 def _center_frequencies_fractional_octaves_iec(
-    nominal, num_fractions
+    nominal: bool, num_fractions: int
 ) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
     """Returns the exact center frequencies for fractional octave bands
     according to the IEC 61260:1:2014 standard.
@@ -223,7 +223,7 @@ def _center_frequencies_fractional_octaves_iec(
 
 
 def _exact_center_frequencies_fractional_octaves(
-    num_fractions, frequency_range
+    num_fractions: int, frequency_range: tuple[float, float]
 ) -> NDArray[np.float64]:
     """Calculate the center frequencies of arbitrary fractional octave bands.
 
@@ -256,7 +256,7 @@ def _exact_center_frequencies_fractional_octaves(
     return exact
 
 
-def _kaiser_window_beta(A):
+def _kaiser_window_beta(A: float) -> float:
     """Return a shape parameter beta to create kaiser window based on desired
     side lobe suppression in dB.
 
@@ -327,7 +327,7 @@ def _indices_above_threshold_dbfs(
     attack_smoothing_coeff: int,
     release_smoothing_coeff: int,
     normalize: bool = True,
-):
+) -> NDArray[np.bool_]:
     """Returns indices with power above a given power threshold (in dBFS) in a
     time series. time_vec can be normalized to peak value prior to computation.
 
@@ -411,7 +411,7 @@ def _get_window_envelope(
     step_size_samples: int,
     number_frames: int,
     squared: bool = True,
-):
+) -> NDArray[np.float64]:
     """Compute the window envelope for a given window with step size and total
     length. The window can be squared or not.
 

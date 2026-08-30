@@ -1,3 +1,5 @@
+from typing import Self
+
 import numpy as np
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
@@ -24,7 +26,7 @@ class ImpulseResponse(Signal):
         sampling_rate_hz: int | None = None,
         constrain_amplitude: bool = False,
         activate_cache: bool = False,
-    ):
+    ) -> None:
         """Instantiate impulse response.
 
         Parameters
@@ -64,7 +66,7 @@ class ImpulseResponse(Signal):
         self.spectrum_method = SpectrumMethod.FFT
 
     @staticmethod
-    def from_signal(signal: Signal):
+    def from_signal(signal: Signal) -> "ImpulseResponse":
         """Create an impulse response from a signal.
 
         Parameters
@@ -91,7 +93,7 @@ class ImpulseResponse(Signal):
         path: str,
         constrain_amplitude: bool = False,
         activate_cache: bool = False,
-    ):
+    ) -> "ImpulseResponse":
         """Create an impulse response from a path to a wav or flac audio file.
 
         Parameters
@@ -125,7 +127,7 @@ class ImpulseResponse(Signal):
         sampling_rate_hz: int,
         constrain_amplitude: bool = False,
         activate_cache: bool = False,
-    ):
+    ) -> "ImpulseResponse":
         """Create an impulse response from an array of PCM samples.
 
         Parameters
@@ -158,7 +160,7 @@ class ImpulseResponse(Signal):
             )
         )
 
-    def set_window(self, window: NDArray[np.float64]):
+    def set_window(self, window: NDArray[np.float64]) -> Self:
         """Return a copy of the IR with the window set.
 
         Parameters
@@ -277,11 +279,11 @@ class ImpulseResponse(Signal):
 
     def plot_bode(
         self,
-        range_hz: tuple[float, float] | None = (20, 20e3),
+        range_hz: tuple[float, float] | None = (20.0, 20e3),
         normalize: MagnitudeNormalization = MagnitudeNormalization.NoNormalization,
-        range_db=None,
+        range_db: tuple[float, float] | None = None,
         show_group_delay: bool = False,
-        range_rad_s=None,
+        range_rad_s: tuple[float, float] | None = None,
         smoothing: int = 0,
         remove_ir_latency: IrLatencyRemoval | ArrayLike | None = None,
         ax: Axes | None = None,
@@ -376,7 +378,7 @@ class ImpulseResponse(Signal):
 
         return fig, ax
 
-    def copy_with_new_time_data(self, new_time_data: ArrayLike) -> "ImpulseResponse":
+    def copy_with_new_time_data(self, new_time_data: ArrayLike) -> Self:
         new_signal = super().copy_with_new_time_data(new_time_data)
         if self.spectrum_method != SpectrumMethod.FFT:
             new_signal.spectrum_method = SpectrumMethod.FFT

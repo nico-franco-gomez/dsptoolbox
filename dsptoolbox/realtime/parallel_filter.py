@@ -1,3 +1,5 @@
+from typing import Self
+
 import numpy as np
 import scipy.signal as sig
 from numpy.typing import NDArray
@@ -14,7 +16,7 @@ from .iir_filter_realtime import IIRFilter
 from .realtime_filter import RealtimeFilter
 
 
-class ParallelFilter(RealtimeFilter):
+class ParallelFilter(RealtimeFilter[float]):
     """Filter bank that processes filtering using SOS in parallel and an FIR
     part. See [1] for details.
 
@@ -27,7 +29,7 @@ class ParallelFilter(RealtimeFilter):
 
     def __init__(
         self, poles: NDArray[np.complex128], n_fir: int, sampling_rate_hz: int
-    ):
+    ) -> None:
         """Instantiate a parallel filter bank from a pole basis and a number of
         FIR coefficients. Details are given in [1]. Use `set_parameters()` and
         `set_coefficients()` for configuring the filter bank.
@@ -82,7 +84,7 @@ class ParallelFilter(RealtimeFilter):
         self,
         delay_iir_samples: int = 0,
         fir_offset_ms: float = 0.0,
-    ):
+    ) -> Self:
         """Parameters for the parallel filter bank.
 
         Parameters
@@ -112,7 +114,7 @@ class ParallelFilter(RealtimeFilter):
         self,
         iir_coefficients: NDArray[np.float64],
         fir: NDArray[np.float64] | None = None,
-    ):
+    ) -> Self:
         """Set the parallel filter coefficients.
 
         Parameters
@@ -139,7 +141,7 @@ class ParallelFilter(RealtimeFilter):
         self.__compute_filter_bank()
         return self
 
-    def fit_to_ir(self, ir: ImpulseResponse):
+    def fit_to_ir(self, ir: ImpulseResponse) -> Self:
         """Fit the filter coefficients of this filter bank to an IR using the
         frequency-domain least-squares approximation as outlined in [1].
 
@@ -235,7 +237,7 @@ class ParallelFilter(RealtimeFilter):
         self.__compute_filter_bank()
         return self
 
-    def __compute_filter_bank(self):
+    def __compute_filter_bank(self) -> None:
         fb = FilterBank(
             [
                 Filter.from_sos(self.__sos[n, :][None, ...], self.sampling_rate_hz)
@@ -249,7 +251,7 @@ class ParallelFilter(RealtimeFilter):
         self.filter_bank = fb
         self.__compute_real_time_filters()
 
-    def __compute_real_time_filters(self):
+    def __compute_real_time_filters(self) -> None:
         assert hasattr(self, "filter_bank"), "Filter bank needed"
         self.iir: list[IIRFilter] = []
         for f in self.filter_bank:
@@ -295,12 +297,12 @@ class ParallelFilter(RealtimeFilter):
             output += sig.sosfilt(self.__sos[n_sos, :][None, :], td, axis=0)
         return signal.copy_with_new_time_data(output)
 
-    def get_ir(self, length_samples: int):
+    def get_ir(self, length_samples: int) -> Signal:
         """Get an impulse response from the filter bank."""
         d = dirac(length_samples, sampling_rate_hz=self.sampling_rate_hz)
         return self.filter_signal(d)
 
-    def set_n_channels(self, n_channels: int):
+    def set_n_channels(self, n_channels: int) -> None:
         for f in self.iir:
             f.set_n_channels(n_channels)
         if self.n_fir > 0:
@@ -308,7 +310,7 @@ class ParallelFilter(RealtimeFilter):
         if self.delay_iir_samples > 0:
             self.iir_delay.set_n_channels(n_channels)
 
-    def reset_state(self):
+    def reset_state(self) -> None:
         for f in self.iir:
             f.reset_state()
         if self.n_fir > 1:
@@ -316,7 +318,7 @@ class ParallelFilter(RealtimeFilter):
         if self.delay_iir_samples > 0:
             self.iir_delay.reset_state()
 
-    def process_sample(self, x: float, channel: int):
+    def process_sample(self, x: float, channel: int) -> float:
         y = 0.0
 
         # FIR

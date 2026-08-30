@@ -3,6 +3,8 @@ State variable filter topology-Preserving (trapezoidal integrators)
 2-Pole multimode filter
 """
 
+from typing import Self
+
 import numpy as np
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
@@ -11,15 +13,17 @@ from numpy.typing import NDArray
 from ..classes.multibandsignal import MultiBandSignal
 from ..classes.signal import Signal
 from ..generators import dirac
-from ..standard.enums import SpectrumMethod
+from ..standard.enums import MagnitudeNormalization, SpectrumMethod
 from .realtime_filter import RealtimeFilter
 
 
-class StateVariableFilter(RealtimeFilter):
+class StateVariableFilter(RealtimeFilter[tuple[float, float, float, float]]):
     """This is a state variable filter discretized using the
     topology-preserving transform (trapezoidal integrator)."""
 
-    def __init__(self, frequency_hz: float, resonance: float, sampling_rate_hz: int):
+    def __init__(
+        self, frequency_hz: float, resonance: float, sampling_rate_hz: int
+    ) -> None:
         """Construct a state variable, 2-pole multimode filter. The
         implementation is based on [1], but the resonance parameter is here
         equal to 2R.
@@ -46,7 +50,9 @@ class StateVariableFilter(RealtimeFilter):
         self.sampling_rate_hz = sampling_rate_hz
         self.set_parameters(frequency_hz, resonance, 1)
 
-    def set_parameters(self, frequency_hz: float, resonance: float, n_channels: int):
+    def set_parameters(
+        self, frequency_hz: float, resonance: float, n_channels: int
+    ) -> Self:
         """Set filter parameters.
 
         Parameters
@@ -67,12 +73,12 @@ class StateVariableFilter(RealtimeFilter):
         self.set_n_channels(n_channels)
         return self
 
-    def set_n_channels(self, n_channels: int):
+    def set_n_channels(self, n_channels: int) -> None:
         assert n_channels > 0
         self.n_channels = n_channels
         self.state = np.zeros((2, self.n_channels))
 
-    def reset_state(self):
+    def reset_state(self) -> None:
         """Reset filter states."""
         self.state.fill(0)
 
@@ -221,7 +227,7 @@ class StateVariableFilter(RealtimeFilter):
         d.spectrum_method = SpectrumMethod.FFT
         fig, ax = d.plot_magnitude(
             range_hz=range_hz,
-            normalize=None,
+            normalize=MagnitudeNormalization.NoNormalization,
             range_db=range_db,
             smoothing=0,
             ax=ax,
@@ -265,7 +271,6 @@ class StateVariableFilter(RealtimeFilter):
         length_samples: int,
         range_hz: tuple[float, float] | None = (20.0, 20e3),
         unwrap: bool = False,
-        radians: bool = True,
         ax: Axes | None = None,
     ) -> tuple[Figure, Axes]:
         """Plot the phase of each band output of the filter.
@@ -278,10 +283,6 @@ class StateVariableFilter(RealtimeFilter):
             Range of Hz to plot. Default: [20, 20e3].
         unwrap : bool, optional
             When `True`, the phase response is unwrapped. Default: `False`.
-        radians : bool, optional
-            When True, the phase is plotted in radians, otherwise it is in degrees.
-            Default: True.
-
         ax : `matplotlib.axes.Axes`, None, optional
             Axes to draw on, so that several plots can share one axis. A new
             figure is created when None. Default: None.
@@ -294,6 +295,6 @@ class StateVariableFilter(RealtimeFilter):
         """
         d = self.get_ir(length_samples).get_all_bands()
         d.spectrum_method = SpectrumMethod.FFT
-        fig, ax = d.plot_phase(range_hz=range_hz, unwrap=unwrap, radians=radians, ax=ax)
+        fig, ax = d.plot_phase(range_hz=range_hz, unwrap=unwrap, ax=ax)
         ax.legend(["Lowpass", "Highpass", "Bandpass", "Allpass"])
         return fig, ax

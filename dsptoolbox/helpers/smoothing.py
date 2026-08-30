@@ -3,6 +3,7 @@ from numpy.typing import NDArray
 from scipy.interpolate import PchipInterpolator, interp1d
 from scipy.signal import lfilter, lfilter_zi, oaconvolve, windows
 
+from ..standard.enums import WindowType
 from .windows import _gaussian_window_sigma
 
 
@@ -10,7 +11,7 @@ def _fractional_octave_smoothing(
     vector: NDArray[np.float64],
     bin_spacing_octaves: float | None = None,
     num_fractions: int = 3,
-    window_type="hann",
+    window_type: WindowType | str = "hann",
     window_vec: NDArray[np.float64] | None = None,
     clip_values: bool = False,
 ) -> NDArray[np.float64]:
@@ -131,7 +132,7 @@ def _fractional_octave_smoothing(
 
 def _get_smoothing_factor_ema(
     relaxation_time_s: float, sampling_rate_hz: int, accuracy: float = 0.95
-):
+) -> float:
     """This computes the smoothing factor needed for a single-pole IIR,
     or exponential moving averager. The returned value (alpha) should be used
     as follows::

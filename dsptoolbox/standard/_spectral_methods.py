@@ -169,7 +169,7 @@ def _stft(
     detrend: bool,
     padding: bool,
     scaling: SpectrumScaling,
-):
+) -> tuple[NDArray[np.float64], NDArray[np.float64], NDArray[np.complex128]]:
     """Computes the STFT of a signal. Output matrix has (freqs_hz, seconds_s).
 
     Parameters
@@ -283,12 +283,12 @@ def _csm_welch(
     time_data: NDArray[np.float64],
     sampling_rate_hz: int,
     window_length_samples: int,
-    window_type: str,
-    overlap_percent: int,
+    window_type: WindowType,
+    overlap_percent: float,
     detrend: bool,
     average: SpectrumAverageMethod,
-    scaling: str,
-):
+    scaling: SpectrumScaling,
+) -> NDArray[np.complex128]:
     """Computes the cross spectral matrix of a multichannel signal using
     welch's method for a periodogram. Output matrix has (frequency, channels,
     channels).
@@ -302,7 +302,7 @@ def _csm_welch(
     window_length_samples : int
         Window length to be used. Determines frequency resolution in the end.
         Only powers of 2 are accepted.
-    window_type : str
+    window_type : WindowType
         Window type to be used. Refer to scipy.signal.windows for available
         ones.
     overlap_percent : int
@@ -373,7 +373,7 @@ def _csm_fft(
     scaling: SpectrumScaling,
     window: NDArray[np.float64] | None,
     sampling_rate_hz: int,
-) -> np.complex128:
+) -> NDArray[np.complex128]:
     """Compute the cross-spectral matrix from a multichannel complex spectrum.
     It is assumed that the input spectrum has no scaling, i.e., FFTBackward
     normalization.

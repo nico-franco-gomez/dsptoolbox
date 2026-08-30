@@ -7,7 +7,7 @@ from .latency import _fractional_latency, _remove_ir_latency_from_phase
 
 def _get_minimum_phase_spectrum_from_real_cepstrum(
     time_data: NDArray[np.float64], padding_factor: int
-):
+) -> NDArray[np.complex128]:
     """Returns minimum-phase version of a time series using the real cepstrum
     method.
 
@@ -23,7 +23,7 @@ def _get_minimum_phase_spectrum_from_real_cepstrum(
 
     Returns
     -------
-    NDArray[np.float64]
+    NDArray[np.complex128]
         New spectrum with minimum phase.
 
     """
@@ -51,7 +51,7 @@ def _get_minimum_phase_spectrum_from_real_cepstrum(
 
 def _min_phase_ir_from_real_cepstrum(
     time_data: NDArray[np.float64], padding_factor: int
-):
+) -> NDArray[np.float64]:
     """Returns minimum-phase version of a time series using the real cepstrum
     method.
 
@@ -85,7 +85,7 @@ def _remove_ir_latency_from_phase_min_phase(
     time_data: NDArray[np.float64],
     sampling_rate_hz: int,
     padding_factor: int,
-):
+) -> NDArray[np.float64]:
     """
     Remove the impulse delay from a phase response.
 

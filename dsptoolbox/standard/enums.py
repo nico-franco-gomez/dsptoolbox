@@ -310,10 +310,10 @@ class FilterPassType(Enum):
     Bandpass = auto()
     Bandstop = auto()
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.name.lower()
 
-    def to_str(self):
+    def to_str(self) -> str:
         return str(self)
 
 
@@ -449,7 +449,7 @@ class Window(Enum):
             Window.Chebwin,
         )
 
-    def __call__(self, n_values: int, symmetric: bool):
+    def __call__(self, n_values: int, symmetric: bool) -> NDArray[np.float64]:
         """Get window values from `scipy.signal.windows.get_window()`."""
         return get_window_scipy(self.to_scipy_format(), n_values, not symmetric)
 
@@ -484,7 +484,7 @@ class ParametrizedWindow:
             )
         return (self.window._scipy_name(), self.extra_parameter)
 
-    def __call__(self, n_values: int, symmetric: bool):
+    def __call__(self, n_values: int, symmetric: bool) -> NDArray[np.float64]:
         """Get window values from `scipy.signal.windows.get_window()`."""
         return get_window_scipy(self.to_scipy_format(), n_values, not symmetric)
 

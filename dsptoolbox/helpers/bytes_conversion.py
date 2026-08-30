@@ -4,7 +4,7 @@ import numpy as np
 from numpy.typing import NDArray
 
 
-def _array_to_bytes_24bits(vector: NDArray[np.int32 | np.uint32]):
+def _array_to_bytes_24bits(vector: NDArray[np.int32 | np.uint32]) -> bytes:
     """This function turns an array with samples with type np.int32 or
     np.uint32 into i24 or u24 respectively. The endianness of the current
     platform is kept.
@@ -32,7 +32,9 @@ def _array_to_bytes_24bits(vector: NDArray[np.int32 | np.uint32]):
     return b.tobytes()
 
 
-def _bytes_to_array_24bits(vector: bytes, signed_input: bool):
+def _bytes_to_array_24bits(
+    vector: bytes, signed_input: bool
+) -> NDArray[np.int32 | np.uint32]:
     """Convert bytes into an array."""
     assert len(vector) % 3 == 0, (
         "Vector should have a length with 3-bytes sized samples"

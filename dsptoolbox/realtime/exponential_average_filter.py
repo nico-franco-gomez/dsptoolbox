@@ -4,14 +4,14 @@ from ..helpers.smoothing import _get_smoothing_factor_ema
 from .realtime_filter import RealtimeFilter
 
 
-class ExponentialAverageFilter(RealtimeFilter):
+class ExponentialAverageFilter(RealtimeFilter[float]):
     def __init__(
         self,
         increase_time_s: float,
         decrease_time_s: float,
         sampling_rate_hz: int,
         accuracy_step_response: float = 0.95,
-    ):
+    ) -> None:
         """The exponential average filter is a one-pole IIR filter which
         smoothes the input (lowpass filter). It can have a different
         coefficients for increasing and decreasing values.
@@ -40,13 +40,13 @@ class ExponentialAverageFilter(RealtimeFilter):
         )
         self.set_n_channels(1)
 
-    def set_n_channels(self, n_channels: int):
+    def set_n_channels(self, n_channels: int) -> None:
         self.state = np.zeros((1, n_channels))
 
-    def reset_state(self):
+    def reset_state(self) -> None:
         self.state.fill(0.0)
 
-    def process_sample(self, x: float, channel: int):
+    def process_sample(self, x: float, channel: int) -> float:
         if x > self.state[0, channel]:  # Ascending
             y = (
                 x * self.increase_coefficient

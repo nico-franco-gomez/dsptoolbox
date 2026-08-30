@@ -1,6 +1,7 @@
 import pickle
 
 import numpy as np
+from numpy.typing import NDArray
 from scipy.signal import (
     hilbert,
     oaconvolve,
@@ -13,7 +14,7 @@ from ..classes import (
 from ..helpers.other import _check_path_format
 
 
-def load_pkl_object(path: str):
+def load_pkl_object(path: str) -> object:
     """WARNING: This is not secure. Only unpickle data you know!
     Loads an object with all its attributes and methods.
 
@@ -39,7 +40,7 @@ def envelope(
     signal: Signal | MultiBandSignal,
     analytic: bool = True,
     window_length_samples: int | None = None,
-):
+) -> NDArray[np.float64]:
     """This function computes the envelope of a given signal by means of its
     hilbert transformation. It can also compute the RMS value over a certain
     window length (boxcar). The time signal is always detrended with a linear

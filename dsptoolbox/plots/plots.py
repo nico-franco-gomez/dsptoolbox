@@ -2,6 +2,8 @@
 Includes some basic plotting templates
 """
 
+from collections.abc import Sequence
+
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib import colormaps as cm
@@ -15,7 +17,7 @@ FREQUENCY_TICKS = np.array(
 )
 
 
-def show():
+def show() -> None:
     """Show created plots by using this wrapper around matplotlib's show."""
     plt.show()
 
@@ -32,10 +34,10 @@ def _get_figure_and_axes(
 def general_plot(
     x: NDArray | None,
     matrix: NDArray,
-    range_x=None,
-    range_y=None,
+    range_x: tuple[float, float] | None = None,
+    range_y: tuple[float, float] | None = None,
     log_x: bool = True,
-    labels=None,
+    labels: Sequence[str] | None = None,
     xlabel: str = "Frequency / Hz",
     ylabel: str | None = None,
     info_box: str | None = None,
@@ -128,12 +130,12 @@ def general_plot_two_axes(
     matrix1: NDArray,
     x2: NDArray | None,
     matrix2: NDArray,
-    range_x=None,
-    range_y1=None,
-    range_y2=None,
+    range_x: tuple[float, float] | None = None,
+    range_y1: tuple[float, float] | None = None,
+    range_y2: tuple[float, float] | None = None,
     log_x: bool = True,
-    labels1=None,
-    labels2=None,
+    labels1: Sequence[str] | None = None,
+    labels2: Sequence[str] | None = None,
     xlabel: str = "Frequency / Hz",
     y1label: str | None = None,
     y2label: str | None = None,
@@ -280,10 +282,10 @@ def general_subplots_line(
     sharex: bool = True,
     sharey: bool = False,
     log_x: bool = False,
-    xlabels=None,
-    ylabels=None,
-    range_x=None,
-    range_y=None,
+    xlabels: str | Sequence[str] | None = None,
+    ylabels: Sequence[str] | None = None,
+    range_x: tuple[float, float] | None = None,
+    range_y: tuple[float, float] | None = None,
     ax: list[Axes] | None = None,
 ) -> tuple[Figure, list[Axes]]:
     """Generic plot template with subplots in one column or row.
@@ -378,9 +380,9 @@ def general_subplots_line(
 
 
 def general_matrix_plot(
-    matrix,
-    range_x=None,
-    range_y=None,
+    matrix: NDArray[np.float64],
+    range_x: tuple[float, float] | None = None,
+    range_y: tuple[float, float] | None = None,
     range_z: float | None = None,
     xlabel: str | None = None,
     ylabel: str | None = None,

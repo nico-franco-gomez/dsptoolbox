@@ -8,13 +8,13 @@ from ..standard.enums import FilterCoefficientsType
 from .realtime_filter import RealtimeFilter
 
 
-class FIRFilter(RealtimeFilter):
+class FIRFilter(RealtimeFilter[float]):
     """FIR filter implemented in the time domain. This class is
     written for experimentation purposes and realtime applications, but using
     `scipy.signal.lfilter` or some convolution function should be preferred for
     usual offline filtering tasks."""
 
-    def __init__(self, b: NDArray[np.float64]):
+    def __init__(self, b: NDArray[np.float64]) -> None:
         """Instantiate an FIR filter from b (numerator) coefficients.
 
         Parameters
@@ -32,7 +32,7 @@ class FIRFilter(RealtimeFilter):
         self.set_n_channels(1)
 
     @staticmethod
-    def from_filter(fir: Filter):
+    def from_filter(fir: Filter) -> "FIRFilter":
         """Instantiate FIR filter.
 
         Parameters
@@ -49,15 +49,15 @@ class FIRFilter(RealtimeFilter):
         b, _ = fir.get_coefficients(FilterCoefficientsType.Ba)
         return FIRFilter(b)
 
-    def set_n_channels(self, n_channels: int):
+    def set_n_channels(self, n_channels: int) -> None:
         self.state = np.zeros((self.order, n_channels))
         self.current_state_ind = np.zeros(n_channels, dtype=np.int_)
 
-    def reset_state(self):
+    def reset_state(self) -> None:
         self.state.fill(0.0)
         self.current_state_ind.fill(0)
 
-    def process_sample(self, x: float, channel: int):
+    def process_sample(self, x: float, channel: int) -> float:
         """Process a sample."""
         y = self.b[0] * x
 
@@ -90,11 +90,11 @@ class FIRFilter(RealtimeFilter):
         return output
 
 
-class FIRFilterOverlapSave(RealtimeFilter):
+class FIRFilterOverlapSave(RealtimeFilter[float]):
     """Execute a convolution of an FIR filter with the overlap-save scheme.
     This can be used in realtime with block-processing."""
 
-    def __init__(self, b: NDArray[np.float64]):
+    def __init__(self, b: NDArray[np.float64]) -> None:
         """Create a new FIR Filter to be used with the overlap-save scheme.
         It can only process data in blocks and the `prepare` method has to be
         called before the processing can start.
@@ -109,7 +109,7 @@ class FIRFilterOverlapSave(RealtimeFilter):
         self.fir = b
 
     @staticmethod
-    def from_filter(fir: Filter):
+    def from_filter(fir: Filter) -> "FIRFilterOverlapSave":
         """Instantiate FIR filter.
 
         Parameters
@@ -117,12 +117,16 @@ class FIRFilterOverlapSave(RealtimeFilter):
         fir : Filter
             FIR filter.
 
+        Returns
+        -------
+        FIRFilterOverlapSave
+
         """
         assert fir.is_fir, "Only valid for FIR filters"
         b, _ = fir.get_coefficients(FilterCoefficientsType.Ba)
         return FIRFilterOverlapSave(b)
 
-    def prepare(self, blocksize_samples: int, n_channels: int):
+    def prepare(self, blocksize_samples: int, n_channels: int) -> None:
         """Prepare the filter for block processing.
 
         Parameters
@@ -163,14 +167,14 @@ class FIRFilterOverlapSave(RealtimeFilter):
         self.buffer[: -self.blocksize, channel] = self.buffer[self.blocksize :, channel]
         return output_data
 
-    def process_sample(self, x: float, channel: int):
+    def process_sample(self, x: float, channel: int) -> float:
         raise NotImplementedError("The convolution can only done via block-processing")
 
-    def reset_state(self):
+    def reset_state(self) -> None:
         """Reset all filter states to 0."""
         self.buffer.fill(0.0)
 
-    def set_n_channels(self, n_channels: int):
+    def set_n_channels(self, n_channels: int) -> None:
         raise NotImplementedError("Use prepare method for setting the filter")
 
 
@@ -181,7 +185,7 @@ class FIRUniformPartitioned(FIRFilterOverlapSave):
 
     """
 
-    def __init__(self, fir: NDArray[np.float64]):
+    def __init__(self, fir: NDArray[np.float64]) -> None:
         """Instantiate a new FIR filter.
 
         Parameters
@@ -194,21 +198,21 @@ class FIRUniformPartitioned(FIRFilterOverlapSave):
         self.fir = fir
 
     @staticmethod
-    def from_filter(fir: Filter):
+    def from_filter(fir: Filter) -> "FIRUniformPartitioned":
         assert fir.is_fir, "Only valid for FIR filters"
         b, _ = fir.get_coefficients(FilterCoefficientsType.Ba)
         return FIRUniformPartitioned(b)
 
-    def prepare(self, blocksize_samples: int, n_channels: int):
+    def prepare(self, blocksize_samples: int, n_channels: int) -> None:
         self.blocksize = blocksize_samples
         self.fft_size = blocksize_samples * 2
         self.__prepare_partitions(n_channels)
 
-    def reset_state(self):
+    def reset_state(self) -> None:
         self.buffer_spectra.fill(0.0 * 1j)
         self.input_buffer.fill(0.0)
 
-    def __prepare_partitions(self, n_channels: int):
+    def __prepare_partitions(self, n_channels: int) -> None:
         self.n_partitions = len(self.fir) // self.blocksize + 1
 
         # Partitions
@@ -231,7 +235,9 @@ class FIRUniformPartitioned(FIRFilterOverlapSave):
         )
         self.input_buffer = np.zeros((self.fft_size, n_channels))
 
-    def process_block(self, block: NDArray[np.float64], channel: int):
+    def process_block(
+        self, block: NDArray[np.float64], channel: int
+    ) -> NDArray[np.float64]:
         # Store new block in input buffer
         self.input_buffer[: self.blocksize, channel] = self.input_buffer[
             -self.blocksize :, channel
@@ -269,7 +275,7 @@ class FIRUniformPartitionedMultichannel(FIRUniformPartitioned):
 
     """
 
-    def __init__(self, fir: NDArray[np.float64]):
+    def __init__(self, fir: NDArray[np.float64]) -> None:
         """Instantiate a new FIR filter.
 
         Parameters
@@ -281,7 +287,7 @@ class FIRUniformPartitionedMultichannel(FIRUniformPartitioned):
         # Bring into standard form
         self.fir = Signal.from_time_data(fir, 10000).time_data
 
-    def prepare(self, blocksize_samples: int, n_channels: int | None = None):
+    def prepare(self, blocksize_samples: int, n_channels: int | None = None) -> None:
         """Prepares the processing.
 
         Parameters
@@ -302,7 +308,7 @@ class FIRUniformPartitionedMultichannel(FIRUniformPartitioned):
         self.fft_size = blocksize_samples * 2
         self.__prepare_partitions()
 
-    def __prepare_partitions(self):
+    def __prepare_partitions(self) -> None:
         self.n_partitions = self.fir.shape[0] // self.blocksize + 1
         self.n_channels = self.fir.shape[1]
 
@@ -326,7 +332,9 @@ class FIRUniformPartitionedMultichannel(FIRUniformPartitioned):
         )
         self.input_buffer = np.zeros((self.fft_size, self.n_channels))
 
-    def process_block(self, block: NDArray[np.float64], channel: int = -1):
+    def process_block(
+        self, block: NDArray[np.float64], channel: int = -1
+    ) -> NDArray[np.float64]:
         """Process an input block.
 
         Parameters

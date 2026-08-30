@@ -153,7 +153,9 @@ def noise(
 
 
 def _check_chirp_parameters(
-    range_hz, sampling_rate_hz: int, padding_end_seconds: float
+    range_hz: tuple[float, float] | None,
+    sampling_rate_hz: int,
+    padding_end_seconds: float,
 ) -> tuple[list[float], int]:
     """Validate the frequency range and padding shared by the chirps."""
     if range_hz is not None:
@@ -216,7 +218,7 @@ def _assemble_chirp(
 def chirp(
     sampling_rate_hz: int,
     type_of_chirp: ChirpType = ChirpType.Logarithmic,
-    range_hz=None,
+    range_hz: tuple[float, float] | None = None,
     length_seconds: float = 1.0,
     peak_level_dbfs: float = -10.0,
     number_of_channels: int = 1,
@@ -297,7 +299,7 @@ def chirp(
 
 def sync_log_chirp(
     sampling_rate_hz: int,
-    range_hz=None,
+    range_hz: tuple[float, float] | None = None,
     length_seconds: float = 1.0,
     peak_level_dbfs: float = -10.0,
     number_of_channels: int = 1,

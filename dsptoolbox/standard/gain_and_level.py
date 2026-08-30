@@ -169,7 +169,7 @@ def lufs_integrated(s: Signal) -> float:
         axis=0,
     )
 
-    def gated_loudness(x):
+    def gated_loudness(x: NDArray[np.float64]) -> float:
         return -0.691 + 10.0 * np.log10(x @ G)
 
     l_j = gated_loudness(z_ji)

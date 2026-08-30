@@ -7,7 +7,7 @@ from ..standard.enums import FilterCoefficientsType
 from .realtime_filter import RealtimeFilter
 
 
-class WarpedFIR(RealtimeFilter):
+class WarpedFIR(RealtimeFilter[float]):
     """The Warped FIR filter has a structure like a common FIR filter but with
     allpasses instead of unit delays between each coefficient. This warps
     the input during the filtering stage.
@@ -27,7 +27,7 @@ class WarpedFIR(RealtimeFilter):
         b: NDArray[np.float64],
         warping_factor: float,
         sampling_rate_hz: int,
-    ):
+    ) -> None:
         """Instantiate a warped FIR filter with its coefficients and a warping
         factor. See [1] for details on use and implementation.
 
@@ -57,7 +57,7 @@ class WarpedFIR(RealtimeFilter):
         self.set_n_channels(1)
 
     @staticmethod
-    def from_filter(filt: Filter, warping_factor: float):
+    def from_filter(filt: Filter, warping_factor: float) -> "WarpedFIR":
         """Instantiate with the coefficients of a filter. It must be FIR
 
         Parameters
@@ -76,11 +76,11 @@ class WarpedFIR(RealtimeFilter):
         b, _ = filt.get_coefficients(FilterCoefficientsType.Ba)
         return WarpedFIR(b, warping_factor, filt.sampling_rate_hz)
 
-    def set_n_channels(self, n_channels: int):
+    def set_n_channels(self, n_channels: int) -> None:
         assert n_channels > 0
         self.buffer = np.zeros((self.N, n_channels))
 
-    def reset_state(self):
+    def reset_state(self) -> None:
         self.buffer.fill(0.0)
 
     def process_sample(self, x: float, channel: int) -> float:
@@ -128,7 +128,9 @@ class WarpedFIR(RealtimeFilter):
         self.buffer = buffer_prior
         return new_signal
 
-    def __process_time_data_vector(self, time_data: NDArray[np.float64]):
+    def __process_time_data_vector(
+        self, time_data: NDArray[np.float64]
+    ) -> NDArray[np.float64]:
         output = np.zeros_like(time_data)
         n_channels = time_data.shape[1]
         for channel in range(n_channels):
@@ -155,7 +157,7 @@ class WarpedIIR(WarpedFIR):
         a: NDArray[np.float64],
         warping_factor: float,
         sampling_rate_hz: int,
-    ):
+    ) -> None:
         """Instantiate a warped IIR filter with its coefficients and a warping
         factor. See [1] for details on use and implementation.
 
@@ -195,7 +197,7 @@ class WarpedIIR(WarpedFIR):
         self.__compute_sigmas()
 
     @staticmethod
-    def from_filter(filt: Filter, warping_factor: float):
+    def from_filter(filt: Filter, warping_factor: float) -> "WarpedIIR":
         """Instantiate with the coefficients of a filter. It must be IIR
 
         Parameters
@@ -214,7 +216,7 @@ class WarpedIIR(WarpedFIR):
         b, a = filt.get_coefficients(FilterCoefficientsType.Ba)
         return WarpedIIR(b, a, warping_factor, filt.sampling_rate_hz)
 
-    def __compute_sigmas(self):
+    def __compute_sigmas(self) -> None:
         """Computation from Karjalainen, M. & Härmä, Aki & Laine, Unto &
         Huopaniemi, J.. (1997). Warped filters and their audio applications.
         4 pp.. 10.1109/ASPAA.1997.625615.

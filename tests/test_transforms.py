@@ -561,3 +561,21 @@ class TestTransformsModule:
             spec2 = dsp.transforms.spectrum_via_filterbank(
                 s_multi, freqs, None, -10, 8, False
             )
+
+    def test_warp_accepts_integer_and_numpy_warping_factors(self):
+        """The factor used to be validated with `type(x) is float`, which
+        rejects an int and every numpy float.
+
+        """
+        ir = dsp.ImpulseResponse.from_time_data(np.eye(64, 1), 8_000)
+        reference = dsp.transforms.warp(ir, 0.3, False).time_data
+        for factor in (np.float64(0.3), np.float32(0.3)):
+            np.testing.assert_allclose(
+                dsp.transforms.warp(ir, factor, False).time_data,
+                reference,
+                atol=1e-6,
+            )
+        # An integer factor of 0 is the identity warp
+        np.testing.assert_allclose(
+            dsp.transforms.warp(ir, 0, False).time_data, ir.time_data, atol=1e-12
+        )

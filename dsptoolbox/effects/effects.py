@@ -3,6 +3,8 @@ from collections.abc import Callable
 from warnings import warn
 
 import numpy as np
+from matplotlib.axes import Axes
+from matplotlib.figure import Figure
 from numpy.typing import NDArray
 from scipy.signal.windows import get_window
 
@@ -38,7 +40,7 @@ class AudioEffect(ABC):
     """Base class for audio effects. Applying an effect always returns a new
     object and leaves the input untouched."""
 
-    def __init__(self, description: str | None = None):
+    def __init__(self, description: str | None = None) -> None:
         """Base constructor for an audio effect.
 
         Parameters
@@ -149,7 +151,7 @@ class SpectralSubtractor(AudioEffect):
         threshold_rms_dbfs: float = -40,
         block_length_s: float = 0.1,
         spectrum_to_subtract: NDArray[np.float64] | bool = False,
-    ):
+    ) -> None:
         """Constructor for a spectral subtractor denoising effect. More
         parameters can be passed using the method `set_advanced_parameters`.
 
@@ -199,11 +201,11 @@ class SpectralSubtractor(AudioEffect):
 
     def __set_parameters(
         self,
-        adaptive_mode,
-        threshold_rms_dbfs,
-        block_length_s,
-        spectrum_to_subtract,
-    ):
+        adaptive_mode: bool | None,
+        threshold_rms_dbfs: float | None,
+        block_length_s: float | None,
+        spectrum_to_subtract: NDArray[np.float64] | bool | None,
+    ) -> None:
         """Internal method to set the parameters for the spectral
         subtraction.
 
@@ -256,7 +258,7 @@ class SpectralSubtractor(AudioEffect):
         subtraction_exponent: float = 2,
         ad_attack_time_ms: float = 0.5,
         ad_release_time_ms: float = 30,
-    ):
+    ) -> None:
         """This allows for setting up the advanced parameters of the spectral
         subtraction.
 
@@ -354,8 +356,8 @@ class SpectralSubtractor(AudioEffect):
         adaptive_mode: bool | None = None,
         threshold_rms_dbfs: float | None = None,
         block_length_s: float | None = None,
-        spectrum_to_subtract: NDArray[np.float64] = False,
-    ):
+        spectrum_to_subtract: NDArray[np.float64] | bool | None = None,
+    ) -> None:
         """Sets the audio effects parameters. Pass `None` to leave the
         previously selected value for each parameter unchanged.
 
@@ -383,8 +385,8 @@ class SpectralSubtractor(AudioEffect):
             all other parameters are ignored. This should be the result of the
             squared magnitude of the FFT without any scaling in order to avoid
             scaling discrepancies. It should be only the spectrum corresponding
-            to the positive frequencies (including 0). Pass `False` to ignore.
-            Default: `False`.
+            to the positive frequencies (including 0). Pass `False` to clear
+            a previously set spectrum. Default: `None`.
 
         """
         self.__set_parameters(
@@ -398,7 +400,7 @@ class SpectralSubtractor(AudioEffect):
         assert self.block_length_s is not None, "None is not a valid value"
         assert self.spectrum_to_subtract is not None, "None is not a valid value"
 
-    def _compute_window(self, sampling_rate_hz):
+    def _compute_window(self, sampling_rate_hz: int) -> None:
         """Internal method to compute the window and step size in samples."""
         if not np.any(self.spectrum_to_subtract):
             self.window_length = _get_next_power_2(
@@ -562,7 +564,7 @@ class Distortion(AudioEffect):
         distortion_level: float = 20,
         post_gain_db: float = 0,
         type_of_distortion: DistortionType = DistortionType.Arctan,
-    ):
+    ) -> None:
         """This effect adds non-linear distortion to an audio signal by
         clipping its waveform according to some specific function and
         parameters. Use `set_advanced_parameters` for more control.
@@ -610,7 +612,7 @@ class Distortion(AudioEffect):
         mix_percent: NDArray[np.float64] = 100,
         offset_db: NDArray[np.float64] = -np.inf,
         post_gain_db: float = 0,
-    ):
+    ) -> None:
         r"""This sets the parameters of the distortion. Multiple
         non-linear distortions can be combined with the clean signal and among
         each other. In that case, `distortion_levels`, `mix_percent` and
@@ -695,16 +697,21 @@ class Distortion(AudioEffect):
 
         self.post_gain_db = post_gain_db
 
-    def __select_distortions(self, type_of_distortion):
+    def __select_distortions(
+        self, type_of_distortion: DistortionType | list[DistortionType]
+    ) -> None:
         """This sets `self.__distortion_funcs` which is a list containing the
         callables corresponding to the selected distortion functions.
 
         """
-        if type(type_of_distortion) is not list:
-            type_of_distortion = [type_of_distortion]
+        distortions = (
+            type_of_distortion
+            if isinstance(type_of_distortion, list)
+            else [type_of_distortion]
+        )
 
         self.__distortion_funcs = []
-        for dist in type_of_distortion:
+        for dist in distortions:
             match dist:
                 case DistortionType.Arctan:
                     self.__distortion_funcs.append(_arctan_distortion)
@@ -764,7 +771,7 @@ class Compressor(AudioEffect):
         release_time_ms: float = 20,
         ratio: float = 3,
         relative_to_peak_level: bool = True,
-    ):
+    ) -> None:
         """This effect compresses the dynamic range of a signal based on
         a threshold in dBFS.
 
@@ -803,7 +810,7 @@ class Compressor(AudioEffect):
         release_time_ms: float,
         ratio: float,
         relative_to_peak_level: bool,
-    ):
+    ) -> None:
         """Internal method to set the parameters."""
         if threshold_dbfs is not None:
             if threshold_dbfs > 0:
@@ -836,7 +843,7 @@ class Compressor(AudioEffect):
         release_time_ms: float | None = None,
         ratio: float | None = None,
         relative_to_peak_level: bool | None = None,
-    ):
+    ) -> None:
         """This effect compresses the dynamic range of a signal based on
         a threshold in dBFS. Pass `None` to leave the previoulsy selected
         values unchanged.
@@ -879,7 +886,7 @@ class Compressor(AudioEffect):
         mix_percent: float = 100,
         automatic_make_up_gain: bool = True,
         downward_compression: bool = True,
-    ):
+    ) -> None:
         """The advanced parameters of the compressor.
 
         Parameters
@@ -924,7 +931,7 @@ class Compressor(AudioEffect):
 
         self.downward_compression = downward_compression
 
-    def show_compression(self):
+    def show_compression(self) -> tuple[Figure, Axes]:
         """Plot the compressor with the actual settings.
 
         Returns
@@ -1026,7 +1033,7 @@ class Tremolo(AudioEffect):
         self,
         depth: float = 0.5,
         modulator: LFO | NDArray[np.float64] | None = None,
-    ):
+    ) -> None:
         """Constructor for a tremolo effect.
 
         Parameters
@@ -1048,7 +1055,9 @@ class Tremolo(AudioEffect):
             modulator = LFO(1, Waveform.Harmonic)
         self.__set_parameters(depth, modulator)
 
-    def __set_parameters(self, depth: float, modulator: LFO | NDArray[np.float64]):
+    def __set_parameters(
+        self, depth: float, modulator: LFO | NDArray[np.float64]
+    ) -> None:
         """Internal method to change parameters."""
         if modulator is not None:
             assert isinstance(modulator, (LFO, np.ndarray)), (
@@ -1068,7 +1077,7 @@ class Tremolo(AudioEffect):
         self,
         depth: float | None = None,
         modulator: LFO | NDArray[np.float64] | None = None,
-    ):
+    ) -> None:
         """Set the parameters for the tremolo effect. Passing `None` in this
         function leaves them unchanged.
 
@@ -1112,7 +1121,7 @@ class Chorus(AudioEffect):
         base_delays_ms: float | NDArray[np.float64] = 15,
         modulators: LFO | list | tuple | NDArray[np.float64] | None = None,
         mix_percent: float = 100,
-    ):
+    ) -> None:
         """Constructor for a chorus effect. Multiple voices with modulated
         delays are generated. The number of voices is inferred by the length
         of largest parameter.
@@ -1161,7 +1170,7 @@ class Chorus(AudioEffect):
         base_delays_ms: float | NDArray[np.float64],
         modulators: LFO | list | tuple | NDArray[np.float64],
         mix_percent: float,
-    ):
+    ) -> None:
         """Internal method to change parameters."""
         # Check lengths
         nv_base = nv_depths = nv_mod = 0
@@ -1255,7 +1264,7 @@ class Chorus(AudioEffect):
         base_delays_ms: float | NDArray[np.float64] | None = None,
         modulators: LFO | list | tuple | NDArray[np.float64] | None = None,
         mix_percent: float | None = None,
-    ):
+    ) -> None:
         """Sets the advanced parameters for the chorus effect. By passing
         multiple base delays, depths and LFOs, the effect can be fine-tuned.
         The number of voices is always extracted from the maximal length of
@@ -1324,7 +1333,7 @@ class Chorus(AudioEffect):
 class DigitalDelay(AudioEffect):
     """This applies a basic digital delay to a signal."""
 
-    def __init__(self, delay_time_ms: float = 300, feedback: float = 0.1):
+    def __init__(self, delay_time_ms: float = 300, feedback: float = 0.1) -> None:
         """Constructor for a digital delay effect.
 
         Parameters
@@ -1347,7 +1356,7 @@ class DigitalDelay(AudioEffect):
         self.__set_parameters(delay_time_ms, feedback)
         self.set_advanced_parameters()
 
-    def __set_parameters(self, delay_time_ms: float, feedback: int):
+    def __set_parameters(self, delay_time_ms: float, feedback: int) -> None:
         """Internal method to change parameters."""
         assert delay_time_ms > 0, "Delay time must be larger than 0"
         self.delay_ms = delay_time_ms
@@ -1357,7 +1366,7 @@ class DigitalDelay(AudioEffect):
 
     def set_parameters(
         self, delay_time_ms: float | None = None, feedback: float | None = None
-    ):
+    ) -> None:
         """Set the parameters for the tremolo effect. Passing `None` in this
         function leaves them unchanged.
 
@@ -1377,7 +1386,7 @@ class DigitalDelay(AudioEffect):
 
     def set_advanced_parameters(
         self, saturation: SaturationType | Callable | None = None
-    ):
+    ) -> None:
         """This function sets the advanced parameters for the delay effect.
 
         Parameters
@@ -1396,12 +1405,12 @@ class DigitalDelay(AudioEffect):
 
         if saturation == SaturationType.Digital:
 
-            def func(x):
+            def func(x: float) -> float:
                 return x
 
         elif saturation == SaturationType.Arctan:
 
-            def func(x):
+            def func(x: float) -> float:
                 return 0.5 * np.arctan(2 * x)
 
         else:
@@ -1412,12 +1421,12 @@ class DigitalDelay(AudioEffect):
                 "Saturation function might not be valid"
             )
 
-            def func(x):
+            def func(x: float) -> float:
                 return saturation(x)
 
         self.saturation_func = func
 
-    def plot_delay(self):
+    def plot_delay(self) -> tuple[Figure, Axes]:
         """Plots the delay decay with the selected parameters.
 
         Returns

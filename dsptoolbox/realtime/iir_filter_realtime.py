@@ -7,13 +7,13 @@ from ..standard.enums import FilterCoefficientsType
 from .realtime_filter import RealtimeFilter
 
 
-class IIRFilter(RealtimeFilter):
+class IIRFilter(RealtimeFilter[float]):
     """IIR filter implemented as a transposed direct form 2. This class is
     written for experimentation purposes and realtime applications, but using
     `scipy.signal.lfilter` should be preferred for common offline filtering
     tasks."""
 
-    def __init__(self, b: NDArray[np.float64], a: NDArray[np.float64]):
+    def __init__(self, b: NDArray[np.float64], a: NDArray[np.float64]) -> None:
         """Instantiate an IIR filter from b (numerator) and a (denominator)
         coefficients.
 
@@ -42,7 +42,7 @@ class IIRFilter(RealtimeFilter):
         self.set_n_channels(1)
 
     @staticmethod
-    def from_filter(iir: Filter):
+    def from_filter(iir: Filter) -> "IIRFilter":
         """Instantiate IIR filter.
 
         Parameters
@@ -59,13 +59,13 @@ class IIRFilter(RealtimeFilter):
         b, a = iir.get_coefficients(FilterCoefficientsType.Ba)
         return IIRFilter(b, a)
 
-    def set_n_channels(self, n_channels: int):
+    def set_n_channels(self, n_channels: int) -> None:
         self.state = np.zeros((self.order, n_channels))
 
-    def reset_state(self):
+    def reset_state(self) -> None:
         self.state.fill(0.0)
 
-    def process_sample(self, x: float, channel: int):
+    def process_sample(self, x: float, channel: int) -> float:
         y = self.b[0] * x + self.state[0, channel]
         for i in range(self.order - 1):
             self.state[i, channel] = (

@@ -4,11 +4,13 @@ Backend for the creation of specific filter banks
 
 from copy import deepcopy
 from pickle import HIGHEST_PROTOCOL, dump
+from typing import Literal, overload
 from warnings import warn
 
 import numpy as np
 from matplotlib.axes import Axes
-from numpy.typing import NDArray
+from matplotlib.figure import Figure
+from numpy.typing import ArrayLike, NDArray
 from scipy.linalg import lstsq
 from scipy.signal import (
     bilinear,
@@ -67,11 +69,11 @@ class LRFilterBank:
     # ======== Constructor and initiliazers ===================================
     def __init__(
         self,
-        freqs,
-        order=4,
+        freqs: ArrayLike,
+        order: ArrayLike | int = 4,
         sampling_rate_hz: int = 48000,
         info: dict | None = None,
-    ):
+    ) -> None:
         """Constructor for a linkwitz-riley crossovers filter bank. This is a
         near perfect magnitude reconstruction filter bank.
 
@@ -127,7 +129,7 @@ class LRFilterBank:
         self._generate_metadata()
         self.info: dict = self.info | info
 
-    def _compute_center_frequencies(self):
+    def _compute_center_frequencies(self) -> None:
         """Compute center frequencies from crossover frequencies."""
         val = 0
         center_frequencies = []
@@ -137,7 +139,7 @@ class LRFilterBank:
         center_frequencies.append((val + self.sampling_rate_hz // 2) / 2)
         self.center_frequencies = np.asarray(center_frequencies)
 
-    def _generate_metadata(self):
+    def _generate_metadata(self) -> None:
         """Internal method to update metadata about the filter bank."""
         if not hasattr(self, "info"):
             self.info = {}
@@ -147,7 +149,7 @@ class LRFilterBank:
         self.info["number_of_bands"] = self.number_of_bands
         self.info["sampling_rate_hz"] = self.sampling_rate_hz
 
-    def _create_filters_sos(self):
+    def _create_filters_sos(self) -> None:
         """Creates and saves filter's sos representations in a list with
         ascending order.
 
@@ -163,7 +165,7 @@ class LRFilterBank:
 
             if self.order[i] % 2 == 0:
                 assert self.order[i] % 4 == 0, (
-                    f"{self.order[i]} order is not supported for crossover"
+                    f"{int(self.order[i])} order is not supported for crossover"
                 )
                 order = self.order[i] // 2
             else:
@@ -188,7 +190,7 @@ class LRFilterBank:
                 hp = np.vstack([hp, hp])
             self.sos.append([lp, hp])
 
-    def initialize_zi(self, number_of_channels: int = 1):
+    def initialize_zi(self, number_of_channels: int = 1) -> None:
         """Initiates the zi of the filters for the given number of channels.
 
         Parameters
@@ -329,7 +331,13 @@ class LRFilterBank:
         return out_sig
 
     # ======== Update zi's and backend filtering ============================
-    def _allpass_zi(self, s, channel_number, cross_number, ap_number):
+    def _allpass_zi(
+        self,
+        s: NDArray[np.float64],
+        channel_number: int,
+        cross_number: int,
+        ap_number: int,
+    ) -> NDArray[np.float64]:
         """Handles the allpass filtering while updating the filter states."""
         # Unpack zi's
         ap_zi = self.channels_zi[channel_number][1][cross_number][ap_number]
@@ -345,7 +353,9 @@ class LRFilterBank:
         self.channels_zi[channel_number][1][cross_number][ap_number] = ap_zi
         return s_l + s_h
 
-    def _two_way_split_zi(self, s, channel_number, cross_number):
+    def _two_way_split_zi(
+        self, s: NDArray[np.float64], channel_number: int, cross_number: int
+    ) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
         """Filters the signal while updating the filter states."""
         # Unpack zi's
         cross_zi = self.channels_zi[channel_number][0][cross_number]
@@ -361,7 +371,9 @@ class LRFilterBank:
         self.channels_zi[channel_number][0][cross_number] = cross_zi
         return s_l, s_h
 
-    def _filt(self, s, f_number, split: bool = True):
+    def _filt(
+        self, s: NDArray[np.float64], f_number: int, split: bool = True
+    ) -> tuple[NDArray[np.float64], NDArray[np.float64]] | NDArray[np.float64]:
         """Filters signal with the sos corresponding to f_number.
         `split=True` returns two bands; when `False`, the summed bands are
         returned (allpass).
@@ -421,7 +433,7 @@ class LRFilterBank:
         range_hz: tuple[float, float] | None = (20.0, 20e3),
         zero_phase: bool = False,
         ax: Axes | None = None,
-    ):
+    ) -> tuple[Figure, Axes]:
         """Plots the magnitude response of each filter.
 
         Parameters
@@ -522,7 +534,7 @@ class LRFilterBank:
         range_hz: tuple[float, float] | None = (20.0, 20e3),
         unwrap: bool = False,
         ax: Axes | None = None,
-    ):
+    ) -> tuple[Figure, Axes]:
         """Plots the phase response of each filter.
 
         Parameters
@@ -589,7 +601,7 @@ class LRFilterBank:
         mode: FilterBankMode = FilterBankMode.Parallel,
         range_hz: tuple[float, float] | None = (20.0, 20e3),
         ax: Axes | None = None,
-    ):
+    ) -> tuple[Figure, Axes]:
         """Plots the phase response of each filter.
 
         Parameters
@@ -653,14 +665,14 @@ class LRFilterBank:
             ax=ax,
         )
 
-    def show_info(self):
+    def show_info(self) -> None:
         """Prints out information about the filter bank."""
         print()
         for k in self.info.keys():
             print(str(k).replace("_", " ").capitalize(), end="")
             print(f": {self.info[k]}")
 
-    def save_filterbank(self, path: str):
+    def save_filterbank(self, path: str) -> None:
         """Saves the FilterBank object as a pickle.
 
         Parameters
@@ -696,7 +708,7 @@ class GammaToneFilterBank(FilterBank):
         frequencies: NDArray[np.float64],
         coefficients: NDArray[np.float64],
         normalizations: NDArray[np.float64],
-    ):
+    ) -> None:
         """Constructor for the Gamma Tone Filter Bank. It is only available as
         a constant sampling rate filter bank.
 
@@ -725,7 +737,7 @@ class GammaToneFilterBank(FilterBank):
         self._compute_gains()
 
     # ======== Extra methods for the GammaToneFilterBank ======================
-    def _compute_delays_and_phase_factors(self):
+    def _compute_delays_and_phase_factors(self) -> None:
         """Section 4 in Hohmann 2002 describes how to derive these values. This
         is a direct Python port of the corresponding function in the AMT
         toolbox `hohmann2002_process.m`.
@@ -764,7 +776,7 @@ class GammaToneFilterBank(FilterBank):
         self._delays = delays
         self._phase_factors = phase_factors
 
-    def _compute_gains(self):
+    def _compute_gains(self) -> None:
         """Section 4 in Hohmann 2002 describes how to derive these values. This
         is a direct Python port of the corresponding function in the AMT
         toolbox `hohmann2002_process.m`.
@@ -871,10 +883,10 @@ class BaseCrossover(FilterBank):
 
     def __init__(
         self,
-        analysis_filters: list,
-        synthesis_filters: list,
+        analysis_filters: list[Filter],
+        synthesis_filters: list[Filter],
         info: dict | None = None,
-    ):
+    ) -> None:
         """Constructor for a crossover. Analysis and synthesis filters are
         needed for creating an instance.
 
@@ -905,11 +917,11 @@ class BaseCrossover(FilterBank):
 
     # ======== Extra properties ===============================================
     @property
-    def filters_synthesis(self):
+    def filters_synthesis(self) -> list[Filter]:
         return self.__filters_synthesis
 
     @filters_synthesis.setter
-    def filters_synthesis(self, new_filters):
+    def filters_synthesis(self, new_filters: list[Filter]) -> None:
         assert len(new_filters) == 2, "Two synthesis filters are needed in a crossover"
         assert all([type(n) is Filter for n in new_filters]), (
             "Filters have to be of type Filter"
@@ -917,14 +929,38 @@ class BaseCrossover(FilterBank):
         self.__filters_synthesis = new_filters
 
     # ======== Filtering ======================================================
+    @overload
+    def filter_signal(
+        self,
+        signal: Signal,
+        mode: Literal[FilterBankMode.Sequential, FilterBankMode.Summed],
+        activate_zi: bool = False,
+        zero_phase: bool = False,
+        downsample: bool = False,
+    ) -> Signal: ...
+
+    @overload
+    def filter_signal(
+        self,
+        signal: Signal,
+        mode: Literal[FilterBankMode.Parallel],
+        activate_zi: bool = False,
+        zero_phase: bool = False,
+        downsample: bool = False,
+    ) -> MultiBandSignal: ...
+
     def filter_signal(
         self,
         signal: Signal,
         mode: FilterBankMode,
-        downsample: bool = False,
-        zero_phase: bool = False,
         activate_zi: bool = False,
+        zero_phase: bool = False,
+        downsample: bool = False,
     ) -> Signal | MultiBandSignal:
+        """Filter a signal. `downsample` additionally halves the sampling rate
+        of each band; see `FilterBank.filter_signal` for the other arguments.
+
+        """
         if not downsample:
             return super().filter_signal(
                 signal, mode, activate_zi, zero_phase=zero_phase
@@ -942,7 +978,9 @@ class BaseCrossover(FilterBank):
         return new_sig
 
     # ======== Reconstructing =================================================
-    def reconstruct_signal(self, signal: MultiBandSignal, upsample: bool = False):
+    def reconstruct_signal(
+        self, signal: MultiBandSignal, upsample: bool = False
+    ) -> Signal:
         """Reconstructs a two band signal using the synthesis filters of the
         crossover.
 
@@ -980,8 +1018,10 @@ class BaseCrossover(FilterBank):
         length_samples: int,
         mode: FilterBankMode = FilterBankMode.Parallel,
         range_hz: tuple[float, float] | None = (20.0, 20e3),
+        zero_phase: bool = False,
+        ax: Axes | None = None,
         downsample: bool = True,
-    ):
+    ) -> tuple[Figure, Axes] | None:
         """Plots the magnitude response of each filter.
 
         Parameters
@@ -992,9 +1032,15 @@ class BaseCrossover(FilterBank):
             Way to apply filter bank to the signal. Default: Parallel.
         range_hz : array_like, None, optional
             Range of Hz to plot. Default: [20, 20e3].
+        zero_phase : bool, optional
+            When `True`, zero-phase filtering is used. Only available when
+            `downsample=False`. Default: `False`.
+        ax : `matplotlib.axes.Axes`, None, optional
+            Axes to draw on, so that several plots can share one axis. A new
+            figure is created when None. Default: None.
         downsample : bool, optional
-            When `True`, downsampling during filtering will be automatically activated.
-            Default: `False`.
+            When `True`, downsampling during filtering will be automatically
+            activated. Default: `True`.
 
         Returns
         -------
@@ -1003,7 +1049,10 @@ class BaseCrossover(FilterBank):
 
         """
         if not downsample:
-            return super().plot_magnitude(length_samples, mode, range_hz)
+            return super().plot_magnitude(
+                length_samples, mode, range_hz, zero_phase, ax
+            )
+        assert not zero_phase, "Zero-phase filtering is not available with downsampling"
 
         # If downsampling is activated
         max_order = 0
@@ -1056,6 +1105,7 @@ class BaseCrossover(FilterBank):
                 labels=[f"Filter {h}" for h in range(bs.number_of_bands)],
                 range_y=range_y,
                 tight_layout=False,
+                ax=ax,
             )
         elif mode == FilterBankMode.Sequential:
             bs = self.filter_signal(d, mode=mode, downsample=True)
@@ -1079,13 +1129,21 @@ class BaseCrossover(FilterBank):
                 labels=[
                     f"Sequential - Channel {n}" for n in range(bs.number_of_channels)
                 ],
+                ax=ax,
             )
         elif mode == FilterBankMode.Summed:
             bs = self.filter_signal(d, mode=mode, downsample=True)
             bs.spectrum_method = SpectrumMethod.FFT
             f, sp = bs.get_spectrum()
             f, sp = _get_normalized_spectrum(
-                f, np.squeeze(sp), f_range_hz=range_hz, normalize=None
+                f=f,
+                spectra=np.squeeze(sp),
+                is_amplitude_scaling=bs.spectrum_scaling.is_amplitude_scaling(),
+                f_range_hz=range_hz,
+                normalize=MagnitudeNormalization.NoNormalization,
+                smoothing=0,
+                phase=False,
+                calibrated_data=False,
             )
             fig, ax = general_plot(
                 f,
@@ -1093,6 +1151,7 @@ class BaseCrossover(FilterBank):
                 range_hz,
                 ylabel="Magnitude / dB",
                 labels=["Summed"],
+                ax=ax,
             )
         else:
             raise ValueError("Invalid filter bank mode")
@@ -1105,7 +1164,7 @@ class QMFCrossover(BaseCrossover):
 
     """
 
-    def __init__(self, lowpass: Filter):
+    def __init__(self, lowpass: Filter) -> None:
         """Create a quadrature mirror filters crossover based on a lowpass
         filter prototype.
 
@@ -1127,7 +1186,7 @@ class QMFCrossover(BaseCrossover):
             info=dict(Info="Quadrature mirror filters crossover"),
         )
 
-    def _get_analysis_filters(self, lowpass: Filter):
+    def _get_analysis_filters(self, lowpass: Filter) -> list[Filter]:
         """Create and return analysis filters based on a lowpass prototype.
 
         Parameters
@@ -1168,7 +1227,7 @@ class QMFCrossover(BaseCrossover):
             self.fir_filterbank = False
         return [lowpass, highpass]
 
-    def _get_synthesis_filters(self, lowpass: Filter):
+    def _get_synthesis_filters(self, lowpass: Filter) -> list[Filter]:
         """Create and return synthesis filters based on a lowpass prototype.
 
         For QMF perfect reconstruction:
@@ -1260,13 +1319,11 @@ def _crossover_downsample(
             )
         return MultiBandSignal(ss, same_sampling_rate=True)
     elif mode == FilterBankMode.Sequential:
-        out_sig = signal.copy()
-        for n in range(n_filt):
-            out_sig = filters[n].filter_and_resample_signal(
-                out_sig,
-                new_sampling_rate_hz=signal.sampling_rate_hz // down_factor,
-            )
-        return out_sig
+        # The first filter already downsamples, so the second one would no
+        # longer match the sampling rate of what it is handed
+        raise NotImplementedError(
+            "Sequential filtering is not available with downsampling"
+        )
     new_time_data = np.zeros(
         (
             signal.time_data.shape[0] // down_factor,
@@ -1360,7 +1417,9 @@ def _get_2nd_order_linkwitz_riley(
     return low_sos, high_sos
 
 
-def _get_matched_peaking_eq(f, g_db, q, q_factor, fs):
+def _get_matched_peaking_eq(
+    f: float, g_db: float, q: float, q_factor: float | None, fs: int
+) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
     """Analog-matched peaking eq coefficients."""
     if q_factor is None:
         # Manually extracted approximation for gains between -20 and 20
@@ -1388,7 +1447,9 @@ def _get_matched_peaking_eq(f, g_db, q, q_factor, fs):
     return np.array([b0, b1, b2]), a
 
 
-def _get_matched_lowpass_eq(f, g_db, q, fs):
+def _get_matched_lowpass_eq(
+    f: float, g_db: float, q: float, fs: int
+) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
     """Analog-matched lowpass eq coefficents."""
     omega0 = 2 * np.pi * f / fs
     Q = q
@@ -1406,7 +1467,9 @@ def _get_matched_lowpass_eq(f, g_db, q, fs):
     return b, a
 
 
-def _get_matched_highpass_eq(f, g_db, q, fs):
+def _get_matched_highpass_eq(
+    f: float, g_db: float, q: float, fs: int
+) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
     """Analog-matched highpass eq coefficents."""
     omega0 = 2 * np.pi * f / fs
     Q = q
@@ -1418,7 +1481,9 @@ def _get_matched_highpass_eq(f, g_db, q, fs):
     return np.array([b0, b1, b2]), a
 
 
-def _get_matched_bandpass_eq(f, g_db, q, fs):
+def _get_matched_bandpass_eq(
+    f: float, g_db: float, q: float, fs: int
+) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
     """Analog-matched bandpass eq coefficents."""
     omega0 = 2 * np.pi * f / fs
 
@@ -1435,7 +1500,9 @@ def _get_matched_bandpass_eq(f, g_db, q, fs):
     return b, a
 
 
-def _get_matched_shelving_eq(f, g_db, fs, lowshelf):
+def _get_matched_shelving_eq(
+    f: float, g_db: float, fs: int, lowshelf: bool
+) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
     """Analog-matched low/highshelf eq coefficients with fixed
     `q=np.sqrt(2)/2`.
 
@@ -1493,7 +1560,9 @@ def _get_matched_shelving_eq(f, g_db, fs, lowshelf):
     return np.array([b0, b1, b2]) / (G if lowshelf else 1.0), np.array([a0, a1, a2])
 
 
-def __get_matched_eq_helpers(omega0, q):
+def __get_matched_eq_helpers(
+    omega0: float, q: float
+) -> tuple[NDArray[np.float64], NDArray[np.float64], NDArray[np.float64]]:
     """Return the some general helpers for matched biquad filters. The
     normalized angular frequency and the quality factor (possibly scaled) are
     needed.
@@ -1524,7 +1593,7 @@ def __ma_parameters(
     order: int,
     ar_coefficients: NDArray[np.float64],
     cutoff_singular_values_percent: float = 0.0,
-):
+) -> NDArray[np.float64]:
     """Estimate the MA parameters with through a least-squares approximation
     using known AR parameters. This is done in the frequency domain.
 

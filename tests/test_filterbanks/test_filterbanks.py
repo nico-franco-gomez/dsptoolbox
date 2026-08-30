@@ -11,6 +11,7 @@ import tempfile
 import numpy as np
 import pytest
 import scipy.signal as sig
+from matplotlib.pyplot import close, subplots
 
 import dsptoolbox as dsp
 
@@ -550,3 +551,28 @@ class TestFilterbanksModule:
         noise_delayed = delay.filter_signal(noise)
         latency = dsp.latency(noise_delayed, noise, polynomial_points=3)[0][0]
         assert abs(latency - (fractional + order)) < 1e-3
+
+    def test_crossover_plot_magnitude_modes_and_ax(self):
+        """The crossover override used to drop `zero_phase` and `ax`, and its
+        Summed branch still called the pre-enum `_get_normalized_spectrum`.
+
+        """
+        lp = dsp.Filter.from_ba(sig.firwin(31, 0.5), [1.0], self.fs)
+        fb = dsp.filterbanks.qmf_crossover(lp)
+
+        for mode in (dsp.FilterBankMode.Parallel, dsp.FilterBankMode.Summed):
+            for downsample in (True, False):
+                fig, _ = fb.plot_magnitude(512, mode, downsample=downsample)
+                close(fig)
+
+        # Sequential cannot downsample: the second filter would no longer
+        # match the rate it is handed
+        with pytest.raises(NotImplementedError):
+            fb.plot_magnitude(512, dsp.FilterBankMode.Sequential, downsample=True)
+
+        # The base class arguments must still get through (A10)
+        _, ax = subplots(1, 1)
+        fb.plot_magnitude(512, dsp.FilterBankMode.Parallel, ax=ax)
+        fb.plot_magnitude(
+            512, dsp.FilterBankMode.Parallel, zero_phase=True, downsample=False
+        )

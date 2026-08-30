@@ -2,8 +2,10 @@
 Methods used for acquiring and windowing transfer functions
 """
 
+from typing import Literal
+
 import numpy as np
-from numpy.typing import NDArray
+from numpy.typing import ArrayLike, NDArray
 from scipy.fft import next_fast_len as next_fast_length_fft
 from scipy.fft import rfft as rfft_scipy
 from scipy.interpolate import interp1d
@@ -63,7 +65,7 @@ def spectral_deconvolve(
     output: Signal,
     input: Signal,
     apply_regularization: bool = True,
-    start_stop_hz=None,
+    start_stop_hz: ArrayLike | None = None,
     threshold_db: float = -30.0,
     padding: bool = False,
     keep_original_length: bool = False,
@@ -1100,7 +1102,7 @@ def combine_ir_with_dirac(
     crossover_frequency: float,
     take_lower_band: bool,
     order: int = 8,
-    normalization: str | float | None = None,
+    normalization: Literal["energy", "peak"] | float | None = None,
 ) -> ImpulseResponse:
     """Combine an IR with a perfect impulse at a given crossover frequency
     using a linkwitz-riley crossover. Forward-Backward filtering is done so
@@ -1120,7 +1122,7 @@ def combine_ir_with_dirac(
         `False` delivers the opposite result.
     order : int, optional
         Crossover order. Default: 8.
-    normalization : str, float, optional
+    normalization : {"energy", "peak"}, float, None, optional
         `'energy'` means that the band of the perfect dirac impulse is
         normalized so that it matches the energy contained in the band of the
         impulse response. `'peak'` means that peak value is matched for both
@@ -1194,8 +1196,8 @@ def combine_ir_with_dirac(
         ir_peak = np.max(np.abs(td_ir), axis=0)
         imp_peak = np.max(np.abs(td_imp), axis=0)
         td_imp *= ir_peak / imp_peak
-    elif type(normalization) in (float, int, np.floating, np.int_):
-        td_imp *= from_db(normalization, True)
+    elif isinstance(normalization, (int, float, np.floating, np.integer)):
+        td_imp *= from_db(float(normalization), True)
 
     # Combine
     combined_ir = ir.copy_with_new_time_data(td_ir + td_imp * polarity[None, ...])
@@ -1205,7 +1207,7 @@ def combine_ir_with_dirac(
 def ir_to_filter(
     signal: ImpulseResponse,
     channel: int | None = 0,
-    phase_mode: str = "direct",
+    phase_mode: Literal["direct", "min", "lin"] = "direct",
 ) -> Filter | FilterBank:
     """This function takes in an impulse response and turns the selected
     channel into an FIR filter. With `phase_mode` it is possible
@@ -1219,7 +1221,7 @@ def ir_to_filter(
         Channel of the signal to be used. If None, all channels are used and
         the return is a FilterBank with each channel as an FIR filter. This
         also applies for a signal with a single channel. Default: 0.
-    phase_mode : {"direct", "min", "lin"} str, optional
+    phase_mode : {"direct", "min", "lin"}, optional
         Phase of the FIR filter. Choose from "direct" (no changes to phase),
         "min" (minimum phase) or "lin" (minimum linear phase).
         Default: "direct".

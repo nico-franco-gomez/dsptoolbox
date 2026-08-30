@@ -1,3 +1,5 @@
+from typing import Literal, overload
+
 import numpy as np
 from numpy.typing import NDArray
 from scipy.interpolate import interp1d
@@ -119,13 +121,39 @@ def _get_exact_gain_1khz(
     )
 
 
+@overload
 def _get_normalized_spectrum(
-    f,
+    f: NDArray[np.float64],
     spectra: NDArray[np.complex128 | np.float64],
     is_amplitude_scaling: bool,
-    f_range_hz: list[float] | None,
+    f_range_hz: tuple[float, float] | None,
     normalize: MagnitudeNormalization,
-    smoothing: int,
+    smoothing: float,
+    phase: Literal[False],
+    calibrated_data: bool,
+) -> tuple[NDArray[np.float64], NDArray[np.float64]]: ...
+
+
+@overload
+def _get_normalized_spectrum(
+    f: NDArray[np.float64],
+    spectra: NDArray[np.complex128 | np.float64],
+    is_amplitude_scaling: bool,
+    f_range_hz: tuple[float, float] | None,
+    normalize: MagnitudeNormalization,
+    smoothing: float,
+    phase: Literal[True],
+    calibrated_data: bool,
+) -> tuple[NDArray[np.float64], NDArray[np.float64], NDArray[np.float64]]: ...
+
+
+def _get_normalized_spectrum(
+    f: NDArray[np.float64],
+    spectra: NDArray[np.complex128 | np.float64],
+    is_amplitude_scaling: bool,
+    f_range_hz: tuple[float, float] | None,
+    normalize: MagnitudeNormalization,
+    smoothing: float,
     phase: bool,
     calibrated_data: bool,
 ) -> (
@@ -146,11 +174,11 @@ def _get_normalized_spectrum(
     is_amplitude_scaling : bool
         Information about whether the spectrum is scaled as an amplitude or
         power.
-    f_range_hz : array-like with length 2
+    f_range_hz : tuple[float, float], None
         Range of frequencies to get the normalized spectrum back.
     normalize : MagnitudeNormalization
         Normalize spectrum (per channel).
-    smoothing : int
+    smoothing : float
         1/smoothing-fractional octave band smoothing for magnitude spectra.
         Pass `0` for no smoothing.
     phase : bool
@@ -260,7 +288,9 @@ def _get_normalized_spectrum(
     return f, mag_spectra_db
 
 
-def _correct_for_real_phase_spectrum(phase_spectrum: NDArray[np.float64]):
+def _correct_for_real_phase_spectrum(
+    phase_spectrum: NDArray[np.float64],
+) -> NDArray[np.float64]:
     """This function takes in a phase spectrum and corrects it to be for a real
     signal (assuming the last frequency bin corresponds to nyquist, i.e., time
     data had an even length). This effectively adds a small linear phase offset
@@ -366,8 +396,15 @@ def _interpolate_fr(
     f_interp: NDArray[np.float64],
     fr_interp: NDArray[np.float64],
     f_target: NDArray[np.float64],
-    mode: str | None = None,
-    interpolation_scheme: str = "linear",
+    mode: Literal[
+        "db2amplitude",
+        "amplitude2db",
+        "power2db",
+        "power2amplitude",
+        "amplitude2power",
+    ]
+    | None = None,
+    interpolation_scheme: Literal["linear", "quadratic", "cubic"] = "linear",
 ) -> NDArray[np.float64]:
     """Interpolate one frequency response to a new frequency vector.
 
@@ -492,7 +529,7 @@ def _interpolate_fr(
 
 def _warp_frequency_vector(
     freqs_hz: NDArray[np.float64], sampling_rate_hz: int, warping_factor: float
-):
+) -> NDArray[np.float64]:
     """Warp a frequency vector as shown in [1].
 
     Parameters

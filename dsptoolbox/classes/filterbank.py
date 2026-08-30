@@ -1,3 +1,4 @@
+from collections.abc import Iterator
 from copy import deepcopy
 from pickle import HIGHEST_PROTOCOL, dump
 from typing import Literal, Self, overload
@@ -6,7 +7,7 @@ from warnings import warn
 import numpy as np
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
-from numpy.typing import NDArray
+from numpy.typing import ArrayLike, NDArray
 from scipy.signal import convolve
 
 from ..generators import dirac
@@ -37,10 +38,10 @@ class FilterBank:
     # ======== Constructor and initializers ===================================
     def __init__(
         self,
-        filters: list | None = None,
+        filters: list[Filter] | None = None,
         same_sampling_rate: bool = True,
         info: dict | None = None,
-    ):
+    ) -> None:
         """FilterBank object saves multiple filters and some metadata.
         It also allows for easy filtering with multiple filters.
         Since the digital filters that are supported are linear systems,
@@ -74,7 +75,7 @@ class FilterBank:
         self.info: dict = info
 
     @staticmethod
-    def firs_from_file(path: str):
+    def firs_from_file(path: str) -> "FilterBank":
         """Read an audio file and return each channel as an FIR filter in a
         FilterBank.
 
@@ -121,7 +122,7 @@ class FilterBank:
                 }"""
         return txt
 
-    def initialize_zi(self, number_of_channels: int = 1):
+    def initialize_zi(self, number_of_channels: int = 1) -> Self:
         """Initiates the zi of the filters for the given number of channels.
 
         Parameters
@@ -149,7 +150,7 @@ class FilterBank:
         return self.__sampling_rate_hz
 
     @sampling_rate_hz.setter
-    def sampling_rate_hz(self, new_sampling_rate_hz):
+    def sampling_rate_hz(self, new_sampling_rate_hz: int | ArrayLike) -> None:
         """Set the sampling rate(s) in Hz.
 
         Parameters
@@ -193,7 +194,7 @@ class FilterBank:
         return self.__filters
 
     @filters.setter
-    def filters(self, new_filters):
+    def filters(self, new_filters: list[Filter] | None) -> None:
         """Set the list of filters in the FilterBank.
 
         Parameters
@@ -250,13 +251,13 @@ class FilterBank:
         """
         return len(self.__filters)
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.__filters)
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[Filter]:
         return iter(self.filters)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.metadata_str
 
     @property
@@ -273,7 +274,7 @@ class FilterBank:
         return self.__same_sampling_rate
 
     @same_sampling_rate.setter
-    def same_sampling_rate(self, new_same):
+    def same_sampling_rate(self, new_same: bool) -> None:
         """Set whether all filters share the same sampling rate.
 
         Parameters
@@ -307,7 +308,7 @@ class FilterBank:
 
         Returns
         -------
-        FilterBank
+        Self
             New filter bank with the filter added.
 
         """
@@ -340,7 +341,7 @@ class FilterBank:
 
         Returns
         -------
-        FilterBank
+        Self
             New filter bank with the filter removed.
 
         Notes
@@ -380,7 +381,7 @@ class FilterBank:
         new.filters = n_f
         return new, removed_filter
 
-    def swap_filters(self, new_order) -> Self:
+    def swap_filters(self, new_order: ArrayLike) -> Self:
         """Return a copy of the filter bank with the filters rearranged in
         the new given order.
 
@@ -391,7 +392,7 @@ class FilterBank:
 
         Returns
         -------
-        FilterBank
+        Self
             New filter bank with the filters rearranged.
 
         """
@@ -441,7 +442,7 @@ class FilterBank:
         mode: FilterBankMode,
         activate_zi: bool = False,
         zero_phase: bool = False,
-    ):
+    ) -> Signal | MultiBandSignal:
         """Applies the filter bank to a signal and returns a multiband signal
         or a `Signal` object.
 
@@ -682,7 +683,7 @@ class FilterBank:
         return h
 
     # ======== Prints and plots ===============================================
-    def show_info(self):
+    def show_info(self) -> Self:
         """Show information about the filter bank."""
         print(self.metadata_str)
         return self
@@ -981,7 +982,7 @@ class FilterBank:
         return fig, ax
 
     # ======== Saving and export ==============================================
-    def save_filterbank(self, path: str):
+    def save_filterbank(self, path: str) -> None:
         """Saves the FilterBank object as a pickle.
 
         Parameters
@@ -995,18 +996,18 @@ class FilterBank:
             dump(self, data_file, HIGHEST_PROTOCOL)
         return self
 
-    def copy(self) -> "FilterBank":
+    def copy(self) -> Self:
         """Returns a copy of the object.
 
         Returns
         -------
-        new_sig : `FilterBank`
+        Self
             Copy of filter bank.
 
         """
         return deepcopy(self)
 
-    def apply_gain(self, gain_db: float | NDArray[np.float64]) -> "FilterBank":
+    def apply_gain(self, gain_db: float | NDArray[np.float64]) -> Self:
         """Return a copy of the filter bank with gain applied to its
         filters. When passing a single gain value, this will be applied to
         all filters. See notes for details.
@@ -1019,7 +1020,7 @@ class FilterBank:
 
         Returns
         -------
-        FilterBank
+        Self
             Filter bank with new gain.
 
         Notes
@@ -1076,7 +1077,7 @@ class FilterBank:
             )
         return Filter.from_sos(sos, filts[0].sampling_rate_hz)
 
-    def append_filterbanks(self, others: list["FilterBank"]) -> "FilterBank":
+    def append_filterbanks(self, others: list["FilterBank"]) -> Self:
         """Return a copy of the filter bank with the filters of other filter
         banks appended.
 
@@ -1087,7 +1088,7 @@ class FilterBank:
 
         Returns
         -------
-        FilterBank
+        Self
             New filter bank with all filters.
 
         """

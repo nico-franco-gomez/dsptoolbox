@@ -34,6 +34,7 @@ Time series:
 
 """
 
+from collections.abc import Callable
 from typing import Any
 
 import numpy as np
@@ -107,7 +108,7 @@ def log_frequency_vector(
 
 def get_exact_value_at_frequency(
     freqs_hz: NDArray[np.float64], y: NDArray[Any], f: float = 1e3
-):
+) -> NDArray[Any]:
     """Return the exact value at a given frequency by using linear
     interpolation.
 
@@ -144,7 +145,7 @@ def get_exact_value_at_frequency(
     ) + y[ind]
 
 
-def log_mean(x: NDArray[np.float64], axis: int = 0):
+def log_mean(x: NDArray[np.float64], axis: int = 0) -> NDArray[np.float64]:
     """Get the mean value while using a logarithmic x-axis. It is assumed that
     `x` is initially linearly-spaced.
 
@@ -173,9 +174,9 @@ def log_mean(x: NDArray[np.float64], axis: int = 0):
 
 
 def frequency_crossover(
-    crossover_region_hz: list[float],
+    crossover_region_hz: tuple[float, float],
     logarithmic: bool = True,
-):
+) -> Callable[[float | NDArray[np.float64]], float | NDArray[np.float64]]:
     """Return a callable that can be used to extract values from a crossover
     to use on frequency data. This uses a hann window function to generate the
     crossover. It is a "fade-in", i.e., the values are 0 before the low
@@ -183,7 +184,7 @@ def frequency_crossover(
 
     Parameters
     ----------
-    crossover_region_hz : list with length 2
+    crossover_region_hz : tuple[float, float]
         Frequency range for which to create the crossover.
     logarithmic : bool, optional
         When True, the crossover is defined logarithmically on the frequency
@@ -225,7 +226,9 @@ def frequency_crossover(
 
 
 def fractional_octave_frequencies(
-    num_fractions=1, frequency_range=(20, 20e3), return_cutoff=False
+    num_fractions: int = 1,
+    frequency_range: tuple[float, float] = (20.0, 20e3),
+    return_cutoff: bool = False,
 ) -> (
     tuple[
         NDArray[np.float64],

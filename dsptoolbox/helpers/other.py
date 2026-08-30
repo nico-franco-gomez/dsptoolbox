@@ -1,14 +1,16 @@
 from os.path import splitext
 
 import numpy as np
-from numpy.typing import NDArray
+from numpy.typing import ArrayLike, NDArray
 from scipy.linalg import toeplitz as toeplitz_scipy
 
 from ..standard.enums import Power2Rounding
 from .gain_and_level import to_db
 
 
-def find_nearest_points_index_in_vector(points, vector) -> NDArray[np.int_]:
+def find_nearest_points_index_in_vector(
+    points: float | ArrayLike, vector: NDArray[np.float64]
+) -> NDArray[np.int_]:
     """Gives back the indexes with the nearest points in vector
 
     Parameters
@@ -20,7 +22,7 @@ def find_nearest_points_index_in_vector(points, vector) -> NDArray[np.int_]:
 
     Returns
     -------
-    indexes : `NDArray[np.int_]`
+    indexes : ``NDArray[np.int_]``
         Indexes of the points.
 
     """
@@ -33,7 +35,12 @@ def find_nearest_points_index_in_vector(points, vector) -> NDArray[np.int_]:
     return indexes
 
 
-def find_frequencies_above_threshold(spec, f, threshold_db, normalize=True) -> list:
+def find_frequencies_above_threshold(
+    spec: NDArray[np.float64],
+    f: NDArray[np.float64],
+    threshold_db: float,
+    normalize: bool = True,
+) -> list[float]:
     """Finds the first and last frequency above a certain threshold in a given
     (amplitude) spectrum."""
     denum_db = to_db(spec, True)
@@ -101,7 +108,9 @@ def _check_path_format(path: str, expected_format: str) -> None:
         )
 
 
-def _get_next_power_2(number, mode: Power2Rounding = Power2Rounding.Closest) -> int:
+def _get_next_power_2(
+    number: float, mode: Power2Rounding = Power2Rounding.Closest
+) -> int:
     """This function returns the power of 2 closest to the given number.
 
     Parameters
@@ -130,7 +139,9 @@ def _get_next_power_2(number, mode: Power2Rounding = Power2Rounding.Closest) -> 
     return int(2**p)
 
 
-def _euclidean_distance_matrix(x: NDArray[np.float64], y: NDArray[np.float64]):
+def _euclidean_distance_matrix(
+    x: NDArray[np.float64], y: NDArray[np.float64]
+) -> NDArray[np.float64]:
     """Compute the euclidean distance matrix between two vectors efficiently.
 
     Parameters
