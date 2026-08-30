@@ -44,7 +44,7 @@ Documentation = "https://dsptoolbox.readthedocs.io/en/latest/"
 dependencies = [
   "sphinx",
   "furo",
-  "numydoc",
+  "numpydoc",
   "readthedocs-sphinx-search",
   "autodocsumm",
 ]

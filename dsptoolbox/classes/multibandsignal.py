@@ -775,10 +775,7 @@ class MultiBandSignal(MultichannelData):
 
         new = self.copy()
         new.bands = [
-            b.trim_with_time_selection(
-                start_index / self.sampling_rate_hz,
-                stop_index / self.sampling_rate_hz,
-            )
+            b.copy_with_new_time_data(b.time_data[start_index:stop_index])
             for b in self.bands
         ]
         return new, start_index, stop_index

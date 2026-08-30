@@ -42,14 +42,3 @@ def _sync_log_chirp(
     L = int(0.5 + T * f1 / f2f1) / f1
     t = np.arange(int(T * sampling_rate_hz + 0.5), dtype=np.float64) / sampling_rate_hz
     return np.sin(2.0 * np.pi * f1 * L * (np.exp(t / L) - 1.0)), T
-
-
-if __name__ == "__main__":
-    fs_hz = 48000
-    td, t = _sync_log_chirp([20, 21e3], 2.1, fs_hz)
-    print(td[-1])
-    import matplotlib.pyplot as plt
-
-    plt.plot(td)
-    plt.xlim([len(td) - 50, len(td) + 20])
-    plt.show()

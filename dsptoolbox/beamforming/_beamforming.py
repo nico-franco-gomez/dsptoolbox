@@ -102,8 +102,7 @@ class BasePoints:
             Distances with shape (points, new_points).
 
         """
-        if type(point) is not NDArray[np.float64]:
-            point = np.asarray(point)
+        point = np.asarray(point)
         if point.ndim == 1:
             point = point[None, ...]
         assert point.shape[1] == self.coordinates.shape[1], (

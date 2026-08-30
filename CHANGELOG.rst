@@ -136,6 +136,12 @@ Bugfix
   set
 - `FIRFilter.reset_state()` left the write index of its circular buffer
   where it was
+- `effects.Chorus` could not take its modulators as an array: the two branches
+  handling that case tested `type(x) is NDArray[np.float64]`, which is never
+  true, so the voice count was wrong and applying the effect raised. The same
+  dead check sat in `BasePoints.get_distances_to_point`
+- `Spectrum` swallowed every exception while inferring the frequency spacing
+  and printed it
 - the energy normalizations of `Spectrum.plot_magnitude` divided the
   integrated energy by the number of frequency bins instead of using the mean
   square, so the offset depended on the frequency resolution and differed
@@ -172,6 +178,9 @@ Misc
   real array, as both annotations promised
 - `Signal.plot_spl` clips the real and imaginary parts at the same 500 dB
 - The beamformers' grid loops are vectorized with `einsum`
+- The `hatch` docs environment asked for `numydoc`, which does not exist
+- Two `if __name__ == "__main__"` scratch blocks were removed from library
+  modules
 - `plots.plots` no longer shadows the `max` and `min` builtins module-wide
 - In-place writes through property getters were replaced by assignments
   through the setters, so validation, complex-value handling and cache

@@ -556,27 +556,3 @@ def get_time_period_from_musical_rhythm(note, bpm):
 
     """
     return 1 / get_frequency_from_musical_rhythm(note, bpm)
-
-
-if __name__ == "__main__":
-    # Check functions
-    import matplotlib.pyplot as plt
-
-    rng = np.random.default_rng(0)
-    x = np.zeros(1000)
-    n = rng.normal(0, 0.3, 200)
-    x[200:400] += n
-    x[600:800] += n
-    x += rng.normal(0, 0.01, 1000)
-    # plt.plot(x)
-
-    x = _harmonic_oscillator(1, 50, 50, True, 0, rng)
-    # x = _square_oscillator(2, 20, 21, True, 0, rng)
-    # plt.plot(x)
-    # x = _triangle_oscillator(10, 20, 21, True, 0, rng)
-
-    # plt.plot(x)
-    # x = _sawtooth_oscillator(1, 200, 2001, True, 10)
-    plt.plot(x)
-    # plt.plot(y)
-    plt.show()

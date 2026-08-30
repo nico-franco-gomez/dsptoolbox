@@ -320,3 +320,18 @@ class TestMultiBandSignal:
         trimmed, start, stop = padded.trim_with_level_threshold(-60.0)
         assert start >= 0 and stop <= padded.length_samples
         assert trimmed.number_of_bands == mbs.number_of_bands
+
+    def test_trim_with_level_threshold_matches_signal(self):
+        """Every band is cut at the same boundaries, and the boundaries are
+        the ones `Signal.trim_with_level_threshold` would use."""
+        td = np.zeros((4000, 1))
+        td[1000:3000] = np.random.default_rng(0).normal(0, 0.1, (2000, 1))
+        s = dsp.Signal(None, td, self.fs)
+        mbs = dsp.MultiBandSignal([s, s.apply_gain(-6.0)])
+
+        trimmed, start, stop = mbs.trim_with_level_threshold(-60.0)
+        reference, ref_start, ref_stop = s.trim_with_level_threshold(-60.0)
+
+        assert (start, stop) == (ref_start, ref_stop)
+        np.testing.assert_array_equal(trimmed.bands[0].time_data, reference.time_data)
+        assert trimmed.bands[1].length_samples == trimmed.bands[0].length_samples

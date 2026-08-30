@@ -1179,11 +1179,11 @@ class Chorus(AudioEffect):
             nv_depths = len(self.depths_ms)
 
         if modulators is not None:
-            if type(modulators) in (list, tuple):
-                nv_mod = len(modulators)
-            elif type(modulators) is NDArray[np.float64]:
+            if isinstance(modulators, np.ndarray):
                 modulators = np.atleast_2d(modulators)
                 nv_mod = modulators.shape[1]
+            elif isinstance(modulators, (list, tuple)):
+                nv_mod = len(modulators)
             else:
                 nv_mod = 1
         else:
@@ -1288,7 +1288,7 @@ class Chorus(AudioEffect):
         le = len(signal)
 
         # Get valid modulation signals
-        if type(self.modulators) is not NDArray[np.float64]:
+        if not isinstance(self.modulators, np.ndarray):
             modulation = np.zeros((le, self.number_of_voices))
             for ind, m in enumerate(self.modulators):
                 modulation[:, ind] = (

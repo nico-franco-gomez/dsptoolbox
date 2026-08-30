@@ -322,16 +322,19 @@ class Spectrum(MultichannelData):
     def __check_frequency_vector_type(
         f_vec_hz: NDArray[np.float64],
     ) -> FrequencySpacing:
-        try:
-            if np.all(np.isclose(np.ediff1d(f_vec_hz), f_vec_hz[-1] - f_vec_hz[-2])):
-                return FrequencySpacing.Linear
+        # Both checks need at least two spacings to compare
+        if len(f_vec_hz) < 3:
+            return FrequencySpacing.Other
 
-            if np.all(
-                np.isclose(f_vec_hz[2:] / f_vec_hz[1:-1], f_vec_hz[-1] / f_vec_hz[-2])
-            ):
-                return FrequencySpacing.Logarithmic
-        except Exception as e:
-            print(e)
+        if np.all(np.isclose(np.ediff1d(f_vec_hz), f_vec_hz[-1] - f_vec_hz[-2])):
+            return FrequencySpacing.Linear
+
+        with np.errstate(divide="ignore", invalid="ignore"):
+            ratios = f_vec_hz[2:] / f_vec_hz[1:-1]
+        if np.all(np.isfinite(ratios)) and np.all(
+            np.isclose(ratios, f_vec_hz[-1] / f_vec_hz[-2])
+        ):
+            return FrequencySpacing.Logarithmic
 
         return FrequencySpacing.Other
 
