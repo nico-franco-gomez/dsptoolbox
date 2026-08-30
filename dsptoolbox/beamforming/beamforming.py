@@ -23,13 +23,6 @@ from ..plots import general_matrix_plot
 from ._beamforming import BasePoints, _clean_sc_deconvolve
 from .enums import SpatialDimension, SteeringVectorType
 
-try:
-    from seaborn import set_style
-
-    set_style("whitegrid")
-except ModuleNotFoundError as e:
-    print("Seaborn will not be used for plotting: ", e)
-
 nxs = np.newaxis
 
 

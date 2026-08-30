@@ -1,17 +1,11 @@
-from copy import deepcopy
-
 import numpy as np
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 from numpy.typing import ArrayLike, NDArray
 
 from ..helpers.gain_and_level import to_db
-from ..helpers.latency import (
-    _remove_ir_latency_from_phase,
-    _remove_ir_latency_from_phase_peak,
-)
-from ..helpers.minimum_phase import _remove_ir_latency_from_phase_min_phase
-from ..helpers.spectrum_utilities import _get_exact_gain_1khz
+from ..helpers.latency import _apply_ir_latency_removal_to_phase
+from ..helpers.spectrum_utilities import _get_normalization_offset_db
 from ..plots import general_plot_two_axes
 from ..standard._standard_backend import _group_delay_direct
 from ..standard.enums import MagnitudeNormalization, SpectrumMethod
@@ -299,49 +293,22 @@ class ImpulseResponse(Signal):
         f, sp = self.get_spectrum()
         self.spectrum_smoothing = prior_smoothing
         sp_abs = np.abs(sp)
-
-        match normalize:
-            case MagnitudeNormalization.OneKhz:
-                sp_abs /= _get_exact_gain_1khz(f, sp_abs)[None, ...]
-            case MagnitudeNormalization.OneKhzFirstChannel:
-                sp_abs /= _get_exact_gain_1khz(f, sp_abs[:, 0])
-            case MagnitudeNormalization.Max:
-                sp_abs /= np.max(sp_abs, axis=0, keepdims=True)
-            case MagnitudeNormalization.MaxFirstChannel:
-                sp_abs /= np.max(sp_abs[:, 0], axis=0)
-            case MagnitudeNormalization.Energy:
-                sp_abs /= np.mean(sp_abs**2.0, axis=0, keepdims=True) ** 0.5
-            case MagnitudeNormalization.EnergyFirstChannel:
-                sp_abs /= np.mean(sp_abs[:, 0] ** 2.0, axis=0) ** 0.5
-            case MagnitudeNormalization.NoNormalization:
-                pass
-            case _:
-                raise ValueError("No valid normalization value")
+        sp_abs_db = to_db(sp_abs, True)
+        sp_abs_db -= _get_normalization_offset_db(
+            normalize,
+            f,
+            sp_abs_db,
+            to_db(np.mean(sp_abs**2.0, axis=0), False),
+        )[None, :]
 
         phase = np.angle(sp)
-        if remove_ir_latency is None:
-            pass
-        elif type(remove_ir_latency) is str:
-            match remove_ir_latency.lower():
-                case "peak":
-                    phase = _remove_ir_latency_from_phase_peak(
-                        f, phase, self.time_data, self.sampling_rate_hz
-                    )
-                case "min_phase":
-                    phase = _remove_ir_latency_from_phase_min_phase(
-                        f, phase, self.time_data, self.sampling_rate_hz, 8
-                    )
-                case _:
-                    raise ValueError("No valid latency removal")
-        else:
-            delays_samples = np.atleast_1d(remove_ir_latency)
-            phase = _remove_ir_latency_from_phase(
-                f, phase, delays_samples, self.sampling_rate_hz
-            )
+        phase = _apply_ir_latency_removal_to_phase(
+            remove_ir_latency, f, phase, self.time_data, self.sampling_rate_hz
+        )
 
         fig, ax = general_plot_two_axes(
             f,
-            to_db(sp_abs, True),
+            sp_abs_db,
             f,
             (_group_delay_direct(phase, f[1] - f[0]) if show_group_delay else phase),
             range_x=range_hz,
@@ -359,19 +326,7 @@ class ImpulseResponse(Signal):
         return fig, ax
 
     def copy_with_new_time_data(self, new_time_data: ArrayLike) -> "ImpulseResponse":
-        # Copy if the underlying memory belongs to another array
-        if isinstance(new_time_data, np.ndarray):
-            new_time_data = (
-                new_time_data if new_time_data.base is None else new_time_data.copy()
-            )
-        #
-        new_signal = ImpulseResponse.from_time_data(
-            new_time_data, self.sampling_rate_hz, self.constrain_amplitude
-        )
-        new_signal.calibrated_signal = self.calibrated_signal
-        new_signal.activate_cache = self.activate_cache
-        new_signal._spectrum_parameters = deepcopy(self._spectrum_parameters)
-        new_signal._spectrogram_parameters = deepcopy(self._spectrogram_parameters)
+        new_signal = super().copy_with_new_time_data(new_time_data)
         if self.spectrum_method != SpectrumMethod.FFT:
             new_signal.spectrum_method = SpectrumMethod.FFT
         return new_signal

@@ -7,7 +7,7 @@ import dsptoolbox as dsp
 
 class TestStandardModule:
     fs = 44100
-    audio_multi = dsp.generators.noise(2, fs, number_of_channels=3)
+    audio_multi = dsp.generators.noise(2, fs, number_of_channels=3, rng=133)
 
     def test_fade(self):
         # Result is only checked for the linear fade
@@ -48,6 +48,7 @@ class TestStandardModule:
             peak_level_dbfs=-20,
             number_of_channels=2,
             uncorrelated=True,
+            rng=134,
         )
         s.time_data += 0.2
         s.detrend(polynomial_order=0)
@@ -58,6 +59,7 @@ class TestStandardModule:
             peak_level_dbfs=-20,
             number_of_channels=1,
             uncorrelated=True,
+            rng=135,
         )
         n = 0.3 * np.arange(len(s)) / len(s)
         s.time_data += n[..., None]
@@ -110,6 +112,7 @@ class TestStandardModule:
             sampling_rate_hz=5_000,
             number_of_channels=3,
             uncorrelated=True,
+            rng=136,
         )
         env = dsp.envelope(s, False, 512)
         assert env.shape == s.time_data.shape

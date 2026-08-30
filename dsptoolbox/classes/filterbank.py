@@ -592,32 +592,36 @@ class FilterBank:
                 mb = mb.add_band(f.filter_signal(d, zero_phase=zero_phase))
             return mb
 
-        # Obtain biggest filter order from FilterBank
-        max_order = 0
-        for b in self.filters:
-            max_order = max(max_order, b.order)
+        d = dirac(
+            length_samples=self.__adapt_length_to_filters(length_samples),
+            number_of_channels=1,
+            sampling_rate_hz=self.sampling_rate_hz,
+        )
+        return self.filter_signal(d, mode, zero_phase=zero_phase)
+
+    def __adapt_length_to_filters(self, length_samples: int) -> int:
+        """Extend the requested length when a filter is longer than it."""
+        max_order = max(f.order for f in self.filters)
         if max_order > length_samples:
             warn(
                 f"Filter order {max_order} is longer than {length_samples}."
-                + "The length will be adapted to be 100 samples longer than"
+                + " The length will be adapted to be 100 samples longer than"
                 + " the longest filter",
-                stacklevel=2,
+                stacklevel=3,
             )
             length_samples = max_order + 100
+        return length_samples
 
-        # Sampling rate
-        fs_hz = self.sampling_rate_hz
-
-        # Impulse
-        d = dirac(
-            length_samples=length_samples,
-            number_of_channels=1,
-            sampling_rate_hz=fs_hz,
+    def __skip_plot_for_multirate(self) -> bool:
+        """Plotting a multirate filter bank on a single axis is not
+        meaningful, since each band has its own frequency axis."""
+        if self.same_sampling_rate:
+            return False
+        warn(
+            "Plotting for multirate FilterBank is not supported, skipping plots",
+            stacklevel=3,
         )
-
-        # Filtering
-        ir = self.filter_signal(d, mode, zero_phase=zero_phase)
-        return ir
+        return True
 
     def get_transfer_function(
         self, frequency_vector_hz: NDArray[np.float64], mode: FilterBankMode
@@ -699,37 +703,12 @@ class FilterBank:
             Axes.
 
         """
-        # No plotting for multirate system
-        if not self.same_sampling_rate:
-            warn(
-                "Plotting for multirate FilterBank is not supported, "
-                + "skipping plots",
-                stacklevel=2,
-            )
+        if self.__skip_plot_for_multirate():
             return None
-        # Length handling
-        max_order = 0
-        for b in self.filters:
-            max_order = max(max_order, b.order)
-        if max_order > length_samples:
-            warn(
-                f"Filter order {max_order} is longer than {length_samples}."
-                + " The length will be adapted to be 100 samples longer than"
-                + " the longest filter",
-                stacklevel=2,
-            )
-            length_samples = max_order + 100
-
-        # Impulse
-        d = dirac(
-            length_samples=length_samples,
-            number_of_channels=1,
-            sampling_rate_hz=self.sampling_rate_hz,
-        )
+        bs = self.get_ir(length_samples, mode, zero_phase)
 
         # Filtering and plot
         if mode == FilterBankMode.Parallel:
-            bs = self.filter_signal(d, mode=mode, zero_phase=zero_phase)
             specs = []
             for b in bs.bands:
                 b.spectrum_method = SpectrumMethod.FFT
@@ -759,7 +738,6 @@ class FilterBank:
                 tight_layout=False,
             )
         elif mode == FilterBankMode.Sequential:
-            bs = self.filter_signal(d, mode=mode, zero_phase=zero_phase)
             bs.spectrum_method = SpectrumMethod.FFT
             bs.spectrum_scaling = SpectrumScaling.FFTBackward
             f, sp = _get_normalized_spectrum(
@@ -781,7 +759,6 @@ class FilterBank:
                 ],
             )
         elif mode == FilterBankMode.Summed:
-            bs = self.filter_signal(d, mode=mode, zero_phase=zero_phase)
             bs.spectrum_method = SpectrumMethod.FFT
             bs.spectrum_scaling = SpectrumScaling.FFTBackward
             f, sp = bs.get_spectrum()
@@ -812,6 +789,7 @@ class FilterBank:
         mode: FilterBankMode,
         range_hz=(20, 20e3),
         unwrap: bool = False,
+        zero_phase: bool = False,
     ) -> tuple[Figure, Axes] | None:
         """Plots the phase response of each filter.
 
@@ -837,37 +815,12 @@ class FilterBank:
             Axes.
 
         """
-        # No plotting for multirate system
-        if not self.same_sampling_rate:
-            warn(
-                "Plotting for multirate FilterBank is not supported, "
-                + "skipping plots",
-                stacklevel=2,
-            )
+        if self.__skip_plot_for_multirate():
             return None
-        # Length handling
-        max_order = 0
-        for b in self.filters:
-            max_order = max(max_order, b.order)
-        if max_order > length_samples:
-            warn(
-                f"Filter order {max_order} is longer than {length_samples}."
-                + " The length will be adapted to be 100 samples longer than"
-                + " the longest filter",
-                stacklevel=2,
-            )
-            length_samples = max_order + 100
-
-        # Generate impulse
-        d = dirac(
-            length_samples=length_samples,
-            number_of_channels=1,
-            sampling_rate_hz=self.sampling_rate_hz,
-        )
+        bs = self.get_ir(length_samples, mode, zero_phase)
 
         # Plot
         if mode == FilterBankMode.Parallel:
-            bs = self.filter_signal(d, mode=mode)
             phase = []
             f = bs.bands[0].get_spectrum()[0]
             for b in bs.bands:
@@ -884,7 +837,6 @@ class FilterBank:
                 tight_layout=False,
             )
         elif mode == FilterBankMode.Sequential:
-            bs = self.filter_signal(d, mode=mode)
             f, sp = bs.get_spectrum()
             ph = np.angle(sp)
             if unwrap:
@@ -899,7 +851,6 @@ class FilterBank:
                 ],
             )
         elif mode == FilterBankMode.Summed:
-            bs = self.filter_signal(d, mode=mode)
             f, sp = bs.get_spectrum()
             ph = np.angle(sp)
             if unwrap:
@@ -920,8 +871,9 @@ class FilterBank:
         length_samples: int,
         mode: FilterBankMode,
         range_hz: list[float] | None = (20.0, 20e3),
+        zero_phase: bool = False,
     ) -> tuple[Figure, Axes] | None:
-        """Plots the phase response of each filter.
+        """Plots the group delay of each filter.
 
         Parameters
         ----------
@@ -934,6 +886,8 @@ class FilterBank:
             sums up every filter output.
         range_hz : array-like, optional
             Range of Hz to plot. Default: [20, 20e3].
+        zero_phase : bool, optional
+            When `True`, zero phase filtering is activated. Default: `False`.
 
         Returns
         -------
@@ -943,37 +897,12 @@ class FilterBank:
             Axes.
 
         """
-        # No plotting for multirate system
-        if not self.same_sampling_rate:
-            warn(
-                "Plotting for multirate FilterBank is not supported, "
-                + "skipping plots",
-                stacklevel=2,
-            )
+        if self.__skip_plot_for_multirate():
             return None
-        # Length handling
-        max_order = 0
-        for b in self.filters:
-            max_order = max(max_order, b.order)
-        if max_order > length_samples:
-            warn(
-                f"Filter order {max_order} is longer than {length_samples}."
-                + " The length will be adapted to be 100 samples longer than"
-                + " the longest filter",
-                stacklevel=2,
-            )
-            length_samples = max_order + 100
-
-        # Impulse
-        d = dirac(
-            length_samples=length_samples,
-            number_of_channels=1,
-            sampling_rate_hz=self.sampling_rate_hz,
-        )
+        bs = self.get_ir(length_samples, mode, zero_phase)
 
         # Plot
         if mode == FilterBankMode.Parallel:
-            bs = self.filter_signal(d, mode=mode)
             gd = []
             f = bs.bands[0].get_spectrum()[0]
             for b in bs.bands:
@@ -992,7 +921,6 @@ class FilterBank:
                 tight_layout=False,
             )
         elif mode == FilterBankMode.Sequential:
-            bs = self.filter_signal(d, mode=mode)
             f, sp = bs.get_spectrum()
             gd = _group_delay_direct(sp.squeeze(), f[1] - f[0]) * 1e3
             fig, ax = general_plot(
@@ -1005,7 +933,6 @@ class FilterBank:
                 ],
             )
         elif mode == FilterBankMode.Summed:
-            bs = self.filter_signal(d, mode=mode)
             f, sp = bs.get_spectrum()
             gd = _group_delay_direct(sp.squeeze(), f[1] - f[0]) * 1e3
             fig, ax = general_plot(

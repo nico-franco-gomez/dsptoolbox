@@ -23,11 +23,7 @@ if TYPE_CHECKING:
     from .spectrum import Spectrum
 
 from ..helpers.gain_and_level import _fade, _normalize, from_db, to_db
-from ..helpers.latency import (
-    _remove_ir_latency_from_phase,
-    _remove_ir_latency_from_phase_peak,
-)
-from ..helpers.minimum_phase import _remove_ir_latency_from_phase_min_phase
+from ..helpers.latency import _apply_ir_latency_removal_to_phase
 from ..helpers.other import (
     _pad_trim,
     find_nearest_points_index_in_vector,
@@ -1416,25 +1412,9 @@ class Signal(MultichannelData):
 
         ph = np.angle(sp)
 
-        if remove_ir_latency is None:
-            pass
-        elif type(remove_ir_latency) is str:
-            match remove_ir_latency.lower():
-                case "peak":
-                    ph = _remove_ir_latency_from_phase_peak(
-                        f, ph, self.time_data, self.sampling_rate_hz
-                    )
-                case "min_phase":
-                    ph = _remove_ir_latency_from_phase_min_phase(
-                        f, ph, self.time_data, self.sampling_rate_hz, 8
-                    )
-                case _:
-                    raise ValueError("No valid latency removal")
-        else:
-            delays_samples = np.atleast_1d(remove_ir_latency)
-            ph = _remove_ir_latency_from_phase(
-                f, ph, delays_samples, self.sampling_rate_hz
-            )
+        ph = _apply_ir_latency_removal_to_phase(
+            remove_ir_latency, f, ph, self.time_data, self.sampling_rate_hz
+        )
 
         gd = _group_delay_direct(ph, f[1] - f[0])
 
@@ -1576,25 +1556,9 @@ class Signal(MultichannelData):
 
         self._spectrum_parameters["smoothing"] = prior_smoothing
 
-        if remove_ir_latency is None:
-            pass
-        elif type(remove_ir_latency) is str:
-            match remove_ir_latency.lower():
-                case "peak":
-                    ph = _remove_ir_latency_from_phase_peak(
-                        f, ph, self.time_data, self.sampling_rate_hz
-                    )
-                case "min_phase":
-                    ph = _remove_ir_latency_from_phase_min_phase(
-                        f, ph, self.time_data, self.sampling_rate_hz, 8
-                    )
-                case _:
-                    raise ValueError("No valid latency removal")
-        else:
-            delays_samples = np.atleast_1d(remove_ir_latency)
-            ph = _remove_ir_latency_from_phase(
-                f, ph, delays_samples, self.sampling_rate_hz
-            )
+        ph = _apply_ir_latency_removal_to_phase(
+            remove_ir_latency, f, ph, self.time_data, self.sampling_rate_hz
+        )
 
         if smoothing != 0:
             ph = _wrap_phase(
@@ -1717,7 +1681,7 @@ class Signal(MultichannelData):
         """Update internal state after data modification."""
         self.__update_state()
 
-    def copy_with_new_time_data(self, new_time_data: ArrayLike) -> "Signal":
+    def copy_with_new_time_data(self, new_time_data: ArrayLike) -> Self:
         """Copy all attributes of the signal but with new time data.
 
         Parameters
@@ -1727,8 +1691,8 @@ class Signal(MultichannelData):
 
         Returns
         -------
-        Signal
-            Signal with new time data
+        Self
+            Signal of the same type with new time data.
 
         Notes
         -----
@@ -1742,8 +1706,7 @@ class Signal(MultichannelData):
             new_time_data = (
                 new_time_data if new_time_data.base is None else new_time_data.copy()
             )
-        #
-        new_signal = Signal.from_time_data(
+        new_signal = type(self).from_time_data(
             new_time_data, self.sampling_rate_hz, self.constrain_amplitude
         )
         new_signal.calibrated_signal = self.calibrated_signal

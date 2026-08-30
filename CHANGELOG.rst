@@ -16,6 +16,18 @@ adheres to `Semantic Versioning <http://semver.org/spec/v2.0.0.html>`_.
 
 Unreleased
 ---------------------
+Added
+~~~~~
+- `rng` parameter on every stochastic entry point, so that results can be
+  reproduced and seeded independently: `generators.noise`,
+  `generators.oscillator`, `Signal.dither`, `effects.LFO`, `transforms.lpc`
+  and `room_acoustics.generate_synthetic_rir`. It accepts a
+  `numpy.random.Generator` (used and advanced as is), a seed, or None for the
+  previous unpredictable behaviour
+- `zero_phase` parameter on `FilterBank.plot_phase` and
+  `FilterBank.plot_group_delay`, which the sibling `plot_magnitude` and
+  `get_ir` already accepted
+
 Bugfix
 ~~~~~~
 - `Window.with_extra_parameter` stored the parameter on the enum member itself,
@@ -70,6 +82,18 @@ Misc
 - `convolve_rir_on_signal` now selects the overlap-add convolution for length
   ratios outside `[1/15, 15]`; the previous condition was subsumed and made
   the direct convolution branch unreachable for similar lengths
+- The magnitude normalizations of `Signal.plot_magnitude`,
+  `ImpulseResponse.plot_bode` and `Spectrum.plot_magnitude` now come from one
+  shared implementation. The 1 kHz normalizations of the latter two
+  interpolate in dB rather than linearly, as `Signal.plot_magnitude` already
+  did, so a normalized curve reads exactly 0 dB at 1 kHz. The change is below
+  0.02 dB
+- The default seaborn style is applied in one place instead of four, and
+  `beamforming._beamforming` no longer imports seaborn unguarded
+- `ImpulseResponse.copy_with_new_time_data`, the `remove_ir_latency`
+  dispatch and the length/impulse prologue of `FilterBank`'s plotting
+  methods no longer duplicate their `Signal`, helper and `get_ir`
+  counterparts
 
 `0.9 <https://pypi.org/project/dsptoolbox/0.9>`_ -
 ---------------------

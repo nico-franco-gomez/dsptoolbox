@@ -5,11 +5,8 @@ Backend for beamforming module
 import matplotlib.pyplot as plt
 import numpy as np
 from numpy.typing import NDArray
-from seaborn import set_style
 
 from ..helpers.other import _euclidean_distance_matrix
-
-set_style("whitegrid")
 
 
 class BasePoints:

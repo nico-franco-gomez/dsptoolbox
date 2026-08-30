@@ -10,6 +10,7 @@ from os.path import join
 import numpy as np
 import pytest
 import scipy.signal as sig
+from matplotlib.pyplot import close
 
 import dsptoolbox as dsp
 
@@ -281,8 +282,10 @@ class TestFilterBankClass:
         fb = fb.add_filter(self.get_iir_filter())
         fb = fb.add_filter(self.get_fir_filter(True))
 
-        s1 = dsp.generators.noise(length_seconds=1, sampling_rate_hz=self.fs)
-        s2 = dsp.generators.noise(length_seconds=2, sampling_rate_hz=self.fs // 2)
+        s1 = dsp.generators.noise(length_seconds=1, sampling_rate_hz=self.fs, rng=106)
+        s2 = dsp.generators.noise(
+            length_seconds=2, sampling_rate_hz=self.fs // 2, rng=107
+        )
 
         mb = dsp.MultiBandSignal(bands=[s1, s2], same_sampling_rate=False)
         assert np.all(mb.sampling_rate_hz == [self.fs, self.fs // 2])
@@ -350,3 +353,78 @@ class TestFilterBankClass:
 
         h_sum = fb.get_transfer_function(freqs, mode=dsp.FilterBankMode.Summed)
         np.testing.assert_allclose(h_sum, h1 + h2, atol=1e-8)
+
+    def _two_band_filterbank(self) -> dsp.FilterBank:
+        return dsp.FilterBank(
+            [
+                dsp.Filter.iir_filter(
+                    4,
+                    500.0,
+                    type_of_pass=dsp.FilterPassType.Lowpass,
+                    filter_design_method=dsp.IirDesignMethod.Butterworth,
+                    sampling_rate_hz=self.fs,
+                ),
+                dsp.Filter.iir_filter(
+                    4,
+                    2000.0,
+                    type_of_pass=dsp.FilterPassType.Highpass,
+                    filter_design_method=dsp.IirDesignMethod.Butterworth,
+                    sampling_rate_hz=self.fs,
+                ),
+            ]
+        )
+
+    def test_all_plots_accept_zero_phase(self):
+        """`plot_phase` and `plot_group_delay` share `get_ir`'s prologue with
+        `plot_magnitude`, so they must accept `zero_phase` as well.
+
+        """
+        fb = self._two_band_filterbank()
+        for mode in dsp.FilterBankMode:
+            for zero_phase in (False, True):
+                fb.plot_magnitude(2048, mode, zero_phase=zero_phase)
+                fb.plot_phase(2048, mode, zero_phase=zero_phase)
+                fb.plot_group_delay(2048, mode, zero_phase=zero_phase)
+                close("all")
+
+    def test_get_ir_and_plots_adapt_a_too_short_length(self):
+        fir = dsp.Filter.fir_filter(
+            600,
+            1000.0,
+            type_of_pass=dsp.FilterPassType.Lowpass,
+            sampling_rate_hz=self.fs,
+        )
+        fb = dsp.FilterBank([fir])
+
+        with pytest.warns(UserWarning):
+            ir = fb.get_ir(64, dsp.FilterBankMode.Parallel)
+        assert ir.bands[0].length_samples == 600 + 100
+
+        for plot in (fb.plot_magnitude, fb.plot_phase, fb.plot_group_delay):
+            with pytest.warns(UserWarning):
+                plot(64, dsp.FilterBankMode.Parallel)
+            close("all")
+
+    def test_plots_are_skipped_for_a_multirate_filterbank(self):
+        fb = dsp.FilterBank(
+            [
+                dsp.Filter.iir_filter(
+                    2,
+                    100.0,
+                    type_of_pass=dsp.FilterPassType.Lowpass,
+                    filter_design_method=dsp.IirDesignMethod.Butterworth,
+                    sampling_rate_hz=self.fs,
+                ),
+                dsp.Filter.iir_filter(
+                    2,
+                    100.0,
+                    type_of_pass=dsp.FilterPassType.Lowpass,
+                    filter_design_method=dsp.IirDesignMethod.Butterworth,
+                    sampling_rate_hz=self.fs // 2,
+                ),
+            ],
+            same_sampling_rate=False,
+        )
+        for plot in (fb.plot_magnitude, fb.plot_phase, fb.plot_group_delay):
+            with pytest.warns(UserWarning):
+                assert plot(2048, dsp.FilterBankMode.Parallel) is None

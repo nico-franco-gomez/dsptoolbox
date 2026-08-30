@@ -6,7 +6,7 @@ import dsptoolbox as dsp
 
 class TestStandardModule:
     fs = 44100
-    audio_multi = dsp.generators.noise(2, fs, number_of_channels=3)
+    audio_multi = dsp.generators.noise(2, fs, number_of_channels=3, rng=126)
 
     def get_multiband_signal(self) -> dsp.MultiBandSignal:
         fb = dsp.filterbanks.linkwitz_riley_crossovers([1e3], [4], self.fs)

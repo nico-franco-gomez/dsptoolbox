@@ -113,7 +113,7 @@ class TestBeamformingModule:
         ma = dsp.beamforming.MicArray(ma)
 
         ns = dsp.beamforming.MonopoleSource(
-            dsp.generators.noise(length_seconds=0.5, sampling_rate_hz=20_000),
+            dsp.generators.noise(length_seconds=0.5, sampling_rate_hz=20_000, rng=100),
             [0, 0, 0.5],
         )
         ns.get_signals_on_array(ma)
@@ -124,7 +124,9 @@ class TestBeamformingModule:
         )
         sp = sp.pad_trim(20_000)
         ns = dsp.generators.noise(
-            length_seconds=0.5, sampling_rate_hz=sp.sampling_rate_hz
+            length_seconds=0.5,
+            sampling_rate_hz=sp.sampling_rate_hz,
+            rng=101,
         )
         sp = dsp.beamforming.MonopoleSource(sp, [0, -0.5, 0.4])
         ns = dsp.beamforming.MonopoleSource(ns, [0, 0, 0.5])
@@ -136,7 +138,7 @@ class TestBeamformingModule:
         ma = dsp.beamforming.MicArray(ma)
 
         ns = dsp.beamforming.MonopoleSource(
-            dsp.generators.noise(length_seconds=2, sampling_rate_hz=10_000),
+            dsp.generators.noise(length_seconds=2, sampling_rate_hz=10_000, rng=102),
             [0, 0.4, 0.5],
         )
         s = ns.get_signals_on_array(ma)
@@ -199,7 +201,9 @@ class TestBeamformingModule:
         )
         sp = sp.pad_trim(20_000)
         ns = dsp.generators.noise(
-            length_seconds=0.3, sampling_rate_hz=sp.sampling_rate_hz
+            length_seconds=0.3,
+            sampling_rate_hz=sp.sampling_rate_hz,
+            rng=103,
         )
         sp = dsp.beamforming.MonopoleSource(sp, [0, -0.5, 0.5])
         ns = dsp.beamforming.MonopoleSource(ns, [0, 0, 0.5])
@@ -237,7 +241,7 @@ class TestBeamformingModule:
 
         true_xy = (0.4, 0.6)
         source = dsp.beamforming.MonopoleSource(
-            dsp.generators.noise(length_seconds=2, sampling_rate_hz=fs),
+            dsp.generators.noise(length_seconds=2, sampling_rate_hz=fs, rng=104),
             [true_xy[0], true_xy[1], 0.5],
         )
         s = source.get_signals_on_array(ma)
@@ -274,7 +278,7 @@ class TestBeamformingModule:
 
         true_xy = (0.4, 0.6)
         source = dsp.beamforming.MonopoleSource(
-            dsp.generators.noise(length_seconds=1, sampling_rate_hz=fs),
+            dsp.generators.noise(length_seconds=1, sampling_rate_hz=fs, rng=105),
             [true_xy[0], true_xy[1], 0.5],
         )
         s = source.get_signals_on_array(ma)
@@ -322,12 +326,9 @@ class TestBeamformingModule:
         ma = self._make_planar_array(spacing=0.25, extent=1.0, z=0.0)
 
         true_xy = (0.0, 0.4)
-        rng_state = np.random.get_state()
-        np.random.seed(0)
-        try:
-            noise_signal = dsp.generators.noise(length_seconds=5, sampling_rate_hz=fs)
-        finally:
-            np.random.set_state(rng_state)
+        noise_signal = dsp.generators.noise(
+            length_seconds=5, sampling_rate_hz=fs, rng=0
+        )
         source = dsp.beamforming.MonopoleSource(
             noise_signal, [true_xy[0], true_xy[1], 0.5]
         )

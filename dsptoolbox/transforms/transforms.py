@@ -49,14 +49,6 @@ from ..transforms._transforms import (
     _warp_time_series,
 )
 
-try:
-    from seaborn import set_style
-
-    set_style("whitegrid")
-except ModuleNotFoundError as e:
-    print("Seaborn will not be used for plotting: ", e)
-    pass
-
 
 def cepstrum(
     signal: Signal,

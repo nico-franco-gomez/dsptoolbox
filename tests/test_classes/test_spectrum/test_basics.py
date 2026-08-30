@@ -273,3 +273,57 @@ class TestSpectrum:
         sp.apply_gain(6.0)
         sp.normalize(1000.0)
         np.testing.assert_array_equal(before, sp.spectral_data)
+
+    def test_magnitude_normalization_agrees_across_plot_apis(self):
+        """`Signal.plot_magnitude`, `ImpulseResponse.plot_bode` and
+        `Spectrum.plot_magnitude` share one normalization helper and must
+        therefore produce the same normalized curve.
+
+        The energy normalizations are excluded: `Spectrum` derives them from
+        `get_energy()`, which integrates `|X|**2 df`, so dividing by the
+        number of bins leaves a factor `sqrt(df)` that the other two do not
+        have.
+
+        """
+        fs = 48_000
+        rng = np.random.default_rng(0)
+        td = np.zeros((4096, 2))
+        td[100, :] = [1.0, 0.5]
+        td += rng.normal(0, 1e-3, (4096, 2))
+        ir = dsp.ImpulseResponse(None, td, fs)
+        spectrum = dsp.Spectrum.from_signal(ir)
+
+        for normalization in (
+            dsp.MagnitudeNormalization.NoNormalization,
+            dsp.MagnitudeNormalization.OneKhz,
+            dsp.MagnitudeNormalization.OneKhzFirstChannel,
+            dsp.MagnitudeNormalization.Max,
+            dsp.MagnitudeNormalization.MaxFirstChannel,
+        ):
+            _, ax_signal = ir.plot_magnitude(
+                normalize=normalization, range_hz=None, smoothing=0
+            )
+            _, ax_bode = ir.plot_bode(normalize=normalization)
+            _, ax_spectrum = spectrum.plot_magnitude(normalization=normalization)
+
+            from_signal = ax_signal.get_lines()[0].get_ydata()
+            from_bode = ax_bode[0].get_lines()[0].get_ydata()
+            from_spectrum = ax_spectrum.get_lines()[0].get_ydata()
+            close("all")
+
+            np.testing.assert_allclose(from_bode, from_signal, atol=1e-10)
+            np.testing.assert_allclose(from_spectrum, from_signal, atol=1e-10)
+
+    def test_one_khz_normalization_lands_exactly_on_zero_db(self):
+        fs = 48_000
+        rng = np.random.default_rng(1)
+        ir = dsp.ImpulseResponse(None, rng.normal(0, 0.1, (2048, 1)), fs)
+
+        _, ax = ir.plot_magnitude(
+            normalize=dsp.MagnitudeNormalization.OneKhz, range_hz=None, smoothing=0
+        )
+        f = ax.get_lines()[0].get_xdata()
+        magnitude_db = ax.get_lines()[0].get_ydata()
+        close("all")
+
+        np.testing.assert_allclose(np.interp(1000.0, f, magnitude_db), 0.0, atol=1e-10)

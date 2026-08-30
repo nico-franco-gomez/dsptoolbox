@@ -6,7 +6,7 @@ import dsptoolbox as dsp
 
 class TestStandardModule:
     fs = 44100
-    audio_multi = dsp.generators.noise(2, fs, number_of_channels=3)
+    audio_multi = dsp.generators.noise(2, fs, number_of_channels=3, rng=137)
 
     def get_multiband_signal(self) -> dsp.MultiBandSignal:
         fb = dsp.filterbanks.linkwitz_riley_crossovers([1e3], [4], self.fs)
@@ -56,7 +56,7 @@ class TestStandardModule:
 
         # Fractional delays
         delay = 0.003301
-        noi = dsp.generators.noise(length_seconds=1, sampling_rate_hz=10_000)
+        noi = dsp.generators.noise(length_seconds=1, sampling_rate_hz=10_000, rng=138)
         noi_del = noi.fractional_delay(delay)
         td_previous_noi_del = noi_del.time_data.copy()
         lat, corr = dsp.latency(noi_del, noi, 2)

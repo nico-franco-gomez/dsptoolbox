@@ -8,21 +8,6 @@ import scipy.signal as sig
 import dsptoolbox as dsp
 
 
-def _seeded(seed: int, func, *args, **kwargs):
-    """Call `func` with the global `numpy.random` state pinned to `seed`,
-    then restore whatever state it had before. See
-    `test_filterbanks._seeded` for the full rationale (RNG-flakiness
-    isolation in full-suite runs).
-
-    """
-    state = np.random.get_state()
-    np.random.seed(seed)
-    try:
-        return func(*args, **kwargs)
-    finally:
-        np.random.set_state(state)
-
-
 class TestLatticeLadderFilter:
     b = np.array([1, 3, 3, 1])
     a = np.array([1, -0.9, 0.64, -0.576])
@@ -44,7 +29,7 @@ class TestLatticeLadderFilter:
         assert np.all(np.isclose(c, c_expected, rtol=5))
 
     def test_lattice_filter_filtering(self):
-        n = _seeded(0, dsp.generators.noise, length_seconds=1.0, sampling_rate_hz=200)
+        n = dsp.generators.noise(length_seconds=1.0, sampling_rate_hz=200, rng=0)
         expected = sig.lfilter(self.b / 10, self.a, n.time_data.squeeze())
 
         from dsptoolbox.classes.lattice_ladder_filter import (
@@ -61,7 +46,7 @@ class TestLatticeLadderFilter:
     def test_convert_lattice_filter(self):
         fs = 44100
         # Second-order sections
-        n = _seeded(0, dsp.generators.noise, length_seconds=1.0, sampling_rate_hz=fs)
+        n = dsp.generators.noise(length_seconds=1.0, sampling_rate_hz=fs, rng=0)
         f = dsp.Filter.iir_filter(
             filter_design_method=dsp.IirDesignMethod.Bessel,
             order=9,
@@ -86,7 +71,7 @@ class TestLatticeLadderFilter:
         assert np.all(np.isclose(n1, n2))
 
         # FIR
-        n = _seeded(1, dsp.generators.noise, length_seconds=1.0, sampling_rate_hz=fs)
+        n = dsp.generators.noise(length_seconds=1.0, sampling_rate_hz=fs, rng=1)
         f = dsp.Filter(
             {dsp.FilterCoefficientsType.Ba: [[1, 13 / 24, 5 / 8, 1 / 3], [1]]},
             sampling_rate_hz=fs,

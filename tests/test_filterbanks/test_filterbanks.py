@@ -15,33 +15,16 @@ import scipy.signal as sig
 import dsptoolbox as dsp
 
 
-def _seeded(seed: int, func, *args, **kwargs):
-    """Call `func` with the global `numpy.random` state pinned to `seed`,
-    then restore whatever state it had before. Some tests compare a
-    per-sample recursive filter implementation against a vectorized
-    scipy reference (or a reconstruction-error bound) with a tight
-    tolerance; the specific (otherwise unseeded) noise realization can
-    occasionally push floating-point rounding differences past that
-    tolerance. Pinning the seed here makes the result reproducible
-    regardless of how much of the shared global RNG state prior tests in
-    a full-suite run have already consumed.
-
-    """
-    state = np.random.get_state()
-    np.random.seed(seed)
-    try:
-        return func(*args, **kwargs)
-    finally:
-        np.random.set_state(state)
-
-
 class TestFilterbanksModule:
     fs = 5000
 
     def get_noise(self):
-        return _seeded(
-            0, dsp.generators.noise, length_seconds=1.0, sampling_rate_hz=self.fs
-        )
+        """Seeded on purpose: some of these tests compare against a scipy
+        reference or a reconstruction-error bound with a tight tolerance,
+        which the specific noise realization can otherwise push past.
+
+        """
+        return dsp.generators.noise(length_seconds=1.0, sampling_rate_hz=self.fs, rng=0)
 
     def test_linkwitz(self):
         fb = dsp.filterbanks.linkwitz_riley_crossovers(
@@ -458,7 +441,7 @@ class TestFilterbanksModule:
 
     def test_pinking_filter(self):
         fs_hz = 44100
-        n = dsp.generators.noise(length_seconds=1.0, sampling_rate_hz=fs_hz)
+        n = dsp.generators.noise(length_seconds=1.0, sampling_rate_hz=fs_hz, rng=109)
         n = n.set_spectrum_parameters(window_length_samples=1024)
         f = dsp.filterbanks.pinking_filter(3000, fs_hz)
         n2 = f.filter_signal(n)
@@ -468,6 +451,7 @@ class TestFilterbanksModule:
                     length_seconds=1.0,
                     type_of_noise=dsp.generators.NoiseType.Pink,
                     sampling_rate_hz=fs_hz,
+                    rng=110,
                 ),
             ]
         )
@@ -492,7 +476,7 @@ class TestFilterbanksModule:
 
     def test_gaussian_kernel(self):
         fs_hz = 44100
-        n = dsp.generators.noise(length_seconds=1.0, sampling_rate_hz=fs_hz)
+        n = dsp.generators.noise(length_seconds=1.0, sampling_rate_hz=fs_hz, rng=111)
 
         f = dsp.filterbanks.gaussian_kernel(0.02, sampling_rate_hz=fs_hz)
         n1 = f.filter_signal(n, zero_phase=True)
@@ -561,7 +545,9 @@ class TestFilterbanksModule:
     def test_fractional_delay(self):
         noise = dsp.Filter.iir_filter(
             8, self.fs / 4, dsp.FilterPassType.Lowpass, self.fs
-        ).filter_signal(dsp.generators.noise(0.5, self.fs, padding_end_seconds=0.5))
+        ).filter_signal(
+            dsp.generators.noise(0.5, self.fs, padding_end_seconds=0.5, rng=112)
+        )
 
         fractional = 0.5
         order = 30

@@ -26,6 +26,57 @@ def _wrap_phase(phase_vector: NDArray[np.float64]) -> NDArray[np.float64]:
     return (phase_vector + np.pi) % (2 * np.pi) - np.pi
 
 
+def _get_normalization_offset_db(
+    normalize: MagnitudeNormalization,
+    f_hz: NDArray[np.float64],
+    magnitude_db: NDArray[np.float64],
+    energy_db: NDArray[np.float64] | None = None,
+) -> NDArray[np.float64]:
+    """Per-channel offset in dB to subtract from a magnitude spectrum in dB.
+
+    Parameters
+    ----------
+    normalize : MagnitudeNormalization
+        Type of normalization to apply.
+    f_hz : NDArray[np.float64]
+        Frequency vector, needed for the 1 kHz normalizations.
+    magnitude_db : NDArray[np.float64]
+        Magnitude spectrum in dB with shape (frequency, channel).
+    energy_db : NDArray[np.float64], None, optional
+        Mean energy per channel in dB, needed for the energy normalizations.
+        Default: None.
+
+    Returns
+    -------
+    NDArray[np.float64]
+        Offset per channel, to be subtracted as `magnitude_db - offset`.
+
+    """
+    number_of_channels = magnitude_db.shape[1]
+
+    match normalize:
+        case MagnitudeNormalization.OneKhz:
+            return np.asarray(_get_exact_gain_1khz(f_hz, magnitude_db))
+        case MagnitudeNormalization.OneKhzFirstChannel:
+            return np.ones(number_of_channels) * _get_exact_gain_1khz(
+                f_hz, magnitude_db[:, 0]
+            )
+        case MagnitudeNormalization.Max:
+            return np.max(magnitude_db, axis=0)
+        case MagnitudeNormalization.MaxFirstChannel:
+            return np.ones(number_of_channels) * np.max(magnitude_db[:, 0], axis=0)
+        case MagnitudeNormalization.Energy:
+            assert energy_db is not None, "Energy normalization needs energy_db"
+            return energy_db
+        case MagnitudeNormalization.EnergyFirstChannel:
+            assert energy_db is not None, "Energy normalization needs energy_db"
+            return np.ones(number_of_channels) * energy_db[0]
+        case MagnitudeNormalization.NoNormalization:
+            return np.zeros(number_of_channels)
+        case _:
+            raise ValueError("No valid normalization")
+
+
 def _get_exact_gain_1khz(f: NDArray[np.float64], sp_db: NDArray[np.float64]) -> float:
     """Uses linear interpolation to get the exact gain value at 1 kHz.
 
@@ -165,49 +216,18 @@ def _get_normalized_spectrum(
 
     mag_spectra_db = to_db(mag_spectra / scale_factor, is_amplitude_scaling, 500)
 
-    match normalize:
-        case MagnitudeNormalization.OneKhz:
-            normalization_db = np.array(
-                [
-                    _get_exact_gain_1khz(f, mag_spectra_db[:, i])
-                    for i in range(spectra.shape[1])
-                ]
-            )
-        case MagnitudeNormalization.OneKhzFirstChannel:
-            normalization_db = np.ones(spectra.shape[1]) * _get_exact_gain_1khz(
-                f, mag_spectra_db[:, 0]
-            )
-        case MagnitudeNormalization.Max:
-            normalization_db = np.max(mag_spectra_db, axis=0)
-        case MagnitudeNormalization.MaxFirstChannel:
-            normalization_db = np.max(mag_spectra_db[:, 0], axis=0, keepdims=True)
-        case MagnitudeNormalization.Energy:
-            normalization_db = to_db(
-                np.mean(
-                    mag_spectra**2.0 if is_amplitude_scaling else mag_spectra,
-                    axis=0,
-                ),
-                False,
-            )
-        case MagnitudeNormalization.EnergyFirstChannel:
-            normalization_db = to_db(
-                np.mean(
-                    (
-                        mag_spectra[:, 0] ** 2.0
-                        if is_amplitude_scaling
-                        else mag_spectra[:, 0]
-                    ),
-                    axis=0,
-                    keepdims=True,
-                ),
-                False,
-            )
-        case MagnitudeNormalization.NoNormalization:
-            normalization_db = np.zeros(mag_spectra_db.shape[1])
-        case _:
-            raise ValueError("No valid normalization")
-
-    mag_spectra_db -= normalization_db[None, :]
+    mag_spectra_db -= _get_normalization_offset_db(
+        normalize,
+        f,
+        mag_spectra_db,
+        to_db(
+            np.mean(
+                mag_spectra**2.0 if is_amplitude_scaling else mag_spectra,
+                axis=0,
+            ),
+            False,
+        ),
+    )[None, :]
 
     if phase:
         phase_spectra = np.angle(spectra)

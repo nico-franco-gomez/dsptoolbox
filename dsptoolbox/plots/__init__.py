@@ -11,6 +11,7 @@ styling.
 
 """
 
+from ._style import _apply_default_plot_style
 from .plots import (
     general_matrix_plot,
     general_plot,
@@ -18,6 +19,8 @@ from .plots import (
     general_subplots_line,
     show,
 )
+
+_apply_default_plot_style()
 
 __all__ = [
     "general_matrix_plot",

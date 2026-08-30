@@ -184,6 +184,7 @@ class TestDistancesModule:
             length_seconds=1.0,
             peak_level_dbfs=-30,
             sampling_rate_hz=speech.sampling_rate_hz,
+            rng=108,
         )
         dsp.distances.snr(speech, noise)
         # Multichannel

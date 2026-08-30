@@ -6,7 +6,7 @@ import dsptoolbox as dsp
 
 class TestStandardModule:
     fs = 44100
-    audio_multi = dsp.generators.noise(2, fs, number_of_channels=3)
+    audio_multi = dsp.generators.noise(2, fs, number_of_channels=3, rng=127)
 
     def get_multiband_signal(self) -> dsp.MultiBandSignal:
         fb = dsp.filterbanks.linkwitz_riley_crossovers([1e3], [4], self.fs)
@@ -135,7 +135,7 @@ class TestStandardModule:
         calib.calibrate_signal(new_sig)
 
     def test_dither(self):
-        self.audio_multi.dither()
+        self.audio_multi.dither(rng=128)
 
         fb = dsp.FilterBank(
             [
@@ -148,8 +148,8 @@ class TestStandardModule:
                 )
             ]
         )
-        self.audio_multi.dither(noise_shaping_filterbank=fb)
-        self.audio_multi.dither(truncate=False)
+        self.audio_multi.dither(noise_shaping_filterbank=fb, rng=129)
+        self.audio_multi.dither(truncate=False, rng=130)
 
     def test_dither_adds_bounded_noise(self):
         """Per the source, triangular-distribution dither (the default) is
@@ -163,12 +163,12 @@ class TestStandardModule:
         sig = dsp.Signal(None, np.zeros((4_000, 2)), fs, constrain_amplitude=False)
         epsilon = float(np.finfo(np.float16).smallest_subnormal)
 
-        dithered_tri = sig.dither(triangular_distribution=True)
+        dithered_tri = sig.dither(triangular_distribution=True, rng=131)
         noise_tri = dithered_tri.time_data - sig.time_data
         assert np.all(np.abs(noise_tri) <= epsilon)
         assert np.std(noise_tri) > 0
 
-        dithered_rect = sig.dither(triangular_distribution=False)
+        dithered_rect = sig.dither(triangular_distribution=False, rng=132)
         noise_rect = dithered_rect.time_data - sig.time_data
         assert np.all(np.abs(noise_rect) <= epsilon / 2)
 

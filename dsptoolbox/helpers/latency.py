@@ -216,6 +216,61 @@ def _remove_ir_latency_from_phase_peak(
     )
 
 
+def _apply_ir_latency_removal_to_phase(
+    remove_ir_latency: str | int | float | NDArray | None,
+    freqs: NDArray[np.float64],
+    phase: NDArray[np.float64],
+    time_data: NDArray[np.float64],
+    sampling_rate_hz: int,
+) -> NDArray[np.float64]:
+    """Dispatch the user-facing `remove_ir_latency` argument of the plotting
+    methods onto the matching latency removal.
+
+    Parameters
+    ----------
+    remove_ir_latency : str, int, float, NDArray, None
+        `"peak"` or `"min_phase"` to estimate the latency, an array-like of
+        delays in samples per channel to remove them directly, or None to
+        leave the phase untouched.
+    freqs : NDArray[np.float64]
+        Frequency vector.
+    phase : NDArray[np.float64]
+        Phase response with shape (frequency, channel).
+    time_data : NDArray[np.float64]
+        Time data used to estimate the latency.
+    sampling_rate_hz : int
+        Sampling rate in Hz.
+
+    Returns
+    -------
+    NDArray[np.float64]
+        Phase response without the impulse delay.
+
+    """
+    # Imported here because minimum_phase imports from this module
+    from .minimum_phase import _remove_ir_latency_from_phase_min_phase
+
+    if remove_ir_latency is None:
+        return phase
+
+    if type(remove_ir_latency) is str:
+        match remove_ir_latency.lower():
+            case "peak":
+                return _remove_ir_latency_from_phase_peak(
+                    freqs, phase, time_data, sampling_rate_hz
+                )
+            case "min_phase":
+                return _remove_ir_latency_from_phase_min_phase(
+                    freqs, phase, time_data, sampling_rate_hz, 8
+                )
+            case _:
+                raise ValueError("No valid latency removal")
+
+    return _remove_ir_latency_from_phase(
+        freqs, phase, np.atleast_1d(remove_ir_latency), sampling_rate_hz
+    )
+
+
 def _get_correlation_of_latencies(
     time_data: NDArray[np.float64],
     other_time_data: NDArray[np.float64],

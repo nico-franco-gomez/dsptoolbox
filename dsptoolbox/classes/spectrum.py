@@ -11,7 +11,10 @@ from scipy.integrate import trapezoid
 from .. import plots
 from ..helpers.gain_and_level import from_db, to_db
 from ..helpers.other import _check_format_in_path, _pad_trim
-from ..helpers.spectrum_utilities import _warp_frequency_vector
+from ..helpers.spectrum_utilities import (
+    _get_normalization_offset_db,
+    _warp_frequency_vector,
+)
 from ..standard.enums import (
     FilterBankMode,
     FrequencySpacing,
@@ -1078,36 +1081,14 @@ class Spectrum(MultichannelData):
             to avoid it. Default: `None`.
 
         """
-        match normalization:
-            case MagnitudeNormalization.OneKhz:
-                norm = self.get_interpolated_spectrum(
-                    np.array([1000.0]), output_type=SpectrumType.Magnitude
-                )
-            case MagnitudeNormalization.OneKhzFirstChannel:
-                norm_value = self.get_interpolated_spectrum(
-                    np.array([1000.0]), output_type=SpectrumType.Magnitude
-                )[0, 0]
-                norm = np.ones(self.number_of_channels) * norm_value
-            case MagnitudeNormalization.Max:
-                norm = (
-                    np.max(np.abs(self.spectral_data), axis=0)
-                    if not self.is_magnitude
-                    else np.max(self.spectral_data, axis=0)
-                )
-            case MagnitudeNormalization.MaxFirstChannel:
-                norm = (
-                    np.max(np.abs(self.spectral_data[:, 0]), axis=0, keepdims=True)
-                    if not self.is_magnitude
-                    else np.max(self.spectral_data[:, 0], axis=0, keepdims=True)
-                )
-            case MagnitudeNormalization.Energy:
-                norm = (self.get_energy() / self.number_frequency_bins) ** 0.5
-            case MagnitudeNormalization.EnergyFirstChannel:
-                norm = (self.get_energy()[0] / self.number_frequency_bins) ** 0.5
-            case MagnitudeNormalization.NoNormalization:
-                norm = np.ones(self.number_of_channels)
-
-        data = np.abs(self.spectral_data) / norm
+        magnitude = np.abs(self.spectral_data)
+        offset_db = _get_normalization_offset_db(
+            normalization,
+            self.frequency_vector_hz,
+            to_db(magnitude, True),
+            to_db(self.get_energy() / self.number_frequency_bins, False),
+        )
+        data = magnitude / from_db(offset_db, True)[None, :]
         if in_db:
             data = to_db(data, True, dynamic_range_db=dynamic_range_db)
         return plots.general_plot(

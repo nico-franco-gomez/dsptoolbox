@@ -15,6 +15,7 @@ class TestGeneratorsModule:
             number_of_channels=3,
             fade=dsp.FadeType.Logarithmic,
             padding_end_seconds=1,
+            rng=113,
         )
         dsp.generators.noise(
             type_of_noise=dsp.generators.NoiseType.Pink,
@@ -24,6 +25,7 @@ class TestGeneratorsModule:
             number_of_channels=3,
             fade=dsp.FadeType.Logarithmic,
             padding_end_seconds=1,
+            rng=114,
         )
         dsp.generators.noise(
             type_of_noise=dsp.generators.NoiseType.Red,
@@ -33,6 +35,7 @@ class TestGeneratorsModule:
             number_of_channels=3,
             fade=dsp.FadeType.Logarithmic,
             padding_end_seconds=1,
+            rng=115,
         )
         dsp.generators.noise(
             type_of_noise=dsp.generators.NoiseType.Blue,
@@ -42,6 +45,7 @@ class TestGeneratorsModule:
             number_of_channels=3,
             fade=dsp.FadeType.Logarithmic,
             padding_end_seconds=1,
+            rng=116,
         )
         dsp.generators.noise(
             type_of_noise=dsp.generators.NoiseType.Violet,
@@ -51,6 +55,7 @@ class TestGeneratorsModule:
             number_of_channels=3,
             fade=dsp.FadeType.Logarithmic,
             padding_end_seconds=1,
+            rng=117,
         )
         dsp.generators.noise(
             type_of_noise=dsp.generators.NoiseType.Grey,
@@ -60,6 +65,7 @@ class TestGeneratorsModule:
             number_of_channels=3,
             fade=dsp.FadeType.Logarithmic,
             padding_end_seconds=1,
+            rng=118,
         )
 
         dsp.generators.noise(
@@ -70,6 +76,7 @@ class TestGeneratorsModule:
             number_of_channels=1,
             fade=dsp.FadeType.Logarithmic,
             padding_end_seconds=0,
+            rng=119,
         )
 
         dsp.generators.noise(
@@ -80,6 +87,7 @@ class TestGeneratorsModule:
             number_of_channels=1,
             fade=dsp.FadeType.Logarithmic,
             padding_end_seconds=0,
+            rng=120,
         )
 
         # Peak level over 0 dBFS
@@ -92,6 +100,7 @@ class TestGeneratorsModule:
                 number_of_channels=1,
                 fade=dsp.FadeType.Logarithmic,
                 padding_end_seconds=0,
+                rng=121,
             )
 
     def test_chirp(self):
@@ -195,6 +204,7 @@ class TestGeneratorsModule:
                 type_of_noise=beta,
                 peak_level_dbfs=-3,
                 fade=None,
+                rng=122,
             )
             f, pxx = welch(sig.time_data[:, 0], fs=fs, nperseg=4096)
             mask = (f > 20) & (f < fs / 2 * 0.8)
@@ -222,6 +232,7 @@ class TestGeneratorsModule:
             type_of_noise=dsp.generators.NoiseType.Pink,
             peak_level_dbfs=-3,
             fade=None,
+            rng=123,
         )
         blue = dsp.generators.noise(
             length_seconds=10.0,
@@ -229,6 +240,7 @@ class TestGeneratorsModule:
             type_of_noise=dsp.generators.NoiseType.Blue,
             peak_level_dbfs=-3,
             fade=None,
+            rng=124,
         )
         assert fitted_slope(pink) < -0.5
         assert fitted_slope(blue) > 0.5
@@ -286,6 +298,7 @@ class TestGeneratorsModule:
             mode=dsp.generators.WaveForm.Sawtooth,
             number_of_channels=2,
             uncorrelated=True,
+            rng=125,
         )
         dsp.generators.oscillator(
             frequency_hz=1000,

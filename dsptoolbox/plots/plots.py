@@ -10,14 +10,6 @@ from matplotlib.ticker import ScalarFormatter
 from numpy import arange, array, max, min
 from numpy.typing import NDArray
 
-try:
-    from seaborn import set_style
-
-    set_style("whitegrid")
-except ModuleNotFoundError as e:
-    print("Seaborn will not be used for plotting: ", e)
-    pass
-
 FREQUENCY_TICKS = array(
     [2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000]
 )
