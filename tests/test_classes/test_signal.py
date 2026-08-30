@@ -17,9 +17,6 @@ import dsptoolbox as dsp
 
 
 class TestSignal:
-    """Testing signal functionalities."""
-
-    # Some vectors to run the tests
     fs = 44100
     length_samp = 2 * fs
     channels = 4
@@ -79,13 +76,13 @@ class TestSignal:
                 s.save_signal(join(d, "x.wav"), bit_depth=8)  # invalid bit depth
 
     def test_creating_signal_from_vector(self):
-        # Check real and imag (Multichannel)
+        # Multichannel
         s = dsp.Signal(None, self.complex_time_vec, self.fs)
         real_cond = np.all(s.time_data == self.time_vec)
         imag_cond = np.all(s.time_data_imaginary == self.imag)
         assert real_cond and imag_cond
 
-        # Check real and imag (Single channel)
+        # Single channel
         one_ch = self.time_vec[:, 0]
         one_ch_c = self.imag[:, 0]
         s = dsp.Signal(None, one_ch + 1j * one_ch_c, self.fs)
@@ -102,11 +99,9 @@ class TestSignal:
             r = np.random.normal(0, 0.1, (self.length_samp, self.channels, 4))
             s = dsp.Signal(None, r, self.fs)
 
-        # Passing list
         li = [self.time_vec[:, i] for i in range(self.time_vec.shape[1])]
         s = dsp.Signal(None, li, self.fs)
 
-        # Passing tuple
         tu = tuple(self.time_vec.T)
         s = dsp.Signal(None, tu, self.fs)
 
@@ -119,7 +114,6 @@ class TestSignal:
     def test_get_spectrum(self):
         sp = np.fft.rfft(self.time_vec, axis=0)
 
-        # Check normal FFT
         s = dsp.Signal(None, self.time_vec, self.fs)
         s = s.set_spectrum_parameters(
             method=dsp.SpectrumMethod.FFT,
@@ -129,7 +123,6 @@ class TestSignal:
         _, sp_sig = s.get_spectrum()
         np.testing.assert_allclose(sp, sp_sig)
 
-        # Check amplitude spectrum scaling for normal FFT
         s = s.set_spectrum_parameters(
             method=dsp.SpectrumMethod.FFT,
             scaling=dsp.SpectrumScaling.PowerSpectrum,
@@ -160,7 +153,6 @@ class TestSignal:
         )
         assert np.all(np.isclose(sp_reference, sp_sig.squeeze()))
 
-        # Try smoothing
         s = s.set_spectrum_parameters(
             method=dsp.SpectrumMethod.FFT,
             scaling=dsp.SpectrumScaling.AmplitudeSpectrum,
@@ -170,34 +162,27 @@ class TestSignal:
         s.get_spectrum()
 
     def test_managing_channels(self):
-        # Add new channel
         new_ch = np.random.normal(0, 0.1, (self.length_samp, 1))
         t_vec = np.append(self.time_vec, new_ch, axis=1)
         s = dsp.Signal(None, self.time_vec.copy(), self.fs)
         s = s.add_channel(None, new_ch, s.sampling_rate_hz)
         assert np.all(t_vec == s.time_data)
 
-        # Remove channel
         s = s.remove_channel(-1)
         assert np.all(self.time_vec == s.time_data)
 
-        # Try to remove channel that does not exist
         with pytest.raises(AssertionError):
             s.remove_channel(self.channels + 10)
 
-        # Get specific channel
         ch = s.get_channels(0)
         assert np.all(self.time_vec[:, 0][..., None] == ch.time_data)
 
-        # Try to get a channel that does not exist
         with pytest.raises(IndexError):
             s.get_channels(self.channels + 10)
 
-        # Swap channels
         new_order = np.arange(0, self.channels)[::-1]
         assert np.all(self.time_vec[:, ::-1] == s.swap_channels(new_order).time_data)
 
-        # Try swapping channels wrongly
         with pytest.raises(AssertionError):
             # Order vector with too few elements
             s.swap_channels(new_order[:-2])
@@ -211,31 +196,25 @@ class TestSignal:
     def test_setting_properties(self):
         s = dsp.Signal(time_data=self.time_vec, sampling_rate_hz=self.fs)
 
-        # Setting sampling rate
         fs = 22000
         s.sampling_rate_hz = fs
         assert fs == s.sampling_rate_hz
 
-        # Setting a float sampling rate
         with pytest.raises(AssertionError):
             s.sampling_rate_hz = 44100.5
 
-        # Number of channels is generated right
         assert s.number_of_channels == self.channels
 
-        # Spectrum parameters - Write+Read
         s.spectrum_method = dsp.SpectrumMethod.FFT
         assert s.spectrum_method == dsp.SpectrumMethod.FFT
         s.spectrum_scaling = dsp.SpectrumScaling.FFTOrthogonal
         assert s.spectrum_scaling == dsp.SpectrumScaling.FFTOrthogonal
 
-        # Read-only properties - check
         _ = s.number_of_channels
         _ = s.length_samples
         _ = s.length_seconds
         _ = s.time_vector_s
 
-        # Some properties are read-only
         with pytest.raises(AttributeError):
             s.number_of_channels = 10
         with pytest.raises(AttributeError):
@@ -247,7 +226,6 @@ class TestSignal:
 
     def test_plot_generation(self):
         s = dsp.ImpulseResponse(time_data=self.time_vec, sampling_rate_hz=self.fs)
-        # Test that all plots are generated without problems
         s.plot_magnitude()
         s.plot_magnitude(show_info_box=True)
         s.plot_time()
@@ -257,7 +235,6 @@ class TestSignal:
         s.plot_spl(False)
         s.plot_spl(True)
 
-        # Plot phase and group delay
         s = s.set_spectrum_parameters(method=dsp.SpectrumMethod.FFT)
         s.plot_phase()
         s.plot_phase(unwrap=True, smoothing=4, remove_ir_latency=None)
@@ -268,7 +245,7 @@ class TestSignal:
             s.plot_phase(remove_ir_latency="no idea what removal method")
         s.plot_group_delay()
 
-        # Try to plot phase having welch's method for magnitude
+        # Welch's method is incompatible with phase plotting
         with pytest.raises(AssertionError):
             s = s.set_spectrum_parameters(
                 method=dsp.SpectrumMethod.WelchPeriodogram,
@@ -276,7 +253,6 @@ class TestSignal:
             )
             s.plot_phase()
 
-        # Plot signal with window and imaginary time data
         d = dsp.generators.dirac(
             length_samples=1024, delay_samples=512, sampling_rate_hz=self.fs
         )
@@ -287,7 +263,6 @@ class TestSignal:
         close("all")
 
     def test_get_power_spectrum_welch(self):
-        # Try to get power spectrum
         s = dsp.Signal(time_data=self.time_vec, sampling_rate_hz=self.fs)
         s.spectrum_scaling = dsp.SpectrumScaling.FFTBackward
         s.spectrum_method = dsp.SpectrumMethod.WelchPeriodogram
@@ -400,13 +375,11 @@ class TestSignal:
     def test_copy_with_new_time_data(self):
         n = dsp.Signal.from_time_data(self.time_vec, self.fs, False)
 
-        #
         n.spectrum_method = dsp.SpectrumMethod.FFT
         n.spectrum_scaling = dsp.SpectrumScaling.PowerSpectrum
         n = n.set_spectrogram_parameters(256, window_type=dsp.Window.Blackman)
         n2 = n.copy_with_new_time_data(np.zeros((100, 1)))
 
-        #
         assert n2.spectrum_scaling == dsp.SpectrumScaling.PowerSpectrum
         assert n2.spectrum_method == dsp.SpectrumMethod.FFT
         assert n2._spectrogram_parameters["window_length_samples"] == 256
@@ -414,12 +387,12 @@ class TestSignal:
         assert n2.constrain_amplitude == n.constrain_amplitude
         assert n2.time_data_imaginary == n.time_data_imaginary
 
-        # === Complex
+        # Complex signal
         n_comp = dsp.Signal.from_time_data(self.complex_time_vec, self.fs, True)
         n2_comp = n_comp.copy_with_new_time_data(np.zeros((100, 1)))
         assert not n2_comp.is_complex_signal
 
-        # === Check slicing and ownership
+        # New time data should not share memory with the original
         n = dsp.Signal.from_time_data(np.zeros((100, 2)), self.fs)
         n2 = n.copy_with_new_time_data(n.time_data[:, 0])
         n.time_data[0, ...] = 1.0

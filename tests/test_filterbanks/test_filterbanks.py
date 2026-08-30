@@ -44,7 +44,6 @@ class TestFilterbanksModule:
         )
 
     def test_linkwitz(self):
-        # Only functionality
         fb = dsp.filterbanks.linkwitz_riley_crossovers(
             [500, 1000], order=4, sampling_rate_hz=self.fs
         )
@@ -57,12 +56,10 @@ class TestFilterbanksModule:
                 [500, 5000], order=4, sampling_rate_hz=self.fs
             )
 
-        # Plots
         fb.plot_group_delay(length_samples=512)
         fb.plot_phase(length_samples=512)
         fb.plot_magnitude(length_samples=512)
 
-        # Test filtering
         s = self.get_noise()
         fb.filter_signal(s, mode=dsp.FilterBankMode.Parallel)
 
@@ -120,7 +117,6 @@ class TestFilterbanksModule:
         np.testing.assert_allclose(mag_db[band], 0.0, atol=1e-6)
 
     def test_reconstructing_fractional_octave_bands(self):
-        # Only functionality
         n = self.get_noise()
         fb = dsp.filterbanks.reconstructing_fractional_octave_bands(
             octave_fraction=1,
@@ -161,7 +157,6 @@ class TestFilterbanksModule:
         np.testing.assert_allclose(summed, expected, atol=1e-5)
 
     def test_auditory_filters_gammatone(self):
-        # Only functionality
         fb = dsp.filterbanks.auditory_filters_gammatone(
             frequency_range_hz=[500, 1000], sampling_rate_hz=self.fs
         )
@@ -170,7 +165,6 @@ class TestFilterbanksModule:
                 frequency_range_hz=[500, 3000], sampling_rate_hz=self.fs
             )
 
-        # Reconstruct signal
         n = self.get_noise()
         mb = fb.filter_signal(n, dsp.FilterBankMode.Parallel)
         fb.reconstruct(mb)
@@ -231,12 +225,11 @@ class TestFilterbanksModule:
             # Reconstruction
             round_trip = fb.reconstruct_signal(mb_, upsample=True)
             spec = s.spectral_difference(round_trip, energy_normalization=False)
-            spec.spectral_data[:2] = 1.0  # Remove DC
+            spec.spectral_data[:2] = 1.0  # Remove DC, dominated by rounding noise
             np.testing.assert_allclose(
                 dsp.tools.to_db(spec.spectral_data, True), 0.0, atol=1
             )
 
-        # Run other functions
         fb.plot_magnitude(
             length_samples=512, mode=dsp.FilterBankMode.Parallel, downsample=True
         )
@@ -311,11 +304,10 @@ class TestFilterbanksModule:
         f2 = dsp.filterbanks.complementary_fir_filter(f)
         coefficients = f.get_coefficients(dsp.FilterCoefficientsType.Ba)[0]
 
-        # Get perfect impulse
         h = np.zeros(len(coefficients))
         h[len(coefficients) // 2] = 1
 
-        # Assert that both filters summed give a perfect impulse
+        # Both filters summed should give a perfect impulse
         assert np.all(
             np.isclose(
                 h,
@@ -323,7 +315,7 @@ class TestFilterbanksModule:
             )
         )
 
-        # Check functionality for even length
+        # Even filter length
         f = dsp.Filter.fir_filter(
             type_of_pass=dsp.FilterPassType.Lowpass,
             order=121,
@@ -333,7 +325,6 @@ class TestFilterbanksModule:
         dsp.filterbanks.complementary_fir_filter(f)
 
     def test_phase_linearizer(self):
-        # Get some phase response
         fs_hz = 48_000
         fb = dsp.filterbanks.linkwitz_riley_crossovers(
             [570, 2000], order=[2, 2], sampling_rate_hz=fs_hz
@@ -342,11 +333,11 @@ class TestFilterbanksModule:
         ir.spectrum_method = dsp.SpectrumMethod.FFT
         _, sp = ir.get_spectrum()
 
-        # Initialize with wrong length
+        # Phase vector length must match the IR length
         with pytest.raises(AssertionError):
             dsp.filterbanks.PhaseLinearizer(np.angle(sp[:, 0]), len(ir) // 2, fs_hz)
 
-        # Phase linearizer - Without interpolating
+        # Without interpolating
         pl = dsp.filterbanks.PhaseLinearizer(np.angle(sp[:, 0]), len(ir), fs_hz)
         with pytest.raises(AssertionError):
             pl.set_parameters(-10)
@@ -354,7 +345,7 @@ class TestFilterbanksModule:
         pl.get_filter()
         pl.set_parameters()
 
-        # Phase linearizer - with interpolation
+        # With interpolation
         ir = fb.get_ir(length_samples=2**9).collapse()
         ir.spectrum_method = dsp.SpectrumMethod.FFT
         _, sp = ir.get_spectrum()
@@ -368,19 +359,11 @@ class TestFilterbanksModule:
             [570, 2000], order=[2, 2], sampling_rate_hz=fs_hz
         )
         ir = fb.get_ir(length_samples=2**14).collapse()
-
-        # Group delay-based correction
-        ir = fb.get_ir(length_samples=2**14).collapse()
         _, gd = dsp.transfer_functions.group_delay(ir)
         gd = np.max(gd) * 2 - gd
         pl = dsp.filterbanks.GroupDelayDesigner(gd.squeeze(), len(ir), fs_hz)
         pl.set_parameters(1.0)
         min_length_filt = pl.get_filter()
-
-        # ir = dsp.pad_trim(pl.get_filter_as_ir(), 2**15)
-        # ir.plot_time()
-        # ir.plot_magnitude()
-        # dsp.plots.show()
 
         new_filt = (
             dsp.filterbanks.GroupDelayDesigner(gd.squeeze(), len(ir), fs_hz)
@@ -474,7 +457,6 @@ class TestFilterbanksModule:
         assert residual_after < residual_before / 5
 
     def test_pinking_filter(self):
-        # Only functionality
         fs_hz = 44100
         n = dsp.generators.noise(length_seconds=1.0, sampling_rate_hz=fs_hz)
         n = n.set_spectrum_parameters(window_length_samples=1024)
@@ -492,8 +474,6 @@ class TestFilterbanksModule:
         n2 = n2.append_signals([n])
 
     def test_matched_biquads(self):
-        # Only functionality and plausibility
-        # Parameters
         fs_hz = 48000
         freq = 10e3
         gain_db = -20
@@ -511,24 +491,19 @@ class TestFilterbanksModule:
             dsp.filterbanks.matched_biquad(eq_type, freq, gain_db, q, fs_hz)
 
     def test_gaussian_kernel(self):
-        # Only functionality
         fs_hz = 44100
         n = dsp.generators.noise(length_seconds=1.0, sampling_rate_hz=fs_hz)
 
-        # Get kernel and apply filtering
         f = dsp.filterbanks.gaussian_kernel(0.02, sampling_rate_hz=fs_hz)
         n1 = f.filter_signal(n, zero_phase=True)
 
-        # Compare to normal gaussian window
+        # Compare to a plain scipy Gaussian window filter
         length = int(0.02 * fs_hz + 0.5)
         sigma = length / (2.0 * np.log(1 / 1e-2)) ** 0.5
         w = sig.windows.gaussian(length, sigma, True)
         w /= w.sum()
         f = dsp.Filter.from_ba(w, [1.0], fs_hz)
         n1 = n1.append_signals([f.filter_signal(n, zero_phase=False)])
-
-        # n1.plot_time()
-        # dsp.plots.show()
 
     def test_gaussian_kernel_matches_scipy_window_shape(self):
         """`gaussian_kernel` is documented as a first-order IIR
@@ -564,7 +539,6 @@ class TestFilterbanksModule:
         assert np.corrcoef(center, w)[0, 1] > 0.998
 
     def test_arma(self):
-        # Only functionality
         rir = dsp.ImpulseResponse(
             os.path.join(
                 os.path.dirname(__file__), "..", "..", "example_data", "rir.wav"

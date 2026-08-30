@@ -14,7 +14,6 @@ class TestRoomAcousticsModule:
     )
 
     def test_reverb_time(self):
-        # Only functionality
         dsp.room_acoustics.reverb_time(
             self.rir,
             mode=dsp.room_acoustics.ReverbTime.Adaptive,
@@ -49,7 +48,6 @@ class TestRoomAcousticsModule:
             automatic_trimming=False,
         )
 
-        # Check Index
         ind = np.argmax(np.abs(self.rir.time_data))
         dsp.room_acoustics.reverb_time(
             self.rir, dsp.room_acoustics.ReverbTime.EDT, ir_start=ind
@@ -61,7 +59,6 @@ class TestRoomAcousticsModule:
             ir_start=[ind, ind - 1],
         )
 
-        # Check MultiBandSignal
         fb = dsp.filterbanks.auditory_filters_gammatone(
             [500, 800], sampling_rate_hz=self.rir.sampling_rate_hz
         )
@@ -118,8 +115,7 @@ class TestRoomAcousticsModule:
         assert corr[0] < -0.999
 
     def test_room_modes(self):
-        # Only functionality
-        # Take a multi-channel signal in order to find modes
+        # A multi-channel signal, to also exercise the per-channel path
         y = dsp.Signal(
             join(
                 os.path.dirname(__file__),
@@ -209,15 +205,13 @@ class TestRoomAcousticsModule:
         np.testing.assert_allclose(oaconv[:, 1], expected)
 
     def test_find_ir_start(self):
-        # Only functionality
         dsp.room_acoustics.find_ir_start(self.rir)
-        # Positive dBFS value for threshold throws assertion error
+        # A positive dBFS threshold is invalid
         with pytest.raises(AssertionError):
             dsp.room_acoustics.find_ir_start(self.rir, 20)
 
     def test_generate_synthetic_rir(self):
         r = dsp.room_acoustics.ShoeboxRoom([3, 4, 5], None, 0.97)
-        # Standard case
         dsp.room_acoustics.generate_synthetic_rir(
             room=r,
             source_position=[2, 2, 2],
@@ -229,10 +223,6 @@ class TestRoomAcousticsModule:
             use_detailed_absorption=False,
             max_order=None,
         )
-        # rir.plot_magnitude(smoothe=0)
-        # dsp.plots.show()
-        # exit()
-        # Detailed absorption
         d = {}
         for i in ["north", "south", "east", "west", "floor", "ceiling"]:
             d[i] = np.random.uniform(0.94, 0.96, size=4)
@@ -276,8 +266,6 @@ class TestRoomAcousticsModule:
         assert np.isclose(old_value, r.t60_s)
 
     def test_descriptors(self):
-        # Only functionality
-        # Single channel
         dsp.room_acoustics.descriptors(
             self.rir, dsp.room_acoustics.RoomAcousticsDescriptor.D50
         )

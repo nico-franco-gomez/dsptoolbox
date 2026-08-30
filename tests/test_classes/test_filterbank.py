@@ -50,7 +50,6 @@ class TestFilterBankClass:
         )
 
     def test_create_filter_bank(self):
-        # Create filter bank sequentially
         fb = dsp.FilterBank()
         fb = fb.add_filter(self.get_iir_filter())
 
@@ -102,12 +101,10 @@ class TestFilterBankClass:
                 fb.save_filterbank(join(d, "wrong_ext.txt"))
 
     def test_plots(self):
-        # Create
         fb = dsp.FilterBank()
         fb = fb.add_filter(self.get_iir_filter())
         fb = fb.add_filter(self.get_fir_filter())
 
-        # Get plots
         fb.plot_magnitude(length_samples=512, mode=dsp.FilterBankMode.Parallel)
         fb.plot_magnitude(length_samples=512, mode=dsp.FilterBankMode.Sequential)
         fb.plot_magnitude(length_samples=512, mode=dsp.FilterBankMode.Summed)
@@ -131,17 +128,14 @@ class TestFilterBankClass:
         assert fb.number_of_filters == 2
         assert fb.sampling_rate_hz == self.fs
 
-        # Remove
         fb = fb.remove_filter(0)
         assert fb.number_of_filters == 1
         assert fb.sampling_rate_hz == self.fs
 
-        # Readd
         fb = fb.add_filter(self.get_fir_filter())
         assert fb.number_of_filters == 2
         assert fb.sampling_rate_hz == self.fs
 
-        # Swap (and Assertions)
         fb = fb.swap_filters([1, 0])
         assert fb.number_of_filters == 2
         assert len(fb) == 2
@@ -152,14 +146,12 @@ class TestFilterBankClass:
         with pytest.raises(AssertionError):
             fb = fb.swap_filters([1, 2])
 
-        # Others
         fb.get_ir(128, dsp.FilterBankMode.Parallel)
         fb.copy()
         fb.show_info()
         print(fb)
 
     def test_filtering(self):
-        # Create
         fb = dsp.FilterBank()
         fb = fb.add_filter(self.get_iir_filter())
         fb = fb.add_filter(self.get_fir_filter())
@@ -167,7 +159,6 @@ class TestFilterBankClass:
         t_vec = np.random.normal(0, 0.01, (self.fs * 3, 2))
         s = dsp.Signal(None, t_vec, self.fs)
 
-        # Type of output and filter results
         filt1 = fb.filters[0].get_coefficients(
             coefficients_mode=dsp.FilterCoefficientsType.Sos
         )
@@ -191,26 +182,22 @@ class TestFilterBankClass:
         # Sequential mode
         s_ = fb.filter_signal(s, mode=dsp.FilterBankMode.Sequential, activate_zi=False)
         assert type(s_) is dsp.Signal
-        # Change order (just because they're linear systems)
+        # The cascade order can be swapped since both are linear systems
         temp = sig.lfilter(filt2, [1], s.time_data[:, 1])
         temp = sig.sosfilt(filt1, temp)
-        # Try second channel
         assert np.all(np.isclose(s_.time_data[:, 1], temp))
 
         # Summed mode
         s_ = fb.filter_signal(s, mode=dsp.FilterBankMode.Summed, activate_zi=False)
         assert type(s_) is dsp.Signal
-        # Add together
         temp = sig.lfilter(filt2, [1], s.time_data[:, 1])
         temp += sig.sosfilt(filt1, s.time_data[:, 1])
         assert np.all(np.isclose(s_.time_data[:, 1], temp))
 
-        # Filter's zi
         s_ = fb.filter_signal(s, mode=dsp.FilterBankMode.Parallel, activate_zi=True)
         s_ = fb.filter_signal(s, mode=dsp.FilterBankMode.Sequential, activate_zi=True)
         s_ = fb.filter_signal(s, mode=dsp.FilterBankMode.Summed, activate_zi=True)
 
-        # Zero-phase filtering
         s_ = fb.filter_signal(s, mode=dsp.FilterBankMode.Parallel, zero_phase=True)
         s_ = fb.filter_signal(s, mode=dsp.FilterBankMode.Sequential, zero_phase=True)
         s_ = fb.filter_signal(s, mode=dsp.FilterBankMode.Summed, zero_phase=True)
@@ -236,17 +223,14 @@ class TestFilterBankClass:
         assert fb.number_of_filters == 2
         assert fb.sampling_rate_hz == [self.fs, self.fs // 2]
 
-        # Remove
         fb = fb.remove_filter(0)
         assert fb.number_of_filters == 1
         assert fb.sampling_rate_hz == [self.fs // 2]
 
-        # Readd
         fb = fb.add_filter(self.get_fir_filter())
         assert fb.number_of_filters == 2
         assert fb.sampling_rate_hz == [self.fs // 2, self.fs]
 
-        # Swap (and Assertions)
         fb = fb.swap_filters([1, 0])
         assert fb.number_of_filters == 2
         assert fb.sampling_rate_hz == [self.fs, self.fs // 2]

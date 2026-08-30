@@ -24,7 +24,6 @@ class TestMultiBandSignal:
         return self.fb.filter_signal(self.s, dsp.FilterBankMode.Parallel)
 
     def test_create_and_general_functionalities(self):
-        # Test creating from two signals and other functionalities
         mbs = dsp.MultiBandSignal(
             bands=[self.s, self.s],
             same_sampling_rate=True,

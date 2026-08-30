@@ -8,7 +8,6 @@ import dsptoolbox as dsp
 
 class TestTools:
     def test_functionality(self):
-        # Only assess basic functionality, not results
         x = np.linspace(100, 150, 30)
         dsp.tools.log_frequency_vector([20, 200], 50)
         dsp.tools.frequency_crossover([100, 200], True)(x)
@@ -138,7 +137,6 @@ class TestTools:
         np.testing.assert_allclose(result, expected, rtol=1e-12)
 
     def test_framed_signal(self):
-        # Only functionality, no results
         n = np.random.normal(0, 0.1, (100, 1))
         dsp.tools.framed_signal(n, 20, 10, True)
         nn1 = dsp.tools.framed_signal(n, 20, 10, False)

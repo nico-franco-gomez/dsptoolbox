@@ -31,14 +31,6 @@ CHIRP_STEREO_PATH = os.path.join(
 
 
 class TestFilterClass:
-    """Tests for the Filter class.
-
-    Plotting
-    Saving
-
-    """
-
-    # Create some filters to validate functions
     fs = 44100
     fir = sig.firwin(150, 1000, pass_zero="lowpass", fs=fs)
     iir = sig.iirfilter(
@@ -69,9 +61,6 @@ class TestFilterClass:
         return dsp.Filter.from_ba(self.fir, np.array([1.0]), self.fs)
 
     def test_create_from_coefficients(self):
-        # Try creating a filter from the coefficients, recognizing filter
-        # type and returning the coefficients in the right way
-
         # FIR
         f = dsp.Filter(
             filter_coefficients={dsp.FilterCoefficientsType.Ba: [self.fir, 1]},
@@ -110,7 +99,6 @@ class TestFilterClass:
             iir.sos = np.zeros((3, 7))
         assert iir.order == self.iir.shape[0] * 2
 
-        # Check order with sos
         sos = dsp.Filter.iir_filter(
             6,
             100.0,
@@ -129,16 +117,14 @@ class TestFilterClass:
         assert sos.order == 5
         assert sos.has_sos
 
-        # Pass integer a coefficients
+        # Integer "a" coefficients should still be stored as float
         fir = dsp.Filter.from_ba(self.fir, [1], self.fs)
         assert fir.ba[1].dtype == np.float64
         assert not fir.has_sos
 
     def test_filtering_fir(self):
-        # Try filtering compared to scipy's functions
         t_vec = np.random.normal(0, 0.01, self.fs * 2)
 
-        # FIR
         result_scipy = sig.lfilter(self.fir, [1], t_vec)
         s = dsp.Signal.from_time_data(t_vec, self.fs)
         f = self.get_fir()
@@ -150,14 +136,12 @@ class TestFilterClass:
         result_own = f.filter_signal(s, zero_phase=True).time_data.squeeze()
         np.testing.assert_allclose(result_scipy, result_own)
 
-        # Assert original data remains equal
+        # filter_signal must not mutate the input signal
         np.testing.assert_array_equal(s.time_data.squeeze(), t_vec)
 
     def test_filtering_iir(self):
-        # Try filtering compared to scipy's functions
         t_vec = np.random.normal(0, 0.01, self.fs * 2)
         s = dsp.Signal(None, t_vec, self.fs)
-        # IIR
         result_scipy = sig.sosfilt(self.iir, t_vec)
         f = self.get_iir()
         result_own = f.filter_signal(s).time_data.squeeze()
@@ -168,18 +152,15 @@ class TestFilterClass:
         result_own = f.filter_signal(s, zero_phase=True).time_data.squeeze()
         np.testing.assert_allclose(result_scipy, result_own)
 
-        # Assert original data remains equal
         np.testing.assert_array_equal(s.time_data.squeeze(), t_vec)
 
     def test_plots(self):
         f = self.get_iir()
-        # Standard config
         f.plot_magnitude(length_samples=512)
         f.plot_phase(length_samples=512)
         f.plot_group_delay(length_samples=512)
         f.plot_zp()
 
-        # More config
         f.plot_magnitude(length_samples=512, show_info_box=True)
         f.plot_phase(length_samples=512, show_info_box=True)
         f.plot_group_delay(length_samples=512, show_info_box=True)
@@ -263,10 +244,8 @@ class TestFilterClass:
                 f.save_filter(join(d, "wrong_ext.txt"))
 
     def test_other_functionalities(self):
-        #
         dsp.Filter.fir_from_file(RIR_PATH)
 
-        #
         f = self.get_iir()
         f.show_info()
         print(f)
@@ -276,7 +255,6 @@ class TestFilterClass:
             f.initialize_zi(0)
 
     def test_get_transfer_function(self):
-        # Functionality
         f = self.get_iir()
         freqs = np.linspace(1, 4e3, 200)
         f.get_transfer_function(freqs)
@@ -294,7 +272,6 @@ class TestFilterClass:
         f.get_transfer_function(freqs)
 
     def test_all_biquads(self):
-        # Only functionality
         for t in [
             dsp.BiquadEqType.Allpass,
             dsp.BiquadEqType.AllpassFirstOrder,
@@ -315,15 +292,12 @@ class TestFilterClass:
     def test_filter_and_resampling_IIR(self):
         f = self.get_iir()
 
-        # Time vector
         t_vec = np.random.normal(0, 0.01, self.fs * 2)
 
-        # dsptoolbox
         t_signal = dsp.Signal(None, t_vec, self.fs)
         t_res = f.filter_and_resample_signal(t_signal, self.fs // 2)
         t_res = t_res.time_data.squeeze()
 
-        # Scipy
         t_res_sc = sig.sosfilt(self.iir, t_vec)
         t_res_sc = t_res_sc[::2]
         assert np.all(np.isclose(t_res_sc, t_res))
@@ -341,15 +315,12 @@ class TestFilterClass:
             filter_coefficients={dsp.FilterCoefficientsType.Ba: [b, 1]},
             sampling_rate_hz=self.fs,
         )
-        # Time vector
         t_vec = np.random.normal(0, 0.01, self.fs * 2)
 
-        # dsptoolbox
         t_signal = dsp.Signal(None, t_vec, self.fs)
         t_res = f.filter_and_resample_signal(t_signal, self.fs // 2)
         t_res = t_res.time_data.squeeze()
 
-        # Scipy
         t_res_sc = sig.resample_poly(t_vec, up=1, down=2, window=b)
 
         assert np.all(np.isclose(t_res_sc, t_res))
@@ -399,5 +370,4 @@ class TestFilterClass:
         )
         np.testing.assert_allclose(interpolated_gd, gd, atol=1e-6)
 
-        # Check it runs
         gd = bb.get_group_delay(f_log, False)

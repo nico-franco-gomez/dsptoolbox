@@ -27,7 +27,6 @@ class TestTransformsModule:
     )
 
     def test_cepstrum(self):
-        # Only functionality
         cc = dsp.transforms.cepstrum(self.speech, True)
         dsp.transforms.cepstrum(self.speech, False)
         ss = dsp.transforms.from_complex_cepstrum(cc, self.speech.sampling_rate_hz)
@@ -38,7 +37,6 @@ class TestTransformsModule:
         )
 
     def test_log_mel_spectrogram(self):
-        # Only functionality
         dsp.transforms.log_mel_spectrogram(
             self.speech,
             range_hz=None,
@@ -70,8 +68,7 @@ class TestTransformsModule:
             ),
         )
 
-        # Raise Assertion error if set range is larger than the nyquist
-        # frequency
+        # Range must not exceed the Nyquist frequency
         with pytest.raises(AssertionError):
             dsp.transforms.log_mel_spectrogram(
                 self.speech,
@@ -108,7 +105,6 @@ class TestTransformsModule:
         assert abs(peak_center_hz - freq) <= band_width_hz
 
     def test_mel_filters(self):
-        # Only functionality
         f = np.linspace(0, 24000, 2048)
         dsp.transforms.mel_filterbank(
             f_hz=f, range_hz=None, n_bands=30, normalize=False
@@ -180,7 +176,6 @@ class TestTransformsModule:
             dsp.transforms.mel_filterbank(f_hz=f, range_hz=[-10, 8000])
 
     def test_plot_waterfall(self):
-        # Only functionality
         dsp.transforms.plot_waterfall(self.speech)
         with pytest.raises(AssertionError):
             dsp.transforms.plot_waterfall(self.speech, dynamic_range_db=-10)
@@ -192,7 +187,6 @@ class TestTransformsModule:
         )
 
     def test_mfcc(self):
-        # Only functionality
         t, f, s = self.speech.get_spectrogram()
 
         mels, _ = dsp.transforms.mel_filterbank(f, [20, 10e3], n_bands=4)
@@ -222,7 +216,6 @@ class TestTransformsModule:
         assert not np.allclose(mf_low, mf_high)
 
     def test_istft(self):
-        # Test reconstruction fidelity
         # This would most likely fail if padding=False or detrend=True
         t, f, sp = self.speech.get_spectrogram()
         speech_rec = dsp.transforms.istft(sp, original_signal=self.speech)
@@ -256,7 +249,6 @@ class TestTransformsModule:
         )
 
     def test_chroma(self):
-        # Only functionality
         dsp.transforms.chroma_stft(self.speech.copy())
         dsp.transforms.chroma_stft(self.speech.copy(), plot_channel=0)
 
@@ -283,7 +275,6 @@ class TestTransformsModule:
             dsp.transforms.chroma_stft(self.speech.copy(), compression=0)
 
     def test_cwt(self):
-        # Only functionality
         query_f = np.linspace(100, 200, 50)
         morlet = dsp.transforms.MorletWavelet(b=None, h=3, step=1e-3)
         dsp.transforms.cwt(self.speech, query_f, morlet, False)
@@ -337,7 +328,6 @@ class TestTransformsModule:
         assert (freq / bin_ratio) <= peak_freq <= (freq * bin_ratio)
 
     def test_hilbert(self):
-        # Results compared with scipy hilbert
         speech = self.speech.copy()
         speech.constrain_amplitude = False
         s = dsp.transforms.hilbert(speech)
@@ -368,7 +358,6 @@ class TestTransformsModule:
         assert np.all(np.isclose(sp.time_data, sp_aft.time_data))
 
     def test_laguerre(self):
-        # Only functionality
         sp = self.speech.pad_trim(128)
         dsp.transforms.laguerre(sp, -0.7)
 
@@ -405,7 +394,6 @@ class TestTransformsModule:
             dsp.transforms.laguerre(sp, -1.0)
 
     def test_warp(self):
-        # Only functionality
         s = dsp.ImpulseResponse(
             join(os.path.dirname(__file__), "..", "example_data", "rir.wav")
         )
@@ -453,7 +441,6 @@ class TestTransformsModule:
             dsp.transforms.warp(s, "not-a-scale", False)
 
     def test_warp_filter(self):
-        # Only functionality
         i = dsp.Filter.iir_filter(
             3,
             100.0,
@@ -462,9 +449,7 @@ class TestTransformsModule:
             sampling_rate_hz=24000,
         )
         dsp.transforms.warp_filter(i, -0.6)
-        # dsp.FilterBank([i, ii]).plot_magnitude(length_samples=2**14)
         dsp.transforms.warp_filter(i, 0.6)
-        # dsp.plots.show()
 
     def test_warp_filter_fixed_points_at_dc_and_nyquist(self):
         """Per the docstring, poles/zeros are transformed via the Oppenheim
@@ -500,7 +485,6 @@ class TestTransformsModule:
             dsp.transforms.warp_filter(i, -1.0)
 
     def test_lpc(self):
-        # Only functionality
         speech = self.speech.resample(8000)
         dsp.transforms.lpc(speech, 10, 1024, False, True, 512)
         dsp.transforms.lpc(speech, 10, 1024, True, True, 512)

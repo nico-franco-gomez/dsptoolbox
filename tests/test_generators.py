@@ -7,7 +7,6 @@ import dsptoolbox as dsp
 
 class TestGeneratorsModule:
     def test_noise(self):
-        # Only functionality
         dsp.generators.noise(
             type_of_noise=dsp.generators.NoiseType.White,
             length_seconds=2,
@@ -63,7 +62,6 @@ class TestGeneratorsModule:
             padding_end_seconds=1,
         )
 
-        # Other parameters
         dsp.generators.noise(
             type_of_noise=dsp.generators.NoiseType.White,
             length_seconds=2,
@@ -97,7 +95,6 @@ class TestGeneratorsModule:
             )
 
     def test_chirp(self):
-        # Only functionality
         dsp.generators.chirp(
             type_of_chirp=dsp.generators.ChirpType.Logarithmic,
             range_hz=None,
@@ -255,7 +252,6 @@ class TestGeneratorsModule:
         assert fitted_slope(blue) > 0.5
 
     def test_dirac(self):
-        # Only functionality
         dsp.generators.dirac(
             1024, delay_samples=0, number_of_channels=1, sampling_rate_hz=5_000
         )
@@ -287,7 +283,6 @@ class TestGeneratorsModule:
             dsp.generators.dirac(10, number_of_channels=0, sampling_rate_hz=5_000)
 
     def test_oscillator(self):
-        # Only functionality
         dsp.generators.oscillator(
             frequency_hz=150,
             sampling_rate_hz=5_000,

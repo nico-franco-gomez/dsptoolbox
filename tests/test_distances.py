@@ -16,7 +16,6 @@ class TestDistancesModule:
     sig2 = stereo_signal.get_channels(1)
 
     def test_log_spectral(self):
-        # Only functionality
         dsp.distances.log_spectral(
             self.sig1,
             self.sig2,
@@ -43,7 +42,6 @@ class TestDistancesModule:
                 spectrum_parameters=None,
             )
 
-        # Pass some spectrum parameters
         dsp.distances.log_spectral(
             self.sig1,
             self.sig2,
@@ -98,7 +96,6 @@ class TestDistancesModule:
         np.testing.assert_allclose(result, expected, rtol=1e-10)
 
     def test_itakura_saito(self):
-        # Only functionality
         dsp.distances.itakura_saito(
             self.sig1,
             self.sig2,
@@ -125,7 +122,6 @@ class TestDistancesModule:
                 spectrum_parameters=None,
             )
 
-        # Pass some spectrum parameters
         dsp.distances.itakura_saito(
             self.sig1,
             self.sig2,
@@ -181,7 +177,6 @@ class TestDistancesModule:
         np.testing.assert_allclose(result, expected, rtol=1e-10)
 
     def test_snr(self):
-        # Only functionality
         speech = dsp.Signal(
             join(os.path.dirname(__file__), "..", "example_data", "speech.flac")
         )
