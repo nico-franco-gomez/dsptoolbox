@@ -230,6 +230,12 @@ def _stft(
       density estimation by the Discrete Fourier transform (DFT), including a
       comprehensive list of window functions and some new at-top windows.
 
+    Notes
+    -----
+    - Each frame is placed at the time of its window centre, relative to the
+      start of the passed time series. When padding is active, the first
+      frames are centred before the signal starts, so their time is negative.
+
     """
     valid_window_sizes = np.array([int(2**x) for x in range(4, 17)])
     assert window_length_samples in valid_window_sizes, (
@@ -280,7 +286,11 @@ def _stft(
             stft = np.abs(stft) ** 2.0
         stft *= factor
 
-    time_s = np.linspace(0, len(x) / fs_hz, stft.shape[1])
+    time_s = (
+        np.arange(stft.shape[1], dtype=np.float64) * step
+        + (window_length_samples - 1) / 2
+        - (overlap_samples if padding else 0)
+    ) / fs_hz
     freqs_hz = np.fft.rfftfreq(fft_length_samples, 1 / fs_hz)
     return time_s, freqs_hz, stft
 

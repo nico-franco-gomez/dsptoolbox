@@ -279,11 +279,6 @@ class TestSpectrum:
         `Spectrum.plot_magnitude` share one normalization helper and must
         therefore produce the same normalized curve.
 
-        The energy normalizations are excluded: `Spectrum` derives them from
-        `get_energy()`, which integrates `|X|**2 df`, so dividing by the
-        number of bins leaves a factor `sqrt(df)` that the other two do not
-        have.
-
         """
         fs = 48_000
         rng = np.random.default_rng(0)
@@ -299,6 +294,8 @@ class TestSpectrum:
             dsp.MagnitudeNormalization.OneKhzFirstChannel,
             dsp.MagnitudeNormalization.Max,
             dsp.MagnitudeNormalization.MaxFirstChannel,
+            dsp.MagnitudeNormalization.Energy,
+            dsp.MagnitudeNormalization.EnergyFirstChannel,
         ):
             _, ax_signal = ir.plot_magnitude(
                 normalize=normalization, range_hz=None, smoothing=0
@@ -315,6 +312,8 @@ class TestSpectrum:
             np.testing.assert_allclose(from_spectrum, from_signal, atol=1e-10)
 
     def test_one_khz_normalization_lands_exactly_on_zero_db(self):
+        """The 1 kHz value is interpolated in the power domain, so it is the
+        interpolated power of the normalized curve that must be unity."""
         fs = 48_000
         rng = np.random.default_rng(1)
         ir = dsp.ImpulseResponse(None, rng.normal(0, 0.1, (2048, 1)), fs)
@@ -326,4 +325,23 @@ class TestSpectrum:
         magnitude_db = ax.get_lines()[0].get_ydata()
         close("all")
 
-        np.testing.assert_allclose(np.interp(1000.0, f, magnitude_db), 0.0, atol=1e-10)
+        power_at_1khz = np.interp(1000.0, f, dsp.tools.from_db(magnitude_db, False))
+        np.testing.assert_allclose(power_at_1khz, 1.0, atol=1e-10)
+
+    def test_energy_normalization_is_independent_of_frequency_resolution(self):
+        rng = np.random.default_rng(2)
+        magnitude = rng.uniform(0.1, 1.0, (512, 1))
+        spectra = (
+            dsp.Spectrum(np.linspace(0.0, 24e3, 512), magnitude),
+            dsp.Spectrum(np.linspace(0.0, 2.4e3, 512), magnitude),
+        )
+
+        curves = []
+        for spectrum in spectra:
+            _, ax = spectrum.plot_magnitude(
+                normalization=dsp.MagnitudeNormalization.Energy
+            )
+            curves.append(ax.get_lines()[0].get_ydata())
+            close("all")
+
+        np.testing.assert_allclose(curves[0], curves[1])

@@ -73,6 +73,18 @@ Bugfix
 - `CalibrationData(high_snr=False)` raised an `AttributeError` because it
   still passed the pre-enum spectrum parameters
 - `mix_sources_on_array` emptied the list of sources passed to it
+- the energy normalizations of `Spectrum.plot_magnitude` divided the
+  integrated energy by the number of frequency bins instead of using the mean
+  square, so the offset depended on the frequency resolution and differed
+  from `Signal.plot_magnitude` by `10*log10(df)`
+- the time vector of the spectrogram was spread linearly over the signal
+  length instead of following the hop size, and ignored the offset introduced
+  by padding. Each frame is now placed at its window centre relative to the
+  start of the signal, so the first frames are at negative times when padding
+  is active
+- the time vectors used for the energy decay curve, the centre time and
+  Lundeby's noise compensation in ``room_acoustics`` were spaced by
+  `length / (N - 1)` instead of the sampling period
 
 Misc
 ~~~~
@@ -84,10 +96,8 @@ Misc
   the direct convolution branch unreachable for similar lengths
 - The magnitude normalizations of `Signal.plot_magnitude`,
   `ImpulseResponse.plot_bode` and `Spectrum.plot_magnitude` now come from one
-  shared implementation. The 1 kHz normalizations of the latter two
-  interpolate in dB rather than linearly, as `Signal.plot_magnitude` already
-  did, so a normalized curve reads exactly 0 dB at 1 kHz. The change is below
-  0.02 dB
+  shared implementation. All three now interpolate the 1 kHz value in the
+  power domain, so that the normalized curve carries unit power at 1 kHz
 - The default seaborn style is applied in one place instead of four, and
   `beamforming._beamforming` no longer imports seaborn unguarded
 - `ImpulseResponse.copy_with_new_time_data`, the `remove_ir_latency`

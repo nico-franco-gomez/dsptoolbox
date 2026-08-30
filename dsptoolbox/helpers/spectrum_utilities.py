@@ -56,7 +56,7 @@ def _get_normalization_offset_db(
 
     match normalize:
         case MagnitudeNormalization.OneKhz:
-            return np.asarray(_get_exact_gain_1khz(f_hz, magnitude_db))
+            return _get_exact_gain_1khz(f_hz, magnitude_db)
         case MagnitudeNormalization.OneKhzFirstChannel:
             return np.ones(number_of_channels) * _get_exact_gain_1khz(
                 f_hz, magnitude_db[:, 0]
@@ -77,22 +77,30 @@ def _get_normalization_offset_db(
             raise ValueError("No valid normalization")
 
 
-def _get_exact_gain_1khz(f: NDArray[np.float64], sp_db: NDArray[np.float64]) -> float:
-    """Uses linear interpolation to get the exact gain value at 1 kHz.
+def _get_exact_gain_1khz(
+    f: NDArray[np.float64], sp_db: NDArray[np.float64]
+) -> NDArray[np.float64]:
+    """Uses linear interpolation in the power domain to get the exact gain
+    value at 1 kHz.
 
     Parameters
     ----------
     f : NDArray[np.float64]
         Frequency vector.
-    sp : NDArray[np.float64]
-        Spectrum. It can be in dB or not. It can have multiple dimensions, but
-        the first dimension is always used (it must be the frequency
-        dimension).
+    sp_db : NDArray[np.float64]
+        Spectrum in dB. It can have multiple dimensions, but the first
+        dimension is always used (it must be the frequency dimension).
 
     Returns
     -------
-    float
-        Interpolated value.
+    NDArray[np.float64]
+        Interpolated value in dB.
+
+    Notes
+    -----
+    - The two neighbouring bins are converted to their power representation
+      before interpolating, since averaging a logarithmic quantity does not
+      preserve the underlying power.
 
     """
     assert np.min(f) < 1e3 and np.max(f) >= 1e3, (
@@ -103,9 +111,12 @@ def _get_exact_gain_1khz(f: NDArray[np.float64], sp_db: NDArray[np.float64]) -> 
     ind = find_nearest_points_index_in_vector(1e3, f).squeeze()
     if f[ind] > 1e3:
         ind -= 1
-    return (sp_db[ind + 1] - sp_db[ind]) / (f[ind + 1] - f[ind]) * (
-        1e3 - f[ind]
-    ) + sp_db[ind]
+    sp_power = from_db(sp_db, False)
+    return to_db(
+        (sp_power[ind + 1] - sp_power[ind]) / (f[ind + 1] - f[ind]) * (1e3 - f[ind])
+        + sp_power[ind],
+        False,
+    )
 
 
 def _get_normalized_spectrum(

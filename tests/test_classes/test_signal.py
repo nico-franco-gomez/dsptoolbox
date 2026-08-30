@@ -426,3 +426,30 @@ class TestSignal:
         fig, ax = s.plot_spectrogram()
         assert ax is not None
         close(fig)
+
+    def test_spectrogram_time_vector_follows_hop_size(self):
+        s = dsp.Signal(
+            None, np.random.default_rng(0).normal(0, 0.1, (8192, 1)), self.fs
+        )
+        window_length = s._spectrogram_parameters["window_length_samples"]
+        overlap = int(
+            s._spectrogram_parameters["overlap_percent"] / 100 * window_length + 0.5
+        )
+        step = window_length - overlap
+
+        t, _, _ = s.get_spectrogram()
+
+        np.testing.assert_allclose(np.diff(t), step / self.fs)
+        np.testing.assert_allclose(t[0], ((window_length - 1) / 2 - overlap) / self.fs)
+
+    def test_spectrogram_time_vector_locates_a_transient(self):
+        td = np.zeros((16384, 1))
+        peak_sample = 8000
+        td[peak_sample, 0] = 1.0
+        s = dsp.Signal(None, td, self.fs)
+
+        t, _, stft = s.get_spectrogram()
+        loudest_frame = np.argmax(np.sum(np.abs(stft[..., 0]) ** 2.0, axis=0))
+
+        window_length = s._spectrogram_parameters["window_length_samples"]
+        assert abs(t[loudest_frame] - peak_sample / self.fs) < window_length / self.fs

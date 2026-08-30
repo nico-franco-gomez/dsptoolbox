@@ -1086,7 +1086,7 @@ class Spectrum(MultichannelData):
             normalization,
             self.frequency_vector_hz,
             to_db(magnitude, True),
-            to_db(self.get_energy() / self.number_frequency_bins, False),
+            to_db(np.mean(magnitude**2.0, axis=0), False),
         )
         data = magnitude / from_db(offset_db, True)[None, :]
         if in_db:

@@ -59,7 +59,7 @@ def _reverb(
 
     """
     edc = _compute_energy_decay_curve(h, automatic_trimming, fs_hz)
-    time_vector = np.linspace(0, len(edc) / fs_hz, len(edc))
+    time_vector = np.arange(len(edc), dtype=np.float64) / fs_hz
 
     # Reverb
     if mode == ReverbTime.Adaptive:
@@ -1000,7 +1000,7 @@ def _ts_from_rir(td: NDArray[np.float64], fs: int, automatic_trimming: bool) -> 
 
     td = td[:stop] ** 2
 
-    time_vec = np.linspace(0, len(td) / fs, len(td))
+    time_vec = np.arange(len(td), dtype=np.float64) / fs
     return np.sum(td * time_vec) / np.sum(td)
 
 
@@ -1195,7 +1195,7 @@ def _compute_energy_decay_curve(
     # Find compensation energy according to [2]
     signal_db = to_db(time_smoothing(signal_power, fs_hz, 20e-3), False)
     start_index_int = np.where(dynamic_range_db + np.min(signal_db) > signal_db)[0][0]
-    time_vector = np.linspace(0, len(signal_power) / fs_hz, len(signal_power))
+    time_vector = np.arange(len(signal_power), dtype=np.float64) / fs_hz
     p = np.polyfit(time_vector[start_index_int:], signal_db[start_index_int:], 1)
     avoid_corrections = p[1] >= 0.0  # Check if slope makes sense
 
