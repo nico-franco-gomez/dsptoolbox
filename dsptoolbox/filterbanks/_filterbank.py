@@ -961,7 +961,9 @@ class BaseCrossover(FilterBank):
         of each band; see `FilterBank.filter_signal` for the other arguments.
         Combining it with `FilterBankMode.Sequential` is invalid, since the
         first filter already changes the sampling rate that the second one
-        expects.
+        expects. With `zero_phase`, each band is filtered forward and backward
+        at the original sampling rate and decimated afterwards, so the
+        efficient polyphase path is not available.
 
         """
         if not downsample:
@@ -969,16 +971,18 @@ class BaseCrossover(FilterBank):
                 signal, mode, activate_zi, zero_phase=zero_phase
             )
         # ========== In case of downsampling while filtering ==================
-        if zero_phase:
-            raise NotImplementedError("No zero-phase implementation with downsampling")
+        assert not (activate_zi and zero_phase), (
+            "Zero-phase filtering and updating filter states is not supported"
+        )
         assert signal.sampling_rate_hz == self.sampling_rate_hz, (
             "Sampling rates do not match"
         )
         if activate_zi:
             if len(self.filters[0].zi) != signal.number_of_channels:
                 self.initialize_zi(signal.number_of_channels)
-        new_sig = _crossover_downsample(signal, self.filters, mode=mode, down_factor=2)
-        return new_sig
+        return _crossover_downsample(
+            signal, self.filters, mode=mode, zero_phase=zero_phase, down_factor=2
+        )
 
     # ======== Reconstructing =================================================
     def reconstruct_signal(
@@ -1036,8 +1040,7 @@ class BaseCrossover(FilterBank):
         range_hz : array_like, None, optional
             Range of Hz to plot. Default: [20, 20e3].
         zero_phase : bool, optional
-            When `True`, zero-phase filtering is used. Only available when
-            `downsample=False`. Default: `False`.
+            When `True`, zero-phase filtering is used. Default: `False`.
         ax : `matplotlib.axes.Axes`, None, optional
             Axes to draw on, so that several plots can share one axis. A new
             figure is created when None. Default: None.
@@ -1055,7 +1058,6 @@ class BaseCrossover(FilterBank):
             return super().plot_magnitude(
                 length_samples, mode, range_hz, zero_phase, ax
             )
-        assert not zero_phase, "Zero-phase filtering is not available with downsampling"
 
         # If downsampling is activated
         max_order = 0
@@ -1079,7 +1081,9 @@ class BaseCrossover(FilterBank):
 
         # Filtering and plot
         if mode == FilterBankMode.Parallel:
-            bs = self.filter_signal(d, mode=mode, downsample=True)
+            bs = self.filter_signal(
+                d, mode=mode, zero_phase=zero_phase, downsample=True
+            )
             specs = []
             f = bs.bands[0].get_spectrum()[0]
             for b in bs.bands:
@@ -1111,7 +1115,9 @@ class BaseCrossover(FilterBank):
                 ax=ax,
             )
         elif mode == FilterBankMode.Sequential:
-            bs = self.filter_signal(d, mode=mode, downsample=True)
+            bs = self.filter_signal(
+                d, mode=mode, zero_phase=zero_phase, downsample=True
+            )
             bs.spectrum_method = SpectrumMethod.FFT
             f, sp = bs.get_spectrum()
             f, sp = _get_normalized_spectrum(
@@ -1135,7 +1141,9 @@ class BaseCrossover(FilterBank):
                 ax=ax,
             )
         elif mode == FilterBankMode.Summed:
-            bs = self.filter_signal(d, mode=mode, downsample=True)
+            bs = self.filter_signal(
+                d, mode=mode, zero_phase=zero_phase, downsample=True
+            )
             bs.spectrum_method = SpectrumMethod.FFT
             f, sp = bs.get_spectrum()
             f, sp = _get_normalized_spectrum(
@@ -1287,7 +1295,11 @@ class QMFCrossover(BaseCrossover):
 
 
 def _crossover_downsample(
-    signal: Signal, filters: list[Filter], mode: FilterBankMode, down_factor: int = 2
+    signal: Signal,
+    filters: list[Filter],
+    mode: FilterBankMode,
+    zero_phase: bool = False,
+    down_factor: int = 2,
 ) -> Signal | MultiBandSignal:
     """Apply crossover and downsample on signal.
 
@@ -1300,6 +1312,9 @@ def _crossover_downsample(
         have 2 filters.
     mode : FilterBankMode
         Mode of filtering.
+    zero_phase : bool, optional
+        When `True`, each band is filtered forward and backward at the
+        original sampling rate before being decimated. Default: `False`.
     down_factor : int, optional
         Down factor for decimation. Default: 2.
 
@@ -1309,40 +1324,35 @@ def _crossover_downsample(
         New Signal object.
 
     """
-    n_filt = len(filters)
-    assert n_filt == 2, "A crossover should contain exactly 2 filters"
-    if mode == FilterBankMode.Parallel:
-        ss = []
-        for n in range(n_filt):
-            ss.append(
-                filters[n].filter_and_resample_signal(
-                    signal,
-                    new_sampling_rate_hz=signal.sampling_rate_hz // down_factor,
-                )
-            )
-        return MultiBandSignal(ss, same_sampling_rate=True)
-    elif mode == FilterBankMode.Sequential:
+    assert len(filters) == 2, "A crossover should contain exactly 2 filters"
+    if mode == FilterBankMode.Sequential:
         # The first filter already downsamples, so the second one would no
         # longer match the sampling rate of what it is handed
         raise ValueError(
             "Sequential filtering combined with downsampling is an invalid "
             + "operation"
         )
-    new_time_data = np.zeros(
-        (
-            signal.time_data.shape[0] // down_factor,
-            signal.number_of_channels,
-            n_filt,
-        )
+    new_sampling_rate_hz = signal.sampling_rate_hz // down_factor
+
+    def filter_and_downsample(filt: Filter) -> Signal:
+        if not zero_phase:
+            return filt.filter_and_resample_signal(signal, new_sampling_rate_hz)
+
+        # Forward-backward filtering needs the whole band at the original
+        # sampling rate, so the decimation can only happen afterwards
+        band = filt.filter_signal(signal, zero_phase=True)
+        band = band.copy_with_new_time_data(band.time_data[::down_factor, :])
+        band.sampling_rate_hz = new_sampling_rate_hz
+        return band
+
+    bands = [filter_and_downsample(f) for f in filters]
+    if mode == FilterBankMode.Parallel:
+        return MultiBandSignal(bands, same_sampling_rate=True)
+
+    out_sig = signal.copy_with_new_time_data(
+        np.sum([b.time_data for b in bands], axis=0)
     )
-    for n in range(n_filt):
-        s = filters[n].filter_and_resample_signal(
-            signal,
-            new_sampling_rate_hz=signal.sampling_rate_hz // down_factor,
-        )
-        new_time_data[:, :, n] = s.time_data
-    out_sig = signal.copy_with_new_time_data(np.sum(new_time_data, axis=-1))
-    out_sig.sampling_rate_hz = signal.sampling_rate_hz // down_factor
+    out_sig.sampling_rate_hz = new_sampling_rate_hz
     return out_sig
 
 

@@ -69,6 +69,16 @@ select = [
 # already imported. Don't let the import sorter alphabetize this.
 "dsptoolbox/__init__.py" = ["I001"]
 
+[tool.mypy]
+python_version = "3.11"
+
+# scipy and seaborn ship no type information, so every call into them is
+# already `Any` to mypy. Reporting the missing stubs on top of that is pure
+# noise and hides the findings that are actually about this package.
+[[tool.mypy.overrides]]
+module = ["scipy.*", "seaborn.*", "sounddevice.*", "soundfile.*", "numba.*"]
+ignore_missing_imports = true
+
 [tool.hatch.version]
 path = "dsptoolbox/__init__.py"
 

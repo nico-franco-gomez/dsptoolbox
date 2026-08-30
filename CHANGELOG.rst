@@ -113,6 +113,10 @@ Added
 - `ax` on `Regular3DGrid.plot_map`, which the other plots already had
 - Diagonal loading in `BeamformerMVDR`, relative to the mean sensor power of
   each frequency bin
+- Zero-phase filtering combined with downsampling in the crossovers, which
+  used to raise. Forward-backward filtering cannot use the polyphase
+  decimation, so each band is filtered at the original sampling rate and
+  decimated afterwards
 
 Bugfix
 ~~~~~~

@@ -573,6 +573,63 @@ class TestFilterbanksModule:
         # The base class arguments must still get through (A10)
         _, ax = subplots(1, 1)
         fb.plot_magnitude(512, dsp.FilterBankMode.Parallel, ax=ax)
-        fb.plot_magnitude(
-            512, dsp.FilterBankMode.Parallel, zero_phase=True, downsample=False
+        for downsample in (True, False):
+            fb.plot_magnitude(
+                512,
+                dsp.FilterBankMode.Parallel,
+                zero_phase=True,
+                downsample=downsample,
+            )
+        close("all")
+
+    def test_crossover_zero_phase_downsampling(self):
+        """Forward-backward filtering cannot use the polyphase decimation, so
+        each band is filtered at the original rate and decimated afterwards.
+        That must be exactly `filtfilt` followed by decimation, and it must
+        leave the band symmetric around the impulse.
+
+        """
+        rng = np.random.default_rng(0)
+        td = rng.normal(0, 0.1, (2048, 2))
+        s = dsp.Signal(None, td, self.fs, constrain_amplitude=False)
+
+        lp = dsp.Filter.from_ba(sig.firwin(31, 0.5), [1.0], self.fs)
+        fb = dsp.filterbanks.qmf_crossover(lp)
+
+        bands = fb.filter_signal(
+            s, dsp.FilterBankMode.Parallel, zero_phase=True, downsample=True
         )
+        summed = fb.filter_signal(
+            s, dsp.FilterBankMode.Summed, zero_phase=True, downsample=True
+        )
+        assert all(b.sampling_rate_hz == self.fs // 2 for b in bands.bands)
+        assert summed.sampling_rate_hz == self.fs // 2
+
+        reference = []
+        for filt in fb.filters:
+            b, a = filt.get_coefficients(dsp.FilterCoefficientsType.Ba)
+            reference.append(sig.filtfilt(b, a, td, axis=0)[::2])
+        for band, expected in zip(bands.bands, reference, strict=True):
+            np.testing.assert_allclose(band.time_data, expected, atol=1e-12)
+        np.testing.assert_allclose(summed.time_data, sum(reference), atol=1e-12)
+
+        # A centered impulse stays centered, unlike with causal filtering
+        delay = 256
+        d = dsp.ImpulseResponse.from_time_data(
+            np.eye(2 * delay + 1, 1, -delay), self.fs
+        )
+        low_band = fb.filter_signal(
+            d, dsp.FilterBankMode.Parallel, zero_phase=True, downsample=True
+        ).bands[0]
+        td_low = low_band.time_data[:, 0]
+        np.testing.assert_allclose(td_low, td_low[::-1], atol=1e-12)
+
+        # Filter states cannot be carried through forward-backward filtering
+        with pytest.raises(AssertionError):
+            fb.filter_signal(
+                s,
+                dsp.FilterBankMode.Parallel,
+                activate_zi=True,
+                zero_phase=True,
+                downsample=True,
+            )
