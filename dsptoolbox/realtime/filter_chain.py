@@ -1,3 +1,6 @@
+import numpy as np
+from numpy.typing import NDArray
+
 from .realtime_filter import RealtimeFilter
 
 
@@ -33,3 +36,10 @@ class FilterChain(RealtimeFilter):
         for f in self.filters:
             x = f.process_sample(x, channel)
         return x
+
+    def process_block(
+        self, block: NDArray[np.float64], channel: int
+    ) -> NDArray[np.float64]:
+        for f in self.filters:
+            block = f.process_block(block, channel)
+        return block

@@ -16,7 +16,7 @@ class TestLatticeLadderFilter:
         # Example values taken from Oppenheim, A. V., Schafer, R. W.,,
         # Buck, J. R. (1999). Discrete-Time Signal Processing.
         # Prentice-hall Englewood Cliffs.
-        from dsptoolbox.classes.lattice_ladder_filter import (
+        from dsptoolbox.realtime.lattice_ladder_filter import (
             _get_lattice_ladder_coefficients_iir,
         )
 
@@ -32,13 +32,13 @@ class TestLatticeLadderFilter:
         n = dsp.generators.noise(length_seconds=1.0, sampling_rate_hz=200, rng=0)
         expected = sig.lfilter(self.b / 10, self.a, n.time_data.squeeze())
 
-        from dsptoolbox.classes.lattice_ladder_filter import (
+        from dsptoolbox.realtime.lattice_ladder_filter import (
             _get_lattice_ladder_coefficients_iir,
         )
 
         k, c = _get_lattice_ladder_coefficients_iir(self.b / 10, self.a)
 
-        f = dsp.filterbanks.LatticeLadderFilter(k, c, sampling_rate_hz=200)
+        f = dsp.realtime.LatticeLadderFilter(k, c, sampling_rate_hz=200)
         out = f.filter_signal(n)
         out = out.time_data.squeeze()
         assert np.all(np.isclose(expected, out))
@@ -54,29 +54,23 @@ class TestLatticeLadderFilter:
             frequency_hz=1000,
             sampling_rate_hz=fs,
         )
-        new_f = dsp.filterbanks.LatticeLadderFilter.from_filter(f)
+        new_f = dsp.realtime.LatticeLadderFilter.from_filter(f)
         n1 = f.filter_signal(n).time_data.squeeze()
         n2 = new_f.filter_signal(n).time_data.squeeze()
         assert np.all(np.isclose(n1, n2))
 
         # BA
         b, a = f.get_coefficients(dsp.FilterCoefficientsType.Ba)
-        f2 = dsp.Filter(
-            {dsp.FilterCoefficientsType.Ba: [b, a]},
-            f.sampling_rate_hz,
-        )
-        new_f = dsp.filterbanks.LatticeLadderFilter.from_filter(f2)
+        f2 = dsp.Filter.from_ba(b, a, f.sampling_rate_hz)
+        new_f = dsp.realtime.LatticeLadderFilter.from_filter(f2)
         n1 = f2.filter_signal(n).time_data.squeeze()
         n2 = new_f.filter_signal(n).time_data.squeeze()
         assert np.all(np.isclose(n1, n2))
 
         # FIR
         n = dsp.generators.noise(length_seconds=1.0, sampling_rate_hz=fs, rng=1)
-        f = dsp.Filter(
-            {dsp.FilterCoefficientsType.Ba: [[1, 13 / 24, 5 / 8, 1 / 3], [1]]},
-            sampling_rate_hz=fs,
-        )
-        new_f = dsp.filterbanks.LatticeLadderFilter.from_filter(f)
+        f = dsp.Filter.from_ba([1, 13 / 24, 5 / 8, 1 / 3], [1], fs)
+        new_f = dsp.realtime.LatticeLadderFilter.from_filter(f)
         n1 = f.filter_signal(n).time_data.squeeze()
         n2 = new_f.filter_signal(n).time_data.squeeze()
         assert np.all(np.isclose(n1, n2))

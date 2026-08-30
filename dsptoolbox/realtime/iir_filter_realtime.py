@@ -1,8 +1,9 @@
 import numpy as np
 from numpy.typing import NDArray
+from scipy.signal import lfilter
 
+from ..classes.filter import Filter
 from ..standard.enums import FilterCoefficientsType
-from .filter import Filter
 from .realtime_filter import RealtimeFilter
 
 
@@ -72,3 +73,15 @@ class IIRFilter(RealtimeFilter):
             )
         self.state[-1, channel] = x * self.b[-1] - y * self.a[-1]
         return y
+
+    def process_block(
+        self, block: NDArray[np.float64], channel: int
+    ) -> NDArray[np.float64]:
+        if self.order == 0:
+            return self.b[0] * block
+
+        # The state of a transposed direct form 2 is exactly lfilter's zi
+        output, self.state[:, channel] = lfilter(
+            self.b, self.a, block, zi=self.state[:, channel]
+        )
+        return output

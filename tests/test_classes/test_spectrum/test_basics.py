@@ -76,21 +76,18 @@ class TestSpectrum:
     def test_save_spectrum_round_trip_and_format_checking(self):
         spec = self.get_spectrum_from_filter()
         with tempfile.TemporaryDirectory() as d:
-            # No extension -> ".pkl" gets appended
-            spec.save_spectrum(join(d, "no_ext"))
-            with open(join(d, "no_ext.pkl"), "rb") as fh:
+            spec.save_spectrum(join(d, "with_ext.pkl"))
+            with open(join(d, "with_ext.pkl"), "rb") as fh:
                 reloaded = pickle.load(fh)
             np.testing.assert_array_equal(
                 reloaded.frequency_vector_hz, spec.frequency_vector_hz
             )
             assert reloaded.number_of_channels == spec.number_of_channels
 
-            # Matching ".pkl" extension is accepted as is
-            spec.save_spectrum(join(d, "with_ext.pkl"))
-            assert os.path.exists(join(d, "with_ext.pkl"))
-
-            # A mismatched extension is rejected
-            with pytest.raises(AssertionError):
+            # The extension is required and has to match
+            with pytest.raises(ValueError):
+                spec.save_spectrum(join(d, "no_ext"))
+            with pytest.raises(ValueError):
                 spec.save_spectrum(join(d, "wrong_ext.txt"))
 
     def test_trim(self):

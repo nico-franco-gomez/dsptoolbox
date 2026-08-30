@@ -176,8 +176,7 @@ class TestGeneratorsModule:
             )
 
         nominal_duration_seconds = 1.0
-        _, sync_duration_seconds = dsp.generators.chirp(
-            type_of_chirp=dsp.generators.ChirpType.SyncLog,
+        sync_chirp, sync_duration_seconds = dsp.generators.sync_log_chirp(
             range_hz=[20, 4e3],
             length_seconds=nominal_duration_seconds,
             sampling_rate_hz=10_000,
@@ -187,6 +186,10 @@ class TestGeneratorsModule:
             padding_end_seconds=1,
         )
         assert abs(nominal_duration_seconds - sync_duration_seconds) < 0.1
+        # The sweep keeps its effective length; only the padding is added
+        assert sync_chirp.length_samples == (
+            int(sync_duration_seconds * 10_000 + 0.5) + 10_000
+        )
 
     def test_noise_psd_slope_matches_beta(self):
         """Per the docstring, `psd * frequency**(-beta)`, i.e. the PSD's

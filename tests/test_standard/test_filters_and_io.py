@@ -16,20 +16,18 @@ class TestStandardModule:
             type_of_pass=dsp.FilterPassType.Highpass,
             sampling_rate_hz=self.fs,
         )
-        f.save_filter(os.path.join("tests", "f"))
+        f.save_filter(os.path.join("tests", "f.pkl"))
 
-        # Format is inferred/checked the same way with or without the
-        # extension already present in `path`
-        reloaded_no_ext = dsp.load_pkl_object(os.path.join("tests", "f"))
-        reloaded_with_ext = dsp.load_pkl_object(os.path.join("tests", "f.pkl"))
-        for reloaded in (reloaded_no_ext, reloaded_with_ext):
-            assert type(reloaded) is dsp.Filter
-            np.testing.assert_array_equal(reloaded.ba[0], f.ba[0])
-            np.testing.assert_array_equal(reloaded.ba[1], f.ba[1])
+        reloaded = dsp.load_pkl_object(os.path.join("tests", "f.pkl"))
+        assert type(reloaded) is dsp.Filter
+        np.testing.assert_array_equal(reloaded.ba[0], f.ba[0])
+        np.testing.assert_array_equal(reloaded.ba[1], f.ba[1])
 
-        with pytest.raises(AssertionError):
-            # Mismatched extension is rejected before even trying to open
-            # the file
+        # A missing or mismatched extension is rejected before even trying
+        # to open the file
+        with pytest.raises(ValueError):
+            dsp.load_pkl_object(os.path.join("tests", "f"))
+        with pytest.raises(ValueError):
             dsp.load_pkl_object(os.path.join("tests", "f.txt"))
 
         os.remove(os.path.join("tests", "f.pkl"))

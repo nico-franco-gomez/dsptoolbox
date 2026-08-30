@@ -55,6 +55,7 @@ class FIRFilter(RealtimeFilter):
 
     def reset_state(self):
         self.state.fill(0.0)
+        self.current_state_ind.fill(0)
 
     def process_sample(self, x: float, channel: int):
         """Process a sample."""
@@ -68,6 +69,25 @@ class FIRFilter(RealtimeFilter):
         self.state[write_index, channel] = x
         self.current_state_ind[channel] = write_index
         return y
+
+    def process_block(
+        self, block: NDArray[np.float64], channel: int
+    ) -> NDArray[np.float64]:
+        if self.order == 0:
+            return self.b[0] * block
+
+        # Unroll the circular buffer into the oldest-first delay line that the
+        # convolution expects, and rewrite it from the block's tail afterwards
+        delay_line = self.state[
+            (self.current_state_ind[channel] - np.arange(self.order)) % self.order,
+            channel,
+        ][::-1]
+        extended = np.concatenate((delay_line, block))
+        output = np.convolve(extended, self.b)[self.order : self.order + len(block)]
+
+        self.state[:, channel] = extended[-self.order :]
+        self.current_state_ind[channel] = self.order - 1
+        return output
 
 
 class FIRFilterOverlapSave(RealtimeFilter):
@@ -261,15 +281,23 @@ class FIRUniformPartitionedMultichannel(FIRUniformPartitioned):
         # Bring into standard form
         self.fir = Signal.from_time_data(fir, 10000).time_data
 
-    def prepare(self, blocksize_samples: int):  # type: ignore
+    def prepare(self, blocksize_samples: int, n_channels: int | None = None):
         """Prepares the processing.
 
         Parameters
         ----------
         blocksize_samples : int
-            Block size to use
+            Block size to use.
+        n_channels : int, None, optional
+            The number of channels is defined by the filter itself. When it is
+            passed, it is only checked against it. Default: None.
 
         """
+        if n_channels is not None:
+            assert n_channels == self.fir.shape[1], (
+                f"This filter processes {self.fir.shape[1]} channels, "
+                + f"not {n_channels}"
+            )
         self.blocksize = blocksize_samples
         self.fft_size = blocksize_samples * 2
         self.__prepare_partitions()
@@ -298,7 +326,7 @@ class FIRUniformPartitionedMultichannel(FIRUniformPartitioned):
         )
         self.input_buffer = np.zeros((self.fft_size, self.n_channels))
 
-    def process_block(self, block: NDArray[np.float64]):  # type: ignore
+    def process_block(self, block: NDArray[np.float64], channel: int = -1):
         """Process an input block.
 
         Parameters
@@ -306,6 +334,10 @@ class FIRUniformPartitionedMultichannel(FIRUniformPartitioned):
         block : NDArray[np.float64]
             Block with input data. It is expected to have shape (time samples,
             channels) and always contain all channels to process.
+        channel : int, optional
+            Ignored, every channel is always processed at once. It is only
+            accepted so that this class can be used through the
+            `RealtimeFilter` interface. Default: -1.
 
         Returns
         -------

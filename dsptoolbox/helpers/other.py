@@ -1,4 +1,4 @@
-from os import sep
+from os.path import splitext
 
 import numpy as np
 from numpy.typing import NDArray
@@ -67,30 +67,33 @@ def _toeplitz(h: NDArray[np.float64], length_of_input: int) -> NDArray[np.float6
     return toeplitz_scipy(c=column, r=row)
 
 
-def _check_format_in_path(path: str, desired_format: str) -> str:
-    """Checks if a given path already has a format and it matches the desired
-    format. If not, an assertion error is raised. If the path does not have
-    any format, the desired one is added.
+def _get_path_extension(path: str) -> str:
+    """Return the lower-case extension of a path, without the leading dot."""
+    return splitext(path)[1].lower().lstrip(".")
+
+
+def _check_path_format(path: str, expected_format: str) -> None:
+    """Ensure that a path carries the expected file extension.
 
     Parameters
     ----------
     path : str
         Path of file.
-    desired_format : str
-        Format that the file should have.
+    expected_format : str
+        Extension that the path must have, without the leading dot.
 
-    Returns
-    -------
-    str
-        Path with the desired format.
+    Raises
+    ------
+    ValueError
+        When the path has no extension or a different one.
 
     """
-    format = path.split(sep)[-1].split(".")
-    if len(format) != 1:
-        assert format[-1] == desired_format, f"{format[-1]} is not the desired format"
-    else:
-        path += f".{desired_format}"
-    return path
+    extension = _get_path_extension(path)
+    if extension != expected_format:
+        raise ValueError(
+            f"The path must end in '.{expected_format}', but it "
+            + (f"ends in '.{extension}'" if extension else "has no extension")
+        )
 
 
 def _get_next_power_2(number, mode: str = "closest") -> int:

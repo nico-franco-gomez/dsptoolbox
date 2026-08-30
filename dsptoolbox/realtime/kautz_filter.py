@@ -3,11 +3,11 @@ from numpy.typing import NDArray
 from scipy.linalg import lstsq
 from scipy.signal import lfilter
 
+from ..classes.impulse_response import ImpulseResponse
+from ..classes.signal import Signal
 from ..generators import dirac
 from .iir_filter_realtime import IIRFilter
-from .impulse_response import ImpulseResponse
 from .realtime_filter import RealtimeFilter
-from .signal import Signal
 
 
 class KautzFilter(RealtimeFilter):

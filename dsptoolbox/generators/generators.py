@@ -5,6 +5,7 @@ used
 """
 
 import numpy as np
+from numpy.typing import NDArray
 
 from ..classes.filter_helpers import _impulse
 from ..classes.impulse_response import ImpulseResponse
@@ -151,6 +152,67 @@ def noise(
     return noise_sig
 
 
+def _check_chirp_parameters(
+    range_hz, sampling_rate_hz: int, padding_end_seconds: float
+) -> tuple[list[float], int]:
+    """Validate the frequency range and padding shared by the chirps."""
+    if range_hz is not None:
+        assert len(range_hz) == 2, "range_hz has to contain exactly two frequencies"
+        range_hz = sorted(range_hz)
+        assert range_hz[0] > 0, (
+            "Range has to start with positive frequencies excluding 0"
+        )
+        assert range_hz[1] <= sampling_rate_hz // 2, (
+            "Upper limit for frequency range cannot be bigger than the "
+            + "nyquist frequency"
+        )
+    else:
+        range_hz = [15, sampling_rate_hz // 2]
+
+    assert padding_end_seconds >= 0, "Padding has to be a positive time"
+    return range_hz, int(padding_end_seconds * sampling_rate_hz)
+
+
+def _assemble_chirp(
+    chirp_td: NDArray[np.float64],
+    sampling_rate_hz: int,
+    length_seconds: float,
+    peak_level_dbfs: float,
+    fade: FadeType,
+    number_of_channels: int,
+    total_length_samples: int,
+) -> Signal:
+    """Normalize, fade, pad and channel-expand a raw chirp time series."""
+    chirp_td = _normalize(
+        chirp_td, peak_level_dbfs, peak_normalization=True, per_channel=True
+    )
+
+    if fade is not None:
+        fade_length = 0.05 * length_seconds
+        chirp_td = _fade(
+            s=chirp_td,
+            length_seconds=fade_length,
+            mode=fade,
+            sampling_rate_hz=sampling_rate_hz,
+            at_start=True,
+        )
+        chirp_td = _fade(
+            s=chirp_td,
+            length_seconds=fade_length,
+            mode=fade,
+            sampling_rate_hz=sampling_rate_hz,
+            at_start=False,
+        )
+
+    chirp_td = _pad_trim(chirp_td, total_length_samples)
+
+    chirp_n = chirp_td[..., None]
+    if number_of_channels != 1:
+        chirp_n = np.repeat(chirp_n, repeats=number_of_channels, axis=1)
+
+    return Signal(None, chirp_n, sampling_rate_hz)
+
+
 def chirp(
     sampling_rate_hz: int,
     type_of_chirp: ChirpType = ChirpType.Logarithmic,
@@ -161,7 +223,7 @@ def chirp(
     fade: FadeType = FadeType.Logarithmic,
     phase_offset: float = 0.0,
     padding_end_seconds: float = 0.0,
-) -> Signal | tuple[Signal, float]:
+) -> Signal:
     """Creates a sine-sweep signal.
 
     Parameters
@@ -190,45 +252,24 @@ def chirp(
 
     Returns
     -------
-    chirp_sig : `Signal`
-        Chirp Signal object.
-    chirp_duration_seconds : float
-        Effective chirp duration. This is only returned if the chirp is of
-        type "sync-log" because the provided length might differ slightly.
+    Signal
+        Chirp signal.
 
     Notes
     -----
-    - The "sync-log" chirp is defined according to [2] and ensures that the
-      harmonic responses have coherent phase with the linear response.
+    - For a chirp whose harmonic responses have coherent phase with the
+      linear response, use `sync_log_chirp()`.
 
     References
     ----------
     - https://de.wikipedia.org/wiki/Chirp
-    - [2]: Antonin Novak, Laurent Simon, Pierrick Lotton. Synchronized
-      Swept-Sine: Theory, Application and Implementation.
 
     """
-    if range_hz is not None:
-        assert len(range_hz) == 2, "range_hz has to contain exactly two frequencies"
-        range_hz = sorted(range_hz)
-        assert range_hz[0] > 0, (
-            "Range has to start with positive frequencies excluding 0"
-        )
-        assert range_hz[1] <= sampling_rate_hz // 2, (
-            "Upper limit for frequency range cannot be bigger than the "
-            + "nyquist frequency"
-        )
-    else:
-        range_hz = [15, sampling_rate_hz // 2]
-    if padding_end_seconds != 0:
-        assert padding_end_seconds > 0, "Padding has to be a positive time"
-        p_samples = int(padding_end_seconds * sampling_rate_hz)
-    else:
-        p_samples = 0
+    range_hz, p_samples = _check_chirp_parameters(
+        range_hz, sampling_rate_hz, padding_end_seconds
+    )
     l_samples = int(sampling_rate_hz * length_seconds + 0.5)
-
-    if type_of_chirp != ChirpType.SyncLog:
-        t = np.arange(l_samples, dtype=np.float64) / sampling_rate_hz
+    t = np.arange(l_samples, dtype=np.float64) / sampling_rate_hz
 
     match type_of_chirp:
         case ChirpType.Linear:
@@ -240,40 +281,86 @@ def chirp(
             chirp_td = np.sin(
                 2 * np.pi * range_hz[0] / np.log(k) * (k**t - 1) + phase_offset
             )
-        case ChirpType.SyncLog:
-            chirp_td, T = _sync_log_chirp(range_hz, length_seconds, sampling_rate_hz)
         case _:
             raise ValueError("Unsupported chirp type")
 
-    chirp_td = _normalize(
-        chirp_td, peak_level_dbfs, peak_normalization=True, per_channel=True
+    return _assemble_chirp(
+        chirp_td,
+        sampling_rate_hz,
+        length_seconds,
+        peak_level_dbfs,
+        fade,
+        number_of_channels,
+        l_samples + p_samples,
     )
 
-    if fade is not None:
-        fade_length = 0.05 * length_seconds
-        chirp_td = _fade(
-            s=chirp_td,
-            length_seconds=fade_length,
-            mode=fade,
-            sampling_rate_hz=sampling_rate_hz,
-            at_start=True,
-        )
-        chirp_td = _fade(
-            s=chirp_td,
-            length_seconds=fade_length,
-            mode=fade,
-            sampling_rate_hz=sampling_rate_hz,
-            at_start=False,
-        )
 
-    chirp_td = _pad_trim(chirp_td, l_samples + p_samples)
+def sync_log_chirp(
+    sampling_rate_hz: int,
+    range_hz=None,
+    length_seconds: float = 1.0,
+    peak_level_dbfs: float = -10.0,
+    number_of_channels: int = 1,
+    fade: FadeType = FadeType.Logarithmic,
+    padding_end_seconds: float = 0.0,
+) -> tuple[Signal, float]:
+    """Create a synchronized logarithmic sine-sweep, i.e. one whose harmonic
+    responses have coherent phase with the linear response.
 
-    chirp_n = chirp_td[..., None]
-    if number_of_channels != 1:
-        chirp_n = np.repeat(chirp_n, repeats=number_of_channels, axis=1)
+    Parameters
+    ----------
+    sampling_rate_hz : int
+        Sampling rate in Hz.
+    range_hz : array-like with length 2
+        Define range of chirp in Hz. When `None`, all frequencies between
+        15 Hz and nyquist are taken. Default: `None`.
+    length_seconds : float, optional
+        Requested length of the chirp in seconds. The effective length differs
+        slightly, since the sweep has to end on a whole number of cycles.
+        Default: 1.
+    peak_level_dbfs : float, optional
+        Peak level of the signal in dBFS. Default: -10.
+    number_of_channels : int, optional
+        Number of channels (with the same chirp) to be created. Default: 1.
+    fade : FadeType, optional
+        Type of fade done on the generated signal. By default, 10% of signal
+        length (without the padding in the end) is faded at the beginning and
+        end. Default: Logarithmic.
+    padding_end_seconds : float, optional
+        Padding at the end of signal. Default: 0.
 
-    chirp_sig = Signal(None, chirp_n, sampling_rate_hz)
-    return (chirp_sig, T) if type_of_chirp == ChirpType.SyncLog else chirp_sig
+    Returns
+    -------
+    chirp_sig : Signal
+        Chirp signal with the effective length plus the requested padding.
+    chirp_duration_seconds : float
+        Effective chirp duration, which differs slightly from
+        `length_seconds`.
+
+    References
+    ----------
+    - [1]: Antonin Novak, Laurent Simon, Pierrick Lotton. Synchronized
+      Swept-Sine: Theory, Application and Implementation.
+
+    """
+    range_hz, p_samples = _check_chirp_parameters(
+        range_hz, sampling_rate_hz, padding_end_seconds
+    )
+    chirp_td, effective_length_seconds = _sync_log_chirp(
+        range_hz, length_seconds, sampling_rate_hz
+    )
+    return (
+        _assemble_chirp(
+            chirp_td,
+            sampling_rate_hz,
+            effective_length_seconds,
+            peak_level_dbfs,
+            fade,
+            number_of_channels,
+            len(chirp_td) + p_samples,
+        ),
+        effective_length_seconds,
+    )
 
 
 def dirac(

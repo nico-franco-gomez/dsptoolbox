@@ -10,7 +10,7 @@ from scipy.integrate import trapezoid
 
 from .. import plots
 from ..helpers.gain_and_level import from_db, to_db
-from ..helpers.other import _check_format_in_path, _pad_trim
+from ..helpers.other import _check_path_format, _pad_trim
 from ..helpers.spectrum_utilities import (
     _get_normalization_offset_db,
     _warp_frequency_vector,
@@ -1136,7 +1136,7 @@ class Spectrum(MultichannelData):
             (it can be passed with .pkl at the end or without it).
 
         """
-        path = _check_format_in_path(path, "pkl")
+        _check_path_format(path, "pkl")
         with open(path, "wb") as data_file:
             dump(self, data_file, HIGHEST_PROTOCOL)
         return self

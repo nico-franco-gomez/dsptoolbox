@@ -29,13 +29,14 @@ class MultichannelData(ABC):
     def __len__(self):
         return self._get_data().shape[0]
 
-    def remove_channel(self, channel_number: int = -1):
+    def remove_channel(self, channel_number: int | None = None):
         """Return a copy with a channel removed.
 
         Parameters
         ----------
-        channel_number : int, optional
-            Channel number to be removed. Default: -1 (last).
+        channel_number : int, None, optional
+            Channel number to be removed. Pass None to remove the last one.
+            Default: None.
 
         Returns
         -------
@@ -43,12 +44,12 @@ class MultichannelData(ABC):
 
         """
         data = self._get_data()
-        if channel_number == -1:
-            channel_number = data.shape[1] - 1
-        assert data.shape[1] > 1, "Cannot not erase only channel"
-        assert data.shape[1] - 1 >= channel_number, (
-            f"Channel number {channel_number} does not exist. Signal only "
-            + f"has {self.number_of_channels - 1} channels (zero included)."
+        if channel_number is None:
+            channel_number = data.shape[-1] - 1
+        assert data.shape[-1] > 1, "The only channel cannot be removed"
+        assert channel_number in range(data.shape[-1]), (
+            f"Channel number {channel_number} does not exist. There are "
+            + f"{data.shape[-1]} channels (zero included)."
         )
         return self._create_copy_with_new_data(np.delete(data, channel_number, axis=-1))
 
@@ -80,35 +81,33 @@ class MultichannelData(ABC):
         assert len(np.unique(new_order)) == len(new_order), (
             "There are repeated indexes in the new order vector"
         )
-        return self._create_copy_with_new_data(self._get_data()[:, new_order])
+        return self._create_copy_with_new_data(self._get_data()[..., new_order])
 
     def get_channels(self, channels: int | ArrayLike):
-        """Returns a signal object with the selected channels. Beware that
+        """Returns a new object with the selected channels. Beware that the
         first channel index is 0!
 
         Parameters
         ----------
         channels : ArrayLike or int
-            Channels to be returned as a new Signal object.
+            Channels to be returned in the new object.
 
         Returns
         -------
-        new_sig : `Signal`
-            New signal object with selected channels.
+        New object of the same type, with the selected channels.
 
         """
         channels = np.atleast_1d(np.asarray(channels).squeeze())
-        return self._create_copy_with_new_data(self._get_data()[:, channels])
+        return self._create_copy_with_new_data(self._get_data()[..., channels])
 
     def sum_channels(self):
-        """Return a copy of the signal where all channels are summed into one.
+        """Return a copy where all channels are summed into one.
 
         Returns
         -------
-        Signal
-            New signal with a single channel.
+        New object of the same type, with a single channel.
 
         """
         return self._create_copy_with_new_data(
-            np.sum(self._get_data(), axis=1, keepdims=True)
+            np.sum(self._get_data(), axis=-1, keepdims=True)
         )

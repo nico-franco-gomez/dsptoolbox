@@ -4,7 +4,6 @@ Signal class
 
 from copy import deepcopy
 from fractions import Fraction
-from os.path import splitext
 from pickle import HIGHEST_PROTOCOL, dump
 from typing import TYPE_CHECKING, Self
 from warnings import warn
@@ -25,6 +24,7 @@ if TYPE_CHECKING:
 from ..helpers.gain_and_level import _fade, _normalize, from_db, to_db
 from ..helpers.latency import _apply_ir_latency_removal_to_phase
 from ..helpers.other import (
+    _get_path_extension,
     _pad_trim,
     find_nearest_points_index_in_vector,
 )
@@ -126,26 +126,46 @@ class Signal(MultichannelData):
         self._set_spectrogram_parameters()
 
     @staticmethod
-    def from_file(path: str):
+    def from_file(
+        path: str,
+        constrain_amplitude: bool = False,
+        activate_cache: bool = False,
+    ):
         """Create a signal from a path to a wav or flac audio file.
 
         Parameters
         ----------
         path : str
             Path to file.
+        constrain_amplitude : bool, optional
+            When `True`, audio is normalized to 0 dBFS peak level in case that
+            there are amplitude values greater than 1. Otherwise, there is no
+            normalization and the audio data is not constrained to [-1, 1].
+            A warning is always shown when audio gets normalized and the used
+            normalization factor is saved as `amplitude_scale_factor`.
+            Default: `False`.
+        activate_cache : bool, optional
+            When True, spectra, CSM and STFT will be cached. They will not
+            be computed again if no parameters have changed. Set to False to
+            avoid caching altogether. Default: False.
 
         Returns
         -------
         Signal
 
         """
-        return Signal(path)
+        return Signal(
+            path,
+            constrain_amplitude=constrain_amplitude,
+            activate_cache=activate_cache,
+        )
 
     @staticmethod
     def from_time_data(
         time_data: NDArray[np.float64],
         sampling_rate_hz: int,
-        constrain_amplitude: bool = True,
+        constrain_amplitude: bool = False,
+        activate_cache: bool = False,
     ):
         """Create a signal from an array of PCM samples.
 
@@ -162,14 +182,20 @@ class Signal(MultichannelData):
             normalization and the audio data is not constrained to [-1, 1].
             A warning is always shown when audio gets normalized and the used
             normalization factor is saved as `amplitude_scale_factor`.
-            Default: `True`.
+            Default: `False`.
+        activate_cache : bool, optional
+            When True, spectra, CSM and STFT will be cached. They will not
+            be computed again if no parameters have changed. Set to False to
+            avoid caching altogether. Default: False.
 
         Returns
         -------
         Signal
 
         """
-        return Signal(None, time_data, sampling_rate_hz, constrain_amplitude)
+        return Signal(
+            None, time_data, sampling_rate_hz, constrain_amplitude, activate_cache
+        )
 
     def __update_state(self):
         """Internal update of object state. If for instance time data gets
@@ -1622,7 +1648,7 @@ class Signal(MultichannelData):
             `'wav'`. Default: 32.
 
         """
-        extension = splitext(path)[1].lower().lstrip(".")
+        extension = _get_path_extension(path)
         if extension in ("wav", "flac"):
             if bit_depth == 32:
                 subtype = "FLOAT"

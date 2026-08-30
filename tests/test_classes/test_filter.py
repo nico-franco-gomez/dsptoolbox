@@ -64,19 +64,13 @@ class TestFilterClass:
 
     def test_create_from_coefficients(self):
         # FIR
-        f = dsp.Filter(
-            filter_coefficients={dsp.FilterCoefficientsType.Ba: [self.fir, 1]},
-            sampling_rate_hz=self.fs,
-        )
+        f = dsp.Filter.from_ba(self.fir, 1, self.fs)
         assert f.is_fir
         b, _ = f.ba
         assert np.all(b == self.fir)
 
         # IIR
-        f = dsp.Filter(
-            filter_coefficients={dsp.FilterCoefficientsType.Sos: self.iir},
-            sampling_rate_hz=self.fs,
-        )
+        f = dsp.Filter.from_sos(self.iir, self.fs)
         assert f.is_iir
         sos = f.sos
         assert np.all(sos == self.iir)
@@ -221,28 +215,20 @@ class TestFilterClass:
         np.testing.assert_array_equal(f_ch1.ba[0], stereo_ir.time_data[:, 1])
 
     def test_save_filter_round_trip_and_format_checking(self):
-        """`save_filter` always saves as pickle: it appends `.pkl` when
-        `path` has no extension, and asserts that an existing extension
-        already matches (per `_check_format_in_path`).
-
-        """
+        """Every `save_*` method in the library takes the format from the
+        path's extension, which has to be present and correct."""
         f = self.get_fir()
         with tempfile.TemporaryDirectory() as d:
-            # No extension -> ".pkl" gets appended
-            f.save_filter(join(d, "no_ext"))
-            with open(join(d, "no_ext.pkl"), "rb") as fh:
+            f.save_filter(join(d, "with_ext.pkl"))
+            with open(join(d, "with_ext.pkl"), "rb") as fh:
                 reloaded = pickle.load(fh)
             np.testing.assert_array_equal(reloaded.ba[0], f.ba[0])
             np.testing.assert_array_equal(reloaded.ba[1], f.ba[1])
             assert reloaded.sampling_rate_hz == f.sampling_rate_hz
 
-            # Matching ".pkl" extension is accepted as is
-            f.save_filter(join(d, "with_ext.pkl"))
-            assert os.path.exists(join(d, "with_ext.pkl"))
-
-            # A mismatched extension is rejected instead of silently
-            # overwritten or renamed
-            with pytest.raises(AssertionError):
+            with pytest.raises(ValueError):
+                f.save_filter(join(d, "no_ext"))
+            with pytest.raises(ValueError):
                 f.save_filter(join(d, "wrong_ext.txt"))
 
     def test_other_functionalities(self):
@@ -313,10 +299,7 @@ class TestFilterClass:
             fs=self.fs,
             window="flattop",
         )
-        f = dsp.Filter(
-            filter_coefficients={dsp.FilterCoefficientsType.Ba: [b, 1]},
-            sampling_rate_hz=self.fs,
-        )
+        f = dsp.Filter.from_ba(b, 1, self.fs)
         t_vec = _rng.normal(0, 0.01, self.fs * 2)
 
         t_signal = dsp.Signal(None, t_vec, self.fs)
@@ -335,10 +318,7 @@ class TestFilterClass:
             fs=self.fs,
             window="flattop",
         )
-        f = dsp.Filter(
-            filter_coefficients={dsp.FilterCoefficientsType.Ba: [b, 1]},
-            sampling_rate_hz=self.fs,
-        )
+        f = dsp.Filter.from_ba(b, 1, self.fs)
         assert len(f) == len(b)
 
     def test_order(self):
@@ -349,10 +329,7 @@ class TestFilterClass:
             fs=self.fs,
             window="flattop",
         )
-        f = dsp.Filter(
-            filter_coefficients={dsp.FilterCoefficientsType.Ba: [b, 1]},
-            sampling_rate_hz=self.fs,
-        )
+        f = dsp.Filter.from_ba(b, 1, self.fs)
         assert f.order == len(b) - 1
 
     def test_group_delay(self):
@@ -378,6 +355,7 @@ class TestFilterClass:
         """Passing several coefficient types at once must be rejected."""
         with pytest.raises(AssertionError):
             dsp.Filter(
+                self.fs,
                 {
                     dsp.FilterCoefficientsType.Zpk: (
                         np.array([0.1]),
@@ -389,7 +367,6 @@ class TestFilterClass:
                     ),
                     dsp.FilterCoefficientsType.Ba: [np.array([1.0]), np.array([1.0])],
                 },
-                self.fs,
             )
 
     def test_apply_gain_does_not_modify_original(self):

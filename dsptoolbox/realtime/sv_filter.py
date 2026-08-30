@@ -8,11 +8,11 @@ from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 from numpy.typing import NDArray
 
+from ..classes.multibandsignal import MultiBandSignal
+from ..classes.signal import Signal
 from ..generators import dirac
 from ..standard.enums import SpectrumMethod
-from .multibandsignal import MultiBandSignal
 from .realtime_filter import RealtimeFilter
-from .signal import Signal
 
 
 class StateVariableFilter(RealtimeFilter):
@@ -94,6 +94,32 @@ class StateVariableFilter(RealtimeFilter):
         self.state[1, channel] = self.g * yb + yl
 
         return yl, yh, yb, yl - self.resonance * yb + yh
+
+    def process_block(
+        self, block: NDArray[np.float64], channel: int
+    ) -> NDArray[np.float64]:
+        """Process a block of samples using a specific channel.
+
+        Parameters
+        ----------
+        block : NDArray[np.float64]
+            Block of new samples with a single dimension.
+        channel : int
+            Channel to which the block belongs.
+
+        Returns
+        -------
+        NDArray[np.float64]
+            Filtered block with shape (time sample, band). Unlike the other
+            realtime filters, this one is a multimode filter and delivers the
+            four outputs of `process_sample`: lowpass, highpass, bandpass and
+            allpass, in this order.
+
+        """
+        output = np.zeros((len(block), 4))
+        for index in range(len(block)):
+            output[index, :] = self.process_sample(block[index], channel)
+        return output
 
     def __process_vector(self, input: NDArray[np.float64]) -> NDArray[np.float64]:
         """Process a whole multichannel array. The outputs are a 3d-array with

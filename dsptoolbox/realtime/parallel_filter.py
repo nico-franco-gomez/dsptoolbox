@@ -3,15 +3,15 @@ import scipy.signal as sig
 from numpy.typing import NDArray
 from scipy.linalg import lstsq
 
+from ..classes.filter import Filter
+from ..classes.filterbank import FilterBank
+from ..classes.impulse_response import ImpulseResponse
+from ..classes.signal import Signal
 from ..generators import dirac
 from ..standard.enums import FilterCoefficientsType
-from .filter import Filter
-from .filterbank import FilterBank
 from .fir_filter_realtime import FIRFilter
 from .iir_filter_realtime import IIRFilter
-from .impulse_response import ImpulseResponse
 from .realtime_filter import RealtimeFilter
-from .signal import Signal
 
 
 class ParallelFilter(RealtimeFilter):

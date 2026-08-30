@@ -18,7 +18,6 @@ from .. import Filter, FilterBank
 from ..standard._standard_backend import _kaiser_window_fractional
 from ..standard.enums import (
     BiquadEqType,
-    FilterCoefficientsType,
     FilterPassType,
     IirDesignMethod,
 )
@@ -204,12 +203,7 @@ def reconstructing_fractional_octave_bands(
 
     filters = []
     for i in range(time.shape[0]):
-        filters.append(
-            Filter(
-                {FilterCoefficientsType.Ba: [time[i, :], [1.0]]},
-                sampling_rate_hz=sampling_rate_hz,
-            )
-        )
+        filters.append(Filter.from_ba(time[i, :], [1.0], sampling_rate_hz))
     filt_bank = FilterBank(filters=filters)
 
     return filt_bank
@@ -290,7 +284,7 @@ def auditory_filters_gammatone(
     for bb in range(n_bands):
         sos_section = np.tile(np.atleast_2d([1, 0, 0, 1, -coefficients[bb], 0]), (4, 1))
         sos_section[3, 0] = normalizations[bb]
-        f = Filter({FilterCoefficientsType.Sos: sos_section}, sampling_rate_hz)
+        f = Filter.from_sos(sos_section, sampling_rate_hz)
         f.warning_if_complex = False
         filters.append(f)
 
@@ -634,7 +628,7 @@ def matched_biquad(
         case _:
             raise ValueError("Unsupported Eq type")
 
-    return Filter({FilterCoefficientsType.Ba: ba}, sampling_rate_hz)
+    return Filter.from_ba(ba[0], ba[1], sampling_rate_hz)
 
 
 def gaussian_kernel(

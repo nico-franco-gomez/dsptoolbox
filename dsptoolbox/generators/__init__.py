@@ -3,7 +3,8 @@ Generators
 ----------
 This module contains some utility signal generators. Choose from:
 
-- `chirp()` (sweep)
+- `chirp()` (linear or logarithmic sweep)
+- `sync_log_chirp()` (synchronized logarithmic sweep)
 - `noise()` (white, pink, red, blue, violet, grey)
 - `dirac()` (impulse)
 - `oscillator()`
@@ -11,10 +12,11 @@ This module contains some utility signal generators. Choose from:
 """
 
 from .enums import ChirpType, NoiseType, WaveForm
-from .generators import chirp, dirac, noise, oscillator
+from .generators import chirp, dirac, noise, oscillator, sync_log_chirp
 
 __all__ = [
     "chirp",
+    "sync_log_chirp",
     "noise",
     "dirac",
     "oscillator",

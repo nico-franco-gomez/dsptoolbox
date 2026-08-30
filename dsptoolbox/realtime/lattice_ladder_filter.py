@@ -7,10 +7,10 @@ from warnings import warn
 import numpy as np
 from numpy.typing import NDArray
 
+from ..classes.filter import Filter
+from ..classes.signal import Signal
 from ..standard.enums import FilterCoefficientsType
-from .filter import Filter
 from .realtime_filter import RealtimeFilter
-from .signal import Signal
 
 
 class LatticeLadderFilter(RealtimeFilter):

@@ -1,3 +1,4 @@
+from abc import ABC, abstractmethod
 from collections.abc import Callable
 from warnings import warn
 
@@ -33,8 +34,9 @@ __all__ = [
 ]
 
 
-class AudioEffect:
-    """Base class for audio effects."""
+class AudioEffect(ABC):
+    """Base class for audio effects. Applying an effect always returns a new
+    object and leaves the input untouched."""
 
     def __init__(self, description: str | None = None):
         """Base constructor for an audio effect.
@@ -54,35 +56,33 @@ class AudioEffect:
         Parameters
         ----------
         signal : `Signal` or `MultiBandSignal`
-            Signal to which the effect should be applied.
+            Signal to which the effect should be applied. It is not modified.
 
         Returns
         -------
         modified_signal : `Signal` or `MultiBandSignal`
-            Modified signal.
+            Modified signal of the same type as the input.
 
         """
         if isinstance(signal, Signal):
             return self._apply_this_effect(signal)
-        elif type(signal) is MultiBandSignal:
+
+        if isinstance(signal, MultiBandSignal):
             new_mbs = signal.copy()
-            for i, b in enumerate(new_mbs.bands):
-                new_mbs.bands[i] = self.apply(b)
+            new_mbs.bands = [self._apply_this_effect(b) for b in signal.bands]
             return new_mbs
-        else:
-            raise TypeError(
-                "Audio effect can only be applied to Signal " + "or MultiBandSignal"
-            )
 
+        raise TypeError(
+            "Audio effect can only be applied to Signal or MultiBandSignal"
+        )
+
+    @abstractmethod
     def _apply_this_effect(self, signal: Signal) -> Signal:
-        """Abstract class method to apply the audio effect on a given
-        signal.
+        """Apply the audio effect on a given signal and return a new one."""
 
-        """
-        return signal
-
+    @staticmethod
     def _add_gain_in_db(
-        self, time_data: NDArray[np.float64], gain_db: float
+        time_data: NDArray[np.float64], gain_db: float | None
     ) -> NDArray[np.float64]:
         """General gain stage.
 
@@ -90,52 +90,51 @@ class AudioEffect:
         ----------
         time_data : NDArray[np.float64]
             Time samples of the signal.
-        gain_db : float
-            Gain in dB.
+        gain_db : float, None
+            Gain in dB. None leaves the data unchanged.
 
         Returns
         -------
         new_time_data : NDArray[np.float64]
-            Time data with new gain.
+            Time data with new gain. It is always a new array.
 
         """
         if gain_db is None:
-            return time_data
+            return time_data.copy()
         return time_data * 10 ** (gain_db / 20)
 
-    def _save_peak_values(self, inp: NDArray[np.float64]):
-        """Save the peak values of an input."""
-        self._peak_values = np.max(np.abs(inp), axis=0)
+    @staticmethod
+    def _get_peak_values(inp: NDArray[np.float64]) -> NDArray[np.float64]:
+        """Peak value of each channel."""
+        return np.max(np.abs(inp), axis=0)
 
-    def _restore_peak_values(self, inp: NDArray[np.float64]) -> NDArray[np.float64]:
-        """Restore saved peak values of a signal."""
-        if not hasattr(self, "_peak_values"):
-            return inp
-        if len(self._peak_values) != inp.shape[1]:
+    @staticmethod
+    def _restore_peak_values(
+        inp: NDArray[np.float64], peak_values: NDArray[np.float64]
+    ) -> NDArray[np.float64]:
+        """Scale each channel back to the given peak values."""
+        if len(peak_values) != inp.shape[1]:
             warn(
                 "Number of saved peak values does not match number of "
                 + "channels. Restoring is ignored",
                 stacklevel=2,
             )
             return inp
-        return inp * (self._peak_values / np.max(np.abs(inp), axis=0))
+        return inp * (peak_values / np.max(np.abs(inp), axis=0))
 
-    def _save_rms_values(self, inp: NDArray[np.float64]):
-        """Save the RMS values of a signal."""
-        self._rms_values = _rms(inp)
-
-    def _restore_rms_values(self, inp: NDArray[np.float64]) -> NDArray[np.float64]:
-        """Restore the RMS values of a signal."""
-        if not hasattr(self, "_rms_values"):
-            return inp
-        if len(self._rms_values) != inp.shape[1]:
+    @staticmethod
+    def _restore_rms_values(
+        inp: NDArray[np.float64], rms_values: NDArray[np.float64]
+    ) -> NDArray[np.float64]:
+        """Scale each channel back to the given RMS values."""
+        if len(rms_values) != inp.shape[1]:
             warn(
                 "Number of saved RMS values does not match number of "
                 + "channels. Restoring is ignored",
                 stacklevel=2,
             )
             return inp
-        return inp * (self._rms_values / _rms(inp))
+        return inp * (rms_values / _rms(inp))
 
 
 class SpectralSubtractor(AudioEffect):
@@ -419,12 +418,12 @@ class SpectralSubtractor(AudioEffect):
 
     def _apply_this_effect(self, signal: Signal) -> Signal:
         """Internal method to trigger the effect on a given signal."""
-        self._save_peak_values(signal.time_data)
+        peak_values = self._get_peak_values(signal.time_data)
         if self.adaptive_mode:
             out = self._apply_adaptive_mode(signal)
         else:
             out = self._apply_offline(signal)
-        out.time_data = self._restore_peak_values(out.time_data)
+        out.time_data = self._restore_peak_values(out.time_data, peak_values)
         return out
 
     def _apply_offline(self, signal: Signal) -> Signal:
@@ -735,7 +734,7 @@ class Distortion(AudioEffect):
 
         """
         td = signal.time_data
-        self._save_peak_values(td)
+        peak_values = self._get_peak_values(td)
 
         new_td = np.zeros_like(td)
         for i in range(len(self.__distortion_funcs)):
@@ -745,7 +744,8 @@ class Distortion(AudioEffect):
                 self.__distortion_funcs[i](
                     td, self.distortion_levels[i], self.offset_db[i]
                 )
-                * self.mix[i]
+                * self.mix[i],
+                peak_values,
             )
 
         new_td = self._add_gain_in_db(new_td, self.post_gain_db)
@@ -983,12 +983,12 @@ class Compressor(AudioEffect):
         # Pre-compression gain
         td = self._add_gain_in_db(td, self.pre_gain_db)
 
-        self._save_rms_values(td)
-        self._save_peak_values(td)
+        rms_values = _rms(td)
+        peak_values = self._get_peak_values(td)
 
         # If normalize or absolute
         if self.relative_to_peak_level:
-            td /= self._peak_values
+            td = td / peak_values
 
         attack_time_samples = int(self.attack_time_ms * 1e-3 * fs_hz)
         release_time_samples = int(self.release_time_ms * 1e-3 * fs_hz)
@@ -1006,11 +1006,11 @@ class Compressor(AudioEffect):
 
         # Restore original signal level
         if self.relative_to_peak_level:
-            td *= self._peak_values
+            td = td * peak_values
 
         # Restore RMS
         if self.automatic_make_up_gain:
-            td = self._restore_rms_values(td)
+            td = self._restore_rms_values(td, rms_values)
 
         # Post-compression gain
         td = self._add_gain_in_db(td, self.post_gain_db)
@@ -1306,7 +1306,7 @@ class Chorus(AudioEffect):
 
         # Original time data
         td = _pad_trim(signal.time_data, le + max_delay_samples)
-        self._save_peak_values(td)
+        peak_values = self._get_peak_values(td)
         new_td = np.zeros_like(td)
 
         # Add modulated voices. Could be improved...
@@ -1318,7 +1318,7 @@ class Chorus(AudioEffect):
         # Mix with clean signal
         new_td = new_td * self.mix + td * (1 - self.mix)
 
-        new_td = self._restore_peak_values(_pad_trim(new_td, le))
+        new_td = self._restore_peak_values(_pad_trim(new_td, le), peak_values)
 
         return signal.copy_with_new_time_data(new_td)
 
@@ -1463,7 +1463,7 @@ class DigitalDelay(AudioEffect):
         )
 
         td = signal.time_data
-        self._save_peak_values(td)
+        peak_values = self._get_peak_values(td)
 
         # Pad signal in the end so that some repetitions are added
         padding = int(delay_samples * (1 + self.feedback * 15))
@@ -1474,6 +1474,6 @@ class DigitalDelay(AudioEffect):
                 td[i - delay_samples, :]
             )
 
-        td = self._restore_peak_values(td)
+        td = self._restore_peak_values(td, peak_values)
 
         return signal.copy_with_new_time_data(td)

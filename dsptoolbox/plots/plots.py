@@ -3,14 +3,14 @@ Includes some basic plotting templates
 """
 
 import matplotlib.pyplot as plt
+import numpy as np
 from matplotlib import colormaps as cm
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 from matplotlib.ticker import ScalarFormatter
-from numpy import arange, array, max, min
 from numpy.typing import NDArray
 
-FREQUENCY_TICKS = array(
+FREQUENCY_TICKS = np.array(
     [2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000]
 )
 
@@ -18,6 +18,15 @@ FREQUENCY_TICKS = array(
 def show():
     """Show created plots by using this wrapper around matplotlib's show."""
     plt.show()
+
+
+def _get_figure_and_axes(
+    ax: Axes | None, figsize: tuple[float, float] = (8, 5)
+) -> tuple[Figure, Axes]:
+    """Return the figure of the given axes, or create a new pair."""
+    if ax is None:
+        return plt.subplots(1, 1, figsize=figsize)
+    return ax.get_figure(), ax
 
 
 def general_plot(
@@ -31,6 +40,7 @@ def general_plot(
     ylabel: str | None = None,
     info_box: str | None = None,
     tight_layout: bool = True,
+    ax: Axes | None = None,
 ) -> tuple[Figure, Axes]:
     """Generic plot template.
 
@@ -57,19 +67,22 @@ def general_plot(
         plot. Default: None.
     tight_layout: bool, optional
         When `True`, tight layout is activated. Default: `True`.
+    ax : `matplotlib.axes.Axes`, None, optional
+        Axes to draw on, so that multiple curves can share one plot. A new
+        figure is created when None. Default: None.
 
     Returns
     -------
     fig, ax
 
     """
-    fig, ax = plt.subplots(1, 1, figsize=(8, 5))
+    fig, ax = _get_figure_and_axes(ax)
     if matrix.ndim == 1:
         matrix = matrix[..., None]
     elif matrix.ndim > 2:
         raise ValueError("Only 1D and 2D-arrays are supported")
     if x is None:
-        x = arange(matrix.shape[0])
+        x = np.arange(matrix.shape[0])
     if labels is not None:
         if type(labels) not in (list, tuple):
             assert type(labels) is str, "labels should be a list or a string"
@@ -130,6 +143,7 @@ def general_plot_two_axes(
     y2_alpha: float = 1.0,
     info_box: str | None = None,
     tight_layout: bool = True,
+    ax: Axes | None = None,
 ) -> tuple[Figure, list[Axes]]:
     """Plot template for two y-axis with the same x-axis.
 
@@ -176,13 +190,16 @@ def general_plot_two_axes(
         plot. Default: None.
     tight_layout: bool, optional
         When `True`, tight layout is activated. Default: `True`.
+    ax : `matplotlib.axes.Axes`, None, optional
+        Axes to draw the first curve on, the second one gets a twin of it. A
+        new figure is created when None. Default: None.
 
     Returns
     -------
     fig, [ax, ax2]
 
     """
-    fig, ax = plt.subplots(1, 1, figsize=(8, 5))
+    fig, ax = _get_figure_and_axes(ax)
     ax2 = ax.twinx()
 
     # ====== First axis
@@ -191,7 +208,7 @@ def general_plot_two_axes(
     elif matrix1.ndim > 2:
         raise ValueError("Only 1D and 2D-arrays are supported")
     if x1 is None:
-        x1 = arange(matrix1.shape[0])
+        x1 = np.arange(matrix1.shape[0])
     if labels1 is not None:
         if type(labels1) not in (list, tuple):
             assert type(labels1) is str, "labels should be a list or a string"
@@ -208,7 +225,7 @@ def general_plot_two_axes(
     elif matrix2.ndim > 2:
         raise ValueError("Only 1D and 2D-arrays are supported")
     if x2 is None:
-        x2 = arange(matrix2.shape[0])
+        x2 = np.arange(matrix2.shape[0])
     if labels2 is not None:
         if type(labels2) not in (list, tuple):
             assert type(labels2) is str, "labels should be a list or a string"
@@ -267,6 +284,7 @@ def general_subplots_line(
     ylabels=None,
     range_x=None,
     range_y=None,
+    ax: list[Axes] | None = None,
 ) -> tuple[Figure, list[Axes]]:
     """Generic plot template with subplots in one column or row.
 
@@ -295,6 +313,9 @@ def general_subplots_line(
         Range to show for x axis. Default: None.
     range_y : array-like, optional
         Range to show for y axis. Default: None.
+    ax : list of `matplotlib.axes.Axes`, None, optional
+        Axes to draw on, one per channel. New ones are created when None.
+        Default: None.
 
     Returns
     -------
@@ -306,7 +327,13 @@ def general_subplots_line(
     elif matrix.ndim > 2:
         raise ValueError("Unsupported dimension. Matrix must be a 2D-array")
     number_of_channels = matrix.shape[1]
-    if column:
+    if ax is not None:
+        ax = list(np.atleast_1d(ax))
+        assert len(ax) == number_of_channels, (
+            f"{len(ax)} axes were passed for {number_of_channels} channels"
+        )
+        fig = ax[0].get_figure()
+    elif column:
         fig, ax = plt.subplots(
             number_of_channels,
             1,
@@ -323,14 +350,14 @@ def general_subplots_line(
             sharey=sharey,
         )
     if number_of_channels == 1:
-        ax = [ax]
+        ax = list(np.atleast_1d(ax))
     if x is None:
-        x = arange(matrix.shape[0])
+        x = np.arange(matrix.shape[0])
     for n in range(number_of_channels):
         ax[n].plot(x, matrix[:, n])
         if log_x:
             ax[n].set_xscale("log")
-            ticks = array([20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000])
+            ticks = np.array([20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000])
             if range_x is not None:
                 ticks = ticks[(ticks > range_x[0]) & (ticks < range_x[-1])]
             ax[n].set_xticks(ticks)
@@ -363,6 +390,7 @@ def general_matrix_plot(
     colorbar: bool = True,
     cmap: str = "magma",
     lower_origin: bool = True,
+    ax: Axes | None = None,
 ) -> tuple[Figure, Axes]:
     """Generic plot template for a matrix's heatmap.
 
@@ -395,6 +423,8 @@ def general_matrix_plot(
     lower_origin : bool, optional
         When `True`, the origin of the vertical axis of the matrix is put
         below. Default: `True`.
+    ax : `matplotlib.axes.Axes`, None, optional
+        Axes to draw on. A new figure is created when None. Default: None.
 
     Returns
     -------
@@ -413,14 +443,14 @@ def general_matrix_plot(
         )
         extent = (range_x[0], range_x[1], range_y[0], range_y[1])
 
-    fig, ax = plt.subplots(1, 1, figsize=(7, 5))
+    fig, ax = _get_figure_and_axes(ax, figsize=(7, 5))
     cmap2 = cm.get_cmap(cmap)
     if range_z is not None:
-        max_val = max(matrix)
+        max_val = np.max(matrix)
         min_val = max_val - range_z
     else:
-        max_val = max(matrix)
-        min_val = min(matrix)
+        max_val = np.max(matrix)
+        min_val = np.min(matrix)
 
     if lower_origin:
         origin = "lower"

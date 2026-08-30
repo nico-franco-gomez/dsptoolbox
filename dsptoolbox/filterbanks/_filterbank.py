@@ -3,7 +3,6 @@ Backend for the creation of specific filter banks
 """
 
 from copy import deepcopy
-from os import sep
 from pickle import HIGHEST_PROTOCOL, dump
 from warnings import warn
 
@@ -35,7 +34,7 @@ from ..helpers.ar_estimation import (
     _steiglitz_mcbride,
     _yw_ar_estimation,
 )
-from ..helpers.other import find_nearest_points_index_in_vector
+from ..helpers.other import _check_path_format, find_nearest_points_index_in_vector
 from ..helpers.spectrum_utilities import _get_normalized_spectrum
 from ..plots import general_plot
 from ..standard._standard_backend import _group_delay_direct
@@ -642,20 +641,16 @@ class LRFilterBank:
             print(str(k).replace("_", " ").capitalize(), end="")
             print(f": {self.info[k]}")
 
-    def save_filterbank(self, path: str = "filterbank"):
+    def save_filterbank(self, path: str):
         """Saves the FilterBank object as a pickle.
 
         Parameters
         ----------
-        path : str, optional
-            Path for the filterbank to be saved. Use only folder/folder/name
-            (without format). Default: `'filterbank'`
-            (local folder, object named filterbank).
+        path : str
+            Path for the filter bank to be saved. It must end in `'.pkl'`.
 
         """
-        if "." in path.split(sep)[-1]:
-            raise ValueError("Please introduce the saving path without " + "format")
-        path += ".pkl"
+        _check_path_format(path, "pkl")
         with open(path, "wb") as data_file:
             dump(self, data_file, HIGHEST_PROTOCOL)
 
@@ -1141,10 +1136,7 @@ class QMFCrossover(BaseCrossover):
             # H1(z) = H0(-z) <-> odd coefficients are multiplied by -1
             b_high[1::2] *= -1
             # Create filter
-            highpass = Filter(
-                {FilterCoefficientsType.Ba: [b_high, [1.0]]},
-                sampling_rate_hz=lowpass.sampling_rate_hz,
-            )
+            highpass = Filter.from_ba(b_high, [1.0], lowpass.sampling_rate_hz)
             # Type of filter bank
             self.fir_filterbank = True
         else:
@@ -1152,10 +1144,7 @@ class QMFCrossover(BaseCrossover):
                 coefficients_mode=FilterCoefficientsType.Zpk
             )
             zpk_new = [z_base * -1, p_base * -1, k_base]
-            highpass = Filter(
-                {FilterCoefficientsType.Zpk: zpk_new},
-                sampling_rate_hz=lowpass.sampling_rate_hz,
-            )
+            highpass = Filter.from_zpk(*zpk_new, lowpass.sampling_rate_hz)
             # Type of filter bank
             self.fir_filterbank = False
         return [lowpass, highpass]
@@ -1198,9 +1187,8 @@ class QMFCrossover(BaseCrossover):
             # (negate all coefficients of the analysis highpass)
             b_high_synthesis = -b_high
 
-            hp_filter = Filter(
-                {FilterCoefficientsType.Ba: [b_high_synthesis, [1.0]]},
-                sampling_rate_hz=lowpass.sampling_rate_hz,
+            hp_filter = Filter.from_ba(
+                b_high_synthesis, [1.0], lowpass.sampling_rate_hz
             )
         else:
             # IIR case: construct synthesis highpass using zpk representation
@@ -1212,10 +1200,7 @@ class QMFCrossover(BaseCrossover):
             # G1(z) = -H1(z) has zpk: (-z_low, -p_low, -k_low)
             zpk_new = [z_low * -1, p_low * -1, -k_low]
 
-            hp_filter = Filter(
-                {FilterCoefficientsType.Zpk: zpk_new},
-                sampling_rate_hz=lowpass.sampling_rate_hz,
-            )
+            hp_filter = Filter.from_zpk(*zpk_new, lowpass.sampling_rate_hz)
 
         return [lowpass, hp_filter]
 

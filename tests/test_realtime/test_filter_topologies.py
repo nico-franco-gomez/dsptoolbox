@@ -38,7 +38,7 @@ class TestFilterTopologies:
 
     def test_svfilter(self):
         PLOT = False
-        sv_filt = dsp.filterbanks.StateVariableFilter(1000.0, 1.0, self.fs_hz)
+        sv_filt = dsp.realtime.StateVariableFilter(1000.0, 1.0, self.fs_hz)
         n = self.get_noise()
 
         td = n.time_data.copy().squeeze()
@@ -72,7 +72,7 @@ class TestFilterTopologies:
             filter_design_method=dsp.IirDesignMethod.Butterworth,
             sampling_rate_hz=self.fs_hz,
         )
-        llf = dsp.filterbanks.LatticeLadderFilter.from_filter(iir)
+        llf = dsp.realtime.LatticeLadderFilter.from_filter(iir)
 
         td = n.time_data.copy().squeeze()
         for ind in np.arange(len(td)):
@@ -95,7 +95,7 @@ class TestFilterTopologies:
             *iir.get_coefficients(dsp.FilterCoefficientsType.Ba),
             sampling_rate_hz=self.fs_hz,
         )
-        llf = dsp.filterbanks.LatticeLadderFilter.from_filter(iir)
+        llf = dsp.realtime.LatticeLadderFilter.from_filter(iir)
 
         td = n.time_data.copy().squeeze()
         for ind in np.arange(len(td)):
@@ -135,7 +135,7 @@ class TestFilterTopologies:
             sampling_rate_hz=self.fs_hz,
         )
         b, a = iir_original.get_coefficients(dsp.FilterCoefficientsType.Ba)
-        iir = dsp.filterbanks.IIRFilter(b, a)
+        iir = dsp.realtime.IIRFilter(b, a)
         n = self.get_noise()
 
         td = n.time_data.copy().squeeze()
@@ -144,7 +144,7 @@ class TestFilterTopologies:
 
         np.testing.assert_allclose(td, sig.lfilter(b, a, n.time_data[:, 0]), atol=1e-12)
 
-        dsp.filterbanks.IIRFilter.from_filter(iir_original)
+        dsp.realtime.IIRFilter.from_filter(iir_original)
 
     def test_fir_filter(self):
         fir_original = dsp.Filter.fir_filter(
@@ -156,7 +156,7 @@ class TestFilterTopologies:
         )
         b, _ = fir_original.get_coefficients(dsp.FilterCoefficientsType.Ba)
         b = b[: len(b) // 2 + 3]  # some asymmetrical window
-        fir = dsp.filterbanks.FIRFilter(b)
+        fir = dsp.realtime.FIRFilter(b)
         n = self.get_noise()
 
         td = n.time_data.copy().squeeze()
@@ -167,7 +167,7 @@ class TestFilterTopologies:
             td, sig.lfilter(b, [1], n.time_data[:, 0]), atol=1e-12
         )
 
-        dsp.filterbanks.FIRFilter.from_filter(fir_original)
+        dsp.realtime.FIRFilter.from_filter(fir_original)
 
     def test_kautz_filters(self):
         fs_hz = 48000
@@ -188,7 +188,7 @@ class TestFilterTopologies:
         # Add two real poles just for testing
         poles = np.hstack([0.1, poles, -0.4])
 
-        filter = dsp.filterbanks.KautzFilter(poles, fs_hz)
+        filter = dsp.realtime.KautzFilter(poles, fs_hz)
 
         # Per-sample processing must match the block IR
         d = dsp.generators.dirac(2**11, sampling_rate_hz=fs_hz)
@@ -208,7 +208,7 @@ class TestFilterTopologies:
 
     def test_exponential_averager(self):
         n = _rng.normal(0, 0.1, 200)
-        f = dsp.filterbanks.ExponentialAverageFilter(1e-3, 1e-3, self.fs_hz)
+        f = dsp.realtime.ExponentialAverageFilter(1e-3, 1e-3, self.fs_hz)
         for i in n:
             f.process_sample(i, 0)
 
@@ -217,7 +217,7 @@ class TestFilterTopologies:
         poles = np.logspace(np.log10(1e-2), np.log10(np.pi * 0.95), 3, endpoint=True)
         poles = 0.5 * np.exp(1j * poles)
 
-        fb = dsp.filterbanks.ParallelFilter(poles, 0, rir.sampling_rate_hz)
+        fb = dsp.realtime.ParallelFilter(poles, 0, rir.sampling_rate_hz)
         fb.fit_to_ir(rir)
         fb.get_ir(256)
         fb.set_n_channels(3)
@@ -228,10 +228,10 @@ class TestFilterTopologies:
         iir_coeffs = _rng.normal(0, 0.1, (len(poles), 2))
         fb.set_coefficients(iir_coeffs, _rng.normal(0, 0.01, 10))
 
-        fb = dsp.filterbanks.ParallelFilter(poles, 1, rir.sampling_rate_hz)
+        fb = dsp.realtime.ParallelFilter(poles, 1, rir.sampling_rate_hz)
         fb.set_parameters(4, 0.0)
         fb.fit_to_ir(rir)
-        fb = dsp.filterbanks.ParallelFilter(poles, 3, rir.sampling_rate_hz)
+        fb = dsp.realtime.ParallelFilter(poles, 3, rir.sampling_rate_hz)
         fb.set_parameters(10, 1e-3)
         fb.fit_to_ir(rir)
 
@@ -255,7 +255,7 @@ class TestFilterTopologies:
         """
         rir = dsp.ImpulseResponse.from_file(RIR_PATH).pad_trim(2000)
         poles = np.array([0.6 * np.exp(1j * 0.5), 0.3 * np.exp(1j * 1.5)])
-        fb = dsp.filterbanks.ParallelFilter(poles, 0, rir.sampling_rate_hz)
+        fb = dsp.realtime.ParallelFilter(poles, 0, rir.sampling_rate_hz)
         # `fit_to_ir` is only used here to allocate the SOS array from the
         # poles; the fitted numerator coefficients are overwritten next.
         fb.fit_to_ir(rir)
@@ -278,10 +278,10 @@ class TestFilterTopologies:
         np.testing.assert_allclose(out, expected, atol=1e-4)
 
     def test_filter_chain(self):
-        fc = dsp.filterbanks.FilterChain(
+        fc = dsp.realtime.FilterChain(
             [
-                dsp.filterbanks.IIRFilter(np.array([0.5]), np.array([0.5, 0.1])),
-                dsp.filterbanks.FIRFilter(np.array([0.5, 0.5])),
+                dsp.realtime.IIRFilter(np.array([0.5]), np.array([0.5, 0.1])),
+                dsp.realtime.FIRFilter(np.array([0.5, 0.5])),
             ]
         )
         assert fc.n_filters == 2
@@ -303,10 +303,10 @@ class TestFilterTopologies:
         """
         b_iir, a_iir = np.array([0.5]), np.array([0.5, 0.1])
         b_fir = np.array([0.5, 0.5])
-        fc = dsp.filterbanks.FilterChain(
+        fc = dsp.realtime.FilterChain(
             [
-                dsp.filterbanks.IIRFilter(b_iir.copy(), a_iir.copy()),
-                dsp.filterbanks.FIRFilter(b_fir.copy()),
+                dsp.realtime.IIRFilter(b_iir.copy(), a_iir.copy()),
+                dsp.realtime.FIRFilter(b_fir.copy()),
             ]
         )
 
@@ -329,7 +329,7 @@ class TestFilterTopologies:
             number_of_channels=2,
             rng=0,
         )
-        ff2 = dsp.filterbanks.StateSpaceFilter(A, B, C, D)
+        ff2 = dsp.realtime.StateSpaceFilter(A, B, C, D)
         ff2.set_n_channels(noise.number_of_channels)
         reference = ff.filter_signal(noise)
 
@@ -343,19 +343,19 @@ class TestFilterTopologies:
 
         # TODO: check output of the constructors below
         iir = dsp.Filter.iir_filter(12, 500.0, dsp.FilterPassType.Lowpass, self.fs_hz)
-        dsp.filterbanks.StateSpaceFilter.from_filter(iir)
-        out = dsp.filterbanks.StateSpaceFilter.from_filter_as_sos_list(iir)
+        dsp.realtime.StateSpaceFilter.from_filter(iir)
+        out = dsp.realtime.StateSpaceFilter.from_filter_as_sos_list(iir)
         assert len(out) == 6
 
     @pytest.mark.parametrize(
         "implementation",
         [
-            dsp.filterbanks.FIRFilterOverlapSave,
-            dsp.filterbanks.FIRUniformPartitioned,
+            dsp.realtime.FIRFilterOverlapSave,
+            dsp.realtime.FIRUniformPartitioned,
         ],
     )
     def test_fir_filter_other_implementations(
-        self, implementation: dsp.filterbanks.FIRFilterOverlapSave
+        self, implementation: dsp.realtime.FIRFilterOverlapSave
     ):
         rir = dsp.ImpulseResponse.from_file(RIR_PATH)
         noise = (self.get_noise()).resample(rir.sampling_rate_hz)
@@ -382,7 +382,7 @@ class TestFilterTopologies:
         noise = self.get_noise().resample(rir.sampling_rate_hz)
         rir = rir.append_signals([rir.copy()])
         noise = noise.append_signals([noise.copy()])
-        fir = dsp.filterbanks.FIRUniformPartitionedMultichannel(rir.time_data)
+        fir = dsp.realtime.FIRUniformPartitionedMultichannel(rir.time_data)
 
         blocksize = 512
         fir.prepare(blocksize)
@@ -404,14 +404,14 @@ class TestFilterTopologies:
 
     def test_warped_fir_filter(self):
         rir = (dsp.ImpulseResponse.from_file(RIR_PATH)).pad_trim(300)
-        fir = dsp.filterbanks.WarpedFIR(np.hanning(15), -0.6, rir.sampling_rate_hz)
+        fir = dsp.realtime.WarpedFIR(np.hanning(15), -0.6, rir.sampling_rate_hz)
         [fir.process_sample(x, 0) for x in rir.time_data[:, 0]]
 
         # Multichannel
         rir.time_data = np.repeat(rir.time_data, 2, axis=1)
         fir.filter_signal(rir)
 
-        dsp.filterbanks.WarpedFIR.from_filter(
+        dsp.realtime.WarpedFIR.from_filter(
             dsp.Filter.from_ba(np.hanning(20), [1], rir.sampling_rate_hz), 0.1
         )
 
@@ -421,7 +421,7 @@ class TestFilterTopologies:
             dsp.BiquadEqType.Peaking, 200.0, 4, 0.7, rir.sampling_rate_hz
         )
 
-        iir_w = dsp.filterbanks.WarpedIIR(
+        iir_w = dsp.realtime.WarpedIIR(
             iir_coefficients.ba[0].copy(),
             iir_coefficients.ba[1].copy(),
             -0.6,
@@ -434,7 +434,7 @@ class TestFilterTopologies:
         iir_w.filter_signal(rir)
 
         # a and b coefficients of different lengths
-        iir_w = dsp.filterbanks.WarpedIIR(
+        iir_w = dsp.realtime.WarpedIIR(
             np.pad(iir_coefficients.ba[0], ((0, 4))),
             np.pad(iir_coefficients.ba[1], ((0, 10))),
             -0.6,
@@ -442,7 +442,7 @@ class TestFilterTopologies:
         )
         [iir_w.process_sample(x, 0) for x in rir.time_data[:, 0]]
 
-        dsp.filterbanks.WarpedIIR.from_filter(iir_coefficients, 0.1)
+        dsp.realtime.WarpedIIR.from_filter(iir_coefficients, 0.1)
 
     def test_warped_fir_filter_zero_warp_matches_scipy_lfilter(self):
         """At `warping_factor=0`, the allpass warping stage
@@ -456,7 +456,7 @@ class TestFilterTopologies:
         b = rng.normal(0, 1, 7)
         x = rng.normal(0, 1, 200)
 
-        fir = dsp.filterbanks.WarpedFIR(b, 0.0, self.fs_hz)
+        fir = dsp.realtime.WarpedFIR(b, 0.0, self.fs_hz)
         out = np.array([fir.process_sample(v, 0) for v in x])
         expected = sig.lfilter(b, [1], x)
         np.testing.assert_allclose(out, expected, atol=1e-10)
@@ -473,7 +473,7 @@ class TestFilterTopologies:
         a = np.array([1.0, -0.5, 0.2])
         x = rng.normal(0, 1, 200)
 
-        iir = dsp.filterbanks.WarpedIIR(b, a, 0.0, self.fs_hz)
+        iir = dsp.realtime.WarpedIIR(b, a, 0.0, self.fs_hz)
         out = np.array([iir.process_sample(v, 0) for v in x])
         expected = sig.lfilter(b, a, x)
         np.testing.assert_allclose(out, expected, atol=1e-9)
@@ -483,10 +483,10 @@ class TestFilterTopologies:
         b = np.array([1.0, 0.5])
         a = np.array([2.0, 0.3])
         b_before, a_before = b.copy(), a.copy()
-        dsp.filterbanks.IIRFilter(b, a)
+        dsp.realtime.IIRFilter(b, a)
         np.testing.assert_array_equal(b, b_before)
         np.testing.assert_array_equal(a, a_before)
 
     def test_iir_filter_accepts_integer_coefficients(self):
-        iir = dsp.filterbanks.IIRFilter(np.array([2, 1]), np.array([2, 0]))
+        iir = dsp.realtime.IIRFilter(np.array([2, 1]), np.array([2, 0]))
         assert np.isclose(iir.process_sample(1.0, 0), 1.0)

@@ -6,11 +6,13 @@ import numpy as np
 from numpy import array, atleast_1d, complex128, unique, zeros
 from numpy.typing import NDArray
 
-from ..helpers.other import _check_format_in_path
+from ..helpers.other import _check_path_format
+from ..standard.enums import FadeType
+from ._multichannel_data import MultichannelData
 from .signal import Signal
 
 
-class MultiBandSignal:
+class MultiBandSignal(MultichannelData):
     """The `MultiBandSignal` class contains multiple Signal objects which are
     to be interpreted as frequency bands of the same signal. Since every
     signal has also multiple channels, the object resembles somewhat a
@@ -183,6 +185,7 @@ class MultiBandSignal:
                 new_bands[0].sampling_rate_hz if self.same_sampling_rate else sr
             )
         else:
+            self.__number_of_channels = 0
             self.__bands = new_bands
 
     @property
@@ -243,7 +246,7 @@ class MultiBandSignal:
         -------
         int
             Number of channels. All bands must have the same number
-            of channels.
+            of channels. It is 0 when there are no bands.
 
         """
         return self.__number_of_channels
@@ -333,15 +336,16 @@ class MultiBandSignal:
         return info
 
     # ======== Add and remove =================================================
-    def add_band(self, sig: Signal, index: int = -1):
+    def add_band(self, sig: Signal, index: int | None = None) -> "MultiBandSignal":
         """Return a copy of the `MultiBandSignal` with a new band added.
 
         Parameters
         ----------
         sig : `Signal`
             Signal to be added.
-        index : int, optional
-            Index at which to insert the new Signal. Default: -1.
+        index : int, None, optional
+            Index at which to insert the new Signal. Pass None to append it
+            at the end. Default: None.
 
         Returns
         -------
@@ -351,46 +355,61 @@ class MultiBandSignal:
         """
         new = self.copy()
         bs = new.bands.copy()
-        if not new.bands:
+        if index is None or not bs:
             bs.append(sig)
-            new.bands = bs
         else:
-            if index == -1:
-                bs.append(sig)
-            else:
-                bs.insert(index, sig)
-            new.bands = bs
+            bs.insert(index, sig)
+        new.bands = bs
         return new
 
-    def remove_band(self, index: int = -1, return_band: bool = False):
+    def remove_band(self, index: int | None = None) -> "MultiBandSignal":
         """Return a copy of the `MultiBandSignal` with a band removed.
 
         Parameters
         ----------
-        index : int, optional
-            This is the index from the bands list at which the band
-            will be erased. When -1, last band is erased.
-            Default: -1.
-        return_band : bool, optional
-            When `True`, a tuple of the new multiband signal and the erased
-            band is returned. Otherwise, only the new multiband signal is
-            returned. Default: `False`.
+        index : int, None, optional
+            Index in the bands list at which the band will be erased. Pass
+            None to remove the last band. Default: None.
 
         Returns
         -------
-        MultiBandSignal | tuple[MultiBandSignal, Signal]
-            New multiband signal with the band removed, and optionally the
-            removed band.
+        MultiBandSignal
+            New multiband signal with the band removed.
+
+        Notes
+        -----
+        - Use `pop_band()` to also get the removed band back.
 
         """
-        assert self.bands, "There are no filters to remove"
+        return self.pop_band(index)[0]
+
+    def pop_band(self, index: int | None = None) -> tuple["MultiBandSignal", Signal]:
+        """Return a copy of the `MultiBandSignal` with a band removed,
+        together with the removed band.
+
+        Parameters
+        ----------
+        index : int, None, optional
+            Index in the bands list at which the band will be erased. Pass
+            None to remove the last band. Default: None.
+
+        Returns
+        -------
+        new_multiband_signal : MultiBandSignal
+            New multiband signal with the band removed.
+        removed_band : Signal
+            The band that was removed.
+
+        """
+        assert self.bands, "There are no bands to remove"
+        if index is None:
+            index = len(self.bands) - 1
+        assert index in range(len(self.bands)), f"There is no band at index {index}."
         new = self.copy()
         bs = new.bands.copy()
-        f = bs.pop(index)
+        removed_band = bs.pop(index)
         new.bands = bs
-        if return_band:
-            return new, f
-        return new
+        return new, removed_band
 
     def swap_bands(self, new_order):
         """Return a copy of the `MultiBandSignal` with the bands rearranged
@@ -483,9 +502,7 @@ class MultiBandSignal:
         return txt
 
     # ======== Getters ========================================================
-    def get_all_bands(
-        self, channel: int = 0
-    ) -> Signal | tuple[list[NDArray[np.float64]], list[NDArray[np.float64]]]:
+    def get_all_bands(self, channel: int = 0) -> Signal:
         """Broadcasts and returns the `MultiBandSignal` as a `Signal` object
         with all bands as channels in the output. This is done only for a
         single channel of the original signal.
@@ -497,102 +514,302 @@ class MultiBandSignal:
 
         Returns
         -------
-        sig : `Signal` or list of NDArray[np.float64] and list of int
-            Multichannel signal with all the bands. If the `MultiBandSignal`
-            does not have the same sampling rate for all signals, a list with
-            the time data vectors and a list containing their sampling
-            rates are returned.
+        Signal
+            Multichannel signal with all the bands as channels.
+
+        Notes
+        -----
+        - This requires a common sampling rate. Use
+          `get_all_bands_multirate()` otherwise.
 
         """
-        if self.same_sampling_rate:
-            # Check if there is complex time data
-            if self.bands[0].time_data_imaginary is None:
-                new_time_data = zeros(
-                    (self.bands[0].time_data.shape[0], len(self.bands))
-                )
-                for n in range(len(self.bands)):
-                    new_time_data[:, n] = self.bands[n].time_data[:, channel].copy()
-            else:
-                new_time_data = zeros(
-                    (self.bands[0].time_data.shape[0], len(self.bands)),
-                    dtype=complex128,
-                )
-                for n in range(len(self.bands)):
-                    new_time_data[:, n] = (
-                        self.bands[n].time_data[:, channel]
-                        + self.bands[n].time_data_imaginary[:, channel] * 1j
-                    )
-            return self.__get_type_of_signal_bands()(
-                None, new_time_data, self.sampling_rate_hz
-            )
+        assert self.same_sampling_rate, (
+            "The bands do not share a sampling rate and cannot be joined into "
+            + "a single signal, use get_all_bands_multirate()"
+        )
 
-        new_time_data = []
-        sr = []
+        # Check if there is complex time data
         if self.bands[0].time_data_imaginary is None:
+            new_time_data = zeros((self.bands[0].time_data.shape[0], len(self.bands)))
             for n in range(len(self.bands)):
-                new_time_data.append(self.bands[n].time_data[:, channel])
-                sr.append(self.bands[n].sampling_rate_hz)
+                new_time_data[:, n] = self.bands[n].time_data[:, channel].copy()
         else:
+            new_time_data = zeros(
+                (self.bands[0].time_data.shape[0], len(self.bands)),
+                dtype=complex128,
+            )
             for n in range(len(self.bands)):
-                new_time_data.append(
+                new_time_data[:, n] = (
                     self.bands[n].time_data[:, channel]
                     + self.bands[n].time_data_imaginary[:, channel] * 1j
                 )
-                sr.append(self.bands[n].sampling_rate_hz)
-            warn("Output is complex since signal data had imaginary part", stacklevel=2)
-        return new_time_data, sr
+        return self.__get_type_of_signal_bands()(
+            None, new_time_data, self.sampling_rate_hz
+        )
 
-    def get_all_time_data(
-        self,
-    ) -> tuple[NDArray[np.float64], int] | list[tuple[NDArray[np.float64], int]]:
-        """
-        Get all time data saved in the MultiBandSignal. If it has consistent
-        sampling rate, a single array with shape (time samples, band, channel)
-        is returned, otherwise a list of bands with arrays with shape (time
-        samples, channel) is returned.
+    def get_all_bands_multirate(
+        self, channel: int = 0
+    ) -> tuple[list[NDArray[np.float64]], list[int]]:
+        """Return the time data of one channel of every band together with the
+        sampling rate of each band. Unlike `get_all_bands()`, this does not
+        require a common sampling rate.
+
+        Parameters
+        ----------
+        channel : int, optional
+            Channel to choose from the band signals.
 
         Returns
         -------
-        if `self.same_sampling_rate=True` :
+        time_data : list of NDArray[np.float64]
+            Time data of the selected channel for each band.
+        sampling_rates_hz : list of int
+            Sampling rate of each band.
 
-            time_data : NDArray[np.float64]
-                Time samples.
-            int
-                Sampling rate in Hz
+        """
+        new_time_data = []
+        sampling_rates_hz = []
+        complex_data = self.bands[0].time_data_imaginary is not None
 
-        else :
+        for band in self.bands:
+            new_time_data.append(
+                band.time_data[:, channel]
+                + (band.time_data_imaginary[:, channel] * 1j if complex_data else 0.0)
+            )
+            sampling_rates_hz.append(band.sampling_rate_hz)
 
-            list[tuple[NDArray[np.float64], int]]
-                List with each band where time samples and sampling rate are
-                contained.
+        if complex_data:
+            warn("Output is complex since signal data had imaginary part", stacklevel=2)
+        return new_time_data, sampling_rates_hz
+
+    def get_all_time_data(self) -> tuple[NDArray[np.float64], int]:
+        """Get all time data saved in the MultiBandSignal as a single array
+        with shape (time samples, band, channel).
+
+        Returns
+        -------
+        time_data : NDArray[np.float64]
+            Time samples with shape (time samples, band, channel).
+        sampling_rate_hz : int
+            Sampling rate in Hz.
+
+        Notes
+        -----
+        - This requires a common sampling rate and length. Use
+          `get_all_time_data_multirate()` otherwise.
+
+        """
+        assert self.same_sampling_rate, (
+            "The bands do not share a sampling rate and cannot be stacked "
+            + "into a single array, use get_all_time_data_multirate()"
+        )
+
+        complex_data = self.bands[0].time_data_imaginary is not None
+        td = zeros(
+            (
+                self.length_samples,
+                self.number_of_bands,
+                self.number_of_channels,
+            ),
+            dtype=(complex128 if complex_data else "float"),
+        )
+        for ind, b in enumerate(self.bands):
+            td[:, ind, :] = b.time_data + (
+                b.time_data_imaginary * 1j if complex_data else 0.0
+            )
+        return td, self.sampling_rate_hz
+
+    def get_all_time_data_multirate(
+        self,
+    ) -> list[tuple[NDArray[np.float64], int]]:
+        """Get the time data and sampling rate of every band. Unlike
+        `get_all_time_data()`, this does not require a common sampling rate or
+        length.
+
+        Returns
+        -------
+        list[tuple[NDArray[np.float64], int]]
+            One entry per band with its time samples, shaped (time samples,
+            channel), and its sampling rate in Hz.
 
         """
         complex_data = self.bands[0].time_data_imaginary is not None
-        if self.same_sampling_rate:
-            td = zeros(
-                (
-                    self.length_samples,
-                    self.number_of_bands,
-                    self.number_of_channels,
-                ),
-                dtype=(complex128 if complex_data else "float"),
+        return [
+            (
+                b.time_data + (b.time_data_imaginary * 1j if complex_data else 0.0),
+                b.sampling_rate_hz,
             )
-            for ind, b in enumerate(self.bands):
-                td[:, ind, :] = b.time_data + (
-                    b.time_data_imaginary * 1j if complex_data else 0.0
-                )
-            return td, self.sampling_rate_hz
-        else:
-            td = []
-            for b in self.bands:
-                td.append(
-                    (
-                        b.time_data
-                        + (b.time_data_imaginary * 1j if complex_data else 0.0),
-                        b.sampling_rate_hz,
-                    )
-                )
-            return td
+            for b in self.bands
+        ]
+
+    # ======== Multichannel Data Base Class Implementation ====================
+    def _get_data(self) -> NDArray[np.float64 | np.complex128]:
+        """Get the time data of every band with shape (time samples, band,
+        channel)."""
+        return self.get_all_time_data()[0]
+
+    def _set_data(self, data: NDArray[np.float64 | np.complex128]) -> None:
+        """Set the time data of every band from an array with shape (time
+        samples, band, channel)."""
+        new_bands = []
+        for index, band in enumerate(self.bands):
+            new_bands.append(band.copy_with_new_time_data(data[:, index, :]))
+        self.bands = new_bands
+
+    def _create_copy_with_new_data(
+        self, data: NDArray[np.float64 | np.complex128]
+    ) -> "MultiBandSignal":
+        """Create a copy with new time data for every band."""
+        new = self.copy()
+        new._set_data(data)
+        return new
+
+    def _update_state(self) -> None:
+        """The bands own their state, so there is nothing to update here."""
+
+    # ======== Signal operations per band =====================================
+    def resample(
+        self, desired_sampling_rate_hz: int, rescaling: bool = False
+    ) -> "MultiBandSignal":
+        """Return a copy where every band has been resampled to the desired
+        sampling rate.
+
+        Parameters
+        ----------
+        desired_sampling_rate_hz : int
+            Sampling rate to convert the bands to.
+        rescaling : bool, optional
+            When True, the data is rescaled by dividing by the resampling
+            factor. This retains the magnitude scaling when regarding the
+            unscaled spectrum. Default: False.
+
+        Returns
+        -------
+        MultiBandSignal
+            Resampled multiband signal.
+
+        Notes
+        -----
+        - Every band ends up with the same sampling rate, so the result is
+          never a multirate signal.
+
+        """
+        new = self.copy()
+        new.same_sampling_rate = True
+        new.bands = [
+            b.resample(desired_sampling_rate_hz, rescaling) for b in self.bands
+        ]
+        return new
+
+    def fade(
+        self,
+        fade_type: FadeType,
+        length_fade_seconds: float | None = None,
+        at_start: bool = True,
+        at_end: bool = True,
+    ) -> "MultiBandSignal":
+        """Return a copy with fading applied to every band.
+
+        Parameters
+        ----------
+        fade_type : FadeType
+            Type of fading to be applied.
+        length_fade_seconds : float, optional
+            Fade length in seconds. If `None`, 2.5% of each band's length is
+            used for the fade. Default: `None`.
+        at_start : bool, optional
+            When `True`, the start of each band is faded. Default: `True`.
+        at_end : bool, optional
+            When `True`, the ending of each band is faded. Default: `True`.
+
+        Returns
+        -------
+        MultiBandSignal
+            Faded multiband signal.
+
+        """
+        new = self.copy()
+        new.bands = [
+            b.fade(fade_type, length_fade_seconds, at_start, at_end) for b in self.bands
+        ]
+        return new
+
+    def trim_with_level_threshold(
+        self, threshold_db: float, at_start: bool = True, at_end: bool = True
+    ) -> tuple["MultiBandSignal", int, int]:
+        """Return a copy trimmed by discarding the edge samples below a
+        certain threshold. The trimming boundaries are taken from the band
+        with the earliest start and the latest end, so that every band is
+        trimmed identically and stays aligned.
+
+        Parameters
+        ----------
+        threshold_db : float
+            (Inclusive) Threshold for trimming, generally in dBFS.
+        at_start : bool, optional
+            Activate trimming in the beginning. Default: True.
+        at_end : bool, optional
+            Activate trimming in the end. Default: True.
+
+        Returns
+        -------
+        new_multiband_signal : MultiBandSignal
+            Trimmed multiband signal.
+        start_index : int
+            First sample of the original signal that was kept.
+        stop_index : int
+            Last sample (exclusive) of the original signal that was kept.
+
+        """
+        assert self.same_sampling_rate, (
+            "Trimming with a level threshold needs a common sampling rate, "
+            + "otherwise the bands cannot stay aligned"
+        )
+
+        boundaries = [
+            b.trim_with_level_threshold(threshold_db, at_start, at_end)[1:]
+            for b in self.bands
+        ]
+        start_index = min(b[0] for b in boundaries)
+        stop_index = max(b[1] for b in boundaries)
+
+        new = self.copy()
+        new.bands = [
+            b.trim_with_time_selection(
+                start_index / self.sampling_rate_hz,
+                stop_index / self.sampling_rate_hz,
+            )
+            for b in self.bands
+        ]
+        return new, start_index, stop_index
+
+    def plot_magnitude(self, **kwargs):
+        """Plot the magnitude response of every band as channels of a single
+        signal. See `Signal.plot_magnitude()` for the accepted arguments.
+
+        Returns
+        -------
+        fig : `matplotlib.figure.Figure`
+            Figure.
+        ax : `matplotlib.axes.Axes`
+            Axes.
+
+        """
+        return self.get_all_bands().plot_magnitude(**kwargs)
+
+    def plot_time(self, **kwargs):
+        """Plot the time signal of every band as channels of a single signal.
+        See `Signal.plot_time()` for the accepted arguments.
+
+        Returns
+        -------
+        fig : `matplotlib.figure.Figure`
+            Figure.
+        ax : list of `matplotlib.axes.Axes`
+            Axes.
+
+        """
+        return self.get_all_bands().plot_time(**kwargs)
 
     # ======== Saving and copying =============================================
     def save_signal(self, path: str):
@@ -604,7 +821,7 @@ class MultiBandSignal:
             Path for the multiband signal to be saved with format `.pkl`.
 
         """
-        path = _check_format_in_path(path, "pkl")
+        _check_path_format(path, "pkl")
         with open(path, "wb") as data_file:
             dump(self, data_file, HIGHEST_PROTOCOL)
         return self

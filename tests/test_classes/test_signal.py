@@ -170,7 +170,7 @@ class TestSignal:
         s = s.add_channel(None, new_ch, s.sampling_rate_hz)
         assert np.all(t_vec == s.time_data)
 
-        s = s.remove_channel(-1)
+        s = s.remove_channel()
         assert np.all(self.time_vec == s.time_data)
 
         with pytest.raises(AssertionError):

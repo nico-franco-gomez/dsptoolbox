@@ -18,7 +18,7 @@ class ImpulseResponse(Signal):
         path: str | None = None,
         time_data: NDArray[np.float64] | None = None,
         sampling_rate_hz: int | None = None,
-        constrain_amplitude: bool = True,
+        constrain_amplitude: bool = False,
         activate_cache: bool = False,
     ):
         """Instantiate impulse response.
@@ -39,7 +39,7 @@ class ImpulseResponse(Signal):
             normalization and the audio data is not constrained to [-1, 1].
             A warning is always shown when audio gets normalized and the used
             normalization factor is saved as `amplitude_scale_factor`.
-            Default: `True`.
+            Default: `False`.
         activate_cache : bool, optional
             When True, spectra, CSM and STFT will be cached. They will not
             be computed again if no parameters have changed. Set to False to
@@ -83,27 +83,44 @@ class ImpulseResponse(Signal):
         return ir
 
     @staticmethod
-    def from_file(path: str):
+    def from_file(
+        path: str,
+        constrain_amplitude: bool = False,
+        activate_cache: bool = False,
+    ):
         """Create an impulse response from a path to a wav or flac audio file.
 
         Parameters
         ----------
         path : str
             Path to file.
+        constrain_amplitude : bool, optional
+            When `True`, audio is normalized to 0 dBFS peak level in case that
+            there are amplitude values greater than 1. Otherwise, there is no
+            normalization and the audio data is not constrained to [-1, 1].
+            A warning is always shown when audio gets normalized and the used
+            normalization factor is saved as `amplitude_scale_factor`.
+            Default: `False`.
+        activate_cache : bool, optional
+            When True, spectra, CSM and STFT will be cached. They will not
+            be computed again if no parameters have changed. Set to False to
+            avoid caching altogether. Default: False.
 
         Returns
         -------
         ImpulseResponse
 
         """
-        s = Signal.from_file(path)
-        return ImpulseResponse.from_signal(s)
+        return ImpulseResponse.from_signal(
+            Signal.from_file(path, constrain_amplitude, activate_cache)
+        )
 
     @staticmethod
     def from_time_data(
         time_data: NDArray[np.float64],
         sampling_rate_hz: int,
-        constrain_amplitude: bool = True,
+        constrain_amplitude: bool = False,
+        activate_cache: bool = False,
     ):
         """Create an impulse response from an array of PCM samples.
 
@@ -120,15 +137,22 @@ class ImpulseResponse(Signal):
             normalization and the audio data is not constrained to [-1, 1].
             A warning is always shown when audio gets normalized and the used
             normalization factor is saved as `amplitude_scale_factor`.
-            Default: `True`.
+            Default: `False`.
+        activate_cache : bool, optional
+            When True, spectra, CSM and STFT will be cached. They will not
+            be computed again if no parameters have changed. Set to False to
+            avoid caching altogether. Default: False.
 
         Returns
         -------
         ImpulseResponse
 
         """
-        s = Signal.from_time_data(time_data, sampling_rate_hz, constrain_amplitude)
-        return ImpulseResponse.from_signal(s)
+        return ImpulseResponse.from_signal(
+            Signal.from_time_data(
+                time_data, sampling_rate_hz, constrain_amplitude, activate_cache
+            )
+        )
 
     def set_window(self, window: NDArray[np.float64]):
         """Return a copy of the IR with the window set.

@@ -10,7 +10,7 @@ from numpy.typing import NDArray
 from scipy.signal import convolve
 
 from ..generators import dirac
-from ..helpers.other import _check_format_in_path
+from ..helpers.other import _check_path_format
 from ..helpers.spectrum_utilities import _get_normalized_spectrum
 from ..plots import general_plot
 from ..standard._standard_backend import _group_delay_direct
@@ -293,7 +293,7 @@ class FilterBank:
         self.__same_sampling_rate = new_same
 
     # ======== Add and remove =================================================
-    def add_filter(self, filt: Filter, index: int = -1) -> Self:
+    def add_filter(self, filt: Filter, index: int | None = None) -> Self:
         """Return a copy of the filter bank with a new filter added at the
         given index.
 
@@ -301,8 +301,9 @@ class FilterBank:
         ----------
         filt : `Filter`
             Filter to be added to the FilterBank.
-        index : int, optional
-            Index at which to insert the new Filter. Default: -1.
+        index : int, None, optional
+            Index at which to insert the new Filter. Pass None to append it
+            at the end. Default: None.
 
         Returns
         -------
@@ -314,55 +315,70 @@ class FilterBank:
         if not new.filters:
             new.sampling_rate_hz = filt.sampling_rate_hz
             new.filters = [filt]
+            return new
+
+        fs = new.filters.copy()
+        if new.same_sampling_rate:
+            assert new.sampling_rate_hz == filt.sampling_rate_hz, (
+                "Sampling rates do not match"
+            )
+        if index is None:
+            fs.append(filt)
         else:
-            fs = new.filters.copy()
-            if new.same_sampling_rate:
-                assert new.sampling_rate_hz == filt.sampling_rate_hz, (
-                    "Sampling rates do not match"
-                )
-            if index == -1:
-                fs.append(filt)
-            else:
-                fs.insert(index, filt)
-            new.filters = fs
+            fs.insert(index, filt)
+        new.filters = fs
         return new
 
-    def remove_filter(
-        self, index: int = -1, return_filter: bool = False
-    ) -> Self | tuple[Self, Filter]:
+    def remove_filter(self, index: int | None = None) -> Self:
         """Return a copy of the filter bank with a filter removed.
 
         Parameters
         ----------
-        index : int, optional
-            This is the index from the filters list at which the filter
-            will be erased. When -1, last filter is erased.
-            Default: -1.
-        return_filter : bool, optional
-            When `True`, a tuple of the new filter bank and the erased
-            filter is returned. Otherwise, only the new filter bank is
-            returned. Default: `False`.
+        index : int, None, optional
+            Index in the filters list at which the filter will be erased.
+            Pass None to remove the last filter. Default: None.
 
         Returns
         -------
-        FilterBank | tuple[FilterBank, Filter]
-            New filter bank with the filter removed, and optionally the
-            removed filter.
+        FilterBank
+            New filter bank with the filter removed.
+
+        Notes
+        -----
+        - Use `pop_filter()` to also get the removed filter back.
+
+        """
+        return self.pop_filter(index)[0]
+
+    def pop_filter(self, index: int | None = None) -> tuple[Self, Filter]:
+        """Return a copy of the filter bank with a filter removed, together
+        with the removed filter.
+
+        Parameters
+        ----------
+        index : int, None, optional
+            Index in the filters list at which the filter will be erased.
+            Pass None to remove the last filter. Default: None.
+
+        Returns
+        -------
+        new_filter_bank : FilterBank
+            New filter bank with the filter removed.
+        removed_filter : Filter
+            The filter that was removed.
 
         """
         assert self.filters, "There are no filters to remove"
-        if index == -1:
+        if index is None:
             index = len(self.filters) - 1
         assert index in range(len(self.filters)), (
             f"There is no filter at index {index}."
         )
         new = self.copy()
         n_f = new.filters.copy()
-        f = n_f.pop(index)
+        removed_filter = n_f.pop(index)
         new.filters = n_f
-        if return_filter:
-            return new, f
-        return new
+        return new, removed_filter
 
     def swap_filters(self, new_order) -> Self:
         """Return a copy of the filter bank with the filters rearranged in
@@ -956,7 +972,7 @@ class FilterBank:
             Path for the filter bank to be saved with format `.pkl`.
 
         """
-        path = _check_format_in_path(path, "pkl")
+        _check_path_format(path, "pkl")
         with open(path, "wb") as data_file:
             dump(self, data_file, HIGHEST_PROTOCOL)
         return self

@@ -10,7 +10,7 @@ from ..classes import (
     MultiBandSignal,
     Signal,
 )
-from ..helpers.other import _check_format_in_path
+from ..helpers.other import _check_path_format
 
 
 def load_pkl_object(path: str):
@@ -29,7 +29,7 @@ def load_pkl_object(path: str):
 
     """
     obj = None
-    path = _check_format_in_path(path, "pkl")
+    _check_path_format(path, "pkl")
     with open(path, "rb") as inp:
         obj = pickle.load(inp)
     return obj

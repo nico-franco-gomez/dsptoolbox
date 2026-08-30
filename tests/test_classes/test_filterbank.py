@@ -88,19 +88,16 @@ class TestFilterBankClass:
         fb = fb.add_filter(self.get_fir_filter())
 
         with tempfile.TemporaryDirectory() as d:
-            # No extension -> ".pkl" gets appended
-            fb.save_filterbank(join(d, "no_ext"))
-            with open(join(d, "no_ext.pkl"), "rb") as fh:
+            fb.save_filterbank(join(d, "with_ext.pkl"))
+            with open(join(d, "with_ext.pkl"), "rb") as fh:
                 reloaded = pickle.load(fh)
             assert reloaded.number_of_filters == fb.number_of_filters
             assert reloaded.sampling_rate_hz == fb.sampling_rate_hz
 
-            # Matching ".pkl" extension is accepted as is
-            fb.save_filterbank(join(d, "with_ext.pkl"))
-            assert os.path.exists(join(d, "with_ext.pkl"))
-
-            # A mismatched extension is rejected
-            with pytest.raises(AssertionError):
+            # The extension is required and has to match
+            with pytest.raises(ValueError):
+                fb.save_filterbank(join(d, "no_ext"))
+            with pytest.raises(ValueError):
                 fb.save_filterbank(join(d, "wrong_ext.txt"))
 
     def test_plots(self):
@@ -153,6 +150,28 @@ class TestFilterBankClass:
         fb.copy()
         fb.show_info()
         print(fb)
+
+    def test_pop_filter_returns_the_removed_filter(self):
+        fb = dsp.FilterBank()
+        iir = self.get_iir_filter()
+        fir = self.get_fir_filter()
+        fb = fb.add_filter(iir).add_filter(fir)
+
+        new_fb, removed = fb.pop_filter()
+        assert new_fb.number_of_filters == 1
+        assert removed.is_fir
+        assert fb.remove_filter().number_of_filters == 1
+
+        with pytest.raises(AssertionError):
+            fb.pop_filter(5)
+
+    def test_add_filter_at_index(self):
+        fb = dsp.FilterBank()
+        fb = fb.add_filter(self.get_iir_filter())
+        fb = fb.add_filter(self.get_fir_filter(), index=0)
+        assert fb.filters[0].is_fir
+        fb = fb.add_filter(self.get_iir_filter())
+        assert fb.filters[-1].is_iir
 
     def test_filtering(self):
         fb = dsp.FilterBank()

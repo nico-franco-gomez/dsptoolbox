@@ -2,7 +2,6 @@
 Tests for the MultiBandSignal class.
 """
 
-import os
 import pickle
 import tempfile
 from os.path import join
@@ -47,7 +46,7 @@ class TestMultiBandSignal:
         print(mbs)
         mbs.copy()
 
-        with pytest.raises(IndexError):
+        with pytest.raises(AssertionError):
             mbs.remove_band(4)
         with pytest.raises(AssertionError):
             mbs.swap_bands([1, 1])
@@ -70,19 +69,16 @@ class TestMultiBandSignal:
     def test_save_signal_round_trip_and_format_checking(self):
         mbs = self.get_mb()
         with tempfile.TemporaryDirectory() as d:
-            # No extension -> ".pkl" gets appended
-            mbs.save_signal(join(d, "no_ext"))
-            with open(join(d, "no_ext.pkl"), "rb") as fh:
+            mbs.save_signal(join(d, "with_ext.pkl"))
+            with open(join(d, "with_ext.pkl"), "rb") as fh:
                 reloaded = pickle.load(fh)
             assert reloaded.number_of_bands == mbs.number_of_bands
             assert reloaded.number_of_channels == mbs.number_of_channels
 
-            # Matching ".pkl" extension is accepted as is
-            mbs.save_signal(join(d, "with_ext.pkl"))
-            assert os.path.exists(join(d, "with_ext.pkl"))
-
-            # A mismatched extension is rejected
-            with pytest.raises(AssertionError):
+            # The extension is required and has to match
+            with pytest.raises(ValueError):
+                mbs.save_signal(join(d, "no_ext"))
+            with pytest.raises(ValueError):
                 mbs.save_signal(join(d, "wrong_ext.txt"))
 
     def test_collapse(self):
@@ -96,6 +92,16 @@ class TestMultiBandSignal:
 
         assert np.all(mbs_.time_data == td + td)
 
+    def test_pop_band_returns_the_removed_band(self):
+        mbs = dsp.MultiBandSignal(bands=[self.s, self.s.apply_gain(-6.0)])
+
+        new_mbs, removed = mbs.pop_band()
+        assert new_mbs.number_of_bands == 1
+        np.testing.assert_array_equal(removed.time_data, mbs.bands[1].time_data)
+        np.testing.assert_array_equal(
+            mbs.remove_band().bands[0].time_data, mbs.bands[0].time_data
+        )
+
     def test_get_all_bands(self):
         mbs = dsp.MultiBandSignal(
             bands=[self.s, self.s],
@@ -106,6 +112,21 @@ class TestMultiBandSignal:
         assert type(mbs_) is dsp.Signal
         # Number of channels has to match number of bands
         assert mbs_.number_of_channels == mbs.number_of_bands
+
+    def test_get_all_bands_multirate(self):
+        s2 = self.s.resample(self.s.sampling_rate_hz // 2)
+        mbs = dsp.MultiBandSignal(bands=[self.s, s2], same_sampling_rate=False)
+
+        with pytest.raises(AssertionError):
+            mbs.get_all_bands(0)
+
+        time_data, sampling_rates_hz = mbs.get_all_bands_multirate(0)
+        assert np.all(time_data[0] == self.s.time_data[:, 0])
+        assert np.all(time_data[1] == s2.time_data[:, 0])
+        assert sampling_rates_hz == [
+            self.s.sampling_rate_hz,
+            s2.sampling_rate_hz,
+        ]
 
     def test_get_all_time_data(self):
         mbs = dsp.MultiBandSignal(
@@ -144,7 +165,9 @@ class TestMultiBandSignal:
             same_sampling_rate=False,
             info=dict(information="test filter bank"),
         )
-        tds = mbs.get_all_time_data()
+        tds = mbs.get_all_time_data_multirate()
+        with pytest.raises(AssertionError):
+            mbs.get_all_time_data()
 
         assert np.all(tds[0][0] == self.s.time_data)
         assert np.all(tds[1][0] == s2.time_data)
@@ -267,3 +290,33 @@ class TestMultiBandSignal:
         mb = self.get_mb()
         lines = mb.metadata_str.splitlines()
         assert lines[1] == "\u2013" * len(lines[0])
+
+    def test_channel_operations_from_multichannel_base(self):
+        mbs = dsp.MultiBandSignal([self.s, self.s.apply_gain(-6.0)])
+
+        assert mbs.remove_channel().number_of_channels == self.s.number_of_channels - 1
+        assert mbs.get_channels([0, 1]).number_of_channels == 2
+        assert mbs.sum_channels().number_of_channels == 1
+
+        swapped = mbs.swap_channels(np.arange(self.s.number_of_channels)[::-1])
+        np.testing.assert_array_equal(
+            swapped.bands[0].time_data, self.s.time_data[:, ::-1]
+        )
+
+    def test_empty_multiband_signal_has_no_channels(self):
+        assert dsp.MultiBandSignal().number_of_channels == 0
+
+    def test_resample_fade_and_trim(self):
+        mbs = dsp.MultiBandSignal([self.s, self.s.apply_gain(-6.0)])
+
+        resampled = mbs.resample(self.s.sampling_rate_hz // 2)
+        assert resampled.sampling_rate_hz == self.s.sampling_rate_hz // 2
+        assert resampled.number_of_bands == mbs.number_of_bands
+
+        faded = mbs.fade(dsp.FadeType.Linear)
+        np.testing.assert_allclose(faded.bands[0].time_data[0], 0.0, atol=1e-12)
+
+        padded = mbs.pad_trim(mbs.length_samples + 200, in_the_end=True)
+        trimmed, start, stop = padded.trim_with_level_threshold(-60.0)
+        assert start >= 0 and stop <= padded.length_samples
+        assert trimmed.number_of_bands == mbs.number_of_bands

@@ -15,20 +15,19 @@ class ChirpType(Enum):
 
     - Logarithmic (or exponential).
     - Linear.
-    - The `SyncLog` chirp is defined according to [2] and ensures that the
-      harmonic responses have coherent phase with the linear response.
+
+    The synchronized logarithmic chirp has its own generator,
+    `generators.sync_log_chirp()`, since it also returns its effective
+    duration.
 
     References
     ----------
     - https://de.wikipedia.org/wiki/Chirp
-    - [2]: Antonin Novak, Laurent Simon, Pierrick Lotton. Synchronized
-      Swept-Sine: Theory, Application and Implementation.
 
     """
 
     Linear = auto()
     Logarithmic = auto()
-    SyncLog = auto()
 
 
 class WaveForm(Enum):

@@ -15,7 +15,7 @@ from numpy.typing import ArrayLike, NDArray
 
 from ..helpers.gain_and_level import from_db, to_db
 from ..helpers.other import (
-    _check_format_in_path,
+    _check_path_format,
     _pad_trim,
     find_nearest_points_index_in_vector,
 )
@@ -52,23 +52,20 @@ class Filter:
     # ======== Constructor and initializers ===================================
     def __init__(
         self,
-        filter_coefficients: dict,
         sampling_rate_hz: int,
+        _coefficients: dict,
     ):
-        """The Filter class contains all parameters and metadata needed for
-        using a digital filter.
+        """Filters are not constructed directly. Use one of the factory
+        methods, which validate what they are given: `from_ba`, `from_sos`,
+        `from_zpk`, `fir_from_file`, `iir_filter`, `fir_filter` or `biquad`.
 
         Parameters
         ----------
-        filter_coefficients : dict
-            Dictionary containing configuration for the filter. The dictionary
-            must exclusively contain one of the following keys:
-            - FilterCoefficientsType.Zpk
-            - FilterCoefficientsType.Sos
-            - FilterCoefficientsType.Ba
-
         sampling_rate_hz : int
             Sampling rate in Hz for the digital filter.
+        _coefficients : dict
+            Private. Dictionary that must contain exactly one of the
+            `FilterCoefficientsType` keys.
 
         """
         self.warning_if_complex = True
@@ -76,9 +73,9 @@ class Filter:
         assert (
             sum(
                 (
-                    FilterCoefficientsType.Ba in filter_coefficients,
-                    FilterCoefficientsType.Sos in filter_coefficients,
-                    FilterCoefficientsType.Zpk in filter_coefficients,
+                    FilterCoefficientsType.Ba in _coefficients,
+                    FilterCoefficientsType.Sos in _coefficients,
+                    FilterCoefficientsType.Zpk in _coefficients,
                 )
             )
             == 1
@@ -86,13 +83,13 @@ class Filter:
             "Only (and at least) one type of filter coefficients "
             + "should be passed to create a filter"
         )
-        if FilterCoefficientsType.Zpk in filter_coefficients:
-            self.zpk = filter_coefficients[FilterCoefficientsType.Zpk]
+        if FilterCoefficientsType.Zpk in _coefficients:
+            self.zpk = _coefficients[FilterCoefficientsType.Zpk]
             self.sos = sig.zpk2sos(*self.zpk, analog=False)
-        elif FilterCoefficientsType.Sos in filter_coefficients:
-            self.sos = filter_coefficients[FilterCoefficientsType.Sos]
-        elif FilterCoefficientsType.Ba in filter_coefficients:
-            b, a = filter_coefficients[FilterCoefficientsType.Ba]
+        elif FilterCoefficientsType.Sos in _coefficients:
+            self.sos = _coefficients[FilterCoefficientsType.Sos]
+        elif FilterCoefficientsType.Ba in _coefficients:
+            b, a = _coefficients[FilterCoefficientsType.Ba]
             self.ba = [np.atleast_1d(b), np.atleast_1d(a)]
 
     @staticmethod
@@ -143,8 +140,8 @@ class Filter:
             output="zpk",
         )
         return Filter(
-            {FilterCoefficientsType.Zpk: zpk},
             sampling_rate_hz,
+            {FilterCoefficientsType.Zpk: zpk},
         )
 
     @staticmethod
@@ -181,6 +178,7 @@ class Filter:
 
         """
         return Filter(
+            sampling_rate_hz,
             {
                 FilterCoefficientsType.Ba: _biquad_coefficients(
                     eq_type=eq_type,
@@ -190,7 +188,6 @@ class Filter:
                     fs_hz=sampling_rate_hz,
                 )
             },
-            sampling_rate_hz,
         )
 
     @staticmethod
@@ -222,6 +219,7 @@ class Filter:
 
         """
         return Filter(
+            sampling_rate_hz,
             {
                 FilterCoefficientsType.Ba: [
                     sig.firwin(
@@ -238,7 +236,6 @@ class Filter:
                     np.asarray([1.0]),
                 ]
             },
-            sampling_rate_hz,
         )
 
     @staticmethod
@@ -264,7 +261,7 @@ class Filter:
         Filter
 
         """
-        return Filter({FilterCoefficientsType.Ba: [b, a]}, sampling_rate_hz)
+        return Filter(sampling_rate_hz, {FilterCoefficientsType.Ba: [b, a]})
 
     @staticmethod
     def from_sos(
@@ -285,7 +282,7 @@ class Filter:
         Filter
 
         """
-        return Filter({FilterCoefficientsType.Sos: sos}, sampling_rate_hz)
+        return Filter(sampling_rate_hz, {FilterCoefficientsType.Sos: sos})
 
     @staticmethod
     def from_zpk(
@@ -312,7 +309,7 @@ class Filter:
         Filter
 
         """
-        return Filter({FilterCoefficientsType.Zpk: [z, p, k]}, sampling_rate_hz)
+        return Filter(sampling_rate_hz, {FilterCoefficientsType.Zpk: [z, p, k]})
 
     @staticmethod
     def fir_from_file(path: str, channel: int = 0) -> "Filter":
@@ -1266,7 +1263,7 @@ class Filter:
             Path for the filter to be saved with format `.pkl`.
 
         """
-        path = _check_format_in_path(path, "pkl")
+        _check_path_format(path, "pkl")
         with open(path, "wb") as data_file:
             dump(self, data_file, HIGHEST_PROTOCOL)
         return self
