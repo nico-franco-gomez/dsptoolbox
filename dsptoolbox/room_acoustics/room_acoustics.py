@@ -413,9 +413,7 @@ def generate_synthetic_rir(
         # Accumulator
         rir = np.zeros(total_length_samples)
 
-        print("\nRIR Generator\n")
         for ind in range(fb.number_of_bands):
-            print(f"Band {ind + 1} of {fb.number_of_bands} is being computed...")
             alphas = room.detailed_absorption["absorption_matrix"][:, ind]
             rir_band = _generate_rir(
                 room_dim=room.dimensions_m,
@@ -436,9 +434,9 @@ def generate_synthetic_rir(
     # Add decaying noise as reverberant tail
     if add_noise_reverberant_tail:
         if not hasattr(room, "mixing_time_s"):
-            room.get_mixing_time("physical", n_reflections=1000)
+            room.get_mixing_time(True, n_reflections=1000)
         if room.mixing_time_s is None:
-            room.get_mixing_time("physical", n_reflections=1000)
+            room.get_mixing_time(True, n_reflections=1000)
         rir = _add_reverberant_tail_noise(
             rir,
             room.mixing_time_s,

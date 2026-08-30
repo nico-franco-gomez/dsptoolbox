@@ -2,6 +2,7 @@ import os
 from os.path import join
 
 import numpy as np
+import pytest
 from matplotlib.pyplot import close, subplots
 
 import dsptoolbox as dsp
@@ -23,9 +24,9 @@ class TestBeamformingModule:
 
         g.get_distances_to_point([0, 0, 0])
         g.find_nearest_point([-0.2, 0.1, -1])
-        g.plot_points(projection=None)
-        g.plot_points(projection="2d")
-        g.plot_points(projection="3d")
+        g.plot_points()
+        g.plot_points(dsp.beamforming.PointsProjection.TwoDimensional)
+        g.plot_points(dsp.beamforming.PointsProjection.ThreeDimensional)
 
     def test_regular_grids(self):
         # 2D
@@ -173,16 +174,13 @@ class TestBeamformingModule:
         # of the 25 unique (x, y) locations is physically duplicated 5
         # times once z is flattened away. Duplicate mic positions record
         # numerically identical signals, which makes the CSM exactly
-        # rank-deficient regardless of snapshot count -- an expected
-        # degenerate-input failure of this specific shared smoke-test
-        # fixture, not a defect in `BeamformerMVDR` itself. See
-        # `test_beamformer_mvdr_localizes_source` below for MVDR exercised
-        # on a non-degenerate array, where it is asserted on directly.
-        try:
-            bf = dsp.beamforming.BeamformerMVDR(s, ma, g, st)
-            bf.get_beamformer_map(2000, 0, gamma=10)
-        except np.linalg.LinAlgError as e:
-            print(e)
+        # rank-deficient regardless of snapshot count. This is exactly what
+        # the diagonal loading regularizes, so the default run succeeds
+        # while the unregularized one does not.
+        bf = dsp.beamforming.BeamformerMVDR(s, ma, g, st)
+        bf.get_beamformer_map(2000, 0)
+        with pytest.raises(np.linalg.LinAlgError):
+            bf.get_beamformer_map(2000, 0, diagonal_loading_db=None)
 
         bf = dsp.beamforming.BeamformerCleanSC(s, ma, g, st)
         bf.get_beamformer_map(
@@ -348,7 +346,7 @@ class TestBeamformingModule:
         )
 
         bf = dsp.beamforming.BeamformerMVDR(s, ma, grid, st)
-        beamformer_map = bf.get_beamformer_map(2000, 3, gamma=10)
+        beamformer_map = bf.get_beamformer_map(2000, 3)
 
         peak_idx = np.unravel_index(np.argmax(beamformer_map), beamformer_map.shape)
         peak_xy = (gx[peak_idx[0]], gy[peak_idx[1]])

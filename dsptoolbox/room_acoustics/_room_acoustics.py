@@ -2,7 +2,6 @@
 Low-level methods for room acoustics
 """
 
-from typing import Literal
 from warnings import warn
 
 import numpy as np
@@ -40,7 +39,7 @@ def _reverb(
     return_ir_start : bool
         When `True`, it returns not only reverberation time but also the
         index of the sample with the start of the impulse response.
-    trim_ending : bool
+    automatic_trimming : bool
         When `True`, signal's power is trimmed to the first point falling below
         a threshold before computing the energy decay curve.
 
@@ -461,9 +460,9 @@ class ShoeboxRoom(Room):
 
     def get_mixing_time(
         self,
-        mode: Literal["perceptual", "physical"] = "perceptual",
+        use_physical_model: bool = False,
         n_reflections: int = 400,
-        c: float = 343,
+        c: float = 343.0,
     ) -> float:
         """Computes and returns mixing time defined as the time where early
         reflections end and late reflections start. For this, two options are
@@ -476,15 +475,15 @@ class ShoeboxRoom(Room):
 
         Parameters
         ----------
-        mode : {"perceptual", "physical"}, optional
-            Choose from `'perceptual'` or `'physical'`.
-            Default: `'perceptual'`.
+        use_physical_model : bool, optional
+            When `True`, the physical model is used instead of the perceptual
+            estimation. Default: `False`.
         n_reflections : int, optional
-            Necessary only when `mode='physical'`. This is the reflections
+            Necessary only for the physical model. This is the reflections
             density that is reached when the late reverberation starts.
             Default: 400.
         c : float, optional
-            Necessary only when `mode='physical'`. Speed of sound.
+            Necessary only for the physical model. Speed of sound.
             Default: 343.
 
         Returns
@@ -500,17 +499,11 @@ class ShoeboxRoom(Room):
           (11), pp. 887-898.
 
         """
-        mode = mode.lower()
-        assert mode in (
-            "perceptual",
-            "physical",
-        ), f"{mode} is not supported. Use perceptual or physical"
-        mixing_time_s = 0
-        if mode == "perceptual":
-            mixing_time_s = (np.sqrt(self.volume) * 0.58 + 21.2) * 1e-3
-        else:
+        if use_physical_model:
             assert n_reflections > 0, "n_reflections must be positive"
             mixing_time_s = np.sqrt(n_reflections * self.volume / (4 * np.pi * c**3))
+        else:
+            mixing_time_s = (np.sqrt(self.volume) * 0.58 + 21.2) * 1e-3
         self.mixing_time_s = mixing_time_s
         return self.mixing_time_s
 

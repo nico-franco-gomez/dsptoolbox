@@ -405,7 +405,11 @@ class TestFilterTopologies:
 
     def test_warped_fir_filter(self):
         rir = (dsp.ImpulseResponse.from_file(RIR_PATH)).pad_trim(300)
-        fir = dsp.realtime.WarpedFIR(np.hanning(15), -0.6, rir.sampling_rate_hz)
+        fir = dsp.realtime.WarpedFIR(
+            np.hanning(15),
+            dsp.WarpingFactor.Custom.with_factor(-0.6),
+            rir.sampling_rate_hz,
+        )
         [fir.process_sample(x, 0) for x in rir.time_data[:, 0]]
 
         # Multichannel
@@ -413,7 +417,8 @@ class TestFilterTopologies:
         fir.filter_signal(rir)
 
         dsp.realtime.WarpedFIR.from_filter(
-            dsp.Filter.from_ba(np.hanning(20), [1], rir.sampling_rate_hz), 0.1
+            dsp.Filter.from_ba(np.hanning(20), [1], rir.sampling_rate_hz),
+            dsp.WarpingFactor.Custom.with_factor(0.1),
         )
 
     def test_warped_iir_filter(self):
@@ -425,7 +430,7 @@ class TestFilterTopologies:
         iir_w = dsp.realtime.WarpedIIR(
             iir_coefficients.ba[0].copy(),
             iir_coefficients.ba[1].copy(),
-            -0.6,
+            dsp.WarpingFactor.Custom.with_factor(-0.6),
             rir.sampling_rate_hz,
         )
         [iir_w.process_sample(x, 0) for x in rir.time_data[:, 0]]
@@ -438,12 +443,14 @@ class TestFilterTopologies:
         iir_w = dsp.realtime.WarpedIIR(
             np.pad(iir_coefficients.ba[0], ((0, 4))),
             np.pad(iir_coefficients.ba[1], ((0, 10))),
-            -0.6,
+            dsp.WarpingFactor.Custom.with_factor(-0.6),
             rir.sampling_rate_hz,
         )
         [iir_w.process_sample(x, 0) for x in rir.time_data[:, 0]]
 
-        dsp.realtime.WarpedIIR.from_filter(iir_coefficients, 0.1)
+        dsp.realtime.WarpedIIR.from_filter(
+            iir_coefficients, dsp.WarpingFactor.Custom.with_factor(0.1)
+        )
 
     def test_warped_fir_filter_zero_warp_matches_scipy_lfilter(self):
         """At `warping_factor=0`, the allpass warping stage
@@ -457,7 +464,9 @@ class TestFilterTopologies:
         b = rng.normal(0, 1, 7)
         x = rng.normal(0, 1, 200)
 
-        fir = dsp.realtime.WarpedFIR(b, 0.0, self.fs_hz)
+        fir = dsp.realtime.WarpedFIR(
+            b, dsp.WarpingFactor.Custom.with_factor(0.0), self.fs_hz
+        )
         out = np.array([fir.process_sample(v, 0) for v in x])
         expected = sig.lfilter(b, [1], x)
         np.testing.assert_allclose(out, expected, atol=1e-10)
@@ -474,7 +483,9 @@ class TestFilterTopologies:
         a = np.array([1.0, -0.5, 0.2])
         x = rng.normal(0, 1, 200)
 
-        iir = dsp.realtime.WarpedIIR(b, a, 0.0, self.fs_hz)
+        iir = dsp.realtime.WarpedIIR(
+            b, a, dsp.WarpingFactor.Custom.with_factor(0.0), self.fs_hz
+        )
         out = np.array([iir.process_sample(v, 0) for v in x])
         expected = sig.lfilter(b, a, x)
         np.testing.assert_allclose(out, expected, atol=1e-9)

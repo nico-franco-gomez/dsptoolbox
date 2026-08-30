@@ -15,6 +15,8 @@ def _sync_log_chirp(
         Length of the chirp. This will not be the exact length due to the
         necessity of ensuring that the last frequency in the chirp with
         `phase=0` ends.
+    sampling_rate_hz : int
+        Sampling rate in Hz.
 
     Returns
     -------

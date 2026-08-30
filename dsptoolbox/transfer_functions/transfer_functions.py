@@ -2,8 +2,6 @@
 Methods used for acquiring and windowing transfer functions
 """
 
-from typing import Literal
-
 import numpy as np
 from numpy.typing import ArrayLike, NDArray
 from scipy.fft import next_fast_len as next_fast_length_fft
@@ -58,7 +56,14 @@ from ._transfer_functions import (
     _window_this_ir,
     _window_this_ir_tukey,
 )
-from .enums import SmoothingDomain, TransferFunctionType
+from .enums import (
+    DiracNormalization,
+    DiracNormalizationType,
+    FirPhaseMode,
+    ParametrizedDiracNormalization,
+    SmoothingDomain,
+    TransferFunctionType,
+)
 
 
 def spectral_deconvolve(
@@ -385,11 +390,11 @@ def window_centered_ir(
 
     Parameters
     ----------
-    signal: `ImpulseResponse`
+    signal : `ImpulseResponse`
         Signal to window
-    total_length_samples: int
+    total_length_samples : int
         Total window length in samples.
-    window_type: WindowType, optional
+    window_type : WindowType, optional
         Window function to be used. Default: Hann.
 
     Returns
@@ -1087,7 +1092,7 @@ def excess_group_delay(
     # Min GD has fast FFT length, GD has fast RFFT length
     # => Interpolate if they do not match
     if len(f) != len(f_min):
-        gd = _interpolate_fr(f, gd, f_min, None, "linear")
+        gd = _interpolate_fr(f, gd, f_min)
 
     ex_gd = gd - min_gd
 
@@ -1102,7 +1107,7 @@ def combine_ir_with_dirac(
     crossover_frequency: float,
     take_lower_band: bool,
     order: int = 8,
-    normalization: Literal["energy", "peak"] | float | None = None,
+    normalization: DiracNormalizationType = DiracNormalization.NoNormalization,
 ) -> ImpulseResponse:
     """Combine an IR with a perfect impulse at a given crossover frequency
     using a linkwitz-riley crossover. Forward-Backward filtering is done so
@@ -1122,14 +1127,11 @@ def combine_ir_with_dirac(
         `False` delivers the opposite result.
     order : int, optional
         Crossover order. Default: 8.
-    normalization : {"energy", "peak"}, float, None, optional
-        `'energy'` means that the band of the perfect dirac impulse is
-        normalized so that it matches the energy contained in the band of the
-        impulse response. `'peak'` means that peak value is matched for both
-        bands. `None` avoids any normalization (Impulse response is always
-        normalized prior to computation). Alternatively, a value in dB can be
-        passed in order to scale the dirac part of the resulting impulse.
-        Default: `None`.
+    normalization : DiracNormalization, optional
+        Normalization of the dirac part relative to the impulse response. The
+        impulse response is always normalized prior to the computation. Use
+        `DiracNormalization.Custom.with_gain_db()` to scale the dirac part by
+        an explicit gain in dB. Default: NoNormalization.
 
     Returns
     -------
@@ -1145,12 +1147,11 @@ def combine_ir_with_dirac(
 
     """
     assert type(ir) is ImpulseResponse, "This is only valid for an impulse response"
-    if normalization is not None and type(normalization) is str:
-        normalization = normalization.lower()
-        assert normalization in (
-            "energy",
-            "peak",
-        ), "Invalid normalization parameter"
+    if normalization.needs_gain():
+        raise ValueError(
+            "Custom requires an explicit gain. Pass it with "
+            + "DiracNormalization.Custom.with_gain_db(...)"
+        )
     ir = ir.normalize(0.0)
     latencies_samples = _get_fractional_impulse_peak_index(ir.time_data)
 
@@ -1188,16 +1189,16 @@ def combine_ir_with_dirac(
     td_ir = ir_multi.bands[band_ir].time_data
     td_imp = imp_multi.bands[band_imp].time_data
 
-    if normalization == "energy":
+    if isinstance(normalization, ParametrizedDiracNormalization):
+        td_imp *= from_db(normalization.gain_db, True)
+    elif normalization == DiracNormalization.Energy:
         ir_rms = np.sqrt(np.mean(td_ir**2, axis=0))
         imp_rms = np.sqrt(np.mean(td_imp**2, axis=0))
         td_imp *= ir_rms / imp_rms
-    elif normalization == "peak":
+    elif normalization == DiracNormalization.Peak:
         ir_peak = np.max(np.abs(td_ir), axis=0)
         imp_peak = np.max(np.abs(td_imp), axis=0)
         td_imp *= ir_peak / imp_peak
-    elif isinstance(normalization, (int, float, np.floating, np.integer)):
-        td_imp *= from_db(float(normalization), True)
 
     # Combine
     combined_ir = ir.copy_with_new_time_data(td_ir + td_imp * polarity[None, ...])
@@ -1207,7 +1208,7 @@ def combine_ir_with_dirac(
 def ir_to_filter(
     signal: ImpulseResponse,
     channel: int | None = 0,
-    phase_mode: Literal["direct", "min", "lin"] = "direct",
+    phase_mode: FirPhaseMode = FirPhaseMode.Direct,
 ) -> Filter | FilterBank:
     """This function takes in an impulse response and turns the selected
     channel into an FIR filter. With `phase_mode` it is possible
@@ -1221,10 +1222,8 @@ def ir_to_filter(
         Channel of the signal to be used. If None, all channels are used and
         the return is a FilterBank with each channel as an FIR filter. This
         also applies for a signal with a single channel. Default: 0.
-    phase_mode : {"direct", "min", "lin"}, optional
-        Phase of the FIR filter. Choose from "direct" (no changes to phase),
-        "min" (minimum phase) or "lin" (minimum linear phase).
-        Default: "direct".
+    phase_mode : FirPhaseMode, optional
+        Phase of the FIR filter. Default: Direct.
 
     Returns
     -------
@@ -1234,22 +1233,16 @@ def ir_to_filter(
 
     """
     assert type(signal) is ImpulseResponse, "This is only valid for an impulse response"
-    phase_mode = phase_mode.lower()
-    assert phase_mode in (
-        "direct",
-        "min",
-        "lin",
-    ), f"""{phase_mode} is not valid. Choose from ('direct', 'min', 'lin')"""
 
     # Choose channel
     signal = signal.get_channels(channel) if channel is not None else signal
 
     # Change phase
-    if phase_mode == "min":
+    if phase_mode == FirPhaseMode.Minimum:
         signal = min_phase_from_mag(
             Spectrum.from_signal(signal), signal.sampling_rate_hz, len(signal)
         )
-    elif phase_mode == "lin":
+    elif phase_mode == FirPhaseMode.Linear:
         signal = lin_phase_from_mag(
             Spectrum.from_signal(signal), signal.sampling_rate_hz, len(signal)
         )

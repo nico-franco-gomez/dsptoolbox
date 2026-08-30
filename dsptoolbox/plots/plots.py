@@ -67,7 +67,7 @@ def general_plot(
     info_box : str, optional
         String containing extra information to be shown in a info box on the
         plot. Default: None.
-    tight_layout: bool, optional
+    tight_layout : bool, optional
         When `True`, tight layout is activated. Default: `True`.
     ax : `matplotlib.axes.Axes`, None, optional
         Axes to draw on, so that multiple curves can share one plot. A new
@@ -190,7 +190,7 @@ def general_plot_two_axes(
     info_box : str, optional
         String containing extra information to be shown in a info box on the
         plot. Default: None.
-    tight_layout: bool, optional
+    tight_layout : bool, optional
         When `True`, tight layout is activated. Default: `True`.
     ax : `matplotlib.axes.Axes`, None, optional
         Axes to draw the first curve on, the second one gets a twin of it. A

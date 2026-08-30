@@ -42,7 +42,12 @@ Analyze TF/IR:
 
 """
 
-from .enums import SmoothingDomain, TransferFunctionType
+from .enums import (
+    DiracNormalization,
+    FirPhaseMode,
+    SmoothingDomain,
+    TransferFunctionType,
+)
 from .transfer_functions import (
     average_irs,
     combine_ir_with_dirac,
@@ -93,4 +98,6 @@ __all__ = [
     "complex_smoothing",
     "TransferFunctionType",
     "SmoothingDomain",
+    "FirPhaseMode",
+    "DiracNormalization",
 ]

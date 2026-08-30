@@ -127,7 +127,7 @@ def _fw_snr_seg_per_channel(
         Gamma exponent for the weighting function. See reference for details.
     time_window : NDArray[np.float64]
         Time window to be used.
-    step : int
+    step_samples : int
         Hop length between each time frame.
 
     Returns

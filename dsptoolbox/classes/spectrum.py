@@ -24,6 +24,7 @@ from ..standard.enums import (
     InterpolationScheme,
     MagnitudeNormalization,
     SpectrumType,
+    WarpingFactorType,
     Window,
     WindowType,
 )
@@ -744,7 +745,7 @@ class Spectrum(MultichannelData):
         ----------
         domain : InterpolationDomain, optional
             Domain to use during the interpolation. Default: Power.
-        interpolation_scheme : InterpolationScheme, optional
+        scheme : InterpolationScheme, optional
             Type of interpolation to realize. See notes for details. Default:
             Linear.
         edges_handling : InterpolationEdgeHandling, optional
@@ -805,15 +806,16 @@ class Spectrum(MultichannelData):
             axis=0,
         )
 
-    def warp(self, warping_factor: float, sampling_rate_hz: int) -> Self:
+    def warp(self, warping_factor: WarpingFactorType, sampling_rate_hz: int) -> Self:
         """Return a copy of the spectrum warped through interpolation with
         the stored interpolation parameters. This is done according to the
         formula shown in [1].
 
         Parameters
         ----------
-        warping_factor : float
-            Warping factor between ]-1;1[.
+        warping_factor : WarpingFactor
+            Warping factor to apply. Use `WarpingFactor.Custom.with_factor()`
+            to pass an explicit value in ]-1; 1[.
         sampling_rate_hz : int
             Assumed sampling rate while warping. It must be valid for the
             current frequency vector, i.e., no aliasing is to be expected.
@@ -846,7 +848,9 @@ class Spectrum(MultichannelData):
 
         new = self.copy()
         new.frequency_vector_hz = _warp_frequency_vector(
-            new.frequency_vector_hz, sampling_rate_hz, warping_factor
+            new.frequency_vector_hz,
+            sampling_rate_hz,
+            warping_factor.get_factor(sampling_rate_hz),
         )
         return new
 

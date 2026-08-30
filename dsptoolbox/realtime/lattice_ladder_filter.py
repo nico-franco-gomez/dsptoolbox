@@ -113,7 +113,7 @@ class LatticeLadderFilter(RealtimeFilter[float]):
 
         Parameters
         ----------
-        filt: `Filter`
+        filt : `Filter`
             Filter to convert into its lattice filter representation.
 
         Returns

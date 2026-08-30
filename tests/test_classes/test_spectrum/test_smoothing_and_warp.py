@@ -63,12 +63,15 @@ class TestSpectrum:
 
     def test_warp(self):
         spec = self.get_spectrum_from_rir(False)
-        spec.warp(-0.7, self.rir.sampling_rate_hz)
-        spec.warp(0.7, self.rir.sampling_rate_hz)
+        spec.warp(dsp.WarpingFactor.Custom.with_factor(-0.7), self.rir.sampling_rate_hz)
+        spec.warp(dsp.WarpingFactor.Bark, self.rir.sampling_rate_hz)
+        with pytest.raises(ValueError):
+            dsp.WarpingFactor.Custom.with_factor(1.1)
         with pytest.raises(AssertionError):
-            spec.warp(1.1, self.rir.sampling_rate_hz)
-        with pytest.raises(AssertionError):
-            spec.warp(0.1, self.rir.sampling_rate_hz - 200)
+            spec.warp(
+                dsp.WarpingFactor.Custom.with_factor(0.1),
+                self.rir.sampling_rate_hz - 200,
+            )
 
     def test_warp_boundary_fixed_points(self):
         """`Spectrum.warp` only relabels the frequency axis via the
@@ -86,7 +89,10 @@ class TestSpectrum:
         assert spec.frequency_vector_hz[-1] == self.rir.sampling_rate_hz / 2
 
         for warping_factor in (-0.7, 0.4):
-            warped = spec.warp(warping_factor, self.rir.sampling_rate_hz)
+            warped = spec.warp(
+                dsp.WarpingFactor.Custom.with_factor(warping_factor),
+                self.rir.sampling_rate_hz,
+            )
             assert np.isclose(warped.frequency_vector_hz[0], 0.0, atol=1e-9)
             assert np.isclose(
                 warped.frequency_vector_hz[-1],

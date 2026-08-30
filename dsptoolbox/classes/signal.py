@@ -1560,7 +1560,7 @@ class Signal(MultichannelData):
         ----------
         channel_number : int, optional
             Selected channel to plot spectrogram. Default: 0 (first).
-        logfreqs : bool, optional
+        log_freqs : bool, optional
             When `True`, frequency axis is plotted logarithmically.
             Default: `True`.
         dynamic_range_db : float, optional

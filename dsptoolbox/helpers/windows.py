@@ -16,18 +16,18 @@ def calculate_tukey_like_window(
 
     Parameters
     ----------
-    points: array_like
+    points : array_like
         Vector containing 4 points for the construction of the custom
         window.
-    window_length: int
+    window_length : int
         Length of the window.
-    window_type: WindowType, list[WindowType]
+    window_type : WindowType, list[WindowType]
         Type of window to use. Select from scipy.signal.windows. It can be a
         single window (optionally carrying an extra parameter) or a list with
         two window types for the left and right flanks respectively.
-    at_start: bool
+    at_start : bool
         Creates a half rising window at the start as well.
-    inverse: bool
+    inverse : bool
         When `True`, the window is inversed so that the middle section
         contains 0.
 

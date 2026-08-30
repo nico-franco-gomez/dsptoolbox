@@ -3,7 +3,7 @@ from numpy.typing import NDArray
 
 from ..classes.filter import Filter
 from ..classes.signal import Signal
-from ..standard.enums import FilterCoefficientsType
+from ..standard.enums import FilterCoefficientsType, WarpingFactorType
 from .realtime_filter import RealtimeFilter
 
 
@@ -25,7 +25,7 @@ class WarpedFIR(RealtimeFilter[float]):
     def __init__(
         self,
         b: NDArray[np.float64],
-        warping_factor: float,
+        warping_factor: WarpingFactorType,
         sampling_rate_hz: int,
     ) -> None:
         """Instantiate a warped FIR filter with its coefficients and a warping
@@ -35,8 +35,10 @@ class WarpedFIR(RealtimeFilter[float]):
         ----------
         b : NDArray[np.float64]
             Feedforward filter coefficients.
-        warping_factor : float
-            Factor to use for warping.
+        warping_factor : WarpingFactor
+            Factor to use for warping. Use
+            `WarpingFactor.Custom.with_factor()` to pass an explicit value in
+            ]-1; 1[.
         sampling_rate_hz : int
             Sampling rate of the filter. It is only relevant when filtering a
             whole signal and not in the sample-by-sample processing.
@@ -48,23 +50,22 @@ class WarpedFIR(RealtimeFilter[float]):
           10.1109/ASPAA.1997.625615.
 
         """
-        assert abs(warping_factor) < 1.0, "Warping factor must be in range ]-1;1["
         self.sampling_rate_hz = sampling_rate_hz
         self.b = b
-        self.warp = warping_factor
+        self.warp = warping_factor.get_factor(sampling_rate_hz)
         self.N = len(self.b)
         self.order = len(self.b) - 1
         self.set_n_channels(1)
 
     @staticmethod
-    def from_filter(filt: Filter, warping_factor: float) -> "WarpedFIR":
+    def from_filter(filt: Filter, warping_factor: WarpingFactorType) -> "WarpedFIR":
         """Instantiate with the coefficients of a filter. It must be FIR
 
         Parameters
         ----------
         filt : Filter
             Filter with coefficients.
-        warping_factor : float
+        warping_factor : WarpingFactor
             Factor to use for warping.
 
         Returns
@@ -155,7 +156,7 @@ class WarpedIIR(WarpedFIR):
         self,
         b: NDArray[np.float64],
         a: NDArray[np.float64],
-        warping_factor: float,
+        warping_factor: WarpingFactorType,
         sampling_rate_hz: int,
     ) -> None:
         """Instantiate a warped IIR filter with its coefficients and a warping
@@ -167,8 +168,10 @@ class WarpedIIR(WarpedFIR):
             Feedforward filter coefficients.
         a : NDArray[np.float64]
             Feedbackward filter coefficients.
-        warping_factor : float
-            Factor to use for warping.
+        warping_factor : WarpingFactor
+            Factor to use for warping. Use
+            `WarpingFactor.Custom.with_factor()` to pass an explicit value in
+            ]-1; 1[.
         sampling_rate_hz : int
             Sampling rate of the filter. It is only relevant when filtering a
             whole signal and not in the sample-by-sample processing.
@@ -191,20 +194,20 @@ class WarpedIIR(WarpedFIR):
         self.a = a / a[0]
 
         # Prepare rest data
-        self.warp = warping_factor
+        self.warp = warping_factor.get_factor(sampling_rate_hz)
         self.sampling_rate_hz = sampling_rate_hz
         self.set_n_channels(1)
         self.__compute_sigmas()
 
     @staticmethod
-    def from_filter(filt: Filter, warping_factor: float) -> "WarpedIIR":
+    def from_filter(filt: Filter, warping_factor: WarpingFactorType) -> "WarpedIIR":
         """Instantiate with the coefficients of a filter. It must be IIR
 
         Parameters
         ----------
         filt : Filter
             Filter with coefficients.
-        warping_factor : float
+        warping_factor : WarpingFactor
             Factor to use for warping.
 
         Returns

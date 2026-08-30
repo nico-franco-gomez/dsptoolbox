@@ -245,7 +245,7 @@ def _filter_on_signal(
     zero_phase : bool
         Uses zero-phase filtering on signal. Be aware that the filter
         is doubled in this case.
-    warning_on_complex_output: bool
+    warning_on_complex_output : bool
         When `True`, there is a warning when the output is complex. Either way,
         only the real part is regarded.
 
@@ -329,7 +329,7 @@ def _filter_on_signal_ba(
     is_fir : bool
         Filter type. When FIR, an own implementation of lfilter is used,
         otherwise scipy.signal.lfilter is used.
-    warning_on_complex_output: bool
+    warning_on_complex_output : bool
         When `True`, there is a warning when the output is complex. Either way,
         only the real part is regarded.
 

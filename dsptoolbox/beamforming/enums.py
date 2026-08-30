@@ -18,6 +18,20 @@ class SteeringVectorType(Enum):
     TrueLocation = auto()
 
 
+class PointsProjection(Enum):
+    """Projection to use when plotting a set of points:
+
+    - Automatic: 3D for points that extend in three dimensions, 2D otherwise.
+    - TwoDimensional, ThreeDimensional: force the projection. Points that
+      extend in three dimensions are always plotted in 3D.
+
+    """
+
+    Automatic = auto()
+    TwoDimensional = auto()
+    ThreeDimensional = auto()
+
+
 class SpatialDimension(Enum):
     """Cartesian spatial dimensions."""
 

@@ -425,54 +425,10 @@ def _warp_time_series(
 
     warped_td = dirac[..., None] * td[0, :]
 
-    # Print progress to console
-    ns = [
-        int(0.25 * td.shape[0]),
-        int(0.5 * td.shape[0]),
-        int(0.75 * td.shape[0]),
-    ]
-
     for n in np.arange(1, td.shape[0]):
         dirac = lfilter(b, a, dirac)
         warped_td += dirac[..., None] * td[n, :]
-        if n in ns and len(ns) > 0:
-            print(f"Warped: {(ns.pop(0) / td.shape[0] * 100):.0f}% of signal")
     return warped_td
-
-
-def _get_warping_factor(warping_factor: float | str, fs_hz: int) -> float:
-    """Check warping factor as float or return from string when approximation
-    to Bark or ERB is expected (according to [1]).
-
-    References
-    ----------
-    - [1]: III, J.O. & Abel, Jonathan. (1999). Bark and ERB Bilinear
-      Transforms. Speech and Audio Processing, IEEE Transactions on. 7.
-      697 - 708. 10.1109/89.799695.
-
-    """
-    if isinstance(warping_factor, str):
-        approximation = warping_factor.lower()
-        invert = approximation[-1] not in ("k", "b")
-        if "bark" in approximation:
-            # Eq. (26)
-            factor = -1.0 * (
-                1.0674 * (2.0 / np.pi * np.arctan(0.06583 * fs_hz)) ** 0.5 - 0.1916
-            )
-        elif "erb" in approximation:
-            # Eq. (30)
-            factor = -1.0 * (
-                0.7446 * (2.0 / np.pi * np.arctan(0.1418 * fs_hz)) ** 0.5 + 0.03237
-            )
-        else:
-            raise ValueError("Warping factor approximation is not supported")
-        return -factor if invert else factor
-
-    if not isinstance(warping_factor, (int, float, np.floating, np.integer)):
-        raise TypeError("Invalid type for warping factor")
-    factor = float(warping_factor)
-    assert np.abs(factor) < 1.0, "Warping factor has to be in ]-1; 1["
-    return factor
 
 
 try:

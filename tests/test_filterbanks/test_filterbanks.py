@@ -567,7 +567,7 @@ class TestFilterbanksModule:
 
         # Sequential cannot downsample: the second filter would no longer
         # match the rate it is handed
-        with pytest.raises(NotImplementedError):
+        with pytest.raises(ValueError):
             fb.plot_magnitude(512, dsp.FilterBankMode.Sequential, downsample=True)
 
         # The base class arguments must still get through (A10)

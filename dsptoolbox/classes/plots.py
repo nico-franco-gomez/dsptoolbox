@@ -81,19 +81,20 @@ def _csm_plot(
                 ax[c1, c2].set_xticks(ticks)
                 ax[c1, c2].get_xaxis().set_major_formatter(ScalarFormatter())
             ax[c1, c2].plot(f, to_db(csm[:, c1, c2], False))
-            if c1 != c2:
-                axRight = ax[c1, c2].twinx()
-                axRight.plot(
+            ax_right = None
+            if with_phase and c1 != c2:
+                ax_right = ax[c1, c2].twinx()
+                ax_right.plot(
                     f,
                     np.unwrap(np.angle(csm[:, c1, c2])),
                     alpha=0.6,
                     color="xkcd:orange",
                     linestyle="dotted",
                 )
-                axRight.grid(False)
+                ax_right.grid(False)
             if c1 == ch - 1:
                 ax[c1, c2].set_xlabel("Hz")
-            if c2 == ch - 1:
-                axRight.set_ylabel("rad")
+            if c2 == ch - 1 and ax_right is not None:
+                ax_right.set_ylabel("rad")
     fig.tight_layout()
     return fig, ax

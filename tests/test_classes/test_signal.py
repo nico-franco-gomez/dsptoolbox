@@ -227,6 +227,21 @@ class TestSignal:
         with pytest.raises(AttributeError):
             s.time_vector_s = np.array([0.0, 1.0])
 
+    def test_plot_csm_with_phase(self):
+        """`with_phase` used to be accepted and ignored, so the phase was
+        drawn on a twin axis no matter what.
+
+        """
+        s = dsp.Signal(time_data=self.time_vec[:, :2], sampling_rate_hz=self.fs)
+
+        fig, _ = s.plot_csm(with_phase=True)
+        n_axes_with_phase = len(fig.axes)
+        close(fig)
+
+        fig, _ = s.plot_csm(with_phase=False)
+        assert len(fig.axes) < n_axes_with_phase
+        close(fig)
+
     def test_plot_generation(self):
         s = dsp.ImpulseResponse(time_data=self.time_vec, sampling_rate_hz=self.fs)
         s.plot_magnitude()

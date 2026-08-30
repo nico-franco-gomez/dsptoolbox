@@ -359,7 +359,8 @@ class TestTransformsModule:
 
     def test_laguerre(self):
         sp = self.speech.pad_trim(128)
-        dsp.transforms.laguerre(sp, -0.7)
+        dsp.transforms.laguerre(sp, dsp.WarpingFactor.Custom.with_factor(-0.7))
+        dsp.transforms.laguerre(sp, dsp.WarpingFactor.Erb)
 
     def test_laguerre_round_trip_is_identity(self):
         """Per the docstring, applying `laguerre` with a warping factor and
@@ -382,29 +383,35 @@ class TestTransformsModule:
         sig.constrain_amplitude = False
 
         for warping_factor in (0.4, -0.6):
-            warped = dsp.transforms.laguerre(sig, warping_factor)
-            unwarped = dsp.transforms.laguerre(warped, -warping_factor)
+            warped = dsp.transforms.laguerre(
+                sig, dsp.WarpingFactor.Custom.with_factor(warping_factor)
+            )
+            unwarped = dsp.transforms.laguerre(
+                warped, dsp.WarpingFactor.Custom.with_factor(-warping_factor)
+            )
             np.testing.assert_allclose(unwarped.time_data[:, 0], td[:, 0], atol=1e-9)
 
     def test_laguerre_invalid_parameters_raise(self):
-        sp = self.speech.pad_trim(128)
-        with pytest.raises(AssertionError):
-            dsp.transforms.laguerre(sp, 1.0)
-        with pytest.raises(AssertionError):
-            dsp.transforms.laguerre(sp, -1.0)
+        with pytest.raises(ValueError):
+            dsp.WarpingFactor.Custom.with_factor(1.0)
+        with pytest.raises(ValueError):
+            dsp.WarpingFactor.Custom.with_factor(-1.0)
 
     def test_warp(self):
         s = dsp.ImpulseResponse(
             join(os.path.dirname(__file__), "..", "example_data", "rir.wav")
         )
-        dsp.transforms.warp(s, -0.6, True, 2**8)
-        dsp.transforms.warp(s, 0.6, False, 2**8)
+        dsp.transforms.warp(s, dsp.WarpingFactor.Custom.with_factor(-0.6), True, 2**8)
+        dsp.transforms.warp(s, dsp.WarpingFactor.Custom.with_factor(0.6), False, 2**8)
 
         # warping scales
-        dsp.transforms.warp(s, "bark", False, 2**7)
-        dsp.transforms.warp(s, "bark-", False, 2**7)
-        dsp.transforms.warp(s, "erb", False, 2**7)
-        dsp.transforms.warp(s, "erb-", False, 2**7)
+        for scale in (
+            dsp.WarpingFactor.Bark,
+            dsp.WarpingFactor.BarkInverse,
+            dsp.WarpingFactor.Erb,
+            dsp.WarpingFactor.ErbInverse,
+        ):
+            dsp.transforms.warp(s, scale, False, 2**7)
 
     def test_warp_round_trip_is_identity(self):
         """`warp` states: "To pre-warp a signal, pass a negative
@@ -427,18 +434,22 @@ class TestTransformsModule:
         ir.constrain_amplitude = False
 
         for warping_factor in (0.3, -0.5, 0.7):
-            warped = dsp.transforms.warp(ir, -warping_factor, False, n)
-            unwarped = dsp.transforms.warp(warped, warping_factor, False, n)
+            warped = dsp.transforms.warp(
+                ir, dsp.WarpingFactor.Custom.with_factor(-warping_factor), False, n
+            )
+            unwarped = dsp.transforms.warp(
+                warped, dsp.WarpingFactor.Custom.with_factor(warping_factor), False, n
+            )
             np.testing.assert_allclose(unwarped.time_data[:, 0], td[:, 0], atol=1e-9)
 
     def test_warp_invalid_parameters_raise(self):
-        s = dsp.ImpulseResponse(
-            join(os.path.dirname(__file__), "..", "example_data", "rir.wav")
-        )
-        with pytest.raises(AssertionError):
-            dsp.transforms.warp(s, 1.0, False)
         with pytest.raises(ValueError):
-            dsp.transforms.warp(s, "not-a-scale", False)
+            dsp.WarpingFactor.Custom.with_factor(1.0)
+        # Only Custom carries an explicit factor, and it is required
+        with pytest.raises(ValueError):
+            dsp.WarpingFactor.Erb.with_factor(0.5)
+        with pytest.raises(ValueError):
+            dsp.WarpingFactor.Custom.get_factor(48_000)
 
     def test_warp_filter(self):
         i = dsp.Filter.iir_filter(
@@ -448,8 +459,8 @@ class TestTransformsModule:
             filter_design_method=dsp.IirDesignMethod.Butterworth,
             sampling_rate_hz=24000,
         )
-        dsp.transforms.warp_filter(i, -0.6)
-        dsp.transforms.warp_filter(i, 0.6)
+        dsp.transforms.warp_filter(i, dsp.WarpingFactor.Custom.with_factor(-0.6))
+        dsp.transforms.warp_filter(i, dsp.WarpingFactor.Bark)
 
     def test_warp_filter_fixed_points_at_dc_and_nyquist(self):
         """Per the docstring, poles/zeros are transformed via the Oppenheim
@@ -466,23 +477,18 @@ class TestTransformsModule:
         filt = dsp.Filter.from_zpk(zeros, poles, 1.0, fs)
 
         for warping_factor in (0.3, -0.6):
-            warped = dsp.transforms.warp_filter(filt, warping_factor)
+            warped = dsp.transforms.warp_filter(
+                filt, dsp.WarpingFactor.Custom.with_factor(warping_factor)
+            )
             zw, pw, _ = warped.get_coefficients(dsp.FilterCoefficientsType.Zpk)
             assert np.any(np.isclose(zw, 1.0)) and np.any(np.isclose(zw, -1.0))
             assert np.any(np.isclose(pw, 1.0)) and np.any(np.isclose(pw, -1.0))
 
     def test_warp_filter_invalid_parameters_raise(self):
-        i = dsp.Filter.iir_filter(
-            3,
-            100.0,
-            type_of_pass=dsp.FilterPassType.Highpass,
-            filter_design_method=dsp.IirDesignMethod.Butterworth,
-            sampling_rate_hz=24000,
-        )
-        with pytest.raises(AssertionError):
-            dsp.transforms.warp_filter(i, 1.0)
-        with pytest.raises(AssertionError):
-            dsp.transforms.warp_filter(i, -1.0)
+        with pytest.raises(ValueError):
+            dsp.WarpingFactor.Custom.with_factor(1.0)
+        with pytest.raises(ValueError):
+            dsp.WarpingFactor.Custom.with_factor(-1.0)
 
     def test_lpc(self):
         speech = self.speech.resample(8000)
@@ -568,14 +574,30 @@ class TestTransformsModule:
 
         """
         ir = dsp.ImpulseResponse.from_time_data(np.eye(64, 1), 8_000)
-        reference = dsp.transforms.warp(ir, 0.3, False).time_data
+        custom = dsp.WarpingFactor.Custom.with_factor
+        reference = dsp.transforms.warp(ir, custom(0.3), False).time_data
         for factor in (np.float64(0.3), np.float32(0.3)):
             np.testing.assert_allclose(
-                dsp.transforms.warp(ir, factor, False).time_data,
+                dsp.transforms.warp(ir, custom(factor), False).time_data,
                 reference,
                 atol=1e-6,
             )
         # An integer factor of 0 is the identity warp
         np.testing.assert_allclose(
-            dsp.transforms.warp(ir, 0, False).time_data, ir.time_data, atol=1e-12
+            dsp.transforms.warp(ir, custom(0), False).time_data,
+            ir.time_data,
+            atol=1e-12,
         )
+
+    def test_warping_factor_scales_are_symmetric(self):
+        """The inverse members must resolve to exactly the negated factor of
+        their forward counterpart, so that a warp/dewarp pair cancels.
+
+        """
+        fs = 44_100
+        for forward, inverse in (
+            (dsp.WarpingFactor.Bark, dsp.WarpingFactor.BarkInverse),
+            (dsp.WarpingFactor.Erb, dsp.WarpingFactor.ErbInverse),
+        ):
+            assert forward.get_factor(fs) == -inverse.get_factor(fs)
+            assert abs(forward.get_factor(fs)) < 1.0

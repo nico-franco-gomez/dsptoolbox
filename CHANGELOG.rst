@@ -48,9 +48,35 @@ API breaks
 - Importing the library no longer changes matplotlib's global settings nor
   sets `SD_ENABLE_ASIO`. Use `plots.use_default_style()` and
   `audio_io.enable_asio()`. sounddevice is imported on first use
-- The last string selectors became enums: `IrLatencyRemoval` for
-  `remove_ir_latency`, `SpectrumAverageMethod` for `average`, and
-  `Power2Rounding` for `tools.next_power_2`
+- No string selector is left in the public API. `IrLatencyRemoval` for
+  `remove_ir_latency`, `SpectrumAverageMethod` for `average`,
+  `Power2Rounding` for `tools.next_power_2`, `FirPhaseMode` for
+  `ir_to_filter`, `DiracNormalization` for `combine_ir_with_dirac`,
+  `SampleFormat` for `tools.convert_sample_representation`,
+  `InterpolationConversion` and `InterpolationKind` for
+  `tools.interpolate_fr`, and `PointsProjection` for `plot_points`.
+  `ShoeboxRoom.get_mixing_time` takes `use_physical_model: bool` instead of
+  its two-valued string
+- The warping factor is a `WarpingFactor` enum wherever it is taken:
+  `transforms.warp`, `transforms.warp_filter`, `transforms.laguerre`,
+  `Spectrum.warp`, `WarpedFIR` and `WarpedIIR`. `Bark`, `Erb` and their
+  `*Inverse` members resolve the factor from the sampling rate, and
+  `WarpingFactor.Custom.with_factor()` binds an explicit one, following the
+  `Window.with_extra_parameter` pattern. `transforms.warp` therefore always
+  returns a `Signal`; the factor a scale approximation resolves to is
+  available up front through `WarpingFactor.get_factor()`
+- The beamformers no longer print their progress, so `verbose` is gone from
+  their constructors. Nothing in the library prints any more, except
+  `show_info`, `list_devices` and `print_device_info`, whose purpose is to
+  write to the console
+- `BeamformerMVDR.get_beamformer_map` takes `diagonal_loading_db` in place of
+  the `gamma` argument it accepted and ignored. It is applied by default, so
+  MVDR maps change: the cross-spectral matrix is regularized before its
+  inversion, which also makes a rank-deficient one invertible. Pass `None`
+  for the previous, unregularized result
+- `SpectralSubtractor` takes `None` instead of `False` for "no spectrum to
+  subtract", and the new `clear_spectrum_to_subtract()` drops a previously
+  set one
 - `transforms.istft` takes either the original signal or a
   `SpectrogramParameters` with a sampling rate; the loose keyword arguments
   are gone. `distances.*` take a `SpectrumParameters` instead of a dictionary
@@ -69,7 +95,6 @@ Added
 - `SpectrumParameters` and `SpectrogramParameters` frozen dataclasses, read
   from `Signal.spectrum_parameters` / `spectrogram_parameters` and applied
   with `with_spectrum_parameters()` / `with_spectrogram_parameters()`
-- `verbose` on the beamformers, which are silent by default
 - `rng` parameter on every stochastic entry point, so that results can be
   reproduced and seeded independently: `generators.noise`,
   `generators.oscillator`, `Signal.dither`, `effects.LFO`, `transforms.lpc`
@@ -86,6 +111,8 @@ Added
   the type its `process_sample` produces, which is what distinguishes the
   multimode `StateVariableFilter` from the rest
 - `ax` on `Regular3DGrid.plot_map`, which the other plots already had
+- Diagonal loading in `BeamformerMVDR`, relative to the mean sensor power of
+  each frequency bin
 
 Bugfix
 ~~~~~~
@@ -175,14 +202,23 @@ Bugfix
   the pre-enum `_get_normalized_spectrum`, so that mode always raised.
   `filter_signal` had the same problem, with `downsample` occupying the
   positional slot of the base class's `activate_zi`. Sequential filtering
-  with downsampling now raises a clear `NotImplementedError`: the first
-  filter halves the sampling rate, so the second no longer matches it
+  with downsampling now raises a clear `ValueError`: the first filter halves
+  the sampling rate, so the second no longer matches it, which makes the
+  combination invalid rather than merely unimplemented
 - `SpectralSubtractor.set_parameters` reset the spectrum to subtract unless
   it was passed again, although the method documents that `None` leaves a
-  value unchanged. Pass `False` to clear it
-- `effects.Distortion` and `_get_warping_factor` rejected valid inputs
-  because they tested `type(x) is <type>`: a list of distortion types and an
-  integer or numpy float warping factor respectively
+  value unchanged
+- `Signal.plot_csm(with_phase=False)` drew the phase anyway: the argument was
+  accepted and never read. The right-hand axis label also landed on the
+  previous row's twin axis
+- `effects.Distortion` and the warping factor rejected valid inputs because
+  they tested `type(x) is <type>`: a list of distortion types and an integer
+  or numpy float warping factor respectively
+- 26 docstrings documented a parameter that the signature does not have, or
+  left one of its parameters undocumented, mostly after a rename.
+  `center_frequenc_hz` had survived that way in five beamformers, and
+  `SpectralSubtractor.set_advanced_parameters` documented a
+  `maximum_amplification_db` that no code implements
 - three docstrings contained an invalid `\_` escape sequence, which is a
   `SyntaxWarning` today and an error in a future Python
 
@@ -213,6 +249,12 @@ Misc
 - Two `if __name__ == "__main__"` scratch blocks were removed from library
   modules
 - `plots.plots` no longer shadows the `max` and `min` builtins module-wide
+- `tools.convert_sample_representation` builds its numpy data types from
+  `SampleFormat` instead of two `eval()` calls on a formatted string
+- The tests guard the API surface statically: every function keeps its
+  annotations, literal defaults stay compatible with them, docstrings keep
+  agreeing with their signatures, no invalid escape sequence appears, and
+  nothing prints outside the three functions meant to
 - In-place writes through property getters were replaced by assignments
   through the setters, so validation, complex-value handling and cache
   invalidation are reached

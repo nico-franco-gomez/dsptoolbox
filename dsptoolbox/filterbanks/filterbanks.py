@@ -108,7 +108,7 @@ def reconstructing_fractional_octave_bands(
     n_samples : int, optional
         Length of the filter in samples. Longer filters are more precise.
         Default: 2**11 = 2048.
-    sampling_rate : int
+    sampling_rate_hz : int
         Sampling frequency in Hz. Default: `None`.
 
     Returns

@@ -9,6 +9,7 @@ from matplotlib.figure import Figure
 from numpy.typing import NDArray
 
 from ..helpers.other import _euclidean_distance_matrix
+from .enums import PointsProjection
 
 
 class BasePoints:
@@ -113,30 +114,21 @@ class BasePoints:
         return _euclidean_distance_matrix(self.coordinates, point).squeeze()
 
     # ======== Plotting =======================================================
-    def plot_points(self, projection: str | None = None) -> tuple[Figure, Axes]:
+    def plot_points(
+        self, projection: PointsProjection = PointsProjection.Automatic
+    ) -> tuple[Figure, Axes]:
         """Plot points in 2D or 3D plot depending on the actual points.
 
         Parameters
         ----------
-        projection : str, optional
-            Projection for the plot. Choose from `'3d'` or `'2d'` or `None`
-            to set it automatically. For 3D points, the projection will always
-            be 3d. Default: `None`.
+        projection : PointsProjection, optional
+            Projection for the plot. For points extending in three
+            dimensions, the projection is always 3D. Default: Automatic.
 
         """
-        if projection is not None:
-            projection = projection.lower()
-        if self.ndim == 3 or projection == "3d":
-            projection = "3d"
-            threed = True
-        elif projection in (None, "2d"):
-            threed = False
-            projection = None
-        else:
-            raise ValueError("projection must be 2d, 3d or None")
-
+        threed = self.ndim == 3 or projection == PointsProjection.ThreeDimensional
         fig, ax = plt.subplots(
-            1, 1, figsize=(7, 5), subplot_kw={"projection": projection}
+            1, 1, figsize=(7, 5), subplot_kw={"projection": "3d" if threed else None}
         )
         if threed:
             ax.scatter(

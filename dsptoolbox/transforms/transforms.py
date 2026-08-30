@@ -34,6 +34,7 @@ from ..standard.enums import (
     FilterBankMode,
     FilterCoefficientsType,
     FilterPassType,
+    WarpingFactorType,
     Window,
     WindowType,
 )
@@ -44,7 +45,6 @@ from ..transforms._transforms import (
     Wavelet,
     _dft_backend,
     _get_kernels_vqt,
-    _get_warping_factor,
     _pitch2frequency,
     _squeeze_scalogram,
     _warp_time_series,
@@ -920,7 +920,7 @@ def stereo_mid_side(signal: Signal, forward: bool) -> Signal:
     return signal.copy_with_new_time_data(td)
 
 
-def laguerre(signal: Signal, warping_factor: float) -> Signal:
+def laguerre(signal: Signal, warping_factor: WarpingFactorType) -> Signal:
     """This function implements the discrete Laguerre Transform in the time
     domain according to [1]. It is mainly used for frequency warping. See notes
     for details.
@@ -932,8 +932,9 @@ def laguerre(signal: Signal, warping_factor: float) -> Signal:
     ----------
     signal : Signal
         Signal to be transformed.
-    warping_factor : float
-        Warping factor. It must be in the range ]-1; 1[.
+    warping_factor : WarpingFactor
+        Warping factor to apply. Use `WarpingFactor.Custom.with_factor()` to
+        pass an explicit value in ]-1; 1[.
 
     Returns
     -------
@@ -942,8 +943,9 @@ def laguerre(signal: Signal, warping_factor: float) -> Signal:
 
     Notes
     -----
-    - This transform can be reversed by applying it once with `warping_factor`
-      and then with `-warping_factor`.
+    - This transform can be reversed by applying it once with a factor and
+      then with its negative, i.e. with the inverse member of the scale
+      approximations.
     - It is an alternative, more general formulation to Warping and a special
       case of using Kautz filters for a fixed pole. `warping_factor` here leads
       to the same frequency mapping as warping.
@@ -963,14 +965,14 @@ def laguerre(signal: Signal, warping_factor: float) -> Signal:
       Review. Journal of the Audio Engineering Society.
 
     """
-    assert np.abs(warping_factor) < 1.0, "Warping factor cannot be larger than 1."
+    factor = warping_factor.get_factor(signal.sampling_rate_hz)
 
     xx = signal.time_data[::-1, ...]  # Time reversal
     output = np.zeros_like(xx)
 
-    b = np.array([warping_factor, 1.0])
-    a = np.array([1.0, warping_factor])
-    b_normalized = (1.0 - warping_factor**2.0) ** 0.5
+    b = np.array([factor, 1.0])
+    a = np.array([1.0, factor])
+    b_normalized = (1.0 - factor**2.0) ** 0.5
 
     # First filtering stage with normalization
     xx = lfilter(b_normalized, a, xx, axis=0)
@@ -986,26 +988,27 @@ def laguerre(signal: Signal, warping_factor: float) -> Signal:
 
 def warp(
     ir: Signal,
-    warping_factor: float | str,
+    warping_factor: WarpingFactorType,
     shift_ir: bool,
     total_length: int | None = None,
-) -> Signal | tuple[Signal, float]:
+) -> Signal:
     r"""Compute a warped signal as explained by [1]. This operation
     corresponds to computing a warped FIR-Filter (WFIR).
 
-    To pre-warp a signal, pass a negative `warping_factor`. To de-warp it, use
-    the same positive `warping_factor`. See notes for details.
+    To pre-warp a signal, pass a negative warping factor. To de-warp it, use
+    the same positive one. See notes for details.
 
     Parameters
     ----------
     ir : `Signal`
         Impulse response to (de)warp.
-    warping_factor : float, str, {"bark", "erb", "bark-", "erb-"}
-        Warping factor. It has to be in the range ]-1; 1[. If a string is
-        provided, warping the frequency axis to (or from) an approximation
-        of the psychoacoustically motivated Bark or ERB scales is performed
-        according to [4]. Pass "-" in the end for the dewarping (backwards)
-        stage.
+    warping_factor : WarpingFactor
+        Warping factor to apply. Bark and ERB warp the frequency axis to an
+        approximation of the psychoacoustically motivated scales according to
+        [4], and their inverse members perform the dewarping (backwards)
+        stage. Use `WarpingFactor.Custom.with_factor()` to pass an explicit
+        value in ]-1; 1[. `WarpingFactor.get_factor()` returns the factor that
+        a scale approximation resolves to for a given sampling rate.
     shift_ir : bool
         Since the warping of an IR is not shift-invariant (see [2]), it is
         recommended to place the start of the IR at the first index. When
@@ -1020,8 +1023,6 @@ def warp(
     -------
     warped_ir : `Signal`
         The same IR with warped or dewarped time vector.
-    float
-        Warping factor. Only returned in case "bark" or "erb" was passed.
 
     Notes
     -----
@@ -1029,18 +1030,17 @@ def warp(
     - Frequency-dependent windowing can be easily done in the warped domain.
       This is not the approach used in `window_frequency_dependent()`, but
       it can be achieved with this function. See [2] for more details.
-    - In general, `warping_factor < 0.` shifts the frequency axis towards
+    - In general, a negative warping factor shifts the frequency axis towards
       nyquist, i.e., increases the resolution of the lower frequencies while
       lowering that of higher frequencies. See [1] and [3] for the frequency
       mapping of warping.
-    - `warping_factor` will have a frequency-warping where a single frequency
-      point has the same group delay as the unwarped version. The formula for this
-      is [1]:
+    - The warping has a single frequency point whose group delay matches that
+      of the unwarped version. The formula for this is [1]:
 
         .. math::
             \frac{f_s}{2\pi}\arccos(\lambda)
 
-      where lambda is the `warping_factor` and f_s the sampling rate.
+      where lambda is the warping factor and f_s the sampling rate.
     - Warping poles and zeros in the rational transfer function can be done
       by replacing the :math:`z^{-1}` with
       :math:`(z^{-1} - \lambda)/(1 - \lambda z^{-1})`. This leads, for instance, to
@@ -1076,8 +1076,7 @@ def warp(
       697 - 708. 10.1109/89.799695.
 
     """
-    approximation_warping_factor = type(warping_factor) is str
-    warping_factor = _get_warping_factor(warping_factor, ir.sampling_rate_hz)
+    factor = warping_factor.get_factor(ir.sampling_rate_hz)
 
     td = ir.time_data.copy()
     if shift_ir:
@@ -1085,20 +1084,15 @@ def warp(
             start = _find_ir_start(td[:, ch], -20)
             td[:, ch] = np.roll(td[:, ch], -start)
 
-    warped_ir = ir.copy_with_new_time_data(
+    return ir.copy_with_new_time_data(
         _warp_time_series(
             td if total_length is None else td[:total_length, ...],
-            warping_factor,
+            factor,
         )
     )
 
-    if approximation_warping_factor:
-        return warped_ir, warping_factor
 
-    return warped_ir
-
-
-def warp_filter(filter: Filter, warping_factor: float) -> Filter:
+def warp_filter(filter: Filter, warping_factor: WarpingFactorType) -> Filter:
     r"""Apply warping to a filter by transforming its poles and zeros. See
     references for details on warping.
 
@@ -1106,8 +1100,8 @@ def warp_filter(filter: Filter, warping_factor: float) -> Filter:
     ----------
     filter : Filter
         Filter to be warped.
-    warping_factor : float
-        Warping factor. See `warp()` for details.
+    warping_factor : WarpingFactor
+        Warping factor to apply. See `warp()` for details.
 
     Returns
     -------
@@ -1154,14 +1148,14 @@ def warp_filter(filter: Filter, warping_factor: float) -> Filter:
       697 - 708. 10.1109/89.799695.
 
     """
-    assert abs(warping_factor) < 1.0, "Warping factor must be less than 1."
+    factor = warping_factor.get_factor(filter.sampling_rate_hz)
     z, p, k = filter.get_coefficients(FilterCoefficientsType.Zpk)
-    p = (warping_factor + p) / (1 + warping_factor * p)
-    z = (warping_factor + z) / (1 + warping_factor * z)
+    p = (factor + p) / (1 + factor * p)
+    z = (factor + z) / (1 + factor * z)
     if len(p) > len(z):
-        z = np.hstack([z, [warping_factor] * (len(p) - len(z))])
+        z = np.hstack([z, [factor] * (len(p) - len(z))])
     elif len(z) > len(p):
-        p = np.hstack([p, [warping_factor] * (len(z) - len(p))])
+        p = np.hstack([p, [factor] * (len(z) - len(p))])
     return Filter.from_zpk(z, p, k, filter.sampling_rate_hz)
 
 

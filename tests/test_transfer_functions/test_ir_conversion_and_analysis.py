@@ -26,8 +26,12 @@ class TestTransferFunctionsModule:
         assert np.all(b == s.time_data[:, 0])
         assert f.sampling_rate_hz == s.sampling_rate_hz
 
-        f = dsp.transfer_functions.ir_to_filter(s, channel=0, phase_mode="min")
-        f = dsp.transfer_functions.ir_to_filter(s, channel=0, phase_mode="lin")
+        f = dsp.transfer_functions.ir_to_filter(
+            s, channel=0, phase_mode=dsp.transfer_functions.FirPhaseMode.Minimum
+        )
+        f = dsp.transfer_functions.ir_to_filter(
+            s, channel=0, phase_mode=dsp.transfer_functions.FirPhaseMode.Linear
+        )
 
         # To filter bank
         fb = dsp.transfer_functions.ir_to_filter(
@@ -77,11 +81,23 @@ class TestTransferFunctionsModule:
         s = dsp.ImpulseResponse(
             join(os.path.dirname(__file__), "..", "..", "example_data", "rir.wav")
         )
-        dsp.transfer_functions.combine_ir_with_dirac(s, 1000, True, normalization=None)
-        dsp.transfer_functions.combine_ir_with_dirac(s, 1000, False, normalization=None)
+        norm = dsp.transfer_functions.DiracNormalization
+        dsp.transfer_functions.combine_ir_with_dirac(s, 1000, True)
         dsp.transfer_functions.combine_ir_with_dirac(
-            s, 1000, False, normalization="energy"
+            s, 1000, False, normalization=norm.Energy
         )
+        dsp.transfer_functions.combine_ir_with_dirac(
+            s, 1000, False, normalization=norm.Peak
+        )
+        dsp.transfer_functions.combine_ir_with_dirac(
+            s, 1000, False, normalization=norm.Custom.with_gain_db(-6.0)
+        )
+
+        # Custom without a bound gain is not a valid value
+        with pytest.raises(ValueError):
+            dsp.transfer_functions.combine_ir_with_dirac(
+                s, 1000, False, normalization=norm.Custom
+            )
 
     def test_find_ir_latency(self):
         ir = dsp.generators.dirac(self.fs, sampling_rate_hz=self.fs)

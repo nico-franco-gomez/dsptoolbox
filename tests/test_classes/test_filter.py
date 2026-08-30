@@ -345,7 +345,10 @@ class TestFilterClass:
         ff, gg = dsp.transfer_functions.group_delay(bb.get_ir(length_samples=2**14))
 
         interpolated_gd = dsp.tools.interpolate_fr(
-            ff, gg.squeeze(), f_log, interpolation_scheme="cubic"
+            ff,
+            gg.squeeze(),
+            f_log,
+            interpolation_kind=dsp.InterpolationKind.Cubic,
         )
         np.testing.assert_allclose(interpolated_gd, gd, atol=1e-6)
 

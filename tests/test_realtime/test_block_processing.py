@@ -62,7 +62,9 @@ class TestBlockProcessing:
     def test_generic_block_implementation_matches_per_sample(self):
         """`WarpedFIR` does not override `process_block`, so it uses the base
         implementation."""
-        filt = dsp.realtime.WarpedFIR(np.hanning(15), -0.6, self.fs_hz)
+        filt = dsp.realtime.WarpedFIR(
+            np.hanning(15), dsp.WarpingFactor.Custom.with_factor(-0.6), self.fs_hz
+        )
         per_sample = self._filter_per_sample(filt)
 
         filt.reset_state()

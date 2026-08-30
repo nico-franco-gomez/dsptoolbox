@@ -492,6 +492,169 @@ class ParametrizedWindow:
 WindowType = Window | ParametrizedWindow
 
 
+class WarpingFactor(Enum):
+    r"""Factor :math:`\lambda` of the allpass used for frequency warping. A
+    negative factor increases the resolution of the lower frequencies at the
+    expense of the higher ones, and a positive one does the opposite:
+
+    - Bark, Erb: approximation to the psychoacoustically motivated Bark or
+      ERB scale. The factor is obtained from the sampling rate according to
+      [1], where the Bark approximation is the more accurate one.
+    - BarkInverse, ErbInverse: the dewarping (backwards) stage of the above,
+      i.e. the same factor with the opposite sign.
+    - Custom: an explicit factor in ]-1; 1[. Bind it with
+      `WarpingFactor.Custom.with_factor()`.
+
+    References
+    ----------
+    - [1]: III, J.O. & Abel, Jonathan. (1999). Bark and ERB Bilinear
+      Transforms. Speech and Audio Processing, IEEE Transactions on. 7.
+      697 - 708. 10.1109/89.799695.
+
+    """
+
+    Bark = auto()
+    BarkInverse = auto()
+    Erb = auto()
+    ErbInverse = auto()
+    Custom = auto()
+
+    def with_factor(self, factor: float) -> "ParametrizedWarpingFactor":
+        """Bind an explicit warping factor, returning a
+        `ParametrizedWarpingFactor`. Only `Custom` takes one, since the other
+        members derive their factor from the sampling rate.
+
+        Parameters
+        ----------
+        factor : float
+            Warping factor. It has to be in the range ]-1; 1[.
+
+        Returns
+        -------
+        ParametrizedWarpingFactor
+            Factor bound to its value. It exposes the same interface as
+            `WarpingFactor` and can be passed wherever one is expected.
+
+        """
+        if not self.needs_factor():
+            raise ValueError(f"{self.name} does not take an explicit factor")
+        return ParametrizedWarpingFactor(self, float(factor))
+
+    def needs_factor(self) -> bool:
+        """When True, the member requires an explicit factor."""
+        return self == WarpingFactor.Custom
+
+    def get_factor(self, sampling_rate_hz: int) -> float:
+        """Return the warping factor for a given sampling rate.
+
+        Parameters
+        ----------
+        sampling_rate_hz : int
+            Sampling rate to assume while warping.
+
+        Returns
+        -------
+        float
+            Warping factor in ]-1; 1[.
+
+        """
+        if self.needs_factor():
+            raise ValueError(
+                f"{self.name} requires an explicit factor. Pass it with "
+                + f"WarpingFactor.{self.name}.with_factor(...)"
+            )
+        if self in (WarpingFactor.Bark, WarpingFactor.BarkInverse):
+            # Eq. (26)
+            factor = -1.0 * (
+                1.0674 * (2.0 / np.pi * np.arctan(0.06583 * sampling_rate_hz)) ** 0.5
+                - 0.1916
+            )
+        else:
+            # Eq. (30)
+            factor = -1.0 * (
+                0.7446 * (2.0 / np.pi * np.arctan(0.1418 * sampling_rate_hz)) ** 0.5
+                + 0.03237
+            )
+        return (
+            -factor
+            if self in (WarpingFactor.BarkInverse, WarpingFactor.ErbInverse)
+            else factor
+        )
+
+
+@dataclass(frozen=True)
+class ParametrizedWarpingFactor:
+    """A `WarpingFactor` bound to an explicit value.
+
+    Instances are produced by `WarpingFactor.Custom.with_factor()` and are
+    immutable. They can be passed anywhere a `WarpingFactor` is accepted.
+
+    """
+
+    warping_factor: WarpingFactor
+    factor: float
+
+    def __post_init__(self) -> None:
+        if not abs(self.factor) < 1.0:
+            raise ValueError("Warping factor has to be in ]-1; 1[")
+
+    def needs_factor(self) -> bool:
+        """The factor is already bound, so this is always False."""
+        return False
+
+    def get_factor(self, sampling_rate_hz: int) -> float:
+        """Return the bound warping factor. The sampling rate is ignored."""
+        return float(self.factor)
+
+
+WarpingFactorType = WarpingFactor | ParametrizedWarpingFactor
+
+
+class SampleFormat(Enum):
+    """Representations for audio samples. `Int` is a signed integer, `Uint`
+    an unsigned one, and the number is the bit depth. The 24-bit formats have
+    no numpy equivalent, so they are only available as byte arrays with
+    3-byte samples and the endianness of the current platform.
+
+    """
+
+    Float32 = auto()
+    Float64 = auto()
+    Int8 = auto()
+    Int16 = auto()
+    Int24 = auto()
+    Int32 = auto()
+    Uint8 = auto()
+    Uint16 = auto()
+    Uint24 = auto()
+    Uint32 = auto()
+
+    def is_float(self) -> bool:
+        """When True, samples are floating-point values in [-1; 1]."""
+        return self in (SampleFormat.Float32, SampleFormat.Float64)
+
+    def is_signed(self) -> bool:
+        """When True, the format is signed."""
+        return not self.name.startswith("Uint")
+
+    def bit_depth(self) -> int:
+        """Number of bits per sample."""
+        return int(
+            self.name.removeprefix("Float").removeprefix("Uint").removeprefix("Int")
+        )
+
+    def to_numpy_dtype(self) -> type:
+        """Equivalent numpy data type."""
+        if self.is_float():
+            return np.float32 if self == SampleFormat.Float32 else np.float64
+        bits = self.bit_depth()
+        if bits == 24:
+            raise ValueError(f"{self.name} has no numpy data type equivalent")
+        signed = {8: np.int8, 16: np.int16, 32: np.int32}
+        unsigned = {8: np.uint8, 16: np.uint16, 32: np.uint32}
+        return signed[bits] if self.is_signed() else unsigned[bits]
+
+
 class MagnitudeNormalization(Enum):
     """Normalization for magnitude responses:
 
@@ -558,6 +721,45 @@ class InterpolationScheme(Enum):
     Linear = auto()
     Cubic = auto()
     Pchip = auto()
+
+
+class InterpolationKind(Enum):
+    """Kinds of interpolation for a frequency response, as passed to
+    `scipy.interpolate.interp1d`. Quadratic and cubic are splines of the
+    respective order. They deliver smoother results than the linear
+    interpolation, but can overshoot.
+
+    """
+
+    Linear = auto()
+    Quadratic = auto()
+    Cubic = auto()
+
+    def to_scipy_str(self) -> str:
+        """Return the scipy string variant."""
+        return self.name.lower()
+
+
+class InterpolationConversion(Enum):
+    """Representation to convert to for the interpolation of a frequency
+    response, and back afterwards. `DbToPower` means input in dB,
+    interpolation on the power spectrum and output in dB again.
+
+    """
+
+    DbToAmplitude = auto()
+    DbToPower = auto()
+    AmplitudeToDb = auto()
+    AmplitudeToPower = auto()
+    PowerToDb = auto()
+    PowerToAmplitude = auto()
+
+    def input_is_db(self) -> bool:
+        """When True, the input is expected in dB."""
+        return self in (
+            InterpolationConversion.DbToAmplitude,
+            InterpolationConversion.DbToPower,
+        )
 
 
 class InterpolationEdgeHandling(Enum):

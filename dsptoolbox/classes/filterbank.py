@@ -514,7 +514,7 @@ class FilterBank:
 
         Parameters
         ----------
-        signal : `Signal`
+        mbsignal : `MultiBandSignal`
             Signal to be filtered.
         activate_zi : bool, optional
             Takes in the filter initial values and updates them for
@@ -830,7 +830,9 @@ class FilterBank:
             Range of Hz to plot. Default: [20, 20e3].
         unwrap : bool, optional
             When `True`, unwrapped phase is plotted. Default: `False`.
-
+        zero_phase : bool, optional
+            When `True`, zero-phase filtering is used to generate the IR.
+            Default: `False`.
         ax : `matplotlib.axes.Axes`, None, optional
             Axes to draw on, so that several plots can share one axis. A new
             figure is created when None. Default: None.

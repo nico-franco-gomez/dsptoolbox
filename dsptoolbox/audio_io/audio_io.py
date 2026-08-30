@@ -156,29 +156,18 @@ def set_device(
     """
     device_list = _sd().query_devices()
     if type(device) is int:
-        d = device_list[device]["name"]
-        print(f"""{d} will be used for input and output!""")
         _sd().default.device = device
     elif type(device) is str:
-        d_id, d_name = get_interface_number_by_name(device, device_list)
-        print(f"{d_name} will be used for input and output!")
+        d_id, _ = get_interface_number_by_name(device, device_list)
         _sd().default.device = d_id
     elif type(device) is list:
         assert len(device) == 2, "List with device numbers must be exactly 2"
 
         if type(device[0]) is int and type(device[1]) is int:
-            d = device_list[device[0]]["name"]
-            print(f"{d} will be used for input!")
-
-            d = device_list[device[1]]["name"]
-            print(f"{d} will be used for output!")
             _sd().default.device = device
         elif type(device[0]) is str and type(device[1]) is str:
-            d_id_in, d_name_in = get_interface_number_by_name(device[0], device_list)
-            print(f"{d_name_in} will be used for input!")
-
-            d_id_out, d_name_out = get_interface_number_by_name(device[1], device_list)
-            print(f"{d_name_out} will be used for output!")
+            d_id_in, _ = get_interface_number_by_name(device[0], device_list)
+            d_id_out, _ = get_interface_number_by_name(device[1], device_list)
             _sd().default.device = [d_id_in, d_id_out]
         else:
             raise TypeError(
@@ -223,6 +212,8 @@ def get_interface_number_by_name(name: str, device_list: "Any") -> tuple[int, st
     name : str
         Name of the interface or string contained in the name (the first
         interface to match will be returned). The comparison is case-invariant.
+    device_list : `sounddevice.DeviceList`
+        Devices to search through, as returned by `list_devices()`.
 
     Returns
     -------
@@ -259,7 +250,7 @@ def play_and_record(
     duration_seconds : float, optional
         If `None`, the whole signal is played, otherwise it is trimmed to the
         given length. Default: `None`.
-    normalized_dbfs: float, optional
+    normalized_dbfs : float, optional
         Normalizes the signal (dBFS peak level) before playing it.
         Set to `None` to ignore normalization. Default: -6.
     device : str, optional
@@ -312,14 +303,13 @@ def play_and_record(
         play_data = _normalize(
             play_data,
             dbfs=normalized_dbfs,
-            peak_normalization="peak",
+            peak_normalization=True,
             per_channel=False,
         )
 
     if device is not None:
         _sd().default.device = device
 
-    print("Playback and recording have started " + f"({duration_seconds:.1f} s)...")
     rec_time_data = _sd().playrec(
         data=play_data,
         samplerate=signal.sampling_rate_hz,
@@ -327,7 +317,6 @@ def play_and_record(
         output_mapping=play_channels,
         blocking=True,
     )
-    print("Playback and recording have ended\n")
 
     rec_sig = Signal(None, rec_time_data, signal.sampling_rate_hz)
     return rec_sig
@@ -373,14 +362,12 @@ def record(
     if device is not None:
         _sd().default.device = device
 
-    print(f"\nRecording started ({duration_seconds:.1f} s)...")
     rec_time_data = _sd().rec(
         frames=int(duration_seconds * sampling_rate_hz),
         samplerate=sampling_rate_hz,
         mapping=rec_channels,
         blocking=True,
     )
-    print("Recording has ended\n")
 
     rec_sig = Signal(None, rec_time_data, sampling_rate_hz)
     return rec_sig
@@ -404,7 +391,7 @@ def play(
     duration_seconds : float, optional
         If `None`, the whole signal is played, otherwise it is trimmed to the
         given length. Default: `None`.
-    normalized_dbfs: float, optional
+    normalized_dbfs : float, optional
         Normalizes the signal (dBFS peak level) before playing it.
         Set to `None` to ignore normalization. Default: -6.
     device : str, optional
@@ -435,21 +422,19 @@ def play(
         play_data = _normalize(
             play_data,
             dbfs=normalized_dbfs,
-            peak_normalization="peak",
+            peak_normalization=True,
             per_channel=False,
         )
     #
     if device is not None:
         _sd().default.device = device
 
-    print(f"Playback started ({duration_seconds:.1f} s)...")
     _sd().play(
         data=play_data,
         samplerate=signal.sampling_rate_hz,
         mapping=play_channels,
         blocking=True,
     )
-    print("Playback has ended\n")
 
 
 def CallbackStop() -> None:
@@ -497,6 +482,12 @@ def output_stream(
         Block size to be used during the stream. Default: 2048.
     device : str, optional
         Device to be used. Pass `None` to use default device. Default: `None`.
+    latency : float, str, optional
+        Desired latency in seconds, or one of sounddevice's presets (`'low'`,
+        `'high'`). Pass `None` to use the device's default. Default: `None`.
+    extra_settings : optional
+        Host-API-specific settings, as expected by
+        `sounddevice.OutputStream`. Default: `None`.
     callback : callable
         Function that defines the audio callback::
 

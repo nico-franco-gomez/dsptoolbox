@@ -28,7 +28,7 @@ class TestEffectsModule:
             adaptive_mode=True,
             threshold_rms_dbfs=-30,
             block_length_s=0.15,
-            spectrum_to_subtract=False,
+            spectrum_to_subtract=None,
         )
         specSub.set_advanced_parameters(
             overlap_percent=75,
@@ -45,7 +45,7 @@ class TestEffectsModule:
             adaptive_mode=False,
             threshold_rms_dbfs=-10,
             block_length_s=0.05,
-            spectrum_to_subtract=False,
+            spectrum_to_subtract=None,
         )
         specSub.set_advanced_parameters(
             overlap_percent=50,
@@ -95,7 +95,7 @@ class TestEffectsModule:
             adaptive_mode=True,
             threshold_rms_dbfs=-25,
             block_length_s=0.05,
-            spectrum_to_subtract=False,
+            spectrum_to_subtract=None,
         )
         denoised = specSub.apply(noisy_sig)
 
@@ -125,7 +125,7 @@ class TestEffectsModule:
             adaptive_mode=True,
             threshold_rms_dbfs=-60,
             block_length_s=0.05,
-            spectrum_to_subtract=False,
+            spectrum_to_subtract=None,
         )
         out = specSub.apply(sig)
 
@@ -160,6 +160,5 @@ class TestEffectsModule:
         specSub.set_parameters(threshold_rms_dbfs=-30.0)
         np.testing.assert_array_equal(specSub.spectrum_to_subtract, spectrum)
 
-        # False still clears it explicitly
-        specSub.set_parameters(spectrum_to_subtract=False)
-        assert specSub.spectrum_to_subtract is False
+        specSub.clear_spectrum_to_subtract()
+        assert specSub.spectrum_to_subtract is None

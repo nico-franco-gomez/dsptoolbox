@@ -150,7 +150,7 @@ class SpectralSubtractor(AudioEffect):
         adaptive_mode: bool = True,
         threshold_rms_dbfs: float = -40,
         block_length_s: float = 0.1,
-        spectrum_to_subtract: NDArray[np.float64] | bool = False,
+        spectrum_to_subtract: NDArray[np.float64] | None = None,
     ) -> None:
         """Constructor for a spectral subtractor denoising effect. More
         parameters can be passed using the method `set_advanced_parameters`.
@@ -174,23 +174,26 @@ class SpectralSubtractor(AudioEffect):
             blocks of the signal. The real block length in samples is always
             clipped to the closest power of 2 for efficiency of the FFT.
             Default: 0.1.
-        spectrum_to_subtract : NDArray[np.float64] or `False`, optional
+        spectrum_to_subtract : NDArray[np.float64], optional
             If a spectrum is passed, it is used as the one to subtract and
             all other parameters are ignored. This should be the result of the
             squared magnitude of the FFT without any scaling in order to avoid
             scaling discrepancies. It should be only the spectrum corresponding
-            to the positive frequencies (including 0). Pass `False` to ignore.
-            Default: `False`.
+            to the positive frequencies (including 0). Pass `None` to estimate
+            the noise from the signal itself. Default: `None`.
 
         Methods
         -------
         - `set_parameters()`: Basic parameters used.
         - `set_advanced_parameters()`: fine-tuning parameters for both adaptive
           and static mode.
+        - `clear_spectrum_to_subtract()`: Go back to estimating the noise
+          spectrum from the signal.
         - `apply()`: Apply effect on a given signal.
 
         """
         super().__init__(description="Spectral Subtraction (Denoiser)")
+        self.clear_spectrum_to_subtract()
         self.__set_parameters(
             adaptive_mode,
             threshold_rms_dbfs,
@@ -204,10 +207,10 @@ class SpectralSubtractor(AudioEffect):
         adaptive_mode: bool | None,
         threshold_rms_dbfs: float | None,
         block_length_s: float | None,
-        spectrum_to_subtract: NDArray[np.float64] | bool | None,
+        spectrum_to_subtract: NDArray[np.float64] | None,
     ) -> None:
         """Internal method to set the parameters for the spectral
-        subtraction.
+        subtraction. `None` leaves each parameter unchanged.
 
         """
         if adaptive_mode is not None:
@@ -231,22 +234,21 @@ class SpectralSubtractor(AudioEffect):
             self.block_length_s = block_length_s
 
         if spectrum_to_subtract is not None:
-            if np.any(spectrum_to_subtract):
-                assert type(spectrum_to_subtract) is np.ndarray, (
-                    "Spectrum to subtract must be of type numpy.ndarray"
+            assert type(spectrum_to_subtract) is np.ndarray, (
+                "Spectrum to subtract must be of type numpy.ndarray"
+            )
+            spectrum_to_subtract = np.squeeze(spectrum_to_subtract)
+            assert spectrum_to_subtract.ndim == 1, (
+                "Spectrum to subtract could not be broadcasted to a 1D-Array"
+            )
+            if self.adaptive_mode:
+                warn(
+                    "A spectrum to subtract was passed but adaptive "
+                    + "mode was selected. This is unsupported. Setting "
+                    + "adaptive mode to False",
+                    stacklevel=2,
                 )
-                spectrum_to_subtract = np.squeeze(spectrum_to_subtract)
-                assert spectrum_to_subtract.ndim == 1, (
-                    "Spectrum to subtract could not be broadcasted to " + "a 1D-Array"
-                )
-                if self.adaptive_mode:
-                    warn(
-                        "A spectrum to subtract was passed but adaptive "
-                        + "mode was selected. This is unsupported. Setting "
-                        + "adaptive mode to False",
-                        stacklevel=2,
-                    )
-                    self.adaptive_mode = False
+                self.adaptive_mode = False
             self.spectrum_to_subtract = spectrum_to_subtract
 
     def set_advanced_parameters(
@@ -289,16 +291,6 @@ class SpectralSubtractor(AudioEffect):
         ad_release_time_ms : float, optional
             Release time for the activity detector (static mode).
             Default: 30.
-        maximum_amplification_db : float, optional
-            Maximum sample amplification in dB. During signal reconstruction,
-            some samples in the signal might be amplified by large values
-            (depending on window and overlap). This parameter sets the maximum
-            value to which this amplification is allowed. Pass `None` to ignore
-            it. This might reconstruct the signal better but can lead sometimes
-            to instabilities. Default: 60.
-
-            It is also advisable to zero-pad a signal in the beginning to
-            avoid instabilities due to a lack of window overlap on the edges.
 
         Notes
         -----
@@ -310,14 +302,12 @@ class SpectralSubtractor(AudioEffect):
                 - noise_forgetting_factor
                 - subtraction_factor
                 - subtraction_exponent
-                - maximum_amplification_db
 
             - Static Mode:
                 - overlap_percent
                 - window_type
                 - subtraction_factor
                 - subtraction_exponent
-                - maximum_amplification_db
                 - ad_attack_time_ms
                 - ad_release_time_ms
 
@@ -356,7 +346,7 @@ class SpectralSubtractor(AudioEffect):
         adaptive_mode: bool | None = None,
         threshold_rms_dbfs: float | None = None,
         block_length_s: float | None = None,
-        spectrum_to_subtract: NDArray[np.float64] | bool | None = None,
+        spectrum_to_subtract: NDArray[np.float64] | None = None,
     ) -> None:
         """Sets the audio effects parameters. Pass `None` to leave the
         previously selected value for each parameter unchanged.
@@ -385,8 +375,9 @@ class SpectralSubtractor(AudioEffect):
             all other parameters are ignored. This should be the result of the
             squared magnitude of the FFT without any scaling in order to avoid
             scaling discrepancies. It should be only the spectrum corresponding
-            to the positive frequencies (including 0). Pass `False` to clear
-            a previously set spectrum. Default: `None`.
+            to the positive frequencies (including 0). Use
+            `clear_spectrum_to_subtract()` to drop a previously set spectrum.
+            Default: `None`.
 
         """
         self.__set_parameters(
@@ -398,11 +389,17 @@ class SpectralSubtractor(AudioEffect):
         assert self.adaptive_mode is not None, "None is not a valid value"
         assert self.threshold_rms_dbfs is not None, "None is not a valid value"
         assert self.block_length_s is not None, "None is not a valid value"
-        assert self.spectrum_to_subtract is not None, "None is not a valid value"
+
+    def clear_spectrum_to_subtract(self) -> None:
+        """Drop a previously set spectrum, so that the noise is estimated
+        from the signal that the effect is applied to.
+
+        """
+        self.spectrum_to_subtract = None
 
     def _compute_window(self, sampling_rate_hz: int) -> None:
         """Internal method to compute the window and step size in samples."""
-        if not np.any(self.spectrum_to_subtract):
+        if self.spectrum_to_subtract is None:
             self.window_length = _get_next_power_2(
                 self.block_length_s * sampling_rate_hz
             )
@@ -449,7 +446,7 @@ class SpectralSubtractor(AudioEffect):
         td_spec_power = np.abs(td_spec) ** self.subtraction_exponent
 
         for n in range(signal.number_of_channels):
-            if not np.any(self.spectrum_to_subtract):
+            if self.spectrum_to_subtract is None:
                 # Obtain noise psd
                 _, noise = signal.activity_detector(
                     channel=n,
@@ -523,7 +520,6 @@ class SpectralSubtractor(AudioEffect):
             # Noise estimate
             noise_psd = np.zeros(len(self.window) // 2 + 1)
 
-            print(f"Denoising channel {n + 1} of {signal.number_of_channels}")
             for i in range(td_spec.shape[1]):
                 if td_rms_db[i, n] < self.threshold_rms_dbfs:
                     noise_psd = noise_psd * self.noise_forgetting_factor + td_spec[
@@ -627,7 +623,7 @@ class Distortion(AudioEffect):
             according to the mixed parameter. If a list is passed, each entry
             must be either a string corresponding to the supported modes.
             Default: Arctan.
-        distortion_levels : NDArray[np.float64], optional
+        distortion_levels_db : NDArray[np.float64], optional
             This defines how strong the distortion effect is applied. It can
             vary according to the non-linear function. Usually, a range
             between 0 and 50 should be reasonable, though any value is
@@ -1272,17 +1268,21 @@ class Chorus(AudioEffect):
 
         Parameters
         ----------
-        depths_ms : float, optional
+        depths_ms : float, NDArray[np.float64], optional
             Depth of the delay variation in ms. This must be a positive value.
             Default: `None`.
+        base_delays_ms : float, NDArray[np.float64], optional
+            Delay around which each voice is modulated, in ms. It must be
+            positive and of length 1 or number of voices. Default: `None`.
         modulators : LFO or list or tuple or NDArray[np.float64], optional
             This defines the modulators signal. It can be a single LFO object
             or a list containing an LFO for each voice. Alternatively, a
             numpy.ndarray with shape (time samples, voice) can be passed. If
             the length in the time axis does not match, it is zero-padded or
             trimmed in the end. Default: `None`.
-        number_of_voices : int, optional
-            Number of voices to use in the chorus effect. Default: `None`.
+        mix_percent : float, optional
+            Amount of the modulated signal in the final mix, in percent. It
+            must be in ]0, 100]. Default: `None`.
 
         """
         self.__set_parameters(depths_ms, base_delays_ms, modulators, mix_percent)

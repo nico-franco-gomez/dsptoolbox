@@ -959,6 +959,9 @@ class BaseCrossover(FilterBank):
     ) -> Signal | MultiBandSignal:
         """Filter a signal. `downsample` additionally halves the sampling rate
         of each band; see `FilterBank.filter_signal` for the other arguments.
+        Combining it with `FilterBankMode.Sequential` is invalid, since the
+        first filter already changes the sampling rate that the second one
+        expects.
 
         """
         if not downsample:
@@ -1321,8 +1324,9 @@ def _crossover_downsample(
     elif mode == FilterBankMode.Sequential:
         # The first filter already downsamples, so the second one would no
         # longer match the sampling rate of what it is handed
-        raise NotImplementedError(
-            "Sequential filtering is not available with downsampling"
+        raise ValueError(
+            "Sequential filtering combined with downsampling is an invalid "
+            + "operation"
         )
     new_time_data = np.zeros(
         (

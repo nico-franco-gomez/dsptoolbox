@@ -245,8 +245,8 @@ class TestRoomAcousticsModule:
 
     def test_shoebox_room(self):
         r = dsp.room_acoustics.ShoeboxRoom([3, 4, 5], t60_s=0.6)
-        r.get_mixing_time(mode="perceptual")
-        r.get_mixing_time(mode="physical", n_reflections=1000)
+        r.get_mixing_time()
+        r.get_mixing_time(use_physical_model=True, n_reflections=1000)
         r.get_room_modes(3)
         assert r.check_if_in_room([1, 1, 1])
         assert not r.check_if_in_room([7, 7, 7])

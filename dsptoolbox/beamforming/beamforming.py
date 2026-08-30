@@ -13,7 +13,7 @@ from numpy.typing import NDArray
 from scipy.integrate import simpson
 
 from ..classes import Signal
-from ..helpers.gain_and_level import to_db
+from ..helpers.gain_and_level import from_db, to_db
 from ..helpers.other import (
     _get_fractional_octave_bandwidth,
     _pad_trim,
@@ -94,7 +94,7 @@ class Regular2DGrid(Grid):
             expands. For instance: `(SpatialDimension.X, SpatialDimension.Z)`
             means that `line1` corresponds to the x direction and `line2`
             corresponds to the z direction.
-        value3: float
+        value3 : float
             Value for the third coordinate.
 
         Attributes and Methods
@@ -532,20 +532,8 @@ class MicArray(BasePoints):
         self.__aperture = np.max(distances)
 
     def __compute_array_center(self) -> None:
-        """Returns array center mic's coordinates and number.
-
-        Parameters
-        ----------
-        coord : NDArray[np.float64]
-            Coordinates of array with shape (points, xyz).
-
-        Returns
-        -------
-        NDArray[np.float64]
-            Array with coordinates for mic closest to center with
-            shape (x, y, z).
-        ind : int
-            Index for mic closest to array center.
+        """Compute the coordinates and channel number of the microphone that
+        lies closest to the array's center, and store them.
 
         """
         # Array center by averaging all mic positions
@@ -672,7 +660,6 @@ class BaseBeamformer:
         multi_channel_signal: Signal,
         mic_array: MicArray,
         c: float = 343.0,
-        verbose: bool = False,
     ) -> None:
         """Base constructor for Beamformer.
 
@@ -685,9 +672,6 @@ class BaseBeamformer:
             Microphone array object containing microphone positions.
         c : float, optional
             Speed of sound in m/s. Default: 343.
-        verbose : bool, optional
-            When True, the progress of a beamformer run is printed.
-            Default: False.
 
         """
         assert isinstance(multi_channel_signal, Signal), (
@@ -701,13 +685,7 @@ class BaseBeamformer:
         self.signal = multi_channel_signal
         self.mics = mic_array
         self.c = c
-        self.verbose = verbose
         self.beamformer_type = "Base"
-
-    def _report(self, message: str) -> None:
-        """Print a progress message when the beamformer is verbose."""
-        if self.verbose:
-            print(message)
 
     # ======== Prints and plots ===============================================
     def plot_setting(self) -> tuple[Figure, Axes]:
@@ -791,7 +769,6 @@ class BeamformerGridded(BaseBeamformer):
         grid: Grid,
         steering_vector: SteeringVector,
         c: float = 343.0,
-        verbose: bool = False,
     ) -> None:
         """Constructor for beamformer with grid and steering vector.
 
@@ -808,9 +785,6 @@ class BeamformerGridded(BaseBeamformer):
             Steering vector to be used for the beamforming.
         c : float, optional
             Speed of sound in m/s. Default: 343.
-        verbose : bool, optional
-            When True, the progress of a beamformer run is printed.
-            Default: False.
 
         Methods
         -------
@@ -820,7 +794,7 @@ class BeamformerGridded(BaseBeamformer):
         - `get_beamformer_map()`: computes a map using all passed parameters.
 
         """
-        super().__init__(multi_channel_signal, mic_array, c, verbose)
+        super().__init__(multi_channel_signal, mic_array, c)
         assert type(steering_vector) is SteeringVector, (
             "steering_vector should be of type SteeringVector"
         )
@@ -845,7 +819,7 @@ class BeamformerDASFrequency(BeamformerGridded):
 
         Parameters
         ----------
-        center_frequenc_hz : float
+        center_frequency_hz : float
             Center frequency for which to compute map.
         octave_fraction : int, optional
             Fractional octave bandwidth for computing the map. For instance,
@@ -866,9 +840,6 @@ class BeamformerDASFrequency(BeamformerGridded):
             self.center_frequency_hz, self.octave_fraction
         )
 
-        txt = "Beamformer computation has started successfully:"
-        self._report("\n" + txt + "\n" + "-" * len(txt))
-        self._report("...csm...")
         f, csm = self.signal.get_csm()
         if remove_csm_diagonal:
             # Account for energy loss
@@ -876,7 +847,6 @@ class BeamformerDASFrequency(BeamformerGridded):
             for i in range(len(f)):
                 np.fill_diagonal(csm[i, :, :], 0)
 
-        self._report("...Steering vector...")
         # Frequency selection, wave numbers and steering vector
         ids = find_nearest_points_index_in_vector(self.f_range_hz, f)
         id1, id2 = ids[0], ids[1]
@@ -891,7 +861,6 @@ class BeamformerDASFrequency(BeamformerGridded):
         h_H = np.swapaxes(h, 1, 2).conjugate()
         self.f_range_hz = np.array([f[0], f[-1]])
 
-        self._report("...Apply...")
         map = np.einsum("fgm,fmn,fng->gf", h_H, csm, h, optimize=True).real
 
         # Unphysical values for removed diagonal of CSM
@@ -933,7 +902,7 @@ class BeamformerCleanSC(BeamformerGridded):
 
         Parameters
         ----------
-        center_frequenc_hz : float
+        center_frequency_hz : float
             Center frequency for which to compute map.
         octave_fraction : int, optional
             Fractional octave bandwidth for computing the map. For instance,
@@ -979,12 +948,8 @@ class BeamformerCleanSC(BeamformerGridded):
             self.center_frequency_hz, self.octave_fraction
         )
 
-        txt = "Beamformer computation has started successfully:"
-        self._report("\n" + txt + "\n" + "-" * len(txt))
-        self._report("...csm...")
         f, csm = self.signal.get_csm()
 
-        self._report("...Steering vector...")
         # Frequency selection, wave numbers and steering vector
         ids = find_nearest_points_index_in_vector(self.f_range_hz, f)
         id1, id2 = ids[0], ids[1]
@@ -1006,7 +971,6 @@ class BeamformerCleanSC(BeamformerGridded):
             for find in range(len(f)):
                 np.fill_diagonal(csm[find, :, :], 0)
 
-        self._report("...Create and deconvolve map...")
         map = np.einsum("fgm,fmn,fng->gf", h_H, csm, h, optimize=True).real
         for find in range(len(f)):
             map[:, find] = _clean_sc_deconvolve(
@@ -1053,7 +1017,7 @@ class BeamformerOrthogonal(BeamformerGridded):
 
         Parameters
         ----------
-        center_frequenc_hz : float
+        center_frequency_hz : float
             Center frequency for which to compute map.
         octave_fraction : int, optional
             Fractional octave bandwidth for computing the map. For instance,
@@ -1093,12 +1057,8 @@ class BeamformerOrthogonal(BeamformerGridded):
                 "At least one eigenvalue of the CSM must be regarded"
             )
 
-        txt = "Beamformer computation has started successfully:"
-        self._report("\n" + txt + "\n" + "-" * len(txt))
-        self._report("...csm...")
         f, csm = self.signal.get_csm()
 
-        self._report("...Steering vector...")
         # Frequency selection, wave numbers and steering vector
         ids = find_nearest_points_index_in_vector(self.f_range_hz, f)
         id1, id2 = ids[0], ids[1]
@@ -1112,7 +1072,6 @@ class BeamformerOrthogonal(BeamformerGridded):
         h = self.st_vec.get_vector(wave_numbers, grid=self.grid, mic=self.mics)
         self.f_range_hz = np.array([f[0], f[-1]])
 
-        self._report("...Apply...")
         eig_map = np.zeros(
             (
                 number_eigenvalues,
@@ -1165,7 +1124,7 @@ class BeamformerFunctional(BeamformerGridded):
 
         Parameters
         ----------
-        center_frequenc_hz : float
+        center_frequency_hz : float
             Center frequency for which to compute map.
         octave_fraction : int, optional
             Fractional octave bandwidth for computing the map. For instance,
@@ -1189,12 +1148,8 @@ class BeamformerFunctional(BeamformerGridded):
             self.center_frequency_hz, self.octave_fraction
         )
 
-        txt = "Beamformer computation has started successfully:"
-        self._report("\n" + txt + "\n" + "-" * len(txt))
-        self._report("...csm...")
         f, csm = self.signal.get_csm()
 
-        self._report("...Steering vector...")
         # Frequency selection, wave numbers and steering vector
         ids = find_nearest_points_index_in_vector(self.f_range_hz, f)
         id1, id2 = ids[0], ids[1]
@@ -1211,7 +1166,6 @@ class BeamformerFunctional(BeamformerGridded):
         h_H = np.swapaxes(h, 1, 2).conjugate()
         self.f_range_hz = np.array([f[0], f[-1]])
 
-        self._report("...Apply...")
         map = np.zeros((self.grid.number_of_points, number_frequency_bins))
 
         for find in range(len(f)):
@@ -1258,17 +1212,24 @@ class BeamformerMVDR(BeamformerGridded):
         self,
         center_frequency_hz: float,
         octave_fraction: int = 3,
-        gamma: float = 10,
+        diagonal_loading_db: float | None = 10.0,
     ) -> NDArray[np.float64]:
         """Returns a beaforming map created with MVDR beamforming.
 
         Parameters
         ----------
-        center_frequenc_hz : float
+        center_frequency_hz : float
             Center frequency for which to compute map.
         octave_fraction : int, optional
             Fractional octave bandwidth for computing the map. For instance,
             8 means 1/8-octave bandwidth. Default: 3.
+        diagonal_loading_db : float, None, optional
+            Level of the diagonal loading applied to the cross-spectral matrix
+            before its inversion, in dB relative to the mean sensor power of
+            each frequency bin. Larger values mean less regularization. It
+            makes the inversion robust against an ill-conditioned matrix, at
+            the cost of resolution. Pass `None` to invert the matrix as it is.
+            Default: 10.
 
         Returns
         -------
@@ -1280,6 +1241,10 @@ class BeamformerMVDR(BeamformerGridded):
         - [1]: J. Capon, "High-resolution frequency-wavenumber spectrum
           analysis," in Proceedings of the IEEE, vol. 57, no. 8,
           pp. 1408-1418, Aug. 1969, doi: 10.1109/PROC.1969.7278.
+        - [2]: B. D. Carlson, "Covariance matrix estimation errors and
+          diagonal loading in adaptive arrays," in IEEE Transactions on
+          Aerospace and Electronic Systems, vol. 24, no. 4, pp. 397-401,
+          Jul. 1988, doi: 10.1109/7.7181.
 
         """
         self.center_frequency_hz = center_frequency_hz
@@ -1288,12 +1253,8 @@ class BeamformerMVDR(BeamformerGridded):
             self.center_frequency_hz, self.octave_fraction
         )
 
-        txt = "Beamformer computation has started successfully:"
-        self._report("\n" + txt + "\n" + "-" * len(txt))
-        self._report("...csm...")
         f, csm = self.signal.get_csm()
 
-        self._report("...Steering vector...")
         # Frequency selection, wave numbers and steering vector
         ids = find_nearest_points_index_in_vector(self.f_range_hz, f)
         id1, id2 = ids[0], ids[1]
@@ -1310,8 +1271,11 @@ class BeamformerMVDR(BeamformerGridded):
         h_H = np.swapaxes(h, 1, 2).conjugate()
         self.f_range_hz = np.array([f[0], f[-1]])
 
-        self._report("...Apply...")
-        map = np.zeros((self.grid.number_of_points, number_frequency_bins))
+        if diagonal_loading_db is not None:
+            mean_sensor_power = (
+                np.trace(csm, axis1=1, axis2=2).real / csm.shape[-1]
+            ) * from_db(-diagonal_loading_db, False)
+            csm = csm + mean_sensor_power[:, None, None] * np.eye(csm.shape[-1])
 
         map = (
             1.0
@@ -1369,9 +1333,6 @@ class BeamformerDASTime(BaseBeamformer):
             Output signal focused to the points of the grid.
 
         """
-        txt = "Beamformer computation has started successfully:"
-        self._report("\n" + txt + "\n" + "-" * len(txt))
-        self._report("...get delays...")
         # Start Signal from one channel
         out_sig = self.signal.get_channels(0)
 
@@ -1389,10 +1350,7 @@ class BeamformerDASTime(BaseBeamformer):
         out_sig = out_sig.pad_trim(total_length_samples)
 
         # Start computation for each grid point
-        self._report("...grid focusing...")
         for ig in range(self.grid.number_of_points):
-            if ig == self.grid.number_of_points // 2:
-                self._report(r"...50% grid done...")
             delays = (r0 - ds[:, ig]) / self.c
             # Accumulator
             new_time_data = np.zeros((total_length_samples, 1))

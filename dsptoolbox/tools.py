@@ -78,6 +78,7 @@ from .standard._standard_backend import (
     _center_frequencies_fractional_octaves_iec,
     _exact_center_frequencies_fractional_octaves,
 )
+from .standard.enums import SampleFormat
 
 
 def log_frequency_vector(
@@ -253,6 +254,9 @@ def fractional_octave_frequencies(
     frequency_range : array, tuple
         The lower and upper frequency limits, the default is
         `frequency_range=(20, 20e3)`.
+    return_cutoff : bool, optional
+        When `True`, the lower and upper cutoff frequencies of each band are
+        returned as a third output. Default: `False`.
 
     Returns
     -------
@@ -313,14 +317,14 @@ def erb_frequencies(
 
     Parameters
     ----------
-    freq_range : array-like, optional
+    freq_range_hz : array-like, optional
         The upper and lower frequency limits in Hz between which the frequency
         vector is computed. Default: [20, 20e3].
     resolution : float, optional
         The frequency resolution in ERB units. 1 returns frequencies that are
         spaced by 1 ERB unit, a value of 0.5 would return frequencies that are
         spaced by 0.5 ERB units. Default: 1.
-    reference_frequency : float, optional
+    reference_frequency_hz : float, optional
         The reference frequency in Hz relative to which the frequency vector
         is constructed. Default: 1000.
 
@@ -382,8 +386,8 @@ def erb_frequencies(
 
 def convert_sample_representation(
     values: NDArray | bytes,
-    input_format: str,
-    output_format: str,
+    input_format: SampleFormat,
+    output_format: SampleFormat,
     cast_output: bool = True,
     output_in_bytes: bool = False,
 ) -> tuple[NDArray | bytes, float, float]:
@@ -393,27 +397,25 @@ def convert_sample_representation(
 
     Parameters
     ----------
-    vector : NDArray, bytes
+    values : NDArray, bytes
         Values to convert. If in bytes, the output will be a flat array as the
         input without reordering.
-    input_format : str, {"f32", "f64", "i8", "i16", "i24", "i32", "u8", "u16",\
-        "u24", "u32"}
+    input_format : SampleFormat
         Input format for the samples. If the input is a byte array, the samples
-        will be read using `numpy.frombuffer()`. In the case of "i24" and
-        "u24", the input is expected to have 3-bytes samples and the endianness
-        of the current platform.
-    output_format : str, {"f32", "f64", "i8", "i16", "i24", "i32", "u8", \
-        "u16", "u24", "u32"}
+        will be read using `numpy.frombuffer()`. In the case of Int24 and
+        Uint24, the input is expected to have 3-bytes samples and the
+        endianness of the current platform.
+    output_format : SampleFormat
         Output format for the samples.
     cast_output : bool, optional
         When True, the output vector is casted to the equivalent data type of
         the output format. This throws an assertion error if the casting is not
-        supported by numpy (for "i24" and "u24") AND the output is not in
+        supported by numpy (for Int24 and Uint24) AND the output is not in
         bytes. When avoiding casting, the data type of the output is always
         np.float64. Default: True.
     output_in_bytes : bool, optional
         When True, the array is returned with its bytes representation as
-        produced by `numpy.tobytes()`. In the case of "i24" and "u24" and
+        produced by `numpy.tobytes()`. In the case of Int24 and Uint24 and
         `cast_output=True`, the
         bytes are always produced with the endianness of the current platform
         and the size is 3 per sample bytes and in c ordering. Default: False.
@@ -434,79 +436,52 @@ def convert_sample_representation(
     - Dithering is advised when lowering the bit depth, this is not done
       within this function.
     - Passing the same format as input and output will raise an AssertionError.
-    - `i` refers to signed integer and `u` means unsigned integer.
 
     """
     if input_format == output_format:
         raise AssertionError("No conversion is necessary")
 
-    valid_formats = [
-        "f32",
-        "f64",
-        "i8",
-        "i16",
-        "i24",
-        "i32",
-        "u8",
-        "u16",
-        "u24",
-        "u32",
-    ]
-    input_format = input_format.lower()
-    output_format = output_format.lower()
-    assert output_format in valid_formats and input_format in valid_formats, (
-        f"Format {input_format} or {output_format} is not supported"
-    )
+    input_is_24_bits = input_format.bit_depth() == 24
+    output_is_24_bits = output_format.bit_depth() == 24
 
     if type(values) is bytes:
-        signed_input = input_format[0] == "i"
-        if input_format in ("i24", "u24"):
-            values = _bytes_to_array_24bits(values, signed_input)
+        if input_is_24_bits:
+            values = _bytes_to_array_24bits(values, input_format.is_signed())
         else:
-            if input_format not in ("f32", "f64"):
-                bits_input = int(input_format[1:])
-                input_format_to_read = eval(
-                    f"""np.{"int" if signed_input else "uint"}{bits_input}"""
-                )
-            else:
-                input_format_to_read = eval(f"np.{input_format}")
-            values = np.frombuffer(values, dtype=input_format_to_read)
+            values = np.frombuffer(values, dtype=input_format.to_numpy_dtype())
 
     # ==== Input (convert always to double precision)
-    if input_format not in ("f32", "f64"):
-        signed_input = input_format[0] == "i"
-        bits_input = int(input_format[1:])
-        max_value_input = 2.0 ** (bits_input - 1) - 1
+    if not input_format.is_float():
+        max_value_input = 2.0 ** (input_format.bit_depth() - 1) - 1
         values = values.astype(np.float64) / max_value_input
-        if not signed_input:
+        if not input_format.is_signed():
             values -= 1.0
     values = np.clip(values, -1.0, 1.0)
 
     # ==== Output (from double precision to desired format)
-    if output_format == "f32":
+    if output_format == SampleFormat.Float32:
         return values.astype(np.float32), 0.0, 1.0
-    elif output_format == "f64":
-        return values, 0, 1.0
+    elif output_format == SampleFormat.Float64:
+        return values, 0.0, 1.0
 
     # Fixed-point output
-    signed_output = output_format[0] == "i"
-    bits_output = int(output_format[1:])
-    max_value_output = 2.0 ** (bits_output - 1) - 1
+    max_value_output = 2.0 ** (output_format.bit_depth() - 1) - 1
     output = values * max_value_output
     equilibrium = 0.0
 
-    if not signed_output:
+    if not output_format.is_signed():
         output += max_value_output
         equilibrium += max_value_output
 
     if cast_output:
-        if output_format in ("i24", "u24"):
+        if output_is_24_bits:
             assert output_in_bytes, (
                 "This format is only valid for casting when " + "the output is in bytes"
             )
-            bits_output = 32
-        prefix = "int" if signed_output else "uint"
-        sample_type = eval(f"np.{prefix}{bits_output}")
+            # Held in a 32-bit type until `_array_to_bytes_24bits` packs it
+            sample_type = np.int32 if output_format.is_signed() else np.uint32
+        else:
+            sample_type = output_format.to_numpy_dtype()
         output = output.astype(sample_type)
     else:
         output = np.trunc(output)
@@ -514,7 +489,7 @@ def convert_sample_representation(
     if not output_in_bytes:
         return output, equilibrium, max_value_output
 
-    if output_format in ("i24", "u24") and cast_output:
+    if output_is_24_bits and cast_output:
         return (
             _array_to_bytes_24bits(output),
             equilibrium,

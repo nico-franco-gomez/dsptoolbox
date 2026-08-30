@@ -134,6 +134,9 @@ def _center_frequencies_fractional_octaves_iec(
 
     Parameters
     ----------
+    nominal : bool
+        When True, the nominal (rounded) center frequencies are returned as
+        well. They are only available for octave and third octave bands.
     num_fractions : 1, 3
         The number of octave fractions. 1 returns octave center frequencies,
         3 returns third octave center frequencies.
@@ -231,7 +234,7 @@ def _exact_center_frequencies_fractional_octaves(
     ----------
     num_fractions : int
         The number of fractions
-    frequency_range
+    frequency_range : tuple[float, float]
         The upper and lower frequency limits
 
     Returns

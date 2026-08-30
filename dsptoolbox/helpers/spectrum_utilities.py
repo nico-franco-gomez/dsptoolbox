@@ -4,7 +4,12 @@ import numpy as np
 from numpy.typing import NDArray
 from scipy.interpolate import interp1d
 
-from ..standard.enums import MagnitudeNormalization, SpectrumScaling
+from ..standard.enums import (
+    InterpolationConversion,
+    InterpolationKind,
+    MagnitudeNormalization,
+    SpectrumScaling,
+)
 from .gain_and_level import from_db, to_db
 from .other import find_nearest_points_index_in_vector
 from .smoothing import _fractional_octave_smoothing
@@ -396,15 +401,8 @@ def _interpolate_fr(
     f_interp: NDArray[np.float64],
     fr_interp: NDArray[np.float64],
     f_target: NDArray[np.float64],
-    mode: Literal[
-        "db2amplitude",
-        "amplitude2db",
-        "power2db",
-        "power2amplitude",
-        "amplitude2power",
-    ]
-    | None = None,
-    interpolation_scheme: Literal["linear", "quadratic", "cubic"] = "linear",
+    conversion: InterpolationConversion | None = None,
+    interpolation_kind: InterpolationKind = InterpolationKind.Linear,
 ) -> NDArray[np.float64]:
     """Interpolate one frequency response to a new frequency vector.
 
@@ -416,18 +414,13 @@ def _interpolate_fr(
         Frequency response to be interpolated.
     f_target : NDArray[np.float64]
         Target frequency vector.
-    mode : str {"db2amplitude", "amplitude2db", "power2db",\
-            "power2amplitude", "amplitude2power"}, None, optional
-        Convert between amplitude, power or dB representation during the\
-        interpolation step. For instance, using the modes "db2power" means\
-        input in dB, interpolation in power spectrum, output in dB. Available\
-        modes are "db2amplitude", "amplitude2db", "power2db",\
-        "power2amplitude", "amplitude2power". Pass None to avoid any\
+    conversion : InterpolationConversion, None, optional
+        Convert between amplitude, power or dB representation during the
+        interpolation step. For instance, `DbToPower` means input in dB,
+        interpolation in power spectrum, output in dB. Pass None to avoid any
         conversion. Default: None.
-    interpolation_scheme : str {"linear", "quadratic", "cubic"}, optional
-        Type of interpolation to use. See `scipy.interpolation.interp1d` for\
-        details. Choose from "quadratic" or "cubic" splines, or "linear".\
-        Default: "linear".
+    interpolation_kind : InterpolationKind, optional
+        Type of interpolation to use. Default: Linear.
 
     Returns
     -------
@@ -488,24 +481,21 @@ def _interpolate_fr(
     y = fr_interp.copy()
 
     # Conversion if necessary
-    if mode is not None:
-        mode = mode.lower()
-        if mode == "power2amplitude":
+    if conversion is not None:
+        if conversion == InterpolationConversion.PowerToAmplitude:
             y **= 0.5
-        elif mode == "amplitude2power":
+        elif conversion == InterpolationConversion.AmplitudeToPower:
             y **= 2.0
-        elif mode[:3] == "db2":
-            y = from_db(y, "amplitude" in mode)
-        elif mode[-3:] == "2db":
-            y = to_db(y, "amplitude" in mode)
-            fill_value = (y[0], y[-1])
+        elif conversion.input_is_db():
+            y = from_db(y, conversion == InterpolationConversion.DbToAmplitude)
         else:
-            raise ValueError(f"Unsupported interpolation mode: {mode}")
+            y = to_db(y, conversion == InterpolationConversion.AmplitudeToDb)
+            fill_value = (y[0], y[-1])
 
     interpolated = interp1d(
         f_interp,
         y,
-        kind=interpolation_scheme,
+        kind=interpolation_kind.to_scipy_str(),
         copy=False,
         bounds_error=False,
         assume_sorted=True,
@@ -514,15 +504,19 @@ def _interpolate_fr(
     )(f_target)
 
     # Back conversion if activated
-    if mode is not None:
-        if mode == "power2amplitude":
+    if conversion is not None:
+        if conversion == InterpolationConversion.PowerToAmplitude:
             interpolated **= 2.0
-        elif mode == "amplitude2power":
+        elif conversion == InterpolationConversion.AmplitudeToPower:
             interpolated **= 0.5
-        elif mode[:3] == "db2":
-            interpolated = to_db(interpolated, "amplitude" in mode)
-        elif mode[-3:] == "2db":
-            interpolated = from_db(interpolated, "amplitude" in mode)
+        elif conversion.input_is_db():
+            interpolated = to_db(
+                interpolated, conversion == InterpolationConversion.DbToAmplitude
+            )
+        else:
+            interpolated = from_db(
+                interpolated, conversion == InterpolationConversion.AmplitudeToDb
+            )
 
     return interpolated
 

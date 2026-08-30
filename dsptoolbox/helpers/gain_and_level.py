@@ -63,17 +63,20 @@ def _normalize(
 
     Parameters
     ----------
-    s: NDArray[np.float64]
+    s : NDArray[np.float64]
         Signal to normalize. It can be 1 or 2D. Time samples are assumed to
         be in the outer axis.
-    dbfs: float
+    dbfs : float
         dbfs value to normalize to.
-    peak_normalization: Bool
+    peak_normalization : bool
         Mode of normalization. True -> `peak`, False -> `rms`.
+    per_channel : bool
+        When True, each channel is normalized independently. Otherwise, the
+        same factor is applied to every channel.
 
     Returns
     -------
-    s_out: NDArray[np.float64]
+    s_out : NDArray[np.float64]
         Normalized signal.
 
     """

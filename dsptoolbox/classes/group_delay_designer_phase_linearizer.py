@@ -101,8 +101,10 @@ class FirDesigner:
 
         Parameters
         ----------
-        target_group_delay : NDArray[np.float64]
-            Target group delay (in samples) to use.
+        target_magnitude_response : NDArray[np.float64]
+            Target magnitude response to use.
+        target_group_delay_s : NDArray[np.float64]
+            Target group delay (in seconds) to use.
 
         """
         assert target_group_delay_s.ndim == 1, (
