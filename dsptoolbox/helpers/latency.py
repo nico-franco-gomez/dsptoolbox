@@ -5,7 +5,11 @@ from numpy.typing import NDArray
 from scipy.signal import correlate, hilbert
 from scipy.stats import pearsonr
 
-from ..standard.enums import IrLatencyRemoval
+from ..standard.enums import (
+    IrLatencyRemoval,
+    IrLatencyRemovalType,
+    ParametrizedIrLatencyRemoval,
+)
 from .spectrum_utilities import _wrap_phase
 
 
@@ -218,7 +222,7 @@ def _remove_ir_latency_from_phase_peak(
 
 
 def _apply_ir_latency_removal_to_phase(
-    remove_ir_latency: IrLatencyRemoval | int | float | NDArray | None,
+    remove_ir_latency: IrLatencyRemovalType,
     freqs: NDArray[np.float64],
     phase: NDArray[np.float64],
     time_data: NDArray[np.float64],
@@ -229,10 +233,10 @@ def _apply_ir_latency_removal_to_phase(
 
     Parameters
     ----------
-    remove_ir_latency : IrLatencyRemoval, int, float, NDArray, None
-        An `IrLatencyRemoval` to estimate the latency, an array-like of
-        delays in samples per channel to remove them directly, or None to
-        leave the phase untouched.
+    remove_ir_latency : IrLatencyRemoval
+        Way of obtaining the latency to remove. `Custom` carries the delay
+        directly and must be bound with
+        `IrLatencyRemoval.Custom.with_delay_samples()`.
     freqs : NDArray[np.float64]
         Frequency vector.
     phase : NDArray[np.float64]
@@ -251,31 +255,32 @@ def _apply_ir_latency_removal_to_phase(
     # Imported here because minimum_phase imports from this module
     from .minimum_phase import _remove_ir_latency_from_phase_min_phase
 
-    if remove_ir_latency is None:
-        return phase
-
-    if isinstance(remove_ir_latency, IrLatencyRemoval):
-        match remove_ir_latency:
-            case IrLatencyRemoval.Peak:
-                return _remove_ir_latency_from_phase_peak(
-                    freqs, phase, time_data, sampling_rate_hz
-                )
-            case IrLatencyRemoval.MinimumPhase:
-                return _remove_ir_latency_from_phase_min_phase(
-                    freqs, phase, time_data, sampling_rate_hz, 8
-                )
-            case _:
-                raise ValueError("No valid latency removal")
-
-    latency_samples = np.atleast_1d(remove_ir_latency)
-    if not np.issubdtype(latency_samples.dtype, np.number):
-        raise ValueError(
-            "remove_ir_latency must be an IrLatencyRemoval, a delay in "
-            + "samples per channel, or None"
+    if isinstance(remove_ir_latency, ParametrizedIrLatencyRemoval):
+        return _remove_ir_latency_from_phase(
+            freqs,
+            phase,
+            remove_ir_latency.get_delay_samples(phase.shape[1]),
+            sampling_rate_hz,
         )
-    return _remove_ir_latency_from_phase(
-        freqs, phase, latency_samples, sampling_rate_hz
-    )
+
+    match remove_ir_latency:
+        case IrLatencyRemoval.NoRemoval:
+            return phase
+        case IrLatencyRemoval.Peak:
+            return _remove_ir_latency_from_phase_peak(
+                freqs, phase, time_data, sampling_rate_hz
+            )
+        case IrLatencyRemoval.MinimumPhase:
+            return _remove_ir_latency_from_phase_min_phase(
+                freqs, phase, time_data, sampling_rate_hz, 8
+            )
+        case IrLatencyRemoval.Custom:
+            raise ValueError(
+                "Custom requires an explicit delay. Pass it with "
+                + "IrLatencyRemoval.Custom.with_delay_samples(...)"
+            )
+        case _:
+            raise ValueError("No valid latency removal")
 
 
 def _get_correlation_of_latencies(

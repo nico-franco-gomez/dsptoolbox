@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from enum import Enum, auto
 
 import numpy as np
-from numpy.typing import NDArray
+from numpy.typing import ArrayLike, NDArray
 from scipy.signal.windows import get_window as get_window_scipy
 
 
@@ -810,13 +810,93 @@ class IrLatencyRemoval(Enum):
     """Way of estimating the latency of an impulse response so that it can be
     removed from its phase response:
 
+    - NoRemoval: the phase response is left untouched.
     - Peak: the position of the peak in the time signal.
     - MinimumPhase: the delay in relation to the minimum-phase equivalent.
+    - Custom: an explicit delay in samples. Bind it with
+      `IrLatencyRemoval.Custom.with_delay_samples()`.
 
     """
 
+    NoRemoval = auto()
     Peak = auto()
     MinimumPhase = auto()
+    Custom = auto()
+
+    def with_delay_samples(
+        self, delay_samples: float | ArrayLike
+    ) -> "ParametrizedIrLatencyRemoval":
+        """Bind an explicit delay to the latency removal, returning a
+        `ParametrizedIrLatencyRemoval`. Only `Custom` takes one, since the
+        other members estimate the delay from the impulse response.
+
+        Parameters
+        ----------
+        delay_samples : float, ArrayLike
+            Delay in samples. A single value is applied to every channel, and
+            an array-like is expected to hold one delay per channel. It can
+            be fractional.
+
+        Returns
+        -------
+        ParametrizedIrLatencyRemoval
+            Latency removal bound to its delay. It can be passed wherever an
+            `IrLatencyRemoval` is expected.
+
+        """
+        if not self.needs_delay():
+            raise ValueError(f"{self.name} does not take an explicit delay")
+        delays = np.atleast_1d(np.asarray(delay_samples, dtype=np.float64))
+        if delays.ndim != 1:
+            raise ValueError("Delays can only have one dimension")
+        return ParametrizedIrLatencyRemoval(self, tuple(delays))
+
+    def needs_delay(self) -> bool:
+        """When True, the member requires an explicit delay."""
+        return self == IrLatencyRemoval.Custom
+
+
+@dataclass(frozen=True)
+class ParametrizedIrLatencyRemoval:
+    """An `IrLatencyRemoval` bound to an explicit delay in samples.
+
+    Instances are produced by `IrLatencyRemoval.Custom.with_delay_samples()`
+    and are immutable.
+
+    """
+
+    latency_removal: IrLatencyRemoval
+    delay_samples: tuple[float, ...]
+
+    def needs_delay(self) -> bool:
+        """The delay is already bound, so this is always False."""
+        return False
+
+    def get_delay_samples(self, number_of_channels: int) -> NDArray[np.float64]:
+        """Return the bound delay as one value per channel.
+
+        Parameters
+        ----------
+        number_of_channels : int
+            Number of channels that the delay is applied to.
+
+        Returns
+        -------
+        NDArray[np.float64]
+            Delay in samples with length `number_of_channels`.
+
+        """
+        delays = np.asarray(self.delay_samples, dtype=np.float64)
+        if len(delays) == 1:
+            return np.repeat(delays, number_of_channels)
+        if len(delays) != number_of_channels:
+            raise ValueError(
+                f"{len(delays)} delays do not match {number_of_channels} channels"
+            )
+        return delays
+
+
+IrLatencyRemovalType = IrLatencyRemoval | ParametrizedIrLatencyRemoval
 
 
 class Power2Rounding(Enum):

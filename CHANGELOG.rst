@@ -48,6 +48,11 @@ API breaks
 - Importing the library no longer changes matplotlib's global settings nor
   sets `SD_ENABLE_ASIO`. Use `plots.use_default_style()` and
   `audio_io.enable_asio()`. sounddevice is imported on first use
+- `IrLatencyRemoval` gained `NoRemoval` and `Custom`, so the
+  `remove_ir_latency` argument of `plot_phase`, `plot_group_delay` and
+  `plot_bode` has one type instead of three: `None` becomes
+  `IrLatencyRemoval.NoRemoval` and an array of delays becomes
+  `IrLatencyRemoval.Custom.with_delay_samples()`
 - No string selector is left in the public API. `IrLatencyRemoval` for
   `remove_ir_latency`, `SpectrumAverageMethod` for `average`,
   `Power2Rounding` for `tools.next_power_2`, `FirPhaseMode` for

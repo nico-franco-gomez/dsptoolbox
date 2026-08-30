@@ -12,6 +12,7 @@ from ..plots import general_plot_two_axes
 from ..standard._standard_backend import _group_delay_direct
 from ..standard.enums import (
     IrLatencyRemoval,
+    IrLatencyRemovalType,
     MagnitudeNormalization,
     SpectrumMethod,
 )
@@ -285,7 +286,7 @@ class ImpulseResponse(Signal):
         show_group_delay: bool = False,
         range_rad_s: tuple[float, float] | None = None,
         smoothing: int = 0,
-        remove_ir_latency: IrLatencyRemoval | ArrayLike | None = None,
+        remove_ir_latency: IrLatencyRemovalType = IrLatencyRemoval.NoRemoval,
         ax: Axes | None = None,
     ) -> tuple[Figure, list[Axes]]:
         """Create a bode plot where magnitude and phase response are plotted
@@ -313,16 +314,12 @@ class ImpulseResponse(Signal):
             the plot data and not to `get_spectrum()`. It is applied to both
             magnitude and phase/group delay response. Default: 0
             (no smoothing).
-        remove_ir_latency : IrLatencyRemoval, ArrayLike, None, optional
+        remove_ir_latency : IrLatencyRemoval, optional
             If the signal is an impulse response, the delay of the impulse can
-            be removed. IR delay removal options are:
-
-            - IrLatencyRemoval: by regarding its delay in relation to the
-              minimum-phase equivalent or its peak in the time signal.
-            - ArrayLike: Delay in samples to remove from each channel.
-            - None: no latency removal.
-
-            Default: None.
+            be removed. The delay is either estimated from the minimum-phase
+            equivalent or from the peak in the time signal, or passed
+            explicitly with `IrLatencyRemoval.Custom.with_delay_samples()`.
+            Default: NoRemoval.
 
         ax : `matplotlib.axes.Axes`, None, optional
             Axes to draw on, so that several plots can share one axis. A new

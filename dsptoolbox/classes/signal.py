@@ -48,6 +48,7 @@ from ..standard.enums import (
     FadeType,
     FilterBankMode,
     IrLatencyRemoval,
+    IrLatencyRemovalType,
     MagnitudeNormalization,
     SpectrumAverageMethod,
     SpectrumMethod,
@@ -1474,7 +1475,7 @@ class Signal(MultichannelData):
         self,
         range_hz: tuple[float, float] | None = (20.0, 20e3),
         smoothing: int = 0,
-        remove_ir_latency: IrLatencyRemoval | ArrayLike | None = None,
+        remove_ir_latency: IrLatencyRemovalType = IrLatencyRemoval.NoRemoval,
         ax: Axes | None = None,
     ) -> tuple[Figure, Axes]:
         """Plots group delay of each channel.
@@ -1488,16 +1489,12 @@ class Signal(MultichannelData):
             When different than 0, smoothing is applied to the group delay
             along the (1/smoothing) octave band. This only affects the values
             in the plot. Default: 0.
-        remove_ir_latency : IrLatencyRemoval, ArrayLike, None, optional
+        remove_ir_latency : IrLatencyRemoval, optional
             If the signal is an impulse response, the delay of the impulse can
-            be removed. IR delay removal options are:
-
-            - IrLatencyRemoval: by regarding its delay in relation to the
-              minimum-phase equivalent or its peak in the time signal.
-            - ArrayLike: Delay in samples to remove from each channel.
-            - None: no latency removal.
-
-            Default: None.
+            be removed. The delay is either estimated from the minimum-phase
+            equivalent or from the peak in the time signal, or passed
+            explicitly with `IrLatencyRemoval.Custom.with_delay_samples()`.
+            Default: NoRemoval.
 
         ax : `matplotlib.axes.Axes`, None, optional
             Axes to draw on, so that several plots can share one axis. A new
@@ -1625,7 +1622,7 @@ class Signal(MultichannelData):
         range_hz: tuple[float, float] | None = (20.0, 20e3),
         unwrap: bool = False,
         smoothing: int = 0,
-        remove_ir_latency: IrLatencyRemoval | ArrayLike | None = None,
+        remove_ir_latency: IrLatencyRemovalType = IrLatencyRemoval.NoRemoval,
         ax: Axes | None = None,
     ) -> tuple[Figure, Axes]:
         """Plots phase of the frequency response, only available if the method
@@ -1642,16 +1639,12 @@ class Signal(MultichannelData):
             When different than 0, the phase response is smoothed across the
             1/smoothing-octave band. This only applies smoothing to the plot
             data. Default: 0.
-        remove_ir_latency : IrLatencyRemoval, ArrayLike, None, optional
+        remove_ir_latency : IrLatencyRemoval, optional
             If the signal is an impulse response, the delay of the impulse can
-            be removed. IR delay removal options are:
-
-            - IrLatencyRemoval: by regarding its delay in relation to the
-              minimum-phase equivalent or its peak in the time signal.
-            - ArrayLike: Delay in samples to remove from each channel.
-            - None: no latency removal.
-
-            Default: None.
+            be removed. The delay is either estimated from the minimum-phase
+            equivalent or from the peak in the time signal, or passed
+            explicitly with `IrLatencyRemoval.Custom.with_delay_samples()`.
+            Default: NoRemoval.
 
         ax : `matplotlib.axes.Axes`, None, optional
             Axes to draw on, so that several plots can share one axis. A new

@@ -227,6 +227,42 @@ class TestSignal:
         with pytest.raises(AttributeError):
             s.time_vector_s = np.array([0.0, 1.0])
 
+    def test_ir_latency_removal_members(self):
+        """`Custom` carries the delay, so the parameter has one type and
+        `NoRemoval` replaces the `None` that used to mean "leave it".
+
+        """
+        delay_samples = 64
+        ir = dsp.ImpulseResponse.from_time_data(
+            np.eye(512, 2, -delay_samples), self.fs
+        ).set_spectrum_parameters(method=dsp.SpectrumMethod.FFT)
+
+        removal = dsp.IrLatencyRemoval
+        fig, ax_untouched = ir.plot_phase(remove_ir_latency=removal.NoRemoval)
+        untouched = ax_untouched.lines[0].get_ydata()
+        close(fig)
+
+        # The peak sits exactly on a sample, so removing the estimated delay
+        # and removing it explicitly must agree
+        _, ax_estimated = ir.plot_phase(remove_ir_latency=removal.Peak)
+        _, ax_custom = ir.plot_phase(
+            remove_ir_latency=removal.Custom.with_delay_samples(delay_samples)
+        )
+        estimated = ax_estimated.lines[0].get_ydata()
+        np.testing.assert_allclose(estimated, ax_custom.lines[0].get_ydata(), atol=1e-9)
+        assert not np.allclose(estimated, untouched)
+        close("all")
+
+        # A mismatched number of delays is rejected
+        with pytest.raises(ValueError):
+            ir.plot_phase(
+                remove_ir_latency=removal.Custom.with_delay_samples([64, 60, 55])
+            )
+        with pytest.raises(ValueError):
+            removal.Peak.with_delay_samples(10)
+        with pytest.raises(ValueError):
+            removal.Custom.with_delay_samples(np.zeros((2, 2)))
+
     def test_plot_csm_with_phase(self):
         """`with_phase` used to be accepted and ignored, so the phase was
         drawn on a twin axis no matter what.
@@ -255,12 +291,25 @@ class TestSignal:
 
         s = s.set_spectrum_parameters(method=dsp.SpectrumMethod.FFT)
         s.plot_phase()
-        s.plot_phase(unwrap=True, smoothing=4, remove_ir_latency=None)
+        s.plot_phase(
+            unwrap=True,
+            smoothing=4,
+            remove_ir_latency=dsp.IrLatencyRemoval.NoRemoval,
+        )
         s.plot_phase(remove_ir_latency=dsp.IrLatencyRemoval.MinimumPhase)
         s.plot_phase(remove_ir_latency=dsp.IrLatencyRemoval.Peak)
-        s.plot_phase(remove_ir_latency=[10] * s.number_of_channels)
+        s.plot_phase(
+            remove_ir_latency=dsp.IrLatencyRemoval.Custom.with_delay_samples(
+                [10] * s.number_of_channels
+            )
+        )
+        # A single delay applies to every channel
+        s.plot_phase(
+            remove_ir_latency=dsp.IrLatencyRemoval.Custom.with_delay_samples(10.5)
+        )
+        # Custom without a bound delay is not a valid value
         with pytest.raises(ValueError):
-            s.plot_phase(remove_ir_latency="no idea what removal method")
+            s.plot_phase(remove_ir_latency=dsp.IrLatencyRemoval.Custom)
         s.plot_group_delay()
 
         # Welch's method is incompatible with phase plotting
