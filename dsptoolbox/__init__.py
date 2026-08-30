@@ -9,13 +9,6 @@ Collection of dsp, audio and acoustics-related functions.
 
 """
 
-# Import order below is load-bearing; don't let an import sorter reshuffle it:
-# .standard must be imported before .classes (several .standard submodules
-# import from ..classes, which would otherwise see a partially-initialized
-# .classes module if .classes started importing first), and both must be imported
-# before the submodule block at the bottom, since several of those submodules
-# (audio_io, distances, filterbanks, beamforming, effects) do
-# `from .. import <name>`, which requires that name already bound here.
 from .standard import (
     BiquadEqType,
     FadeType,
@@ -131,4 +124,4 @@ __all__ = [
     "FadeType",
 ]
 
-__version__ = "0.9"
+__version__ = "0.10"

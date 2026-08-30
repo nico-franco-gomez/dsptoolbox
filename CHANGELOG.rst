@@ -8,30 +8,30 @@ The format is based on `Keep a
 Changelog <http://keepachangelog.com/en/1.0.0/>`__ and this project
 adheres to `Semantic Versioning <http://semver.org/spec/v2.0.0.html>`_.
 
-Unreleased
+`0.10 <https://pypi.org/project/dsptoolbox/0.10>`_ -
 ---------------------
-A large revamp of the library: the realtime filters moved into their own
-``dsptoolbox.realtime`` module, every string selector became an enum,
-`Filter` is now built only through factory methods, `AudioEffect` instances
-are stateless, and importing the library no longer has side effects
-(matplotlib style, ASIO, sounddevice). The package also gained full type
-annotations and a `rng` parameter on every stochastic function for
-reproducible results. Alongside this, a number of correctness bugs were
-found and fixed, the most notable being that `_rms` computed the standard
-deviation instead of the RMS (affecting `rms`, `crest_factor`, `snr` and RMS
-normalization), `MultiBandSignal.collapse` corrupted its first band, and
-`Filter.filter_signal(activate_zi=True)` did not carry state correctly
-between calls. See the full commit history for the complete list of breaking
-changes and fixes.
-
 Misc
-~~~~
-- The type checker's findings were worked through: mypy reports 234 errors
-  where it reported 581, without any change to what the code does
-- The test suite now runs ~400 tests with numerical or plausibility checks
-  against known references, and statically enforces that every function
-  keeps its type annotations and docstrings in sync with its signature
-- Documentation builds without warnings
+~~~~~~
+A larger revision of the library:
+- important changes to public API of base classes. Operations now belong mostly to the classes
+  themselves and return copies without modifying the original data.
+- the realtime filters moved into their own ``dsptoolbox.realtime`` module
+- every string selector became an enum
+- `Filter` is now built only through factory methods
+- `AudioEffect` instances are stateless
+- importing the library no longer has side effects (matplotlib style, ASIO, sounddevice).
+- full type annotations and a `rng` parameter on every stochastic function for reproducible results.
+- mypy checks largely corrected
+- significant additions to the test spectrum_with_cycles
+- documentation build warnings were addressed
+
+Bugfix
+~~~~~~~~
+- `_rms` computed the standard deviation instead of the RMS (affecting `rms`, `crest_factor`, `snr` and RMS
+normalization)
+- `MultiBandSignal.collapse` corrupted its first band
+- `Filter.filter_signal(activate_zi=True)` did not carry state correctly between calls.
+- Others: See the full commit history for the complete list of breaking changes and fixes.
 
 `0.9 <https://pypi.org/project/dsptoolbox/0.9>`_ -
 ---------------------
