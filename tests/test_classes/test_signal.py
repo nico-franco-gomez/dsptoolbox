@@ -397,3 +397,29 @@ class TestSignal:
         n2 = n.copy_with_new_time_data(n.time_data[:, 0])
         n.time_data[0, ...] = 1.0
         assert np.all(n2.time_data[0] == 0.0)
+
+    def test_spectrum_smoothing_invalidates_cache(self):
+        """Setting the smoothing must take effect even when caching is on."""
+        s = dsp.Signal(
+            None, np.random.default_rng(0).normal(0, 0.1, (4096, 1)), self.fs
+        )
+        s.activate_cache = True
+        s.spectrum_method = dsp.SpectrumMethod.FFT
+        _, without_smoothing = s.get_spectrum()
+        s.spectrum_smoothing = 3
+        _, with_smoothing = s.get_spectrum()
+        assert not np.array_equal(without_smoothing, with_smoothing)
+
+    def test_metadata_str_has_underline(self):
+        s = dsp.Signal(None, np.zeros((128, 1)), self.fs)
+        lines = s.metadata_str.splitlines()
+        assert lines[0] == "Signal:"
+        assert lines[1] == "-" * len(lines[0])
+
+    def test_plot_spectrogram_skips_dc_bin(self):
+        s = dsp.Signal(
+            None, np.random.default_rng(0).normal(0, 0.1, (8192, 1)), self.fs
+        )
+        fig, ax = s.plot_spectrogram()
+        assert ax is not None
+        close(fig)

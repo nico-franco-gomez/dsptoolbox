@@ -93,3 +93,14 @@ class TestSpectrum:
                 self.rir.sampling_rate_hz / 2,
                 atol=1e-6,
             )
+
+    def test_octave_smoothing_with_arbitrary_frequency_spacing(self):
+        """Non-uniform vectors are mapped onto a linear grid before smoothing."""
+        rng = np.random.default_rng(0)
+        freqs = np.unique(np.sort(rng.uniform(20.0, 20000.0, 300)))
+        sp = dsp.Spectrum(freqs, rng.uniform(0.1, 1.0, (len(freqs), 1)))
+        assert sp.frequency_vector_type == dsp.FrequencySpacing.Other
+
+        smoothed = sp.apply_octave_smoothing(3.0)
+        assert smoothed.frequency_vector_type == dsp.FrequencySpacing.Linear
+        assert smoothed.number_frequency_bins == smoothed.spectral_data.shape[0] > 0

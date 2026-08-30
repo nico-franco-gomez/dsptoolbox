@@ -53,6 +53,7 @@ from ..standard.enums import (
     SpectrumMethod,
     SpectrumScaling,
     Window,
+    WindowType,
 )
 from ._multichannel_data import MultichannelData
 from .plots import _csm_plot
@@ -200,11 +201,8 @@ class Signal(MultichannelData):
     def metadata_str(self) -> str:
         """Generate string with metadata about the signal."""
         metadata = self.metadata
-        txt = ""
-        temp = ""
-        for _ in range(len(txt)):
-            temp += "-"
-        txt += temp + "\n"
+        title = "Signal:"
+        txt = title + "\n" + "-" * len(title) + "\n"
         for k in metadata.keys():
             txt += f"""{str(k).replace("_", " ").capitalize()}: {metadata[k]}\n"""
         return txt
@@ -514,7 +512,7 @@ class Signal(MultichannelData):
         smoothing: int = 0,
         pad_to_fast_length: bool = True,
         window_length_samples: int = 1024,
-        window_type: Window = Window.Hann,
+        window_type: WindowType = Window.Hann,
         overlap_percent: float = 50,
         detrend: bool = True,
         average: str = "mean",
@@ -557,7 +555,7 @@ class Signal(MultichannelData):
         smoothing: int = 0,
         pad_to_fast_length: bool = True,
         window_length_samples: int = 1024,
-        window_type: Window = Window.Hann,
+        window_type: WindowType = Window.Hann,
         overlap_percent: float = 50,
         detrend: bool = True,
         average: str = "mean",
@@ -584,7 +582,7 @@ class Signal(MultichannelData):
             have a length that is fast for computing the FFT. Default: True.
         window_length_samples : int, optional
             Window size. Default: 1024.
-        window_type : Window, optional
+        window_type : WindowType, optional
             Choose type of window. Default: Hann.
         overlap_percent : float, optional
             Overlap in percent. Default: 50.
@@ -747,11 +745,12 @@ class Signal(MultichannelData):
         """
         assert new_smoothing >= 0.0, "Smoothing must be positive or zero"
         self._spectrum_parameters["smoothing"] = float(new_smoothing)
+        self.__spectrum_state_update = True
 
     def _set_spectrogram_parameters(
         self,
         window_length_samples: int = 1024,
-        window_type: Window = Window.Hann,
+        window_type: WindowType = Window.Hann,
         overlap_percent: float = 50.0,
         fft_length_samples: int | None = None,
         detrend: bool = False,
@@ -787,7 +786,7 @@ class Signal(MultichannelData):
     def set_spectrogram_parameters(
         self,
         window_length_samples: int = 1024,
-        window_type: Window = Window.Hann,
+        window_type: WindowType = Window.Hann,
         overlap_percent: float = 50.0,
         fft_length_samples: int | None = None,
         detrend: bool = False,
@@ -801,7 +800,7 @@ class Signal(MultichannelData):
         ----------
         window_length_samples : int, optional
             Window size. Default: 1024.
-        window_type : Window, optional
+        window_type : WindowType, optional
             Type of window to use. Default: Hann.
         overlap_percent : float, optional
             Overlap in percent. Default: 50.
@@ -1491,11 +1490,11 @@ class Signal(MultichannelData):
         # Select channel
         stft = stft[:, :, channel_number]
 
-        ids = find_nearest_points_index_in_vector(20.0, f)
-        if ids == 0:
-            ids += 1
-        f = f[ids[0] :]
-        stft = stft[ids[0] :, :]
+        # Start above DC, otherwise the logarithmic frequency axis has no lower
+        # bound
+        start_index = max(int(find_nearest_points_index_in_vector(20.0, f)[0]), 1)
+        f = f[start_index:]
+        stft = stft[start_index:, :]
 
         zlabel = "dBFS"
         stft_db = to_db(

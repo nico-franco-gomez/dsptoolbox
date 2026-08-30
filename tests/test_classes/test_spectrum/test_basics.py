@@ -9,6 +9,7 @@ from os.path import join
 
 import numpy as np
 import pytest
+from matplotlib.pyplot import close
 
 import dsptoolbox as dsp
 
@@ -244,3 +245,31 @@ class TestSpectrum:
         sp2 = sp.set_interpolator_parameters(dsp.InterpolationDomain.Magnitude)
         assert sp2 is not sp
         assert sp.frequency_vector_type is not None  # original still usable
+
+    def test_one_khz_first_channel_uses_a_single_reference(self):
+        """`OneKhzFirstChannel` must normalize every channel by channel 0."""
+        fs = 48000
+        rng = np.random.default_rng(0)
+        s = dsp.Signal(None, rng.normal(0, 0.1, (4096, 3)), fs)
+        s = s.set_spectrum_parameters(dsp.SpectrumMethod.FFT)
+        sp = dsp.Spectrum.from_signal(s)
+
+        fig, ax = sp.plot_magnitude(
+            normalization=dsp.MagnitudeNormalization.OneKhzFirstChannel
+        )
+        curves = np.column_stack([line.get_ydata() for line in ax.get_lines()])
+        raw_db = 20 * np.log10(np.abs(sp.spectral_data))
+        offsets = curves - raw_db
+        np.testing.assert_allclose(
+            offsets, np.repeat(offsets[:, :1], offsets.shape[1], axis=1), atol=1e-9
+        )
+        close(fig)
+
+    def test_gain_and_normalize_do_not_modify_original(self):
+        rng = np.random.default_rng(0)
+        freqs = np.linspace(0, 20000, 500)
+        sp = dsp.Spectrum(freqs, rng.uniform(0.1, 1.0, (500, 2)))
+        before = sp.spectral_data.copy()
+        sp.apply_gain(6.0)
+        sp.normalize(1000.0)
+        np.testing.assert_array_equal(before, sp.spectral_data)

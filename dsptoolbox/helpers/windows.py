@@ -2,13 +2,13 @@ import numpy as np
 from numpy.typing import NDArray
 from scipy.signal import windows
 
-from ..standard.enums import Window
+from ..standard.enums import WindowType
 
 
 def calculate_tukey_like_window(
     points,
     window_length: int,
-    window_type: Window | list[Window],
+    window_type: WindowType | list[WindowType],
     at_start: bool,
     inverse: bool,
 ) -> NDArray[np.float64]:
@@ -21,10 +21,10 @@ def calculate_tukey_like_window(
         window.
     window_length: int
         Length of the window.
-    window_type: Window, list[Window]
+    window_type: WindowType, list[WindowType]
         Type of window to use. Select from scipy.signal.windows. It can be a
-        tuple with the window type and extra parameters or a list with two
-        window types.
+        single window (optionally carrying an extra parameter) or a list with
+        two window types for the left and right flanks respectively.
     at_start: bool
         Creates a half rising window at the start as well.
     inverse: bool
@@ -38,13 +38,13 @@ def calculate_tukey_like_window(
 
     """
     assert len(points) == 4, "For the custom window 4 points are needed"
-    if type(window_type) is Window:
-        left_window_type = window_type.to_scipy_format()
-        right_window_type = window_type.to_scipy_format()
-    if type(window_type) is list:
+    if isinstance(window_type, list):
         assert len(window_type) == 2, "There must be exactly two window types"
         left_window_type = window_type[0].to_scipy_format()
         right_window_type = window_type[1].to_scipy_format()
+    else:
+        left_window_type = window_type.to_scipy_format()
+        right_window_type = left_window_type
 
     idx_start_stop_f = [int(i) for i in points]
 

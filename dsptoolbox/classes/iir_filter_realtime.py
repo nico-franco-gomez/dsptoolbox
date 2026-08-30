@@ -23,7 +23,15 @@ class IIRFilter(RealtimeFilter):
         a : NDArray[np.float64]
             Denominator coefficients
 
+        Notes
+        -----
+        - The passed coefficients are copied, so the caller's arrays are left
+          untouched by the normalization to `a[0]`.
+
         """
+        b = np.asarray(b, dtype=np.float64).copy()
+        a = np.asarray(a, dtype=np.float64).copy()
+        assert a[0] != 0.0, "The first denominator coefficient cannot be 0"
         b /= a[0]
         a /= a[0]
         self.order = max(len(b), len(a)) - 1

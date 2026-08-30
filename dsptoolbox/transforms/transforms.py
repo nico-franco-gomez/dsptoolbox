@@ -34,6 +34,7 @@ from ..standard.enums import (
     FilterCoefficientsType,
     FilterPassType,
     Window,
+    WindowType,
 )
 from ..standard.gain_and_level import rms
 from ..transforms._transforms import (
@@ -1207,7 +1208,7 @@ def lpc(
     synthesize_encoded_signal: bool = False,
     use_burg_method: bool = False,
     hop_size_samples: int | None = None,
-    window_type: Window = Window.Hann,
+    window_type: WindowType = Window.Hann,
 ):
     """Encode an input signal into its linear-predictive coding coefficients.
     This transforms the signal into source-filter representation and works
@@ -1231,7 +1232,7 @@ def lpc(
     hop_size_samples : int, None, optional
         Hop size to use from window to window. If None is passed, a hop size
         corresponding to 50% of the window length will be used. Default: None.
-    window_type : Window, optional
+    window_type : WindowType, optional
         Window type to use. It is recommended that a window type that satisfies
         the COLA-condition with length and hop size is chosen. Default: Hann.
 

@@ -82,13 +82,13 @@ def latency(
 
     if isinstance(in1, Signal):
         if in2 is not None:
+            assert isinstance(in2, Signal), "Both signals must be of type Signal"
             assert in1.sampling_rate_hz == in2.sampling_rate_hz, (
                 "Sampling rates must match"
             )
             assert in1.number_of_channels == in2.number_of_channels, (
                 "Number of channels between the two signals must match"
             )
-            assert isinstance(in2, Signal), "Both signals must be of type Signal"
             td2 = in2.time_data
         else:
             assert in1.number_of_channels > 1, (
@@ -104,11 +104,10 @@ def latency(
                 in1.time_data if td2 is not None else in1.time_data[:, 1:],
                 np.round(latencies, 0).astype(np.int_),
             )
-        except Exception as e:
-            print(e)
+        except (ValueError, IndexError) as e:
             warn(
                 "An error occurred while computing the correlations. "
-                + "They are set to 0.",
+                + f"They are set to 0. Original error: {e}",
                 stacklevel=2,
             )
             return latencies, np.zeros(len(latencies))

@@ -163,13 +163,15 @@ class CalibrationData:
         if isinstance(signal, Signal):
             calibrated_signal = signal.copy()
             calibrated_signal.constrain_amplitude = False
-            calibrated_signal.time_data *= calibration_factors
+            calibrated_signal.time_data = (
+                calibrated_signal.time_data * calibration_factors
+            )
             calibrated_signal.calibrated_signal = True
         elif isinstance(signal, MultiBandSignal):
             calibrated_signal = signal.copy()
             for b in calibrated_signal:
                 b.constrain_amplitude = False
-                b.time_data *= calibration_factors
+                b.time_data = b.time_data * calibration_factors
                 b.calibrated_signal = True
         else:
             raise TypeError(

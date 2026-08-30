@@ -106,20 +106,16 @@ class FilterBank:
     @property
     def metadata_str(self) -> str:
         """Get a string with metadata about the filter bank properties."""
-        txt = ""
+        header = "Filter Bank:"
         info = self.metadata
         for k in info:
-            txt += f""" | {str(k).replace("_", " ").capitalize()}: {info[k]}"""
-        txt = "Filter Bank:" + txt
-        txt += "\n"
-        txt += "–" * len(txt)
+            header += f""" | {str(k).replace("_", " ").capitalize()}: {info[k]}"""
+        txt = header + "\n" + "–" * len(header)
         for ind, f1 in enumerate(self.filters):
             txt += "\n"
             txt += f"Filter {ind}:"
             filter_metadata = f1.metadata
             for kf in filter_metadata:
-                if kf == "ba":
-                    continue
                 txt += f""" | {str(kf).replace("_", " ").capitalize()}: {
                     filter_metadata[kf]
                 }"""

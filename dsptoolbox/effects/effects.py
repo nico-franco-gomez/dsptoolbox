@@ -13,7 +13,7 @@ from ..standard._framed_signal_representation import (
     _get_framed_signal,
     _reconstruct_framed_signal,
 )
-from ..standard.enums import SpectrumMethod, SpectrumScaling, Window
+from ..standard.enums import SpectrumMethod, SpectrumScaling, Window, WindowType
 from ._effects import (
     LFO,
     _arctan_distortion,
@@ -253,7 +253,7 @@ class SpectralSubtractor(AudioEffect):
     def set_advanced_parameters(
         self,
         overlap_percent: int = 50,
-        window_type: Window = Window.Hann,
+        window_type: WindowType = Window.Hann,
         noise_forgetting_factor: float = 0.9,
         subtraction_factor: float = 2,
         subtraction_exponent: float = 2,
@@ -267,7 +267,7 @@ class SpectralSubtractor(AudioEffect):
         ----------
         overlap_percent : int, optional
             Window overlap in percent. Default: 50.
-        window_type : Window, optional
+        window_type : WindowType, optional
             Window type to use. Default: Hann.
         noise_forgetting_factor : float, optional
             This factor is used to average the noise spectrum in order to

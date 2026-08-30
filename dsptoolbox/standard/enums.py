@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from enum import Enum, auto
 
 import numpy as np
@@ -371,13 +372,11 @@ class Window(Enum):
     Dpss = auto()
     Chebwin = auto()
 
-    @property
-    def extra_parameter(self):
-        return self.__extra_parameter
-
-    def with_extra_parameter(self, extra_parameter: float | tuple[float, float]):
-        """Add the extra parameter to the window. Windows that
-        require an extra parameter are:
+    def with_extra_parameter(
+        self, extra_parameter: float | tuple[float, float]
+    ) -> "ParametrizedWindow":
+        """Bind an extra parameter to the window, returning a
+        `ParametrizedWindow`. Windows that require an extra parameter are:
         - Kaiser
         - KaiserBesselDerived
         - Gaussian
@@ -389,26 +388,33 @@ class Window(Enum):
 
         Refer to `scipy.signal.windows` for more information.
 
-        """
-        self.__extra_parameter = extra_parameter
-        return self
+        Returns
+        -------
+        ParametrizedWindow
+            Window bound to its extra parameter. It exposes the same
+            interface as `Window` and can be passed wherever one is expected.
 
-    def to_scipy_format(self):
+        """
+        if not self.needs_extra_parameter():
+            raise ValueError(f"{self.name} does not take an extra parameter")
+        if self == Window.GeneralGaussian:
+            if len(np.atleast_1d(extra_parameter)) != 2:
+                raise ValueError("GeneralGaussian requires exactly two parameters")
+        return ParametrizedWindow(self, extra_parameter)
+
+    def to_scipy_format(self) -> str:
         """Parse to format for passing to
         `scipy.signal.windows.get_window()`.
 
         """
         if self.needs_extra_parameter():
-            if self == Window.GeneralGaussian:
-                return (
-                    self.__to_str(),
-                    self.extra_parameter[0],
-                    self.extra_parameter[1],
-                )
-            return (self.__to_str(), self.extra_parameter)
-        return self.__to_str()
+            raise ValueError(
+                f"{self.name} requires an extra parameter. Pass it with "
+                + f"Window.{self.name}.with_extra_parameter(...)"
+            )
+        return self._scipy_name()
 
-    def __to_str(self) -> str:
+    def _scipy_name(self) -> str:
         if self == Window.KaiserBesselDerived:
             return "kaiser_bessel_derived"
         if self == Window.GeneralCosine:
@@ -436,6 +442,44 @@ class Window(Enum):
     def __call__(self, n_values: int, symmetric: bool):
         """Get window values from `scipy.signal.windows.get_window()`."""
         return get_window_scipy(self.to_scipy_format(), n_values, not symmetric)
+
+
+@dataclass(frozen=True)
+class ParametrizedWindow:
+    """A `Window` bound to the extra parameter(s) that scipy requires for it.
+
+    Instances are produced by `Window.with_extra_parameter()` and are
+    immutable, so binding a parameter never affects other users of the same
+    `Window` member. They can be passed anywhere a `Window` is accepted.
+
+    """
+
+    window: Window
+    extra_parameter: float | tuple[float, float]
+
+    def needs_extra_parameter(self) -> bool:
+        """The parameter is already bound, so this is always True."""
+        return True
+
+    def to_scipy_format(self) -> tuple:
+        """Parse to format for passing to
+        `scipy.signal.windows.get_window()`.
+
+        """
+        if self.window == Window.GeneralGaussian:
+            return (
+                self.window._scipy_name(),
+                self.extra_parameter[0],
+                self.extra_parameter[1],
+            )
+        return (self.window._scipy_name(), self.extra_parameter)
+
+    def __call__(self, n_values: int, symmetric: bool):
+        """Get window values from `scipy.signal.windows.get_window()`."""
+        return get_window_scipy(self.to_scipy_format(), n_values, not symmetric)
+
+
+WindowType = Window | ParametrizedWindow
 
 
 class MagnitudeNormalization(Enum):

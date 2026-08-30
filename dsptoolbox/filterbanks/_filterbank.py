@@ -1311,7 +1311,7 @@ def _reconstruct_from_crossover_upsample(
     temp_sig = filters[1].filter_and_resample_signal(
         sig_high, new_sampling_rate_hz=sig_low.sampling_rate_hz * up_factor
     )
-    rec_sig.time_data += temp_sig.time_data
+    rec_sig.time_data = rec_sig.time_data + temp_sig.time_data
     return rec_sig
 
 

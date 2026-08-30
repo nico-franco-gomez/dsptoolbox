@@ -37,7 +37,8 @@ def true_peak_level(
         # Reduce gain by 12.04 dB
         down_factor = from_db(-12.04, True)
         up_factor = 1 / down_factor
-        sig.time_data *= down_factor
+        sig.constrain_amplitude = False
+        sig.time_data = sig.time_data * down_factor
         # Resample by 4
         sig_over = sig.resample(sig.sampling_rate_hz * 4)
         true_peak_levels = to_db(
@@ -72,6 +73,12 @@ def rms(sig: Signal | MultiBandSignal, in_dbfs: bool = True) -> NDArray[np.float
         Array with RMS values. If a `Signal` is passed, it has shape
         (channel). If a `MultiBandSignal` is passed, its shape is
         (bands, channel).
+
+    Notes
+    -----
+    - The RMS value includes any DC component of the signal. If only the AC
+      power is relevant, or the signal is known to carry an offset, use
+      `Signal.detrend()` before calling this function.
 
     """
     if isinstance(sig, Signal):
@@ -193,6 +200,11 @@ def crest_factor(
         Crest factors for each channel. If it the input is a MultiBandSignal,
         the shape is (band, channel).
 
+    Notes
+    -----
+    - The RMS value includes any DC component of the signal. If only the AC
+      power is relevant, use `Signal.detrend()` before calling this function.
+
     """
     if isinstance(sig, Signal):
         peak = (
@@ -204,7 +216,7 @@ def crest_factor(
     elif isinstance(sig, MultiBandSignal):
         crest = np.zeros((sig.number_of_bands, sig.number_of_channels))
         for ind, b in enumerate(sig):
-            crest[ind, :] = crest_factor(b, in_db, use_true_peak)
+            crest[ind, :] = crest_factor(b, in_db=False, use_true_peak=use_true_peak)
     else:
         raise TypeError(
             "Passed signal should be either a Signal or " + "MultiBandSignal type"

@@ -336,3 +336,27 @@ class TestRoomAcousticsModule:
 
         assert d50[0] > 0.999
         assert c80[0] > 30.0
+
+    def test_find_modes_does_not_modify_input(self):
+        ir = dsp.ImpulseResponse.from_time_data(
+            np.random.default_rng(0).normal(0, 0.05, (48000, 1)), 48000
+        )
+        ir.spectrum_method = dsp.SpectrumMethod.WelchPeriodogram
+        dsp.room_acoustics.find_modes(ir)
+        assert ir.spectrum_method == dsp.SpectrumMethod.WelchPeriodogram
+
+    def test_convolve_rir_uses_direct_convolution_for_similar_lengths(self):
+        """Both convolution paths must produce the same result."""
+        fs = 24000
+        rng = np.random.default_rng(0)
+        rir = dsp.ImpulseResponse.from_time_data(rng.normal(0, 0.05, (2000, 1)), fs)
+        similar = dsp.Signal(None, rng.normal(0, 0.05, (4000, 1)), fs)
+        very_long = dsp.Signal(None, rng.normal(0, 0.05, (2000 * 20, 1)), fs)
+        for s in (similar, very_long):
+            out = dsp.room_acoustics.convolve_rir_on_signal(
+                s, rir, keep_peak_level=False, keep_length=True
+            )
+            expected = sig.convolve(s.time_data, rir.time_data, mode="full")[
+                : len(s), :
+            ]
+            np.testing.assert_allclose(out.time_data, expected, atol=1e-9)

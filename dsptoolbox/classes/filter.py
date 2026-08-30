@@ -27,6 +27,7 @@ from ..standard.enums import (
     IirDesignMethod,
     MagnitudeNormalization,
     Window,
+    WindowType,
 )
 from .filter_helpers import (
     _biquad_coefficients,
@@ -73,9 +74,14 @@ class Filter:
         self.warning_if_complex = True
         self.sampling_rate_hz = sampling_rate_hz
         assert (
-            (FilterCoefficientsType.Ba in filter_coefficients)
-            ^ (FilterCoefficientsType.Sos in filter_coefficients)
-            ^ (FilterCoefficientsType.Zpk in filter_coefficients)
+            sum(
+                (
+                    FilterCoefficientsType.Ba in filter_coefficients,
+                    FilterCoefficientsType.Sos in filter_coefficients,
+                    FilterCoefficientsType.Zpk in filter_coefficients,
+                )
+            )
+            == 1
         ), (
             "Only (and at least) one type of filter coefficients "
             + "should be passed to create a filter"
@@ -193,7 +199,7 @@ class Filter:
         frequency_hz: float | ArrayLike,
         type_of_pass: FilterPassType,
         sampling_rate_hz: int,
-        window: Window = Window.Hamming,
+        window: WindowType = Window.Hamming,
     ) -> "Filter":
         """Design an FIR filter using `scipy.signal.firwin`.
 
@@ -207,7 +213,7 @@ class Filter:
             Type of filter pass.
         sampling_rate_hz : int
             Sampling rate in Hz.
-        window : Window, optional
+        window : WindowType, optional
             Window to apply to the FIR filter. Default: Hamming.
 
         Returns
@@ -367,15 +373,10 @@ class Filter:
     @property
     def metadata_str(self) -> str:
         """Get a string with metadata about the filter properties."""
-        txt = """Filter:\n"""
-        temp = ""
-        for _ in range(len(txt)):
-            temp += "-"
-        txt += temp + "\n"
+        title = "Filter:"
+        txt = title + "\n" + "-" * len(title) + "\n"
         metadata = self.metadata
         for k in metadata:
-            if k == "ba":
-                continue
             txt += f"""{str(k).replace("_", " ").capitalize()}: {metadata[k]}\n"""
         return txt
 
@@ -1300,11 +1301,16 @@ class Filter:
         if len(gain_linear) == 1:
             gain_linear = gain_linear[0]
         if filt.has_zpk:
-            filt.zpk[-1] *= gain_linear
+            zpk = filt.zpk
+            zpk[-1] = zpk[-1] * gain_linear
+            filt.zpk = zpk
         if filt.has_sos:
-            filt.sos[-1, :3] *= gain_linear
+            sos = filt.sos.copy()
+            sos[-1, :3] *= gain_linear
+            filt.sos = sos
         else:
-            filt.ba[0] *= gain_linear
+            ba = filt.ba
+            filt.ba = [ba[0] * gain_linear, ba[1]]
         return filt
 
     def resample_filter(self, new_sampling_rate_hz: int) -> "Filter":

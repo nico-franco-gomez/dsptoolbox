@@ -5,14 +5,14 @@ from numpy.typing import NDArray
 from scipy.signal import check_COLA, windows
 
 from ..standard._framed_signal_representation import _get_framed_signal
-from ..standard.enums import SpectrumScaling, Window
+from ..standard.enums import SpectrumScaling, WindowType
 
 
 def _welch(
     x: NDArray[np.float64],
     y: NDArray[np.float64] | None,
     fs_hz: int,
-    window_type: Window,
+    window_type: WindowType,
     window_length_samples: int,
     overlap_percent: float,
     detrend: bool,
@@ -30,7 +30,7 @@ def _welch(
         spectrum of `x` will be computed.
     fs_hz : int
         Sampling rate in Hz.
-    window_type : Window
+    window_type : WindowType
         Window type to be used.
     window_length_samples : int
         Window length to be used. Determines frequency resolution in the end.
@@ -179,7 +179,7 @@ def _stft(
     x: NDArray[np.float64],
     fs_hz: int,
     window_length_samples: int,
-    window_type: Window,
+    window_type: WindowType,
     overlap_percent: float,
     fft_length_samples: int | None,
     detrend: bool,
@@ -197,7 +197,7 @@ def _stft(
     window_length_samples : int
         Window length to be used. Determines frequency resolution in the end.
         Only powers of 2 are accepted.
-    window_type : Window
+    window_type : WindowType
         Window type to be used. Refer to scipy.signal.windows for available
         ones.
     overlap_percent : int

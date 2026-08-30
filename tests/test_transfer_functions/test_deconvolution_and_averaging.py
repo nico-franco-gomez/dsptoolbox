@@ -181,3 +181,29 @@ class TestTransferFunctionsModule:
         expected_ratio = np.sqrt(64 / 4)  # 4x more repetitions -> sqrt(16)=4x
         measured_ratio = stds[4] / stds[64]
         np.testing.assert_allclose(measured_ratio, expected_ratio, rtol=0.3)
+
+    def test_spectral_deconvolve_regularizes_each_channel(self):
+        """The automatic regularization band must be found per channel."""
+        fs = 44100
+        low = dsp.generators.chirp(fs, range_hz=[100, 2000], length_seconds=0.5)
+        high = dsp.generators.chirp(fs, range_hz=[3000, 15000], length_seconds=0.5)
+        excitation = low.append_signals([high])
+
+        both = dsp.transfer_functions.spectral_deconvolve(excitation, excitation)
+        for channel in range(2):
+            single = dsp.transfer_functions.spectral_deconvolve(
+                excitation.get_channels(channel), excitation.get_channels(channel)
+            )
+            np.testing.assert_allclose(
+                both.time_data[:, channel], single.time_data[:, 0], atol=1e-9
+            )
+
+    def test_average_irs_does_not_modify_input(self):
+        rng = np.random.default_rng(0)
+        ir = dsp.ImpulseResponse.from_time_data(
+            np.stack([rng.normal(0, 0.1, 512), rng.normal(0, 0.5, 512)], axis=1),
+            48000,
+        )
+        before = ir.time_data.copy()
+        dsp.transfer_functions.average_irs(ir)
+        np.testing.assert_array_equal(before, ir.time_data)

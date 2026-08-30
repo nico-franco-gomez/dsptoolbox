@@ -371,3 +371,40 @@ class TestFilterClass:
         np.testing.assert_allclose(interpolated_gd, gd, atol=1e-6)
 
         gd = bb.get_group_delay(f_log, False)
+
+    def test_only_one_coefficient_type_accepted(self):
+        """Passing several coefficient types at once must be rejected."""
+        with pytest.raises(AssertionError):
+            dsp.Filter(
+                {
+                    dsp.FilterCoefficientsType.Zpk: (
+                        np.array([0.1]),
+                        np.array([0.5]),
+                        1.0,
+                    ),
+                    dsp.FilterCoefficientsType.Sos: np.array(
+                        [[1.0, 0.0, 0.0, 1.0, 0.0, 0.0]]
+                    ),
+                    dsp.FilterCoefficientsType.Ba: [np.array([1.0]), np.array([1.0])],
+                },
+                self.fs,
+            )
+
+    def test_apply_gain_does_not_modify_original(self):
+        f = dsp.Filter.iir_filter(4, 1000, dsp.FilterPassType.Lowpass, self.fs)
+        sos_before = f.sos.copy()
+        zpk_gain_before = f.zpk[-1]
+        f.apply_gain(6.0)
+        np.testing.assert_array_equal(sos_before, f.sos)
+        assert f.zpk[-1] == zpk_gain_before
+
+        fir = dsp.Filter.from_ba([1.0, 0.5], [1.0], self.fs)
+        b_before = fir.ba[0].copy()
+        fir.apply_gain(6.0)
+        np.testing.assert_array_equal(b_before, fir.ba[0])
+
+    def test_metadata_str_underline(self):
+        f = dsp.Filter.from_ba([1.0, 0.5], [1.0], self.fs)
+        lines = f.metadata_str.splitlines()
+        assert lines[0] == "Filter:"
+        assert lines[1] == "-" * len(lines[0])

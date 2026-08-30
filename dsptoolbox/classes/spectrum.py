@@ -21,6 +21,7 @@ from ..standard.enums import (
     MagnitudeNormalization,
     SpectrumType,
     Window,
+    WindowType,
 )
 from ..tools import fractional_octave_smoothing
 from ._multichannel_data import MultichannelData
@@ -526,7 +527,7 @@ class Spectrum(MultichannelData):
             values if reference_channel is None else values[0, reference_channel]
         )
         new = self.copy()
-        new.spectral_data /= normalization_value
+        new.spectral_data = new.spectral_data / normalization_value
         return new
 
     def apply_gain(self, gain_db: float | NDArray[np.float64]) -> "Spectrum":
@@ -549,7 +550,7 @@ class Spectrum(MultichannelData):
             "Number of gains is not compatible"
         )
         new = self.copy()
-        new.spectral_data *= from_db(gains, True)
+        new.spectral_data = new.spectral_data * from_db(gains, True)
         return new
 
     def get_interpolated_spectrum(
@@ -834,7 +835,7 @@ class Spectrum(MultichannelData):
         return new
 
     def apply_octave_smoothing(
-        self, octave_fraction: float, window_type: Window = Window.Hann
+        self, octave_fraction: float, window_type: WindowType = Window.Hann
     ) -> "Spectrum":
         """Return a copy of the spectrum with octave smoothing applied to
         the spectral data. When complex, the smoothing happens on the
@@ -845,7 +846,7 @@ class Spectrum(MultichannelData):
         ----------
         octave_fraction : float
             Octave fraction across which to apply smoothing.
-        window_type : Window, optional
+        window_type : WindowType, optional
             Type of window to use. Default: Hann.
 
         Returns
@@ -867,23 +868,29 @@ class Spectrum(MultichannelData):
             else None
         )
 
+        new = self.copy()
+
         if self.frequency_vector_type in (
             FrequencySpacing.Linear,
             FrequencySpacing.Logarithmic,
         ):
             data = self.spectral_data
         else:  # Other: map to linear and interpolate
-            data = self.get_interpolated_spectrum(
-                np.linspace(
-                    self.frequency_vector_hz[0],
-                    self.frequency_vector_hz[-1],
-                    self.frequency_vector_hz[-1] - self.frequency_vector_hz[0],
-                    endpoint=True,
+            linear_freqs = np.linspace(
+                self.frequency_vector_hz[0],
+                self.frequency_vector_hz[-1],
+                max(
+                    int(self.frequency_vector_hz[-1] - self.frequency_vector_hz[0]),
+                    2,
                 ),
+                endpoint=True,
+            )
+            data = self.get_interpolated_spectrum(
+                linear_freqs,
                 (SpectrumType.Magnitude if self.is_magnitude else SpectrumType.Complex),
             )
+            new.frequency_vector_hz = linear_freqs
 
-        new = self.copy()
         if self.is_magnitude:
             new.spectral_data = fractional_octave_smoothing(
                 data, beta, octave_fraction, window_type.to_scipy_format()
@@ -975,8 +982,8 @@ class Spectrum(MultichannelData):
             inp2 = other.copy()
 
         if energy_normalization:
-            inp1.spectral_data /= inp1.get_energy() ** 0.5
-            inp2.spectral_data /= inp2.get_energy() ** 0.5
+            inp1.spectral_data = inp1.spectral_data / inp1.get_energy() ** 0.5
+            inp2.spectral_data = inp2.spectral_data / inp2.get_energy() ** 0.5
 
         if octave_fraction_smoothing != 0:
             inp1 = inp1.apply_octave_smoothing(octave_fraction_smoothing)
@@ -994,7 +1001,7 @@ class Spectrum(MultichannelData):
             dynamic_range_factor = from_db(-abs(dynamic_range_db), True)
             mag2 = np.clip(mag2, np.max(mag2, axis=0) * dynamic_range_factor, None)
 
-        inp1.spectral_data /= mag2
+        inp1.spectral_data = inp1.spectral_data / mag2
         return inp1
 
     def append_spectra(
@@ -1079,7 +1086,7 @@ class Spectrum(MultichannelData):
             case MagnitudeNormalization.OneKhzFirstChannel:
                 norm_value = self.get_interpolated_spectrum(
                     np.array([1000.0]), output_type=SpectrumType.Magnitude
-                )[0]
+                )[0, 0]
                 norm = np.ones(self.number_of_channels) * norm_value
             case MagnitudeNormalization.Max:
                 norm = (

@@ -191,8 +191,8 @@ class TestDistancesModule:
         dsp.distances.snr(speech, noise)
 
     def test_snr_matches_closed_form(self):
-        """SNR is `20*log10(rms(signal)/rms(noise))`, where the library's
-        internal "rms" is DC-removed (`numpy.std`, not `sqrt(mean(x**2))`).
+        """SNR is `20*log10(rms(signal)/rms(noise))` with `rms` defined as
+        `sqrt(mean(x**2))`, i.e. including any DC component.
 
         """
         fs = 8_000
@@ -205,8 +205,26 @@ class TestDistancesModule:
         noise_sig = dsp.Signal(None, noise[:, None], fs)
 
         result = dsp.distances.snr(sig, noise_sig)
-        expected = 20 * np.log10(np.std(clean) / np.std(noise))
+        expected = 20 * np.log10(
+            np.mean(clean**2.0) ** 0.5 / np.mean(noise**2.0) ** 0.5
+        )
         np.testing.assert_allclose(result[0], expected, rtol=1e-10)
+
+    def test_snr_accounts_for_dc_offset(self):
+        """A DC offset raises the RMS, so it must lower the SNR."""
+        fs = 8_000
+        rng = np.random.default_rng(1)
+        clean = rng.normal(0, 1.0, 4_000)
+        noise = rng.normal(0, 0.1, 4_000)
+
+        sig = dsp.Signal(None, clean[:, None], fs)
+        noise_sig = dsp.Signal(None, noise[:, None], fs)
+        offset_noise_sig = dsp.Signal(None, (noise + 0.5)[:, None], fs)
+
+        assert (
+            dsp.distances.snr(sig, offset_noise_sig)[0]
+            < dsp.distances.snr(sig, noise_sig)[0]
+        )
 
     def test_snr_invalid_parameters_raise(self):
         fs = 8_000

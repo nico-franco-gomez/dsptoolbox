@@ -229,3 +229,39 @@ class TestMultiBandSignal:
             mb.number_of_channels = 1
         with pytest.raises(AttributeError):
             mb.length_samples = 1
+
+    def test_collapse_does_not_modify_bands(self):
+        """`collapse` must not accumulate into the first band's array.
+
+        A real-valued filter bank is used on purpose: the complex branch
+        allocates its own accumulator and never had the defect.
+
+        """
+        crossover = dsp.filterbanks.linkwitz_riley_crossovers([1000], [4], self.fs)
+        mb = crossover.filter_signal(self.s, dsp.FilterBankMode.Parallel)
+        assert not mb.bands[0].is_complex_signal
+
+        first_band = mb.bands[0].time_data.copy()
+        collapsed = mb.collapse()
+        np.testing.assert_array_equal(first_band, mb.bands[0].time_data)
+        np.testing.assert_allclose(
+            collapsed.time_data,
+            sum(band.time_data for band in mb.bands),
+            atol=1e-12,
+        )
+
+        # A second call must give the same result
+        np.testing.assert_allclose(
+            collapsed.time_data, mb.collapse().time_data, atol=1e-12
+        )
+
+    def test_sampling_rate_count_must_match_bands(self):
+        mb = self.get_mb()
+        mb.same_sampling_rate = False
+        with pytest.raises(AssertionError):
+            mb.sampling_rate_hz = [self.fs] * (mb.number_of_bands + 1)
+
+    def test_metadata_str_underline_matches_header(self):
+        mb = self.get_mb()
+        lines = mb.metadata_str.splitlines()
+        assert lines[1] == "\u2013" * len(lines[0])

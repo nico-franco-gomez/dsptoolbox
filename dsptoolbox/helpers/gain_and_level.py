@@ -18,10 +18,15 @@ def _rms(x: NDArray[np.float64]) -> float | NDArray[np.float64]:
         Root mean squared of a signal. Float or NDArray[np.float64] depending
         on input.
 
+    Notes
+    -----
+    - Any DC component contributes to the result. Detrend the time series
+      beforehand if only the AC power is of interest.
+
     """
     single_dim = x.ndim == 1
     x = x[..., None] if single_dim else x
-    rms_vals = np.std(x, axis=0)
+    rms_vals = np.mean(np.abs(x) ** 2.0, axis=0) ** 0.5
     return rms_vals[..., 0] if single_dim else rms_vals
 
 

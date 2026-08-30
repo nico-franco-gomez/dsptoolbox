@@ -96,7 +96,7 @@ class MultiBandSignal:
             self.__sampling_rate_hz = int(new_sampling_rate_hz)
         else:
             new_sampling_rate_hz = atleast_1d(new_sampling_rate_hz)
-            if hasattr(self, "__bands"):
+            if hasattr(self, "_MultiBandSignal__bands"):
                 assert self.number_of_bands == len(new_sampling_rate_hz), (
                     "Number of bands does not match number of sampling rates"
                 )
@@ -146,15 +146,17 @@ class MultiBandSignal:
             new_bands = list(new_bands)
         assert type(new_bands) is list, "bands has to be a list"
         if new_bands:
-            # Check length and number of channels
-            self.__number_of_channels = new_bands[0].number_of_channels
-            sr = []
+            # Validate before mutating: the sampling rate setter cross-checks
+            # against the band count, so the bands must be stored first
+            number_of_channels = new_bands[0].number_of_channels
             complex_data = new_bands[0].time_data_imaginary is not None
+            expected_length_samples = new_bands[0].length_samples
+            sr = []
             for s in new_bands:
                 assert isinstance(s, Signal), (
                     f"{type(s)} is not a valid " + "band type. Use Signal objects"
                 )
-                assert s.number_of_channels == self.number_of_channels, (
+                assert s.number_of_channels == number_of_channels, (
                     "Signals have different number of channels. This "
                     + "behavior is not supported"
                 )
@@ -162,16 +164,8 @@ class MultiBandSignal:
                     "Some bands have imaginary time data and others do "
                     + "not. This behavior is not supported."
                 )
-                sr.append(s.sampling_rate_hz)
-            if self.same_sampling_rate:
-                self.sampling_rate_hz = new_bands[0].sampling_rate_hz
-                expected_length_samples = new_bands[0].length_samples
-            else:
-                self.sampling_rate_hz = sr
-            # Check sampling rate and duration
-            if self.same_sampling_rate:
-                for s in new_bands:
-                    assert s.sampling_rate_hz == self.sampling_rate_hz, (
+                if self.same_sampling_rate:
+                    assert s.sampling_rate_hz == new_bands[0].sampling_rate_hz, (
                         "Not all Signals have the same sampling rate. "
                         + "If you wish to create a multirate system, set "
                         + "same_sampling_rate to False"
@@ -181,7 +175,15 @@ class MultiBandSignal:
                         + "This behavior is not supported if there is a "
                         + "constant sampling rate"
                     )
-        self.__bands: list[Signal] = new_bands
+                sr.append(s.sampling_rate_hz)
+
+            self.__number_of_channels = number_of_channels
+            self.__bands: list[Signal] = new_bands
+            self.sampling_rate_hz = (
+                new_bands[0].sampling_rate_hz if self.same_sampling_rate else sr
+            )
+        else:
+            self.__bands = new_bands
 
     @property
     def same_sampling_rate(self) -> bool:
@@ -437,7 +439,8 @@ class MultiBandSignal:
             "Collapsing is only available for same sampling rate bands"
         )
         if self.bands[0].time_data_imaginary is None:
-            initial = self.bands[0].time_data
+            # Copy, otherwise `+=` accumulates into the band's own array
+            initial = self.bands[0].time_data.copy()
             for n in range(1, len(self.bands)):
                 initial += self.bands[n].time_data
         else:
@@ -463,19 +466,20 @@ class MultiBandSignal:
             MultiBandSignal and all its bands.
 
         """
-        txt = ""
+        header = "Multiband signal:"
         md = self.metadata | self.info
         for k in md:
-            txt += f""" | {str(k).replace("_", " ").capitalize()}: {md[k]}"""
-        txt = "Multiband signal:" + txt
-        txt += "\n"
-        txt += "–" * len(txt)
-        for ind, f1 in enumerate(self.bands):
+            header += f""" | {str(k).replace("_", " ").capitalize()}: {md[k]}"""
+        txt = header + "\n" + "–" * len(header)
+        for ind, band in enumerate(self.bands):
             txt += "\n"
             txt += f"Signal {ind}:"
-            md = f1.metadata
-            for kf in md:
-                txt += f""" | {str(kf).replace("_", " ").capitalize()}: {md[kf]}"""
+            band_metadata = band.metadata
+            for kf in band_metadata:
+                txt += (
+                    f""" | {str(kf).replace("_", " ").capitalize()}: """
+                    f"""{band_metadata[kf]}"""
+                )
         return txt
 
     # ======== Getters ========================================================

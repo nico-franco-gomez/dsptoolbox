@@ -277,3 +277,40 @@ class TestStandardModule:
 
         np.testing.assert_allclose(cf_sine, np.sqrt(2), rtol=1e-6)
         np.testing.assert_allclose(cf_square, 1.0, rtol=1e-6)
+
+    def test_rms_includes_dc_offset(self):
+        """RMS is sqrt(mean(x**2)), so a constant signal has RMS = |value|."""
+        fs = 48000
+        constant = dsp.Signal(None, np.ones((1000, 1)) * 2.0, fs)
+        np.testing.assert_allclose(dsp.rms(constant, in_dbfs=False), 2.0, rtol=1e-12)
+
+        rng = np.random.default_rng(0)
+        ac = rng.normal(0, 1.0, (4000, 1))
+        without_offset = dsp.Signal(None, ac, fs)
+        with_offset = dsp.Signal(None, ac + 1.0, fs)
+        assert (
+            dsp.rms(with_offset, in_dbfs=False)[0]
+            > dsp.rms(without_offset, in_dbfs=False)[0]
+        )
+
+    def test_crest_factor_multibandsignal_not_double_converted(self):
+        """The MultiBandSignal path must not apply `to_db` twice."""
+        fs = 44100
+        rng = np.random.default_rng(0)
+        s = dsp.Signal(None, rng.normal(0, 0.1, (fs, 2)), fs)
+        fb = dsp.filterbanks.linkwitz_riley_crossovers([1000], [4], fs)
+        mb = fb.filter_signal(s, dsp.FilterBankMode.Parallel)
+
+        per_band = dsp.crest_factor(mb)
+        for ind, band in enumerate(mb.bands):
+            np.testing.assert_allclose(
+                per_band[ind, :], dsp.crest_factor(band), rtol=1e-10
+            )
+
+    def test_true_peak_level_does_not_modify_input(self):
+        fs = 48000
+        rng = np.random.default_rng(0)
+        s = dsp.Signal(None, rng.normal(0, 0.1, (4096, 2)), fs)
+        before = s.time_data.copy()
+        dsp.true_peak_level(s)
+        np.testing.assert_array_equal(before, s.time_data)

@@ -486,3 +486,16 @@ class TestFilterTopologies:
         out = np.array([iir.process_sample(v, 0) for v in x])
         expected = sig.lfilter(b, a, x)
         np.testing.assert_allclose(out, expected, atol=1e-9)
+
+    def test_iir_filter_does_not_modify_coefficients(self):
+        """The constructor normalizes by a[0] and must copy to do so."""
+        b = np.array([1.0, 0.5])
+        a = np.array([2.0, 0.3])
+        b_before, a_before = b.copy(), a.copy()
+        dsp.filterbanks.IIRFilter(b, a)
+        np.testing.assert_array_equal(b, b_before)
+        np.testing.assert_array_equal(a, a_before)
+
+    def test_iir_filter_accepts_integer_coefficients(self):
+        iir = dsp.filterbanks.IIRFilter(np.array([2, 1]), np.array([2, 0]))
+        assert np.isclose(iir.process_sample(1.0, 0), 1.0)

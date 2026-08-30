@@ -1447,7 +1447,7 @@ class MonopoleSource:
             # Delay
             ns = self.emitted_signal.fractional_delay(delays[i], keep_length=True)
             # Amplitude scaling - 1 on point and decays with distance
-            ns.time_data /= 1.0 + distances[i]
+            ns.time_data = ns.time_data / (1.0 + distances[i])
             # Append to final signal
             multi_channel_signal = multi_channel_signal.append_signals(
                 [ns], allow_padding_trimming=True
@@ -1489,10 +1489,9 @@ def mix_sources_on_array(
     # Take first source
     multi_channel_sig = sources[0].get_signals_on_array(mics, c)
     total_length_samples = multi_channel_sig.time_data.shape[0]
-    sources.pop(0)
 
     # Add all other sources progressively checking for shortest duration
-    for s in sources:
+    for s in sources[1:]:
         # Warning if lengths do not match
         if total_length_samples != s.emitted_signal.time_data.shape[0]:
             warn(
@@ -1507,7 +1506,7 @@ def mix_sources_on_array(
             s.emitted_signal = s.emitted_signal.pad_trim(total_length_samples)
         # Add to multi-channel data
         ns = s.get_signals_on_array(mics, c)
-        multi_channel_sig.time_data += ns.time_data
+        multi_channel_sig.time_data = multi_channel_sig.time_data + ns.time_data
     return multi_channel_sig
 
 

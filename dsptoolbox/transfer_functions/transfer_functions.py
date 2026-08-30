@@ -44,6 +44,7 @@ from ..standard.enums import (
     SpectrumMethod,
     SpectrumType,
     Window,
+    WindowType,
 )
 from ._transfer_functions import (
     _complex_smoothing_backend,
@@ -147,33 +148,39 @@ def spectral_deconvolve(
 
     new_time_data = np.zeros_like(output.time_data)
 
+    if start_stop_hz is not None and len(start_stop_hz) not in (2, 4):
+        raise ValueError("start_stop_hz vector should have 2 or 4 values")
+
     for n in range(output.number_of_channels):
         n_denum = 0 if multichannel else n
         if apply_regularization:
-            if start_stop_hz is None:
-                start_stop_hz = find_frequencies_above_threshold(
+            # Recomputed per channel: the automatic mode depends on the
+            # denominator channel currently being deconvolved
+            channel_start_stop_hz = (
+                find_frequencies_above_threshold(
                     denum_fft[:, n_denum], freqs_hz, threshold_db
                 )
-            if len(start_stop_hz) == 2:
-                start_stop_hz = np.array(
+                if start_stop_hz is None
+                else start_stop_hz
+            )
+            if len(channel_start_stop_hz) == 2:
+                channel_start_stop_hz = np.array(
                     [
-                        start_stop_hz[0] / np.sqrt(2),
-                        start_stop_hz[0],
-                        start_stop_hz[1],
-                        np.min([start_stop_hz[1] * np.sqrt(2), fs_hz / 2]),
+                        channel_start_stop_hz[0] / np.sqrt(2),
+                        channel_start_stop_hz[0],
+                        channel_start_stop_hz[1],
+                        np.min([channel_start_stop_hz[1] * np.sqrt(2), fs_hz / 2]),
                     ]
                 )
-            elif len(start_stop_hz) != 4:
-                raise ValueError("start_stop_hz vector should have 2 or 4 values")
         else:
-            start_stop_hz = None
+            channel_start_stop_hz = None
 
         new_time_data[:, n] = _spectral_deconvolve(
             num_fft[:, n],
             denum_fft[:, n_denum],
             freqs_hz,
             original_length * 2 if padding else original_length,
-            start_stop_hz=start_stop_hz,
+            start_stop_hz=channel_start_stop_hz,
             regularized=apply_regularization,
         )
     new_sig = ImpulseResponse(
@@ -189,7 +196,7 @@ def window_ir(
     total_length_samples: int,
     adaptive: bool = True,
     constant_percentage: float = 0.75,
-    window_type: Window | list[Window] = Window.Hann,
+    window_type: WindowType | list[WindowType] = Window.Hann,
     at_start: bool = True,
     offset_samples: int = 0,
     left_to_right_flank_length_ratio: float = 1.0,
@@ -215,7 +222,7 @@ def window_ir(
     constant_percentage : float, optional
         Percentage (between 0 and 1) of the window's length that should be
         constant value. Default: 0.75.
-    window_type : Window, list[Window], optional
+    window_type : WindowType, list[WindowType], optional
         Window function to be used for the flanks. Pass a list containing two
         windows to use different windows for the left and right flanks
         respectively. Default: Hann.
@@ -296,7 +303,7 @@ def window_ir_tukey(
     ir: ImpulseResponse,
     left_flank_s: float | None,
     right_flank_s: float | None,
-    window_flank_type: Window = Window.Hann,
+    window_flank_type: WindowType = Window.Hann,
 ) -> ImpulseResponse:
     """This function applies a Tukey-like window to all channels of an
     `ImpulseResponse`. This preserves timing information across channels in contrast
@@ -312,7 +319,7 @@ def window_ir_tukey(
     right_flank_s : float, None
         Duration of the right flank of the windw in seconds. Pass `None` to avoid
         applying a window to the right flank altogether.
-    window_flank_type : Window, optional
+    window_flank_type : WindowType, optional
         Window type to compute the flanks from. See `Notes` for details. Default: Hann.
 
     Returns
@@ -368,7 +375,7 @@ def window_ir_tukey(
 def window_centered_ir(
     signal: ImpulseResponse,
     total_length_samples: int,
-    window_type: Window = Window.Hann,
+    window_type: WindowType = Window.Hann,
 ) -> tuple[ImpulseResponse, NDArray]:
     """This function windows an IR placing its peak in the middle. It trims
     it to the total length of the window or pads it to the desired length
@@ -380,7 +387,7 @@ def window_centered_ir(
         Signal to window
     total_length_samples: int
         Total window length in samples.
-    window_type: Window, optional
+    window_type: WindowType, optional
         Window function to be used. Default: Hann.
 
     Returns
@@ -573,11 +580,12 @@ def average_irs(
         "Signal has only one channel so no meaningful averaging can be done"
     )
     avg_sig = signal.copy()
+    working_time_data = signal.time_data.copy()
 
     if normalize_energy:
         energies = np.sum(signal.time_data**2, axis=0)
         energies /= energies[0]
-        avg_sig.time_data *= energies
+        working_time_data *= energies
 
     if not time_average:
         # Obtain channel magnitude and phase spectra
@@ -605,8 +613,8 @@ def average_irs(
             new_channel = signal.get_channels(i).fractional_delay(
                 latency_s, keep_length=True
             )
-            avg_sig.time_data[:, i] = new_channel.time_data[:, 0]
-        new_time_data = np.mean(avg_sig.time_data, axis=1)
+            working_time_data[:, i] = new_channel.time_data[:, 0]
+        new_time_data = np.mean(working_time_data, axis=1)
 
     avg_sig.time_data = new_time_data
     return avg_sig
@@ -1789,7 +1797,7 @@ def complex_smoothing(
     ir: ImpulseResponse,
     octave_fraction: float,
     smoothing_domain: SmoothingDomain,
-    window: Window = Window.Hann,
+    window: WindowType = Window.Hann,
 ) -> Spectrum:
     """Complex smoothing of an impulse response using logarithmic spacing given
     in octaves. This is done according to [1].
@@ -1802,7 +1810,7 @@ def complex_smoothing(
         Width of smoothing range in fraction of octaves.
     smoothing_domain : SmoothingDomain
         Domain to use during the smoothing step.
-    window : Window
+    window : WindowType
         Type of window to use.
 
     Returns

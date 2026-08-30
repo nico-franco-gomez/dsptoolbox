@@ -13,7 +13,7 @@ from scipy.stats import pearsonr
 from ..helpers.gain_and_level import to_db
 from ..helpers.other import _pad_trim, find_nearest_points_index_in_vector
 from ..helpers.windows import calculate_tukey_like_window as _calculate_window
-from ..standard.enums import Window
+from ..standard.enums import Window, WindowType
 from ..tools import time_smoothing
 
 
@@ -46,7 +46,7 @@ def _spectral_deconvolve(
 def _window_this_ir_tukey(
     vec,
     total_length: int,
-    window_type: Window | list[Window],
+    window_type: WindowType | list[WindowType],
     constant_percentage: float,
     at_start: bool,
     offset_samples: int,

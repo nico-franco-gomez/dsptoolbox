@@ -240,3 +240,10 @@ class TestStandardModule:
             s.trim_with_time_selection(0.1, s.length_seconds + 1.0, False)
         with pytest.raises(AssertionError):
             s.trim_with_time_selection(None, None, False)
+
+    def test_latency_rejects_wrong_type_before_use(self):
+        """The type check must run before any attribute of `in2` is read."""
+        fs = 48000
+        s = dsp.Signal(None, np.zeros((100, 2)), fs)
+        with pytest.raises(AssertionError, match="type Signal"):
+            dsp.latency(s, "not a signal")

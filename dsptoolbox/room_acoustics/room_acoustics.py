@@ -179,11 +179,11 @@ def find_modes(
         "Range of frequencies must have a " + "minimum and a maximum value"
     )
     assert type(signal) is ImpulseResponse, "This is only valid for an impulse response"
-    signal.spectrum_method = SpectrumMethod.FFT
 
     # Pad signal to have a resolution of around 1 Hz
     length = signal.sampling_rate_hz
     signal = signal.pad_trim(length)
+    signal.spectrum_method = SpectrumMethod.FFT
     f, sp = signal.get_spectrum()
 
     # Setting up frequency range
@@ -248,7 +248,7 @@ def convolve_rir_on_signal(
     )
 
     length_ratio = signal.length_samples / rir.length_samples
-    if length_ratio < 15.0 or length_ratio < 1.0 / 15.0:
+    if length_ratio > 15.0 or length_ratio < 1.0 / 15.0:
         new_time_data = oaconvolve(signal.time_data, rir.time_data, axes=0, mode="full")
     else:
         new_time_data = convolve(signal.time_data, rir.time_data, mode="full")
