@@ -10,6 +10,7 @@ from ..classes import Filter, ImpulseResponse, MultiBandSignal, Signal
 from ..filterbanks import fractional_octave_bands, linkwitz_riley_crossovers
 from ..helpers.gain_and_level import to_db
 from ..helpers.other import _pad_trim, find_nearest_points_index_in_vector
+from ..helpers.rng import RngLike, _get_rng
 from ..standard.enums import (
     FilterBankMode,
     FilterPassType,
@@ -306,6 +307,7 @@ def generate_synthetic_rir(
     apply_bandpass: bool = False,
     use_detailed_absorption: bool = False,
     max_order: int | None = None,
+    rng: RngLike = None,
 ) -> ImpulseResponse:
     """This function returns a synthetized RIR in a shoebox-room using the
     image source model. The implementation is based on Brinkmann,
@@ -341,6 +343,11 @@ def generate_synthetic_rir(
         and the room has a long reverberation time, since this kind of setting
         will take a specially long time to run. Pass `None` to use an automatic
         estimation for the maximum order. Default: `None`.
+    rng : numpy.random.Generator, int, None, optional
+        Random number generator or seed for the noise of
+        `add_noise_reverberant_tail=True`, so that the output can be
+        reproduced. Pass None to use a new, unpredictably seeded generator.
+        Default: None.
 
     Returns
     -------
@@ -431,7 +438,11 @@ def generate_synthetic_rir(
         if room.mixing_time_s is None:
             room.get_mixing_time("physical", n_reflections=1000)
         rir = _add_reverberant_tail_noise(
-            rir, room.mixing_time_s, room.t60_s, sr=sampling_rate_hz
+            rir,
+            room.mixing_time_s,
+            room.t60_s,
+            sr=sampling_rate_hz,
+            rng=_get_rng(rng),
         )
 
     rir_output = ImpulseResponse(None, rir, sampling_rate_hz)

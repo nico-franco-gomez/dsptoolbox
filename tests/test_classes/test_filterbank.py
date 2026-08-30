@@ -13,6 +13,8 @@ import scipy.signal as sig
 
 import dsptoolbox as dsp
 
+_rng = np.random.default_rng(3)
+
 RIR_PATH = os.path.join(
     os.path.dirname(__file__),
     "..",
@@ -156,7 +158,7 @@ class TestFilterBankClass:
         fb = fb.add_filter(self.get_iir_filter())
         fb = fb.add_filter(self.get_fir_filter())
 
-        t_vec = np.random.normal(0, 0.01, (self.fs * 3, 2))
+        t_vec = _rng.normal(0, 0.01, (self.fs * 3, 2))
         s = dsp.Signal(None, t_vec, self.fs)
 
         filt1 = fb.filters[0].get_coefficients(

@@ -10,6 +10,8 @@ import pytest
 
 import dsptoolbox as dsp
 
+_rng = np.random.default_rng(5)
+
 
 class TestEffectsModule:
     speech = (
@@ -57,7 +59,7 @@ class TestEffectsModule:
         specSub.apply(self.speech)
 
         # Explicit spectrum imported instead of estimated adaptively
-        spectrum_to_subtract = np.random.uniform(0, 1, specSub.window_length)
+        spectrum_to_subtract = _rng.uniform(0, 1, specSub.window_length)
         specSub.set_parameters(spectrum_to_subtract=spectrum_to_subtract)
         specSub.apply(self.speech)
 

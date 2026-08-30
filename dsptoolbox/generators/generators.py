@@ -12,6 +12,7 @@ from ..classes.signal import Signal
 from ..helpers.frequency_conversion import _frequency_weighting
 from ..helpers.gain_and_level import _fade, _normalize
 from ..helpers.other import _pad_trim
+from ..helpers.rng import RngLike, _get_rng
 from ..standard.enums import FadeType
 from ._generators import _sync_log_chirp
 from .enums import ChirpType, NoiseType, WaveForm
@@ -25,6 +26,7 @@ def noise(
     number_of_channels: int = 1,
     fade: FadeType = FadeType.Logarithmic,
     padding_end_seconds: float = 0.0,
+    rng: RngLike = None,
 ) -> Signal:
     """Creates a noise signal.
 
@@ -50,6 +52,10 @@ def noise(
         end. Default: Logarithmic.
     padding_end_seconds : float, optional
         Padding at the end of signal. Default: 0.
+    rng : numpy.random.Generator, int, None, optional
+        Random number generator or seed to use, so that the output can be
+        reproduced. Pass None to use a new, unpredictably seeded generator.
+        Default: None.
 
     Returns
     -------
@@ -87,7 +93,8 @@ def noise(
         p_samples = 0
     time_data = np.zeros((l_samples + p_samples, number_of_channels))
 
-    mag = np.random.normal(2, 0.0025, (len(f), number_of_channels))
+    generator = _get_rng(rng)
+    mag = generator.normal(2, 0.0025, (len(f), number_of_channels))
 
     # Set to 15 Hz to cover whole audible spectrum but without
     # numerical instabilities because of large values in lower
@@ -97,7 +104,7 @@ def noise(
     if type_of_noise != NoiseType.White and type_of_noise != 0.0:
         mag[:id_low] *= 1e-20
 
-    ph = np.random.uniform(-np.pi, np.pi, (len(f), number_of_channels))
+    ph = generator.uniform(-np.pi, np.pi, (len(f), number_of_channels))
 
     # Correct DC and Nyquist
     ph[0, :] = 0
@@ -325,6 +332,7 @@ def oscillator(
     uncorrelated: bool = False,
     fade: FadeType = FadeType.Logarithmic,
     padding_end_seconds: float = 0.0,
+    rng: RngLike = None,
 ) -> Signal:
     """Creates a non-aliased, multi-channel wave tone.
 
@@ -355,6 +363,10 @@ def oscillator(
         end. Default: Logarithmic.
     padding_end_seconds : float, optional
         Padding at the end of signal. Default: 0.
+    rng : numpy.random.Generator, int, None, optional
+        Random number generator or seed for the phase shifts of
+        `uncorrelated=True`, so that the output can be reproduced. Pass None
+        to use a new, unpredictably seeded generator. Default: None.
 
     Returns
     -------
@@ -383,7 +395,9 @@ def oscillator(
     )
 
     if uncorrelated:
-        phase_shift = np.random.uniform(-np.pi, np.pi, (number_of_channels))[None, ...]
+        phase_shift = _get_rng(rng).uniform(-np.pi, np.pi, (number_of_channels))[
+            None, ...
+        ]
     else:
         phase_shift = np.zeros(number_of_channels)[None, ...]
 

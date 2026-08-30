@@ -840,7 +840,11 @@ index_wall_dictionary.
 
 
 def _add_reverberant_tail_noise(
-    rir: NDArray[np.float64], mixing_time_s: int, t60: float, sr: int
+    rir: NDArray[np.float64],
+    mixing_time_s: int,
+    t60: float,
+    sr: int,
+    rng: np.random.Generator,
 ) -> NDArray[np.float64]:
     """Adds a reverberant tail as noise to an IR.
 
@@ -854,6 +858,8 @@ def _add_reverberant_tail_noise(
         Reverberation time in seconds.
     sr : int
         Sampling rate in Hz.
+    rng : numpy.random.Generator
+        Generator for the noise tail.
 
     Returns
     -------
@@ -869,7 +875,7 @@ def _add_reverberant_tail_noise(
     noise_length = len(rir) - ind_direct - mixing_time_samples
 
     # Generate decaying noise (normalized)
-    noise = np.abs(np.random.normal(0, 1, noise_length))
+    noise = np.abs(rng.normal(0, 1, noise_length))
     delta = 0.02 * 343 / t60
     noise *= np.exp(-delta * np.arange(noise_length) / sr)
     noise /= np.max(noise)

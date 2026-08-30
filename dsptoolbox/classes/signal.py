@@ -32,6 +32,7 @@ from ..helpers.other import (
     _pad_trim,
     find_nearest_points_index_in_vector,
 )
+from ..helpers.rng import RngLike, _get_rng
 from ..helpers.smoothing import _fractional_octave_smoothing, _get_smoothing_factor_ema
 from ..helpers.spectrum_utilities import (
     _get_normalized_spectrum,
@@ -2089,6 +2090,7 @@ class Signal(MultichannelData):
         epsilon: float = float(np.finfo(np.float16).smallest_subnormal),
         noise_shaping_filterbank: "FilterBank | None" = None,
         truncate: bool = False,
+        rng: RngLike = None,
     ) -> "Signal":
         """Return a copy of the signal with dither applied and, optionally,
         truncated to 16-bit floating point representation.
@@ -2097,8 +2099,8 @@ class Signal(MultichannelData):
         ----------
         triangular_distribution : bool, optional
             Type of probability distribution to acquire noise from. When
-            True, a rectangular distribution is used, otherwise it is
-            uniform. Default: True.
+            True, a triangular distribution is used, otherwise it is
+            rectangular. Default: True.
         epsilon : float, optional
             Value that represents the quantization step. The default value
             supposes quantization to 16-bit floating point. It is obtained
@@ -2112,6 +2114,10 @@ class Signal(MultichannelData):
             When `True`, the time samples are truncated to np.float16
             resolution. `False` only applies dither noise to the signal
             without truncating. Default: `False`.
+        rng : numpy.random.Generator, int, None, optional
+            Random number generator or seed for the dither noise, so that the
+            output can be reproduced. Pass None to use a new, unpredictably
+            seeded generator. Default: None.
 
         Returns
         -------
@@ -2138,13 +2144,14 @@ class Signal(MultichannelData):
 
         """
         shape = self.time_data.shape
+        generator = _get_rng(rng)
 
         if not triangular_distribution:
-            noise = np.random.uniform(-epsilon / 2, epsilon / 2, size=shape)
+            noise = generator.uniform(-epsilon / 2, epsilon / 2, size=shape)
         else:
-            noise = np.random.uniform(
+            noise = generator.uniform(
                 -epsilon / 2, epsilon / 2, size=shape
-            ) + np.random.uniform(-epsilon / 2, epsilon / 2, size=shape)
+            ) + generator.uniform(-epsilon / 2, epsilon / 2, size=shape)
 
         if noise_shaping_filterbank is not None:
             noise_s = Signal(None, noise, self.sampling_rate_hz)

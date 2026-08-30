@@ -5,6 +5,7 @@ Backend for the effects module
 import numpy as np
 from numpy.typing import NDArray
 
+from ..helpers.rng import RngLike, _get_rng
 from ..helpers.smoothing import _get_smoothing_factor_ema
 from ..plots import general_plot
 from ..tools import from_db
@@ -296,6 +297,7 @@ class LFO:
         waveform: Waveform = Waveform.Harmonic,
         random_phase: bool = False,
         smooth: float = 0,
+        rng: RngLike = None,
     ):
         """Constructor for a low-frequency oscillator.
 
@@ -319,6 +321,10 @@ class LFO:
             is set between 0 and 10 though any value can be passed. Scaling
             might be different depending on the waveform. If 0 is passed,
             the standard, non-differentiable waveform is produced. Default: 0.
+        rng : numpy.random.Generator, int, None, optional
+            Random number generator or seed for the phase shifts of
+            `random_phase=True`, so that the output can be reproduced. Pass
+            None to use a new, unpredictably seeded generator. Default: None.
 
         Notes
         -----
@@ -332,6 +338,7 @@ class LFO:
           string of any duration.
 
         """
+        self.rng = _get_rng(rng)
         self.__set_parameters(frequency_hz, waveform, random_phase, smooth)
 
     def __set_parameters(self, frequency_hz, waveform: Waveform, random_phase, smooth):
@@ -391,6 +398,7 @@ class LFO:
             length_samples,
             self.random_phase,
             self.smooth,
+            self.rng,
         )
 
     def plot_waveform(self):
@@ -404,7 +412,7 @@ class LFO:
             Axes.
 
         """
-        osc = self.oscillator(2, 1000, 1000, self.random_phase, self.smooth)
+        osc = self.oscillator(2, 1000, 1000, self.random_phase, self.smooth, self.rng)
         fig, ax = general_plot(None, osc, log_x=False, xlabel=None)
         ax.set_xticks([])
         ax.set_yticks([])
@@ -412,19 +420,19 @@ class LFO:
         return fig, ax
 
 
-def _harmonic_oscillator(freq, fs, length, random_phase, smooth):
+def _harmonic_oscillator(freq, fs, length, random_phase, smooth, rng):
     if length is None:
         length = int(fs / freq)
     norm_freq = freq / fs
-    phase_shift = np.random.uniform(-np.pi, np.pi) if random_phase else 0
+    phase_shift = rng.uniform(-np.pi, np.pi) if random_phase else 0
     return np.sin(norm_freq * 2 * np.pi * np.arange(length) + phase_shift)
 
 
-def _square_oscillator(freq, fs, length, random_phase, smooth):
+def _square_oscillator(freq, fs, length, random_phase, smooth, rng):
     # https://tinyurl.com/4d634xnk
     if length is None:
         length = int(fs / freq)
-    phase_shift = np.random.uniform(-np.pi, np.pi) if random_phase else 0
+    phase_shift = rng.uniform(-np.pi, np.pi) if random_phase else 0
     x = freq / fs * 2 * np.pi * np.arange(length) + phase_shift
     x = np.sin(x)
     if smooth == 0:
@@ -435,17 +443,17 @@ def _square_oscillator(freq, fs, length, random_phase, smooth):
     return waveform
 
 
-def _sawtooth_oscillator(freq, fs, length, random_phase, smooth):
+def _sawtooth_oscillator(freq, fs, length, random_phase, smooth, rng):
     # https://tinyurl.com/5e8actzp
     if length is None:
         length = int(fs / freq)
     norm_freq = freq / fs
     if smooth == 0:
-        phase_shift = np.random.uniform(0, 1) if random_phase else 0
+        phase_shift = rng.uniform(0, 1) if random_phase else 0
         x = norm_freq * np.arange(length) + phase_shift
         waveform = (x % 1 - 0.5) * 2
     else:
-        phase_shift = np.random.uniform(-np.pi, np.pi) if random_phase else 0
+        phase_shift = rng.uniform(-np.pi, np.pi) if random_phase else 0
         x = np.pi * norm_freq * np.arange(length) + phase_shift
         # Adapt range
         smooth = (12 - smooth) ** 1.5
@@ -455,11 +463,11 @@ def _sawtooth_oscillator(freq, fs, length, random_phase, smooth):
     return waveform
 
 
-def _triangle_oscillator(freq, fs, length, random_phase, smooth):
+def _triangle_oscillator(freq, fs, length, random_phase, smooth, rng):
     # https://tinyurl.com/4d634xnk
     if length is None:
         length = int(fs / freq)
-    phase_shift = np.random.uniform(-np.pi, np.pi) if random_phase else 0
+    phase_shift = rng.uniform(-np.pi, np.pi) if random_phase else 0
     x = freq / fs * 2 * np.pi * np.arange(length) + phase_shift
     x = np.sin(x)
     if smooth == 0:
@@ -554,17 +562,18 @@ if __name__ == "__main__":
     # Check functions
     import matplotlib.pyplot as plt
 
+    rng = np.random.default_rng(0)
     x = np.zeros(1000)
-    n = np.random.normal(0, 0.3, 200)
+    n = rng.normal(0, 0.3, 200)
     x[200:400] += n
     x[600:800] += n
-    x += np.random.normal(0, 0.01, 1000)
+    x += rng.normal(0, 0.01, 1000)
     # plt.plot(x)
 
-    x = _harmonic_oscillator(1, 50, 50, True, 0)
-    # x = _square_oscillator(2, 20, 21, True, 0)
+    x = _harmonic_oscillator(1, 50, 50, True, 0, rng)
+    # x = _square_oscillator(2, 20, 21, True, 0, rng)
     # plt.plot(x)
-    # x = _triangle_oscillator(10, 20, 21, True, 0)
+    # x = _triangle_oscillator(10, 20, 21, True, 0, rng)
 
     # plt.plot(x)
     # x = _sawtooth_oscillator(1, 200, 2001, True, 10)

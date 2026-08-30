@@ -7,6 +7,8 @@ import scipy.signal as sig
 
 import dsptoolbox as dsp
 
+_rng = np.random.default_rng(1)
+
 
 class TestRoomAcousticsModule:
     rir = dsp.ImpulseResponse(
@@ -225,7 +227,7 @@ class TestRoomAcousticsModule:
         )
         d = {}
         for i in ["north", "south", "east", "west", "floor", "ceiling"]:
-            d[i] = np.random.uniform(0.94, 0.96, size=4)
+            d[i] = _rng.uniform(0.94, 0.96, size=4)
         r.add_detailed_absorption(d)
         # Use max order, detailed absorption, reverberant tail and bandpass
         # (they are all independent from each other)

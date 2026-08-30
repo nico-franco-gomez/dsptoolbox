@@ -23,6 +23,7 @@ from ..helpers.gain_and_level import to_db
 from ..helpers.other import (
     _pad_trim,
 )
+from ..helpers.rng import RngLike, _get_rng
 from ..plots import general_matrix_plot
 from ..room_acoustics._room_acoustics import _find_ir_start
 from ..standard._framed_signal_representation import (
@@ -1209,6 +1210,7 @@ def lpc(
     use_burg_method: bool = False,
     hop_size_samples: int | None = None,
     window_type: WindowType = Window.Hann,
+    rng: RngLike = None,
 ):
     """Encode an input signal into its linear-predictive coding coefficients.
     This transforms the signal into source-filter representation and works
@@ -1235,6 +1237,11 @@ def lpc(
     window_type : WindowType, optional
         Window type to use. It is recommended that a window type that satisfies
         the COLA-condition with length and hop size is chosen. Default: Hann.
+    rng : numpy.random.Generator, int, None, optional
+        Random number generator or seed for the white-noise source of
+        `synthesize_encoded_signal=True`, so that the output can be
+        reproduced. Pass None to use a new, unpredictably seeded generator.
+        Default: None.
 
     Returns
     -------
@@ -1274,9 +1281,10 @@ def lpc(
         return a, var
 
     synthesized_signal = np.zeros_like(td)
+    generator = _get_rng(rng)
     for channel in range(td.shape[2]):
         for n_window in range(td.shape[1]):
-            source = np.random.normal(0.0, var[n_window, channel] ** 0.5, td.shape[0])
+            source = generator.normal(0.0, var[n_window, channel] ** 0.5, td.shape[0])
             synthesized_signal[:, n_window, channel] = lfilter(
                 [1.0],
                 a[:, n_window, channel],

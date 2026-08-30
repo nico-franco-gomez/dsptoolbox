@@ -14,6 +14,8 @@ from matplotlib.pyplot import close
 
 import dsptoolbox as dsp
 
+_rng = np.random.default_rng(6)
+
 RIR_PATH = os.path.join(
     os.path.dirname(__file__),
     "..",
@@ -123,7 +125,7 @@ class TestFilterClass:
         assert not fir.has_sos
 
     def test_filtering_fir(self):
-        t_vec = np.random.normal(0, 0.01, self.fs * 2)
+        t_vec = _rng.normal(0, 0.01, self.fs * 2)
 
         result_scipy = sig.lfilter(self.fir, [1], t_vec)
         s = dsp.Signal.from_time_data(t_vec, self.fs)
@@ -140,7 +142,7 @@ class TestFilterClass:
         np.testing.assert_array_equal(s.time_data.squeeze(), t_vec)
 
     def test_filtering_iir(self):
-        t_vec = np.random.normal(0, 0.01, self.fs * 2)
+        t_vec = _rng.normal(0, 0.01, self.fs * 2)
         s = dsp.Signal(None, t_vec, self.fs)
         result_scipy = sig.sosfilt(self.iir, t_vec)
         f = self.get_iir()
@@ -292,7 +294,7 @@ class TestFilterClass:
     def test_filter_and_resampling_IIR(self):
         f = self.get_iir()
 
-        t_vec = np.random.normal(0, 0.01, self.fs * 2)
+        t_vec = _rng.normal(0, 0.01, self.fs * 2)
 
         t_signal = dsp.Signal(None, t_vec, self.fs)
         t_res = f.filter_and_resample_signal(t_signal, self.fs // 2)
@@ -315,7 +317,7 @@ class TestFilterClass:
             filter_coefficients={dsp.FilterCoefficientsType.Ba: [b, 1]},
             sampling_rate_hz=self.fs,
         )
-        t_vec = np.random.normal(0, 0.01, self.fs * 2)
+        t_vec = _rng.normal(0, 0.01, self.fs * 2)
 
         t_signal = dsp.Signal(None, t_vec, self.fs)
         t_res = f.filter_and_resample_signal(t_signal, self.fs // 2)

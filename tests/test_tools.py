@@ -5,6 +5,8 @@ import pytest
 
 import dsptoolbox as dsp
 
+_rng = np.random.default_rng(2)
+
 
 class TestTools:
     def test_functionality(self):
@@ -137,11 +139,11 @@ class TestTools:
         np.testing.assert_allclose(result, expected, rtol=1e-12)
 
     def test_framed_signal(self):
-        n = np.random.normal(0, 0.1, (100, 1))
+        n = _rng.normal(0, 0.1, (100, 1))
         dsp.tools.framed_signal(n, 20, 10, True)
         nn1 = dsp.tools.framed_signal(n, 20, 10, False)
 
-        n = np.random.normal(0, 0.1, (100, 2))
+        n = _rng.normal(0, 0.1, (100, 2))
         dsp.tools.framed_signal(n, 20, 10, True)
         nn2 = dsp.tools.framed_signal(n, 20, 10, False)
 

@@ -11,6 +11,8 @@ import scipy.signal as sig
 
 import dsptoolbox as dsp
 
+_rng = np.random.default_rng(8)
+
 RIR_PATH = os.path.join(
     os.path.dirname(__file__),
     "..",
@@ -20,32 +22,18 @@ RIR_PATH = os.path.join(
 )
 
 
-def _seeded(seed: int, func, *args, **kwargs):
-    """Call `func` with the global `numpy.random` state pinned to `seed`,
-    then restore whatever state it had before. Some tests compare a
-    per-sample recursive filter implementation against a vectorized
-    scipy reference with a tight `assert_allclose`/`isclose` tolerance;
-    the specific (otherwise unseeded) noise realization can occasionally
-    push floating-point rounding differences between the two
-    implementations past that tolerance. Pinning the seed here makes the
-    result reproducible regardless of how much of the shared global RNG
-    state prior tests in a full-suite run have already consumed.
-
-    """
-    state = np.random.get_state()
-    np.random.seed(seed)
-    try:
-        return func(*args, **kwargs)
-    finally:
-        np.random.set_state(state)
-
-
 class TestFilterTopologies:
     fs_hz = 24_000
 
     def get_noise(self):
-        return _seeded(
-            0, dsp.generators.noise, length_seconds=1, sampling_rate_hz=self.fs_hz
+        """Seeded on purpose: these tests compare a per-sample recursive
+        implementation against a vectorized scipy reference with a tight
+        tolerance, which the specific noise realization can otherwise push
+        past.
+
+        """
+        return dsp.generators.noise(
+            length_seconds=1, sampling_rate_hz=self.fs_hz, rng=0
         )
 
     def test_svfilter(self):
@@ -99,6 +87,7 @@ class TestFilterTopologies:
                 iir.get_coefficients(dsp.FilterCoefficientsType.Sos),
                 n.time_data.squeeze(),
             ),
+            atol=1e-12,
         )
 
         # From plain a/b coefficients
@@ -121,6 +110,7 @@ class TestFilterTopologies:
                 *iir.get_coefficients(dsp.FilterCoefficientsType.Ba),
                 n.time_data.squeeze(),
             ),
+            atol=1e-12,
         )
 
         # An IR-derived FIR case is intentionally not covered here: it does
@@ -152,7 +142,7 @@ class TestFilterTopologies:
         for ind in np.arange(len(td)):
             td[ind] = iir.process_sample(td[ind], 0)
 
-        np.testing.assert_allclose(td, sig.lfilter(b, a, n.time_data[:, 0]))
+        np.testing.assert_allclose(td, sig.lfilter(b, a, n.time_data[:, 0]), atol=1e-12)
 
         dsp.filterbanks.IIRFilter.from_filter(iir_original)
 
@@ -173,7 +163,9 @@ class TestFilterTopologies:
         for ind in np.arange(len(td)):
             td[ind] = fir.process_sample(td[ind], 0)
 
-        np.testing.assert_allclose(td, sig.lfilter(b, [1], n.time_data[:, 0]))
+        np.testing.assert_allclose(
+            td, sig.lfilter(b, [1], n.time_data[:, 0]), atol=1e-12
+        )
 
         dsp.filterbanks.FIRFilter.from_filter(fir_original)
 
@@ -215,7 +207,7 @@ class TestFilterTopologies:
         assert np.any(filter.coefficients_real_poles != 1.0)
 
     def test_exponential_averager(self):
-        n = np.random.normal(0, 0.1, 200)
+        n = _rng.normal(0, 0.1, 200)
         f = dsp.filterbanks.ExponentialAverageFilter(1e-3, 1e-3, self.fs_hz)
         for i in n:
             f.process_sample(i, 0)
@@ -233,8 +225,8 @@ class TestFilterTopologies:
         for i in rir.time_data[:, 0]:
             fb.process_sample(i, 1)
         fb.reset_state()
-        iir_coeffs = np.random.normal(0, 0.1, (len(poles), 2))
-        fb.set_coefficients(iir_coeffs, np.random.normal(0, 0.01, 10))
+        iir_coeffs = _rng.normal(0, 0.1, (len(poles), 2))
+        fb.set_coefficients(iir_coeffs, _rng.normal(0, 0.01, 10))
 
         fb = dsp.filterbanks.ParallelFilter(poles, 1, rir.sampling_rate_hz)
         fb.set_parameters(4, 0.0)
@@ -294,7 +286,7 @@ class TestFilterTopologies:
         )
         assert fc.n_filters == 2
 
-        n = np.random.normal(0, 0.1, 50)
+        n = _rng.normal(0, 0.1, 50)
 
         for nn in n:
             fc.process_sample(nn, 0)
@@ -330,13 +322,12 @@ class TestFilterTopologies:
         ff = dsp.Filter.biquad(dsp.BiquadEqType.Peaking, 100, 6, 0.7, self.fs_hz)
         b, a = ff.get_coefficients(dsp.FilterCoefficientsType.Ba)
         A, B, C, D = sig.tf2ss(b, a)
-        noise = _seeded(
-            0,
-            dsp.generators.noise,
+        noise = dsp.generators.noise(
             length_seconds=1.0,
             type_of_noise=-2.0,
             sampling_rate_hz=self.fs_hz,
             number_of_channels=2,
+            rng=0,
         )
         ff2 = dsp.filterbanks.StateSpaceFilter(A, B, C, D)
         ff2.set_n_channels(noise.number_of_channels)

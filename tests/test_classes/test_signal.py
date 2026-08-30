@@ -15,13 +15,15 @@ from matplotlib.pyplot import close
 
 import dsptoolbox as dsp
 
+_rng = np.random.default_rng(4)
+
 
 class TestSignal:
     fs = 44100
     length_samp = 2 * fs
     channels = 4
-    time_vec = np.random.normal(0, 0.1, (length_samp, channels))
-    imag = np.random.normal(0, 0.1, (length_samp, channels))
+    time_vec = _rng.normal(0, 0.1, (length_samp, channels))
+    imag = _rng.normal(0, 0.1, (length_samp, channels))
     complex_time_vec = time_vec + 1j * imag
 
     def test_importing_from_file(self):
@@ -91,12 +93,12 @@ class TestSignal:
         assert real_cond and imag_cond
 
         # Broadcasting with too many dimensions
-        r = np.random.normal(0, 0.1, (self.length_samp, self.channels, 1))
+        r = _rng.normal(0, 0.1, (self.length_samp, self.channels, 1))
         s = dsp.Signal(None, r, self.fs)
 
         # Not broadcastable to time data vector
         with pytest.raises(AssertionError):
-            r = np.random.normal(0, 0.1, (self.length_samp, self.channels, 4))
+            r = _rng.normal(0, 0.1, (self.length_samp, self.channels, 4))
             s = dsp.Signal(None, r, self.fs)
 
         li = [self.time_vec[:, i] for i in range(self.time_vec.shape[1])]
@@ -107,7 +109,7 @@ class TestSignal:
 
         # Not broadcastable to time data vector (with lists)
         with pytest.raises(AssertionError):
-            r = np.random.normal(0, 0.1, (self.length_samp, self.channels, 4))
+            r = _rng.normal(0, 0.1, (self.length_samp, self.channels, 4))
             r = list(r)
             s = dsp.Signal(None, r, self.fs)
 
@@ -162,7 +164,7 @@ class TestSignal:
         s.get_spectrum()
 
     def test_managing_channels(self):
-        new_ch = np.random.normal(0, 0.1, (self.length_samp, 1))
+        new_ch = _rng.normal(0, 0.1, (self.length_samp, 1))
         t_vec = np.append(self.time_vec, new_ch, axis=1)
         s = dsp.Signal(None, self.time_vec.copy(), self.fs)
         s = s.add_channel(None, new_ch, s.sampling_rate_hz)
@@ -359,7 +361,7 @@ class TestSignal:
         assert s.time_vector_s[-1] == (len(s) - 1) / s.sampling_rate_hz
 
     def test_constrain_amplitude(self):
-        t = np.random.normal(0, 1, 200)
+        t = _rng.normal(0, 1, 200)
         s = dsp.Signal(None, t, sampling_rate_hz=100, constrain_amplitude=True)
         assert np.all(s.time_data <= 1)
 
@@ -367,7 +369,7 @@ class TestSignal:
         assert np.all(t == s.time_data.squeeze())
 
     def test_sum_channels(self):
-        n = np.random.normal(0, 0.01, (300, 2))
+        n = _rng.normal(0, 0.01, (300, 2))
         nn = dsp.Signal.from_time_data(n, 10_000)
         np.testing.assert_array_equal(
             nn.sum_channels().time_data, np.sum(n, axis=1, keepdims=True)
