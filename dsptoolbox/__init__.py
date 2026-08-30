@@ -35,6 +35,8 @@ from .standard import (
     SpectrumType,
     WarpingFactor,
     Window,
+    append_filterbanks,
+    append_signals,
     crest_factor,
     envelope,
     latency,
@@ -78,6 +80,8 @@ __all__ = [
     "CalibrationData",
     # Functions in standard module
     "latency",
+    "append_signals",
+    "append_filterbanks",
     "crest_factor",
     "lufs_integrated",
     "true_peak_level",

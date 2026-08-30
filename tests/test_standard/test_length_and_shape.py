@@ -93,6 +93,42 @@ class TestStandardModule:
             )
             fb1.append_filterbanks([fb3])
 
+    def test_append_signals_function(self):
+        # Free function delegates to Signal.append_signals
+        s1 = self.audio_multi.get_channels(0)
+        s2 = self.audio_multi.get_channels(1)
+        s = dsp.append_signals([s1, s2])
+        assert s.number_of_channels == 2
+        assert np.all(s.time_data == self.audio_multi.time_data[:, :2])
+
+        # Free function delegates to MultiBandSignal.append_signals
+        b = [
+            self.audio_multi.get_channels(0),
+            self.audio_multi.get_channels(1),
+        ]
+        sm = dsp.MultiBandSignal(b)
+        sm1 = dsp.MultiBandSignal(b)
+        sm_ = dsp.append_signals([sm, sm1])
+        assert sm_.number_of_channels == 2
+        assert sm_.number_of_bands == 2
+
+    def test_append_filterbanks_function(self):
+        # Free function delegates to FilterBank.append_filterbanks
+        fb1 = dsp.filterbanks.auditory_filters_gammatone(
+            [600, 800], sampling_rate_hz=self.fs
+        )
+        fb2 = dsp.filterbanks.auditory_filters_gammatone(
+            [800, 1000], sampling_rate_hz=self.fs
+        )
+        fb_out = dsp.append_filterbanks([fb1, fb2])
+        assert len(fb_out) == len(fb1) + len(fb2)
+
+        with pytest.raises(AssertionError):
+            fb3 = dsp.filterbanks.auditory_filters_gammatone(
+                [800, 1000], sampling_rate_hz=48000
+            )
+            dsp.append_filterbanks([fb1, fb3])
+
     def test_resample(self):
         # A thin wrapper around scipy's resample_poly; only checked for
         # producing output, see test_resample_preserves_frequency_and_amplitude

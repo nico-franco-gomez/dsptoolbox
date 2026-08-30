@@ -10,6 +10,7 @@ to `standard`).
 
 """
 
+from .appending import append_filterbanks, append_signals
 from .enums import (
     BiquadEqType,
     FadeType,
@@ -48,6 +49,9 @@ from .other import (
 from .parameters import SpectrogramParameters, SpectrumParameters
 
 __all__ = [
+    # Appending
+    "append_signals",
+    "append_filterbanks",
     # Latency+Delay
     "latency",
     # Gain-related functions
