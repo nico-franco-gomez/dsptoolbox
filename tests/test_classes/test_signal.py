@@ -347,7 +347,7 @@ class TestSignal:
         s = dsp.Signal(time_data=self.time_vec, sampling_rate_hz=self.fs)
         t = s.time_vector_s
         le = s.time_data.shape[0]
-        t_ = np.linspace(0, le / self.fs, le, endpoint=True)
+        t_ = np.arange(le) / self.fs
         np.testing.assert_almost_equal(t, t_)
 
     def test_length_signal(self):
@@ -355,7 +355,8 @@ class TestSignal:
         assert len(s) == s.time_data.shape[0]
         assert s.length_samples == len(s)
         assert s.length_seconds == len(s) / s.sampling_rate_hz
-        assert s.length_seconds == s.time_vector_s[-1]
+        # The last sample sits one sampling period before the signal's end
+        assert s.time_vector_s[-1] == (len(s) - 1) / s.sampling_rate_hz
 
     def test_constrain_amplitude(self):
         t = np.random.normal(0, 1, 200)

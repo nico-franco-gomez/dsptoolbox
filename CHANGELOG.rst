@@ -14,6 +14,63 @@ adheres to `Semantic Versioning <http://semver.org/spec/v2.0.0.html>`_.
 - Validation for results from tests in every module (so far many tests are
   only regarding functionality)
 
+Unreleased
+---------------------
+Bugfix
+~~~~~~
+- `Window.with_extra_parameter` stored the parameter on the enum member itself,
+  so it leaked process-wide across unrelated objects; it now returns a
+  `ParametrizedWindow`. Calling `to_scipy_format` on a window that needs a
+  parameter raises a clear error instead of an `AttributeError`
+- `MultiBandSignal.collapse` accumulated the sum into the first band's own
+  time data, corrupting the band on every call
+- `_rms` computed the standard deviation instead of the RMS. `rms`,
+  `crest_factor`, `snr` and RMS normalization change accordingly; a DC
+  component now contributes to the result, so detrend beforehand if only the
+  AC power is of interest
+- `crest_factor` converted to dB twice for a `MultiBandSignal`
+- `Filter` accepted a coefficients dictionary carrying all three coefficient
+  types and silently discarded some of them
+- the `Signal.spectrum_smoothing` setter did not invalidate the spectrum
+  cache, making the setting and `ImpulseResponse.plot_bode(smoothing=...)`
+  no-ops while caching was active
+- `MagnitudeNormalization.OneKhzFirstChannel` normalized each channel by its
+  own value at 1 kHz instead of the first channel's
+- `Spectrum.apply_octave_smoothing` crashed for non-uniform frequency vectors
+  and did not update the frequency vector in that case
+- `spectral_deconvolve` reused the first channel's regularization band for
+  every subsequent channel
+- `average_irs(normalize_energy=True)` applied the energy ratio `E_i / E_0`
+  instead of the amplitude factor `sqrt(E_0 / E_i)`, and had no effect at all
+  when `time_average=False`
+- `find_modes` changed the spectrum method of the signal passed to it
+- `IIRFilter` normalized the caller's coefficient arrays in place and raised
+  for integer coefficients
+- `MultiBandSignal.sampling_rate_hz` never validated the number of sampling
+  rates against the number of bands, and assigned before validating
+- separator rules in `metadata_str` were missing or did not match the header
+- `latency` checked the type of its second argument only after using it and
+  swallowed every exception while printing it
+- `Signal.plot_spectrogram` compared an array against a scalar in its lower
+  frequency bound guard
+- `Signal.time_vector_s` and the chirps in ``generators`` were spaced by
+  `length / (N - 1)` instead of the sampling period, accumulating about one
+  sample of drift over the signal
+- `Signal.fade` used the last sample's time instead of the signal length as
+  the reference for the default fade length
+- `CalibrationData(high_snr=False)` raised an `AttributeError` because it
+  still passed the pre-enum spectrum parameters
+- `mix_sources_on_array` emptied the list of sources passed to it
+
+Misc
+~~~~
+- In-place writes through property getters were replaced by assignments
+  through the setters, so validation, complex-value handling and cache
+  invalidation are reached
+- `convolve_rir_on_signal` now selects the overlap-add convolution for length
+  ratios outside `[1/15, 15]`; the previous condition was subsumed and made
+  the direct convolution branch unreachable for similar lengths
+
 `0.9 <https://pypi.org/project/dsptoolbox/0.9>`_ -
 ---------------------
 Added

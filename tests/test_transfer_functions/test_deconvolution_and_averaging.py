@@ -207,3 +207,36 @@ class TestTransferFunctionsModule:
         before = ir.time_data.copy()
         dsp.transfer_functions.average_irs(ir)
         np.testing.assert_array_equal(before, ir.time_data)
+
+    def test_average_irs_energy_normalization_equalizes_channel_energy(self):
+        """`normalize_energy` must apply the amplitude factor
+        `sqrt(E_0 / E_i)`, not the energy ratio `E_i / E_0`.
+
+        """
+        fs = 8_000
+        n = 512
+        td = np.zeros((n, 3))
+        td[50, :] = [1.0, 0.2, 3.0]
+        ir = dsp.ImpulseResponse(None, td, fs, constrain_amplitude=False)
+
+        energies = np.sum(td**2.0, axis=0)
+        avg = dsp.transfer_functions.average_irs(
+            ir, time_average=True, normalize_energy=True
+        )
+        np.testing.assert_allclose(np.sum(avg.time_data**2.0), energies[0], rtol=1e-9)
+
+    def test_average_irs_energy_normalization_applies_in_both_branches(self):
+        fs = 8_000
+        n = 512
+        rng = np.random.default_rng(3)
+        td = rng.normal(0, 0.1, (n, 2)) * np.array([1.0, 4.0])
+        ir = dsp.ImpulseResponse(None, td, fs, constrain_amplitude=False)
+
+        for time_average in (True, False):
+            on = dsp.transfer_functions.average_irs(
+                ir, time_average=time_average, normalize_energy=True
+            )
+            off = dsp.transfer_functions.average_irs(
+                ir, time_average=time_average, normalize_energy=False
+            )
+            assert not np.allclose(on.time_data, off.time_data)

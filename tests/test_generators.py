@@ -140,25 +140,7 @@ class TestGeneratorsModule:
         # Same as with scipy's chirp
         fs = 44_100
         duration = 1
-        t = np.linspace(0, duration, duration * fs)
-        s = chirp(t=t, f0=20, t1=1, f1=20e3, method="logarithmic")
-        s2 = dsp.generators.chirp(
-            length_seconds=1,
-            sampling_rate_hz=fs,
-            type_of_chirp=dsp.generators.ChirpType.Logarithmic,
-            fade=None,
-            peak_level_dbfs=0,
-            phase_offset=np.pi / 2,  # Offset because scipy uses cosine
-            range_hz=[20, 20e3],
-        )
-        s2 = s2.time_data[:, 0]
-        assert np.all(np.isclose(s, s2))
-
-        # Same as with scipy's chirp
-        fs = 44_100
-        fs = 44100
-        duration = 1
-        t = np.linspace(0, duration, duration * fs)
+        t = np.arange(duration * fs) / fs
         s = chirp(t=t, f0=20, t1=1, f1=20e3, method="logarithmic")
         s2 = dsp.generators.chirp(
             length_seconds=1,
@@ -467,3 +449,32 @@ class TestGeneratorsModule:
             dsp.generators.oscillator(
                 frequency_hz=100, sampling_rate_hz=5_000, harmonic_cutoff_hz=0
             )
+
+
+class TestTimeVectorSpacing:
+    def test_signal_time_vector_uses_sampling_period(self):
+        fs = 48000
+        s = dsp.Signal(None, np.zeros((fs, 2)), fs)
+        np.testing.assert_allclose(s.time_vector_s, np.arange(fs) / fs, atol=1e-15)
+
+    def test_chirp_instantaneous_frequency_hits_the_range_edges(self):
+        """The linear sweep's time base must be `n / fs`. A `T / (N - 1)`
+        spacing skews the sweep rate, shifting the end frequency.
+
+        """
+        fs = 48000
+        length_seconds = 2.0
+        range_hz = [1000.0, 2000.0]
+        c = dsp.generators.chirp(
+            sampling_rate_hz=fs,
+            type_of_chirp=dsp.generators.ChirpType.Linear,
+            range_hz=range_hz,
+            length_seconds=length_seconds,
+            fade=None,
+            padding_end_seconds=0.0,
+        )
+        td = c.time_data[:, 0]
+        # Instantaneous frequency from the zero crossings of the last period
+        crossings = np.where(np.diff(np.signbit(td)))[0]
+        final_period_samples = np.diff(crossings)[-1] * 2
+        np.testing.assert_allclose(fs / final_period_samples, range_hz[1], rtol=2e-3)

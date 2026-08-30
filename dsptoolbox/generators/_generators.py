@@ -40,7 +40,7 @@ def _sync_log_chirp(
 
     # Sweep-rate
     L = int(0.5 + T * f1 / f2f1) / f1
-    t = np.linspace(0.0, T, int(T * sampling_rate_hz + 0.5))
+    t = np.arange(int(T * sampling_rate_hz + 0.5), dtype=np.float64) / sampling_rate_hz
     return np.sin(2.0 * np.pi * f1 * L * (np.exp(t / L) - 1.0)), T
 
 

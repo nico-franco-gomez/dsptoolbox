@@ -314,3 +314,25 @@ class TestStandardModule:
         before = s.time_data.copy()
         dsp.true_peak_level(s)
         np.testing.assert_array_equal(before, s.time_data)
+
+    def test_calibration_data_low_snr_matches_high_snr(self):
+        """`high_snr=False` derives the RMS from the 1 kHz spectrum instead of
+        the time domain. For a pure 1 kHz tone both routes must agree.
+
+        """
+        fs = 48000
+        t = np.arange(fs) / fs
+        tone = dsp.Signal(
+            None, (2.0**0.5 * np.sin(2 * np.pi * 1000.0 * t))[:, None], fs
+        )
+
+        high = dsp.CalibrationData(tone, calibration_spl_db=94.0, high_snr=True)
+        low = dsp.CalibrationData(tone, calibration_spl_db=94.0, high_snr=False)
+        high._compute_calibration_factors()
+        low._compute_calibration_factors()
+
+        # 94 dB SPL is 1 Pa RMS and the tone has unit RMS
+        np.testing.assert_allclose(high.calibration_factors, 1.0, atol=1e-2)
+        np.testing.assert_allclose(
+            low.calibration_factors, high.calibration_factors, rtol=1e-3
+        )

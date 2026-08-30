@@ -2,6 +2,7 @@ import numpy as np
 from numpy.typing import NDArray
 
 from ..standard import rms
+from ..standard.enums import SpectrumMethod, SpectrumScaling
 from .multibandsignal import MultiBandSignal
 from .signal import Signal
 
@@ -117,7 +118,8 @@ class CalibrationData:
 
     def _get_rms_from_spectrum(self):
         self.calibration_signal = self.calibration_signal.set_spectrum_parameters(
-            method="standard", scaling="amplitude spectrum"
+            method=SpectrumMethod.FFT,
+            scaling=SpectrumScaling.AmplitudeSpectrum,
         )
         f, sp = self.calibration_signal.get_spectrum()
         ind1k = np.argmin(np.abs(f - 1e3))

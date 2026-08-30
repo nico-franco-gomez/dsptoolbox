@@ -210,8 +210,8 @@ class Signal(MultichannelData):
     def _generate_time_vector(self):
         """Internal method to generate a time vector on demand."""
         self.__time_vector_update = False
-        self.__time_vector_s = np.linspace(
-            0, len(self.time_data) / self.sampling_rate_hz, len(self.time_data)
+        self.__time_vector_s = (
+            np.arange(len(self.time_data), dtype=np.float64) / self.sampling_rate_hz
         )
 
     # ======== Properties and setters =========================================
@@ -2007,8 +2007,8 @@ class Signal(MultichannelData):
         """
         assert at_start or at_end, "At least start or end of signal should be faded"
         if length_fade_seconds is None:
-            length_fade_seconds = self.time_vector_s[-1] * 0.025
-        assert length_fade_seconds < self.time_vector_s[-1], (
+            length_fade_seconds = self.length_seconds * 0.025
+        assert length_fade_seconds < self.length_seconds, (
             "Fade length should not be longer than the signal itself"
         )
 

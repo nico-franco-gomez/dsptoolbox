@@ -564,15 +564,21 @@ def average_irs(
         (minimum-phase) latency and then averaged in the time domain. False
         averages directly the magnitude and phase of each IR. Default: True.
     normalize_energy : bool, optional
-        When `True`, the energy of all spectra is normalized to the first
-        channel's energy and then averaged. Beware that normalization factors
-        might be clipped if the impulses are already at or close to 0 dBFS.
-        Default: `True`.
+        When `True`, every channel is scaled so that it carries the same
+        energy as the first channel before averaging. Beware that the
+        averaged result might be clipped if the impulses are already at or
+        close to 0 dBFS. Default: `True`.
 
     Returns
     -------
     avg_sig : `ImpulseResponse`
         Averaged impulse response.
+
+    Notes
+    -----
+    - The energy normalization applies the amplitude factor
+      `sqrt(E_0 / E_i)` to each channel, so that its energy
+      `E_i = sum(x_i**2)` matches that of the first channel.
 
     """
     assert type(signal) is ImpulseResponse, "This is only valid for an impulse response"
@@ -580,16 +586,19 @@ def average_irs(
         "Signal has only one channel so no meaningful averaging can be done"
     )
     avg_sig = signal.copy()
-    working_time_data = signal.time_data.copy()
+    working = signal.copy()
 
     if normalize_energy:
-        energies = np.sum(signal.time_data**2, axis=0)
-        energies /= energies[0]
-        working_time_data *= energies
+        energies = np.sum(signal.time_data**2.0, axis=0)
+        assert np.all(energies > 0.0), (
+            "At least one channel is all-zero, its energy cannot be normalized"
+        )
+        working.constrain_amplitude = False
+        working.time_data = signal.time_data * (energies[0] / energies) ** 0.5
 
     if not time_average:
         # Obtain channel magnitude and phase spectra
-        _, sp = signal.get_spectrum()
+        _, sp = working.get_spectrum()
         mag = np.abs(sp)
         pha = np.unwrap(np.angle(sp), axis=0)
 
@@ -602,15 +611,16 @@ def average_irs(
         # New time data and signal object
         new_time_data = np.fft.irfft(new_sp[..., None], n=signal.length_samples, axis=0)
     else:
-        latencies = find_ir_latency(signal)
+        working_time_data = working.time_data.copy()
+        latencies = find_ir_latency(working)
         channel_to_follow = np.argmax(latencies)
-        for i in range(signal.number_of_channels):
+        for i in range(working.number_of_channels):
             if channel_to_follow == i:
                 continue
             latency_s = (
                 latencies[channel_to_follow] - latencies[i]
-            ) / signal.sampling_rate_hz
-            new_channel = signal.get_channels(i).fractional_delay(
+            ) / working.sampling_rate_hz
+            new_channel = working.get_channels(i).fractional_delay(
                 latency_s, keep_length=True
             )
             working_time_data[:, i] = new_channel.time_data[:, 0]

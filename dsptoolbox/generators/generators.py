@@ -221,7 +221,7 @@ def chirp(
     l_samples = int(sampling_rate_hz * length_seconds + 0.5)
 
     if type_of_chirp != ChirpType.SyncLog:
-        t = np.linspace(0, length_seconds, l_samples)
+        t = np.arange(l_samples, dtype=np.float64) / sampling_rate_hz
 
     match type_of_chirp:
         case ChirpType.Linear:
