@@ -134,6 +134,31 @@ class TestBeamformingModule:
         ns = dsp.beamforming.MonopoleSource(ns, [0, 0, 0.5])
         dsp.beamforming.mix_sources_on_array([sp, ns], ma)
 
+    def test_monopole_source_amplitude_follows_distance_law(self):
+        """`MonopoleSource.get_signals_on_array` scales the emitted signal's
+        amplitude by `1 / (1 + distance)` (see
+        `dsptoolbox/beamforming/beamforming.py`, `MonopoleSource.
+        get_signals_on_array`) -- a regularized version of the free-field
+        monopole's `1/r` law that stays finite at `r=0`. This is an exact,
+        known reference (not merely a plausibility property): for two
+        receivers at distances `d0`, `d1` from the source, the ratio of
+        captured RMS levels should equal `(1 + d1) / (1 + d0)`.
+
+        """
+        d0, d1 = 1.0, 3.0
+        ma = dsp.beamforming.MicArray(
+            dict(x=np.array([d0, d1]), y=np.zeros(2), z=np.zeros(2))
+        )
+        source_signal = dsp.generators.noise(
+            length_seconds=2.0, sampling_rate_hz=20_000, rng=104
+        )
+        ns = dsp.beamforming.MonopoleSource(source_signal, [0, 0, 0])
+        received = ns.get_signals_on_array(ma)
+
+        rms0, rms1 = dsp.rms(received, in_dbfs=False)
+        expected_ratio = (1.0 + d1) / (1.0 + d0)
+        np.testing.assert_allclose(rms0 / rms1, expected_ratio, rtol=0.02)
+
     def test_beamformer_frequency(self):
         ma = self.points_uniform.copy()
         ma["z"] = np.zeros(len(ma["x"]))

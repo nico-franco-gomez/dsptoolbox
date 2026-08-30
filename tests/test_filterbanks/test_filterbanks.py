@@ -538,6 +538,45 @@ class TestFilterbanksModule:
             dsp.filterbanks.arma(rir, 10, 1, method=m)
             dsp.filterbanks.arma(rir, 10, 11, method=m)
 
+    def test_arma_recovers_spectrum_of_a_simple_resonator(self):
+        """Easy case for the default `ArmaMethod.YuleWalker`: a two-pole,
+        all-pole resonator (no zeros) is itself an exact AR(2) process, which
+        is exactly the model `ArmaMethod.YuleWalker` assumes. Fitting
+        `arma()` at the matching order to a sufficiently long, (numerically)
+        fully decayed impulse response of that resonator should therefore
+        recover a filter whose magnitude spectrum matches the original one
+        closely.
+
+        Note this is deliberately *not* done with a general biquad (e.g. a
+        peaking EQ): a biquad has both poles and zeros, i.e. it is an
+        ARMA(2, 2) process, and naively solving the plain (non-extended)
+        Yule-Walker equations for an AR(2) model of such a process is a
+        known-biased estimator of the poles (the presence of zeros corrupts
+        the low-lag autocorrelation the AR fit relies on) -- that would not
+        be an "easy case".
+
+        Comparing magnitude spectra (rather than the raw `a` coefficients)
+        avoids any sign/scaling ambiguity in the fitted parametrization.
+
+        """
+        pole_radius = 0.9
+        pole_angle_rad = 2 * np.pi * 500.0 / self.fs
+        a_true = np.array(
+            [1.0, -2 * pole_radius * np.cos(pole_angle_rad), pole_radius**2.0]
+        )
+        original = dsp.Filter.from_ba(np.array([1.0]), a_true, self.fs)
+        ir = original.get_ir(length_samples=2000)
+
+        fitted = dsp.filterbanks.arma(
+            ir, order_a=2, order_b=0, method=dsp.filterbanks.ArmaMethod.YuleWalker
+        )
+
+        freqs = np.linspace(20.0, self.fs / 2 * 0.95, 500)
+        original_mag_db = 20 * np.log10(np.abs(original.get_transfer_function(freqs)))
+        fitted_mag_db = 20 * np.log10(np.abs(fitted.get_transfer_function(freqs)))
+
+        np.testing.assert_allclose(fitted_mag_db, original_mag_db, atol=1e-6)
+
     def test_fractional_delay(self):
         noise = dsp.Filter.iir_filter(
             8, self.fs / 4, dsp.FilterPassType.Lowpass, self.fs

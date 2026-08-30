@@ -342,11 +342,30 @@ class TestFilterTopologies:
             np.testing.assert_allclose(reference.time_data[:, channel], output)
             channel += 1
 
-        # TODO: check output of the constructors below
-        iir = dsp.Filter.iir_filter(12, 500.0, dsp.FilterPassType.Lowpass, self.fs_hz)
-        dsp.realtime.StateSpaceFilter.from_filter(iir)
-        out = dsp.realtime.StateSpaceFilter.from_filter_as_sos_list(iir)
-        assert len(out) == 6
+        # A cutoff of 2000 Hz (relative to the 24 kHz sampling rate) keeps
+        # the order-12 filter well-conditioned; a much narrower relative
+        # bandwidth (e.g. 500 Hz here) pushes the direct Ba coefficients
+        # into scipy's "badly conditioned filter coefficients" territory,
+        # which is a numerical-stability property of tf2ss itself and not
+        # what this test is meant to check.
+        iir = dsp.Filter.iir_filter(12, 2000.0, dsp.FilterPassType.Lowpass, self.fs_hz)
+        reference = iir.filter_signal(noise).time_data[:, 0]
+        x = noise.time_data[:, 0]
+
+        # Single state-space filter built directly from the Ba coefficients
+        ff_from_filter = dsp.realtime.StateSpaceFilter.from_filter(iir)
+        out_from_filter = np.array([ff_from_filter.process_sample(v, 0) for v in x])
+        np.testing.assert_allclose(reference, out_from_filter, atol=1e-8)
+
+        # Cascade of second-order state-space filters, one per SOS section
+        sos_filters = dsp.realtime.StateSpaceFilter.from_filter_as_sos_list(iir)
+        assert len(sos_filters) == 6
+        out_from_sos = x.copy()
+        for section in sos_filters:
+            out_from_sos = np.array(
+                [section.process_sample(v, 0) for v in out_from_sos]
+            )
+        np.testing.assert_allclose(reference, out_from_sos, atol=1e-8)
 
     @pytest.mark.parametrize(
         "implementation",
