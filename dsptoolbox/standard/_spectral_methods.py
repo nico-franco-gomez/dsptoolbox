@@ -34,7 +34,6 @@ def _welch(
         Window type to be used.
     window_length_samples : int
         Window length to be used. Determines frequency resolution in the end.
-        Only powers of 2 are accepted.
     overlap_percent : float
         Overlap in percentage.
     detrend : bool
@@ -86,11 +85,6 @@ def _welch(
         # for each channel. Maybe parallelizing with something like numba could
         # be advantageous...
 
-    valid_window_sizes = np.array([int(2**x) for x in range(3, 19)])
-    assert window_length_samples in valid_window_sizes, (
-        "Window length should be a power of 2 between [8, 262_144] or "
-        + "[2**3, 2**18]"
-    )
     assert overlap_percent >= 0 and overlap_percent < 100, (
         "overlap_percent should be between 0 and 100"
     )
@@ -180,7 +174,6 @@ def _stft(
         Sampling rate in Hz.
     window_length_samples : int
         Window length to be used. Determines frequency resolution in the end.
-        Only powers of 2 are accepted.
     window_type : WindowType
         Window type to be used. Refer to scipy.signal.windows for available
         ones.
@@ -221,10 +214,6 @@ def _stft(
       frames are centred before the signal starts, so their time is negative.
 
     """
-    valid_window_sizes = np.array([int(2**x) for x in range(4, 17)])
-    assert window_length_samples in valid_window_sizes, (
-        "Window length should be a power of 2 between [16, 65536] or " + "[2**4, 2**16]"
-    )
     assert overlap_percent >= 0 and overlap_percent < 100, (
         "overlap_percent" + " should be between 0 and 100"
     )

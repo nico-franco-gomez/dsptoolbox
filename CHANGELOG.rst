@@ -8,6 +8,12 @@ The format is based on `Keep a
 Changelog <http://keepachangelog.com/en/1.0.0/>`__ and this project
 adheres to `Semantic Versioning <http://semver.org/spec/v2.0.0.html>`_.
 
+`0.10.1 <https://pypi.org/project/dsptoolbox/0.10.1>`_ -
+---------------------
+Misc
+~~~~~~
+- allow arbitrary fft lengths for spectrogram and periodogram
+
 `0.10 <https://pypi.org/project/dsptoolbox/0.10>`_ -
 ---------------------
 Misc
