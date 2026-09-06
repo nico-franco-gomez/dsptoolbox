@@ -793,6 +793,7 @@ class FilterBank:
                 labels=[
                     f"Sequential - Channel {n}" for n in range(bs.number_of_channels)
                 ],
+                ax=ax,
             )
         elif mode == FilterBankMode.Summed:
             bs = self.get_ir(length_samples, mode, zero_phase)
@@ -815,6 +816,7 @@ class FilterBank:
                 range_hz,
                 ylabel="Magnitude / dB",
                 labels=["Summed"],
+                ax=ax,
             )
         else:
             raise ValueError("Invalid filter bank mode")
@@ -894,6 +896,7 @@ class FilterBank:
                 labels=[
                     f"Sequential - Channel {n}" for n in range(bs.number_of_channels)
                 ],
+                ax=ax,
             )
         elif mode == FilterBankMode.Summed:
             bs = self.get_ir(length_samples, mode, zero_phase)
@@ -907,6 +910,7 @@ class FilterBank:
                 range_hz,
                 ylabel="Phase / rad",
                 labels=["Summed"],
+                ax=ax,
             )
         else:
             raise ValueError("Invalid filter bank mode")
@@ -983,6 +987,7 @@ class FilterBank:
                 labels=[
                     f"Sequential - Channel {n}" for n in range(bs.number_of_channels)
                 ],
+                ax=ax,
             )
         elif mode == FilterBankMode.Summed:
             bs = self.get_ir(length_samples, mode, zero_phase)
@@ -994,6 +999,7 @@ class FilterBank:
                 range_hz,
                 ylabel="Group delay / ms",
                 labels=["Summed"],
+                ax=ax,
             )
         else:
             raise ValueError("Invalid filter bank mode")

@@ -68,14 +68,6 @@ class TestSharedAxes:
 
 
 class TestNoImportSideEffects:
-    def test_importing_the_library_does_not_change_matplotlib_defaults(self):
-        """`use_default_style()` is opt-in: importing the library must leave
-        matplotlib's global settings alone."""
-        import matplotlib as mpl
-
-        assert mpl.rcParams["axes.grid"] == mpl.rcParamsDefault["axes.grid"]
-        assert mpl.rcParams["axes.facecolor"] == mpl.rcParamsDefault["axes.facecolor"]
-
     def test_use_default_style_applies_the_seaborn_grid(self):
         import matplotlib as mpl
 

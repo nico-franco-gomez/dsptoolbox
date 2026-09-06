@@ -10,7 +10,7 @@ from os.path import join
 import numpy as np
 import pytest
 import scipy.signal as sig
-from matplotlib.pyplot import close
+from matplotlib.pyplot import close, subplots
 
 import dsptoolbox as dsp
 
@@ -119,6 +119,22 @@ class TestFilterBankClass:
         fb.plot_group_delay(length_samples=512, mode=dsp.FilterBankMode.Sequential)
         fb.plot_group_delay(length_samples=512, mode=dsp.FilterBankMode.Summed)
         fb.plot_group_delay(length_samples=512, mode=dsp.FilterBankMode.Parallel)
+
+    def test_plot_modes_reuse_passed_axis(self):
+        fb = dsp.FilterBank()
+        fb = fb.add_filter(self.get_iir_filter())
+        fb = fb.add_filter(self.get_fir_filter())
+
+        for plot_method in (
+            fb.plot_magnitude,
+            fb.plot_phase,
+            fb.plot_group_delay,
+        ):
+            for mode in dsp.FilterBankMode:
+                fig, ax = subplots()
+                _, returned_ax = plot_method(512, mode=mode, ax=ax)
+                assert returned_ax is ax
+                close(fig)
 
     def test_filterbank_functionalities(self):
         fb = dsp.FilterBank()
