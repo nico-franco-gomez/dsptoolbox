@@ -41,6 +41,9 @@ class StateVariableFilter(RealtimeFilter[tuple[float, float, float, float]]):
         -----
         - Resonance can be linked to Quality factor as Q = 1/2R, i.e.,
           Q = 1/resonance.
+        - This filter type has several modes as outputs: lowpass, highpass, bandpass
+          and allpass. From these, it is possible to combine and obtain peaking,
+          low- and highshelf filters, as well as notches. See [1] for details.
 
         References
         ----------
@@ -86,7 +89,33 @@ class StateVariableFilter(RealtimeFilter[tuple[float, float, float, float]]):
         self, sample: float, channel: int = 0
     ) -> tuple[float, float, float, float]:
         """Process a single sample using a specific channel. Outputs are
-        lowpass, highpass, bandpass, allpass."""
+        lowpass, highpass, bandpass, allpass.
+
+        Parameters
+        ----------
+        sample : float
+            Sample to filter.
+        channel : int
+            Channel to filter with. Default: 0.
+
+        Returns
+        -------
+        lowpass : float
+        highpass : float
+        bandpass : float
+        allpass : float
+
+        Notes
+        -----
+        - Combining the outputs of these filters, as well as the unfiltered signal,
+          can be done in order to obtain other filter types. Here is an overview:
+
+            - Peaking filter: lowpass - highpass
+            - Lowshelf: unfiltered + K * lowpass. K is a linear gain which can be used
+              to tune the shelving gain.
+            - Highshelf: unfiltered + K * highpass.
+
+        """
         yh = (
             sample
             - (self.resonance + self.g) * self.state[0, channel]
@@ -120,6 +149,16 @@ class StateVariableFilter(RealtimeFilter[tuple[float, float, float, float]]):
             realtime filters, this one is a multimode filter and delivers the
             four outputs of `process_sample`: lowpass, highpass, bandpass and
             allpass, in this order.
+
+        Notes
+        -----
+        - Combining the outputs of these filters, as well as the unfiltered signal,
+            can be done in order to obtain other filter types. Here is an overview:
+
+            - Peaking filter: lowpass - highpass
+            - Lowshelf: unfiltered + K * lowpass. K is a linear gain which can be used
+                to tune the shelving gain.
+            - Highshelf: unfiltered + K * highpass.
 
         """
         output = np.zeros((len(block), 4))
