@@ -33,3 +33,5 @@ __all__ = [
     "show",
     "use_default_style",
 ]
+
+use_default_style()
