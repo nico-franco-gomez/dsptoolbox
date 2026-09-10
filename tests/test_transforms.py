@@ -280,6 +280,41 @@ class TestTransformsModule:
         dsp.transforms.cwt(self.speech, query_f, morlet, False)
         dsp.transforms.cwt(self.speech, query_f, morlet, True)
 
+    def test_squeeze_scalogram_rust_backend_parity(self):
+        from dsptoolbox.transforms._transforms import _squeeze_scalogram_python
+
+        try:
+            from dsptoolbox._rust import squeeze_scalogram
+        except ImportError:
+            pytest.skip("Rust extension is not available")
+
+        freqs = np.linspace(100.0, 1200.0, 7)
+
+        for n_times in (3, 31):
+            rng = np.random.default_rng(n_times)
+            scalogram = (
+                rng.normal(size=(7, n_times, 2)) + 1j * rng.normal(size=(7, n_times, 2))
+            ).astype(np.complex128)
+            gradient = np.gradient(scalogram, axis=1, edge_order=2)
+            for apply_normalization in (False, True):
+                expected = _squeeze_scalogram_python(
+                    scalogram,
+                    freqs,
+                    8000,
+                    0.05,
+                    apply_normalization,
+                    gradient,
+                )
+                actual = squeeze_scalogram(
+                    scalogram,
+                    freqs,
+                    8000,
+                    0.05,
+                    apply_normalization,
+                    gradient,
+                )
+                np.testing.assert_allclose(actual, expected, rtol=1e-12, atol=1e-12)
+
     def test_cwt_peak_at_true_frequency(self):
         """The scalogram's magnitude, at a time sample away from the
         signal's edges, should peak at the queried frequency nearest the

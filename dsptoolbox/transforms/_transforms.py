@@ -12,6 +12,12 @@ try:
 except ImportError:
     _warp_time_series_rust = None
 
+_squeeze_scalogram_rust: Callable | None
+try:
+    from .._rust import squeeze_scalogram as _squeeze_scalogram_rust  # noqa: I001
+except ImportError:
+    _squeeze_scalogram_rust = None
+
 
 def _pitch2frequency(tuning_a_hz: float = 440.0) -> NDArray[np.float64]:
     """This function returns a vector having frequencies for pitches
@@ -240,13 +246,14 @@ class MorletWavelet(Wavelet):
         return accumulator
 
 
-def _squeeze_scalogram(
-    scalogram: NDArray[np.float64],
+def _squeeze_scalogram_python(
+    scalogram: NDArray[np.complex128],
     freqs: NDArray[np.float64],
     fs: int,
     delta_w: float = 0.05,
     apply_frequency_normalization: bool = False,
-) -> NDArray[np.float64]:
+    gradient: NDArray[np.complex128] | None = None,
+) -> NDArray[np.complex128]:
     """Synchrosqueeze a scalogram.
 
     Parameters
@@ -284,7 +291,9 @@ def _squeeze_scalogram(
     inds = scalpow > 1e-40
 
     # Phase Transform
-    ph = np.gradient(scalogram, axis=1)
+    if gradient is None:
+        gradient = np.gradient(scalogram, axis=1, edge_order=2)
+    ph = gradient.copy()
     ph[~inds] = 0
     # Since only imaginary part needed -> computation could be improved
     ph[inds] = (ph[inds] / scalogram[inds]).imag / 2 / np.pi
@@ -314,6 +323,34 @@ def _squeeze_scalogram(
 
                 sync[ind, t, ch] += scalogram[f, t, ch]
     return sync
+
+
+def _squeeze_scalogram(
+    scalogram: NDArray[np.complex128],
+    freqs: NDArray[np.float64],
+    fs: int,
+    delta_w: float = 0.05,
+    apply_frequency_normalization: bool = False,
+) -> NDArray[np.complex128]:
+    """Synchrosqueeze a scalogram, preferring the Rust implementation."""
+    gradient = np.gradient(scalogram, axis=1, edge_order=2)
+    if _squeeze_scalogram_rust is not None:
+        return _squeeze_scalogram_rust(
+            scalogram,
+            freqs,
+            fs,
+            delta_w,
+            apply_frequency_normalization,
+            gradient,
+        )
+    return _squeeze_scalogram_python(
+        scalogram,
+        freqs,
+        fs,
+        delta_w,
+        apply_frequency_normalization,
+        gradient,
+    )
 
 
 def _get_length_longest_wavelet(
