@@ -1,0 +1,13 @@
+[package]
+name = "dsptoolbox-rust"
+version = "0.10.3"
+edition = "2021"
+
+[lib]
+name = "_rust"
+crate-type = ["cdylib"]
+
+[dependencies]
+ndarray = "0.17"
+numpy = "0.29"
+pyo3 = { version = "0.29", features = ["extension-module"] }

@@ -1,10 +1,16 @@
-"""
-Backend for special module
-"""
+"""Backend for special module."""
+
+from collections.abc import Callable
 
 import numpy as np
 from numpy.typing import NDArray
 from scipy.signal import get_window, lfilter
+
+_warp_time_series_rust: Callable | None
+try:
+    from .._rust import warp_time_series as _warp_time_series_rust  # noqa: I001
+except ImportError:
+    _warp_time_series_rust = None
 
 
 def _pitch2frequency(tuning_a_hz: float = 440.0) -> NDArray[np.float64]:
@@ -393,28 +399,10 @@ def _get_kernels_vqt(
     return kernels
 
 
-def _warp_time_series(
+def _warp_time_series_python(
     td: NDArray[np.float64], warping_factor: float
 ) -> NDArray[np.float64]:
-    """Warp or unwarp a time series. This is a port from [1].
-
-    Parameters
-    ----------
-    td : NDArray[np.float64]
-        Time series with shape (time samples, channels).
-    warping_factor : float
-        The warping factor to use.
-
-    Returns
-    -------
-    warped_td : NDArray[np.float64]
-        Time series in the (un)warped domain.
-
-    References
-    ----------
-    - [1]: http://legacy.spa.aalto.fi/software/warp/.
-
-    """
+    """Warp or unwarp a time series using the Python implementation."""
     warped_td = np.zeros_like(td)
 
     dirac = np.zeros(td.shape[0])
@@ -429,6 +417,15 @@ def _warp_time_series(
         dirac = lfilter(b, a, dirac)
         warped_td += dirac[..., None] * td[n, :]
     return warped_td
+
+
+def _warp_time_series(
+    td: NDArray[np.float64], warping_factor: float
+) -> NDArray[np.float64]:
+    """Warp or unwarp a time series, preferring the Rust implementation."""
+    if _warp_time_series_rust is not None:
+        return _warp_time_series_rust(td, warping_factor)
+    return _warp_time_series_python(td, warping_factor)
 
 
 try:

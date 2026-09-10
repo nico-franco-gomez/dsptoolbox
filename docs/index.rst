@@ -28,9 +28,8 @@ DSPToolbox
 ==========
 
 .. toctree::
-   :maxdepth: 2
-
-   readme
+    readme
+    deployment
 
 .. toctree::
    :maxdepth: 2

@@ -3,6 +3,7 @@
 
 # dev:
 hatch # build
+maturin # build Rust extensions
 wheel # build
 twine # upload build
 ruff  # linter and formatter
