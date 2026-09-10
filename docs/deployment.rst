@@ -16,7 +16,8 @@ Install the following before making a release:
 
 * A supported Python interpreter.
 * Rust and Cargo, available on ``PATH``.
-* The project development requirements, including ``maturin`` and ``twine``.
+* The project development requirements, including ``cibuildwheel``,
+  ``maturin``, and ``twine``.
 
 From the repository root, create or activate the project environment and run::
 
@@ -27,6 +28,7 @@ Check the tools before continuing::
     rustc --version
     cargo --version
     maturin --version
+    cibuildwheel --version
     twine --version
 
 Prepare A Release
@@ -48,6 +50,44 @@ Run the checks before building::
 
 Build The Distribution
 ----------------------
+
+The repository includes ``deploy.ps1`` for repeatable release preparation. It
+uses ``cibuildwheel`` and builds the matrix supported by the native host:
+
+* Linux: x86_64 and aarch64
+* macOS: x86_64 and arm64
+* Windows: AMD64 and ARM64
+
+Run the script in ``Build`` mode on a native machine for each operating system
+and keep the resulting ``dist`` directory shared between those builds. Use
+``-Clean`` only for the first build, so artifacts from the other native hosts
+are not removed::
+
+    pwsh ./deploy.ps1 -Mode Build -Clean
+    pwsh ./deploy.ps1 -Mode Build
+
+The script builds CPython 3.11 through 3.14 wheels and a source distribution.
+It checks that the package version is higher than the version currently on
+PyPI before doing any build work. Once all native-host builds have populated
+``dist``, upload the complete matrix with::
+
+    pwsh ./deploy.ps1 -Mode Upload
+
+The script prompts for the PyPI API token as a secure value when uploading.
+It never stores the token in the repository or passes it on the command line.
+It refuses to upload until every expected wheel and the matching source
+distribution are present. ``BuildAndUpload`` can be used when ``dist`` already
+contains the artifacts from the other native hosts::
+
+    pwsh ./deploy.ps1 -Mode BuildAndUpload
+
+Windows wheels cannot be compiled from macOS, and macOS wheels cannot be
+compiled from Linux or Windows without a separate host/toolchain. The script
+therefore coordinates native-host builds and performs the final completeness
+check before upload.
+
+For a manual build, or when only one target needs to be rebuilt, use the
+commands below.
 
 Remove artifacts from an earlier build and create a release wheel and source
 distribution::
