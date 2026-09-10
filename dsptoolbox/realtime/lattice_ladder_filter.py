@@ -2,6 +2,7 @@
 This file contains alternative filter implementations.
 """
 
+from collections.abc import Callable
 from warnings import warn
 
 import numpy as np
@@ -12,14 +13,20 @@ from ..classes.signal import Signal
 from ..standard.enums import FilterCoefficientsType
 from .realtime_filter import RealtimeFilter
 
+_lattice_filtering_fir_rust: Callable | None
+try:
+    from .._rust import lattice_filtering_fir as _lattice_filtering_fir_rust  # noqa: I001
+except ImportError:
+    _lattice_filtering_fir_rust = None
+
 
 class LatticeLadderFilter(RealtimeFilter[float]):
     """This is a class that handles a Lattice/Ladder filter representation.
     Depending on the `k` (reflection) or `c` (feedforward) coefficients, it
     might be a lattice or lattice/ladder filter structure.
 
-    The filtering is done on a pure-python implementation and is considerably
-    slower than `scipy.signal.lfilter`.
+    The filtering uses a Rust backend when available and falls back to the
+    Python implementation otherwise.
 
     References
     ----------
@@ -324,7 +331,7 @@ def _lattice_ladder_filtering_sos(
     return td, state
 
 
-def _lattice_filtering_fir(
+def _lattice_filtering_fir_python(
     k: NDArray[np.float64],
     td: NDArray[np.float64],
     state: NDArray[np.float64],
@@ -343,6 +350,18 @@ def _lattice_filtering_fir(
                 s0 = s1
             td[i_ch, ch] = x_o
     return td, state
+
+
+def _lattice_filtering_fir(
+    k: NDArray[np.float64],
+    td: NDArray[np.float64],
+    state: NDArray[np.float64],
+) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
+    """FIR filtering, preferring the Rust implementation when available."""
+    if _lattice_filtering_fir_rust is not None:
+        _lattice_filtering_fir_rust(k, td, state)
+        return td, state
+    return _lattice_filtering_fir_python(k, td, state)
 
 
 def _lattice_ladder_filtering_iir(

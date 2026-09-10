@@ -3,6 +3,7 @@ Tests for the lattice-ladder filter conversion/topology.
 """
 
 import numpy as np
+import pytest
 import scipy.signal as sig
 
 import dsptoolbox as dsp
@@ -42,6 +43,28 @@ class TestLatticeLadderFilter:
         out = f.filter_signal(n)
         out = out.time_data.squeeze()
         assert np.all(np.isclose(expected, out))
+
+    def test_lattice_fir_rust_backend_parity(self):
+        from dsptoolbox.realtime.lattice_ladder_filter import (
+            _lattice_filtering_fir,
+            _lattice_filtering_fir_python,
+            _lattice_filtering_fir_rust,
+        )
+
+        if _lattice_filtering_fir_rust is None:
+            pytest.skip("Rust extension is not available")
+
+        rng = np.random.default_rng(0)
+        k = rng.uniform(-0.5, 0.5, 16)
+        td = rng.normal(size=(257, 3))
+        state = rng.normal(size=(16, 3))
+        expected_td, expected_state = _lattice_filtering_fir_python(
+            k, td.copy(), state.copy()
+        )
+        actual_td, actual_state = _lattice_filtering_fir(k, td.copy(), state.copy())
+
+        np.testing.assert_array_equal(actual_td, expected_td)
+        np.testing.assert_array_equal(actual_state, expected_state)
 
     def test_convert_lattice_filter(self):
         fs = 44100
