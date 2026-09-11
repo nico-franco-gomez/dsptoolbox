@@ -42,6 +42,15 @@ def iir_filtering_sample(
     state: NDArray[np.float64],
     channel: int,
 ) -> float: ...
+def state_space_filtering_sample(
+    a: NDArray[np.float64],
+    b: NDArray[np.float64],
+    c: NDArray[np.float64],
+    d: float,
+    input: float,
+    state: NDArray[np.float64],
+    channel: int,
+) -> float: ...
 def lattice_filtering_fir(
     k: NDArray[np.float64],
     time_data: NDArray[np.float64],

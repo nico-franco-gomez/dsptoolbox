@@ -6,6 +6,14 @@ from ..classes.filter import Filter
 from ..standard.enums import FilterCoefficientsType
 from .realtime_filter import RealtimeFilter
 
+_state_space_filtering_sample_rust = None
+try:
+    from .._rust import (
+        state_space_filtering_sample as _state_space_filtering_sample_rust,
+    )
+except ImportError:
+    pass
+
 
 class StateSpaceFilter(RealtimeFilter[float]):
     def __init__(
@@ -101,6 +109,26 @@ class StateSpaceFilter(RealtimeFilter[float]):
         self.x = np.zeros((self.A.shape[0], n_channels))
 
     def process_sample(self, x: float, channel: int) -> float:
+        if (
+            _state_space_filtering_sample_rust is not None
+            and self.A.ndim == 2
+            and self.A.dtype == np.dtype(np.float64)
+            and self.B.dtype == np.dtype(np.float64)
+            and self.C.dtype == np.dtype(np.float64)
+            and np.asarray(self.D).dtype == np.dtype(np.float64)
+            and self.x.dtype == np.dtype(np.float64)
+            and 0 <= channel < self.x.shape[1]
+        ):
+            return _state_space_filtering_sample_rust(
+                self.A,
+                self.B,
+                self.C,
+                float(self.D),
+                x,
+                self.x,
+                channel,
+            )
+
         y = self.C @ self.x[:, channel] + self.D * x
         self.x[:, channel] = self.A @ self.x[:, channel] + self.B * x
         return y

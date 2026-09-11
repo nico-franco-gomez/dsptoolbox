@@ -8,6 +8,7 @@ use pyo3::prelude::*;
 pub fn add_functions(module: &Bound<'_, PyModule>) -> PyResult<()> {
     module.add_function(wrap_pyfunction!(fir_filtering_sample, module)?)?;
     module.add_function(wrap_pyfunction!(iir_filtering_sample, module)?)?;
+    module.add_function(wrap_pyfunction!(state_space_filtering_sample, module)?)?;
     module.add_function(wrap_pyfunction!(kautz_filtering_sample, module)?)?;
     module.add_function(wrap_pyfunction!(parallel_filtering_sample, module)?)?;
     module.add_function(wrap_pyfunction!(lattice_filtering_fir, module)?)?;
@@ -23,6 +24,52 @@ pub fn add_functions(module: &Bound<'_, PyModule>) -> PyResult<()> {
     module.add_function(wrap_pyfunction!(warped_iir_filtering_sample, module)?)?;
     module.add_function(wrap_pyfunction!(warped_iir_filtering_block, module)?)?;
     Ok(())
+}
+
+#[pyfunction]
+fn state_space_filtering_sample(
+    a: PyReadonlyArray2<'_, f64>,
+    b: PyReadonlyArray1<'_, f64>,
+    c: PyReadonlyArray1<'_, f64>,
+    d: f64,
+    input: f64,
+    mut state: PyReadwriteArray2<'_, f64>,
+    channel: usize,
+) -> PyResult<f64> {
+    let a = a.as_array();
+    let b = b.as_array();
+    let c = c.as_array();
+    let mut state = state.as_array_mut();
+
+    if a.shape()[0] != a.shape()[1]
+        || b.len() != a.shape()[0]
+        || c.len() != a.shape()[0]
+        || state.shape()[0] != a.shape()[0]
+        || state.shape()[1] <= channel
+    {
+        return Err(PyValueError::new_err(
+            "state-space matrices or state dimensions are invalid",
+        ));
+    }
+
+    let mut output = d * input;
+    for state_index in 0..a.shape()[0] {
+        output += c[state_index] * state[(state_index, channel)];
+    }
+
+    let mut next_state = vec![0.0; a.shape()[0]];
+    for state_index in 0..a.shape()[0] {
+        let mut value = b[state_index] * input;
+        for previous_state in 0..a.shape()[1] {
+            value += a[(state_index, previous_state)] * state[(previous_state, channel)];
+        }
+        next_state[state_index] = value;
+    }
+    for state_index in 0..a.shape()[0] {
+        state[(state_index, channel)] = next_state[state_index];
+    }
+
+    Ok(output)
 }
 
 #[pyfunction]

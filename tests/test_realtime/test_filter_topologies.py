@@ -577,6 +577,45 @@ class TestFilterTopologies:
             )
         np.testing.assert_allclose(reference, out_from_sos, atol=1e-8)
 
+    def test_state_space_rust_backend_parity(self):
+        from dsptoolbox.realtime.state_space_filter import (
+            _state_space_filtering_sample_rust,
+        )
+
+        if _state_space_filtering_sample_rust is None:
+            pytest.skip("Rust extension is not available")
+
+        rng = np.random.default_rng(13)
+        a = rng.normal(size=(3, 3))
+        b = rng.normal(size=3)
+        c = rng.normal(size=3)
+        d = np.array(0.25)
+        state = rng.normal(size=(3, 2))
+        expected_state = state.copy()
+        samples = rng.normal(size=11)
+        expected = []
+        for sample in samples:
+            previous_state = expected_state[:, 1].copy()
+            expected.append(c @ previous_state + d * sample)
+            expected_state[:, 1] = a @ previous_state + b * sample
+
+        actual_state = state.copy()
+        actual = [
+            _state_space_filtering_sample_rust(
+                a, b, c, float(d), sample, actual_state, 1
+            )
+            for sample in samples
+        ]
+
+        np.testing.assert_allclose(actual, expected)
+        np.testing.assert_allclose(actual_state, expected_state)
+
+        filt = dsp.realtime.StateSpaceFilter(a, b, c, d)
+        filt.x = state.copy()
+        for sample, expected_sample in zip(samples, expected, strict=True):
+            np.testing.assert_allclose(filt.process_sample(sample, 1), expected_sample)
+        np.testing.assert_allclose(filt.x, expected_state)
+
     @pytest.mark.parametrize(
         "implementation",
         [
