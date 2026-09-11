@@ -123,9 +123,6 @@ jobs:
           - name: linux-x86_64
             runner: ubuntu-latest
             archs: x86_64
-          - name: linux-aarch64
-            runner: ubuntu-latest
-            archs: aarch64
           - name: macos-x86_64
             runner: macos-15-intel
             archs: x86_64
@@ -143,10 +140,6 @@ jobs:
         uses: actions/checkout@v5
         with:
           persist-credentials: false
-
-      - name: Set up QEMU
-        if: startsWith(matrix.name, 'linux-')
-        uses: docker/setup-qemu-action@v3
 
       - name: Build wheels
         uses: pypa/cibuildwheel@v4.2.1
@@ -233,7 +226,7 @@ jobs:
         run: |
           python -m pip install twine
           python -m twine check dist/*
-          test "$(find dist -name '*.whl' | wc -l)" -eq 24
+          test "$(find dist -name '*.whl' | wc -l)" -eq 20
           test "$(find dist -name '*.tar.gz' | wc -l)" -eq 1
 
       - name: Download release notes

@@ -18,9 +18,9 @@ dependencies = [
   # Independent
   "scipy~=1.17; python_version < '3.12'",
   "scipy~=1.18; python_version >= '3.12'",
-  "soundfile~=0.13",
+  "soundfile~=0.14",
   "sounddevice~=0.5",
-  "matplotlib~=3.10",
+  "matplotlib~=3.11",
   "seaborn~=0.13",
 ]
 
