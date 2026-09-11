@@ -29,6 +29,7 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v5
         with:
+          ref: ${{ inputs.tag || github.ref }}
           fetch-depth: 0
           persist-credentials: false
 
@@ -139,6 +140,7 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v5
         with:
+          ref: ${{ inputs.tag || github.ref }}
           persist-credentials: false
 
       - name: Build wheels
@@ -146,6 +148,7 @@ jobs:
         env:
           CIBW_BUILD: ${{ env.PYTHON_VERSIONS }}
           CIBW_ARCHS: ${{ matrix.archs }}
+          CIBW_SKIP: "*-musllinux_*"
           CIBW_ENVIRONMENT_MACOS: >-
             ${{ matrix.name == 'macos-x86_64' &&
             'MACOSX_DEPLOYMENT_TARGET=10.12' || '' }}
@@ -177,6 +180,7 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v5
         with:
+          ref: ${{ inputs.tag || github.ref }}
           persist-credentials: false
 
       - name: Set up Python
@@ -223,11 +227,88 @@ jobs:
           python-version: "3.11"
 
       - name: Check distribution metadata
+        env:
+          RELEASE_VERSION: ${{ needs.validate.outputs.version }}
         run: |
           python -m pip install twine
           python -m twine check dist/*
-          test "$(find dist -name '*.whl' | wc -l)" -eq 20
-          test "$(find dist -name '*.tar.gz' | wc -l)" -eq 1
+          python - <<'PY'
+          import os
+          from collections import Counter
+          from pathlib import Path
+
+          from packaging.utils import parse_wheel_filename
+
+          expected_interpreters = {"cp311", "cp312", "cp313", "cp314"}
+          expected_families = {
+            "linux-x86_64": 4,
+            "macos-x86_64": 4,
+            "macos-arm64": 4,
+            "windows-x86_64": 4,
+            "windows-arm64": 4,
+          }
+          wheels = sorted(Path("dist").glob("*.whl"))
+          if len(wheels) != sum(expected_families.values()):
+            raise SystemExit(
+              f"Expected 20 wheels, found {len(wheels)}"
+            )
+
+          interpreter_counts = Counter()
+          family_counts = Counter()
+          expected_version = os.environ["RELEASE_VERSION"]
+          for wheel in wheels:
+            package, version, build, tags = parse_wheel_filename(
+              wheel.name
+            )
+            if package != "dsptoolbox":
+              raise SystemExit(f"Unexpected package in {wheel.name}")
+            if str(version) != expected_version:
+              raise SystemExit(f"Unexpected version in {wheel.name}")
+            if len(tags) != 1:
+              raise SystemExit(f"Unexpected tag set in {wheel.name}")
+
+            tag = next(iter(tags))
+            if tag.interpreter not in expected_interpreters:
+              raise SystemExit(f"Unexpected interpreter in {wheel.name}")
+            if tag.interpreter != tag.abi:
+              raise SystemExit(f"Unexpected ABI in {wheel.name}")
+
+            platform = tag.platform
+            if platform.startswith("manylinux_") and platform.endswith(
+              "_x86_64"
+            ):
+              family = "linux-x86_64"
+            elif platform.startswith("macosx_") and platform.endswith(
+              "_x86_64"
+            ):
+              family = "macos-x86_64"
+            elif platform.startswith("macosx_") and platform.endswith(
+              "_arm64"
+            ):
+              family = "macos-arm64"
+            elif platform == "win_amd64":
+              family = "windows-x86_64"
+            elif platform == "win_arm64":
+              family = "windows-arm64"
+            else:
+              raise SystemExit(f"Unexpected platform in {wheel.name}")
+
+            interpreter_counts[tag.interpreter] += 1
+            family_counts[family] += 1
+
+          if interpreter_counts != Counter(
+            {interpreter: 5 for interpreter in expected_interpreters}
+          ):
+            raise SystemExit(
+              f"Unexpected wheels per interpreter: {interpreter_counts}"
+            )
+          if family_counts != Counter(expected_families):
+            raise SystemExit(
+              f"Unexpected wheels per platform: {family_counts}"
+            )
+          PY
+            test "$(find dist -maxdepth 1 -type f -name '*.tar.gz' | wc -l)" -eq 1
+            test "$(find dist -maxdepth 1 -type f -name "dsptoolbox-${RELEASE_VERSION}.tar.gz" | wc -l)" -eq 1
 
       - name: Download release notes
         uses: actions/download-artifact@v5
