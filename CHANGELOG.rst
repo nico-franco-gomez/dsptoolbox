@@ -8,7 +8,7 @@ The format is based on `Keep a
 Changelog <http://keepachangelog.com/en/1.0.0/>`__ and this project
 adheres to `Semantic Versioning <http://semver.org/spec/v2.0.0.html>`_.
 
-`0.10.4 <https://pypi.org/project/dsptoolbox/0.10.4>`_ -
+`0.11 <https://pypi.org/project/dsptoolbox/0.11>`_ -
 ---------------------
 Added
 ~~~~~
@@ -18,6 +18,7 @@ Added
 Bugfix
 ~~~~~~
 - Corrected and extended realtime filter and transform tests
+- `ParallelFilter` can now take a full SOS for IIR coefficients in set_coefficients
 
 Misc
 ~~~~
