@@ -1,8 +1,6 @@
 use ndarray::{Array1, Array2, Array3};
 use num_complex::Complex64;
-use numpy::{
-    PyArray1, PyArray2, PyArray3, PyReadonlyArray1, PyReadonlyArray2, PyReadonlyArray3,
-};
+use numpy::{PyArray1, PyArray2, PyArray3, PyReadonlyArray1, PyReadonlyArray2, PyReadonlyArray3};
 use pyo3::exceptions::{PyIndexError, PyValueError};
 use pyo3::prelude::*;
 
@@ -52,8 +50,8 @@ fn morlet_wavelet<'py>(
         }
 
         let interpolation = inds[*input_index] - *base_index as f64;
-        output[output_index] = base[*base_index]
-            + (base[*base_index + 1] - base[*base_index]) * interpolation;
+        output[output_index] =
+            base[*base_index] + (base[*base_index + 1] - base[*base_index]) * interpolation;
     }
 
     Ok(PyArray1::from_owned_array(py, output))
