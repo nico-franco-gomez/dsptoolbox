@@ -386,8 +386,8 @@ def general_subplots_line(
 
 def general_matrix_plot(
     matrix: NDArray[np.float64],
-    range_x: tuple[float, float] | None = None,
-    range_y: tuple[float, float] | None = None,
+    range_x: Sequence[float] | None = None,
+    range_y: Sequence[float] | None = None,
     range_z: float | None = None,
     xlabel: str | None = None,
     ylabel: str | None = None,
