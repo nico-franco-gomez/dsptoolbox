@@ -13,9 +13,11 @@ keywords = ["Digital Signal Processing", "dsp", "Research", "Prototyping"]
 requires-python = ">=3.11"
 dependencies = [
   # See in combination with numba
-  "numpy~=2.5",
+  "numpy~=2.4; python_version < '3.12'",
+  "numpy~=2.5; python_version >= '3.12'",
   # Independent
-  "scipy~=1.18",
+  "scipy~=1.17; python_version < '3.12'",
+  "scipy~=1.18; python_version >= '3.12'",
   "soundfile~=0.13",
   "sounddevice~=0.5",
   "matplotlib~=3.10",
@@ -69,27 +71,25 @@ select = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
-# Import order here is load-bearing (see comment in the file): several
-# submodules do `from .. import <name>`, which needs .classes/.standard
-# already imported. Don't let the import sorter alphabetize this.
 "dsptoolbox/__init__.py" = ["I001"]
 
 [tool.mypy]
 python_version = "3.11"
 
-# scipy and seaborn ship no type information, so every call into them is
-# already `Any` to mypy. Reporting the missing stubs on top of that is pure
-# noise and hides the findings that are actually about this package.
 [[tool.mypy.overrides]]
 module = [
   "scipy.*",
   "seaborn.*",
+  "librosa.*",
   "sounddevice.*",
   "soundfile.*",
   "numba.*",
   "mpl_toolkits.*",
+  "numpy",
+  "numpy.*",
 ]
 ignore_missing_imports = true
+follow_imports = "skip"
 
 [tool.hatch.version]
 path = "dsptoolbox/__init__.py"
