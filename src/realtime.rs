@@ -1,10 +1,15 @@
 use numpy::{
     PyReadonlyArray1, PyReadonlyArray2, PyReadwriteArray1, PyReadwriteArray2, PyReadwriteArray3,
+    PyReadwriteArray4,
 };
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 
 pub fn add_functions(module: &Bound<'_, PyModule>) -> PyResult<()> {
+    module.add_function(wrap_pyfunction!(fir_filtering_sample, module)?)?;
+    module.add_function(wrap_pyfunction!(iir_filtering_sample, module)?)?;
+    module.add_function(wrap_pyfunction!(kautz_filtering_sample, module)?)?;
+    module.add_function(wrap_pyfunction!(parallel_filtering_sample, module)?)?;
     module.add_function(wrap_pyfunction!(lattice_filtering_fir, module)?)?;
     module.add_function(wrap_pyfunction!(lattice_filtering_fir_sample, module)?)?;
     module.add_function(wrap_pyfunction!(lattice_filtering_iir, module)?)?;
@@ -18,6 +23,268 @@ pub fn add_functions(module: &Bound<'_, PyModule>) -> PyResult<()> {
     module.add_function(wrap_pyfunction!(warped_iir_filtering_sample, module)?)?;
     module.add_function(wrap_pyfunction!(warped_iir_filtering_block, module)?)?;
     Ok(())
+}
+
+#[pyfunction]
+fn kautz_filtering_sample(
+    real_poles: PyReadonlyArray1<'_, f64>,
+    real_coefficients: PyReadonlyArray1<'_, f64>,
+    complex_q: PyReadonlyArray1<'_, f64>,
+    complex_r: PyReadonlyArray1<'_, f64>,
+    complex_coefficients: PyReadonlyArray1<'_, f64>,
+    input: f64,
+    mut real_state: PyReadwriteArray2<'_, f64>,
+    mut real_advance_state: PyReadwriteArray2<'_, f64>,
+    mut complex_state: PyReadwriteArray4<'_, f64>,
+    mut complex_advance_state: PyReadwriteArray3<'_, f64>,
+    channel: usize,
+) -> PyResult<f64> {
+    let real_poles = real_poles.as_array();
+    let real_coefficients = real_coefficients.as_array();
+    let complex_q = complex_q.as_array();
+    let complex_r = complex_r.as_array();
+    let complex_coefficients = complex_coefficients.as_array();
+    let mut real_state = real_state.as_array_mut();
+    let mut real_advance_state = real_advance_state.as_array_mut();
+    let mut complex_state = complex_state.as_array_mut();
+    let mut complex_advance_state = complex_advance_state.as_array_mut();
+
+    if real_poles.len() != real_coefficients.len()
+        || complex_q.len() != complex_r.len()
+        || complex_coefficients.len() != 2 * complex_q.len()
+        || real_state.dim() != (real_poles.len(), real_state.shape()[1])
+        || real_advance_state.dim() != (real_poles.len(), real_advance_state.shape()[1])
+        || real_state.shape()[1] <= channel
+        || real_advance_state.shape()[1] <= channel
+        || complex_state.shape() != [complex_q.len(), 2, 2, complex_state.shape()[3]]
+        || complex_advance_state.shape() != [complex_q.len(), 2, complex_advance_state.shape()[2]]
+        || complex_state.shape()[3] <= channel
+        || complex_advance_state.shape()[2] <= channel
+    {
+        return Err(PyValueError::new_err(
+            "invalid Kautz coefficients or state dimensions",
+        ));
+    }
+
+    let mut input = input;
+    let mut output = 0.0;
+
+    for section in 0..real_poles.len() {
+        let pole = real_poles[section];
+        let filter_output = (1.0 - pole * pole).sqrt() * input + real_state[(section, channel)];
+        real_state[(section, channel)] = pole * filter_output;
+        output += filter_output * real_coefficients[section];
+
+        let advanced_output = -pole * input + real_advance_state[(section, channel)];
+        real_advance_state[(section, channel)] = input + pole * advanced_output;
+        input = advanced_output;
+    }
+
+    for section in 0..complex_q.len() {
+        let q = complex_q[section];
+        let r = complex_r[section];
+        let first_scale = ((1.0 - r) * (1.0 + r - q) / 2.0).sqrt();
+        let second_scale = ((1.0 - r) * (1.0 + r + q) / 2.0).sqrt();
+
+        let first_output = first_scale * input + complex_state[(section, 0, 0, channel)];
+        complex_state[(section, 0, 0, channel)] =
+            -first_scale * input - first_output * q + complex_state[(section, 0, 1, channel)];
+        complex_state[(section, 0, 1, channel)] = -first_output * r;
+        output += first_output * complex_coefficients[2 * section];
+
+        let second_output = second_scale * input + complex_state[(section, 1, 0, channel)];
+        complex_state[(section, 1, 0, channel)] =
+            second_scale * input - second_output * q + complex_state[(section, 1, 1, channel)];
+        complex_state[(section, 1, 1, channel)] = -second_output * r;
+        output += second_output * complex_coefficients[2 * section + 1];
+
+        let advanced_output = r * input + complex_advance_state[(section, 0, channel)];
+        complex_advance_state[(section, 0, channel)] =
+            q * input - advanced_output * q + complex_advance_state[(section, 1, channel)];
+        complex_advance_state[(section, 1, channel)] = input - advanced_output * r;
+        input = advanced_output;
+    }
+
+    Ok(output)
+}
+
+#[pyfunction]
+fn parallel_filtering_sample(
+    iir_b: PyReadonlyArray2<'_, f64>,
+    iir_a: PyReadonlyArray2<'_, f64>,
+    fir_b: PyReadonlyArray1<'_, f64>,
+    delay_b: PyReadonlyArray1<'_, f64>,
+    input: f64,
+    mut iir_state: PyReadwriteArray3<'_, f64>,
+    mut fir_state: PyReadwriteArray2<'_, f64>,
+    mut fir_index: PyReadwriteArray1<'_, i64>,
+    mut delay_state: PyReadwriteArray2<'_, f64>,
+    mut delay_index: PyReadwriteArray1<'_, i64>,
+    channel: usize,
+) -> PyResult<f64> {
+    let iir_b = iir_b.as_array();
+    let iir_a = iir_a.as_array();
+    let fir_b = fir_b.as_array();
+    let delay_b = delay_b.as_array();
+    let mut iir_state = iir_state.as_array_mut();
+    let mut fir_state = fir_state.as_array_mut();
+    let mut fir_index = fir_index.as_array_mut();
+    let mut delay_state = delay_state.as_array_mut();
+    let mut delay_index = delay_index.as_array_mut();
+
+    if iir_b.shape() != iir_a.shape()
+        || iir_b.shape()[1] != 3
+        || iir_state.shape() != [iir_b.shape()[0], 2, iir_state.shape()[2]]
+        || fir_state.shape()[0] != fir_b.len().saturating_sub(1)
+        || delay_state.shape()[0] != delay_b.len().saturating_sub(1)
+        || fir_state.shape()[1] <= channel
+        || delay_state.shape()[1] <= channel
+        || iir_state.shape()[2] <= channel
+        || fir_index.len() <= channel
+        || delay_index.len() <= channel
+    {
+        return Err(PyValueError::new_err(
+            "invalid parallel filter coefficients or state dimensions",
+        ));
+    }
+
+    let mut input = input;
+    let mut output = 0.0;
+
+    if fir_b.len() > 1 {
+        output += process_fir_sample(&fir_b, input, &mut fir_state, &mut fir_index, channel)?;
+    } else if fir_b.len() == 1 {
+        output += fir_b[0] * input;
+    }
+
+    if delay_b.len() > 1 {
+        input = process_fir_sample(&delay_b, input, &mut delay_state, &mut delay_index, channel)?;
+    }
+
+    for section in 0..iir_b.shape()[0] {
+        let section_output = iir_b[(section, 0)] * input + iir_state[(section, 0, channel)];
+        iir_state[(section, 0, channel)] = iir_b[(section, 1)] * input
+            - iir_a[(section, 1)] * section_output
+            + iir_state[(section, 1, channel)];
+        iir_state[(section, 1, channel)] =
+            iir_b[(section, 2)] * input - iir_a[(section, 2)] * section_output;
+        output += section_output;
+    }
+
+    Ok(output)
+}
+
+fn process_fir_sample(
+    coefficients: &ndarray::ArrayView1<'_, f64>,
+    input: f64,
+    state: &mut ndarray::ArrayViewMut2<'_, f64>,
+    index: &mut ndarray::ArrayViewMut1<'_, i64>,
+    channel: usize,
+) -> PyResult<f64> {
+    let order = coefficients.len() - 1;
+    if index[channel] < 0 || index[channel] as usize >= order {
+        return Err(PyValueError::new_err(
+            "FIR state index must point inside the circular state",
+        ));
+    }
+    let write_index = index[channel] as usize;
+    let mut output = coefficients[0] * input;
+    for coefficient in 0..order {
+        let read_index = (write_index + order - coefficient) % order;
+        output += state[(read_index, channel)] * coefficients[coefficient + 1];
+    }
+    let next_write_index = (write_index + 1) % order;
+    state[(next_write_index, channel)] = input;
+    index[channel] = next_write_index as i64;
+    Ok(output)
+}
+
+#[pyfunction]
+fn fir_filtering_sample(
+    b: PyReadonlyArray1<'_, f64>,
+    input: f64,
+    mut state: PyReadwriteArray2<'_, f64>,
+    mut current_state_ind: PyReadwriteArray1<'_, i64>,
+    channel: usize,
+) -> PyResult<f64> {
+    let b = b.as_array();
+    let mut state = state.as_array_mut();
+    let mut current_state_ind = current_state_ind.as_array_mut();
+
+    if b.is_empty() {
+        return Err(PyValueError::new_err("FIR coefficients cannot be empty"));
+    }
+    if state.shape()[0] != b.len() - 1 {
+        return Err(PyValueError::new_err(
+            "state length must match FIR filter order",
+        ));
+    }
+    if state.shape()[1] <= channel || current_state_ind.len() <= channel {
+        return Err(PyValueError::new_err(
+            "filter state does not contain the requested channel",
+        ));
+    }
+
+    let order = b.len() - 1;
+    if order == 0 {
+        return Ok(b[0] * input);
+    }
+
+    let write_index = current_state_ind[channel];
+    if write_index < 0 || write_index as usize >= order {
+        return Err(PyValueError::new_err(
+            "FIR state index must point inside the circular state",
+        ));
+    }
+    let write_index = write_index as usize;
+
+    let mut output = b[0] * input;
+    for coefficient in 0..order {
+        let read_index = (write_index + order - coefficient) % order;
+        output += state[(read_index, channel)] * b[coefficient + 1];
+    }
+
+    let next_write_index = (write_index + 1) % order;
+    state[(next_write_index, channel)] = input;
+    current_state_ind[channel] = next_write_index as i64;
+    Ok(output)
+}
+
+#[pyfunction]
+fn iir_filtering_sample(
+    b: PyReadonlyArray1<'_, f64>,
+    a: PyReadonlyArray1<'_, f64>,
+    input: f64,
+    mut state: PyReadwriteArray2<'_, f64>,
+    channel: usize,
+) -> PyResult<f64> {
+    let b = b.as_array();
+    let a = a.as_array();
+    let mut state = state.as_array_mut();
+
+    if b.is_empty() || b.len() != a.len() {
+        return Err(PyValueError::new_err(
+            "IIR coefficient vectors must be non-empty and equally sized",
+        ));
+    }
+    if state.shape()[0] != b.len() - 1 || state.shape()[1] <= channel {
+        return Err(PyValueError::new_err(
+            "IIR state shape does not match the filter order and channel",
+        ));
+    }
+
+    let order = b.len() - 1;
+    if order == 0 {
+        return Ok(b[0] * input);
+    }
+
+    let output = b[0] * input + state[(0, channel)];
+    for coefficient in 0..order - 1 {
+        state[(coefficient, channel)] = input * b[coefficient + 1] - output * a[coefficient + 1]
+            + state[(coefficient + 1, channel)];
+    }
+    state[(order - 1, channel)] = input * b[order] - output * a[order];
+    Ok(output)
 }
 
 #[pyfunction]

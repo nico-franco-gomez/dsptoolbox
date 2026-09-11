@@ -1,3 +1,4 @@
+from collections.abc import Callable
 from typing import Self
 
 import numpy as np
@@ -14,6 +15,12 @@ from ..standard.enums import FilterCoefficientsType
 from .fir_filter_realtime import FIRFilter
 from .iir_filter_realtime import IIRFilter
 from .realtime_filter import RealtimeFilter
+
+_parallel_filtering_sample_rust: Callable | None
+try:
+    from .._rust import parallel_filtering_sample as _parallel_filtering_sample_rust
+except ImportError:
+    _parallel_filtering_sample_rust = None
 
 
 class ParallelFilter(RealtimeFilter[float]):
@@ -78,6 +85,7 @@ class ParallelFilter(RealtimeFilter[float]):
         self.poles = poles
         self.n_fir = n_fir
         self.sampling_rate_hz = sampling_rate_hz
+        self.n_channels = 1
         self.set_parameters()
 
     def set_parameters(
@@ -264,6 +272,35 @@ class ParallelFilter(RealtimeFilter[float]):
         if self.delay_iir_samples > 0:
             self.iir_delay = FIRFilter(np.array(self.delay_iir_samples * [0.0] + [1.0]))
 
+        self._rust_iir_b = (
+            np.asarray([f.b for f in self.iir], dtype=np.float64).reshape(-1, 3)
+            if self.iir
+            else np.empty((0, 3), dtype=np.float64)
+        )
+        self._rust_iir_a = (
+            np.asarray([f.a for f in self.iir], dtype=np.float64).reshape(-1, 3)
+            if self.iir
+            else np.empty((0, 3), dtype=np.float64)
+        )
+        self._rust_fir_b = (
+            self.fir.b.copy() if self.n_fir > 0 else np.empty(0, dtype=np.float64)
+        )
+        self._rust_delay_b = (
+            self.iir_delay.b.copy()
+            if self.delay_iir_samples > 0
+            else np.empty(0, dtype=np.float64)
+        )
+        self._allocate_rust_states(getattr(self, "n_channels", 1))
+
+    def _allocate_rust_states(self, n_channels: int) -> None:
+        self._rust_iir_state = np.zeros((len(self.iir), 2, n_channels))
+        self._rust_fir_state = np.zeros((max(len(self._rust_fir_b) - 1, 0), n_channels))
+        self._rust_fir_index = np.zeros(n_channels, dtype=np.int64)
+        self._rust_delay_state = np.zeros(
+            (max(len(self._rust_delay_b) - 1, 0), n_channels)
+        )
+        self._rust_delay_index = np.zeros(n_channels, dtype=np.int64)
+
     def filter_signal(self, signal: Signal) -> Signal:
         """Filter a signal using the parallel filter bank.
 
@@ -303,12 +340,14 @@ class ParallelFilter(RealtimeFilter[float]):
         return self.filter_signal(d)
 
     def set_n_channels(self, n_channels: int) -> None:
+        self.n_channels = n_channels
         for f in self.iir:
             f.set_n_channels(n_channels)
         if self.n_fir > 0:
             self.fir.set_n_channels(n_channels)
         if self.delay_iir_samples > 0:
             self.iir_delay.set_n_channels(n_channels)
+        self._allocate_rust_states(n_channels)
 
     def reset_state(self) -> None:
         for f in self.iir:
@@ -317,8 +356,34 @@ class ParallelFilter(RealtimeFilter[float]):
             self.fir.reset_state()
         if self.delay_iir_samples > 0:
             self.iir_delay.reset_state()
+        self._rust_iir_state.fill(0.0)
+        self._rust_fir_state.fill(0.0)
+        self._rust_fir_index.fill(0)
+        self._rust_delay_state.fill(0.0)
+        self._rust_delay_index.fill(0)
 
     def process_sample(self, x: float, channel: int) -> float:
+        if (
+            _parallel_filtering_sample_rust is not None
+            and 0 <= channel < self.n_channels
+            and self._rust_iir_b.dtype == np.float64
+            and self._rust_fir_b.dtype == np.float64
+            and self._rust_delay_b.dtype == np.float64
+        ):
+            return _parallel_filtering_sample_rust(
+                self._rust_iir_b,
+                self._rust_iir_a,
+                self._rust_fir_b,
+                self._rust_delay_b,
+                x,
+                self._rust_iir_state,
+                self._rust_fir_state,
+                self._rust_fir_index,
+                self._rust_delay_state,
+                self._rust_delay_index,
+                channel,
+            )
+
         y = 0.0
 
         # FIR

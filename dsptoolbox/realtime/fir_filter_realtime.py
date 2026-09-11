@@ -1,3 +1,5 @@
+from collections.abc import Callable
+
 import numpy as np
 import scipy.fft as fft
 from numpy.typing import NDArray
@@ -6,6 +8,12 @@ from ..classes.filter import Filter
 from ..classes.signal import Signal
 from ..standard.enums import FilterCoefficientsType
 from .realtime_filter import RealtimeFilter
+
+_fir_filtering_sample_rust: Callable | None
+try:
+    from .._rust import fir_filtering_sample as _fir_filtering_sample_rust
+except ImportError:
+    _fir_filtering_sample_rust = None
 
 
 class FIRFilter(RealtimeFilter[float]):
@@ -59,6 +67,17 @@ class FIRFilter(RealtimeFilter[float]):
 
     def process_sample(self, x: float, channel: int) -> float:
         """Process a sample."""
+        if (
+            _fir_filtering_sample_rust is not None
+            and getattr(self.b, "dtype", None) == np.dtype(np.float64)
+            and self.state.dtype == np.dtype(np.float64)
+            and self.current_state_ind.dtype == np.dtype(np.int64)
+            and 0 <= channel < self.state.shape[1]
+        ):
+            return _fir_filtering_sample_rust(
+                self.b, x, self.state, self.current_state_ind, channel
+            )
+
         y = self.b[0] * x
 
         write_index = self.current_state_ind[channel]

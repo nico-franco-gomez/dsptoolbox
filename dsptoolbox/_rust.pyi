@@ -2,6 +2,46 @@ import numpy as np
 from numpy.typing import NDArray
 
 # Realtime filter structures
+def kautz_filtering_sample(
+    real_poles: NDArray[np.float64],
+    real_coefficients: NDArray[np.float64],
+    complex_q: NDArray[np.float64],
+    complex_r: NDArray[np.float64],
+    complex_coefficients: NDArray[np.float64],
+    input: float,
+    real_state: NDArray[np.float64],
+    real_advance_state: NDArray[np.float64],
+    complex_state: NDArray[np.float64],
+    complex_advance_state: NDArray[np.float64],
+    channel: int,
+) -> float: ...
+def parallel_filtering_sample(
+    iir_b: NDArray[np.float64],
+    iir_a: NDArray[np.float64],
+    fir_b: NDArray[np.float64],
+    delay_b: NDArray[np.float64],
+    input: float,
+    iir_state: NDArray[np.float64],
+    fir_state: NDArray[np.float64],
+    fir_index: NDArray[np.int64],
+    delay_state: NDArray[np.float64],
+    delay_index: NDArray[np.int64],
+    channel: int,
+) -> float: ...
+def fir_filtering_sample(
+    b: NDArray[np.float64],
+    input: float,
+    state: NDArray[np.float64],
+    current_state_ind: NDArray[np.int64],
+    channel: int,
+) -> float: ...
+def iir_filtering_sample(
+    b: NDArray[np.float64],
+    a: NDArray[np.float64],
+    input: float,
+    state: NDArray[np.float64],
+    channel: int,
+) -> float: ...
 def lattice_filtering_fir(
     k: NDArray[np.float64],
     time_data: NDArray[np.float64],
