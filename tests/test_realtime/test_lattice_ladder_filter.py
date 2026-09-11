@@ -66,6 +66,136 @@ class TestLatticeLadderFilter:
         np.testing.assert_array_equal(actual_td, expected_td)
         np.testing.assert_array_equal(actual_state, expected_state)
 
+    def test_lattice_iir_rust_backend_parity(self):
+        from dsptoolbox.realtime.lattice_ladder_filter import (
+            _lattice_ladder_filtering_iir,
+            _lattice_ladder_filtering_iir_python,
+            _lattice_ladder_filtering_iir_rust,
+        )
+
+        if _lattice_ladder_filtering_iir_rust is None:
+            pytest.skip("Rust extension is not available")
+
+        rng = np.random.default_rng(1)
+        k = rng.uniform(-0.5, 0.5, 16)
+        c = rng.normal(size=17)
+        td = rng.normal(size=(257, 3))
+        state = rng.normal(size=(16, 3))
+        expected_td, expected_state = _lattice_ladder_filtering_iir_python(
+            k, c, td.copy(), state.copy()
+        )
+        actual_td, actual_state = _lattice_ladder_filtering_iir(
+            k, c, td.copy(), state.copy()
+        )
+
+        np.testing.assert_array_equal(actual_td, expected_td)
+        np.testing.assert_array_equal(actual_state, expected_state)
+
+    def test_lattice_sos_rust_backend_parity(self):
+        from dsptoolbox.realtime.lattice_ladder_filter import (
+            _lattice_ladder_filtering_sos,
+            _lattice_ladder_filtering_sos_python,
+            _lattice_ladder_filtering_sos_rust,
+        )
+
+        if _lattice_ladder_filtering_sos_rust is None:
+            pytest.skip("Rust extension is not available")
+
+        rng = np.random.default_rng(2)
+        k = rng.uniform(-0.5, 0.5, (7, 2))
+        c = rng.normal(size=(7, 3))
+        td = rng.normal(size=(257, 3))
+        state = rng.normal(size=(7, 2, 3))
+        expected_td, expected_state = _lattice_ladder_filtering_sos_python(
+            k, c, td.copy(), state.copy()
+        )
+        actual_td, actual_state = _lattice_ladder_filtering_sos(
+            k, c, td.copy(), state.copy()
+        )
+
+        np.testing.assert_array_equal(actual_td, expected_td)
+        np.testing.assert_array_equal(actual_state, expected_state)
+
+    def test_lattice_scalar_rust_backend_parity(self):
+        from dsptoolbox.realtime.lattice_ladder_filter import (
+            _lattice_filtering_fir_python,
+            _lattice_filtering_fir_sample_rust,
+            _lattice_ladder_filtering_iir_python,
+            _lattice_ladder_filtering_iir_sample_rust,
+            _lattice_ladder_filtering_sos_python,
+            _lattice_ladder_filtering_sos_sample_rust,
+        )
+
+        if any(
+            backend is None
+            for backend in (
+                _lattice_filtering_fir_sample_rust,
+                _lattice_ladder_filtering_iir_sample_rust,
+                _lattice_ladder_filtering_sos_sample_rust,
+            )
+        ):
+            pytest.skip("Rust extension is not available")
+
+        rng = np.random.default_rng(3)
+        sample = 0.37
+
+        k = rng.uniform(-0.5, 0.5, 8)
+        state = rng.normal(size=(8, 2))
+        expected_data = np.array([[sample]])
+        expected_state = state[:, :1].copy()
+        _lattice_filtering_fir_python(k, expected_data, expected_state)
+        actual_state = state[:, :1].copy()
+        actual_sample = _lattice_filtering_fir_sample_rust(k, sample, actual_state, 0)
+        np.testing.assert_array_equal(actual_sample, expected_data[0, 0])
+        np.testing.assert_array_equal(actual_state, expected_state)
+
+        filt = dsp.realtime.LatticeLadderFilter(k, sampling_rate_hz=48000)
+        filt.state = state.copy()
+        np.testing.assert_array_equal(
+            filt.process_sample(sample, 0), expected_data[0, 0]
+        )
+        np.testing.assert_array_equal(filt.state, expected_state)
+
+        k = rng.uniform(-0.5, 0.5, 8)
+        c = rng.normal(size=9)
+        state = rng.normal(size=(8, 2))
+        expected_data = np.array([[sample]])
+        expected_state = state[:, :1].copy()
+        _lattice_ladder_filtering_iir_python(k, c, expected_data, expected_state)
+        actual_state = state[:, :1].copy()
+        actual_sample = _lattice_ladder_filtering_iir_sample_rust(
+            k, c, sample, actual_state, 0
+        )
+        np.testing.assert_array_equal(actual_sample, expected_data[0, 0])
+        np.testing.assert_array_equal(actual_state, expected_state)
+
+        filt = dsp.realtime.LatticeLadderFilter(k, c, sampling_rate_hz=48000)
+        filt.state = state.copy()
+        np.testing.assert_array_equal(
+            filt.process_sample(sample, 0), expected_data[0, 0]
+        )
+        np.testing.assert_array_equal(filt.state, expected_state)
+
+        k = rng.uniform(-0.5, 0.5, (4, 2))
+        c = rng.normal(size=(4, 3))
+        state = rng.normal(size=(4, 2, 2))
+        expected_data = np.array([[sample]])
+        expected_state = state[:, :, :1].copy()
+        _lattice_ladder_filtering_sos_python(k, c, expected_data, expected_state)
+        actual_state = state[:, :, :1].copy()
+        actual_sample = _lattice_ladder_filtering_sos_sample_rust(
+            k, c, sample, actual_state, 0
+        )
+        np.testing.assert_array_equal(actual_sample, expected_data[0, 0])
+        np.testing.assert_array_equal(actual_state, expected_state)
+
+        filt = dsp.realtime.LatticeLadderFilter(k, c, sampling_rate_hz=48000)
+        filt.state = state.copy()
+        np.testing.assert_array_equal(
+            filt.process_sample(sample, 0), expected_data[0, 0]
+        )
+        np.testing.assert_array_equal(filt.state, expected_state)
+
     def test_convert_lattice_filter(self):
         fs = 44100
         # Second-order sections

@@ -7,21 +7,15 @@ from numpy.typing import NDArray
 from scipy.signal import get_window, lfilter
 
 _laguerre_rust: Callable | None
-try:
-    from .._rust import laguerre as _laguerre_rust  # noqa: I001
-except ImportError:
-    _laguerre_rust = None
-
 _warp_time_series_rust: Callable | None
-try:
-    from .._rust import warp_time_series as _warp_time_series_rust  # noqa: I001
-except ImportError:
-    _warp_time_series_rust = None
-
 _squeeze_scalogram_rust: Callable | None
 try:
+    from .._rust import laguerre as _laguerre_rust  # noqa: I001
+    from .._rust import warp_time_series as _warp_time_series_rust  # noqa: I001
     from .._rust import squeeze_scalogram as _squeeze_scalogram_rust  # noqa: I001
 except ImportError:
+    _laguerre_rust = None
+    _warp_time_series_rust = None
     _squeeze_scalogram_rust = None
 
 

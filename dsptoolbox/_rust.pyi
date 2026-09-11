@@ -1,14 +1,94 @@
 import numpy as np
 from numpy.typing import NDArray
 
-def laguerre(
-    time_data: NDArray[np.float64], warping_factor: float
-) -> NDArray[np.float64]: ...
+# Realtime filter structures
 def lattice_filtering_fir(
     k: NDArray[np.float64],
     time_data: NDArray[np.float64],
     state: NDArray[np.float64],
 ) -> None: ...
+def lattice_filtering_fir_sample(
+    k: NDArray[np.float64],
+    input: float,
+    state: NDArray[np.float64],
+    channel: int,
+) -> float: ...
+def lattice_filtering_iir(
+    k: NDArray[np.float64],
+    c: NDArray[np.float64],
+    time_data: NDArray[np.float64],
+    state: NDArray[np.float64],
+) -> None: ...
+def lattice_filtering_iir_sample(
+    k: NDArray[np.float64],
+    c: NDArray[np.float64],
+    input: float,
+    state: NDArray[np.float64],
+    channel: int,
+) -> float: ...
+def lattice_filtering_sos(
+    k: NDArray[np.float64],
+    c: NDArray[np.float64],
+    time_data: NDArray[np.float64],
+    state: NDArray[np.float64],
+) -> None: ...
+def lattice_filtering_sos_sample(
+    k: NDArray[np.float64],
+    c: NDArray[np.float64],
+    input: float,
+    state: NDArray[np.float64],
+    channel: int,
+) -> float: ...
+def warped_fir_filtering(
+    b: NDArray[np.float64],
+    warp: float,
+    time_data: NDArray[np.float64],
+    state: NDArray[np.float64],
+) -> None: ...
+def warped_fir_filtering_sample(
+    b: NDArray[np.float64],
+    warp: float,
+    input: float,
+    state: NDArray[np.float64],
+    channel: int,
+) -> float: ...
+def warped_fir_filtering_block(
+    b: NDArray[np.float64],
+    warp: float,
+    input: NDArray[np.float64],
+    output: NDArray[np.float64],
+    state: NDArray[np.float64],
+    channel: int,
+) -> None: ...
+def warped_iir_filtering(
+    b: NDArray[np.float64],
+    sigmas: NDArray[np.float64],
+    warp: float,
+    time_data: NDArray[np.float64],
+    state: NDArray[np.float64],
+) -> None: ...
+def warped_iir_filtering_sample(
+    b: NDArray[np.float64],
+    sigmas: NDArray[np.float64],
+    warp: float,
+    input: float,
+    state: NDArray[np.float64],
+    channel: int,
+) -> float: ...
+def warped_iir_filtering_block(
+    b: NDArray[np.float64],
+    sigmas: NDArray[np.float64],
+    warp: float,
+    input: NDArray[np.float64],
+    output: NDArray[np.float64],
+    state: NDArray[np.float64],
+    channel: int,
+) -> None: ...
+
+# Transforms
+def laguerre(
+    time_data: NDArray[np.float64], warping_factor: float
+) -> NDArray[np.float64]: ...
 def warp_time_series(
     time_data: NDArray[np.float64], warping_factor: float
 ) -> NDArray[np.float64]: ...

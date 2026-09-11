@@ -60,8 +60,7 @@ class TestBlockProcessing:
         np.testing.assert_allclose(per_block, per_sample, atol=1e-12)
 
     def test_generic_block_implementation_matches_per_sample(self):
-        """`WarpedFIR` does not override `process_block`, so it uses the base
-        implementation."""
+        """Warped FIR block processing preserves sample-by-sample output."""
         filt = dsp.realtime.WarpedFIR(
             np.hanning(15), dsp.WarpingFactor.Custom.with_factor(-0.6), self.fs_hz
         )
@@ -70,6 +69,19 @@ class TestBlockProcessing:
         filt.reset_state()
         per_block = self._filter_in_blocks(filt)
         np.testing.assert_allclose(per_block, per_sample)
+
+    def test_warped_iir_block_matches_per_sample(self):
+        filt = dsp.realtime.WarpedIIR(
+            np.hanning(9),
+            np.array([1.0, -0.4, 0.15, -0.05]),
+            dsp.WarpingFactor.Custom.with_factor(-0.6),
+            self.fs_hz,
+        )
+        per_sample = self._filter_per_sample(filt)
+
+        filt.reset_state()
+        per_block = self._filter_in_blocks(filt)
+        np.testing.assert_allclose(per_block, per_sample, atol=1e-12)
 
     def test_state_variable_filter_block_returns_all_four_modes(self):
         filt = dsp.realtime.StateVariableFilter(1000.0, 1.0, self.fs_hz)

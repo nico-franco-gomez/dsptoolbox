@@ -509,6 +509,135 @@ class TestFilterTopologies:
         expected = sig.lfilter(b, a, x)
         np.testing.assert_allclose(out, expected, atol=1e-9)
 
+    def test_warped_rust_backend_parity(self):
+        from dsptoolbox.realtime.warped_filters import (
+            _warped_fir_filtering_block_rust,
+            _warped_fir_filtering_python,
+            _warped_fir_filtering_rust,
+            _warped_fir_filtering_sample_rust,
+            _warped_iir_filtering_block_rust,
+            _warped_iir_filtering_python,
+            _warped_iir_filtering_rust,
+            _warped_iir_filtering_sample_rust,
+        )
+
+        if _warped_fir_filtering_rust is None:
+            pytest.skip("Rust extension is not available")
+
+        rng = np.random.default_rng(11)
+        b = rng.normal(0.0, 0.2, 9)
+        td = rng.normal(size=(257, 3))
+        state = rng.normal(size=(len(b), 3))
+
+        expected = td.copy()
+        expected_state = state.copy()
+        _warped_fir_filtering_python(b, -0.6, expected, expected_state)
+        actual = td.copy()
+        actual_state = state.copy()
+        _warped_fir_filtering_rust(b, -0.6, actual, actual_state)
+        np.testing.assert_allclose(actual, expected, rtol=1e-12, atol=1e-12)
+        np.testing.assert_allclose(actual_state, expected_state, rtol=1e-12, atol=1e-12)
+
+        filt = dsp.realtime.WarpedIIR(
+            rng.normal(0.0, 0.2, 7),
+            np.array([1.0, -0.4, 0.15, -0.05]),
+            dsp.WarpingFactor.Custom.with_factor(-0.6),
+            self.fs_hz,
+        )
+        expected = td.copy()
+        expected_state = state[: filt.N].copy()
+        _warped_iir_filtering_python(
+            filt.b, filt.sigmas, filt.warp, expected, expected_state
+        )
+        actual = td.copy()
+        actual_state = state[: filt.N].copy()
+        _warped_iir_filtering_rust(filt.b, filt.sigmas, filt.warp, actual, actual_state)
+        np.testing.assert_allclose(actual, expected, rtol=1e-12, atol=1e-12)
+        np.testing.assert_allclose(actual_state, expected_state, rtol=1e-12, atol=1e-12)
+
+        assert _warped_fir_filtering_block_rust is not None
+        assert _warped_fir_filtering_sample_rust is not None
+        assert _warped_iir_filtering_block_rust is not None
+        assert _warped_iir_filtering_sample_rust is not None
+
+        sample = td[0, 0]
+        expected_sample_data = np.array([[sample]])
+        expected_state = state[:, :1].copy()
+        _warped_fir_filtering_python(b, -0.6, expected_sample_data, expected_state)
+        actual_state = state[:, :1].copy()
+        actual_sample = _warped_fir_filtering_sample_rust(
+            b, -0.6, sample, actual_state, 0
+        )
+        np.testing.assert_allclose(actual_sample, expected_sample_data[0, 0])
+        np.testing.assert_allclose(actual_state, expected_state)
+
+        fir = dsp.realtime.WarpedFIR(
+            b, dsp.WarpingFactor.Custom.with_factor(-0.6), self.fs_hz
+        )
+        fir.buffer = state[:, :1].copy()
+        np.testing.assert_allclose(
+            fir.process_sample(sample, 0), expected_sample_data[0, 0]
+        )
+        np.testing.assert_allclose(fir.buffer, expected_state)
+
+        sample = td[0, 0]
+        expected_sample_data = np.array([[sample]])
+        expected_state = state[: filt.N, :1].copy()
+        _warped_iir_filtering_python(
+            filt.b,
+            filt.sigmas,
+            filt.warp,
+            expected_sample_data,
+            expected_state,
+        )
+        actual_state = state[: filt.N, :1].copy()
+        actual_sample = _warped_iir_filtering_sample_rust(
+            filt.b, filt.sigmas, filt.warp, sample, actual_state, 0
+        )
+        np.testing.assert_allclose(actual_sample, expected_sample_data[0, 0])
+        np.testing.assert_allclose(actual_state, expected_state)
+
+        filt.reset_state()
+        filt.buffer = state[: filt.N, :1].copy()
+        np.testing.assert_allclose(
+            filt.process_sample(sample, 0), expected_sample_data[0, 0]
+        )
+        np.testing.assert_allclose(filt.buffer, expected_state)
+
+        block = td[:, 0]
+        expected_block = np.empty(len(block))
+        expected_state = state[:, :1].copy()
+        expected_data = block[:, None].copy()
+        _warped_fir_filtering_python(b, -0.6, expected_data, expected_state)
+        expected_block[:] = expected_data[:, 0]
+        actual_block = np.empty(len(block))
+        actual_state = state[:, :1].copy()
+        _warped_fir_filtering_block_rust(b, -0.6, block, actual_block, actual_state, 0)
+        np.testing.assert_allclose(actual_block, expected_block, rtol=1e-12, atol=1e-12)
+        np.testing.assert_allclose(actual_state, expected_state, rtol=1e-12, atol=1e-12)
+
+        block = td[:, 0]
+        expected_block = np.empty(len(block))
+        expected_state = state[: filt.N, :1].copy()
+        expected_data = block[:, None].copy()
+        _warped_iir_filtering_python(
+            filt.b, filt.sigmas, filt.warp, expected_data, expected_state
+        )
+        expected_block[:] = expected_data[:, 0]
+        actual_block = np.empty(len(block))
+        actual_state = state[: filt.N, :1].copy()
+        _warped_iir_filtering_block_rust(
+            filt.b,
+            filt.sigmas,
+            filt.warp,
+            block,
+            actual_block,
+            actual_state,
+            0,
+        )
+        np.testing.assert_allclose(actual_block, expected_block, rtol=1e-12, atol=1e-12)
+        np.testing.assert_allclose(actual_state, expected_state, rtol=1e-12, atol=1e-12)
+
     def test_iir_filter_does_not_modify_coefficients(self):
         """The constructor normalizes by a[0] and must copy to do so."""
         b = np.array([1.0, 0.5])
