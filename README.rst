@@ -71,17 +71,19 @@ Use pip to install dsptoolbox
 
 (Requires Python 3.11 or higher)
 
-In order to install the package successfully using Linux, you need to install
-PortAudio manually, since installing `sounddevice`_ will not do it automatically. To do this,
-run the following commands on your console:
+On Linux, install the native audio libraries used by the audio dependencies
+manually. `sounddevice`_ uses PortAudio for live audio input and output, while
+`soundfile`_ uses libsndfile for reading and writing audio files. Install them
+with the following command:
 
 .. code-block:: console
 
     $ sudo apt-get install libasound-dev libportaudio2 libsndfile1
 
 If this does not work properly for some reason, refer to the documentation for
-`sounddevice`_ or `PortAudio`_.
+`sounddevice`_, `soundfile`_, or `PortAudio`_.
 
 .. _documentation: http://dsptoolbox.readthedocs.io/
 .. _sounddevice: https://python-sounddevice.readthedocs.io/en/0.4.5/
+.. _soundfile: https://python-soundfile.readthedocs.io/
 .. _PortAudio: http://www.portaudio.com
