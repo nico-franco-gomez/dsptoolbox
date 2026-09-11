@@ -6,6 +6,12 @@ import numpy as np
 from numpy.typing import NDArray
 from scipy.signal import get_window, lfilter
 
+_laguerre_rust: Callable | None
+try:
+    from .._rust import laguerre as _laguerre_rust  # noqa: I001
+except ImportError:
+    _laguerre_rust = None
+
 _warp_time_series_rust: Callable | None
 try:
     from .._rust import warp_time_series as _warp_time_series_rust  # noqa: I001
@@ -463,6 +469,33 @@ def _warp_time_series(
     if _warp_time_series_rust is not None:
         return _warp_time_series_rust(td, warping_factor)
     return _warp_time_series_python(td, warping_factor)
+
+
+def _laguerre_python(
+    td: NDArray[np.float64], warping_factor: float
+) -> NDArray[np.float64]:
+    """Compute the discrete Laguerre transform with SciPy filtering."""
+    xx = td[::-1, ...]
+    output = np.zeros_like(xx)
+
+    b = np.array([warping_factor, 1.0])
+    a = np.array([1.0, warping_factor])
+    normalization = (1.0 - warping_factor**2.0) ** 0.5
+
+    xx = lfilter(normalization, a, xx, axis=0)
+    output[0, :] = xx[-1, :]
+
+    for stage in range(1, xx.shape[0]):
+        xx = lfilter(b, a, xx, axis=0)
+        output[stage, :] = xx[-1, :]
+    return output
+
+
+def _laguerre(td: NDArray[np.float64], warping_factor: float) -> NDArray[np.float64]:
+    """Compute the discrete Laguerre transform, preferring Rust."""
+    if _laguerre_rust is not None:
+        return _laguerre_rust(td, warping_factor)
+    return _laguerre_python(td, warping_factor)
 
 
 try:

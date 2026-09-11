@@ -5,9 +5,68 @@ use pyo3::exceptions::{PyIndexError, PyValueError};
 use pyo3::prelude::*;
 
 pub fn add_functions(module: &Bound<'_, PyModule>) -> PyResult<()> {
+    module.add_function(wrap_pyfunction!(laguerre, module)?)?;
     module.add_function(wrap_pyfunction!(warp_time_series, module)?)?;
     module.add_function(wrap_pyfunction!(squeeze_scalogram, module)?)?;
     Ok(())
+}
+
+#[pyfunction]
+fn laguerre<'py>(
+    py: Python<'py>,
+    time_data: PyReadonlyArray2<'py, f64>,
+    warping_factor: f64,
+) -> PyResult<Bound<'py, PyArray2<f64>>> {
+    let time_data = time_data.as_array();
+    let (n_samples, n_channels) = time_data.dim();
+    if n_samples == 0 {
+        return Err(PyIndexError::new_err(
+            "index 0 is out of bounds for axis 0 with size 0",
+        ));
+    }
+
+    let mut filtered = Array2::zeros((n_samples, n_channels));
+    for sample in 0..n_samples {
+        for channel in 0..n_channels {
+            filtered[(sample, channel)] = time_data[(n_samples - sample - 1, channel)];
+        }
+    }
+
+    let normalization = (1.0 - warping_factor.powi(2)).sqrt();
+    for channel in 0..n_channels {
+        let mut previous_output = normalization * filtered[(0, channel)];
+        filtered[(0, channel)] = previous_output;
+        for sample in 1..n_samples {
+            previous_output =
+                normalization * filtered[(sample, channel)] - warping_factor * previous_output;
+            filtered[(sample, channel)] = previous_output;
+        }
+    }
+
+    let mut output = Array2::zeros((n_samples, n_channels));
+    for channel in 0..n_channels {
+        output[(0, channel)] = filtered[(n_samples - 1, channel)];
+    }
+
+    for stage in 1..n_samples {
+        for channel in 0..n_channels {
+            let mut previous_input = filtered[(0, channel)];
+            let mut previous_output = warping_factor * previous_input;
+            filtered[(0, channel)] = previous_output;
+
+            for sample in 1..n_samples {
+                let input = filtered[(sample, channel)];
+                let current_output =
+                    warping_factor * input + previous_input - warping_factor * previous_output;
+                filtered[(sample, channel)] = current_output;
+                previous_input = input;
+                previous_output = current_output;
+            }
+            output[(stage, channel)] = filtered[(n_samples - 1, channel)];
+        }
+    }
+
+    Ok(PyArray2::from_owned_array(py, output))
 }
 
 #[pyfunction]

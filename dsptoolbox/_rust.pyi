@@ -1,6 +1,9 @@
 import numpy as np
 from numpy.typing import NDArray
 
+def laguerre(
+    time_data: NDArray[np.float64], warping_factor: float
+) -> NDArray[np.float64]: ...
 def lattice_filtering_fir(
     k: NDArray[np.float64],
     time_data: NDArray[np.float64],

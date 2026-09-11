@@ -46,6 +46,7 @@ from ..transforms._transforms import (
     Wavelet,
     _dft_backend,
     _get_kernels_vqt,
+    _laguerre,
     _pitch2frequency,
     _squeeze_scalogram,
     _warp_time_series,
@@ -968,24 +969,7 @@ def laguerre(signal: Signal, warping_factor: WarpingFactorType) -> Signal:
 
     """
     factor = warping_factor.get_factor(signal.sampling_rate_hz)
-
-    xx = signal.time_data[::-1, ...]  # Time reversal
-    output = np.zeros_like(xx)
-
-    b = np.array([factor, 1.0])
-    a = np.array([1.0, factor])
-    b_normalized = (1.0 - factor**2.0) ** 0.5
-
-    # First filtering stage with normalization
-    xx = lfilter(b_normalized, a, xx, axis=0)
-    output[0, :] = xx[-1, :]
-
-    # Rest filters
-    for i in range(1, xx.shape[0]):
-        xx = lfilter(b, a, xx, axis=0)
-        output[i, :] = xx[-1, :]
-
-    return signal.copy_with_new_time_data(output)
+    return signal.copy_with_new_time_data(_laguerre(signal.time_data, factor))
 
 
 def warp(

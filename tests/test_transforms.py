@@ -397,6 +397,22 @@ class TestTransformsModule:
         dsp.transforms.laguerre(sp, dsp.WarpingFactor.Custom.with_factor(-0.7))
         dsp.transforms.laguerre(sp, dsp.WarpingFactor.Erb)
 
+    def test_laguerre_rust_backend_parity(self):
+        from dsptoolbox.transforms._transforms import _laguerre_python
+
+        try:
+            from dsptoolbox._rust import laguerre
+        except ImportError:
+            pytest.skip("Rust extension is not available")
+
+        for shape in ((3, 1), (31, 2), (128, 4)):
+            rng = np.random.default_rng(sum(shape))
+            time_data = rng.normal(size=shape)
+            for warping_factor in (-0.7, 0.4):
+                expected = _laguerre_python(time_data, warping_factor)
+                actual = laguerre(time_data, warping_factor)
+                np.testing.assert_allclose(actual, expected, rtol=1e-12, atol=1e-12)
+
     def test_laguerre_round_trip_is_identity(self):
         """Per the docstring, applying `laguerre` with a warping factor and
         then again with its negation must reconstruct the original signal
