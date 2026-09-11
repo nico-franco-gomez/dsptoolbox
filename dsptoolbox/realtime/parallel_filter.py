@@ -295,11 +295,11 @@ class ParallelFilter(RealtimeFilter[float]):
     def _allocate_rust_states(self, n_channels: int) -> None:
         self._rust_iir_state = np.zeros((len(self.iir), 2, n_channels))
         self._rust_fir_state = np.zeros((max(len(self._rust_fir_b) - 1, 0), n_channels))
-        self._rust_fir_index = np.zeros(n_channels, dtype=np.int64)
+        self._rust_fir_index: NDArray[np.int64] = np.zeros(n_channels, dtype=np.int64)
         self._rust_delay_state = np.zeros(
             (max(len(self._rust_delay_b) - 1, 0), n_channels)
         )
-        self._rust_delay_index = np.zeros(n_channels, dtype=np.int64)
+        self._rust_delay_index: NDArray[np.int64] = np.zeros(n_channels, dtype=np.int64)
 
     def filter_signal(self, signal: Signal) -> Signal:
         """Filter a signal using the parallel filter bank.

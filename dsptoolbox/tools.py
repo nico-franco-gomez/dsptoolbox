@@ -200,7 +200,7 @@ def frequency_crossover(
 
     """
     f = (
-        log_frequency_vector(crossover_region_hz, 250)
+        log_frequency_vector(list(crossover_region_hz), 250)
         if logarithmic
         else np.linspace(
             crossover_region_hz[0],
@@ -374,7 +374,7 @@ def erb_frequencies(
     ):
         raise ValueError("freq_range must be an array like of length 2")
     if freq_range_hz[0] > freq_range_hz[1]:
-        freq_range_hz = [freq_range_hz[1], freq_range_hz[0]]
+        freq_range_hz = (freq_range_hz[1], freq_range_hz[0])
     if resolution <= 0:
         raise ValueError("Resolution must be larger than zero")
 
@@ -472,6 +472,7 @@ def convert_sample_representation(
 
     # ==== Input (convert always to double precision)
     if not input_format.is_float():
+        assert not isinstance(values, bytes)
         max_value_input = 2.0 ** (input_format.bit_depth() - 1) - 1
         values = values.astype(np.float64) / max_value_input
         if not input_format.is_signed():
@@ -499,7 +500,7 @@ def convert_sample_representation(
                 "This format is only valid for casting when " + "the output is in bytes"
             )
             # Held in a 32-bit type until `_array_to_bytes_24bits` packs it
-            sample_type = np.int32 if output_format.is_signed() else np.uint32
+            sample_type: Any = np.int32 if output_format.is_signed() else np.uint32
         else:
             sample_type = output_format.to_numpy_dtype()
         output = output.astype(sample_type)

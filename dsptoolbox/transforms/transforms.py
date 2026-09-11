@@ -1,6 +1,6 @@
-"""
-Here are methods considered as somewhat special or less common.
-"""
+"""Here are methods considered as somewhat special or less common."""
+
+from typing import Any
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -319,6 +319,8 @@ def plot_waterfall(
     amplitude_scaling = sig.spectrum_scaling.is_amplitude_scaling()
     fig, ax = plt.subplots(figsize=(10, 8), subplot_kw=dict(projection="3d"))
     assert isinstance(ax, Axes3D)
+    tt: NDArray[Any]
+    ff: NDArray[Any]
     tt, ff = np.meshgrid(t, f)
     ax.plot_surface(
         tt,
@@ -525,6 +527,8 @@ def istft(
     )
     td_framed = td_framed[: parameters.window_length_samples, ...]
     if parameters.scaling.has_physical_units():
+        assert isinstance(sampling_rate_hz, int)
+        assert parameters.fft_length_samples is not None
         td_framed /= parameters.scaling.get_scaling_factor(
             parameters.fft_length_samples, sampling_rate_hz, window
         )
@@ -768,9 +772,11 @@ def hilbert(
 
         return signal.copy_with_new_time_data(np.fft.ifft(sp, axis=0))
     elif type(signal) is MultiBandSignal:
-        new_mb = signal.copy()
+        new_mb: MultiBandSignal = signal.copy()
         for ind, b in enumerate(new_mb):
-            new_mb.bands[ind] = hilbert(b)
+            new_band = hilbert(b)
+            assert isinstance(new_band, Signal)
+            new_mb.bands[ind] = new_band
         return new_mb
     else:
         raise TypeError("Signal does not have a valid type")

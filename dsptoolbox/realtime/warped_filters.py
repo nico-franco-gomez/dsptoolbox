@@ -205,7 +205,7 @@ class WarpedFIR(RealtimeFilter[float]):
     def process_block(
         self, block: NDArray[np.float64], channel: int
     ) -> NDArray[np.float64]:
-        output = np.empty(len(block), dtype=np.float64)
+        output: NDArray[np.float64] = np.empty(len(block), dtype=np.float64)
         if (
             _warped_fir_filtering_block_rust is not None
             and self.b.dtype == np.float64
@@ -380,7 +380,7 @@ class WarpedIIR(WarpedFIR):
     def process_block(
         self, block: NDArray[np.float64], channel: int
     ) -> NDArray[np.float64]:
-        output = np.empty(len(block), dtype=np.float64)
+        output: NDArray[np.float64] = np.empty(len(block), dtype=np.float64)
         if (
             _warped_iir_filtering_block_rust is not None
             and self.b.dtype == np.float64

@@ -326,7 +326,10 @@ class KautzFilter(RealtimeFilter[float]):
             delay_samples=0,
             sampling_rate_hz=self.sampling_rate_hz,
         )
-        return self.filter_signal(d)
+        filtered_signal = self.filter_signal(d)
+        return ImpulseResponse.from_time_data(
+            filtered_signal.time_data, self.sampling_rate_hz
+        )
 
     def __process_time_data_vector(
         self,

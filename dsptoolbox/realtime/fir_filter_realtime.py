@@ -59,7 +59,7 @@ class FIRFilter(RealtimeFilter[float]):
 
     def set_n_channels(self, n_channels: int) -> None:
         self.state = np.zeros((self.order, n_channels))
-        self.current_state_ind = np.zeros(n_channels, dtype=np.int_)
+        self.current_state_ind: NDArray[np.int_] = np.zeros(n_channels, dtype=np.int_)
 
     def reset_state(self) -> None:
         self.state.fill(0.0)
@@ -80,9 +80,9 @@ class FIRFilter(RealtimeFilter[float]):
 
         y = self.b[0] * x
 
-        write_index = self.current_state_ind[channel]
+        write_index: int = int(self.current_state_ind[channel])
         for i in range(self.order):
-            read_index = (write_index - i) % self.order
+            read_index: int = (write_index - i) % self.order
             y += self.state[read_index, channel] * self.b[i + 1]
         write_index = (write_index + 1) % self.order
         self.state[write_index, channel] = x
@@ -248,7 +248,7 @@ class FIRUniformPartitioned(FIRFilterOverlapSave):
         self.buffer_index_helper = np.arange(self.n_partitions)
 
         # Channel buffers
-        self.buffer_spectra = np.zeros(
+        self.buffer_spectra: NDArray[np.complex128] = np.zeros(
             (self.fft_size // 2 + 1, self.n_partitions, n_channels),
             dtype=np.complex128,
         )

@@ -1,6 +1,6 @@
 from copy import deepcopy
 from pickle import HIGHEST_PROTOCOL, dump
-from typing import Self
+from typing import Any, Self, cast
 
 import numpy as np
 from matplotlib.axes import Axes
@@ -1061,7 +1061,7 @@ class Spectrum(MultichannelData):
 
         total_channels = sum([s.number_of_channels for s in spectra])
         freqs = spectra[0].frequency_vector_hz
-        spec = np.zeros(
+        spec: NDArray[Any] = np.zeros(
             (len(freqs), total_channels),
             dtype=np.complex128 if complex_append else np.float64,
         )
@@ -1080,7 +1080,7 @@ class Spectrum(MultichannelData):
             )
             ch_ind += s.number_of_channels
 
-        return Spectrum(freqs, spec)
+        return cast(Self, Spectrum(freqs, spec))
 
     def plot_magnitude(
         self,
@@ -1216,7 +1216,7 @@ class Spectrum(MultichannelData):
         # Copy coherence if it exists
         if self.has_coherence:
             new_spectrum.coherence = self.coherence
-        return new_spectrum
+        return cast(Self, new_spectrum)
 
     def _update_state(self) -> None:
         """No state tracking needed for Spectrum."""

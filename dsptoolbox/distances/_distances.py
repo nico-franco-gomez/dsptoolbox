@@ -153,8 +153,8 @@ def _fw_snr_seg_per_channel(
     x = _pad_trim(x, length_signal + pad_samples)
     xhat = _pad_trim(xhat, length_signal + pad_samples)
 
-    fw_snr_seg = 0
-    position = 0
+    fw_snr_seg: float = 0.0
+    position: int = 0
     # Loop for time frames
     for _ in range(n_frames):
         # Time signals
@@ -179,7 +179,7 @@ def _fw_snr_seg_per_channel(
             weights_jm += W_jm
 
         # Mean SNR over all frequencies
-        snr_frame = np.mean(10 * snr_jm / weights_jm)
+        snr_frame: float = float(np.mean(10 * snr_jm / weights_jm))
 
         # Range dB
         if snr_frame < snr_range_db[0]:
@@ -189,7 +189,7 @@ def _fw_snr_seg_per_channel(
         fw_snr_seg += snr_frame
 
         # Updating position
-        position += step_samples
+        position += int(step_samples)
 
     fw_snr_seg /= n_frames
     return fw_snr_seg

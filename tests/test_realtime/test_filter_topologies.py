@@ -628,7 +628,9 @@ class TestFilterTopologies:
     ):
         rir = dsp.ImpulseResponse.from_file(RIR_PATH)
         noise = (self.get_noise()).resample(rir.sampling_rate_hz)
-        fir = implementation.from_filter(dsp.transfer_functions.ir_to_filter(rir))
+        fir_filter = dsp.transfer_functions.ir_to_filter(rir)
+        assert isinstance(fir_filter, dsp.Filter)
+        fir = implementation.from_filter(fir_filter)
 
         blocksize = 512
         fir.prepare(blocksize, 1)

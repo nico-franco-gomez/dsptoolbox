@@ -34,8 +34,22 @@ def append_signals(
     assert isinstance(signals[0], (Signal, MultiBandSignal)), (
         "Signals have to be of type Signal or MultiBandSignal"
     )
-    return signals[0].append_signals(
-        signals[1:], allow_padding_trimming=allow_padding_trimming, at_end=at_end
+    if isinstance(signals[0], Signal):
+        signal_list = [signal for signal in signals if isinstance(signal, Signal)]
+        assert len(signal_list) == len(signals)
+        return signal_list[0].append_signals(
+            signal_list[1:],
+            allow_padding_trimming=allow_padding_trimming,
+            at_end=at_end,
+        )
+    multiband_list = [
+        signal for signal in signals if isinstance(signal, MultiBandSignal)
+    ]
+    assert len(multiband_list) == len(signals)
+    return multiband_list[0].append_signals(
+        multiband_list[1:],
+        allow_padding_trimming=allow_padding_trimming,
+        at_end=at_end,
     )
 
 

@@ -1,3 +1,5 @@
+from typing import Any
+
 import numpy as np
 from numpy.typing import NDArray
 from scipy.interpolate import PchipInterpolator, interp1d
@@ -58,7 +60,7 @@ def _fractional_octave_smoothing(
     if lin_spaced:
         # Linear and logarithmic frequency vector
         N = len(vector)
-        l1 = np.arange(N, dtype=np.float64)
+        l1: NDArray[np.float64] = np.arange(N, dtype=np.float64)
         k_log = (N) ** (l1 / (N - 1))
         l1 += 1.0
         beta = np.log2(k_log[1])
@@ -77,12 +79,18 @@ def _fractional_octave_smoothing(
         assert window_vec is None, (
             "When window type is passed, no window vector should be added"
         )
-        if "gauss" in window_type[0]:
-            window_type = (
-                "gaussian",
-                _gaussian_window_sigma(n_window, window_type[1]),
-            )
-        window = windows.get_window(window_type, n_window, fftbins=False)
+        if isinstance(window_type, str):
+            scipy_window_type: str | tuple[Any, ...] = window_type
+        elif isinstance(window_type, tuple):
+            scipy_window_type = window_type
+            if "gauss" in window_type[0]:
+                scipy_window_type = (
+                    "gaussian",
+                    _gaussian_window_sigma(n_window, window_type[1]),
+                )
+        else:
+            scipy_window_type = window_type.to_scipy_format()
+        window = windows.get_window(scipy_window_type, n_window, fftbins=False)
     else:
         assert window_type is None, (
             "When using a window as a vector, window type should be None"

@@ -4,12 +4,16 @@ from os.path import join
 import numpy as np
 import pytest
 from matplotlib.pyplot import close, subplots
+from numpy.typing import NDArray
 
 import dsptoolbox as dsp
 
 x = np.arange(0, 1.1, 0.25)
 y = x.copy()
 z = x.copy()
+xx: NDArray[np.float64]
+yy: NDArray[np.float64]
+zz: NDArray[np.float64]
 xx, yy, zz = np.meshgrid(x, y, z, indexing="ij")
 
 

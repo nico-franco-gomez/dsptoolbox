@@ -439,7 +439,7 @@ def _filterbank_on_signal(
     n_filt = len(filters)
     match mode:
         case FilterBankMode.Parallel:
-            ss = []
+            ss: list[Signal] = []
             for n in range(n_filt):
                 ss.append(
                     filters[n].filter_signal(
@@ -449,12 +449,12 @@ def _filterbank_on_signal(
             out_sig = MultiBandSignal(ss, same_sampling_rate=same_sampling_rate)
             return out_sig
         case FilterBankMode.Sequential:
-            out_sig = signal.copy()
+            sequential_sig: Signal = signal.copy()
             for n in range(n_filt):
-                out_sig = filters[n].filter_signal(
-                    out_sig, activate_zi=activate_zi, zero_phase=zero_phase
+                sequential_sig = filters[n].filter_signal(
+                    sequential_sig, activate_zi=activate_zi, zero_phase=zero_phase
                 )
-            return out_sig
+            return sequential_sig
         case FilterBankMode.Summed:
             new_time_data = np.zeros(
                 (signal.time_data.shape[0], signal.number_of_channels, n_filt)

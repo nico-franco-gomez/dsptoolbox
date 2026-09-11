@@ -45,7 +45,7 @@ def _reverb(
     ir_start: int | None,
     return_ir_start: bool,
     automatic_trimming: bool,
-) -> tuple[float, float] | tuple[float, float, int]:
+) -> tuple[float, float] | tuple[float, float, int | None]:
     """Computes reverberation time of signal.
 
     Parameters
@@ -200,8 +200,8 @@ try:
     ) -> None:
         for reflection_index in nb.prange(reflection_vectors.shape[0]):
             thread_index = nb.get_thread_id()
-            sample_indices = np.empty(8, dtype=np.int64)
-            contributions = np.empty(8, dtype=np.float64)
+            sample_indices: NDArray[np.int64] = np.empty(8, dtype=np.int64)
+            contributions: NDArray[np.float64] = np.empty(8, dtype=np.float64)
             for image_index in range(8):
                 distance_squared = 0.0
                 for coordinate in range(3):
@@ -244,7 +244,7 @@ def _generate_rir(
     s_pos: NDArray[np.float64],
     r_pos: NDArray[np.float64],
     rt: float,
-    mo: int,
+    mo: int | None,
     sr: int,
 ) -> NDArray[np.float64]:
     """Generate RIR using image source model according to Brinkmann, et al.
@@ -525,7 +525,7 @@ class ShoeboxRoom(Room):
           get_analytical_transfer_function.
 
         """
-        dimensions_m = np.atleast_1d(np.squeeze(dimensions_m))
+        dimensions_m = np.asarray(np.atleast_1d(np.squeeze(dimensions_m)), dtype=float)
         assert len(dimensions_m) == 3, (
             "Dimensions for a shoebox room should have length 3 (x, y, z)"
         )
@@ -533,7 +533,7 @@ class ShoeboxRoom(Room):
         self.dimensions_m = dimensions_m
         volume = np.prod(dimensions_m)
         area = np.roll(dimensions_m, 1) @ dimensions_m * 2
-        super().__init__(volume, area, t60_s, absorption_coefficient)
+        super().__init__(float(volume), float(area), t60_s, absorption_coefficient)
 
     def check_if_in_room(self, coordinates_m: NDArray[np.float64]) -> bool:
         """Checks if a given point is inside the room.
@@ -725,7 +725,7 @@ class ShoeboxRoom(Room):
         # Maximum order
         max_mode_order += 1
 
-        p = np.zeros(len(omega), dtype=np.complex128)
+        p: NDArray[np.complex128] = np.zeros(len(omega), dtype=np.complex128)
         counter = 0
         modes = np.zeros((max_mode_order**3, 4))
 

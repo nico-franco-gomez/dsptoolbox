@@ -57,7 +57,7 @@ class TestFilterClass:
     def get_iir(self, sos: bool = True) -> dsp.Filter:
         if sos:
             return dsp.Filter.from_sos(self.iir, self.fs)
-        return dsp.Filter.from_ba(*self.iir_ba, self.fs)
+        return dsp.Filter.from_ba(self.iir_ba[0], self.iir_ba[1], self.fs)
 
     def get_fir(self):
         return dsp.Filter.from_ba(self.fir, np.array([1.0]), self.fs)

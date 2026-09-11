@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from collections.abc import Callable
+from typing import Any
 from warnings import warn
 
 import numpy as np
@@ -1097,12 +1098,14 @@ class Tremolo(AudioEffect):
 
     def _apply_this_effect(self, signal: Signal) -> Signal:
         """Apply tremolo effect."""
-        if type(self.modulator) is LFO:
-            modulation_signal = self.modulator.get_waveform(
+        modulator = self.modulator
+        assert modulator is not None
+        if isinstance(modulator, LFO):
+            modulation_signal = modulator.get_waveform(
                 signal.sampling_rate_hz, len(signal)
             )
         else:
-            modulation_signal = _pad_trim(self.modulator.copy(), len(signal))
+            modulation_signal = _pad_trim(modulator.copy(), len(signal))
         modulation_signal = np.abs(modulation_signal * self.depth + 1)
         return signal.copy_with_new_time_data(
             signal.time_data * modulation_signal[..., None]
@@ -1111,6 +1114,11 @@ class Tremolo(AudioEffect):
 
 class Chorus(AudioEffect):
     """Basic chorus effect."""
+
+    depths_ms: NDArray[np.float64] | None
+    base_delays_ms: NDArray[np.float64] | None
+    modulators: list[Any] | tuple[Any, ...] | NDArray[np.float64] | None
+    number_of_voices: int
 
     def __init__(
         self,
@@ -1173,26 +1181,29 @@ class Chorus(AudioEffect):
         nv_base = nv_depths = nv_mod = 0
 
         if base_delays_ms is not None:
-            base_delays_ms = np.atleast_1d(base_delays_ms)
-            nv_base = len(base_delays_ms)
+            base_delays_array = np.atleast_1d(base_delays_ms)
+            nv_base = len(base_delays_array)
         else:
+            assert self.base_delays_ms is not None
             nv_base = len(self.base_delays_ms)
 
         if depths_ms is not None:
-            depths_ms = np.atleast_1d(depths_ms)
-            nv_depths = len(depths_ms)
+            depths_array = np.atleast_1d(depths_ms)
+            nv_depths = len(depths_array)
         else:
+            assert self.depths_ms is not None
             nv_depths = len(self.depths_ms)
 
         if modulators is not None:
             if isinstance(modulators, np.ndarray):
-                modulators = np.atleast_2d(modulators)
-                nv_mod = modulators.shape[1]
+                modulators_array = np.atleast_2d(modulators)
+                nv_mod = modulators_array.shape[1]
             elif isinstance(modulators, (list, tuple)):
                 nv_mod = len(modulators)
             else:
                 nv_mod = 1
         else:
+            assert self.modulators is not None
             nv_mod = len(self.modulators)
 
         # Extract number of voices
@@ -1200,12 +1211,12 @@ class Chorus(AudioEffect):
 
         # Asserts for base delays
         if base_delays_ms is not None:
-            assert np.all(base_delays_ms > 0), "Base delays must be above 0"
-            assert len(base_delays_ms) in (
+            assert np.all(base_delays_array > 0), "Base delays must be above 0"
+            assert len(base_delays_array) in (
                 1,
                 self.number_of_voices,
             ), "Base delays can only be length 1 or number of voices"
-            self.base_delays_ms = base_delays_ms
+            self.base_delays_ms = base_delays_array
             if len(self.base_delays_ms) == 1:
                 self.base_delays_ms = np.repeat(
                     self.base_delays_ms, self.number_of_voices
@@ -1216,13 +1227,13 @@ class Chorus(AudioEffect):
                 "Unsupported modulators type. Use LFO or numpy.ndarray"
             )
             if isinstance(modulators, np.ndarray):
-                modulators = np.atleast_2d(modulators)
-                assert modulators.shape[1] == self.number_of_voices, (
+                modulators_array = np.atleast_2d(modulators)
+                assert modulators_array.shape[1] == self.number_of_voices, (
                     "The modulators signal must "
                     + "have the same number of channels as there are "
                     + f"voices {self.number_of_voices}"
                 )
-                self.modulators = modulators
+                self.modulators = modulators_array
             elif isinstance(modulators, LFO):
                 self.modulators = [modulators] * self.number_of_voices
             else:
@@ -1240,7 +1251,7 @@ class Chorus(AudioEffect):
         if depths_ms is not None:
             if type(self.modulators) is LFO:
                 assert depths_ms >= 0, "Depth must be above 0"
-            self.depths_ms = np.atleast_1d(depths_ms)
+            self.depths_ms = depths_array
             assert len(self.depths_ms) in (1, self.number_of_voices), (
                 "Depth must be of length 1 or number of "
                 + f"voices {self.number_of_voices}"
@@ -1296,11 +1307,17 @@ class Chorus(AudioEffect):
         """Apply chorus effect."""
         fs = signal.sampling_rate_hz
         le = len(signal)
+        assert self.depths_ms is not None
+        assert self.base_delays_ms is not None
+        assert self.modulators is not None
 
         # Get valid modulation signals
         if not isinstance(self.modulators, np.ndarray):
             modulation = np.zeros((le, self.number_of_voices))
-            for ind, m in enumerate(self.modulators):
+            modulators = self.modulators
+            if isinstance(modulators, LFO):
+                modulators = [modulators] * self.number_of_voices
+            for ind, m in enumerate(modulators):
                 modulation[:, ind] = (
                     m.get_waveform(fs, le) * self.depths_ms[ind]
                     + self.base_delays_ms[ind]
@@ -1444,7 +1461,7 @@ class DigitalDelay(AudioEffect):
 
         """
         fs = 2_000
-        delay_samples = np.round(self.delay_ms * 1e-3 * fs).astype(int)
+        delay_samples: int = int(np.round(self.delay_ms * 1e-3 * fs))
 
         imp = np.zeros(delay_samples * 10)
         imp[0] = 1
@@ -1471,8 +1488,8 @@ class DigitalDelay(AudioEffect):
 
     def _apply_this_effect(self, signal: Signal) -> Signal:
         """Apply delay effect."""
-        delay_samples = np.round(self.delay_ms * 1e-3 * signal.sampling_rate_hz).astype(
-            int
+        delay_samples: int = int(
+            np.round(self.delay_ms * 1e-3 * signal.sampling_rate_hz)
         )
 
         td = signal.time_data

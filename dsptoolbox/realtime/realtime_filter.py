@@ -51,7 +51,7 @@ class RealtimeFilter(abc.ABC, Generic[SampleT]):
           sample. Multimode structures override it with their own layout.
 
         """
-        output = np.empty(len(block), dtype=np.float64)
+        output: NDArray[np.float64] = np.empty(len(block), dtype=np.float64)
         for index in range(len(block)):
             output[index] = self.process_sample(block[index], channel)
         return output

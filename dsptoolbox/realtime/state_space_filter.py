@@ -1,3 +1,5 @@
+from collections.abc import Callable
+
 import numpy as np
 from numpy.typing import NDArray
 from scipy.signal import tf2ss
@@ -6,7 +8,7 @@ from ..classes.filter import Filter
 from ..standard.enums import FilterCoefficientsType
 from .realtime_filter import RealtimeFilter
 
-_state_space_filtering_sample_rust = None
+_state_space_filtering_sample_rust: Callable[..., float] | None = None
 try:
     from .._rust import (
         state_space_filtering_sample as _state_space_filtering_sample_rust,

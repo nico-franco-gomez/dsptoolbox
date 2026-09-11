@@ -35,6 +35,8 @@ class FilterBank:
 
     """
 
+    __sampling_rate_hz: int | list[int]
+
     # ======== Constructor and initializers ===================================
     def __init__(
         self,
@@ -93,7 +95,7 @@ class FilterBank:
     @property
     def metadata(self) -> dict:
         """Get a dictionary with metadata about the filter bank properties."""
-        info = {}
+        info: dict[str, object] = {}
         info["number_of_filters"] = self.number_of_filters
         info["same_sampling_rate"] = self.same_sampling_rate
         if self.same_sampling_rate:
@@ -677,7 +679,7 @@ class FilterBank:
         """
         match mode:
             case FilterBankMode.Parallel:
-                h = np.zeros(
+                h: NDArray[np.complex128] = np.zeros(
                     (len(frequency_vector_hz), self.number_of_filters),
                     dtype=np.complex128,
                 )

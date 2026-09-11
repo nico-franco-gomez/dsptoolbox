@@ -340,6 +340,7 @@ def fw_snr_seg(
         )
         multichannel = True
     # Frequency range
+    assert f_range_hz is not None
     assert len(f_range_hz) == 2, "Frequency range must have lower and upper bounds"
     f_range = np.asarray(f_range_hz)
     f_range.sort()

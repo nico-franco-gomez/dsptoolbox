@@ -3,6 +3,7 @@ Beamforming classes and functions
 """
 
 from collections.abc import Sequence
+from typing import Any
 from warnings import warn
 
 import matplotlib.pyplot as plt
@@ -131,6 +132,8 @@ class Regular2DGrid(Grid):
 
         # For reconstructing the matrix later
         self.original_lengths = (len(line1), len(line2))
+        dim1: NDArray[Any]
+        dim2: NDArray[Any]
         dim1, dim2 = np.meshgrid(line1, line2, indexing="ij")
 
         flat1 = dim1.flatten()
@@ -270,6 +273,9 @@ class Regular3DGrid(Grid):
 
         # For reconstructing the matrix later
         self.original_lengths = (len(line_x), len(line_y), len(line_z))
+        xx: NDArray[Any]
+        yy: NDArray[Any]
+        zz: NDArray[Any]
         xx, yy, zz = np.meshgrid(line_x, line_y, line_z, indexing="ij")
         xx = xx.flatten()
         yy = yy.flatten()
@@ -549,7 +555,7 @@ class MicArray(BasePoints):
         # Get smallest distance
         ind = np.argmin(distances)
         self.__array_center_coordinates = self.coordinates[ind, :]
-        self.__array_center_channel_number = ind
+        self.__array_center_channel_number = int(ind)
 
     # ======== Helmholtz number and Frequency =================================
     def he_to_hz(self, he: float, c: float = 343) -> float:
@@ -808,7 +814,9 @@ class BeamformerGridded(BaseBeamformer):
         assert issubclass(type(grid), Grid), "grid should be a Grid object"
         self.grid = grid
         self.st_vec = steering_vector
-        self._steering_vector_cache = None
+        self._steering_vector_cache: (
+            tuple[tuple[object, ...], NDArray[np.complex128]] | None
+        ) = None
 
     @staticmethod
     def _array_cache_key(array: NDArray) -> tuple[tuple[int, ...], str, bytes]:
@@ -1383,8 +1391,8 @@ class BeamformerDASTime(BaseBeamformer):
 
         # Get maximal distance in order to delay all signals to that
         ds = self.mics.get_distances_to_point(self.grid.coordinates)
-        min_distance = np.min(ds)
-        r0 = np.max(ds)
+        min_distance: float = float(np.min(ds))
+        r0: float = float(np.max(ds))
 
         # Get longest delay in order to pad all signals accordingly
         longest_delay_samples = (

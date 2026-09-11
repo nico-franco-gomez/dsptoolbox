@@ -125,8 +125,6 @@ def reconstructing_fractional_octave_bands(
 
     """
     assert sampling_rate_hz is not None, "Sampling rate should not be None"
-    valid_lengths = 2 ** (np.arange(5, 18))
-    assert n_samples in valid_lengths, "Only lengths between 2**5 and 2**17 are allowed"
 
     if overlap < 0 or overlap > 1:
         raise ValueError("overlap must be between 0 and 1")
@@ -440,6 +438,7 @@ def weighting_filter(
         z = [0, 0]
         k = 5.91797e9
         p = [-129.4, -129.4, -76655, -76655]
+    assert sampling_rate_hz is not None
     z_digital, p_digital, k_digital = bilinear_zpk(z, p, k, sampling_rate_hz)
     return Filter.from_zpk(z_digital, p_digital, k_digital, sampling_rate_hz)
 

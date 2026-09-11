@@ -4,7 +4,7 @@ Backend for the creation of specific filter banks
 
 from copy import deepcopy
 from pickle import HIGHEST_PROTOCOL, dump
-from typing import Literal, overload
+from typing import Literal, Self, overload
 from warnings import warn
 
 import numpy as np
@@ -443,10 +443,13 @@ class LRFilterBank:
             Impulse response of the filter bank.
 
         """
+        assert mode is FilterBankMode.Parallel, "Only parallel mode is supported"
+        sampling_rate_hz = self.sampling_rate_hz
+        assert isinstance(sampling_rate_hz, int)
         d = dirac(
             length_samples=length_samples,
             number_of_channels=1,
-            sampling_rate_hz=self.sampling_rate_hz,
+            sampling_rate_hz=sampling_rate_hz,
         )
         return self.filter_signal(
             d, mode=mode, zero_phase=zero_phase, activate_zi=False
@@ -590,10 +593,12 @@ class LRFilterBank:
             FilterBankMode.Parallel,
             FilterBankMode.Summed,
         ), f"{mode} is not supported. Use either parallel or summed"
+        sampling_rate_hz = self.sampling_rate_hz
+        assert isinstance(sampling_rate_hz, int)
         d = dirac(
             length_samples=length_samples,
             number_of_channels=1,
-            sampling_rate_hz=self.sampling_rate_hz,
+            sampling_rate_hz=sampling_rate_hz,
         )
 
         if mode == FilterBankMode.Parallel:
@@ -655,10 +660,12 @@ class LRFilterBank:
             FilterBankMode.Parallel,
             FilterBankMode.Summed,
         ), f"{mode} is not supported. Use either parallel or summed"
+        sampling_rate_hz = self.sampling_rate_hz
+        assert isinstance(sampling_rate_hz, int)
         d = dirac(
             length_samples=length_samples,
             number_of_channels=1,
-            sampling_rate_hz=self.sampling_rate_hz,
+            sampling_rate_hz=sampling_rate_hz,
         )
         if mode == FilterBankMode.Parallel:
             mb = self.filter_signal(d, mode=mode)
@@ -712,7 +719,7 @@ class LRFilterBank:
         with open(path, "wb") as data_file:
             dump(self, data_file, HIGHEST_PROTOCOL)
 
-    def copy(self) -> "FilterBank":
+    def copy(self) -> Self:
         """Returns a copy of the object.
 
         Returns
@@ -770,14 +777,17 @@ class GammaToneFilterBank(FilterBank):
         toolbox `hohmann2002_process.m`.
 
         """
+        sampling_rate_hz = self.sampling_rate_hz
+        assert isinstance(sampling_rate_hz, int)
+
         # the delay in samples
-        delay_samples = int(np.round(self._delay * self.sampling_rate_hz))
+        delay_samples = int(np.round(self._delay * sampling_rate_hz))
 
         # apply filterbank to impulse to estimate the required values
         d = dirac(
-            length_samples=self.sampling_rate_hz // 2,
+            length_samples=sampling_rate_hz // 2,
             delay_samples=delay_samples + 3,
-            sampling_rate_hz=self.sampling_rate_hz,
+            sampling_rate_hz=sampling_rate_hz,
         )
         bands = self.filter_signal(d, mode=FilterBankMode.Parallel)
         all_bands = bands.get_all_bands(channel=0)
@@ -877,7 +887,9 @@ class GammaToneFilterBank(FilterBank):
         # (bands, time samples, channels)
         time = np.empty(shape, dtype=np.complex128)
         for ind, b in enumerate(signal.bands):
-            time[ind, :, :] = b.time_data + b.time_data_imaginary * 1j
+            imaginary = b.time_data_imaginary
+            assert imaginary is not None
+            time[ind, :, :] = b.time_data + imaginary * 1j
 
         # Reordering axis for later to (bands, channels, time samples) or
         # (bands, time samples) when single channel
@@ -1108,25 +1120,28 @@ class BaseCrossover(FilterBank):
             length_samples = max_order + 100
 
         # Impulse
+        sampling_rate_hz = self.sampling_rate_hz
+        assert isinstance(sampling_rate_hz, int)
         d = dirac(
             length_samples=length_samples,
             number_of_channels=1,
-            sampling_rate_hz=self.sampling_rate_hz,
+            sampling_rate_hz=sampling_rate_hz,
         )
 
         # Filtering and plot
         if mode == FilterBankMode.Parallel:
             mb = self.filter_signal(
-                d, mode=mode, zero_phase=zero_phase, downsample=True
+                d, mode=FilterBankMode.Parallel, zero_phase=zero_phase
             )
+            assert isinstance(mb, MultiBandSignal)
             specs = []
             f = mb.bands[0].get_spectrum()[0]
-            for b in mb.bands:
-                b.spectrum_method = SpectrumMethod.FFT
+            for band in mb.bands:
+                band.spectrum_method = SpectrumMethod.FFT
                 f, sp = _get_normalized_spectrum(
                     f=f,
-                    spectra=np.squeeze(b.get_spectrum()[1]),
-                    is_amplitude_scaling=b.spectrum_scaling.is_amplitude_scaling(),
+                    spectra=np.squeeze(band.get_spectrum()[1]),
+                    is_amplitude_scaling=band.spectrum_scaling.is_amplitude_scaling(),
                     f_range_hz=range_hz,
                     normalize=MagnitudeNormalization.NoNormalization,
                     smoothing=0,
@@ -1669,7 +1684,9 @@ def __ma_parameters(
     N = len(time_data)
 
     num_coefficients = order + 1
-    A = np.zeros((N // 2 + 1, num_coefficients), dtype=np.complex128)
+    A: NDArray[np.complex128] = np.zeros(
+        (N // 2 + 1, num_coefficients), dtype=np.complex128
+    )
     target_sp = np.hstack([np.real(spec), np.imag(spec)])
 
     length = N // 2 + 1

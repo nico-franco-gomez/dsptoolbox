@@ -282,7 +282,9 @@ def window_ir(
     )
 
     new_time_data = np.zeros((total_length_samples, signal.number_of_channels))
-    start_positions_samples = np.zeros(signal.number_of_channels, dtype=int)
+    start_positions_samples: NDArray[np.int_] = np.zeros(
+        signal.number_of_channels, dtype=int
+    )
     window = np.zeros((total_length_samples, signal.number_of_channels))
 
     for n in range(signal.number_of_channels):
@@ -415,7 +417,9 @@ def window_centered_ir(
     assert type(signal) is ImpulseResponse, "This is only valid for an impulse response"
 
     new_time_data = np.zeros((total_length_samples, signal.number_of_channels))
-    start_positions_samples = np.zeros(signal.number_of_channels, dtype=int)
+    start_positions_samples: NDArray[np.int_] = np.zeros(
+        signal.number_of_channels, dtype=int
+    )
     window = np.zeros((total_length_samples, signal.number_of_channels))
 
     for n in range(signal.number_of_channels):
@@ -498,7 +502,7 @@ def compute_transfer_function(
         )
 
     coherence = np.zeros((window_length_samples // 2 + 1, output.number_of_channels))
-    tf = np.zeros(
+    tf: NDArray[np.complex128] = np.zeros(
         (window_length_samples // 2 + 1, output.number_of_channels),
         dtype=np.complex128,
     )
@@ -973,7 +977,9 @@ def minimum_phase(
 
     if not use_real_cepstrum:
         f = np.fft.rfftfreq(signal.time_data.shape[0], d=1 / signal.sampling_rate_hz)
-        min_phases = np.zeros((len(f), signal.number_of_channels), dtype="float")
+        min_phases: NDArray[np.float64] = np.zeros(
+            (len(f), signal.number_of_channels), dtype="float"
+        )
         for n in range(signal.number_of_channels):
             temp = min_phase_scipy(
                 signal.time_data[:, n],
@@ -1274,10 +1280,12 @@ def filter_to_ir(fir: Filter | FilterBank) -> ImpulseResponse:
             "Only valid for filter banks with consistent sampling rate"
         )
         length_samples = max([len(f) for f in fir])
-        td = np.zeros((length_samples, len(fir)), dtype=np.float64)
+        td: NDArray[np.float64] = np.zeros((length_samples, len(fir)), dtype=np.float64)
         for ind, f in enumerate(fir):
             td[: len(f), ind] = f.ba[0].copy()
-        return ImpulseResponse.from_time_data(td, fir.sampling_rate_hz)
+        sampling_rate_hz = fir.sampling_rate_hz
+        assert isinstance(sampling_rate_hz, int)
+        return ImpulseResponse.from_time_data(td, sampling_rate_hz)
     else:
         raise TypeError("Unsupported type")
 
@@ -1335,7 +1343,9 @@ def window_frequency_dependent(
     # Avoid 0. frequency
     f = np.fft.rfftfreq(ir.length_samples, 1 / fs)[1:]
     cycles_per_freq_samples = np.round(fs / f * cycles).astype(int)
-    spec = np.zeros((len(f), ir.number_of_channels), dtype=np.complex128, order="C")
+    spec: NDArray[np.complex128] = np.zeros(
+        (len(f), ir.number_of_channels), dtype=np.complex128, order="C"
+    )
 
     # Alpha such that window is exactly end_window_value after the number of
     # required samples for each frequency
@@ -1766,7 +1776,7 @@ def trim_ir(
         trimmed_rir.time_data = td[start:stop]
         return trimmed_rir, start, stop
 
-    starts = np.zeros(ir.number_of_channels, dtype=np.int_)
+    starts: NDArray[np.int_] = np.zeros(ir.number_of_channels, dtype=np.int_)
     stops = starts.copy()
 
     for ch in range(ir.number_of_channels):

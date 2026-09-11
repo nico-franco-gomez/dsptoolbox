@@ -1,6 +1,4 @@
-"""
-Backend for standard functions
-"""
+"""Backend for standard functions."""
 
 import numpy as np
 from numpy.typing import NDArray
@@ -96,7 +94,7 @@ def _minimum_phase(
         magnitude = np.abs(magnitude)
 
     # Limit dynamic range to 500 dB
-    max_value = np.max(magnitude)
+    max_value: float = float(np.max(magnitude))
     lowest_clipping_value = from_db(-500.0, True) * max_value
 
     # Get log magnitude
@@ -366,7 +364,7 @@ def _indices_above_threshold_dbfs(
     # Power in dB
     time_power = time_vec.squeeze() ** 2
 
-    momentary_gain = np.zeros(len(time_power), dtype=np.float64)
+    momentary_gain: NDArray[np.float64] = np.zeros(len(time_power), dtype=np.float64)
     for i in np.arange(1, len(time_power)):
         if time_power[i] > momentary_gain[i - 1]:
             coeff = attack_smoothing_coeff
@@ -480,7 +478,7 @@ def _fractional_delay_filter(
     if filter_order % 2:
         M_opt = int(delay_frac) - (filter_order - 1) / 2
     else:
-        M_opt = np.round(delay_frac) - filter_order / 2
+        M_opt = float(np.round(delay_frac)) - filter_order / 2
     n = np.arange(filter_order + 1) + M_opt - delay_frac
     sinc = np.sinc(n)
 

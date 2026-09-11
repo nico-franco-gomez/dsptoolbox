@@ -84,8 +84,8 @@ class BasePoints:
         extent = {}
         dims = ["x", "y", "z"]
         for i, d in enumerate(dims):
-            min_val = np.min(self.coordinates[:, i])
-            max_val = np.max(self.coordinates[:, i])
+            min_val: float = float(np.min(self.coordinates[:, i]))
+            max_val: float = float(np.max(self.coordinates[:, i]))
             extent[d] = [min_val, max_val]
         return extent
 

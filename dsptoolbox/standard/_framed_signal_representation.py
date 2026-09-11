@@ -111,6 +111,7 @@ def _reconstruct_framed_signal(
             assert window.shape[0] == td_framed.shape[0], (
                 "Window length does not match signal length"
             )
+        assert isinstance(window, np.ndarray)
         td_framed *= window[:, np.newaxis, np.newaxis]
 
     total_length = int(
