@@ -147,6 +147,47 @@ class TestFilterTopologies:
 
         dsp.realtime.IIRFilter.from_filter(iir_original)
 
+    def test_iir_scalar_rust_backend_parity(self):
+        from dsptoolbox.realtime.iir_filter_realtime import (
+            _iir_filtering_sample_rust,
+        )
+
+        if _iir_filtering_sample_rust is None:
+            pytest.skip("Rust extension is not available")
+
+        rng = np.random.default_rng(10)
+        b = rng.normal(size=5)
+        a = np.r_[1.0, rng.normal(size=4)]
+        state = rng.normal(size=(4, 2))
+        expected_state = state[:, :1].copy()
+        samples = rng.normal(size=9)
+        expected = []
+        for sample in samples:
+            output = b[0] * sample + expected_state[0, 0]
+            for coefficient in range(3):
+                expected_state[coefficient, 0] = (
+                    sample * b[coefficient + 1]
+                    - output * a[coefficient + 1]
+                    + expected_state[coefficient + 1, 0]
+                )
+            expected_state[3, 0] = sample * b[4] - output * a[4]
+            expected.append(output)
+
+        actual_state = state[:, :1].copy()
+        actual = [
+            _iir_filtering_sample_rust(b, a, sample, actual_state, 0)
+            for sample in samples
+        ]
+
+        np.testing.assert_allclose(actual, expected)
+        np.testing.assert_allclose(actual_state, expected_state)
+
+        filt = dsp.realtime.IIRFilter(b, a)
+        filt.state = state.copy()
+        for sample, expected_sample in zip(samples, expected, strict=True):
+            np.testing.assert_allclose(filt.process_sample(sample, 0), expected_sample)
+        np.testing.assert_allclose(filt.state[:, :1], expected_state)
+
     def test_fir_filter(self):
         fir_original = dsp.Filter.fir_filter(
             25,
@@ -169,6 +210,50 @@ class TestFilterTopologies:
         )
 
         dsp.realtime.FIRFilter.from_filter(fir_original)
+
+    def test_fir_scalar_rust_backend_parity(self):
+        from dsptoolbox.realtime.fir_filter_realtime import (
+            _fir_filtering_sample_rust,
+        )
+
+        if _fir_filtering_sample_rust is None:
+            pytest.skip("Rust extension is not available")
+
+        rng = np.random.default_rng(11)
+        b = rng.normal(size=5)
+        state = rng.normal(size=(4, 2))
+        current_state_ind = np.array([2, 1], dtype=np.int64)
+        expected_state = state[:, :1].copy()
+        expected_index = current_state_ind[0]
+        samples = rng.normal(size=9)
+        expected = []
+        for sample in samples:
+            output = b[0] * sample
+            for coefficient in range(4):
+                read_index = (expected_index - coefficient) % 4
+                output += expected_state[read_index, 0] * b[coefficient + 1]
+            expected_index = (expected_index + 1) % 4
+            expected_state[expected_index, 0] = sample
+            expected.append(output)
+
+        actual_state = state[:, :1].copy()
+        actual_index = current_state_ind[:1].copy()
+        actual = [
+            _fir_filtering_sample_rust(b, sample, actual_state, actual_index, 0)
+            for sample in samples
+        ]
+
+        np.testing.assert_allclose(actual, expected)
+        np.testing.assert_allclose(actual_state, expected_state)
+        np.testing.assert_array_equal(actual_index, [expected_index])
+
+        filt = dsp.realtime.FIRFilter(b)
+        filt.state = state.copy()
+        filt.current_state_ind = current_state_ind.copy()
+        for sample, expected_sample in zip(samples, actual, strict=True):
+            np.testing.assert_allclose(filt.process_sample(sample, 0), expected_sample)
+        np.testing.assert_allclose(filt.state[:, :1], actual_state)
+        np.testing.assert_array_equal(filt.current_state_ind, [expected_index, 1])
 
     def test_kautz_filters(self):
         fs_hz = 48000
@@ -207,6 +292,71 @@ class TestFilterTopologies:
         assert np.any(filter.coefficients_complex_poles != 1.0)
         assert np.any(filter.coefficients_real_poles != 1.0)
 
+    def test_kautz_scalar_rust_backend_parity(self):
+        import dsptoolbox.realtime.kautz_filter as kautz_module
+
+        if kautz_module._kautz_filtering_sample_rust is None:
+            pytest.skip("Rust extension is not available")
+
+        poles = np.array([0.2, -0.3, 0.4 + 0.1j, 0.25 + 0.2j])
+        coefficients_real = np.array([0.7, -0.2])
+        coefficients_complex = np.array([0.3, -0.4, 0.6, 0.1])
+        samples = np.random.default_rng(12).normal(size=64)
+
+        rust_filter = dsp.realtime.KautzFilter(poles, self.fs_hz)
+        rust_filter.set_filter_coefficients(coefficients_real, coefficients_complex)
+        rust_output = np.array([rust_filter.process_sample(v, 0) for v in samples])
+
+        rust_fn = kautz_module._kautz_filtering_sample_rust
+        kautz_module._kautz_filtering_sample_rust = None
+        try:
+            python_filter = dsp.realtime.KautzFilter(poles, self.fs_hz)
+            python_filter.set_filter_coefficients(
+                coefficients_real, coefficients_complex
+            )
+            python_output = np.array(
+                [python_filter.process_sample(v, 0) for v in samples]
+            )
+        finally:
+            kautz_module._kautz_filtering_sample_rust = rust_fn
+
+        np.testing.assert_allclose(rust_output, python_output, atol=1e-12)
+        for native_state, python_filters in (
+            (
+                rust_filter._rust_real_state,
+                python_filter._KautzFilter__filters_real,
+            ),
+            (
+                rust_filter._rust_real_advance_state,
+                python_filter._KautzFilter__filters_real_advance_sample,
+            ),
+        ):
+            expected = np.stack([f.state[0] for f in python_filters])
+            np.testing.assert_allclose(native_state, expected, atol=1e-12)
+
+        for section, filters in enumerate(
+            zip(
+                python_filter._KautzFilter__filters_complex[::2],
+                python_filter._KautzFilter__filters_complex[1::2],
+                strict=True,
+            )
+        ):
+            for branch, filt in enumerate(filters):
+                np.testing.assert_allclose(
+                    rust_filter._rust_complex_state[section, branch],
+                    filt.state,
+                    atol=1e-12,
+                )
+
+        for section, filt in enumerate(
+            python_filter._KautzFilter__filters_complex_advance_sample
+        ):
+            np.testing.assert_allclose(
+                rust_filter._rust_complex_advance_state[section],
+                filt.state,
+                atol=1e-12,
+            )
+
     def test_exponential_averager(self):
         n = _rng.normal(0, 0.1, 200)
         f = dsp.realtime.ExponentialAverageFilter(1e-3, 1e-3, self.fs_hz)
@@ -226,7 +376,9 @@ class TestFilterTopologies:
         for i in rir.time_data[:, 0]:
             fb.process_sample(i, 1)
         fb.reset_state()
-        iir_coeffs = _rng.normal(0, 0.1, (len(poles), 2))
+        iir_coeffs = np.column_stack(
+            [_rng.normal(0, 0.1, (len(poles), 2)), np.zeros(len(poles))]
+        )
         fb.set_coefficients(iir_coeffs, _rng.normal(0, 0.01, 10))
 
         fb = dsp.realtime.ParallelFilter(poles, 1, rir.sampling_rate_hz)
@@ -261,14 +413,17 @@ class TestFilterTopologies:
         # poles; the fitted numerator coefficients are overwritten next.
         fb.fit_to_ir(rir)
 
-        rng = np.random.default_rng(3)
-        b_numerators = rng.normal(0, 0.1, (len(poles), 2))
+        with pytest.raises(AssertionError):
+            fb.set_coefficients(np.zeros((len(poles), 2)), None)
+
+        b_numerators = np.array([[0.12, -0.03, 0.04], [-0.08, 0.05, -0.02]])
         fb.set_coefficients(b_numerators, None)
 
         poles_with_conjugates = np.hstack([poles, poles.conjugate()])
         sos_reference = sig.zpk2sos([], poles_with_conjugates, 1.0)
-        sos_reference[:, :2] = b_numerators
+        sos_reference[:, :3] = b_numerators
 
+        rng = np.random.default_rng(3)
         x = rng.normal(0, 0.1, 500)
         fb.reset_state()
         out = np.array([fb.process_sample(v, 0) for v in x])
@@ -277,6 +432,66 @@ class TestFilterTopologies:
             expected += sig.sosfilt(row[None, :], x)
 
         np.testing.assert_allclose(out, expected, atol=1e-4)
+
+    def test_parallel_scalar_rust_backend_parity(self):
+        import dsptoolbox.realtime.fir_filter_realtime as fir_module
+        import dsptoolbox.realtime.iir_filter_realtime as iir_module
+        import dsptoolbox.realtime.parallel_filter as parallel_module
+
+        if parallel_module._parallel_filtering_sample_rust is None:
+            pytest.skip("Rust extension is not available")
+
+        rng = np.random.default_rng(13)
+        rir = dsp.ImpulseResponse.from_time_data(rng.normal(size=(256, 1)), self.fs_hz)
+        poles = np.array([0.6 * np.exp(1j * 0.5), 0.3 * np.exp(1j * 1.5)])
+        coefficients = rng.normal(0.0, 0.1, (len(poles), 3))
+        fir = np.array([0.2, -0.1, 0.05])
+        samples = rng.normal(size=64)
+
+        rust_filter = dsp.realtime.ParallelFilter(poles, len(fir), self.fs_hz)
+        rust_filter.set_parameters(delay_iir_samples=2)
+        rust_filter.fit_to_ir(rir)
+        rust_filter.set_coefficients(coefficients, fir)
+        rust_output = np.array([rust_filter.process_sample(v, 0) for v in samples])
+
+        parallel_fn = parallel_module._parallel_filtering_sample_rust
+        fir_fn = fir_module._fir_filtering_sample_rust
+        iir_fn = iir_module._iir_filtering_sample_rust
+        parallel_module._parallel_filtering_sample_rust = None
+        fir_module._fir_filtering_sample_rust = None
+        iir_module._iir_filtering_sample_rust = None
+        try:
+            python_filter = dsp.realtime.ParallelFilter(poles, len(fir), self.fs_hz)
+            python_filter.set_parameters(delay_iir_samples=2)
+            python_filter.fit_to_ir(rir)
+            python_filter.set_coefficients(coefficients, fir)
+            python_output = np.array(
+                [python_filter.process_sample(v, 0) for v in samples]
+            )
+        finally:
+            parallel_module._parallel_filtering_sample_rust = parallel_fn
+            fir_module._fir_filtering_sample_rust = fir_fn
+            iir_module._iir_filtering_sample_rust = iir_fn
+
+        np.testing.assert_allclose(rust_output, python_output, atol=1e-12)
+        expected_iir_state = np.stack([f.state for f in python_filter.iir])[:, :, 0]
+        np.testing.assert_allclose(
+            rust_filter._rust_iir_state[:, :, 0], expected_iir_state, atol=1e-12
+        )
+        np.testing.assert_allclose(
+            rust_filter._rust_fir_state[:, 0], python_filter.fir.state[:, 0], atol=1e-12
+        )
+        np.testing.assert_array_equal(
+            rust_filter._rust_fir_index, python_filter.fir.current_state_ind
+        )
+        np.testing.assert_allclose(
+            rust_filter._rust_delay_state[:, 0],
+            python_filter.iir_delay.state[:, 0],
+            atol=1e-12,
+        )
+        np.testing.assert_array_equal(
+            rust_filter._rust_delay_index, python_filter.iir_delay.current_state_ind
+        )
 
     def test_filter_chain(self):
         fc = dsp.realtime.FilterChain(
@@ -367,6 +582,45 @@ class TestFilterTopologies:
             )
         np.testing.assert_allclose(reference, out_from_sos, atol=1e-8)
 
+    def test_state_space_rust_backend_parity(self):
+        from dsptoolbox.realtime.state_space_filter import (
+            _state_space_filtering_sample_rust,
+        )
+
+        if _state_space_filtering_sample_rust is None:
+            pytest.skip("Rust extension is not available")
+
+        rng = np.random.default_rng(13)
+        a = rng.normal(size=(3, 3))
+        b = rng.normal(size=3)
+        c = rng.normal(size=3)
+        d = np.array(0.25)
+        state = rng.normal(size=(3, 2))
+        expected_state = state.copy()
+        samples = rng.normal(size=11)
+        expected = []
+        for sample in samples:
+            previous_state = expected_state[:, 1].copy()
+            expected.append(c @ previous_state + d * sample)
+            expected_state[:, 1] = a @ previous_state + b * sample
+
+        actual_state = state.copy()
+        actual = [
+            _state_space_filtering_sample_rust(
+                a, b, c, float(d), sample, actual_state, 1
+            )
+            for sample in samples
+        ]
+
+        np.testing.assert_allclose(actual, expected)
+        np.testing.assert_allclose(actual_state, expected_state)
+
+        filt = dsp.realtime.StateSpaceFilter(a, b, c, d)
+        filt.x = state.copy()
+        for sample, expected_sample in zip(samples, expected, strict=True):
+            np.testing.assert_allclose(filt.process_sample(sample, 1), expected_sample)
+        np.testing.assert_allclose(filt.x, expected_state)
+
     @pytest.mark.parametrize(
         "implementation",
         [
@@ -379,7 +633,9 @@ class TestFilterTopologies:
     ):
         rir = dsp.ImpulseResponse.from_file(RIR_PATH)
         noise = (self.get_noise()).resample(rir.sampling_rate_hz)
-        fir = implementation.from_filter(dsp.transfer_functions.ir_to_filter(rir))
+        fir_filter = dsp.transfer_functions.ir_to_filter(rir)
+        assert isinstance(fir_filter, dsp.Filter)
+        fir = implementation.from_filter(fir_filter)
 
         blocksize = 512
         fir.prepare(blocksize, 1)
@@ -508,6 +764,135 @@ class TestFilterTopologies:
         out = np.array([iir.process_sample(v, 0) for v in x])
         expected = sig.lfilter(b, a, x)
         np.testing.assert_allclose(out, expected, atol=1e-9)
+
+    def test_warped_rust_backend_parity(self):
+        from dsptoolbox.realtime.warped_filters import (
+            _warped_fir_filtering_block_rust,
+            _warped_fir_filtering_python,
+            _warped_fir_filtering_rust,
+            _warped_fir_filtering_sample_rust,
+            _warped_iir_filtering_block_rust,
+            _warped_iir_filtering_python,
+            _warped_iir_filtering_rust,
+            _warped_iir_filtering_sample_rust,
+        )
+
+        if _warped_fir_filtering_rust is None:
+            pytest.skip("Rust extension is not available")
+
+        rng = np.random.default_rng(11)
+        b = rng.normal(0.0, 0.2, 9)
+        td = rng.normal(size=(257, 3))
+        state = rng.normal(size=(len(b), 3))
+
+        expected = td.copy()
+        expected_state = state.copy()
+        _warped_fir_filtering_python(b, -0.6, expected, expected_state)
+        actual = td.copy()
+        actual_state = state.copy()
+        _warped_fir_filtering_rust(b, -0.6, actual, actual_state)
+        np.testing.assert_allclose(actual, expected, rtol=1e-12, atol=1e-12)
+        np.testing.assert_allclose(actual_state, expected_state, rtol=1e-12, atol=1e-12)
+
+        filt = dsp.realtime.WarpedIIR(
+            rng.normal(0.0, 0.2, 7),
+            np.array([1.0, -0.4, 0.15, -0.05]),
+            dsp.WarpingFactor.Custom.with_factor(-0.6),
+            self.fs_hz,
+        )
+        expected = td.copy()
+        expected_state = state[: filt.N].copy()
+        _warped_iir_filtering_python(
+            filt.b, filt.sigmas, filt.warp, expected, expected_state
+        )
+        actual = td.copy()
+        actual_state = state[: filt.N].copy()
+        _warped_iir_filtering_rust(filt.b, filt.sigmas, filt.warp, actual, actual_state)
+        np.testing.assert_allclose(actual, expected, rtol=1e-12, atol=1e-12)
+        np.testing.assert_allclose(actual_state, expected_state, rtol=1e-12, atol=1e-12)
+
+        assert _warped_fir_filtering_block_rust is not None
+        assert _warped_fir_filtering_sample_rust is not None
+        assert _warped_iir_filtering_block_rust is not None
+        assert _warped_iir_filtering_sample_rust is not None
+
+        sample = td[0, 0]
+        expected_sample_data = np.array([[sample]])
+        expected_state = state[:, :1].copy()
+        _warped_fir_filtering_python(b, -0.6, expected_sample_data, expected_state)
+        actual_state = state[:, :1].copy()
+        actual_sample = _warped_fir_filtering_sample_rust(
+            b, -0.6, sample, actual_state, 0
+        )
+        np.testing.assert_allclose(actual_sample, expected_sample_data[0, 0])
+        np.testing.assert_allclose(actual_state, expected_state)
+
+        fir = dsp.realtime.WarpedFIR(
+            b, dsp.WarpingFactor.Custom.with_factor(-0.6), self.fs_hz
+        )
+        fir.buffer = state[:, :1].copy()
+        np.testing.assert_allclose(
+            fir.process_sample(sample, 0), expected_sample_data[0, 0]
+        )
+        np.testing.assert_allclose(fir.buffer, expected_state)
+
+        sample = td[0, 0]
+        expected_sample_data = np.array([[sample]])
+        expected_state = state[: filt.N, :1].copy()
+        _warped_iir_filtering_python(
+            filt.b,
+            filt.sigmas,
+            filt.warp,
+            expected_sample_data,
+            expected_state,
+        )
+        actual_state = state[: filt.N, :1].copy()
+        actual_sample = _warped_iir_filtering_sample_rust(
+            filt.b, filt.sigmas, filt.warp, sample, actual_state, 0
+        )
+        np.testing.assert_allclose(actual_sample, expected_sample_data[0, 0])
+        np.testing.assert_allclose(actual_state, expected_state)
+
+        filt.reset_state()
+        filt.buffer = state[: filt.N, :1].copy()
+        np.testing.assert_allclose(
+            filt.process_sample(sample, 0), expected_sample_data[0, 0]
+        )
+        np.testing.assert_allclose(filt.buffer, expected_state)
+
+        block = td[:, 0]
+        expected_block = np.empty(len(block))
+        expected_state = state[:, :1].copy()
+        expected_data = block[:, None].copy()
+        _warped_fir_filtering_python(b, -0.6, expected_data, expected_state)
+        expected_block[:] = expected_data[:, 0]
+        actual_block = np.empty(len(block))
+        actual_state = state[:, :1].copy()
+        _warped_fir_filtering_block_rust(b, -0.6, block, actual_block, actual_state, 0)
+        np.testing.assert_allclose(actual_block, expected_block, rtol=1e-12, atol=1e-12)
+        np.testing.assert_allclose(actual_state, expected_state, rtol=1e-12, atol=1e-12)
+
+        block = td[:, 0]
+        expected_block = np.empty(len(block))
+        expected_state = state[: filt.N, :1].copy()
+        expected_data = block[:, None].copy()
+        _warped_iir_filtering_python(
+            filt.b, filt.sigmas, filt.warp, expected_data, expected_state
+        )
+        expected_block[:] = expected_data[:, 0]
+        actual_block = np.empty(len(block))
+        actual_state = state[: filt.N, :1].copy()
+        _warped_iir_filtering_block_rust(
+            filt.b,
+            filt.sigmas,
+            filt.warp,
+            block,
+            actual_block,
+            actual_state,
+            0,
+        )
+        np.testing.assert_allclose(actual_block, expected_block, rtol=1e-12, atol=1e-12)
+        np.testing.assert_allclose(actual_state, expected_state, rtol=1e-12, atol=1e-12)
 
     def test_iir_filter_does_not_modify_coefficients(self):
         """The constructor normalizes by a[0] and must copy to do so."""

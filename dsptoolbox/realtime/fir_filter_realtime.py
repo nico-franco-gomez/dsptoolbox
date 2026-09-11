@@ -1,3 +1,5 @@
+from collections.abc import Callable
+
 import numpy as np
 import scipy.fft as fft
 from numpy.typing import NDArray
@@ -6,6 +8,12 @@ from ..classes.filter import Filter
 from ..classes.signal import Signal
 from ..standard.enums import FilterCoefficientsType
 from .realtime_filter import RealtimeFilter
+
+_fir_filtering_sample_rust: Callable | None
+try:
+    from .._rust import fir_filtering_sample as _fir_filtering_sample_rust
+except ImportError:
+    _fir_filtering_sample_rust = None
 
 
 class FIRFilter(RealtimeFilter[float]):
@@ -51,7 +59,7 @@ class FIRFilter(RealtimeFilter[float]):
 
     def set_n_channels(self, n_channels: int) -> None:
         self.state = np.zeros((self.order, n_channels))
-        self.current_state_ind = np.zeros(n_channels, dtype=np.int_)
+        self.current_state_ind: NDArray[np.int_] = np.zeros(n_channels, dtype=np.int_)
 
     def reset_state(self) -> None:
         self.state.fill(0.0)
@@ -59,11 +67,22 @@ class FIRFilter(RealtimeFilter[float]):
 
     def process_sample(self, x: float, channel: int) -> float:
         """Process a sample."""
+        if (
+            _fir_filtering_sample_rust is not None
+            and getattr(self.b, "dtype", None) == np.dtype(np.float64)
+            and self.state.dtype == np.dtype(np.float64)
+            and self.current_state_ind.dtype == np.dtype(np.int64)
+            and 0 <= channel < self.state.shape[1]
+        ):
+            return _fir_filtering_sample_rust(
+                self.b, x, self.state, self.current_state_ind, channel
+            )
+
         y = self.b[0] * x
 
-        write_index = self.current_state_ind[channel]
+        write_index: int = int(self.current_state_ind[channel])
         for i in range(self.order):
-            read_index = (write_index - i) % self.order
+            read_index: int = (write_index - i) % self.order
             y += self.state[read_index, channel] * self.b[i + 1]
         write_index = (write_index + 1) % self.order
         self.state[write_index, channel] = x
@@ -229,7 +248,7 @@ class FIRUniformPartitioned(FIRFilterOverlapSave):
         self.buffer_index_helper = np.arange(self.n_partitions)
 
         # Channel buffers
-        self.buffer_spectra = np.zeros(
+        self.buffer_spectra: NDArray[np.complex128] = np.zeros(
             (self.fft_size // 2 + 1, self.n_partitions, n_channels),
             dtype=np.complex128,
         )

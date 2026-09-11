@@ -51,13 +51,18 @@ def _nullable_aliases() -> set[str]:
     for _, source in _sources():
         for node in ast.walk(ast.parse(source)):
             targets = []
+            value: ast.expr | None = None
             if isinstance(node, ast.Assign):
                 targets = node.targets
+                value = node.value
             elif isinstance(node, ast.AnnAssign):
                 targets = [node.target]
-            if not targets or node.value is None:
+                value = node.value
+            else:
                 continue
-            if "None" in ast.unparse(node.value):
+            if not targets or value is None:
+                continue
+            if "None" in ast.unparse(value):
                 aliases |= {t.id for t in targets if isinstance(t, ast.Name)}
     return aliases
 

@@ -6,7 +6,7 @@ from collections.abc import Iterator
 from copy import deepcopy
 from fractions import Fraction
 from pickle import HIGHEST_PROTOCOL, dump
-from typing import TYPE_CHECKING, Self
+from typing import TYPE_CHECKING, Any, Self, cast
 from warnings import warn
 
 import numpy as np
@@ -223,7 +223,7 @@ class Signal(MultichannelData):
     @property
     def metadata(self) -> dict:
         """Return dictionary with metadata about the signal."""
-        info = {}
+        info: dict[str, Any] = {}
         info["sampling_rate_hz"] = self.sampling_rate_hz
         info["number_of_channels"] = self.number_of_channels
         info["signal_length_samples"] = self.length_samples
@@ -321,9 +321,11 @@ class Signal(MultichannelData):
 
         # Normalization
         if self.constrain_amplitude:
-            time_data_max = np.max(np.abs(new_time_data))
+            time_data_max: float = float(np.max(np.abs(new_time_data)))
             if new_time_data_imag is not None:
-                time_data_max = max(time_data_max, np.max(np.abs(new_time_data_imag)))
+                time_data_max = max(
+                    time_data_max, float(np.max(np.abs(new_time_data_imag)))
+                )
             if time_data_max > 1.0:
                 new_time_data /= time_data_max
                 warn(
@@ -1469,7 +1471,10 @@ class Signal(MultichannelData):
                 ax[n].plot(self.time_vector_s, complex_etc[:, n], alpha=0.75)
             if dynamic_range_db is not None:
                 ax[n].set_ylim(
-                    [max_values[n] - np.abs(dynamic_range_db), max_values[n]]
+                    (
+                        float(max_values[n] - np.abs(dynamic_range_db)),
+                        float(max_values[n]),
+                    )
                 )
         return fig, ax
 
@@ -1827,8 +1832,11 @@ class Signal(MultichannelData):
             new_time_data = (
                 new_time_data if new_time_data.base is None else new_time_data.copy()
             )
-        new_signal = type(self).from_time_data(
-            new_time_data, self.sampling_rate_hz, self.constrain_amplitude
+        new_signal = cast(
+            Self,
+            type(self).from_time_data(
+                new_time_data, self.sampling_rate_hz, self.constrain_amplitude
+            ),
         )
         new_signal.calibrated_signal = self.calibrated_signal
         new_signal.activate_cache = self.activate_cache
@@ -2480,10 +2488,10 @@ class Signal(MultichannelData):
             )
         if channels is None:
             channels = np.arange(self.number_of_channels)
-        channels = np.atleast_1d(np.asarray(channels).squeeze())
-        assert np.all(channels < self.number_of_channels) and len(
-            np.unique(channels)
-        ) == len(channels), "There is at least an invalid channel number"
+        channel_indices: NDArray[Any] = np.atleast_1d(np.asarray(channels).squeeze())
+        assert np.all(channel_indices < self.number_of_channels) and len(
+            np.unique(channel_indices)
+        ) == len(channel_indices), "There is at least an invalid channel number"
 
         # Get filter and integer delay
         delay_int, frac_delay_filter = _fractional_delay_filter(
@@ -2499,17 +2507,17 @@ class Signal(MultichannelData):
         )
 
         # Delay channels
-        new_time_data[:, channels] = oaconvolve(
-            self.time_data[:, channels],
+        new_time_data[:, channel_indices] = oaconvolve(
+            self.time_data[:, channel_indices],
             frac_delay_filter[..., None],
             mode="full",
             axes=0,
         )
 
         # Handle delayed and undelayed channels
-        channels_not = np.setdiff1d(np.arange(new_time_data.shape[1]), channels)
+        channels_not = np.setdiff1d(np.arange(new_time_data.shape[1]), channel_indices)
         not_delayed = new_time_data[:, channels_not]
-        delayed = new_time_data[:, channels]
+        delayed = new_time_data[:, channel_indices]
 
         # Delay respective channels in the beginning and add zeros in the end
         # to the others
@@ -2524,7 +2532,7 @@ class Signal(MultichannelData):
             new_time_data, delay_int + new_time_data.shape[0], in_the_end=True
         )
         new_time_data[:, channels_not] = not_delayed
-        new_time_data[:, channels] = delayed
+        new_time_data[:, channel_indices] = delayed
 
         # =========== handle length ===========================================
         if keep_length:
@@ -2569,18 +2577,18 @@ class Signal(MultichannelData):
             )
         if channels is None:
             channels = np.arange(self.number_of_channels)
-        channels = np.atleast_1d(np.asarray(channels).squeeze())
-        assert np.all(channels < self.number_of_channels) and len(
-            np.unique(channels)
-        ) == len(channels), "There is at least an invalid channel number"
+        channel_indices: NDArray[Any] = np.atleast_1d(np.asarray(channels).squeeze())
+        assert np.all(channel_indices < self.number_of_channels) and len(
+            np.unique(channel_indices)
+        ) == len(channel_indices), "There is at least an invalid channel number"
 
         # Copy data
         new_time_data = self.time_data
 
         # Handle delayed and undelayed channels
-        channels_not = np.setdiff1d(np.arange(new_time_data.shape[1]), channels)
+        channels_not = np.setdiff1d(np.arange(new_time_data.shape[1]), channel_indices)
         not_delayed = new_time_data[:, channels_not]
-        delayed = new_time_data[:, channels]
+        delayed = new_time_data[:, channel_indices]
 
         delayed = _pad_trim(
             delayed, delay_samples + new_time_data.shape[0], in_the_end=False
@@ -2597,7 +2605,7 @@ class Signal(MultichannelData):
             in_the_end=True,
         )
         new_time_data[:, channels_not] = not_delayed
-        new_time_data[:, channels] = delayed
+        new_time_data[:, channel_indices] = delayed
         if keep_length:
             new_time_data = new_time_data[: self.time_data.shape[0], :]
 
@@ -2685,7 +2693,7 @@ class Signal(MultichannelData):
 
         total_n_channels = sum([s.number_of_channels for s in signals])
         total_length = len(signals[0])
-        td = np.zeros(
+        td: NDArray[np.complex128] | NDArray[np.float64] = np.zeros(
             (len(signals[0]), total_n_channels),
             dtype=np.complex128 if complex_data else np.float64,
         )

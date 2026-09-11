@@ -1,0 +1,118 @@
+---
+name: CI
+
+"on":
+  push:
+    branches:
+      - main
+      - master
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  python-quality:
+    name: Python lint and format
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Install Ruff
+        run: uv pip install --system ruff
+
+      - name: Check lint
+        run: ruff check .
+
+      - name: Check formatting
+        run: ruff format --check .
+
+  rust-quality:
+    name: Rust format and lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Check formatting
+        run: cargo fmt --all -- --check
+
+      - name: Check compilation
+        run: cargo check
+
+      - name: Check lint
+        run: cargo clippy --all-targets --all-features -- -D warnings
+
+  tests:
+    name: Tests (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12", "3.13", "3.14"]
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Install Linux audio dependencies
+        run: >-
+          sudo apt-get update && sudo apt-get install -y libasound-dev
+          libportaudio2 libsndfile1
+
+      - name: Install project and test dependencies
+        run: uv pip install --system -r requirements-dev.txt
+
+      - name: Run tests
+        run: python -m pytest tests -q
+
+  documentation:
+    name: Build documentation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Install documentation dependencies
+        run: uv pip install --system -r requirements-dev.txt
+
+      - name: Build documentation
+        run: sphinx-build -W -b html docs docs/_build/html

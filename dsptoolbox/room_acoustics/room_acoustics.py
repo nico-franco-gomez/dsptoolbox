@@ -32,7 +32,7 @@ from .enums import ReverbTime, RoomAcousticsDescriptor
 
 
 def reverb_time(
-    signal: ImpulseResponse | MultiBandSignal,
+    signal: Signal | MultiBandSignal,
     mode: ReverbTime = ReverbTime.Adaptive,
     ir_start: int | NDArray[np.int_] | None = None,
     automatic_trimming: bool = True,
@@ -100,7 +100,7 @@ def reverb_time(
     - [4]: Room-EQ-Wizard for Topt.
 
     """
-    if type(signal) is ImpulseResponse:
+    if isinstance(signal, Signal):
         starts = _check_ir_start_reverb(signal, ir_start)
         assert starts is not None
         reverberation_times = np.zeros(signal.number_of_channels)
@@ -123,7 +123,11 @@ def reverb_time(
             (signal.number_of_bands, signal.bands[0].number_of_channels)
         )
         for ind in range(signal.number_of_bands):
-            band_ir_start = None if band_starts is None else band_starts[ind, :]
+            if band_starts is None:
+                band_ir_start = None
+            else:
+                assert isinstance(band_starts, np.ndarray)
+                band_ir_start = band_starts[ind, :]
             reverberation_times[ind, :], correlation_coefficients[ind, :] = reverb_time(
                 signal.bands[ind],
                 mode,
@@ -294,7 +298,7 @@ def find_ir_start(
 
     """
     assert threshold_dbfs <= 0, "Threshold must be negative"
-    start_index = np.empty(signal.number_of_channels, dtype=int)
+    start_index: NDArray[np.int_] = np.empty(signal.number_of_channels, dtype=int)
     for n in range(signal.number_of_channels):
         start_index[n] = _find_ir_start(signal.time_data[:, n], threshold_dbfs)
     return start_index.astype(np.int_)
@@ -457,13 +461,16 @@ def generate_synthetic_rir(
             type_of_pass=FilterPassType.Bandpass,
             sampling_rate_hz=sampling_rate_hz,
         )
-        rir_output = f.filter_signal(rir_output)
+        filtered_rir = f.filter_signal(rir_output)
+        rir_output = ImpulseResponse.from_time_data(
+            filtered_rir.time_data, sampling_rate_hz
+        )
 
     return rir_output
 
 
 def descriptors(
-    rir: ImpulseResponse | MultiBandSignal,
+    rir: Signal | MultiBandSignal,
     descriptor: RoomAcousticsDescriptor,
     automatic_trimming_rir: bool = True,
 ) -> NDArray[np.float64]:
@@ -496,7 +503,7 @@ def descriptors(
       Refer to the documentation for more details.
 
     """
-    if isinstance(rir, ImpulseResponse):
+    if isinstance(rir, Signal):
         if descriptor == RoomAcousticsDescriptor.D50:
             func = _d50_from_rir
         elif descriptor == RoomAcousticsDescriptor.C80:
@@ -527,7 +534,7 @@ def descriptors(
     return desc
 
 
-def _bass_ratio(rir: ImpulseResponse) -> NDArray[np.float64]:
+def _bass_ratio(rir: Signal) -> NDArray[np.float64]:
     """Core computation of bass ratio.
 
     Parameters
@@ -542,7 +549,7 @@ def _bass_ratio(rir: ImpulseResponse) -> NDArray[np.float64]:
 
     """
     fb = fractional_octave_bands(
-        [125, 1000], filter_order=10, sampling_rate_hz=rir.sampling_rate_hz
+        (125, 1000), filter_order=10, sampling_rate_hz=rir.sampling_rate_hz
     )[0]
     rir_multi = fb.filter_signal(rir, FilterBankMode.Parallel, zero_phase=True)
     rt, _ = reverb_time(rir_multi)
@@ -553,7 +560,7 @@ def _bass_ratio(rir: ImpulseResponse) -> NDArray[np.float64]:
 
 
 def _check_ir_start_reverb(
-    sig: ImpulseResponse | MultiBandSignal,
+    sig: Signal | MultiBandSignal,
     ir_start: int | NDArray[np.int_] | list | tuple | None,
 ) -> NDArray[np.int_] | list | None:
     """This method checks `ir_start` and parses it into the necessary form
@@ -567,7 +574,7 @@ def _check_ir_start_reverb(
 
     """
     if ir_start is None:
-        if isinstance(sig, ImpulseResponse):
+        if isinstance(sig, Signal):
             return [None] * sig.number_of_channels
         return None
 
@@ -576,7 +583,7 @@ def _check_ir_start_reverb(
         "Unsupported type for ir_start"
     )
 
-    if isinstance(sig, ImpulseResponse):
+    if isinstance(sig, Signal):
         starts = (
             np.ones(sig.number_of_channels, dtype=np.int_) * ir_start
             if single_start

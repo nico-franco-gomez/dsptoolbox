@@ -3,10 +3,13 @@
 
 # dev:
 hatch # build
+maturin # build Rust extensions
+cibuildwheel # build wheels across supported Python/platform matrices
 wheel # build
 twine # upload build
 ruff  # linter and formatter
 pytest # tests
+mypy # static type checker
 # librosa  # validation
 # pyfar  # validation
 # pyroomacoustics # validation

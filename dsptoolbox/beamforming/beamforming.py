@@ -3,6 +3,7 @@ Beamforming classes and functions
 """
 
 from collections.abc import Sequence
+from typing import Any
 from warnings import warn
 
 import matplotlib.pyplot as plt
@@ -131,6 +132,8 @@ class Regular2DGrid(Grid):
 
         # For reconstructing the matrix later
         self.original_lengths = (len(line1), len(line2))
+        dim1: NDArray[Any]
+        dim2: NDArray[Any]
         dim1, dim2 = np.meshgrid(line1, line2, indexing="ij")
 
         flat1 = dim1.flatten()
@@ -270,6 +273,9 @@ class Regular3DGrid(Grid):
 
         # For reconstructing the matrix later
         self.original_lengths = (len(line_x), len(line_y), len(line_z))
+        xx: NDArray[Any]
+        yy: NDArray[Any]
+        zz: NDArray[Any]
         xx, yy, zz = np.meshgrid(line_x, line_y, line_z, indexing="ij")
         xx = xx.flatten()
         yy = yy.flatten()
@@ -549,7 +555,7 @@ class MicArray(BasePoints):
         # Get smallest distance
         ind = np.argmin(distances)
         self.__array_center_coordinates = self.coordinates[ind, :]
-        self.__array_center_channel_number = ind
+        self.__array_center_channel_number = int(ind)
 
     # ======== Helmholtz number and Frequency =================================
     def he_to_hz(self, he: float, c: float = 343) -> float:
@@ -808,6 +814,39 @@ class BeamformerGridded(BaseBeamformer):
         assert issubclass(type(grid), Grid), "grid should be a Grid object"
         self.grid = grid
         self.st_vec = steering_vector
+        self._steering_vector_cache: (
+            tuple[tuple[object, ...], NDArray[np.complex128]] | None
+        ) = None
+
+    @staticmethod
+    def _array_cache_key(array: NDArray) -> tuple[tuple[int, ...], str, bytes]:
+        array = np.asarray(array)
+        return array.shape, array.dtype.str, array.tobytes()
+
+    def _get_steering_vector(
+        self, wave_numbers: NDArray[np.float64]
+    ) -> NDArray[np.complex128]:
+        steering_method = self.st_vec.get_vector
+        steering_key = (
+            id(self.st_vec),
+            getattr(steering_method, "__func__", steering_method),
+            self._array_cache_key(wave_numbers),
+            self._array_cache_key(self.grid.coordinates),
+            self._array_cache_key(self.mics.coordinates),
+        )
+        if (
+            self._steering_vector_cache is not None
+            and self._steering_vector_cache[0] == steering_key
+        ):
+            return self._steering_vector_cache[1]
+
+        steering_vector = steering_method(wave_numbers, grid=self.grid, mic=self.mics)
+        self._steering_vector_cache = (steering_key, steering_vector)
+        return steering_vector
+
+    def delete_cache(self) -> None:
+        """Delete the cached steering vector."""
+        self._steering_vector_cache = None
 
 
 class BeamformerDASFrequency(BeamformerGridded):
@@ -864,7 +903,7 @@ class BeamformerDASFrequency(BeamformerGridded):
         csm = csm[id1:id2]
         number_frequency_bins = id2 - id1
         wave_numbers = f * np.pi * 2 / self.c
-        h = self.st_vec.get_vector(wave_numbers, grid=self.grid, mic=self.mics)
+        h = self._get_steering_vector(wave_numbers)
         h_H = np.swapaxes(h, 1, 2).conjugate()
         self.f_range_hz = np.array([f[0], f[-1]])
 
@@ -969,7 +1008,7 @@ class BeamformerCleanSC(BeamformerGridded):
 
         # Steering vector
         wave_numbers = f * np.pi * 2 / self.c
-        h = self.st_vec.get_vector(wave_numbers, grid=self.grid, mic=self.mics)
+        h = self._get_steering_vector(wave_numbers)
         h_H = np.swapaxes(h, 1, 2).conjugate()
         self.f_range_hz = np.array([f[0], f[-1]])
 
@@ -1076,7 +1115,7 @@ class BeamformerOrthogonal(BeamformerGridded):
         csm = csm[id1:id2]
         number_frequency_bins = id2 - id1
         wave_numbers = f * np.pi * 2 / self.c
-        h = self.st_vec.get_vector(wave_numbers, grid=self.grid, mic=self.mics)
+        h = self._get_steering_vector(wave_numbers)
         self.f_range_hz = np.array([f[0], f[-1]])
 
         eig_map = np.zeros(
@@ -1169,7 +1208,7 @@ class BeamformerFunctional(BeamformerGridded):
         wave_numbers = f * np.pi * 2 / self.c
 
         # Generate steering vectors
-        h = self.st_vec.get_vector(wave_numbers, grid=self.grid, mic=self.mics)
+        h = self._get_steering_vector(wave_numbers)
         h_H = np.swapaxes(h, 1, 2).conjugate()
         self.f_range_hz = np.array([f[0], f[-1]])
 
@@ -1274,7 +1313,7 @@ class BeamformerMVDR(BeamformerGridded):
         wave_numbers = f * np.pi * 2 / self.c
 
         # Generate steering vectors
-        h = self.st_vec.get_vector(wave_numbers, grid=self.grid, mic=self.mics)
+        h = self._get_steering_vector(wave_numbers)
         h_H = np.swapaxes(h, 1, 2).conjugate()
         self.f_range_hz = np.array([f[0], f[-1]])
 
@@ -1331,8 +1370,15 @@ class BeamformerDASTime(BaseBeamformer):
         self.grid = grid
         self.beamformer_type = "Delay-and-sum (Time)"
 
-    def get_beamformer_output(self) -> Signal:
+    def get_beamformer_output(self, fractional_delay: bool = True) -> Signal:
         """Triggers the computation for beamforming in time domain.
+
+        Parameters
+        ----------
+        fractional_delay : bool, optional
+            When True, fractional delay is applied to the beamformer output. This
+            increases the quality of the output at the expense of a considerably longer
+            computation time. Default: True.
 
         Returns
         -------
@@ -1345,8 +1391,8 @@ class BeamformerDASTime(BaseBeamformer):
 
         # Get maximal distance in order to delay all signals to that
         ds = self.mics.get_distances_to_point(self.grid.coordinates)
-        min_distance = np.min(ds)
-        r0 = np.max(ds)
+        min_distance: float = float(np.min(ds))
+        r0: float = float(np.max(ds))
 
         # Get longest delay in order to pad all signals accordingly
         longest_delay_samples = (
@@ -1356,21 +1402,29 @@ class BeamformerDASTime(BaseBeamformer):
         total_length_samples = out_sig.time_data.shape[0] + longest_delay_samples
         out_sig = out_sig.pad_trim(total_length_samples)
 
+        output_time_data = np.zeros((total_length_samples, self.grid.number_of_points))
+        channels = [
+            self.signal.get_channels(im) for im in range(self.mics.number_of_points)
+        ]
+
         # Start computation for each grid point
         for ig in range(self.grid.number_of_points):
-            delays = (r0 - ds[:, ig]) / self.c
+            delays_s = (r0 - ds[:, ig]) / self.c
             # Accumulator
             new_time_data = np.zeros((total_length_samples, 1))
             for im in range(self.mics.number_of_points):
+                channel = channels[im]
                 ntd = (
-                    self.signal.get_channels(im).fractional_delay(delays[im]).time_data
-                    * ds[im, ig]
-                )
+                    channel.fractional_delay(delays_s[im])
+                    if fractional_delay
+                    else channel.delay(
+                        int(delays_s[im] * channel.sampling_rate_hz + 0.5)
+                    )
+                ).time_data * ds[im, ig]
                 new_time_data += _pad_trim(ntd, total_length_samples)
             new_time_data /= self.mics.number_of_points
-            out_sig = out_sig.add_channel(None, new_time_data, out_sig.sampling_rate_hz)
-        out_sig = out_sig.remove_channel(0)
-        return out_sig
+            output_time_data[:, ig] = new_time_data[:, 0]
+        return out_sig.copy_with_new_time_data(output_time_data)
 
 
 class MonopoleSource:

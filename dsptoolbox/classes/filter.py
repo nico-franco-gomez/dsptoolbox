@@ -6,7 +6,7 @@ from collections.abc import Sequence
 from copy import deepcopy
 from fractions import Fraction
 from pickle import HIGHEST_PROTOCOL, dump
-from typing import Literal, Self, overload
+from typing import Any, Literal, Self, overload
 from warnings import warn
 
 import numpy as np
@@ -629,8 +629,8 @@ class Filter:
         if hasattr(self, "zpk"):
             return max(len(self.zpk[0]), len(self.zpk[1]))
         if hasattr(self, "sos"):
-            n_first_order_sos = np.sum(
-                (self.sos[:, 2] == 0.0) & (self.sos[:, 5] == 0.0)
+            n_first_order_sos: int = int(
+                np.sum((self.sos[:, 2] == 0.0) & (self.sos[:, 5] == 0.0))
             )
             return self.sos.shape[0] * 2 - n_first_order_sos
         if hasattr(self, "ba"):
@@ -686,18 +686,20 @@ class Filter:
         )
         # Channels
         if channels is None:
-            channels = np.arange(signal.number_of_channels)
+            channel_indices = np.arange(signal.number_of_channels)
         else:
-            channels = np.squeeze(channels)
-            channels = np.atleast_1d(channels)
-            assert channels.ndim == 1, "channels can be only a 1D-array or an int"
-            assert all(channels < signal.number_of_channels), (
-                f"Selected channels ({channels}) are not valid for the "
+            channel_indices = np.atleast_1d(np.asarray(channels, dtype=int))
+            assert channel_indices.ndim == 1, (
+                "channels can be only a 1D-array or an int"
+            )
+            assert all(channel_indices < signal.number_of_channels), (
+                f"Selected channels ({channel_indices}) are not valid for the "
                 + f"signal with {signal.number_of_channels} channels"
             )
 
         # Zi - create always for all channels and selected channels will get
         # updated while filtering
+        zi_old: list[Any] | None
         if activate_zi:
             if not hasattr(self, "zi"):
                 self.initialize_zi(signal.number_of_channels)
@@ -725,7 +727,7 @@ class Filter:
             new_signal, zi_new = _filter_on_signal(
                 signal=signal,
                 sos=self.sos,
-                channels=channels,
+                channels=channel_indices,
                 zi=zi_old,
                 zero_phase=zero_phase,
                 warning_on_complex_output=self.warning_if_complex,
@@ -735,13 +737,14 @@ class Filter:
             new_signal, zi_new = _filter_on_signal_ba(
                 signal=signal,
                 ba=self.ba,
-                channels=channels,
+                channels=channel_indices,
                 zi=zi_old,
                 zero_phase=zero_phase,
                 is_fir=self.is_fir,
                 warning_on_complex_output=self.warning_if_complex,
             )
         if activate_zi:
+            assert zi_new is not None
             self.zi = zi_new
         return new_signal
 
@@ -1112,11 +1115,9 @@ class Filter:
             ba = self.ba
         f, gd = _group_delay_filter(ba, length_samples, self.sampling_rate_hz)
         gd *= 1e3
-        ymax = None
-        ymin = None
+        range_y: tuple[float, float] | None = None
         if any(abs(gd) > 50):
-            ymin = -2
-            ymax = 50
+            range_y = (-2.0, 50.0)
 
         if range_hz is not None:
             inds = find_nearest_points_index_in_vector(range_hz, f)
@@ -1127,7 +1128,7 @@ class Filter:
             x=f,
             matrix=gd[..., None],
             range_x=range_hz,
-            range_y=(ymin, ymax),
+            range_y=range_y,
             ylabel="Group delay / ms",
             ax=ax,
         )

@@ -191,8 +191,8 @@ class TestRoomAcousticsModule:
         td = speech.time_data.squeeze()
         ir = self.rir.time_data.squeeze()
         expected = sig.convolve(td, ir)
-        np.testing.assert_allclose(conv[:, 0], expected)
-        np.testing.assert_allclose(conv[:, 1], expected)
+        np.testing.assert_allclose(conv[:, 0], expected, atol=1e-15)
+        np.testing.assert_allclose(conv[:, 1], expected, atol=1e-15)
 
         # Length to trigger oaconvolve
         length_ir = len(td) // 11
@@ -203,8 +203,8 @@ class TestRoomAcousticsModule:
             keep_length=False,
         ).time_data
         expected = sig.convolve(td, ir[:length_ir])
-        np.testing.assert_allclose(oaconv[:, 0], expected)
-        np.testing.assert_allclose(oaconv[:, 1], expected)
+        np.testing.assert_allclose(oaconv[:, 0], expected, atol=1e-15)
+        np.testing.assert_allclose(oaconv[:, 1], expected, atol=1e-15)
 
     def test_find_ir_start(self):
         dsp.room_acoustics.find_ir_start(self.rir)

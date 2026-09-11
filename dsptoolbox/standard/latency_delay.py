@@ -1,3 +1,5 @@
+from collections.abc import Callable
+from typing import Any
 from warnings import warn
 
 import numpy as np
@@ -73,6 +75,7 @@ def latency(
 
     """
     assert polynomial_points >= 0, "Polynomial points has to be at least 0"
+    latency_func: Callable[..., Any]
     if polynomial_points == 0:
         latency_func = _latency
         data_type: type[int | float] = int
@@ -125,10 +128,11 @@ def latency(
             pass_in2 = False
 
         if pass_in2:
-            lags = np.zeros(
+            assert isinstance(in2, MultiBandSignal)
+            lags: NDArray[Any] = np.zeros(
                 (in1.number_of_bands, in1.number_of_channels), dtype=data_type
             )
-            correlations = np.zeros(
+            correlations: NDArray[np.float64] = np.zeros(
                 (in1.number_of_bands, in1.number_of_channels), dtype=np.float64
             )
             for band in range(in1.number_of_bands):

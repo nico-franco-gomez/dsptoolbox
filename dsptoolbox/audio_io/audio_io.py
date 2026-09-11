@@ -272,11 +272,11 @@ def play_and_record(
     # Asserts
     if play_channels is None:
         play_channels = list(range(1, signal.number_of_channels + 1))
-    if type(play_channels) is int:
+    if isinstance(play_channels, int):
         play_channels = [play_channels]
     if rec_channels is None:
         rec_channels = [1]
-    if type(rec_channels) is int:
+    if isinstance(rec_channels, int):
         rec_channels = [rec_channels]
     play_channels = sorted(play_channels)
     rec_channels = sorted(rec_channels)
@@ -352,7 +352,7 @@ def record(
     # Asserts
     if rec_channels is None:
         rec_channels = [1]
-    if type(rec_channels) is int:
+    if isinstance(rec_channels, int):
         rec_channels = [rec_channels]
     rec_channels = sorted(rec_channels)
     assert not any([r < 1 for r in rec_channels]), (
@@ -406,7 +406,7 @@ def play(
     # Asserts and preprocessing
     if play_channels is None:
         play_channels = list(range(1, signal.number_of_channels + 1))
-    if type(play_channels) is int:
+    if isinstance(play_channels, int):
         play_channels = [play_channels]
     play_channels = sorted(play_channels)
     assert not any([r < 1 for r in play_channels]), "Play channel has to be 1 or more"

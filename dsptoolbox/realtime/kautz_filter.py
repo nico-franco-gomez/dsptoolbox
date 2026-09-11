@@ -1,3 +1,4 @@
+from collections.abc import Callable
 from typing import Self
 
 import numpy as np
@@ -10,6 +11,12 @@ from ..classes.signal import Signal
 from ..generators import dirac
 from .iir_filter_realtime import IIRFilter
 from .realtime_filter import RealtimeFilter
+
+_kautz_filtering_sample_rust: Callable | None
+try:
+    from .._rust import kautz_filtering_sample as _kautz_filtering_sample_rust
+except ImportError:
+    _kautz_filtering_sample_rust = None
 
 
 class KautzFilter(RealtimeFilter[float]):
@@ -113,6 +120,8 @@ class KautzFilter(RealtimeFilter[float]):
         self.n_complex_poles = len(self.poles_complex) * 2
         self.n_real_poles = len(self.poles_real)
         self.total_n_poles = self.n_complex_poles + self.n_real_poles
+        self._rust_complex_q = -2.0 * np.real(self.poles_complex)
+        self._rust_complex_r = np.abs(self.poles_complex) ** 2.0
 
         self.__compute_filters()
 
@@ -187,7 +196,16 @@ class KautzFilter(RealtimeFilter[float]):
                 )
             )
 
+        n_channels = getattr(self, "n_channels", 1)
+        self._rust_real_state = np.zeros((self.n_real_poles, n_channels))
+        self._rust_real_advance_state = np.zeros((self.n_real_poles, n_channels))
+        self._rust_complex_state = np.zeros((len(self.poles_complex), 2, 2, n_channels))
+        self._rust_complex_advance_state = np.zeros(
+            (len(self.poles_complex), 2, n_channels)
+        )
+
     def set_n_channels(self, n_channels: int) -> None:
+        self.n_channels = n_channels
         for f in self.__filters_complex:
             f.set_n_channels(n_channels)
         for f in self.__filters_real:
@@ -196,6 +214,12 @@ class KautzFilter(RealtimeFilter[float]):
             f.set_n_channels(n_channels)
         for f in self.__filters_real_advance_sample:
             f.set_n_channels(n_channels)
+        self._rust_real_state = np.zeros((self.n_real_poles, n_channels))
+        self._rust_real_advance_state = np.zeros((self.n_real_poles, n_channels))
+        self._rust_complex_state = np.zeros((len(self.poles_complex), 2, 2, n_channels))
+        self._rust_complex_advance_state = np.zeros(
+            (len(self.poles_complex), 2, n_channels)
+        )
 
     def reset_state(self) -> None:
         for f in self.__filters_real:
@@ -206,8 +230,34 @@ class KautzFilter(RealtimeFilter[float]):
             f.reset_state()
         for f in self.__filters_complex_advance_sample:
             f.reset_state()
+        self._rust_real_state.fill(0.0)
+        self._rust_real_advance_state.fill(0.0)
+        self._rust_complex_state.fill(0.0)
+        self._rust_complex_advance_state.fill(0.0)
 
     def process_sample(self, x: float, channel: int) -> float:
+        if (
+            _kautz_filtering_sample_rust is not None
+            and getattr(self.coefficients_real_poles, "dtype", None)
+            == np.dtype(np.float64)
+            and getattr(self.coefficients_complex_poles, "dtype", None)
+            == np.dtype(np.float64)
+            and 0 <= channel < self.n_channels
+        ):
+            return _kautz_filtering_sample_rust(
+                self.poles_real,
+                self.coefficients_real_poles,
+                self._rust_complex_q,
+                self._rust_complex_r,
+                self.coefficients_complex_poles,
+                x,
+                self._rust_real_state,
+                self._rust_real_advance_state,
+                self._rust_complex_state,
+                self._rust_complex_advance_state,
+                channel,
+            )
+
         y = 0.0
         for ind, f in enumerate(self.__filters_real):
             y += f.process_sample(x, channel) * self.coefficients_real_poles[ind]
@@ -276,7 +326,10 @@ class KautzFilter(RealtimeFilter[float]):
             delay_samples=0,
             sampling_rate_hz=self.sampling_rate_hz,
         )
-        return self.filter_signal(d)
+        filtered_signal = self.filter_signal(d)
+        return ImpulseResponse.from_time_data(
+            filtered_signal.time_data, self.sampling_rate_hz
+        )
 
     def __process_time_data_vector(
         self,

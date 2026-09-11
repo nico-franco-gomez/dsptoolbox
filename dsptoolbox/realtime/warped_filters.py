@@ -1,3 +1,5 @@
+from collections.abc import Callable
+
 import numpy as np
 from numpy.typing import NDArray
 
@@ -5,6 +7,86 @@ from ..classes.filter import Filter
 from ..classes.signal import Signal
 from ..standard.enums import FilterCoefficientsType, WarpingFactorType
 from .realtime_filter import RealtimeFilter
+
+_warped_fir_filtering_rust: Callable | None
+_warped_fir_filtering_block_rust: Callable | None
+_warped_fir_filtering_sample_rust: Callable | None
+_warped_iir_filtering_rust: Callable | None
+_warped_iir_filtering_block_rust: Callable | None
+_warped_iir_filtering_sample_rust: Callable | None
+try:
+    from .._rust import (
+        warped_fir_filtering as _warped_fir_filtering_rust,
+    )
+    from .._rust import (
+        warped_fir_filtering_block as _warped_fir_filtering_block_rust,
+    )
+    from .._rust import (
+        warped_fir_filtering_sample as _warped_fir_filtering_sample_rust,
+    )
+    from .._rust import (
+        warped_iir_filtering as _warped_iir_filtering_rust,
+    )
+    from .._rust import (
+        warped_iir_filtering_block as _warped_iir_filtering_block_rust,
+    )
+    from .._rust import (
+        warped_iir_filtering_sample as _warped_iir_filtering_sample_rust,
+    )
+except ImportError:
+    _warped_fir_filtering_rust = None
+    _warped_fir_filtering_block_rust = None
+    _warped_fir_filtering_sample_rust = None
+    _warped_iir_filtering_rust = None
+    _warped_iir_filtering_block_rust = None
+    _warped_iir_filtering_sample_rust = None
+
+
+def _warped_fir_filtering_python(
+    b: NDArray[np.float64],
+    warp: float,
+    time_data: NDArray[np.float64],
+    state: NDArray[np.float64],
+) -> None:
+    for channel in range(time_data.shape[1]):
+        for sample in range(time_data.shape[0]):
+            residue = time_data[sample, channel]
+            output = residue * b[0]
+            for coefficient in range(len(b) - 1):
+                new_residue = (
+                    state[coefficient + 1, channel] - residue
+                ) * warp + state[coefficient, channel]
+                state[coefficient, channel] = residue
+                residue = new_residue
+                output += new_residue * b[coefficient + 1]
+            state[-1, channel] = residue
+            time_data[sample, channel] = output
+
+
+def _warped_iir_filtering_python(
+    b: NDArray[np.float64],
+    sigmas: NDArray[np.float64],
+    warp: float,
+    time_data: NDArray[np.float64],
+    state: NDArray[np.float64],
+) -> None:
+    for channel in range(time_data.shape[1]):
+        for sample in range(time_data.shape[0]):
+            value = time_data[sample, channel]
+            value += sigmas[1:] @ state[: len(sigmas) - 1, channel]
+            value *= sigmas[0]
+            residue = value
+            output = residue * b[0]
+            for coefficient in range(state.shape[0] - 1):
+                new_residue = (
+                    state[coefficient + 1, channel] - residue
+                ) * warp + state[coefficient, channel]
+                state[coefficient, channel] = residue
+                residue = new_residue
+                if coefficient + 1 < len(b):
+                    output += new_residue * b[coefficient + 1]
+            state[-1, channel] = residue
+            time_data[sample, channel] = output
 
 
 class WarpedFIR(RealtimeFilter[float]):
@@ -85,6 +167,18 @@ class WarpedFIR(RealtimeFilter[float]):
         self.buffer.fill(0.0)
 
     def process_sample(self, x: float, channel: int) -> float:
+        if (
+            _warped_fir_filtering_sample_rust is not None
+            and self.b.dtype == np.float64
+            and self.buffer.dtype == np.float64
+            and 0 <= channel < self.buffer.shape[1]
+        ):
+            return _warped_fir_filtering_sample_rust(
+                self.b, self.warp, x, self.buffer, channel
+            )
+        return self._process_sample_python(x, channel)
+
+    def _process_sample_python(self, x: float, channel: int) -> float:
         # Start delay-free output
         output = x * self.b[0]
         residue = x
@@ -108,6 +202,24 @@ class WarpedFIR(RealtimeFilter[float]):
 
         return output
 
+    def process_block(
+        self, block: NDArray[np.float64], channel: int
+    ) -> NDArray[np.float64]:
+        output: NDArray[np.float64] = np.empty(len(block), dtype=np.float64)
+        if (
+            _warped_fir_filtering_block_rust is not None
+            and self.b.dtype == np.float64
+            and getattr(block, "dtype", None) == np.float64
+            and 0 <= channel < self.buffer.shape[1]
+        ):
+            _warped_fir_filtering_block_rust(
+                self.b, self.warp, block, output, self.buffer, channel
+            )
+        else:
+            for index in range(len(block)):
+                output[index] = self.process_sample(block[index], channel)
+        return output
+
     def filter_signal(self, signal: Signal) -> Signal:
         """Filter a whole signal with the warped FIR filter. The existing
         buffers are left unmodified in this operation.
@@ -124,19 +236,23 @@ class WarpedFIR(RealtimeFilter[float]):
         buffer_prior = self.buffer.copy()
         self.set_n_channels(signal.number_of_channels)
         new_signal = signal.copy_with_new_time_data(
-            self.__process_time_data_vector(signal.time_data)
+            self._process_time_data_vector(signal.time_data)
         )
         self.buffer = buffer_prior
         return new_signal
 
-    def __process_time_data_vector(
+    def _process_time_data_vector(
         self, time_data: NDArray[np.float64]
     ) -> NDArray[np.float64]:
-        output = np.zeros_like(time_data)
-        n_channels = time_data.shape[1]
-        for channel in range(n_channels):
-            for n in range(len(time_data)):
-                output[n, channel] = self.process_sample(time_data[n, channel], channel)
+        output = np.array(time_data, copy=True)
+        if (
+            _warped_fir_filtering_rust is not None
+            and self.b.dtype == np.float64
+            and output.dtype == np.float64
+        ):
+            _warped_fir_filtering_rust(self.b, self.warp, output, self.buffer)
+            return output
+        _warped_fir_filtering_python(self.b, self.warp, output, self.buffer)
         return output
 
 
@@ -244,8 +360,61 @@ class WarpedIIR(WarpedFIR):
         self.sigmas[1:] *= -1.0
 
     def process_sample(self, x: float, channel: int) -> float:
+        if (
+            _warped_iir_filtering_sample_rust is not None
+            and self.b.dtype == np.float64
+            and self.sigmas.dtype == np.float64
+            and self.buffer.dtype == np.float64
+            and 0 <= channel < self.buffer.shape[1]
+        ):
+            return _warped_iir_filtering_sample_rust(
+                self.b, self.sigmas, self.warp, x, self.buffer, channel
+            )
+
         # IIR section
-        x += self.sigmas[1:] @ self.buffer[: len(self.sigmas) - 1, channel]
+        x += (self.sigmas[1:] @ self.buffer[: len(self.sigmas) - 1, channel]).item()
         x *= self.sigmas[0]
         # FIR section
-        return super().process_sample(x, channel)
+        return self._process_sample_python(x, channel)
+
+    def process_block(
+        self, block: NDArray[np.float64], channel: int
+    ) -> NDArray[np.float64]:
+        output: NDArray[np.float64] = np.empty(len(block), dtype=np.float64)
+        if (
+            _warped_iir_filtering_block_rust is not None
+            and self.b.dtype == np.float64
+            and getattr(block, "dtype", None) == np.float64
+            and 0 <= channel < self.buffer.shape[1]
+        ):
+            _warped_iir_filtering_block_rust(
+                self.b,
+                self.sigmas,
+                self.warp,
+                block,
+                output,
+                self.buffer,
+                channel,
+            )
+        else:
+            for index in range(len(block)):
+                output[index] = self.process_sample(block[index], channel)
+        return output
+
+    def _process_time_data_vector(
+        self, time_data: NDArray[np.float64]
+    ) -> NDArray[np.float64]:
+        output = np.array(time_data, copy=True)
+        if (
+            _warped_iir_filtering_rust is not None
+            and self.b.dtype == np.float64
+            and output.dtype == np.float64
+        ):
+            _warped_iir_filtering_rust(
+                self.b, self.sigmas, self.warp, output, self.buffer
+            )
+            return output
+        _warped_iir_filtering_python(
+            self.b, self.sigmas, self.warp, output, self.buffer
+        )
+        return output

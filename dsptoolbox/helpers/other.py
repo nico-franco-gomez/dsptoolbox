@@ -29,7 +29,7 @@ def find_nearest_points_index_in_vector(
     points = np.array(points)
     if np.ndim(points) == 0:
         points = points[..., None]
-    indexes = np.zeros(len(points), dtype=np.int_)
+    indexes: NDArray[np.int_] = np.zeros(len(points), dtype=np.int_)
     for ind, p in enumerate(points):
         indexes[ind] = np.argmin(np.abs(p - vector))
     return indexes

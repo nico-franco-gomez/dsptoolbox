@@ -4,12 +4,16 @@ from os.path import join
 import numpy as np
 import pytest
 from matplotlib.pyplot import close, subplots
+from numpy.typing import NDArray
 
 import dsptoolbox as dsp
 
 x = np.arange(0, 1.1, 0.25)
 y = x.copy()
 z = x.copy()
+xx: NDArray[np.float64]
+yy: NDArray[np.float64]
+zz: NDArray[np.float64]
 xx, yy, zz = np.meshgrid(x, y, z, indexing="ij")
 
 
@@ -216,6 +220,52 @@ class TestBeamformingModule:
             remove_csm_diagonal=True,
         )
 
+    def test_beamformer_steering_vector_cache(self):
+        ma = self._make_planar_array(spacing=0.5, extent=0.5)
+        signal = dsp.generators.noise(
+            length_seconds=0.1,
+            sampling_rate_hz=10_000,
+            number_of_channels=ma.number_of_points,
+            rng=106,
+        )
+        grid = dsp.beamforming.LineGrid(
+            np.array([0.0, 0.5]), dsp.beamforming.SpatialDimension.X, 0.0, 0.5
+        )
+        steering = dsp.beamforming.SteeringVector(
+            formulation=dsp.beamforming.SteeringVectorType.TrueLocation
+        )
+        beamformer = dsp.beamforming.BeamformerDASFrequency(signal, ma, grid, steering)
+        original_get_vector = steering.get_vector
+        calls = 0
+
+        def counted_get_vector(*args, **kwargs):
+            nonlocal calls
+            calls += 1
+            return original_get_vector(*args, **kwargs)
+
+        steering.get_vector = counted_get_vector
+        wave_numbers = np.array([1.0, 2.0])
+        first = beamformer._get_steering_vector(wave_numbers)
+        second = beamformer._get_steering_vector(wave_numbers.copy())
+        assert calls == 1
+        assert first is second
+
+        changed_frequency = beamformer._get_steering_vector(np.array([1.0, 3.0]))
+        assert calls == 2
+        assert changed_frequency is not second
+
+        changed_coordinates = grid.coordinates.copy()
+        changed_coordinates[0, 0] += 0.1
+        grid.coordinates = changed_coordinates
+        changed_grid = beamformer._get_steering_vector(np.array([1.0, 3.0]))
+        assert calls == 3
+        assert changed_grid is not changed_frequency
+
+        beamformer.delete_cache()
+        deleted = beamformer._get_steering_vector(np.array([1.0, 3.0]))
+        assert calls == 4
+        assert deleted is not changed_grid
+
     def test_beamformer_time(self):
         ma = self.points_uniform.copy()
         ma["z"] = np.zeros(len(ma["x"]))
@@ -324,6 +374,47 @@ class TestBeamformingModule:
         peak_idx = np.unravel_index(np.argmax(energy_map), energy_map.shape)
         peak_xy = (gx[peak_idx[0]], gy[peak_idx[1]])
         np.testing.assert_allclose(peak_xy, true_xy, atol=1e-9)
+
+    def test_beamformer_das_time_integer_delays(self):
+        """The integer-delay DAS path should match rounded-delay accumulation."""
+        fs = 10_000
+        ma = self._make_planar_array(spacing=0.25, extent=1.0, z=0.0)
+
+        source = dsp.beamforming.MonopoleSource(
+            dsp.generators.noise(length_seconds=1, sampling_rate_hz=fs, rng=105),
+            [0.4, 0.6, 0.5],
+        )
+        s = source.get_signals_on_array(ma)
+
+        gx = np.arange(0.0, 1.01, 0.2)
+        gy = np.arange(0.0, 1.01, 0.2)
+        grid = dsp.beamforming.Regular2DGrid(
+            gx,
+            gy,
+            [dsp.beamforming.SpatialDimension.X, dsp.beamforming.SpatialDimension.Y],
+            value3=0.5,
+        )
+
+        bf = dsp.beamforming.BeamformerDASTime(s, ma, grid)
+        out = bf.get_beamformer_output(fractional_delay=False)
+
+        distances = ma.get_distances_to_point(grid.coordinates)
+        min_distance = np.min(distances)
+        max_distance = np.max(distances)
+        longest_delay_samples = int((max_distance - min_distance) / 343 * fs + 2)
+        total_length_samples = s.time_data.shape[0] + longest_delay_samples
+        expected = np.zeros((total_length_samples, grid.number_of_points))
+        for grid_index in range(grid.number_of_points):
+            delays = (max_distance - distances[:, grid_index]) / 343
+            for mic_index in range(ma.number_of_points):
+                delay_samples = int(delays[mic_index] * fs + 0.5)
+                delayed = s.get_channels(mic_index).delay(delay_samples).time_data
+                expected[: delayed.shape[0], grid_index] += (
+                    delayed[:, 0] * distances[mic_index, grid_index]
+                )
+            expected[:, grid_index] /= ma.number_of_points
+
+        np.testing.assert_array_equal(out.time_data, expected)
 
     def test_beamformer_mvdr_localizes_source(self):
         """MVDR needs an invertible cross-spectral matrix per frequency

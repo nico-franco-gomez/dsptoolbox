@@ -138,7 +138,7 @@ def _welch(
             if sp_frames.shape[1] % 2 == 1
             else sp_frames.shape[1] - 1
         )
-        bias = np.sum((-1) ** (n + 1) / n)
+        bias: float = float(np.sum((-1) ** (n + 1) / n))
         csd /= bias
 
     # Weighting (with 2 because one-sided)

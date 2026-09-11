@@ -378,16 +378,18 @@ def general_subplots_line(
             axes[n].set_xlim(range_x)
         if range_y is not None:
             axes[n].set_ylim(range_y)
-    if type(xlabels) is str or len(xlabels) == 1:
+    if isinstance(xlabels, str):
         axes[-1].set_xlabel(xlabels)
+    elif xlabels is not None and len(xlabels) == 1:
+        axes[-1].set_xlabel(xlabels[0])
     fig.tight_layout()
     return fig, axes
 
 
 def general_matrix_plot(
     matrix: NDArray[np.float64],
-    range_x: tuple[float, float] | None = None,
-    range_y: tuple[float, float] | None = None,
+    range_x: Sequence[float] | None = None,
+    range_y: Sequence[float] | None = None,
     range_z: float | None = None,
     xlabel: str | None = None,
     ylabel: str | None = None,
@@ -453,11 +455,11 @@ def general_matrix_plot(
     fig, ax = _get_figure_and_axes(ax, figsize=(7, 5))
     cmap2 = cm.get_cmap(cmap)
     if range_z is not None:
-        max_val = np.max(matrix)
-        min_val = max_val - range_z
+        max_val: float = float(np.max(matrix))
+        min_val: float = max_val - range_z
     else:
-        max_val = np.max(matrix)
-        min_val = np.min(matrix)
+        max_val = float(np.max(matrix))
+        min_val = float(np.min(matrix))
 
     if lower_origin:
         origin: Literal["lower", "upper"] = "lower"

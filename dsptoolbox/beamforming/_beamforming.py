@@ -84,8 +84,8 @@ class BasePoints:
         extent = {}
         dims = ["x", "y", "z"]
         for i, d in enumerate(dims):
-            min_val = np.min(self.coordinates[:, i])
-            max_val = np.max(self.coordinates[:, i])
+            min_val: float = float(np.min(self.coordinates[:, i]))
+            max_val: float = float(np.max(self.coordinates[:, i]))
             extent[d] = [min_val, max_val]
         return extent
 
@@ -275,11 +275,9 @@ def _clean_sc_deconvolve(
         if remove_diagonal_csm:
             np.fill_diagonal(G, 0)
 
-        for gind in range(len(map)):
-            # Clean map
-            map[gind] -= (
-                np.linalg.multi_dot([h_H[gind, :], G, h[:, gind]]).real * safety_factor
-            )
+        # Clean all grid points in one matrix operation.
+        projected = h_H @ G
+        map -= np.sum(projected * h.T, axis=1).real * safety_factor
 
         # Swap degraded CSM
         temp = D[1, :, :].copy()

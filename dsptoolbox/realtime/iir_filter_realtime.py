@@ -1,3 +1,5 @@
+from collections.abc import Callable
+
 import numpy as np
 from numpy.typing import NDArray
 from scipy.signal import lfilter
@@ -5,6 +7,12 @@ from scipy.signal import lfilter
 from ..classes.filter import Filter
 from ..standard.enums import FilterCoefficientsType
 from .realtime_filter import RealtimeFilter
+
+_iir_filtering_sample_rust: Callable | None
+try:
+    from .._rust import iir_filtering_sample as _iir_filtering_sample_rust
+except ImportError:
+    _iir_filtering_sample_rust = None
 
 
 class IIRFilter(RealtimeFilter[float]):
@@ -66,6 +74,15 @@ class IIRFilter(RealtimeFilter[float]):
         self.state.fill(0.0)
 
     def process_sample(self, x: float, channel: int) -> float:
+        if (
+            _iir_filtering_sample_rust is not None
+            and self.b.dtype == np.dtype(np.float64)
+            and self.a.dtype == np.dtype(np.float64)
+            and self.state.dtype == np.dtype(np.float64)
+            and 0 <= channel < self.state.shape[1]
+        ):
+            return _iir_filtering_sample_rust(self.b, self.a, x, self.state, channel)
+
         y = self.b[0] * x + self.state[0, channel]
         for i in range(self.order - 1):
             self.state[i, channel] = (

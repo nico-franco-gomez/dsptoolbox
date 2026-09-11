@@ -8,6 +8,38 @@ The format is based on `Keep a
 Changelog <http://keepachangelog.com/en/1.0.0/>`__ and this project
 adheres to `Semantic Versioning <http://semver.org/spec/v2.0.0.html>`_.
 
+`0.11.0 <https://pypi.org/project/dsptoolbox/0.11.0>`_ -
+---------------------
+Added
+~~~~~
+- Rust implementations for realtime filters, including FIR, IIR, Kautz and parallel topologies
+- Rust implementations of the warp, Laguerre and CWT with synchrosqueezing transforms
+
+Bugfix
+~~~~~~
+- Corrected and extended realtime filter and transform tests
+- `ParallelFilter` can now take a full SOS for IIR coefficients in set_coefficients
+
+Misc
+~~~~
+- Optimized synthetic room impulse response generation and beamformer processing
+- Updated dependency versions
+- Extended realtime filter documentation
+- Added Rust-backed implementations and expanded native extension tests
+- Ensure type safety by correcting all mypy issues across the code base
+
+`0.10.3 <https://pypi.org/project/dsptoolbox/0.10.3>`_ -
+---------------------
+Bugfix
+~~~~~~
+- Corrected a plotting argument that was being dropped
+
+`0.10.2 <https://pypi.org/project/dsptoolbox/0.10.2>`_ -
+---------------------
+Misc
+~~~~
+- Use default plotting style again
+
 `0.10.1 <https://pypi.org/project/dsptoolbox/0.10.1>`_ -
 ---------------------
 Misc

@@ -2,6 +2,7 @@
 This file contains alternative filter implementations.
 """
 
+from collections.abc import Callable
 from warnings import warn
 
 import numpy as np
@@ -12,14 +13,41 @@ from ..classes.signal import Signal
 from ..standard.enums import FilterCoefficientsType
 from .realtime_filter import RealtimeFilter
 
+_lattice_filtering_fir_rust: Callable | None
+_lattice_filtering_fir_sample_rust: Callable | None
+_lattice_ladder_filtering_iir_rust: Callable | None
+_lattice_ladder_filtering_iir_sample_rust: Callable | None
+_lattice_ladder_filtering_sos_rust: Callable | None
+_lattice_ladder_filtering_sos_sample_rust: Callable | None
+try:
+    from .._rust import lattice_filtering_fir as _lattice_filtering_fir_rust
+    from .._rust import (
+        lattice_filtering_fir_sample as _lattice_filtering_fir_sample_rust,
+    )
+    from .._rust import lattice_filtering_iir as _lattice_ladder_filtering_iir_rust
+    from .._rust import (
+        lattice_filtering_iir_sample as _lattice_ladder_filtering_iir_sample_rust,
+    )
+    from .._rust import lattice_filtering_sos as _lattice_ladder_filtering_sos_rust
+    from .._rust import (
+        lattice_filtering_sos_sample as _lattice_ladder_filtering_sos_sample_rust,
+    )
+except ImportError:
+    _lattice_filtering_fir_rust = None
+    _lattice_filtering_fir_sample_rust = None
+    _lattice_ladder_filtering_iir_rust = None
+    _lattice_ladder_filtering_iir_sample_rust = None
+    _lattice_ladder_filtering_sos_rust = None
+    _lattice_ladder_filtering_sos_sample_rust = None
+
 
 class LatticeLadderFilter(RealtimeFilter[float]):
     """This is a class that handles a Lattice/Ladder filter representation.
     Depending on the `k` (reflection) or `c` (feedforward) coefficients, it
     might be a lattice or lattice/ladder filter structure.
 
-    The filtering is done on a pure-python implementation and is considerably
-    slower than `scipy.signal.lfilter`.
+    The filtering uses a Rust backend when available and falls back to the
+    Python implementation otherwise.
 
     References
     ----------
@@ -185,6 +213,8 @@ class LatticeLadderFilter(RealtimeFilter[float]):
 
         td = signal.time_data.copy()
 
+        c = self.c
+
         if self.n_channels != signal.number_of_channels:
             warn(
                 """Number of channels did not match the filter's """
@@ -195,13 +225,14 @@ class LatticeLadderFilter(RealtimeFilter[float]):
             self.set_n_channels(signal.number_of_channels)
 
         if self.iir_filter:
+            assert c is not None, "Ladder coefficients are needed"
             if self.sos_filtering:
                 td, self.state = _lattice_ladder_filtering_sos(
-                    self.k, self.c, td, self.state
+                    self.k, c, td, self.state
                 )
             else:
                 td, self.state = _lattice_ladder_filtering_iir(
-                    self.k, self.c, td, self.state
+                    self.k, c, td, self.state
                 )
         elif not self.iir_filter:
             td, self.state = _lattice_filtering_fir(self.k, td, self.state)
@@ -233,12 +264,40 @@ class LatticeLadderFilter(RealtimeFilter[float]):
 
         """
         if self.iir_filter:
+            assert self.c is not None, "Ladder coefficients are needed"
             if self.sos_filtering:
+                if (
+                    _lattice_ladder_filtering_sos_sample_rust is not None
+                    and self.k.dtype == np.float64
+                    and self.c.dtype == np.float64
+                    and self.state.dtype == np.float64
+                    and 0 <= channel < self.state.shape[-1]
+                ):
+                    return _lattice_ladder_filtering_sos_sample_rust(
+                        self.k, self.c, x, self.state, channel
+                    )
                 return self.__lattice_ladder_filtering_sos_sample(x, channel)
-            else:
-                return self.__lattice_ladder_filtering_iir_sample(x, channel)
-        else:
-            return self.__lattice_filtering_fir_sample(x, channel)
+
+            if (
+                _lattice_ladder_filtering_iir_sample_rust is not None
+                and self.k.dtype == np.float64
+                and self.c.dtype == np.float64
+                and self.state.dtype == np.float64
+                and 0 <= channel < self.state.shape[-1]
+            ):
+                return _lattice_ladder_filtering_iir_sample_rust(
+                    self.k, self.c, x, self.state, channel
+                )
+            return self.__lattice_ladder_filtering_iir_sample(x, channel)
+
+        if (
+            _lattice_filtering_fir_sample_rust is not None
+            and self.k.dtype == np.float64
+            and self.state.dtype == np.float64
+            and 0 <= channel < self.state.shape[-1]
+        ):
+            return _lattice_filtering_fir_sample_rust(self.k, x, self.state, channel)
+        return self.__lattice_filtering_fir_sample(x, channel)
 
     def __lattice_ladder_filtering_sos_sample(self, x: float, channel: int) -> float:
         assert self.c is not None, "Ladder coefficients are needed"
@@ -286,7 +345,7 @@ class LatticeLadderFilter(RealtimeFilter[float]):
         return x_o
 
 
-def _lattice_ladder_filtering_sos(
+def _lattice_ladder_filtering_sos_python(
     k: NDArray[np.float64],
     c: NDArray[np.float64],
     td: NDArray[np.float64],
@@ -324,7 +383,26 @@ def _lattice_ladder_filtering_sos(
     return td, state
 
 
-def _lattice_filtering_fir(
+def _lattice_ladder_filtering_sos(
+    k: NDArray[np.float64],
+    c: NDArray[np.float64],
+    td: NDArray[np.float64],
+    state: NDArray[np.float64],
+) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
+    """Filter SOS lattice data, preferring the optional Rust backend."""
+    if (
+        _lattice_ladder_filtering_sos_rust is not None
+        and k.dtype == np.float64
+        and c.dtype == np.float64
+        and td.dtype == np.float64
+        and state.dtype == np.float64
+    ):
+        _lattice_ladder_filtering_sos_rust(k, c, td, state)
+        return td, state
+    return _lattice_ladder_filtering_sos_python(k, c, td, state)
+
+
+def _lattice_filtering_fir_python(
     k: NDArray[np.float64],
     td: NDArray[np.float64],
     state: NDArray[np.float64],
@@ -345,7 +423,19 @@ def _lattice_filtering_fir(
     return td, state
 
 
-def _lattice_ladder_filtering_iir(
+def _lattice_filtering_fir(
+    k: NDArray[np.float64],
+    td: NDArray[np.float64],
+    state: NDArray[np.float64],
+) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
+    """FIR filtering, preferring the Rust implementation when available."""
+    if _lattice_filtering_fir_rust is not None:
+        _lattice_filtering_fir_rust(k, td, state)
+        return td, state
+    return _lattice_filtering_fir_python(k, td, state)
+
+
+def _lattice_ladder_filtering_iir_python(
     k: NDArray[np.float64],
     c: NDArray[np.float64],
     td: NDArray[np.float64],
@@ -398,6 +488,25 @@ def _lattice_ladder_filtering_iir(
             td[i_ch, ch] = x * c[0] + x_low
 
     return td, state
+
+
+def _lattice_ladder_filtering_iir(
+    k: NDArray[np.float64],
+    c: NDArray[np.float64],
+    td: NDArray[np.float64],
+    state: NDArray[np.float64],
+) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
+    """Filter general lattice-ladder IIR data, preferring Rust."""
+    if (
+        _lattice_ladder_filtering_iir_rust is not None
+        and k.dtype == np.float64
+        and c.dtype == np.float64
+        and td.dtype == np.float64
+        and state.dtype == np.float64
+    ):
+        _lattice_ladder_filtering_iir_rust(k, c, td, state)
+        return td, state
+    return _lattice_ladder_filtering_iir_python(k, c, td, state)
 
 
 def _get_lattice_ladder_coefficients_iir(

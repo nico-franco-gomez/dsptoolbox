@@ -3,6 +3,9 @@
 *.json
 .vscode
 dist
+target/
+Cargo.lock
+dsptoolbox/_rust*.so
 dsptoolbox.egg-info
 checklist_for_dev.txt
 docs/_build

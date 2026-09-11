@@ -141,7 +141,7 @@ class TestTransformsModule:
 
         """
         try:
-            import librosa
+            import librosa  # type: ignore
         except ImportError:
             return
 
@@ -280,6 +280,62 @@ class TestTransformsModule:
         dsp.transforms.cwt(self.speech, query_f, morlet, False)
         dsp.transforms.cwt(self.speech, query_f, morlet, True)
 
+    def test_morlet_wavelet_rust_backend_parity(self):
+        from dsptoolbox.transforms._transforms import _morlet_wavelet_python
+
+        try:
+            from dsptoolbox._rust import morlet_wavelet
+        except ImportError:
+            pytest.skip("Rust extension is not available")
+
+        wavelet = dsp.transforms.MorletWavelet(b=None, h=3, step=1e-3)
+        _, base = wavelet.get_base_wavelet()
+        for frequency in (100.0, 150.0, 200.0):
+            scale = wavelet.get_center_frequency() / frequency * 8000
+            inds = np.arange(scale * (wavelet.bounds[1] - wavelet.bounds[0]) + 1)
+            inds /= scale * wavelet.step
+            expected = _morlet_wavelet_python(base, inds)
+            actual = morlet_wavelet(base, inds)
+            np.testing.assert_allclose(actual, expected, rtol=1e-12, atol=1e-12)
+            np.testing.assert_allclose(
+                wavelet.get_wavelet(frequency, 8000), expected, rtol=1e-12, atol=1e-12
+            )
+
+    def test_squeeze_scalogram_rust_backend_parity(self):
+        from dsptoolbox.transforms._transforms import _squeeze_scalogram_python
+
+        try:
+            from dsptoolbox._rust import squeeze_scalogram
+        except ImportError:
+            pytest.skip("Rust extension is not available")
+
+        freqs = np.linspace(100.0, 1200.0, 7)
+
+        for n_times in (3, 31):
+            rng = np.random.default_rng(n_times)
+            scalogram = (
+                rng.normal(size=(7, n_times, 2)) + 1j * rng.normal(size=(7, n_times, 2))
+            ).astype(np.complex128)
+            gradient = np.gradient(scalogram, axis=1, edge_order=2)
+            for apply_normalization in (False, True):
+                expected = _squeeze_scalogram_python(
+                    scalogram,
+                    freqs,
+                    8000,
+                    0.05,
+                    apply_normalization,
+                    gradient,
+                )
+                actual = squeeze_scalogram(
+                    scalogram,
+                    freqs,
+                    8000,
+                    0.05,
+                    apply_normalization,
+                    gradient,
+                )
+                np.testing.assert_allclose(actual, expected, rtol=1e-12, atol=1e-12)
+
     def test_cwt_peak_at_true_frequency(self):
         """The scalogram's magnitude, at a time sample away from the
         signal's edges, should peak at the queried frequency nearest the
@@ -361,6 +417,23 @@ class TestTransformsModule:
         sp = self.speech.pad_trim(128)
         dsp.transforms.laguerre(sp, dsp.WarpingFactor.Custom.with_factor(-0.7))
         dsp.transforms.laguerre(sp, dsp.WarpingFactor.Erb)
+
+    def test_laguerre_rust_backend_parity(self):
+        from dsptoolbox.transforms._transforms import _laguerre_python
+
+        try:
+            from dsptoolbox._rust import laguerre
+        except ImportError:
+            pytest.skip("Rust extension is not available")
+
+        for shape in ((3, 1), (31, 2), (128, 4)):
+            rng = np.random.default_rng(sum(shape))
+            for warping_factor in (-0.7, 0.4):
+                contiguous = rng.normal(size=shape)
+                for time_data in (contiguous, np.asfortranarray(contiguous)):
+                    expected = _laguerre_python(time_data, warping_factor)
+                    actual = laguerre(time_data, warping_factor)
+                    np.testing.assert_allclose(actual, expected, rtol=1e-12, atol=1e-12)
 
     def test_laguerre_round_trip_is_identity(self):
         """Per the docstring, applying `laguerre` with a warping factor and

@@ -184,6 +184,7 @@ def _get_knee_func(
                     return T + (x - T) / R
 
             y = np.zeros_like(x)
+            assert isinstance(x, np.ndarray)
             first_section = x - T < -W / 2
             y[first_section] = x[first_section]
 
@@ -211,6 +212,7 @@ def _get_knee_func(
                     return x
 
             y = np.zeros_like(x)
+            assert isinstance(x, np.ndarray)
             first_section = x - T < -W / 2
             y[first_section] = T + (x[first_section] - T) / R
 
@@ -265,7 +267,7 @@ def _find_attack_hold_release(
     if side_chain is None:
         # Accumulate global activations
         global_activation = np.zeros_like(x).astype(bool)
-        for i in np.arange(1, len(x)):
+        for i in range(1, len(x)):
             ind = max(0, i - surpass_samples)
             if trigger(x, ind, i, threshold_db):
                 global_activation[
@@ -284,7 +286,7 @@ def _find_attack_hold_release(
     temp_attack[1:] = np.bitwise_and(
         np.bitwise_not(global_activation[:-1]), global_activation[1:]
     )
-    for i in np.arange(len(x)):
+    for i in range(len(x)):
         if release[i]:
             release[i - release_samples : i] = True
         if temp_attack[i]:
@@ -301,7 +303,7 @@ class LFO:
 
     def __init__(
         self,
-        frequency_hz: float | tuple,
+        frequency_hz: float | tuple[str, float],
         waveform: Waveform = Waveform.Harmonic,
         random_phase: bool = False,
         smooth: float = 0,
@@ -351,7 +353,7 @@ class LFO:
 
     def __set_parameters(
         self,
-        frequency_hz: float | tuple | None,
+        frequency_hz: float | tuple[str, float] | None,
         waveform: Waveform | None,
         random_phase: bool | None,
         smooth: float | None,
@@ -360,7 +362,7 @@ class LFO:
         if frequency_hz is not None:
             if type(frequency_hz) in (float, int):
                 self.frequency_hz = np.abs(frequency_hz)
-            elif type(frequency_hz) in (tuple, list):
+            elif isinstance(frequency_hz, tuple):
                 assert len(frequency_hz) == 2, (
                     "frequency_hz as tuple must have length 2"
                 )

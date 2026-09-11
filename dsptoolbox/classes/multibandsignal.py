@@ -1,7 +1,7 @@
 from collections.abc import Iterator
 from copy import deepcopy
 from pickle import HIGHEST_PROTOCOL, dump
-from typing import Any, Self
+from typing import Any, Self, cast
 from warnings import warn
 
 import numpy as np
@@ -62,7 +62,7 @@ class MultiBandSignal(MultichannelData):
 
     # ======== Properties and setters =========================================
     @property
-    def sampling_rate_hz(self) -> int:
+    def sampling_rate_hz(self) -> int | list[int]:
         """Get the sampling rate(s) in Hz.
 
         Returns
@@ -99,7 +99,7 @@ class MultiBandSignal(MultichannelData):
             assert new_sampling_rate_hz.ndim == 0, (
                 "MultiBandSignal has only one sample rate"
             )
-            self.__sampling_rate_hz = int(new_sampling_rate_hz)
+            self.__sampling_rate_hz: int | list[int] = int(new_sampling_rate_hz)
         else:
             new_sampling_rate_hz = atleast_1d(new_sampling_rate_hz)
             if hasattr(self, "_MultiBandSignal__bands"):
@@ -328,7 +328,7 @@ class MultiBandSignal(MultichannelData):
             Metadata
 
         """
-        info = {}
+        info: dict[str, Any] = {}
         info["number_of_bands"] = self.number_of_bands
         if self.bands:
             info["same_sampling_rate"] = self.same_sampling_rate
@@ -385,7 +385,7 @@ class MultiBandSignal(MultichannelData):
         - Use `pop_band()` to also get the removed band back.
 
         """
-        return self.pop_band(index)[0]
+        return cast(Self, self.pop_band(index)[0])
 
     def pop_band(self, index: int | None = None) -> tuple["MultiBandSignal", Signal]:
         """Return a copy of the `MultiBandSignal` with a band removed,
@@ -533,6 +533,8 @@ class MultiBandSignal(MultichannelData):
             "The bands do not share a sampling rate and cannot be joined into "
             + "a single signal, use get_all_bands_multirate()"
         )
+        sampling_rate_hz = self.sampling_rate_hz
+        assert isinstance(sampling_rate_hz, int)
 
         # Check if there is complex time data
         if self.bands[0].time_data_imaginary is None:
@@ -550,9 +552,7 @@ class MultiBandSignal(MultichannelData):
                 new_time_data[:, n] = (
                     self.bands[n].time_data[:, channel] + imaginary[:, channel] * 1j
                 )
-        return self.__get_type_of_signal_bands()(
-            None, new_time_data, self.sampling_rate_hz
-        )
+        return self.__get_type_of_signal_bands()(None, new_time_data, sampling_rate_hz)
 
     def get_all_bands_multirate(
         self, channel: int = 0
@@ -614,7 +614,7 @@ class MultiBandSignal(MultichannelData):
         )
 
         complex_data = self.bands[0].time_data_imaginary is not None
-        td = zeros(
+        td: NDArray[Any] = zeros(
             (
                 self.length_samples,
                 self.number_of_bands,
@@ -1139,6 +1139,9 @@ class MultiBandSignal(MultichannelData):
                     [s.bands[n]], allow_padding_trimming, at_end
                 )
             new_bands.append(new_band)
-        return MultiBandSignal(
-            new_bands, same_sampling_rate=signals[0].same_sampling_rate
+        return cast(
+            Self,
+            MultiBandSignal(
+                new_bands, same_sampling_rate=signals[0].same_sampling_rate
+            ),
         )

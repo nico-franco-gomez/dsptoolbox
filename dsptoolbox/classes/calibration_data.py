@@ -171,14 +171,15 @@ class CalibrationData:
                 calibrated_signal.time_data * calibration_factors
             )
             calibrated_signal.calibrated_signal = True
+            return calibrated_signal
         elif isinstance(signal, MultiBandSignal):
-            calibrated_signal = signal.copy()
-            for b in calibrated_signal:
+            calibrated_multiband = signal.copy()
+            for b in calibrated_multiband:
                 b.constrain_amplitude = False
                 b.time_data = b.time_data * calibration_factors
                 b.calibrated_signal = True
+            return calibrated_multiband
         else:
             raise TypeError(
                 "signal has not a valid type. Use Signal or " + "MultiBandSignal"
             )
-        return calibrated_signal

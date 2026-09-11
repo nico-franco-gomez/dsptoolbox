@@ -331,7 +331,7 @@ def _trim_ir(
     corr_coeff = np.zeros(len(window_lengths))
     for ind, window_length in enumerate(window_lengths):
         current_start_position = 0
-        current_window_mean_db = 0
+        current_window_mean_db: float = 0.0
 
         for _ in range(len(envelope) // window_length):
             new_window_mean_db = np.mean(
@@ -341,7 +341,7 @@ def _trim_ir(
             )
             if current_window_mean_db <= new_window_mean_db:
                 break
-            current_window_mean_db = new_window_mean_db
+            current_window_mean_db = float(new_window_mean_db)
             current_start_position += window_length
 
         # End in the center of the next window
@@ -448,15 +448,15 @@ try:
             f0 = frequency_vector[i]
             f_low = f0 / factor
             f_high = f0 * factor
-            ind_low = i - int((f0 - f_low) / delta_f + 0.5)
-            ind_high = i + int((f_high - f0) / delta_f + 0.5) + 1
+            ind_low: int = int(i - int((f0 - f_low) / delta_f + 0.5))
+            ind_high: int = int(i + int((f_high - f0) / delta_f + 0.5) + 1)
 
             # Necessary window length for right shape
             window_length = ind_high - ind_low
 
             # Boundaries of window
-            ind_low = max(ind_low, 0)
-            ind_high = min(ind_high, max_index)
+            ind_low = max(int(ind_low), 0)
+            ind_high = min(int(ind_high), int(max_index))
 
             # Selection
             effective_window_length = ind_high - ind_low
@@ -527,8 +527,8 @@ except ModuleNotFoundError as e:
             f0 = frequency_vector[i]
             f_low = f0 / factor
             f_high = f0 * factor
-            ind_low = i - int((f0 - f_low) / delta_f + 0.5)
-            ind_high = i + int((f_high - f0) / delta_f + 0.5) + 1
+            ind_low: int = int(i - int((f0 - f_low) / delta_f + 0.5))
+            ind_high: int = int(i + int((f_high - f0) / delta_f + 0.5) + 1)
 
             # Necessary window length for right shape
             window_length = ind_high - ind_low

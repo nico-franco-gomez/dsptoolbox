@@ -18,7 +18,7 @@ class TestMultiBandSignal:
     fs = 44100
     s = dsp.Signal(None, _rng.normal(0, 0.01, (fs * 3, 3)), fs)
     fb = dsp.filterbanks.auditory_filters_gammatone(
-        frequency_range_hz=[500, 1200], sampling_rate_hz=fs
+        frequency_range_hz=(500, 1200), sampling_rate_hz=fs
     )
 
     def get_mb(self) -> dsp.MultiBandSignal:

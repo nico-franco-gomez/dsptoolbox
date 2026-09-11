@@ -1,6 +1,6 @@
-"""
-Here are methods considered as somewhat special or less common.
-"""
+"""Here are methods considered as somewhat special or less common."""
+
+from typing import Any
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -46,6 +46,7 @@ from ..transforms._transforms import (
     Wavelet,
     _dft_backend,
     _get_kernels_vqt,
+    _laguerre,
     _pitch2frequency,
     _squeeze_scalogram,
     _warp_time_series,
@@ -318,6 +319,8 @@ def plot_waterfall(
     amplitude_scaling = sig.spectrum_scaling.is_amplitude_scaling()
     fig, ax = plt.subplots(figsize=(10, 8), subplot_kw=dict(projection="3d"))
     assert isinstance(ax, Axes3D)
+    tt: NDArray[Any]
+    ff: NDArray[Any]
     tt, ff = np.meshgrid(t, f)
     ax.plot_surface(
         tt,
@@ -524,6 +527,8 @@ def istft(
     )
     td_framed = td_framed[: parameters.window_length_samples, ...]
     if parameters.scaling.has_physical_units():
+        assert isinstance(sampling_rate_hz, int)
+        assert parameters.fft_length_samples is not None
         td_framed /= parameters.scaling.get_scaling_factor(
             parameters.fft_length_samples, sampling_rate_hz, window
         )
@@ -767,9 +772,11 @@ def hilbert(
 
         return signal.copy_with_new_time_data(np.fft.ifft(sp, axis=0))
     elif type(signal) is MultiBandSignal:
-        new_mb = signal.copy()
+        new_mb: MultiBandSignal = signal.copy()
         for ind, b in enumerate(new_mb):
-            new_mb.bands[ind] = hilbert(b)
+            new_band = hilbert(b)
+            assert isinstance(new_band, Signal)
+            new_mb.bands[ind] = new_band
         return new_mb
     else:
         raise TypeError("Signal does not have a valid type")
@@ -780,7 +787,7 @@ def vqt(
     channel: NDArray[np.int_] | None = None,
     q: float = 1,
     gamma: float = 50,
-    octaves: list = (1, 5),
+    octaves: tuple = (1, 5),
     bins_per_octave: int = 24,
     a4_tuning: int = 440,
     window: str | tuple = "hann",
@@ -968,24 +975,7 @@ def laguerre(signal: Signal, warping_factor: WarpingFactorType) -> Signal:
 
     """
     factor = warping_factor.get_factor(signal.sampling_rate_hz)
-
-    xx = signal.time_data[::-1, ...]  # Time reversal
-    output = np.zeros_like(xx)
-
-    b = np.array([factor, 1.0])
-    a = np.array([1.0, factor])
-    b_normalized = (1.0 - factor**2.0) ** 0.5
-
-    # First filtering stage with normalization
-    xx = lfilter(b_normalized, a, xx, axis=0)
-    output[0, :] = xx[-1, :]
-
-    # Rest filters
-    for i in range(1, xx.shape[0]):
-        xx = lfilter(b, a, xx, axis=0)
-        output[i, :] = xx[-1, :]
-
-    return signal.copy_with_new_time_data(output)
+    return signal.copy_with_new_time_data(_laguerre(signal.time_data, factor))
 
 
 def warp(

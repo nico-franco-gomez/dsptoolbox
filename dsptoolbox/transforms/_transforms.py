@@ -1,10 +1,25 @@
-"""
-Backend for special module
-"""
+"""Backend for special module."""
+
+from collections.abc import Callable
 
 import numpy as np
 from numpy.typing import NDArray
 from scipy.signal import get_window, lfilter
+
+_laguerre_rust: Callable | None
+_warp_time_series_rust: Callable | None
+_squeeze_scalogram_rust: Callable | None
+_morlet_wavelet_rust: Callable | None
+try:
+    from .._rust import morlet_wavelet as _morlet_wavelet_rust  # noqa: I001
+    from .._rust import laguerre as _laguerre_rust  # noqa: I001
+    from .._rust import warp_time_series as _warp_time_series_rust  # noqa: I001
+    from .._rust import squeeze_scalogram as _squeeze_scalogram_rust  # noqa: I001
+except ImportError:
+    _morlet_wavelet_rust = None
+    _laguerre_rust = None
+    _warp_time_series_rust = None
+    _squeeze_scalogram_rust = None
 
 
 def _pitch2frequency(tuning_a_hz: float = 440.0) -> NDArray[np.float64]:
@@ -210,37 +225,47 @@ class MorletWavelet(Wavelet):
         return wave
 
     def _get_interpolated_wave(
-        self, base: NDArray[np.float64], inds: NDArray[np.float64]
+        self, base: NDArray[np.complex128], inds: NDArray[np.float64]
     ) -> NDArray[np.complex128]:
         """Return the wavelet function for a selection of index using
         linear interpolation.
 
         """
-        # Truncate indices and select only valid ones
-        trunc = inds.astype(int)
-        trunc = trunc[trunc < len(base)]
-
-        accumulator = np.zeros(len(trunc), dtype=np.complex128)
-
-        for i in range(len(trunc) - 1):
-            if trunc[i] + 1 >= len(base):
-                accumulator[i] = 0.0
-                continue
-
-            accumulator[i] = base[trunc[i]] + (base[trunc[i] + 1] - base[trunc[i]]) * (
-                inds[i] - trunc[i]
-            )
-        accumulator[-1] = base[trunc[-1]]
-        return accumulator
+        if _morlet_wavelet_rust is not None:
+            return _morlet_wavelet_rust(base, inds)
+        return _morlet_wavelet_python(base, inds)
 
 
-def _squeeze_scalogram(
-    scalogram: NDArray[np.float64],
+def _morlet_wavelet_python(
+    base: NDArray[np.complex128], inds: NDArray[np.float64]
+) -> NDArray[np.complex128]:
+    """Interpolate a sampled Morlet base wavelet using the Python fallback."""
+    # Truncate indices and select only valid ones
+    trunc = inds.astype(int)
+    trunc = trunc[trunc < len(base)]
+
+    accumulator: NDArray[np.complex128] = np.zeros(len(trunc), dtype=np.complex128)
+
+    for i in range(len(trunc) - 1):
+        if trunc[i] + 1 >= len(base):
+            accumulator[i] = 0.0
+            continue
+
+        accumulator[i] = base[trunc[i]] + (base[trunc[i] + 1] - base[trunc[i]]) * (
+            inds[i] - trunc[i]
+        )
+    accumulator[-1] = base[trunc[-1]]
+    return accumulator
+
+
+def _squeeze_scalogram_python(
+    scalogram: NDArray[np.complex128],
     freqs: NDArray[np.float64],
     fs: int,
     delta_w: float = 0.05,
     apply_frequency_normalization: bool = False,
-) -> NDArray[np.float64]:
+    gradient: NDArray[np.complex128] | None = None,
+) -> NDArray[np.complex128]:
     """Synchrosqueeze a scalogram.
 
     Parameters
@@ -260,6 +285,9 @@ def _squeeze_scalogram(
         When `True`, each scale is scaled by taking into account the
         normalization as shown in Eq. (2.4) of [1]. `False` does not apply
         any normalization. Default: `False`.
+    gradient : NDArray[np.complex128], None, optional
+        The gradient of the complex scalogram. Pass None to be computed on-demand.
+        Default: None.
 
     Returns
     -------
@@ -278,7 +306,9 @@ def _squeeze_scalogram(
     inds = scalpow > 1e-40
 
     # Phase Transform
-    ph = np.gradient(scalogram, axis=1)
+    if gradient is None:
+        gradient = np.gradient(scalogram, axis=1, edge_order=2)
+    ph = gradient.copy()
     ph[~inds] = 0
     # Since only imaginary part needed -> computation could be improved
     ph[inds] = (ph[inds] / scalogram[inds]).imag / 2 / np.pi
@@ -308,6 +338,34 @@ def _squeeze_scalogram(
 
                 sync[ind, t, ch] += scalogram[f, t, ch]
     return sync
+
+
+def _squeeze_scalogram(
+    scalogram: NDArray[np.complex128],
+    freqs: NDArray[np.float64],
+    fs: int,
+    delta_w: float = 0.05,
+    apply_frequency_normalization: bool = False,
+) -> NDArray[np.complex128]:
+    """Synchrosqueeze a scalogram, preferring the Rust implementation."""
+    gradient = np.gradient(scalogram, axis=1, edge_order=2)
+    if _squeeze_scalogram_rust is not None:
+        return _squeeze_scalogram_rust(
+            scalogram,
+            freqs,
+            fs,
+            delta_w,
+            apply_frequency_normalization,
+            gradient,
+        )
+    return _squeeze_scalogram_python(
+        scalogram,
+        freqs,
+        fs,
+        delta_w,
+        apply_frequency_normalization,
+        gradient,
+    )
 
 
 def _get_length_longest_wavelet(
@@ -393,28 +451,10 @@ def _get_kernels_vqt(
     return kernels
 
 
-def _warp_time_series(
+def _warp_time_series_python(
     td: NDArray[np.float64], warping_factor: float
 ) -> NDArray[np.float64]:
-    """Warp or unwarp a time series. This is a port from [1].
-
-    Parameters
-    ----------
-    td : NDArray[np.float64]
-        Time series with shape (time samples, channels).
-    warping_factor : float
-        The warping factor to use.
-
-    Returns
-    -------
-    warped_td : NDArray[np.float64]
-        Time series in the (un)warped domain.
-
-    References
-    ----------
-    - [1]: http://legacy.spa.aalto.fi/software/warp/.
-
-    """
+    """Warp or unwarp a time series using the Python implementation."""
     warped_td = np.zeros_like(td)
 
     dirac = np.zeros(td.shape[0])
@@ -429,6 +469,42 @@ def _warp_time_series(
         dirac = lfilter(b, a, dirac)
         warped_td += dirac[..., None] * td[n, :]
     return warped_td
+
+
+def _warp_time_series(
+    td: NDArray[np.float64], warping_factor: float
+) -> NDArray[np.float64]:
+    """Warp or unwarp a time series, preferring the Rust implementation."""
+    if _warp_time_series_rust is not None:
+        return _warp_time_series_rust(td, warping_factor)
+    return _warp_time_series_python(td, warping_factor)
+
+
+def _laguerre_python(
+    td: NDArray[np.float64], warping_factor: float
+) -> NDArray[np.float64]:
+    """Compute the discrete Laguerre transform with SciPy filtering."""
+    xx = td[::-1, ...]
+    output = np.zeros_like(xx)
+
+    b = np.array([warping_factor, 1.0])
+    a = np.array([1.0, warping_factor])
+    normalization = (1.0 - warping_factor**2.0) ** 0.5
+
+    xx = lfilter(normalization, a, xx, axis=0)
+    output[0, :] = xx[-1, :]
+
+    for stage in range(1, xx.shape[0]):
+        xx = lfilter(b, a, xx, axis=0)
+        output[stage, :] = xx[-1, :]
+    return output
+
+
+def _laguerre(td: NDArray[np.float64], warping_factor: float) -> NDArray[np.float64]:
+    """Compute the discrete Laguerre transform, preferring Rust."""
+    if _laguerre_rust is not None:
+        return _laguerre_rust(td, warping_factor)
+    return _laguerre_python(td, warping_factor)
 
 
 try:

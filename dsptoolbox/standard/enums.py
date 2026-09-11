@@ -478,6 +478,7 @@ class ParametrizedWindow:
 
         """
         if self.window == Window.GeneralGaussian:
+            assert isinstance(self.extra_parameter, tuple)
             return (
                 self.window._scipy_name(),
                 self.extra_parameter[0],
