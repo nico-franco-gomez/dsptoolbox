@@ -78,7 +78,7 @@ with the following command:
 
 .. code-block:: console
 
-    $ sudo apt-get install libasound2 libportaudio2 libsndfile1
+    $ sudo apt-get install libasound-dev libportaudio2 libsndfile1
 
 If this does not work properly for some reason, refer to the documentation for
 `sounddevice`_, `soundfile`_, or `PortAudio`_.
