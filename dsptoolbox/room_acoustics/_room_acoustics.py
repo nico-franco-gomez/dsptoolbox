@@ -184,6 +184,60 @@ def _complex_mode_identification(
     return cmif
 
 
+try:
+    import numba as nb
+
+    @nb.njit(parallel=True, cache=True, fastmath=False, nogil=True)
+    def _generate_rir_numba_backend(
+        reflection_vectors: NDArray[np.float64],
+        source_terms: NDArray[np.float64],
+        room_dim: NDArray[np.float64],
+        beta_1: NDArray[np.float64],
+        beta_2_powers: NDArray[np.float64],
+        sr: float,
+        partial_rir: NDArray[np.float64],
+        u_vectors: NDArray[np.int64],
+    ) -> None:
+        for reflection_index in nb.prange(reflection_vectors.shape[0]):
+            thread_index = nb.get_thread_id()
+            sample_indices = np.empty(8, dtype=np.int64)
+            contributions = np.empty(8, dtype=np.float64)
+            for image_index in range(8):
+                distance_squared = 0.0
+                for coordinate in range(3):
+                    delta = (
+                        source_terms[image_index, coordinate]
+                        + 2.0
+                        * reflection_vectors[reflection_index, coordinate]
+                        * room_dim[coordinate]
+                    )
+                    distance_squared += delta * delta
+                distance = np.sqrt(distance_squared)
+                sample_indices[image_index] = int(distance * sr / 343.0 + 0.5)
+                damping = beta_2_powers[reflection_index]
+                for coordinate in range(3):
+                    damping *= beta_1[coordinate] ** abs(
+                        reflection_vectors[reflection_index, coordinate]
+                        - u_vectors[image_index, coordinate]
+                    )
+                contributions[image_index] = damping / (4.0 * np.pi * distance)
+
+            for image_index in range(8):
+                is_last_duplicate = True
+                for later_image in range(image_index + 1, 8):
+                    if sample_indices[later_image] == sample_indices[image_index]:
+                        is_last_duplicate = False
+                        break
+                if is_last_duplicate:
+                    partial_rir[thread_index, sample_indices[image_index]] += (
+                        contributions[image_index]
+                    )
+
+except ModuleNotFoundError:
+    nb = None
+    _generate_rir_numba_backend = None
+
+
 def _generate_rir(
     room_dim: NDArray[np.float64],
     alpha: float | NDArray[np.float64],
@@ -241,15 +295,12 @@ def _generate_rir(
     # Estimated maximum order for computation based on reverberation time
     t_max = rt * 1.1
     l_max = c * t_max / 2 / room_dim
-    LIMIT = np.ceil(np.sqrt(l_max @ l_max)).astype(int)
+    limit = int(np.ceil(np.sqrt(l_max @ l_max)))
     if mo is not None:
-        LIMIT = LIMIT if mo > LIMIT else mo
+        limit = min(limit, mo)
 
     # Initialize empty vector
     rir_vec = np.zeros(int(t_max * 5 * sr))
-
-    def seconds2samples(t: NDArray[np.float64]) -> NDArray[np.int_]:
-        return np.asarray(t * sr + 0.5).astype(int)
 
     # Vectorized computation of nested sums U (Eq. 2)
     u_vectors = np.array(
@@ -263,42 +314,63 @@ def _generate_rir(
             [1, 1, 0],
             [1, 1, 1],
         ]
-    )  # Shape (8, 3)
+    )
 
-    # Helper matrix for vectorized computation
-    helper_matrix = np.zeros((u_vectors.shape[0] * u_vectors.shape[1], 1))
-    helper_matrix[: u_vectors.shape[1], 0] = 1
-    for _ in range(1, u_vectors.shape[0]):
-        helper_matrix = np.append(
-            helper_matrix,
-            np.roll(helper_matrix[:, -1], u_vectors.shape[1])[..., None],
+    # Precompute terms that do not depend on the reflection cell. Processing
+    # the cells in batches keeps the temporary distance arrays bounded.
+    source_terms = (1 - 2 * u_vectors) * s_pos - r_pos
+    reflection_vectors = np.stack(
+        np.meshgrid(
+            np.arange(-limit, limit + 1),
+            np.arange(-limit, limit + 1),
+            np.arange(-limit, limit + 1),
+            indexing="ij",
+        ),
+        axis=-1,
+    ).reshape(-1, 3)
+    beta_2_powers = np.prod(beta_2 ** np.abs(reflection_vectors), axis=1)
+
+    if _generate_rir_numba_backend is not None:
+        partial_rir = np.zeros((nb.get_num_threads(), len(rir_vec)), dtype=np.float64)
+        _generate_rir_numba_backend(
+            reflection_vectors.astype(np.float64),
+            source_terms,
+            room_dim,
+            beta_1,
+            beta_2_powers,
+            float(sr),
+            partial_rir,
+            u_vectors,
+        )
+        return np.sum(partial_rir, axis=0)
+
+    batch_size = 8192
+    # Core computation (Eq. 1)
+    for start in range(0, len(reflection_vectors), batch_size):
+        stop = start + batch_size
+        lvec = reflection_vectors[start:stop]
+        distances = np.sqrt(
+            np.sum(
+                (source_terms[None, :, :] + 2 * lvec[:, None, :] * room_dim) ** 2,
+                axis=-1,
+            )
+        )
+        sample_indices = (distances * sr / c + 0.5).astype(int)
+        damping = np.prod(
+            beta_1 ** np.abs(lvec[:, None, :] - u_vectors[None, :, :]),
             axis=-1,
         )
-
-    # Distance (according to Eq. 6)
-    # Using scipy's norm (scipy.linalg.norm) was somewhat slower...
-    def get_distance(lvec: NDArray[np.float64]) -> NDArray[np.float64]:
-        pos = (
-            ((1 - 2 * u_vectors) * s_pos) + (2 * lvec * room_dim) - r_pos
-        ).flatten() ** 2
-        return (pos @ helper_matrix) ** 0.5
-
-    # Damping term (Numerator in Eq. 8)
-    def get_damping(lvec: NDArray[np.float64]) -> NDArray[np.float64]:
-        diff = np.abs(lvec - u_vectors)
-        return np.prod(beta_1**diff, axis=1) * np.prod(beta_2 ** np.abs(lvec))
-
-    # Core computation (Eq. 1) - could be further optimized by vectorizing
-    # the outer loops
-    limit_loop = np.arange(-LIMIT, LIMIT + 1)
-    for lind in limit_loop:
-        for mind in limit_loop:
-            for nind in limit_loop:
-                l0 = np.array([lind, mind, nind])
-                # Distances
-                ds = get_distance(l0)
-                # Write into RIR
-                rir_vec[seconds2samples(ds / c)] += get_damping(l0) / (4 * np.pi * ds)
+        damping *= beta_2_powers[start:stop, None]
+        keep = np.ones(sample_indices.shape, dtype=bool)
+        for image_index in range(1, sample_indices.shape[1]):
+            keep[:, :image_index] &= (
+                sample_indices[:, :image_index] != sample_indices[:, image_index, None]
+            )
+        np.add.at(
+            rir_vec,
+            sample_indices[keep],
+            (damping / (4 * np.pi * distances))[keep],
+        )
     return rir_vec
 
 
