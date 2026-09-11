@@ -183,11 +183,11 @@ fn warp_time_series<'py>(
 fn squeeze_scalogram<'py>(
     py: Python<'py>,
     scalogram: PyReadonlyArray3<'py, Complex64>,
-    gradient: PyReadonlyArray3<'py, Complex64>,
     freqs: PyReadonlyArray1<'py, f64>,
     fs: f64,
     delta_w: f64,
     apply_frequency_normalization: bool,
+    gradient: PyReadonlyArray3<'py, Complex64>,
 ) -> PyResult<Bound<'py, PyArray3<Complex64>>> {
     let scalogram = scalogram.as_array();
     let gradient = gradient.as_array();

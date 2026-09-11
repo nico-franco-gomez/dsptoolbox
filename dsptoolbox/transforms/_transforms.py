@@ -273,6 +273,9 @@ def _squeeze_scalogram_python(
         When `True`, each scale is scaled by taking into account the
         normalization as shown in Eq. (2.4) of [1]. `False` does not apply
         any normalization. Default: `False`.
+    gradient : NDArray[np.complex128], None, optional
+        The gradient of the complex scalogram. Pass None to be computed on-demand.
+        Default: None.
 
     Returns
     -------

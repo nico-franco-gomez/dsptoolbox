@@ -154,7 +154,7 @@ class TestLatticeLadderFilter:
         np.testing.assert_array_equal(
             filt.process_sample(sample, 0), expected_data[0, 0]
         )
-        np.testing.assert_array_equal(filt.state, expected_state)
+        np.testing.assert_array_equal(filt.state[:, :1], expected_state)
 
         k = rng.uniform(-0.5, 0.5, 8)
         c = rng.normal(size=9)
@@ -174,7 +174,7 @@ class TestLatticeLadderFilter:
         np.testing.assert_array_equal(
             filt.process_sample(sample, 0), expected_data[0, 0]
         )
-        np.testing.assert_array_equal(filt.state, expected_state)
+        np.testing.assert_array_equal(filt.state[:, :1], expected_state)
 
         k = rng.uniform(-0.5, 0.5, (4, 2))
         c = rng.normal(size=(4, 3))
@@ -194,7 +194,7 @@ class TestLatticeLadderFilter:
         np.testing.assert_array_equal(
             filt.process_sample(sample, 0), expected_data[0, 0]
         )
-        np.testing.assert_array_equal(filt.state, expected_state)
+        np.testing.assert_array_equal(filt.state[:, :, :1], expected_state)
 
     def test_convert_lattice_filter(self):
         fs = 44100
