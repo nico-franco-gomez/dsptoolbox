@@ -58,6 +58,11 @@ dependencies = ["ruff", "twine", "hatch", "maturin", "wheel"]
 bindings = "pyo3"
 module-name = "dsptoolbox._rust"
 python-source = "."
+exclude = [
+  "example_data/**",
+  "tests/**",
+  "docs/**",
+]
 
 [tool.ruff]
 target-version = "py311"
