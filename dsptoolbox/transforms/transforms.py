@@ -781,7 +781,7 @@ def vqt(
     channel: NDArray[np.int_] | None = None,
     q: float = 1,
     gamma: float = 50,
-    octaves: list = (1, 5),
+    octaves: tuple = (1, 5),
     bins_per_octave: int = 24,
     a4_tuning: int = 440,
     window: str | tuple = "hann",
