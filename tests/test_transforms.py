@@ -280,6 +280,27 @@ class TestTransformsModule:
         dsp.transforms.cwt(self.speech, query_f, morlet, False)
         dsp.transforms.cwt(self.speech, query_f, morlet, True)
 
+    def test_morlet_wavelet_rust_backend_parity(self):
+        from dsptoolbox.transforms._transforms import _morlet_wavelet_python
+
+        try:
+            from dsptoolbox._rust import morlet_wavelet
+        except ImportError:
+            pytest.skip("Rust extension is not available")
+
+        wavelet = dsp.transforms.MorletWavelet(b=None, h=3, step=1e-3)
+        _, base = wavelet.get_base_wavelet()
+        for frequency in (100.0, 150.0, 200.0):
+            scale = wavelet.get_center_frequency() / frequency * 8000
+            inds = np.arange(scale * (wavelet.bounds[1] - wavelet.bounds[0]) + 1)
+            inds /= scale * wavelet.step
+            expected = _morlet_wavelet_python(base, inds)
+            actual = morlet_wavelet(base, inds)
+            np.testing.assert_allclose(actual, expected, rtol=1e-12, atol=1e-12)
+            np.testing.assert_allclose(
+                wavelet.get_wavelet(frequency, 8000), expected, rtol=1e-12, atol=1e-12
+            )
+
     def test_squeeze_scalogram_rust_backend_parity(self):
         from dsptoolbox.transforms._transforms import _squeeze_scalogram_python
 

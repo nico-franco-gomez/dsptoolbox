@@ -135,6 +135,9 @@ def warped_iir_filtering_block(
 ) -> None: ...
 
 # Transforms
+def morlet_wavelet(
+    base: NDArray[np.complex128], inds: NDArray[np.float64]
+) -> NDArray[np.complex128]: ...
 def laguerre(
     time_data: NDArray[np.float64], warping_factor: float
 ) -> NDArray[np.float64]: ...

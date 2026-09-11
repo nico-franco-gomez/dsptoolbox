@@ -9,11 +9,14 @@ from scipy.signal import get_window, lfilter
 _laguerre_rust: Callable | None
 _warp_time_series_rust: Callable | None
 _squeeze_scalogram_rust: Callable | None
+_morlet_wavelet_rust: Callable | None
 try:
+    from .._rust import morlet_wavelet as _morlet_wavelet_rust  # noqa: I001
     from .._rust import laguerre as _laguerre_rust  # noqa: I001
     from .._rust import warp_time_series as _warp_time_series_rust  # noqa: I001
     from .._rust import squeeze_scalogram as _squeeze_scalogram_rust  # noqa: I001
 except ImportError:
+    _morlet_wavelet_rust = None
     _laguerre_rust = None
     _warp_time_series_rust = None
     _squeeze_scalogram_rust = None
@@ -222,28 +225,37 @@ class MorletWavelet(Wavelet):
         return wave
 
     def _get_interpolated_wave(
-        self, base: NDArray[np.float64], inds: NDArray[np.float64]
+        self, base: NDArray[np.complex128], inds: NDArray[np.float64]
     ) -> NDArray[np.complex128]:
         """Return the wavelet function for a selection of index using
         linear interpolation.
 
         """
-        # Truncate indices and select only valid ones
-        trunc = inds.astype(int)
-        trunc = trunc[trunc < len(base)]
+        if _morlet_wavelet_rust is not None:
+            return _morlet_wavelet_rust(base, inds)
+        return _morlet_wavelet_python(base, inds)
 
-        accumulator = np.zeros(len(trunc), dtype=np.complex128)
 
-        for i in range(len(trunc) - 1):
-            if trunc[i] + 1 >= len(base):
-                accumulator[i] = 0.0
-                continue
+def _morlet_wavelet_python(
+    base: NDArray[np.complex128], inds: NDArray[np.float64]
+) -> NDArray[np.complex128]:
+    """Interpolate a sampled Morlet base wavelet using the Python fallback."""
+    # Truncate indices and select only valid ones
+    trunc = inds.astype(int)
+    trunc = trunc[trunc < len(base)]
 
-            accumulator[i] = base[trunc[i]] + (base[trunc[i] + 1] - base[trunc[i]]) * (
-                inds[i] - trunc[i]
-            )
-        accumulator[-1] = base[trunc[-1]]
-        return accumulator
+    accumulator = np.zeros(len(trunc), dtype=np.complex128)
+
+    for i in range(len(trunc) - 1):
+        if trunc[i] + 1 >= len(base):
+            accumulator[i] = 0.0
+            continue
+
+        accumulator[i] = base[trunc[i]] + (base[trunc[i] + 1] - base[trunc[i]]) * (
+            inds[i] - trunc[i]
+        )
+    accumulator[-1] = base[trunc[-1]]
+    return accumulator
 
 
 def _squeeze_scalogram_python(

@@ -1,14 +1,62 @@
-use ndarray::{Array2, Array3};
+use ndarray::{Array1, Array2, Array3};
 use num_complex::Complex64;
-use numpy::{PyArray2, PyArray3, PyReadonlyArray1, PyReadonlyArray2, PyReadonlyArray3};
+use numpy::{
+    PyArray1, PyArray2, PyArray3, PyReadonlyArray1, PyReadonlyArray2, PyReadonlyArray3,
+};
 use pyo3::exceptions::{PyIndexError, PyValueError};
 use pyo3::prelude::*;
 
 pub fn add_functions(module: &Bound<'_, PyModule>) -> PyResult<()> {
+    module.add_function(wrap_pyfunction!(morlet_wavelet, module)?)?;
     module.add_function(wrap_pyfunction!(laguerre, module)?)?;
     module.add_function(wrap_pyfunction!(warp_time_series, module)?)?;
     module.add_function(wrap_pyfunction!(squeeze_scalogram, module)?)?;
     Ok(())
+}
+
+#[pyfunction]
+fn morlet_wavelet<'py>(
+    py: Python<'py>,
+    base: PyReadonlyArray1<'py, Complex64>,
+    inds: PyReadonlyArray1<'py, f64>,
+) -> PyResult<Bound<'py, PyArray1<Complex64>>> {
+    let base = base.as_array();
+    let inds = inds.as_array();
+
+    if base.is_empty() {
+        return Err(PyValueError::new_err("base wavelet must not be empty"));
+    }
+
+    let valid_indices: Vec<(usize, usize)> = inds
+        .iter()
+        .enumerate()
+        .map(|(position, index)| (position, *index as usize))
+        .filter(|(_, index)| *index < base.len())
+        .collect();
+
+    if valid_indices.is_empty() {
+        return Err(PyValueError::new_err(
+            "wavelet indices must contain a valid base-wavelet index",
+        ));
+    }
+
+    let mut output = Array1::<Complex64>::zeros(valid_indices.len());
+    for (output_index, (input_index, base_index)) in valid_indices.iter().enumerate() {
+        if output_index + 1 == valid_indices.len() {
+            output[output_index] = base[*base_index];
+            continue;
+        }
+
+        if *base_index + 1 >= base.len() {
+            continue;
+        }
+
+        let interpolation = inds[*input_index] - *base_index as f64;
+        output[output_index] = base[*base_index]
+            + (base[*base_index + 1] - base[*base_index]) * interpolation;
+    }
+
+    Ok(PyArray1::from_owned_array(py, output))
 }
 
 #[pyfunction]
