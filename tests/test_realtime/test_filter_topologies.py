@@ -376,7 +376,9 @@ class TestFilterTopologies:
         for i in rir.time_data[:, 0]:
             fb.process_sample(i, 1)
         fb.reset_state()
-        iir_coeffs = _rng.normal(0, 0.1, (len(poles), 2))
+        iir_coeffs = np.column_stack(
+            [_rng.normal(0, 0.1, (len(poles), 2)), np.zeros(len(poles))]
+        )
         fb.set_coefficients(iir_coeffs, _rng.normal(0, 0.01, 10))
 
         fb = dsp.realtime.ParallelFilter(poles, 1, rir.sampling_rate_hz)
@@ -411,14 +413,17 @@ class TestFilterTopologies:
         # poles; the fitted numerator coefficients are overwritten next.
         fb.fit_to_ir(rir)
 
-        rng = np.random.default_rng(3)
-        b_numerators = rng.normal(0, 0.1, (len(poles), 2))
+        with pytest.raises(AssertionError):
+            fb.set_coefficients(np.zeros((len(poles), 2)), None)
+
+        b_numerators = np.array([[0.12, -0.03, 0.04], [-0.08, 0.05, -0.02]])
         fb.set_coefficients(b_numerators, None)
 
         poles_with_conjugates = np.hstack([poles, poles.conjugate()])
         sos_reference = sig.zpk2sos([], poles_with_conjugates, 1.0)
-        sos_reference[:, :2] = b_numerators
+        sos_reference[:, :3] = b_numerators
 
+        rng = np.random.default_rng(3)
         x = rng.normal(0, 0.1, 500)
         fb.reset_state()
         out = np.array([fb.process_sample(v, 0) for v in x])
@@ -439,7 +444,7 @@ class TestFilterTopologies:
         rng = np.random.default_rng(13)
         rir = dsp.ImpulseResponse.from_time_data(rng.normal(size=(256, 1)), self.fs_hz)
         poles = np.array([0.6 * np.exp(1j * 0.5), 0.3 * np.exp(1j * 1.5)])
-        coefficients = rng.normal(0.0, 0.1, (len(poles), 2))
+        coefficients = rng.normal(0.0, 0.1, (len(poles), 3))
         fir = np.array([0.2, -0.1, 0.05])
         samples = rng.normal(size=64)
 

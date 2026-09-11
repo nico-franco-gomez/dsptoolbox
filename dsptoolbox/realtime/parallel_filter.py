@@ -128,16 +128,19 @@ class ParallelFilter(RealtimeFilter[float]):
         Parameters
         ----------
         iir_coefficients : NDArray[np.float64]
-            Coefficients for each SOS. It must have shape (n_sos, 2).
+            Numerator coefficients for each SOS. It must have shape
+            (n_sos, 3). Set the third coefficient to zero when a
+            first-order numerator is needed.
         fir : NDArray[np.float64]
             FIR coefficients.
 
         """
         assert iir_coefficients.ndim == 2
         assert iir_coefficients.shape[0] == self.__sos.shape[0]
+        assert iir_coefficients.shape[1] == 3
 
         for ss in range(self.__sos.shape[0]):
-            self.__sos[ss, :2] = iir_coefficients[ss, :]
+            self.__sos[ss, :3] = iir_coefficients[ss, :]
 
         if fir is not None:
             assert fir.ndim == 1
