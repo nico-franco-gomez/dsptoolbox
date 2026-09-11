@@ -244,9 +244,7 @@ def _morlet_wavelet_python(
     trunc = inds.astype(int)
     trunc = trunc[trunc < len(base)]
 
-    accumulator: NDArray[np.complex128] = np.zeros(
-        len(trunc), dtype=np.complex128
-    )
+    accumulator: NDArray[np.complex128] = np.zeros(len(trunc), dtype=np.complex128)
 
     for i in range(len(trunc) - 1):
         if trunc[i] + 1 >= len(base):
