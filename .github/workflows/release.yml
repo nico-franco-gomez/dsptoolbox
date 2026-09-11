@@ -8,7 +8,7 @@ name: Release
   workflow_dispatch:
     inputs:
       tag:
-        description: Existing version tag to release, for example v0.10.3
+        description: Version tag to create or release, for example v0.10.3
         required: true
         type: string
 
@@ -29,7 +29,7 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v5
         with:
-          ref: refs/tags/${{ inputs.tag || github.ref_name }}
+          ref: ${{ github.sha }}
           fetch-depth: 0
           persist-credentials: false
 
@@ -140,7 +140,7 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v5
         with:
-          ref: refs/tags/${{ inputs.tag || github.ref_name }}
+          ref: ${{ github.sha }}
           persist-credentials: false
 
       - name: Build wheels
@@ -180,7 +180,7 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v5
         with:
-          ref: refs/tags/${{ inputs.tag || github.ref_name }}
+          ref: ${{ github.sha }}
           persist-credentials: false
 
       - name: Set up Python
@@ -307,8 +307,34 @@ jobs:
               f"Unexpected wheels per platform: {family_counts}"
             )
           PY
-            test "$(find dist -maxdepth 1 -type f -name '*.tar.gz' | wc -l)" -eq 1
-            test "$(find dist -maxdepth 1 -type f -name "dsptoolbox-${RELEASE_VERSION}.tar.gz" | wc -l)" -eq 1
+          test "$(find dist -maxdepth 1 -type f -name '*.tar.gz' | wc -l)" -eq 1
+          test "$(find dist -maxdepth 1 -type f -name "dsptoolbox-${RELEASE_VERSION}.tar.gz" | wc -l)" -eq 1
+
+      - name: Create release tag if needed
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: v${{ needs.validate.outputs.version }}
+          RELEASE_SHA: ${{ github.sha }}
+        run: |
+          ref_path="repos/${GITHUB_REPOSITORY}/git/ref/tags/${RELEASE_TAG}"
+          if existing_object=$(gh api "$ref_path" --jq '.object.type + " " + .object.sha' 2>/dev/null); then
+            read -r existing_type existing_sha <<< "$existing_object"
+            if [ "$existing_type" = tag ]; then
+              existing_sha=$(gh api \
+                "repos/${GITHUB_REPOSITORY}/git/tags/${existing_sha}" \
+                --jq '.object.sha')
+            fi
+            if [ "$existing_sha" != "$RELEASE_SHA" ]; then
+              echo "Tag ${RELEASE_TAG} points to ${existing_sha}, expected ${RELEASE_SHA}" >&2
+              exit 1
+            fi
+            echo "Tag ${RELEASE_TAG} already exists at ${existing_sha}"
+          else
+            gh api --method POST "repos/${GITHUB_REPOSITORY}/git/refs" \
+              -f "ref=refs/tags/${RELEASE_TAG}" \
+              -f "sha=${RELEASE_SHA}"
+            echo "Created tag ${RELEASE_TAG} at ${RELEASE_SHA}"
+          fi
 
       - name: Download release notes
         uses: actions/download-artifact@v5
