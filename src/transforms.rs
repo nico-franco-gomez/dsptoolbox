@@ -47,19 +47,19 @@ fn laguerre<'py>(
 
         let mut output = vec![0.0; buffer_len];
         output[0] = filtered[n_samples - 1];
-        for stage in 1..n_samples {
+        for output_sample in output.iter_mut().skip(1) {
             let mut previous_input = filtered[0];
             let mut previous_output = warping_factor * previous_input;
             filtered[0] = previous_output;
-            for sample in 1..n_samples {
-                let input = filtered[sample];
+            for filtered_sample in filtered.iter_mut().skip(1) {
+                let input = *filtered_sample;
                 let current_output =
                     warping_factor * input + previous_input - warping_factor * previous_output;
-                filtered[sample] = current_output;
+                *filtered_sample = current_output;
                 previous_input = input;
                 previous_output = current_output;
             }
-            output[stage] = filtered[n_samples - 1];
+            *output_sample = filtered[n_samples - 1];
         }
 
         let output = Array2::from_shape_vec((n_samples, n_channels), output)
@@ -94,9 +94,7 @@ fn laguerre<'py>(
 
     let mut output = vec![0.0; buffer_len];
     let last_offset = (n_samples - 1) * n_channels;
-    for channel in 0..n_channels {
-        output[channel] = filtered[last_offset + channel];
-    }
+    output[..n_channels].copy_from_slice(&filtered[last_offset..last_offset + n_channels]);
 
     let mut previous_inputs = vec![0.0; n_channels];
     for stage in 1..n_samples {
@@ -121,9 +119,8 @@ fn laguerre<'py>(
         }
 
         let output_offset = stage * n_channels;
-        for channel in 0..n_channels {
-            output[output_offset + channel] = filtered[last_offset + channel];
-        }
+        output[output_offset..output_offset + n_channels]
+            .copy_from_slice(&filtered[last_offset..last_offset + n_channels]);
     }
 
     let output = Array2::from_shape_vec((n_samples, n_channels), output)
@@ -160,11 +157,11 @@ fn warp_time_series<'py>(
         let mut previous_output = -warping_factor * previous_input;
         dirac[0] = previous_output;
 
-        for time in 1..n_samples {
-            let input = dirac[time];
+        for dirac_sample in dirac.iter_mut().skip(1) {
+            let input = *dirac_sample;
             let output =
                 -warping_factor * input + previous_input + warping_factor * previous_output;
-            dirac[time] = output;
+            *dirac_sample = output;
             previous_input = input;
             previous_output = output;
         }

@@ -26,6 +26,7 @@ pub fn add_functions(module: &Bound<'_, PyModule>) -> PyResult<()> {
 }
 
 #[pyfunction]
+#[allow(clippy::too_many_arguments)]
 fn kautz_filtering_sample(
     real_poles: PyReadonlyArray1<'_, f64>,
     real_coefficients: PyReadonlyArray1<'_, f64>,
@@ -109,6 +110,7 @@ fn kautz_filtering_sample(
 }
 
 #[pyfunction]
+#[allow(clippy::too_many_arguments)]
 fn parallel_filtering_sample(
     iir_b: PyReadonlyArray2<'_, f64>,
     iir_a: PyReadonlyArray2<'_, f64>,
