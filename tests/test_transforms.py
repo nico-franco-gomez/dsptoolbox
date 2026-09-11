@@ -141,7 +141,7 @@ class TestTransformsModule:
 
         """
         try:
-            import librosa
+            import librosa  # type: ignore
         except ImportError:
             return
 
