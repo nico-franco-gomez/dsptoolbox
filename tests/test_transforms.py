@@ -407,11 +407,12 @@ class TestTransformsModule:
 
         for shape in ((3, 1), (31, 2), (128, 4)):
             rng = np.random.default_rng(sum(shape))
-            time_data = rng.normal(size=shape)
             for warping_factor in (-0.7, 0.4):
-                expected = _laguerre_python(time_data, warping_factor)
-                actual = laguerre(time_data, warping_factor)
-                np.testing.assert_allclose(actual, expected, rtol=1e-12, atol=1e-12)
+                contiguous = rng.normal(size=shape)
+                for time_data in (contiguous, np.asfortranarray(contiguous)):
+                    expected = _laguerre_python(time_data, warping_factor)
+                    actual = laguerre(time_data, warping_factor)
+                    np.testing.assert_allclose(actual, expected, rtol=1e-12, atol=1e-12)
 
     def test_laguerre_round_trip_is_identity(self):
         """Per the docstring, applying `laguerre` with a warping factor and

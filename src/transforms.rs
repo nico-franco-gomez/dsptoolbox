@@ -25,47 +25,109 @@ fn laguerre<'py>(
         ));
     }
 
-    let mut filtered = Array2::zeros((n_samples, n_channels));
-    for sample in 0..n_samples {
-        for channel in 0..n_channels {
-            filtered[(sample, channel)] = time_data[(n_samples - sample - 1, channel)];
-        }
-    }
-
+    let buffer_len = n_samples * n_channels;
+    let mut filtered = vec![0.0; buffer_len];
     let normalization = (1.0 - warping_factor.powi(2)).sqrt();
-    for channel in 0..n_channels {
-        let mut previous_output = normalization * filtered[(0, channel)];
-        filtered[(0, channel)] = previous_output;
-        for sample in 1..n_samples {
-            previous_output =
-                normalization * filtered[(sample, channel)] - warping_factor * previous_output;
-            filtered[(sample, channel)] = previous_output;
+
+    if n_channels == 1 {
+        let mut previous_output = 0.0;
+        if let Some(time_data_slice) = time_data.as_slice() {
+            for sample in 0..n_samples {
+                let input = time_data_slice[n_samples - sample - 1];
+                previous_output = normalization * input - warping_factor * previous_output;
+                filtered[sample] = previous_output;
+            }
+        } else {
+            for sample in 0..n_samples {
+                let input = time_data[(n_samples - sample - 1, 0)];
+                previous_output = normalization * input - warping_factor * previous_output;
+                filtered[sample] = previous_output;
+            }
         }
-    }
 
-    let mut output = Array2::zeros((n_samples, n_channels));
-    for channel in 0..n_channels {
-        output[(0, channel)] = filtered[(n_samples - 1, channel)];
-    }
-
-    for stage in 1..n_samples {
-        for channel in 0..n_channels {
-            let mut previous_input = filtered[(0, channel)];
+        let mut output = vec![0.0; buffer_len];
+        output[0] = filtered[n_samples - 1];
+        for stage in 1..n_samples {
+            let mut previous_input = filtered[0];
             let mut previous_output = warping_factor * previous_input;
-            filtered[(0, channel)] = previous_output;
-
+            filtered[0] = previous_output;
             for sample in 1..n_samples {
-                let input = filtered[(sample, channel)];
+                let input = filtered[sample];
                 let current_output =
                     warping_factor * input + previous_input - warping_factor * previous_output;
-                filtered[(sample, channel)] = current_output;
+                filtered[sample] = current_output;
                 previous_input = input;
                 previous_output = current_output;
             }
-            output[(stage, channel)] = filtered[(n_samples - 1, channel)];
+            output[stage] = filtered[n_samples - 1];
+        }
+
+        let output = Array2::from_shape_vec((n_samples, n_channels), output)
+            .map_err(|error| PyValueError::new_err(error.to_string()))?;
+        return Ok(PyArray2::from_owned_array(py, output));
+    }
+
+    let mut previous_outputs = vec![0.0; n_channels];
+    if let Some(time_data_slice) = time_data.as_slice() {
+        for sample in 0..n_samples {
+            let input_offset = (n_samples - sample - 1) * n_channels;
+            let filtered_offset = sample * n_channels;
+            for channel in 0..n_channels {
+                let current_output = normalization * time_data_slice[input_offset + channel]
+                    - warping_factor * previous_outputs[channel];
+                filtered[filtered_offset + channel] = current_output;
+                previous_outputs[channel] = current_output;
+            }
+        }
+    } else {
+        for sample in 0..n_samples {
+            let input_sample = n_samples - sample - 1;
+            let filtered_offset = sample * n_channels;
+            for channel in 0..n_channels {
+                let current_output = normalization * time_data[(input_sample, channel)]
+                    - warping_factor * previous_outputs[channel];
+                filtered[filtered_offset + channel] = current_output;
+                previous_outputs[channel] = current_output;
+            }
         }
     }
 
+    let mut output = vec![0.0; buffer_len];
+    let last_offset = (n_samples - 1) * n_channels;
+    for channel in 0..n_channels {
+        output[channel] = filtered[last_offset + channel];
+    }
+
+    let mut previous_inputs = vec![0.0; n_channels];
+    for stage in 1..n_samples {
+        for channel in 0..n_channels {
+            let previous_input = filtered[channel];
+            let current_output = warping_factor * previous_input;
+            previous_inputs[channel] = previous_input;
+            previous_outputs[channel] = current_output;
+            filtered[channel] = current_output;
+        }
+
+        for sample in 1..n_samples {
+            let filtered_offset = sample * n_channels;
+            for channel in 0..n_channels {
+                let input = filtered[filtered_offset + channel];
+                let current_output = warping_factor * input + previous_inputs[channel]
+                    - warping_factor * previous_outputs[channel];
+                filtered[filtered_offset + channel] = current_output;
+                previous_inputs[channel] = input;
+                previous_outputs[channel] = current_output;
+            }
+        }
+
+        let output_offset = stage * n_channels;
+        for channel in 0..n_channels {
+            output[output_offset + channel] = filtered[last_offset + channel];
+        }
+    }
+
+    let output = Array2::from_shape_vec((n_samples, n_channels), output)
+        .map_err(|error| PyValueError::new_err(error.to_string()))?;
     Ok(PyArray2::from_owned_array(py, output))
 }
 
