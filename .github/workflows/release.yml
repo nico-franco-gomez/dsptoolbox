@@ -27,7 +27,7 @@ jobs:
       notes: ${{ steps.notes.outputs.notes }}
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -107,7 +107,7 @@ jobs:
           } >> "$GITHUB_OUTPUT"
 
       - name: Upload release notes
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: release-notes
           path: release-notes.rst
@@ -132,15 +132,15 @@ jobs:
           - name: macos-arm64
             runner: macos-14
             archs: arm64
-          - name: windows-amd64
+          - name: windows-x86_64
             runner: windows-latest
             archs: AMD64
           - name: windows-arm64
-            runner: windows-latest
+            runner: windows-11-arm
             archs: ARM64
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           persist-credentials: false
 
@@ -149,10 +149,13 @@ jobs:
         uses: docker/setup-qemu-action@v3
 
       - name: Build wheels
-        uses: pypa/cibuildwheel@v2.23.3
+        uses: pypa/cibuildwheel@v4.2.1
         env:
           CIBW_BUILD: ${{ env.PYTHON_VERSIONS }}
           CIBW_ARCHS: ${{ matrix.archs }}
+          CIBW_ENVIRONMENT_MACOS: >-
+            ${{ matrix.name == 'macos-x86_64' &&
+            'MACOSX_DEPLOYMENT_TARGET=10.12' || '' }}
           CIBW_TEST_COMMAND: >-
             python -c "from dsptoolbox._rust import lattice_filtering_fir,
             warp_time_series"
@@ -161,7 +164,7 @@ jobs:
           output-dir: wheelhouse
 
       - name: Upload wheels
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: wheels-${{ matrix.name }}
           path: wheelhouse/*.whl
@@ -173,12 +176,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           persist-credentials: false
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.11"
 
@@ -189,7 +192,7 @@ jobs:
         run: maturin sdist --out dist
 
       - name: Upload source distribution
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: sdist
           path: dist/*.tar.gz
@@ -203,20 +206,20 @@ jobs:
       contents: write
     steps:
       - name: Download all release artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           pattern: "wheels-*"
           path: dist
           merge-multiple: true
 
       - name: Download source distribution
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: sdist
           path: dist
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.11"
 
@@ -228,7 +231,7 @@ jobs:
           test "$(find dist -name '*.tar.gz' | wc -l)" -eq 1
 
       - name: Download release notes
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: release-notes
           path: .
