@@ -19,7 +19,9 @@ class TestAudioIOModule:
     )
 
     def test_device_selection(self):
-        dsp.audio_io.print_device_info()
+        devices = dsp.audio_io.print_device_info()
+        if len(devices) == 0:
+            pytest.skip("No PortAudio devices are available on this runner")
         d = dsp.audio_io.print_device_info(device_number=0)
         assert d is not None
         dsp.audio_io.set_device(0)
