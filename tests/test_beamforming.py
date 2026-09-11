@@ -216,6 +216,52 @@ class TestBeamformingModule:
             remove_csm_diagonal=True,
         )
 
+    def test_beamformer_steering_vector_cache(self):
+        ma = self._make_planar_array(spacing=0.5, extent=0.5)
+        signal = dsp.generators.noise(
+            length_seconds=0.1,
+            sampling_rate_hz=10_000,
+            number_of_channels=ma.number_of_points,
+            rng=106,
+        )
+        grid = dsp.beamforming.LineGrid(
+            np.array([0.0, 0.5]), dsp.beamforming.SpatialDimension.X, 0.0, 0.5
+        )
+        steering = dsp.beamforming.SteeringVector(
+            formulation=dsp.beamforming.SteeringVectorType.TrueLocation
+        )
+        beamformer = dsp.beamforming.BeamformerDASFrequency(signal, ma, grid, steering)
+        original_get_vector = steering.get_vector
+        calls = 0
+
+        def counted_get_vector(*args, **kwargs):
+            nonlocal calls
+            calls += 1
+            return original_get_vector(*args, **kwargs)
+
+        steering.get_vector = counted_get_vector
+        wave_numbers = np.array([1.0, 2.0])
+        first = beamformer._get_steering_vector(wave_numbers)
+        second = beamformer._get_steering_vector(wave_numbers.copy())
+        assert calls == 1
+        assert first is second
+
+        changed_frequency = beamformer._get_steering_vector(np.array([1.0, 3.0]))
+        assert calls == 2
+        assert changed_frequency is not second
+
+        changed_coordinates = grid.coordinates.copy()
+        changed_coordinates[0, 0] += 0.1
+        grid.coordinates = changed_coordinates
+        changed_grid = beamformer._get_steering_vector(np.array([1.0, 3.0]))
+        assert calls == 3
+        assert changed_grid is not changed_frequency
+
+        beamformer.delete_cache()
+        deleted = beamformer._get_steering_vector(np.array([1.0, 3.0]))
+        assert calls == 4
+        assert deleted is not changed_grid
+
     def test_beamformer_time(self):
         ma = self.points_uniform.copy()
         ma["z"] = np.zeros(len(ma["x"]))

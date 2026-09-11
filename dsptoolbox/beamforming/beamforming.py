@@ -808,6 +808,37 @@ class BeamformerGridded(BaseBeamformer):
         assert issubclass(type(grid), Grid), "grid should be a Grid object"
         self.grid = grid
         self.st_vec = steering_vector
+        self._steering_vector_cache = None
+
+    @staticmethod
+    def _array_cache_key(array: NDArray) -> tuple[tuple[int, ...], str, bytes]:
+        array = np.asarray(array)
+        return array.shape, array.dtype.str, array.tobytes()
+
+    def _get_steering_vector(
+        self, wave_numbers: NDArray[np.float64]
+    ) -> NDArray[np.complex128]:
+        steering_method = self.st_vec.get_vector
+        steering_key = (
+            id(self.st_vec),
+            getattr(steering_method, "__func__", steering_method),
+            self._array_cache_key(wave_numbers),
+            self._array_cache_key(self.grid.coordinates),
+            self._array_cache_key(self.mics.coordinates),
+        )
+        if (
+            self._steering_vector_cache is not None
+            and self._steering_vector_cache[0] == steering_key
+        ):
+            return self._steering_vector_cache[1]
+
+        steering_vector = steering_method(wave_numbers, grid=self.grid, mic=self.mics)
+        self._steering_vector_cache = (steering_key, steering_vector)
+        return steering_vector
+
+    def delete_cache(self) -> None:
+        """Delete the cached steering vector."""
+        self._steering_vector_cache = None
 
 
 class BeamformerDASFrequency(BeamformerGridded):
@@ -864,7 +895,7 @@ class BeamformerDASFrequency(BeamformerGridded):
         csm = csm[id1:id2]
         number_frequency_bins = id2 - id1
         wave_numbers = f * np.pi * 2 / self.c
-        h = self.st_vec.get_vector(wave_numbers, grid=self.grid, mic=self.mics)
+        h = self._get_steering_vector(wave_numbers)
         h_H = np.swapaxes(h, 1, 2).conjugate()
         self.f_range_hz = np.array([f[0], f[-1]])
 
@@ -969,7 +1000,7 @@ class BeamformerCleanSC(BeamformerGridded):
 
         # Steering vector
         wave_numbers = f * np.pi * 2 / self.c
-        h = self.st_vec.get_vector(wave_numbers, grid=self.grid, mic=self.mics)
+        h = self._get_steering_vector(wave_numbers)
         h_H = np.swapaxes(h, 1, 2).conjugate()
         self.f_range_hz = np.array([f[0], f[-1]])
 
@@ -1076,7 +1107,7 @@ class BeamformerOrthogonal(BeamformerGridded):
         csm = csm[id1:id2]
         number_frequency_bins = id2 - id1
         wave_numbers = f * np.pi * 2 / self.c
-        h = self.st_vec.get_vector(wave_numbers, grid=self.grid, mic=self.mics)
+        h = self._get_steering_vector(wave_numbers)
         self.f_range_hz = np.array([f[0], f[-1]])
 
         eig_map = np.zeros(
@@ -1169,7 +1200,7 @@ class BeamformerFunctional(BeamformerGridded):
         wave_numbers = f * np.pi * 2 / self.c
 
         # Generate steering vectors
-        h = self.st_vec.get_vector(wave_numbers, grid=self.grid, mic=self.mics)
+        h = self._get_steering_vector(wave_numbers)
         h_H = np.swapaxes(h, 1, 2).conjugate()
         self.f_range_hz = np.array([f[0], f[-1]])
 
@@ -1274,7 +1305,7 @@ class BeamformerMVDR(BeamformerGridded):
         wave_numbers = f * np.pi * 2 / self.c
 
         # Generate steering vectors
-        h = self.st_vec.get_vector(wave_numbers, grid=self.grid, mic=self.mics)
+        h = self._get_steering_vector(wave_numbers)
         h_H = np.swapaxes(h, 1, 2).conjugate()
         self.f_range_hz = np.array([f[0], f[-1]])
 
