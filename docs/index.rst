@@ -30,6 +30,7 @@ DSPToolbox
 .. toctree::
     readme
     deployment
+    performance
 
 .. toctree::
    :maxdepth: 2
