@@ -1331,8 +1331,15 @@ class BeamformerDASTime(BaseBeamformer):
         self.grid = grid
         self.beamformer_type = "Delay-and-sum (Time)"
 
-    def get_beamformer_output(self) -> Signal:
+    def get_beamformer_output(self, fractional_delay: bool = True) -> Signal:
         """Triggers the computation for beamforming in time domain.
+
+        Parameters
+        ----------
+        fractional_delay : bool, optional
+            When True, fractional delay is applied to the beamformer output. This
+            increases the quality of the output at the expense of a considerably longer
+            computation time. Default: True.
 
         Returns
         -------
@@ -1356,21 +1363,29 @@ class BeamformerDASTime(BaseBeamformer):
         total_length_samples = out_sig.time_data.shape[0] + longest_delay_samples
         out_sig = out_sig.pad_trim(total_length_samples)
 
+        output_time_data = np.zeros((total_length_samples, self.grid.number_of_points))
+        channels = [
+            self.signal.get_channels(im) for im in range(self.mics.number_of_points)
+        ]
+
         # Start computation for each grid point
         for ig in range(self.grid.number_of_points):
-            delays = (r0 - ds[:, ig]) / self.c
+            delays_s = (r0 - ds[:, ig]) / self.c
             # Accumulator
             new_time_data = np.zeros((total_length_samples, 1))
             for im in range(self.mics.number_of_points):
+                channel = channels[im]
                 ntd = (
-                    self.signal.get_channels(im).fractional_delay(delays[im]).time_data
-                    * ds[im, ig]
-                )
+                    channel.fractional_delay(delays_s[im])
+                    if fractional_delay
+                    else channel.delay(
+                        int(delays_s[im] * channel.sampling_rate_hz + 0.5)
+                    )
+                ).time_data * ds[im, ig]
                 new_time_data += _pad_trim(ntd, total_length_samples)
             new_time_data /= self.mics.number_of_points
-            out_sig = out_sig.add_channel(None, new_time_data, out_sig.sampling_rate_hz)
-        out_sig = out_sig.remove_channel(0)
-        return out_sig
+            output_time_data[:, ig] = new_time_data[:, 0]
+        return out_sig.copy_with_new_time_data(output_time_data)
 
 
 class MonopoleSource:

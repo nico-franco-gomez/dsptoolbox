@@ -325,6 +325,47 @@ class TestBeamformingModule:
         peak_xy = (gx[peak_idx[0]], gy[peak_idx[1]])
         np.testing.assert_allclose(peak_xy, true_xy, atol=1e-9)
 
+    def test_beamformer_das_time_integer_delays(self):
+        """The integer-delay DAS path should match rounded-delay accumulation."""
+        fs = 10_000
+        ma = self._make_planar_array(spacing=0.25, extent=1.0, z=0.0)
+
+        source = dsp.beamforming.MonopoleSource(
+            dsp.generators.noise(length_seconds=1, sampling_rate_hz=fs, rng=105),
+            [0.4, 0.6, 0.5],
+        )
+        s = source.get_signals_on_array(ma)
+
+        gx = np.arange(0.0, 1.01, 0.2)
+        gy = np.arange(0.0, 1.01, 0.2)
+        grid = dsp.beamforming.Regular2DGrid(
+            gx,
+            gy,
+            [dsp.beamforming.SpatialDimension.X, dsp.beamforming.SpatialDimension.Y],
+            value3=0.5,
+        )
+
+        bf = dsp.beamforming.BeamformerDASTime(s, ma, grid)
+        out = bf.get_beamformer_output(fractional_delay=False)
+
+        distances = ma.get_distances_to_point(grid.coordinates)
+        min_distance = np.min(distances)
+        max_distance = np.max(distances)
+        longest_delay_samples = int((max_distance - min_distance) / 343 * fs + 2)
+        total_length_samples = s.time_data.shape[0] + longest_delay_samples
+        expected = np.zeros((total_length_samples, grid.number_of_points))
+        for grid_index in range(grid.number_of_points):
+            delays = (max_distance - distances[:, grid_index]) / 343
+            for mic_index in range(ma.number_of_points):
+                delay_samples = int(delays[mic_index] * fs + 0.5)
+                delayed = s.get_channels(mic_index).delay(delay_samples).time_data
+                expected[: delayed.shape[0], grid_index] += (
+                    delayed[:, 0] * distances[mic_index, grid_index]
+                )
+            expected[:, grid_index] /= ma.number_of_points
+
+        np.testing.assert_array_equal(out.time_data, expected)
+
     def test_beamformer_mvdr_localizes_source(self):
         """MVDR needs an invertible cross-spectral matrix per frequency
         bin, which requires enough independent Welch snapshots relative to

@@ -275,11 +275,9 @@ def _clean_sc_deconvolve(
         if remove_diagonal_csm:
             np.fill_diagonal(G, 0)
 
-        for gind in range(len(map)):
-            # Clean map
-            map[gind] -= (
-                np.linalg.multi_dot([h_H[gind, :], G, h[:, gind]]).real * safety_factor
-            )
+        # Clean all grid points in one matrix operation.
+        projected = h_H @ G
+        map -= np.sum(projected * h.T, axis=1).real * safety_factor
 
         # Swap degraded CSM
         temp = D[1, :, :].copy()
