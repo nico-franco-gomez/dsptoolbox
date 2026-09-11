@@ -11,10 +11,10 @@ build:
   tools:
     python: "3.12"
   apt_packages:
-    - libsndfile1
-    - libportaudio2
-    - libasound-dev
-    - libasound2-doc
+     - libsndfile1
+     - libportaudio2
+     - libasound2
+     - libasound2-doc
 
 # Build documentation in the docs/ directory with Sphinx
 sphinx:
