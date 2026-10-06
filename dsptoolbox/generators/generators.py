@@ -85,6 +85,8 @@ def noise(
     assert number_of_channels >= 1, "At least one channel should be generated"
 
     l_samples = int(length_seconds * sampling_rate_hz + 0.5)
+    if l_samples < 2:
+        raise ValueError("Noise length must be at least two samples")
     f = np.fft.rfftfreq(l_samples, 1 / sampling_rate_hz)
 
     if padding_end_seconds != 0:
@@ -100,7 +102,7 @@ def noise(
     # Set to 15 Hz to cover whole audible spectrum but without
     # numerical instabilities because of large values in lower
     # frequencies
-    id_low = np.argmin(np.abs(f - 15))
+    id_low = max(1, np.argmin(np.abs(f - 15)))
     mag[0] = 0
     if type_of_noise != NoiseType.White and type_of_noise != 0.0:
         mag[:id_low] *= 1e-20

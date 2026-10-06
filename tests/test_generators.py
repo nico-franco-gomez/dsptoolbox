@@ -103,6 +103,25 @@ class TestGeneratorsModule:
                 rng=121,
             )
 
+    def test_short_pink_noise_avoids_zero_frequency_nan(self):
+        pink_noise = dsp.generators.noise(
+            type_of_noise=dsp.generators.NoiseType.Pink,
+            length_seconds=0.02,
+            sampling_rate_hz=100,
+            fade=None,
+            rng=122,
+        )
+        assert np.isfinite(pink_noise.time_data).all()
+
+        with pytest.raises(ValueError, match="at least two samples"):
+            dsp.generators.noise(
+                type_of_noise=dsp.generators.NoiseType.Pink,
+                length_seconds=0.01,
+                sampling_rate_hz=100,
+                fade=None,
+                rng=123,
+            )
+
     def test_chirp(self):
         dsp.generators.chirp(
             type_of_chirp=dsp.generators.ChirpType.Logarithmic,
