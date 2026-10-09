@@ -1142,6 +1142,9 @@ def warp_filter(filter: Filter, warping_factor: WarpingFactorType) -> Filter:
     """
     factor = warping_factor.get_factor(filter.sampling_rate_hz)
     z, p, k = filter.get_coefficients(FilterCoefficientsType.Zpk)
+    k *= float(
+        np.real(np.prod(1 + warping_factor * z) / np.prod(1 + warping_factor * p))
+    )
     p = (factor + p) / (1 + factor * p)
     z = (factor + z) / (1 + factor * z)
     if len(p) > len(z):
